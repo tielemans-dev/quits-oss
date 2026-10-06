@@ -2,7 +2,10 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
-import { validateSettingsFormInput } from "../../lib/validation/settings-form"
+import {
+  type SettingsFormValidationError,
+  validateSettingsFormInput,
+} from "../../lib/validation/settings-form"
 import {
   COUNTRY_OPTIONS,
   LOCALE_OPTIONS,
@@ -44,12 +47,23 @@ import {
   AlertDialogTrigger,
 } from "../../components/ui/alert-dialog"
 import { Settings, UserPlus, X, Crown, User, Eye } from "lucide-react"
+import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
 import { shouldAutoLoadOpenRouterModels } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
 import { AgentKeysCard } from "../../components/settings/agent-keys-card"
 import { AuditLogCard } from "../../components/settings/audit-log-card"
 import { ReminderPolicyCard } from "../../components/settings/reminder-policy-card"
+
+const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
+  invalid_timezone: "settings.validation.invalidTimezone",
+  invalid_tax_rate: "settings.validation.invalidTaxRate",
+  invalid_company_email: "settings.validation.invalidCompanyEmail",
+  invalid_company_phone: "settings.validation.invalidCompanyPhone",
+  invalid_invoice_prefix: "settings.validation.invalidInvoicePrefix",
+  invalid_quote_prefix: "settings.validation.invalidQuotePrefix",
+  invalid_credit_note_prefix: "settings.validation.invalidCreditNotePrefix",
+}
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -369,23 +383,12 @@ function SettingsPage() {
       companyPhone: companyPhoneInput,
       invoicePrefix: invoicePrefixInput,
       quotePrefix: quotePrefixInput,
+      creditNotePrefix: creditNotePrefixInput,
     })
 
     if (formValidationError) {
       setSaving(false)
-      setError(
-        formValidationError === "invalid_timezone"
-          ? t("settings.validation.invalidTimezone")
-          : formValidationError === "invalid_tax_rate"
-            ? t("settings.validation.invalidTaxRate")
-            : formValidationError === "invalid_company_email"
-              ? t("settings.validation.invalidCompanyEmail")
-              : formValidationError === "invalid_company_phone"
-                ? t("settings.validation.invalidCompanyPhone")
-                : formValidationError === "invalid_invoice_prefix"
-                  ? t("settings.validation.invalidInvoicePrefix")
-                  : t("settings.validation.invalidQuotePrefix")
-      )
+      setError(t(settingsValidationMessages[formValidationError]))
       return
     }
 

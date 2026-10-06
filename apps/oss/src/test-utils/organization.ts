@@ -68,6 +68,9 @@ export async function createTestOrganization(
     organizationId,
     actors,
     async cleanup() {
+      // Credit notes and payments restrict invoice deletion, so remove them first.
+      await prisma.creditNote.deleteMany({ where: { organizationId } })
+      await prisma.payment.deleteMany({ where: { organizationId } })
       await prisma.job.deleteMany({ where: { organizationId } })
       await prisma.commandReceipt.deleteMany({ where: { organizationId } })
       await prisma.organization.delete({ where: { id: organizationId } })

@@ -9,6 +9,7 @@ export type SettingsFormValidationError =
   | "invalid_company_phone"
   | "invalid_invoice_prefix"
   | "invalid_quote_prefix"
+  | "invalid_credit_note_prefix"
 
 export type SettingsFormValidationInput = {
   timezone: string
@@ -17,6 +18,7 @@ export type SettingsFormValidationInput = {
   companyPhone?: string
   invoicePrefix?: string
   quotePrefix?: string
+  creditNotePrefix?: string
 }
 
 function isValidTimezone(timezone: string) {
@@ -62,6 +64,11 @@ export function validateSettingsFormInput(
   const quotePrefix = input.quotePrefix?.trim()
   if (quotePrefix && !PREFIX_REGEX.test(quotePrefix)) {
     return "invalid_quote_prefix"
+  }
+
+  const creditNotePrefix = input.creditNotePrefix?.trim()
+  if (creditNotePrefix && !PREFIX_REGEX.test(creditNotePrefix)) {
+    return "invalid_credit_note_prefix"
   }
 
   return null

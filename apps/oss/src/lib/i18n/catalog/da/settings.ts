@@ -22,6 +22,7 @@ export const daSettingsMessages = {
     "Angiv et gyldigt virksomhedsnummer.",
   "settings.validation.invalidInvoicePrefix":
     "Fakturapræfikset skal være 1-10 store bogstaver, tal eller bindestreger.",
+  "settings.validation.invalidCreditNotePrefix": "Præfiks for kreditnotaer skal være 1-10 store bogstaver, tal eller bindestreger.",
   "settings.validation.invalidQuotePrefix":
     "Tilbudspræfikset skal være 1-10 store bogstaver, tal eller bindestreger.",
   "settings.role.admin": "Admin",
@@ -69,7 +70,7 @@ export const daSettingsMessages = {
   "settings.currency.label": "Valuta",
   "settings.currency.placeholder": "Vælg valuta",
   "settings.taxRate.label": "Standard momssats (%)",
-  "settings.section.numbering.title": "Nummerering af faktura og tilbud",
+  "settings.section.numbering.title": "Nummerering af dokumenter",
   "settings.section.numbering.description":
     "Præfikser og løbenumre for genererede dokumenter.",
   "settings.invoicePrefix.label": "Fakturapræfiks",
