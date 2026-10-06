@@ -167,7 +167,7 @@ This repository is Bun-native. Use `bun install` and `bun run ...` commands for 
 | `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional) | No |
 | `RESEND_API_KEY` | Resend API key for sending invoice/quote/invite emails | No |
 | `FROM_EMAIL` | Sender email address used for outgoing emails | No |
-| `CRON_SECRET` | Bearer token required by `/api/cron/mark-overdue` | Yes (prod) |
+| `CRON_SECRET` | Bearer token required by `/api/cron/tick` (and the legacy `/api/cron/mark-overdue`); the bundled `scheduler` service calls the tick every 5 minutes | Yes (prod) |
 | `YAIP_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
 | `YAIP_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
 | `YAIP_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
