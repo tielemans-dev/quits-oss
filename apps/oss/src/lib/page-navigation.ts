@@ -1,3 +1,5 @@
+import { toInternalRedirectPath } from "./redirect-target"
+
 /**
  * Full page loads. Changing which organization a tab acts for (switching organization, signing in
  * or out) always loads a new page, so the app layout initializes it once, from the session, and
@@ -5,9 +7,9 @@
  * replace it (jsdom cannot navigate).
  */
 
-/** Loads `path` as a new page. */
+/** Loads `path` as a new page of this app; anything that would leave the app loads `/`. */
 export function loadPage(path: string): void {
-  window.location.assign(path)
+  window.location.assign(toInternalRedirectPath(path) ?? "/")
 }
 
 /** Reloads the current page. */

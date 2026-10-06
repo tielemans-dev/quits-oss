@@ -32,4 +32,14 @@ describe("toInternalRedirectPath", () => {
     expect(toInternalRedirectPath("/\\evil.example")).toBeNull()
     expect(toInternalRedirectPath("invoices")).toBeNull()
   })
+
+  it("rejects paths a browser would resolve to another site", () => {
+    for (const target of ["/\t/evil.example", "/\n/evil.example", "/\r/evil.example", "/\t\t/evil.example"]) {
+      expect(toInternalRedirectPath(target)).toBeNull()
+    }
+  })
+
+  it("returns the path as the browser resolves it", () => {
+    expect(toInternalRedirectPath("/invoices/../quotes#top")).toBe("/quotes#top")
+  })
 })
