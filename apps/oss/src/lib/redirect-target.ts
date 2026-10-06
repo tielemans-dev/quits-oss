@@ -24,7 +24,11 @@ const INTERNAL_BASE = "http://internal.invalid"
  * would otherwise become `//evil.example`. Returns the path as the browser would resolve it.
  */
 export function toInternalRedirectPath(target: string | undefined): string | null {
-  if (!target || !target.startsWith("/") || /[\u0000-\u001f\u007f\\]/.test(target)) {
+  const hasControlOrBackslash = [...(target ?? "")].some((char) => {
+    const code = char.charCodeAt(0)
+    return code < 0x20 || code === 0x7f || char === "\\"
+  })
+  if (!target || !target.startsWith("/") || hasControlOrBackslash) {
     return null
   }
   try {
