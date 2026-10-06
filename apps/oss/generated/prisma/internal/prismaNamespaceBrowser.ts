@@ -663,7 +663,9 @@ export type JobScalarFieldEnum = (typeof JobScalarFieldEnum)[keyof typeof JobSca
 export const SchedulerScanScalarFieldEnum = {
   task: 'task',
   organizationId: 'organizationId',
-  scannedAt: 'scannedAt'
+  scannedAt: 'scannedAt',
+  claimToken: 'claimToken',
+  claimedUntil: 'claimedUntil'
 } as const
 
 export type SchedulerScanScalarFieldEnum = (typeof SchedulerScanScalarFieldEnum)[keyof typeof SchedulerScanScalarFieldEnum]

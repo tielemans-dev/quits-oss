@@ -666,11 +666,15 @@ model Job {
 }
 
 /// When a scheduler task last claimed an organization; ticks claim the least recently scanned.
+/// A tick holding an organization stamps `claimToken` and `claimedUntil`; other ticks skip it
+/// until the claim is finished, released or expires.
 model SchedulerScan {
   task           String
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   scannedAt      DateTime?
+  claimToken     String?
+  claimedUntil   DateTime?
 
   @@id([task, organizationId])
   @@index([task, scannedAt])

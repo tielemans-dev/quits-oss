@@ -15,6 +15,8 @@ import type * as Prisma from "../internal/prismaNamespace.ts"
 /**
  * Model SchedulerScan
  * When a scheduler task last claimed an organization; ticks claim the least recently scanned.
+ * A tick holding an organization stamps `claimToken` and `claimedUntil`; other ticks skip it
+ * until the claim is finished, released or expires.
  */
 export type SchedulerScanModel = runtime.Types.Result.DefaultSelection<Prisma.$SchedulerScanPayload>
 
@@ -28,18 +30,24 @@ export type SchedulerScanMinAggregateOutputType = {
   task: string | null
   organizationId: string | null
   scannedAt: Date | null
+  claimToken: string | null
+  claimedUntil: Date | null
 }
 
 export type SchedulerScanMaxAggregateOutputType = {
   task: string | null
   organizationId: string | null
   scannedAt: Date | null
+  claimToken: string | null
+  claimedUntil: Date | null
 }
 
 export type SchedulerScanCountAggregateOutputType = {
   task: number
   organizationId: number
   scannedAt: number
+  claimToken: number
+  claimedUntil: number
   _all: number
 }
 
@@ -48,18 +56,24 @@ export type SchedulerScanMinAggregateInputType = {
   task?: true
   organizationId?: true
   scannedAt?: true
+  claimToken?: true
+  claimedUntil?: true
 }
 
 export type SchedulerScanMaxAggregateInputType = {
   task?: true
   organizationId?: true
   scannedAt?: true
+  claimToken?: true
+  claimedUntil?: true
 }
 
 export type SchedulerScanCountAggregateInputType = {
   task?: true
   organizationId?: true
   scannedAt?: true
+  claimToken?: true
+  claimedUntil?: true
   _all?: true
 }
 
@@ -139,6 +153,8 @@ export type SchedulerScanGroupByOutputType = {
   task: string
   organizationId: string
   scannedAt: Date | null
+  claimToken: string | null
+  claimedUntil: Date | null
   _count: SchedulerScanCountAggregateOutputType | null
   _min: SchedulerScanMinAggregateOutputType | null
   _max: SchedulerScanMaxAggregateOutputType | null
@@ -166,6 +182,8 @@ export type SchedulerScanWhereInput = {
   task?: Prisma.StringFilter<"SchedulerScan"> | string
   organizationId?: Prisma.StringFilter<"SchedulerScan"> | string
   scannedAt?: Prisma.DateTimeNullableFilter<"SchedulerScan"> | Date | string | null
+  claimToken?: Prisma.StringNullableFilter<"SchedulerScan"> | string | null
+  claimedUntil?: Prisma.DateTimeNullableFilter<"SchedulerScan"> | Date | string | null
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
 }
 
@@ -173,6 +191,8 @@ export type SchedulerScanOrderByWithRelationInput = {
   task?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   scannedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  claimToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  claimedUntil?: Prisma.SortOrderInput | Prisma.SortOrder
   organization?: Prisma.OrganizationOrderByWithRelationInput
 }
 
@@ -184,6 +204,8 @@ export type SchedulerScanWhereUniqueInput = Prisma.AtLeast<{
   task?: Prisma.StringFilter<"SchedulerScan"> | string
   organizationId?: Prisma.StringFilter<"SchedulerScan"> | string
   scannedAt?: Prisma.DateTimeNullableFilter<"SchedulerScan"> | Date | string | null
+  claimToken?: Prisma.StringNullableFilter<"SchedulerScan"> | string | null
+  claimedUntil?: Prisma.DateTimeNullableFilter<"SchedulerScan"> | Date | string | null
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
 }, "task_organizationId">
 
@@ -191,6 +213,8 @@ export type SchedulerScanOrderByWithAggregationInput = {
   task?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   scannedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  claimToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  claimedUntil?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.SchedulerScanCountOrderByAggregateInput
   _max?: Prisma.SchedulerScanMaxOrderByAggregateInput
   _min?: Prisma.SchedulerScanMinOrderByAggregateInput
@@ -203,11 +227,15 @@ export type SchedulerScanScalarWhereWithAggregatesInput = {
   task?: Prisma.StringWithAggregatesFilter<"SchedulerScan"> | string
   organizationId?: Prisma.StringWithAggregatesFilter<"SchedulerScan"> | string
   scannedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"SchedulerScan"> | Date | string | null
+  claimToken?: Prisma.StringNullableWithAggregatesFilter<"SchedulerScan"> | string | null
+  claimedUntil?: Prisma.DateTimeNullableWithAggregatesFilter<"SchedulerScan"> | Date | string | null
 }
 
 export type SchedulerScanCreateInput = {
   task: string
   scannedAt?: Date | string | null
+  claimToken?: string | null
+  claimedUntil?: Date | string | null
   organization: Prisma.OrganizationCreateNestedOneWithoutSchedulerScansInput
 }
 
@@ -215,11 +243,15 @@ export type SchedulerScanUncheckedCreateInput = {
   task: string
   organizationId: string
   scannedAt?: Date | string | null
+  claimToken?: string | null
+  claimedUntil?: Date | string | null
 }
 
 export type SchedulerScanUpdateInput = {
   task?: Prisma.StringFieldUpdateOperationsInput | string
   scannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutSchedulerScansNestedInput
 }
 
@@ -227,23 +259,31 @@ export type SchedulerScanUncheckedUpdateInput = {
   task?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   scannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type SchedulerScanCreateManyInput = {
   task: string
   organizationId: string
   scannedAt?: Date | string | null
+  claimToken?: string | null
+  claimedUntil?: Date | string | null
 }
 
 export type SchedulerScanUpdateManyMutationInput = {
   task?: Prisma.StringFieldUpdateOperationsInput | string
   scannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type SchedulerScanUncheckedUpdateManyInput = {
   task?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   scannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type SchedulerScanListRelationFilter = {
@@ -265,18 +305,24 @@ export type SchedulerScanCountOrderByAggregateInput = {
   task?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   scannedAt?: Prisma.SortOrder
+  claimToken?: Prisma.SortOrder
+  claimedUntil?: Prisma.SortOrder
 }
 
 export type SchedulerScanMaxOrderByAggregateInput = {
   task?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   scannedAt?: Prisma.SortOrder
+  claimToken?: Prisma.SortOrder
+  claimedUntil?: Prisma.SortOrder
 }
 
 export type SchedulerScanMinOrderByAggregateInput = {
   task?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   scannedAt?: Prisma.SortOrder
+  claimToken?: Prisma.SortOrder
+  claimedUntil?: Prisma.SortOrder
 }
 
 export type SchedulerScanCreateNestedManyWithoutOrganizationInput = {
@@ -324,11 +370,15 @@ export type SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput = {
 export type SchedulerScanCreateWithoutOrganizationInput = {
   task: string
   scannedAt?: Date | string | null
+  claimToken?: string | null
+  claimedUntil?: Date | string | null
 }
 
 export type SchedulerScanUncheckedCreateWithoutOrganizationInput = {
   task: string
   scannedAt?: Date | string | null
+  claimToken?: string | null
+  claimedUntil?: Date | string | null
 }
 
 export type SchedulerScanCreateOrConnectWithoutOrganizationInput = {
@@ -364,26 +414,36 @@ export type SchedulerScanScalarWhereInput = {
   task?: Prisma.StringFilter<"SchedulerScan"> | string
   organizationId?: Prisma.StringFilter<"SchedulerScan"> | string
   scannedAt?: Prisma.DateTimeNullableFilter<"SchedulerScan"> | Date | string | null
+  claimToken?: Prisma.StringNullableFilter<"SchedulerScan"> | string | null
+  claimedUntil?: Prisma.DateTimeNullableFilter<"SchedulerScan"> | Date | string | null
 }
 
 export type SchedulerScanCreateManyOrganizationInput = {
   task: string
   scannedAt?: Date | string | null
+  claimToken?: string | null
+  claimedUntil?: Date | string | null
 }
 
 export type SchedulerScanUpdateWithoutOrganizationInput = {
   task?: Prisma.StringFieldUpdateOperationsInput | string
   scannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type SchedulerScanUncheckedUpdateWithoutOrganizationInput = {
   task?: Prisma.StringFieldUpdateOperationsInput | string
   scannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type SchedulerScanUncheckedUpdateManyWithoutOrganizationInput = {
   task?: Prisma.StringFieldUpdateOperationsInput | string
   scannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 
@@ -392,6 +452,8 @@ export type SchedulerScanSelect<ExtArgs extends runtime.Types.Extensions.Interna
   task?: boolean
   organizationId?: boolean
   scannedAt?: boolean
+  claimToken?: boolean
+  claimedUntil?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["schedulerScan"]>
 
@@ -399,6 +461,8 @@ export type SchedulerScanSelectCreateManyAndReturn<ExtArgs extends runtime.Types
   task?: boolean
   organizationId?: boolean
   scannedAt?: boolean
+  claimToken?: boolean
+  claimedUntil?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["schedulerScan"]>
 
@@ -406,6 +470,8 @@ export type SchedulerScanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   task?: boolean
   organizationId?: boolean
   scannedAt?: boolean
+  claimToken?: boolean
+  claimedUntil?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["schedulerScan"]>
 
@@ -413,9 +479,11 @@ export type SchedulerScanSelectScalar = {
   task?: boolean
   organizationId?: boolean
   scannedAt?: boolean
+  claimToken?: boolean
+  claimedUntil?: boolean
 }
 
-export type SchedulerScanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"task" | "organizationId" | "scannedAt", ExtArgs["result"]["schedulerScan"]>
+export type SchedulerScanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"task" | "organizationId" | "scannedAt" | "claimToken" | "claimedUntil", ExtArgs["result"]["schedulerScan"]>
 export type SchedulerScanInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }
@@ -435,6 +503,8 @@ export type $SchedulerScanPayload<ExtArgs extends runtime.Types.Extensions.Inter
     task: string
     organizationId: string
     scannedAt: Date | null
+    claimToken: string | null
+    claimedUntil: Date | null
   }, ExtArgs["result"]["schedulerScan"]>
   composites: {}
 }
@@ -862,6 +932,8 @@ export interface SchedulerScanFieldRefs {
   readonly task: Prisma.FieldRef<"SchedulerScan", 'String'>
   readonly organizationId: Prisma.FieldRef<"SchedulerScan", 'String'>
   readonly scannedAt: Prisma.FieldRef<"SchedulerScan", 'DateTime'>
+  readonly claimToken: Prisma.FieldRef<"SchedulerScan", 'String'>
+  readonly claimedUntil: Prisma.FieldRef<"SchedulerScan", 'DateTime'>
 }
     
 

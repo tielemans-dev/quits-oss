@@ -224,6 +224,8 @@ CREATE TABLE "scheduler_scan" (
     "task" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
     "scannedAt" TIMESTAMP(3),
+    "claimToken" TEXT,
+    "claimedUntil" TIMESTAMP(3),
 
     CONSTRAINT "scheduler_scan_pkey" PRIMARY KEY ("task","organizationId")
 );

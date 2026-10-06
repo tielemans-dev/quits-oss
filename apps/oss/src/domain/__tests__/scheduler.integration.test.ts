@@ -10,6 +10,7 @@ import { Prisma } from "../../../generated/prisma/client"
 import {
   forEachOrganizationWithinBudget,
   scannedOrganizationSource,
+  type ClaimOptions,
   type OrganizationSource,
 } from "../scheduler"
 
@@ -29,10 +30,13 @@ function sourceOf(organizationIds: string[]): OrganizationSource {
         .sort((a, b) => order(a) - order(b) || a.localeCompare(b))
         .slice(0, limit)
       for (const id of claimed) scannedAt.set(id, (clock += 1))
-      return claimed
-    },
-    release: async (ids) => {
-      for (const id of ids) scannedAt.set(id, null)
+      return {
+        organizationIds: claimed,
+        finish: async () => undefined,
+        release: async (ids) => {
+          for (const id of ids) scannedAt.set(id, null)
+        },
+      }
     },
   }
 }
@@ -112,7 +116,20 @@ describeIfDatabase("scheduler against the database", () => {
     return org.organizationId
   }
 
-  const claimAll = (source: OrganizationSource) => source.claim(100)
+  const LEASE: ClaimOptions = { leaseMs: 60_000, maxRegistrations: 100 }
+  const claimAll = async (source: OrganizationSource) => (await source.claim(100, LEASE)).organizationIds
+
+  /** A source over exactly these organizations under a task no other test uses. */
+  function testSource(organizationIds: readonly string[]) {
+    const task = `test.${randomUUID()}`
+    const source = scannedOrganizationSource(
+      task,
+      Prisma.sql`SELECT "id" AS "organizationId" FROM "organization" WHERE "id" IN (${Prisma.join([...organizationIds])})`
+    )
+    const scans = () =>
+      prisma.schedulerScan.findMany({ where: { task }, orderBy: { organizationId: "asc" } })
+    return { task, source, scans }
+  }
 
   it("selects overdue organizations in the database, ignoring settled invoices", async () => {
     const pastDue = await organizationWithInvoices([{ dueInDays: -5 }, { dueInDays: -10 }])
@@ -139,7 +156,8 @@ describeIfDatabase("scheduler against the database", () => {
     const organizationIds = await Promise.all(
       Array.from({ length: 5 }, () => organizationWithInvoices([{ dueInDays: -3 }]))
     )
-    const budget = { maxOrganizations: 2, timeBudgetMs: 60_000 }
+    // Registers every organization on the first tick; bounded registration is tested below.
+    const budget = { maxOrganizations: 2, timeBudgetMs: 60_000, maxRegistrations: organizationIds.length }
     const ticks = Math.ceil(organizationIds.length / budget.maxOrganizations)
     const startedAt = Date.now()
 
@@ -166,26 +184,90 @@ describeIfDatabase("scheduler against the database", () => {
 
   it("lets concurrent ticks claim within their limit and still cover every organization", async () => {
     const organizationIds = await Promise.all(Array.from({ length: 4 }, () => organizationWithInvoices([])))
-    const task = `test.${randomUUID()}`
-    const source = scannedOrganizationSource(
-      task,
-      Prisma.sql`SELECT "id" AS "organizationId" FROM "organization" WHERE "id" IN (${Prisma.join(organizationIds)})`
-    )
+    const { source } = testSource(organizationIds)
 
-    const [first, second] = await Promise.all([source.claim(2), source.claim(2)])
-    expect(first.length).toBeLessThanOrEqual(2)
-    expect(second.length).toBeLessThanOrEqual(2)
+    const [first, second] = await Promise.all([source.claim(2, LEASE), source.claim(2, LEASE)])
+    expect(first.organizationIds.length).toBeLessThanOrEqual(2)
+    expect(second.organizationIds.length).toBeLessThanOrEqual(2)
+    expect(first.organizationIds.filter((id) => second.organizationIds.includes(id))).toEqual([])
 
-    const claimed = new Set([...first, ...second])
+    const claimed = new Set([...first.organizationIds, ...second.organizationIds])
     for (let tick = 0; tick < 2 && claimed.size < organizationIds.length; tick += 1) {
-      for (const id of await source.claim(2)) claimed.add(id)
+      for (const id of (await source.claim(2, LEASE)).organizationIds) claimed.add(id)
     }
     expect([...claimed].sort()).toEqual([...organizationIds].sort())
+  })
 
-    // Released organizations go first on the next claim.
-    const [last] = organizationIds.sort().slice(-1)
-    await source.release([last!])
-    expect(await source.claim(1)).toEqual([last])
+  it("does not hand out organizations a live claim holds, and releases them to go first", async () => {
+    const organizationIds = (await Promise.all(Array.from({ length: 3 }, () => organizationWithInvoices([])))).sort()
+    const { source } = testSource(organizationIds)
+
+    const first = await source.claim(2, LEASE)
+    expect(first.organizationIds).toEqual(organizationIds.slice(0, 2))
+    // Only the unclaimed organization is left while the first claim is live.
+    const second = await source.claim(3, LEASE)
+    expect(second.organizationIds).toEqual(organizationIds.slice(2))
+    expect((await source.claim(3, LEASE)).organizationIds).toEqual([])
+
+    // Finished organizations become claimable again; released ones go first.
+    await first.finish([organizationIds[0]!])
+    await first.release([organizationIds[1]!])
+    expect((await source.claim(1, LEASE)).organizationIds).toEqual([organizationIds[1]])
+    expect((await source.claim(1, LEASE)).organizationIds).toEqual([organizationIds[0]])
+  })
+
+  it("lets a tick take over an expired claim, and the stale claim cannot undo it", async () => {
+    const organizationId = await organizationWithInvoices([])
+    const { source, scans } = testSource([organizationId])
+
+    const stale = await source.claim(1, { ...LEASE, leaseMs: 0 })
+    expect(stale.organizationIds).toEqual([organizationId])
+
+    const current = await source.claim(1, LEASE)
+    expect(current.organizationIds).toEqual([organizationId])
+    const [taken] = await scans()
+    expect(taken?.scannedAt).not.toBeNull()
+    expect(taken?.claimedUntil?.getTime()).toBeGreaterThan(Date.now())
+
+    // The stale claim's release and finish leave the newer claim and its scan time alone.
+    await stale.release([organizationId])
+    await stale.finish([organizationId])
+    expect(await scans()).toEqual([taken])
+    expect((await source.claim(1, LEASE)).organizationIds).toEqual([])
+
+    await current.finish([organizationId])
+    const [finished] = await scans()
+    expect(finished).toMatchObject({ scannedAt: taken?.scannedAt, claimToken: null, claimedUntil: null })
+  })
+
+  it("registers a bounded number of newly eligible organizations per tick and still reaches all", async () => {
+    const organizationIds = (await Promise.all(Array.from({ length: 7 }, () => organizationWithInvoices([])))).sort()
+    const { source, scans } = testSource(organizationIds)
+    const budget = { maxOrganizations: 3, timeBudgetMs: 60_000, maxRegistrations: 2 }
+    const visited: string[][] = []
+
+    for (let tick = 0; tick < 6; tick += 1) {
+      const reached: string[] = []
+      await forEachOrganizationWithinBudget(
+        source,
+        async (organizationId) => {
+          reached.push(organizationId)
+        },
+        budget
+      )
+      visited.push(reached)
+      // Registration is bounded per tick and goes in organization id order.
+      expect((await scans()).map((scan) => scan.organizationId)).toEqual(
+        organizationIds.slice(0, Math.min(organizationIds.length, (tick + 1) * budget.maxRegistrations))
+      )
+    }
+
+    // Each tick reaches the organizations it registered and, with the rest of its budget,
+    // organizations registered before, so neither newcomers nor existing ones starve.
+    expect(visited[0]).toEqual(organizationIds.slice(0, 2))
+    expect(visited[1]).toEqual([...organizationIds.slice(2, 4), organizationIds[0]])
+    expect(new Set(visited.flat())).toEqual(new Set(organizationIds))
+    expect((await scans()).every((scan) => scan.scannedAt && scan.claimToken === null)).toBe(true)
   })
 
   describe("job sweep", () => {

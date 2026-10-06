@@ -155,5 +155,7 @@ export type Job = Prisma.JobModel
 /**
  * Model SchedulerScan
  * When a scheduler task last claimed an organization; ticks claim the least recently scanned.
+ * A tick holding an organization stamps `claimToken` and `claimedUntil`; other ticks skip it
+ * until the claim is finished, released or expires.
  */
 export type SchedulerScan = Prisma.SchedulerScanModel
