@@ -8,9 +8,12 @@ import { defineCommand } from "../command"
 import { computeSettlement } from "../documents/settlement"
 import { executeCommand } from "../execute"
 import {
+  DEFAULT_ORGANIZATION_BUDGET,
   forEachOrganizationWithinBudget,
-  organizationFilter,
+  organizationSqlFilter,
   registerTickTask,
+  type OrganizationBudget,
+  type OrganizationSource,
   type TickOptions,
 } from "../scheduler"
 import { Command, Db } from "../services"
@@ -102,23 +105,51 @@ export const markOrganizationInvoicesOverdue = defineCommand({
 })
 
 /**
+ * Organizations with at least one invoice the command would mark: issued, past due, and with a
+ * balance due (the same predicate as the command's batch, so settled invoices never make an
+ * organization eligible). Selected with DISTINCT in the database, one bounded page at a time.
+ */
+export function overdueOrganizations(now: Date, options?: TickOptions): OrganizationSource {
+  const eligible = Prisma.sql`
+    FROM "invoice"
+    WHERE "status" IN (${Prisma.join(PRE_OVERDUE_STATUSES)})
+      AND "dueDate" < ${utcTimestamp(now)}
+      AND "totalGross" - "amountCredited" - "amountPaid" > 0
+      ${organizationSqlFilter(Prisma.sql`"organizationId"`, options)}
+  `
+  return {
+    count: async () => {
+      const [row] = await prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(DISTINCT "organizationId") AS "count" ${eligible}
+      `
+      return Number(row?.count ?? 0)
+    },
+    page: async (offset, limit) => {
+      const rows = await prisma.$queryRaw<Array<{ organizationId: string }>>`
+        SELECT DISTINCT "organizationId" ${eligible}
+        ORDER BY "organizationId" ASC
+        OFFSET ${offset} LIMIT ${limit}
+      `
+      return rows.map((row) => row.organizationId)
+    },
+  }
+}
+
+/**
  * Marks overdue invoices across organizations, at most one batch per organization per tick and
  * within the tick's organization budget; the rest is picked up by the next tick.
  */
-export async function runOverdueTask(now: Date = new Date(), options?: TickOptions) {
-  const organizations = await prisma.invoice.findMany({
-    where: { ...organizationFilter(options), status: { in: PRE_OVERDUE_STATUSES }, dueDate: { lt: now } },
-    distinct: ["organizationId"],
-    orderBy: { organizationId: "asc" },
-    select: { organizationId: true },
-  })
-
+export async function runOverdueTask(
+  now: Date = new Date(),
+  options?: TickOptions,
+  budget: OrganizationBudget = DEFAULT_ORGANIZATION_BUDGET
+) {
   let marked = 0
   let failed = 0
   let remaining = 0
-  const { deferred } = await forEachOrganizationWithinBudget(
-    "overdue",
-    organizations.map((organization) => organization.organizationId),
+  const { organizations, deferred } = await forEachOrganizationWithinBudget(
+    now,
+    overdueOrganizations(now, options),
     async (organizationId) => {
       try {
         const outcome = await executeCommand(
@@ -136,10 +167,11 @@ export async function runOverdueTask(now: Date = new Date(), options?: TickOptio
         failed += 1
         overdueLogger.error("overdue.organization_failed", { organizationId, error })
       }
-    }
+    },
+    budget
   )
 
-  return { organizations: organizations.length, marked, failed, remaining: remaining + deferred }
+  return { organizations, marked, failed, remaining: remaining + deferred }
 }
 
 registerTickTask({ name: "overdue", order: 10, run: runOverdueTask })

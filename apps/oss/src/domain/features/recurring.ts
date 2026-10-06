@@ -84,7 +84,8 @@ async function processSchedule(id: string, organizationId: string, now: Date) {
  * Each run executes as the recurring system actor with the idempotency key
  * `recurring:<scheduleId>:<runDate>`, and the generated invoice carries the unique
  * `(recurringInvoiceId, recurringRunDate)` pair, so overlapping or retried ticks never create a
- * second invoice for the same run. A run that cannot be generated pauses its schedule and
+ * second invoice for the same run. Auto-sending schedules queue their send job in the outbox; the
+ * tick's `jobs` task sends it within its time budget, so generating runs never waits on email. A run that cannot be generated pauses its schedule and
  * records why (`recurring.run_failed`).
  */
 export async function runRecurringTick(now: Date, options?: TickOptions) {

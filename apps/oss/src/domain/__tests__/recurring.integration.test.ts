@@ -31,7 +31,7 @@ import {
   formatCalendarDate,
   startOfUtcDay,
 } from "../features/recurring-dates"
-import { runSchedulerTick } from "../scheduler"
+import { runOrganizationJobs, runSchedulerTick } from "../scheduler"
 import "../scheduler-tasks"
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
@@ -124,6 +124,13 @@ describeIfDatabase("recurring invoices", () => {
   /** Ticks scoped to the test's organization, so parallel tests never act on each other's data. */
   const tickRecurring = (org: { organizationId: string }, now = new Date()) =>
     runRecurringTick(now, { organizationIds: [org.organizationId] })
+
+  /** The recurring task followed by the tick's job sweep, which sends auto-sent invoices. */
+  const tickRecurringAndSend = async (org: { organizationId: string }, now = new Date()) => {
+    const result = await tickRecurring(org, now)
+    await runOrganizationJobs([org.organizationId], now)
+    return result
+  }
 
   it("generates a draft for a due run and advances the schedule", async () => {
     const { org, contactId } = await setup()
@@ -245,7 +252,7 @@ describeIfDatabase("recurring invoices", () => {
     const { org, contactId } = await setup()
     const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
 
-    await tickRecurring(org)
+    await tickRecurringAndSend(org)
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "sent" })
@@ -253,12 +260,30 @@ describeIfDatabase("recurring invoices", () => {
         expect.objectContaining({ idempotencyScope: expect.stringMatching(/^invoice-send:/) }))
   })
 
+  it("queues auto-sends for the job sweep instead of sending while generating runs", async () => {
+    enableEmail()
+    const { org, contactId } = await setup()
+    const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
+
+    await tickRecurring(org)
+
+    const [invoice] = await generatedInvoices(schedule.id)
+    expect(invoice?.status).toBe("draft")
+    expect(sendInvoiceEmail).not.toHaveBeenCalled()
+    expect(
+      await prisma.job.findUniqueOrThrow({ where: { dedupeKey: `recurring-auto-send:${invoice?.id}` } })
+    ).toMatchObject({ type: "recurring.auto_send", status: "pending", attempts: 0 })
+
+    await runOrganizationJobs([org.organizationId])
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice!.id } })).status).toBe("sent")
+  })
+
   it("keeps the draft and records why when auto-send fails", async () => {
     enableEmail()
     const { org, contactId } = await setup({ contactEmail: null })
     const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
 
-    await tickRecurring(org)
+    await tickRecurringAndSend(org)
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice).toMatchObject({
@@ -280,7 +305,7 @@ describeIfDatabase("recurring invoices", () => {
     const { org, contactId } = await setup()
     const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
 
-    await tickRecurring(org)
+    await tickRecurringAndSend(org)
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice?.status).toBe("draft")

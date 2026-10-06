@@ -229,7 +229,8 @@ describeIfDatabase("review fixes", () => {
     })
     await prisma.$executeRaw`UPDATE "job" SET "updatedAt" = NOW() - INTERVAL '30 minutes' WHERE "id" = ${job.id}`
 
-    await reclaimStaleJobs()
+    const reclaimed = await reclaimStaleJobs(new Date(), { organizationIds: [org.organizationId] })
+    expect(reclaimed).toEqual({ requeued: 1, failed: 0 })
     await runOrganizationJobs([org.organizationId])
 
     expect(handler).toHaveBeenCalledTimes(1)
