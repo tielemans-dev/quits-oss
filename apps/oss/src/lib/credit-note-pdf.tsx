@@ -2,6 +2,7 @@ import { Document, Image, Page, StyleSheet, Text, View, pdf } from "@react-pdf/r
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import type { OrgSettingsForPdf } from "./invoice-pdf"
+import { creditNotePdfParties, type CreditNotePdfContact } from "./credit-notes/pdf-parties"
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1a1a1a" },
@@ -69,22 +70,13 @@ export type CreditNoteForPdf = {
   locale?: string | null
   timezone?: string | null
   invoice: { number: string; issueDate: string | Date }
-  contact: {
-    name: string
-    email?: string | null
-    company?: string | null
-    address?: string | null
-    city?: string | null
-    state?: string | null
-    zip?: string | null
-    country?: string | null
-  }
+  /** Seller details frozen when the credit note was issued. */
+  sellerSnapshot?: unknown
+  /** Buyer details frozen when the credit note was issued. */
+  buyerSnapshot?: unknown
+  /** The contact as it is now; only used when no buyer snapshot was stored. */
+  contact: CreditNotePdfContact
   items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>
-}
-
-function canRenderLogo(logo: string | null | undefined) {
-  if (!logo) return false
-  return logo.startsWith("data:image/") || /^https?:\/\/.+/i.test(logo)
 }
 
 export function CreditNotePdfDocument({
@@ -97,8 +89,8 @@ export function CreditNotePdfDocument({
   // The credit note keeps the language and time zone of the invoice it credits.
   const locale = creditNote.locale ?? org.locale
   const timezone = creditNote.timezone ?? org.timezone
-  const contact = creditNote.contact
-  const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null
+  const { seller, buyer } = creditNotePdfParties(creditNote, org)
+  const logo = seller.logo
   const money = (amount: number) => formatCurrency(amount, creditNote.currency, locale)
 
   return (
@@ -131,24 +123,32 @@ export function CreditNotePdfDocument({
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{translate("pdf.from", locale)}</Text>
-          <Text style={styles.contactName}>{org.companyName ?? "YAIP"}</Text>
-          {org.companyEmail && <Text style={styles.contactLine}>{org.companyEmail}</Text>}
-          {org.companyPhone && <Text style={styles.contactLine}>{org.companyPhone}</Text>}
-          {org.companyAddress && <Text style={styles.contactLine}>{org.companyAddress}</Text>}
+          <Text style={styles.contactName}>{seller.name}</Text>
+          {seller.email && <Text style={styles.contactLine}>{seller.email}</Text>}
+          {seller.phone && <Text style={styles.contactLine}>{seller.phone}</Text>}
+          {seller.address && <Text style={styles.contactLine}>{seller.address}</Text>}
+          {seller.taxIds.map((taxId) => (
+            <Text key={taxId} style={styles.contactLine}>
+              {taxId}
+            </Text>
+          ))}
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{translate("pdf.billTo", locale)}</Text>
-          <Text style={styles.contactName}>{contact.name}</Text>
-          {contact.company && <Text style={styles.contactLine}>{contact.company}</Text>}
-          {contact.email && <Text style={styles.contactLine}>{contact.email}</Text>}
-          {contact.address && <Text style={styles.contactLine}>{contact.address}</Text>}
-          {(contact.city || contact.state || contact.zip) && (
-            <Text style={styles.contactLine}>
-              {[contact.city, contact.state, contact.zip].filter(Boolean).join(", ")}
+          <Text style={styles.contactName}>{buyer.name}</Text>
+          {buyer.company && <Text style={styles.contactLine}>{buyer.company}</Text>}
+          {buyer.email && <Text style={styles.contactLine}>{buyer.email}</Text>}
+          {buyer.lines.map((line, index) => (
+            <Text key={index} style={styles.contactLine}>
+              {line}
             </Text>
-          )}
-          {contact.country && <Text style={styles.contactLine}>{contact.country}</Text>}
+          ))}
+          {buyer.taxIds.map((taxId) => (
+            <Text key={taxId} style={styles.contactLine}>
+              {taxId}
+            </Text>
+          ))}
         </View>
 
         <View>
