@@ -26,7 +26,9 @@ import { readEmailDelivery } from "../email-delivery-result"
 import { unwrapOutcome } from "../outcome"
 
 function storedStatus(outcome: string | null): ReminderStatus {
-  return outcome === "sent" || outcome === "failed" || outcome === "skipped" ? outcome : "scheduled"
+  return outcome === "sent" || outcome === "unconfirmed" || outcome === "failed" || outcome === "skipped"
+    ? outcome
+    : "scheduled"
 }
 
 async function readPolicy(organizationId: string) {

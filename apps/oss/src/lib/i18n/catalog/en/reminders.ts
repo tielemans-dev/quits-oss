@@ -59,6 +59,7 @@ export const enRemindersMessages = {
   "reminders.status.upcoming": "Upcoming",
   "reminders.status.scheduled": "Scheduled",
   "reminders.status.sent": "Sent",
+  "reminders.status.unconfirmed": "Delivery not confirmed",
   "reminders.status.failed": "Failed",
   "reminders.status.skipped": "Skipped",
 } as const

@@ -44,8 +44,14 @@ const statusVariant: Record<ReminderStatus, "default" | "secondary" | "destructi
   upcoming: "outline",
   scheduled: "secondary",
   sent: "default",
+  unconfirmed: "outline",
   failed: "destructive",
   skipped: "outline",
+}
+
+/** Extra badge styling: an unconfirmed delivery is a warning, not a plain success. */
+const statusClassName: Partial<Record<ReminderStatus, string>> = {
+  unconfirmed: "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900 dark:text-amber-200",
 }
 
 /** Owned by the reminders feature. */
@@ -219,7 +225,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
                           : describeReminderOffset(reminder.offsetDays, t)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusVariant[reminder.status]}>
+                        <Badge variant={statusVariant[reminder.status]} className={statusClassName[reminder.status]}>
                           {t(`reminders.status.${reminder.status}`)}
                         </Badge>
                       </TableCell>
