@@ -399,6 +399,31 @@ describeIfDatabase("email outbox", () => {
     })
   })
 
+  it("ignores a stalled run that lost its claim, keeping the newer run's acceptance", async () => {
+    const { org, invoiceId } = await setup()
+    // While this run waits on the provider, its lease expires and another run takes the job,
+    // gets the email accepted, and records that; then this run's late refusal arrives.
+    vi.mocked(deliver).mockImplementationOnce(async () => {
+      const job = await deliveryJob(org.organizationId)
+      await prisma.job.update({
+        where: { id: job.id },
+        data: { claimToken: "newer-run", payload: { ...(job.payload as object), providerMessageId: "accepted-by-newer-run" } },
+      })
+      throw new EmailSendError("validation_error", "Late refusal")
+    })
+
+    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+
+    const job = await deliveryJob(org.organizationId)
+    expect(job.payload).toMatchObject({ providerMessageId: "accepted-by-newer-run" })
+    expect(job.result).toBeNull()
+    expect(job.claimToken).toBe("newer-run")
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({
+      status: "draft",
+      lastEmailAttemptOutcome: "sending",
+    })
+  })
+
   /** A sent invoice with a due scheduled reminder whose email is queued but not yet attempted. */
   async function queuedScheduledReminder() {
     const ctx = await setup()

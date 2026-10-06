@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks"
+import { randomUUID } from "node:crypto"
 import type { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { appLogger } from "../lib/observability"
@@ -23,7 +24,20 @@ export type JobHandler = (job: {
   payload: Prisma.JsonValue
   attempts: number
   createdAt: Date
+  /**
+   * Identifies this run. A runner that stalls past its lease loses the job to another run; writes
+   * a handler makes on the job should be conditional on this token (see `StaleJobClaimError`).
+   */
+  claimToken: string
 }) => Promise<void>
+
+/**
+ * Thrown when a run finds that it no longer holds its job, because a runner that stalled past its
+ * lease was replaced. The run stops without touching the job; the run that holds it decides.
+ */
+export class StaleJobClaimError extends Error {
+  override readonly name = "StaleJobClaimError"
+}
 
 /** Thrown by a job handler for a failure that retrying cannot fix. */
 export class TerminalJobError extends Error {
@@ -55,37 +69,45 @@ export type JobRunOutcome = "skipped" | "done" | "retrying" | "exhausted" | "ter
 
 async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
   // Claim atomically so concurrent runners never execute the same job twice.
+  const claimToken = randomUUID()
   const claimed = await prisma.job.updateMany({
     where: { id, status: "pending", runAfter: { lte: now } },
-    data: { status: "running", attempts: { increment: 1 } },
+    data: { status: "running", attempts: { increment: 1 }, claimToken },
   })
   if (claimed.count === 0) {
     return "skipped"
   }
 
-  const job = await prisma.job.findUniqueOrThrow({ where: { id } })
+  const job = { ...(await prisma.job.findUniqueOrThrow({ where: { id } })), claimToken }
   const handler = handlers.get(job.type)
+  // Every status change is conditional on still holding the claim.
+  const owned = { id, claimToken }
 
   try {
     if (!handler) {
       throw new Error(`No handler registered for job type ${job.type}`)
     }
     await insideJob.run(true, () => handler(job))
-    await prisma.job.update({ where: { id }, data: { status: "done", lastError: null } })
+    await prisma.job.updateMany({ where: owned, data: { status: "done", lastError: null, claimToken: null } })
     return "done"
   } catch (error) {
+    if (error instanceof StaleJobClaimError) {
+      jobsLogger.warn("job.claim_lost", { jobId: id, type: job.type })
+      return "skipped"
+    }
     const message = error instanceof Error ? error.message : String(error)
     const terminal = error instanceof TerminalJobError
     const exhausted = job.attempts >= MAX_ATTEMPTS
     const failed = terminal || exhausted
-    await prisma.job.update({
-      where: { id },
+    await prisma.job.updateMany({
+      where: owned,
       data: failed
-        ? { status: "failed", lastError: message.slice(0, 1000) }
+        ? { status: "failed", lastError: message.slice(0, 1000), claimToken: null }
         : {
             status: "pending",
             lastError: message.slice(0, 1000),
             runAfter: new Date(now.getTime() + backoffMs(job.attempts)),
+            claimToken: null,
           },
     })
     jobsLogger.warn("job.failed", { jobId: id, type: job.type, attempts: job.attempts, terminal, exhausted, error })
@@ -154,11 +176,11 @@ export async function reclaimStaleJobs(now = new Date(), scope?: JobScope) {
   const [requeued, exhausted] = await prisma.$transaction([
     prisma.job.updateMany({
       where: { ...stale, attempts: { lt: MAX_ATTEMPTS } },
-      data: { status: "pending", runAfter: now, lastError: "Runner stopped before finishing" },
+      data: { status: "pending", runAfter: now, lastError: "Runner stopped before finishing", claimToken: null },
     }),
     prisma.job.updateMany({
       where: { ...stale, attempts: { gte: MAX_ATTEMPTS } },
-      data: { status: "failed", lastError: "Runner stopped before finishing" },
+      data: { status: "failed", lastError: "Runner stopped before finishing", claimToken: null },
     }),
   ])
   if (requeued.count + exhausted.count > 0) {

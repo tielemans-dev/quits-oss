@@ -6,7 +6,7 @@ import { deliver, EmailSendError, ensureEmailProvider, type EmailMessage } from 
 import { appLogger } from "../../lib/observability"
 import type { Actor } from "../actor"
 import { appendEvents } from "../events"
-import { registerJobHandler, TerminalJobError } from "../jobs"
+import { registerJobHandler, StaleJobClaimError, TerminalJobError } from "../jobs"
 import { registerTickTask, type TickOptions } from "../scheduler"
 import { Command, type PendingEvent } from "../services"
 
@@ -45,7 +45,22 @@ export const EMAIL_DELIVERY_ATTEMPTS = 4
  */
 export const IDEMPOTENCY_WINDOW_MS = 23 * 60 * 60 * 1000
 
+/**
+ * A provider request that has not answered after this long is treated as unanswered (it may still
+ * be accepted, so it is retried under the same key), so a hung request cannot hold the job past
+ * its lease or the key past its window.
+ */
+const PROVIDER_TIMEOUT_MS = 60_000
+
 const deliveryLogger = appLogger.child("email-delivery")
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`The email provider did not answer within ${ms} ms`)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
 
 /**
  * Provider errors that do not prove the message was refused: the provider may have accepted it,
@@ -173,15 +188,39 @@ export const enqueueEmailDelivery = (input: {
     return { deliveryKey: key }
   })
 
-/** Settles the document and records the outcome on the job, in one transaction. */
+/**
+ * Who may write a delivery's job: the run that holds its claim, or (for a job the runner gave up
+ * on, which no run holds) the abandoned-delivery sweep. A run that stalled past its lease no longer
+ * matches, so it can neither record progress nor settle the document.
+ */
+type JobFence = { id: string; organizationId: string; claimToken: string | null }
+
+function fenced(job: JobFence) {
+  return job.claimToken ? { id: job.id, claimToken: job.claimToken } : { id: job.id, claimToken: null, status: "failed" }
+}
+
+/**
+ * Settles the document and records the outcome on the job, in one transaction. The job is
+ * claimed first, so a delivery settles at most once and only by whoever holds it.
+ */
 async function settle(
-  job: { id: string; organizationId: string },
+  job: JobFence,
   payload: DeliveryPayload,
   completion: DeliveryCompletion,
   outcome: { delivered: true } | { delivered: false; failure: DeliveryFailure }
 ) {
   const now = new Date()
   await prisma.$transaction(async (tx) => {
+    const result: DeliveryResult = outcome.delivered
+      ? { outcome: "delivered", message: null }
+      : { outcome: outcome.failure.reason, message: outcome.failure.message }
+    const recorded = await tx.job.updateMany({
+      where: { ...fenced(job), result: { equals: Prisma.DbNull } },
+      data: { result },
+    })
+    if (recorded.count === 0) {
+      throw new StaleJobClaimError(`Delivery job ${job.id} is no longer held by this run`)
+    }
     const context = { tx, organizationId: job.organizationId, target: payload.completion.target, now }
     const events = outcome.delivered
       ? await completion.delivered(context)
@@ -194,10 +233,6 @@ async function settle(
       occurredAt: now,
       events,
     })
-    const result: DeliveryResult = outcome.delivered
-      ? { outcome: "delivered", message: null }
-      : { outcome: outcome.failure.reason, message: outcome.failure.message }
-    await tx.job.update({ where: { id: job.id }, data: { result } })
   })
 }
 
@@ -207,8 +242,11 @@ const UNCONFIRMED_MESSAGE =
   "The email provider never confirmed delivery, so the customer may or may not have received it."
 
 /** Updates the stored payload; only fields of this delivery's own bookkeeping change. */
-async function recordOnJob(jobId: string, payload: DeliveryPayload) {
-  await prisma.job.update({ where: { id: jobId }, data: { payload } })
+async function recordOnJob(job: JobFence, payload: DeliveryPayload) {
+  const { count } = await prisma.job.updateMany({ where: fenced(job), data: { payload } })
+  if (count === 0) {
+    throw new StaleJobClaimError(`Delivery job ${job.id} is no longer held by this run`)
+  }
 }
 
 /**
@@ -216,13 +254,13 @@ async function recordOnJob(jobId: string, payload: DeliveryPayload) {
  * unconfirmed delivery is reported to the job runner as permanent, so it counts as failed.
  */
 async function settleDecision(
-  job: { id: string; organizationId: string },
+  job: JobFence,
   payload: DeliveryPayload,
   completion: DeliveryCompletion,
   failure: DeliveryFailure
 ) {
   if (!payload.decision) {
-    await recordOnJob(job.id, { ...payload, decision: failure })
+    await recordOnJob(job, { ...payload, decision: failure })
   }
   await settle(job, payload, completion, { delivered: false, failure })
   if (failure.reason !== "withdrawn") {
@@ -257,7 +295,7 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   if (!(await completion.pending(prisma, payload.completion.target))) {
     // Recorded so callers never wait on it; an outcome already recorded is kept.
     await prisma.job.updateMany({
-      where: { id: job.id, result: { equals: Prisma.DbNull } },
+      where: { ...fenced(job), result: { equals: Prisma.DbNull } },
       data: { result: orphanedResult(payload, job.attempts - 1) },
     })
     return
@@ -311,10 +349,17 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
 
   // Counted before the request, so a request whose outcome is lost is never mistaken for none.
   const requested = { ...payload, requests: requests + 1 }
-  await recordOnJob(job.id, requested)
+  await recordOnJob(job, requested)
+  // Checked again after the writes above, which can stall: no request once the key may have lapsed.
+  if (possiblyDelivered && Date.now() - job.createdAt.getTime() >= IDEMPOTENCY_WINDOW_MS) {
+    return settleDecision(job, requested, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
+  }
   let accepted: { id: string }
   try {
-    accepted = await deliver(payload.message, { idempotencyKey: payload.idempotencyKey })
+    accepted = await withTimeout(
+      deliver(payload.message, { idempotencyKey: payload.idempotencyKey }),
+      PROVIDER_TIMEOUT_MS
+    )
   } catch (error) {
     if (isDefiniteRejection(error)) {
       deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, providerCode: error.providerCode })
@@ -337,7 +382,7 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   }
 
   // Recorded first, so a settlement that fails is retried without sending again.
-  await recordOnJob(job.id, { ...requested, providerMessageId: accepted.id })
+  await recordOnJob(job, { ...requested, providerMessageId: accepted.id })
   await settle(job, payload, completion, { delivered: true })
 })
 
@@ -352,6 +397,7 @@ export async function settleAbandonedDeliveries(input: { organizationIds?: reado
     where: {
       type: EMAIL_DELIVERY_JOB,
       status: "failed",
+      claimToken: null,
       result: { equals: Prisma.DbNull },
       ...(input.organizationIds ? { organizationId: { in: [...input.organizationIds] } } : {}),
     },
@@ -368,7 +414,10 @@ export async function settleAbandonedDeliveries(input: { organizationIds?: reado
       if (!completion) throw new Error(`No delivery completion registered for ${payload.completion.kind}`)
       if (!(await completion.pending(prisma, payload.completion.target))) {
         // Nothing left to settle; recorded so the sweep does not look at this job again.
-        await prisma.job.update({ where: { id: job.id }, data: { result: orphanedResult(payload, job.attempts) } })
+        await prisma.job.updateMany({
+          where: { ...fenced(job), result: { equals: Prisma.DbNull } },
+          data: { result: orphanedResult(payload, job.attempts) },
+        })
         continue
       }
       await settle(

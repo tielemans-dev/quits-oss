@@ -42,6 +42,7 @@ export type JobMinAggregateOutputType = {
   attempts: number | null
   runAfter: Date | null
   lastError: string | null
+  claimToken: string | null
   dedupeKey: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -55,6 +56,7 @@ export type JobMaxAggregateOutputType = {
   attempts: number | null
   runAfter: Date | null
   lastError: string | null
+  claimToken: string | null
   dedupeKey: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -70,6 +72,7 @@ export type JobCountAggregateOutputType = {
   runAfter: number
   lastError: number
   result: number
+  claimToken: number
   dedupeKey: number
   createdAt: number
   updatedAt: number
@@ -93,6 +96,7 @@ export type JobMinAggregateInputType = {
   attempts?: true
   runAfter?: true
   lastError?: true
+  claimToken?: true
   dedupeKey?: true
   createdAt?: true
   updatedAt?: true
@@ -106,6 +110,7 @@ export type JobMaxAggregateInputType = {
   attempts?: true
   runAfter?: true
   lastError?: true
+  claimToken?: true
   dedupeKey?: true
   createdAt?: true
   updatedAt?: true
@@ -121,6 +126,7 @@ export type JobCountAggregateInputType = {
   runAfter?: true
   lastError?: true
   result?: true
+  claimToken?: true
   dedupeKey?: true
   createdAt?: true
   updatedAt?: true
@@ -223,6 +229,7 @@ export type JobGroupByOutputType = {
   runAfter: Date
   lastError: string | null
   result: runtime.JsonValue | null
+  claimToken: string | null
   dedupeKey: string | null
   createdAt: Date
   updatedAt: Date
@@ -261,6 +268,7 @@ export type JobWhereInput = {
   runAfter?: Prisma.DateTimeFilter<"Job"> | Date | string
   lastError?: Prisma.StringNullableFilter<"Job"> | string | null
   result?: Prisma.JsonNullableFilter<"Job">
+  claimToken?: Prisma.StringNullableFilter<"Job"> | string | null
   dedupeKey?: Prisma.StringNullableFilter<"Job"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Job"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Job"> | Date | string
@@ -276,6 +284,7 @@ export type JobOrderByWithRelationInput = {
   runAfter?: Prisma.SortOrder
   lastError?: Prisma.SortOrderInput | Prisma.SortOrder
   result?: Prisma.SortOrderInput | Prisma.SortOrder
+  claimToken?: Prisma.SortOrderInput | Prisma.SortOrder
   dedupeKey?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -295,6 +304,7 @@ export type JobWhereUniqueInput = Prisma.AtLeast<{
   runAfter?: Prisma.DateTimeFilter<"Job"> | Date | string
   lastError?: Prisma.StringNullableFilter<"Job"> | string | null
   result?: Prisma.JsonNullableFilter<"Job">
+  claimToken?: Prisma.StringNullableFilter<"Job"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Job"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Job"> | Date | string
 }, "id" | "dedupeKey">
@@ -309,6 +319,7 @@ export type JobOrderByWithAggregationInput = {
   runAfter?: Prisma.SortOrder
   lastError?: Prisma.SortOrderInput | Prisma.SortOrder
   result?: Prisma.SortOrderInput | Prisma.SortOrder
+  claimToken?: Prisma.SortOrderInput | Prisma.SortOrder
   dedupeKey?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -332,6 +343,7 @@ export type JobScalarWhereWithAggregatesInput = {
   runAfter?: Prisma.DateTimeWithAggregatesFilter<"Job"> | Date | string
   lastError?: Prisma.StringNullableWithAggregatesFilter<"Job"> | string | null
   result?: Prisma.JsonNullableWithAggregatesFilter<"Job">
+  claimToken?: Prisma.StringNullableWithAggregatesFilter<"Job"> | string | null
   dedupeKey?: Prisma.StringNullableWithAggregatesFilter<"Job"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Job"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Job"> | Date | string
@@ -347,6 +359,7 @@ export type JobCreateInput = {
   runAfter?: Date | string
   lastError?: string | null
   result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: string | null
   dedupeKey?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -362,6 +375,7 @@ export type JobUncheckedCreateInput = {
   runAfter?: Date | string
   lastError?: string | null
   result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: string | null
   dedupeKey?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -377,6 +391,7 @@ export type JobUpdateInput = {
   runAfter?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -392,6 +407,7 @@ export type JobUncheckedUpdateInput = {
   runAfter?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -407,6 +423,7 @@ export type JobCreateManyInput = {
   runAfter?: Date | string
   lastError?: string | null
   result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: string | null
   dedupeKey?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -422,6 +439,7 @@ export type JobUpdateManyMutationInput = {
   runAfter?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -437,6 +455,7 @@ export type JobUncheckedUpdateManyInput = {
   runAfter?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -452,6 +471,7 @@ export type JobCountOrderByAggregateInput = {
   runAfter?: Prisma.SortOrder
   lastError?: Prisma.SortOrder
   result?: Prisma.SortOrder
+  claimToken?: Prisma.SortOrder
   dedupeKey?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -469,6 +489,7 @@ export type JobMaxOrderByAggregateInput = {
   attempts?: Prisma.SortOrder
   runAfter?: Prisma.SortOrder
   lastError?: Prisma.SortOrder
+  claimToken?: Prisma.SortOrder
   dedupeKey?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -482,6 +503,7 @@ export type JobMinOrderByAggregateInput = {
   attempts?: Prisma.SortOrder
   runAfter?: Prisma.SortOrder
   lastError?: Prisma.SortOrder
+  claimToken?: Prisma.SortOrder
   dedupeKey?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -503,6 +525,7 @@ export type JobSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   runAfter?: boolean
   lastError?: boolean
   result?: boolean
+  claimToken?: boolean
   dedupeKey?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -518,6 +541,7 @@ export type JobSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extension
   runAfter?: boolean
   lastError?: boolean
   result?: boolean
+  claimToken?: boolean
   dedupeKey?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -533,6 +557,7 @@ export type JobSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   runAfter?: boolean
   lastError?: boolean
   result?: boolean
+  claimToken?: boolean
   dedupeKey?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -548,12 +573,13 @@ export type JobSelectScalar = {
   runAfter?: boolean
   lastError?: boolean
   result?: boolean
+  claimToken?: boolean
   dedupeKey?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type JobOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "type" | "payload" | "status" | "attempts" | "runAfter" | "lastError" | "result" | "dedupeKey" | "createdAt" | "updatedAt", ExtArgs["result"]["job"]>
+export type JobOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "type" | "payload" | "status" | "attempts" | "runAfter" | "lastError" | "result" | "claimToken" | "dedupeKey" | "createdAt" | "updatedAt", ExtArgs["result"]["job"]>
 
 export type $JobPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Job"
@@ -571,6 +597,10 @@ export type $JobPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
      * What the job settled as, for handlers that record an outcome (e.g. email delivery).
      */
     result: runtime.JsonValue | null
+    /**
+     * Identifies the run that holds a `running` job; cleared when it leaves `running`.
+     */
+    claimToken: string | null
     dedupeKey: string | null
     createdAt: Date
     updatedAt: Date
@@ -1006,6 +1036,7 @@ export interface JobFieldRefs {
   readonly runAfter: Prisma.FieldRef<"Job", 'DateTime'>
   readonly lastError: Prisma.FieldRef<"Job", 'String'>
   readonly result: Prisma.FieldRef<"Job", 'Json'>
+  readonly claimToken: Prisma.FieldRef<"Job", 'String'>
   readonly dedupeKey: Prisma.FieldRef<"Job", 'String'>
   readonly createdAt: Prisma.FieldRef<"Job", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Job", 'DateTime'>

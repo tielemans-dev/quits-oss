@@ -653,6 +653,7 @@ export const JobScalarFieldEnum = {
   runAfter: 'runAfter',
   lastError: 'lastError',
   result: 'result',
+  claimToken: 'claimToken',
   dedupeKey: 'dedupeKey',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
