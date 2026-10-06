@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, render, screen, waitFor } from "@testing-library/react"
 
 const api = vi.hoisted(() => ({ getPolicy: vi.fn(), capabilities: vi.fn() }))
 
@@ -15,15 +15,29 @@ vi.mock("../../../trpc/client", () => ({
   },
 }))
 
+const auth = vi.hoisted(() => ({
+  session: { data: { session: { activeOrganizationId: "org_a" } }, isPending: false },
+}))
+
+vi.mock("../../../lib/auth-client", () => ({
+  useSession: () => auth.session,
+}))
+
 vi.mock("../../../lib/i18n/react", () => ({
-  useI18n: () => ({ t: (key: string) => key }),
+  useI18n: () => ({ t: translate }),
 }))
 
 import { ReminderPolicyCard } from "../reminder-policy-card"
 
+// A stable translate function, as the real i18n context provides.
+function translate(key: string) {
+  return key
+}
+
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  auth.session = { data: { session: { activeOrganizationId: "org_a" } }, isPending: false }
 })
 
 describe("ReminderPolicyCard", () => {
@@ -52,5 +66,35 @@ describe("ReminderPolicyCard", () => {
     for (const input of screen.getAllByRole("spinbutton") as HTMLInputElement[]) {
       expect(input.disabled).toBe(true)
     }
+  })
+
+  it("reloads the policy and drops edit rights when the user switches organization", async () => {
+    api.getPolicy.mockResolvedValueOnce({ enabled: true, offsetsDays: [-3, 7] })
+    api.capabilities.mockResolvedValueOnce({ canSendNow: true, canPause: true, canUpdatePolicy: true })
+    const { rerender } = render(<ReminderPolicyCard />)
+    expect(await screen.findByRole("button", { name: "reminders.policy.save" })).toBeTruthy()
+
+    api.getPolicy.mockReturnValueOnce(new Promise(() => undefined))
+    api.capabilities.mockResolvedValueOnce({ canSendNow: false, canPause: false, canUpdatePolicy: false })
+    auth.session = { data: { session: { activeOrganizationId: "org_b" } }, isPending: false }
+    rerender(<ReminderPolicyCard />)
+
+    expect(screen.queryByRole("button", { name: "reminders.policy.save" })).toBeNull()
+    expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(true)
+    await waitFor(() => expect(api.getPolicy).toHaveBeenCalledTimes(2))
+    expect(api.capabilities).toHaveBeenCalledTimes(2)
+  })
+
+  it("grants edit rights after switching to an organization where the user is an admin", async () => {
+    api.getPolicy.mockResolvedValue({ enabled: true, offsetsDays: [-3, 7] })
+    api.capabilities.mockResolvedValueOnce({ canSendNow: false, canPause: false, canUpdatePolicy: false })
+    const { rerender } = render(<ReminderPolicyCard />)
+    expect(await screen.findByText("reminders.policy.readOnly")).toBeTruthy()
+
+    api.capabilities.mockResolvedValueOnce({ canSendNow: true, canPause: true, canUpdatePolicy: true })
+    auth.session = { data: { session: { activeOrganizationId: "org_b" } }, isPending: false }
+    rerender(<ReminderPolicyCard />)
+
+    expect(await screen.findByRole("button", { name: "reminders.policy.save" })).toBeTruthy()
   })
 })

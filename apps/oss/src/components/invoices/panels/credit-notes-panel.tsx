@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { FileMinus } from "lucide-react"
 import { trpc } from "../../../trpc/client"
+import { useSession } from "../../../lib/auth-client"
 import { formatCurrency } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
 import { Button } from "../../ui/button"
@@ -18,24 +19,34 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
   const [creditNotes, setCreditNotes] = useState<CreditNoteListItem[] | null>(null)
   const [canCreate, setCanCreate] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  // Capabilities belong to the active organization; `undefined` while the session loads.
+  const { data: session, isPending: sessionPending } = useSession()
+  const organizationId = sessionPending ? undefined : (session?.session.activeOrganizationId ?? null)
+  const latestLoad = useRef(0)
 
   const load = useCallback(async () => {
+    const request = ++latestLoad.current
     try {
       const [list, capabilities] = await Promise.all([
         trpc.creditNotes.list.query({ invoiceId: invoice.id }),
         trpc.creditNotes.capabilities.query(),
       ])
+      // A late answer from before an organization switch must not restore old rights.
+      if (request !== latestLoad.current) return
       setCreditNotes(list)
       setCanCreate(capabilities.canCreate)
     } catch {
       // Members without credit note access simply do not see the panel.
-      setCreditNotes(null)
+      if (request === latestLoad.current) setCreditNotes(null)
     }
   }, [invoice.id])
 
+  // Switching organization keeps the panel mounted, so start over with nothing allowed.
   useEffect(() => {
+    setCanCreate(false)
+    if (organizationId === undefined) return
     void load()
-  }, [load])
+  }, [load, organizationId])
 
   if (!creditNotes) return null
 
