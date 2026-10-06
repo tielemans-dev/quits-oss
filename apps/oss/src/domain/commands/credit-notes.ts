@@ -62,6 +62,8 @@ type CreditLineAmounts = {
 
 /** What is still creditable on an invoice, given its lines and issued credit notes. */
 export function creditAvailabilityFor(invoice: {
+  subtotalNet: Decimalish
+  totalTax: Decimalish
   totalGross: Decimalish
   items: Array<
     CreditLineAmounts & {
@@ -75,6 +77,8 @@ export function creditAvailabilityFor(invoice: {
     }
   >
   creditNotes: Array<{
+    subtotalNet: Decimalish
+    totalTax: Decimalish
     totalGross: Decimalish
     items: Array<CreditLineAmounts & { invoiceItemId: string | null }>
   }>
@@ -101,15 +105,19 @@ export function creditAvailabilityFor(invoice: {
       lineGross: num(item.lineGross),
     }))
   )
-  const creditedGross =
-    invoice.creditNotes.reduce((total, creditNote) => total + Math.round(num(creditNote.totalGross) * 100), 0) /
+  const credited = (pick: (creditNote: (typeof invoice.creditNotes)[number]) => Decimalish) =>
+    invoice.creditNotes.reduce((total, creditNote) => total + Math.round(num(pick(creditNote)) * 100), 0) /
     100
 
   return computeCreditAvailability({
     lines,
     priorCredits,
+    totalNet: num(invoice.subtotalNet),
+    totalTax: num(invoice.totalTax),
     totalGross: num(invoice.totalGross),
-    creditedGross,
+    creditedNet: credited((creditNote) => creditNote.subtotalNet),
+    creditedTax: credited((creditNote) => creditNote.totalTax),
+    creditedGross: credited((creditNote) => creditNote.totalGross),
   })
 }
 
