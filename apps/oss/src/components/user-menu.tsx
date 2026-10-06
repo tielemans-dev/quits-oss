@@ -3,6 +3,7 @@ import { Check, ChevronsUpDown, LogOut, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { authClient, useSession } from '../lib/auth-client'
+import { setRequestOrganizationId, switchActiveOrganization } from '../lib/active-organization'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import {
   DropdownMenu,
@@ -60,6 +61,7 @@ export function UserMenu() {
 
   async function handleSignOut() {
     await authClient.signOut()
+    setRequestOrganizationId(null)
     navigate({ to: '/login' })
   }
 
@@ -68,7 +70,7 @@ export function UserMenu() {
       return
     }
 
-    await authClient.organization.setActive({ organizationId })
+    await switchActiveOrganization(organizationId)
     await router.invalidate()
   }
 

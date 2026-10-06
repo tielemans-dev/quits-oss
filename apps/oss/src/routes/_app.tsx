@@ -2,6 +2,7 @@ import { createFileRoute, redirect, Outlet, useNavigate, useRouterState } from '
 import { useEffect } from 'react'
 import { getSession } from '../lib/auth-session'
 import { useSession } from '../lib/auth-client'
+import { setRequestOrganizationId } from '../lib/active-organization'
 import { getActiveOrgCloudOnboardingStatus } from '../lib/cloud-onboarding-session'
 import { shouldRedirectToCloudOnboarding } from '../lib/cloud-onboarding'
 import { isCloudDistribution } from '../lib/distribution'
@@ -17,6 +18,8 @@ export const Route = createFileRoute('/_app')({
       throw redirect({ to: '/login' })
     }
     const hasActiveOrg = !!session.session.activeOrganizationId
+    // The pages below load data for this organization, so requests from them are sent for it.
+    setRequestOrganizationId(session.session.activeOrganizationId)
     const isOnboarding = location.pathname === '/onboarding' || location.pathname.startsWith('/onboarding/')
     if (!hasActiveOrg && !isOnboarding) {
       throw redirect({ to: '/onboarding' })
@@ -43,8 +46,17 @@ function AppLayout() {
   const { setLocale } = useI18n()
   const navigate = useNavigate()
   const { data: session } = useSession()
+  const { session: loadedSession } = Route.useRouteContext()
   const { location } = useRouterState()
   const activeOrgId = session?.session.activeOrganizationId ?? null
+  const loadedOrgId = loadedSession.session.activeOrganizationId ?? null
+
+  // Covers the hydrated first render, where the route context comes from the server. A session
+  // refresh alone (for example a switch in another tab) deliberately does not change it: the
+  // server then rejects requests from this page instead of applying them to the other organization.
+  useEffect(() => {
+    setRequestOrganizationId(loadedOrgId)
+  }, [loadedOrgId])
 
   useEffect(() => {
     let cancelled = false

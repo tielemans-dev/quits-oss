@@ -8,7 +8,14 @@ import { isCloudDistribution } from "../lib/distribution"
 
 export type Context = {
   session: Awaited<ReturnType<typeof auth.api.getSession>> | null
+  /**
+   * The organization the client says it is acting for (the `x-yaip-organization-id` header), if
+   * it sent one. Only compared with the session's active organization; never used to authorize.
+   */
+  requestedOrganizationId?: string | null
 }
+
+export const ORGANIZATION_CHANGED_MESSAGE = "The active organization changed; reload and try again"
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -46,6 +53,11 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
       code: "BAD_REQUEST",
       message: "No active organization selected",
     })
+  }
+
+  // A request started while another organization was active must not be applied to this one.
+  if (ctx.requestedOrganizationId && ctx.requestedOrganizationId !== ctx.organizationId) {
+    throw new TRPCError({ code: "CONFLICT", message: ORGANIZATION_CHANGED_MESSAGE })
   }
 
   const actor = await resolveUserActor({

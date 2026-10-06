@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { authClient } from '../lib/auth-client'
+import { switchActiveOrganization } from '../lib/active-organization'
 import {
   Card,
   CardContent,
@@ -54,9 +55,7 @@ function AcceptInvitationPage() {
       }
 
       if (result.data) {
-        await authClient.organization.setActive({
-          organizationId: result.data.invitation.organizationId,
-        })
+        await switchActiveOrganization(result.data.invitation.organizationId)
         if (!cancelled) {
           navigate({ to: '/' })
         }

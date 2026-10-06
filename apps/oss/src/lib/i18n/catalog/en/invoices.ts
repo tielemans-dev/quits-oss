@@ -95,4 +95,6 @@ export const enInvoicesMessages = {
   "invoices.detail.paymentLink.copy": "Copy link",
   "invoices.detail.email.status.sending": "Sending",
   "invoices.detail.email.reason.sending": "The email provider has not confirmed delivery yet. It is retried automatically, and the customer will not get a duplicate. The invoice cannot be edited until delivery is confirmed or given up.",
+  "invoices.detail.email.status.unconfirmed": "Delivery unconfirmed",
+  "invoices.detail.email.reason.unconfirmed": "The email provider never confirmed delivery. The customer may or may not have received it; resend the email if in doubt.",
 } as const

@@ -3,6 +3,7 @@ import type { OnboardingMissingField } from '@yaip/contracts/onboarding'
 import type { RuntimeCapabilities } from '@yaip/contracts/runtime'
 import { useEffect, useState } from 'react'
 import { authClient, useSession } from '../../lib/auth-client'
+import { switchActiveOrganization } from '../../lib/active-organization'
 import { isCloudDistribution } from '../../lib/distribution'
 import {
   getOrganizationAccessState,
@@ -166,9 +167,7 @@ function OnboardingPage() {
         })
 
         if (accessState.kind === 'auto-select') {
-          await authClient.organization.setActive({
-            organizationId: accessState.organizationId,
-          })
+          await switchActiveOrganization(accessState.organizationId)
 
           if (cancelled) {
             return
@@ -365,9 +364,7 @@ function OnboardingPage() {
       return
     }
 
-    await authClient.organization.setActive({
-      organizationId: result.data.id,
-    })
+    await switchActiveOrganization(result.data.id)
 
     setSubmitting(false)
     await router.invalidate()
@@ -379,7 +376,7 @@ function OnboardingPage() {
     setSubmitting(true)
 
     try {
-      await authClient.organization.setActive({ organizationId })
+      await switchActiveOrganization(organizationId)
       await router.invalidate()
       navigate({ to: '/', replace: true })
     } catch (cause) {

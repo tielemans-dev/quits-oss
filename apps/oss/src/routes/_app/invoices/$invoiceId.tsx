@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
+import { usePollWhile } from "../../../hooks/use-poll-while"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import {
   readEmailDeliveryAttempt,
@@ -56,8 +57,10 @@ import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-stat
 import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
 
 export const Route = createFileRoute("/_app/invoices/$invoiceId")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { emailWarning?: string; sendError?: string } => ({
     emailWarning: typeof search.emailWarning === "string" ? search.emailWarning : undefined,
+    // Set when the invoice was created but sending it failed, e.g. the provider refused the email.
+    sendError: typeof search.sendError === "string" ? search.sendError : undefined,
   }),
   component: InvoiceDetailPage,
 })
@@ -101,7 +104,7 @@ type Invoice = {
   notes: string | null
   publicPaymentUrl: string | null
   lastEmailAttemptAt: string | Date | null
-  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | "sending" | null
+  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | "sending" | "unconfirmed" | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
   contact: Contact
@@ -185,15 +188,17 @@ async function downloadInvoicePdfFile(
 function InvoiceDetailPage() {
   const { t, locale } = useI18n()
   const { invoiceId } = Route.useParams()
-  const { emailWarning } = Route.useSearch()
+  const { emailWarning, sendError } = Route.useSearch()
   const navigate = useNavigate()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [emailDelivery, setEmailDelivery] = useState<EmailDeliveryRuntimeStatus | null>(null)
   const [error, setError] = useState<string | null>(
-    emailWarning
-      ? t("invoices.detail.warning.emailSkipped", { reason: emailWarning })
-      : null
+    sendError
+      ? sendError
+      : emailWarning
+        ? t("invoices.detail.warning.emailSkipped", { reason: emailWarning })
+        : null
   )
   const [acting, setActing] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -251,6 +256,19 @@ function InvoiceDetailPage() {
     setInvoice(updated as unknown as Invoice)
     setPaymentLinkUrl((updated as unknown as Invoice).publicPaymentUrl ?? null)
   }
+
+  /** After a failed send: a refused email is recorded on the invoice, so show its new state. */
+  async function reloadInvoiceAfterFailure() {
+    try {
+      await reloadInvoice()
+    } catch {
+      // Keep the send error on screen; the invoice reloads on the next visit.
+    }
+  }
+
+  // While the outbox is still delivering the email the invoice is frozen; follow it until it settles.
+  const emailSending = invoice?.lastEmailAttemptOutcome === "sending"
+  usePollWhile(emailSending, reloadInvoice)
 
   function startEditing() {
     if (!invoice) return
@@ -357,6 +375,7 @@ function InvoiceDetailPage() {
           ? err.message
           : t("invoices.detail.error.sendFailed")
       )
+      await reloadInvoiceAfterFailure()
     } finally {
       setActing(false)
     }
@@ -375,6 +394,7 @@ function InvoiceDetailPage() {
           ? err.message
           : t("invoices.detail.error.sendFailed")
       )
+      await reloadInvoiceAfterFailure()
     } finally {
       setActing(false)
     }
@@ -691,7 +711,9 @@ function InvoiceDetailPage() {
           ),
         }),
         message:
-          emailAttempt.lastEmailAttemptCode === "provider_missing"
+          emailAttempt.lastEmailAttemptOutcome === "unconfirmed"
+            ? t("invoices.detail.email.reason.unconfirmed")
+            : emailAttempt.lastEmailAttemptCode === "provider_missing"
             ? t("invoices.detail.email.reason.provider_missing")
             : emailAttempt.lastEmailAttemptCode === "send_failed"
               ? t("invoices.detail.email.reason.send_failed")
@@ -777,9 +799,10 @@ function InvoiceDetailPage() {
             <Download className="size-4" />
             {downloading ? t("invoices.new.ai.action.generating") : "PDF"}
           </Button>
-          {invoice.status === "draft" && (
+          {/* A draft whose email is still being delivered can no longer be edited or deleted. */}
+          {invoice.status === "draft" && !emailSending && (
             <>
-              <Button variant="outline" size="sm" onClick={startEditing}>
+              <Button variant="outline" size="sm" disabled={acting} onClick={startEditing}>
                 <Pencil className="size-4" />
                 {t("invoices.detail.action.edit")}
               </Button>
@@ -851,7 +874,7 @@ function InvoiceDetailPage() {
                       pendingLabel: t("invoices.detail.action.sending"),
                       pending: acting,
                       // A queued email settles on its own; sending again is refused meanwhile.
-                      disabled: acting || invoice.lastEmailAttemptOutcome === "sending",
+                      disabled: acting || emailSending,
                       onClick: () => {
                         void handleSend()
                       },
@@ -861,7 +884,7 @@ function InvoiceDetailPage() {
                         label: t("invoices.detail.action.resendEmail"),
                         pendingLabel: t("invoices.detail.action.sending"),
                         pending: acting,
-                        disabled: acting || invoice.lastEmailAttemptOutcome === "sending",
+                        disabled: acting || emailSending,
                         onClick: () => {
                           void handleResendEmail()
                         },
@@ -869,7 +892,7 @@ function InvoiceDetailPage() {
                     : null
               }
               degradedAction={
-                canShowDegradedSend
+                canShowDegradedSend && !emailSending
                   ? {
                       open: sendWithoutEmailOpen,
                       triggerLabel: t("invoices.detail.email.degraded.trigger"),

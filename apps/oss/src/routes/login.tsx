@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { authClient } from '../lib/auth-client'
+import { switchActiveOrganization } from '../lib/active-organization'
 import { Button } from '../components/ui/button'
 import {
   Card,
@@ -61,9 +62,7 @@ function LoginPage() {
         })
 
         if (accessState.kind === 'auto-select') {
-          await authClient.organization.setActive({
-            organizationId: accessState.organizationId,
-          })
+          await switchActiveOrganization(accessState.organizationId)
 
           if (isCloudDistribution) {
             navigate({ to: '/onboarding' })
