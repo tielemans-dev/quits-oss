@@ -18,6 +18,8 @@ import {
 } from "../../ui/table"
 import type { InvoicePanelProps } from "./types"
 
+type ReminderCapabilities = { canSendNow: boolean; canPause: boolean }
+
 type RemindersState = {
   remindersPaused: boolean
   policyEnabled: boolean
@@ -38,6 +40,8 @@ const statusVariant: Record<ReminderStatus, "default" | "secondary" | "destructi
 export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePanelProps) {
   const { t } = useI18n()
   const [state, setState] = useState<RemindersState | null>(null)
+  // Nothing is allowed until the server says so; accountants may only look.
+  const [capabilities, setCapabilities] = useState<ReminderCapabilities>({ canSendNow: false, canPause: false })
   const [busy, setBusy] = useState<"pause" | "send" | null>(null)
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null)
 
@@ -48,6 +52,19 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
       setMessage({ kind: "error", text: t("reminders.panel.error.load") })
     }
   }, [invoice.id, t])
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.resolve()
+      .then(() => trpc.reminders.capabilities.query())
+      .then((result) => {
+        if (!cancelled) setCapabilities(result)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Reload when the invoice changes status, e.g. after a payment settles it.
   useEffect(() => {
@@ -86,22 +103,24 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
             <CardTitle>{t("reminders.panel.title")}</CardTitle>
             <CardDescription>{t("reminders.panel.description")}</CardDescription>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!canSend || busy !== null}
-            onClick={() =>
-              run(
-                "send",
-                () => trpc.reminders.sendNow.mutate({ invoiceId: invoice.id }),
-                t("reminders.panel.sent")
-              )
-            }
-          >
-            <BellRing className="size-3.5" />
-            {busy === "send" ? t("reminders.panel.sending") : t("reminders.panel.sendNow")}
-          </Button>
+          {capabilities.canSendNow && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canSend || busy !== null}
+              onClick={() =>
+                run(
+                  "send",
+                  () => trpc.reminders.sendNow.mutate({ invoiceId: invoice.id }),
+                  t("reminders.panel.sent")
+                )
+              }
+            >
+              <BellRing className="size-3.5" />
+              {busy === "send" ? t("reminders.panel.sending") : t("reminders.panel.sendNow")}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -121,7 +140,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
               <input
                 type="checkbox"
                 checked={state.remindersPaused}
-                disabled={busy !== null}
+                disabled={!capabilities.canPause || busy !== null}
                 onChange={(event) => {
                   const paused = event.target.checked
                   void run("pause", () =>

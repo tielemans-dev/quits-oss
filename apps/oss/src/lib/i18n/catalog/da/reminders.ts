@@ -21,6 +21,7 @@ export const daRemindersMessages = {
   "reminders.offset.after.other": "{count} dage efter",
   "reminders.policy.title": "Betalingspåmindelser",
   "reminders.policy.description": "Send automatisk e-mails til kunder om ubetalte fakturaer før og efter forfaldsdatoen.",
+  "reminders.policy.readOnly": "Kun administratorer kan ændre rykkerplanen.",
   "reminders.policy.enabled.label": "Send automatiske påmindelser",
   "reminders.policy.offsets.label": "Påmindelsesplan (dage i forhold til forfaldsdatoen)",
   "reminders.policy.offsets.help": "Brug negative tal for at minde før forfaldsdatoen. Mellem -30 og 90 dage, op til 5 påmindelser.",

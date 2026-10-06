@@ -51,13 +51,16 @@ function CreditNoteDetailPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [canSend, setCanSend] = useState(false)
 
   const load = useCallback(async () => {
-    const [data, settings] = await Promise.all([
+    const [data, settings, capabilities] = await Promise.all([
       trpc.creditNotes.get.query({ id: creditNoteId }),
       trpc.settings.get.query(),
+      trpc.creditNotes.capabilities.query(),
     ])
     setCreditNote(data)
+    setCanSend(capabilities.canSend)
     setOrg({
       companyName: settings.companyName,
       companyEmail: settings.companyEmail,
@@ -266,7 +269,7 @@ function CreditNoteDetailPage() {
                   : emailStatus}
             </CardDescription>
           </div>
-          {org.emailAvailable && recipientValid && (
+          {canSend && org.emailAvailable && recipientValid && (
             <Button size="sm" disabled={sending} onClick={() => void handleSend()}>
               <Mail className="size-4" />
               {sending

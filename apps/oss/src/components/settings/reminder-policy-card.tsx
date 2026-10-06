@@ -51,6 +51,8 @@ function parseOffsets(values: string[]): ParsedOffsets {
 export function ReminderPolicyCard() {
   const { t } = useI18n()
   const [loaded, setLoaded] = useState(false)
+  // Only admins may change the policy (settings:update); everyone else sees it read-only.
+  const [canUpdate, setCanUpdate] = useState(false)
   const [enabled, setEnabled] = useState(false)
   const [offsets, setOffsets] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
@@ -60,11 +62,12 @@ export function ReminderPolicyCard() {
     let cancelled = false
     // Start inside a promise chain so any client failure lands in the error state.
     Promise.resolve()
-      .then(() => trpc.reminders.getPolicy.query())
-      .then((policy) => {
+      .then(() => Promise.all([trpc.reminders.getPolicy.query(), trpc.reminders.capabilities.query()]))
+      .then(([policy, capabilities]) => {
         if (cancelled) return
         setEnabled(policy.enabled)
         setOffsets(policy.offsetsDays.map(String))
+        setCanUpdate(capabilities.canUpdatePolicy)
         setLoaded(true)
       })
       .catch(() => {
@@ -75,6 +78,7 @@ export function ReminderPolicyCard() {
     }
   }, [t])
 
+  const editable = loaded && canUpdate
   const parsed = useMemo(() => parseOffsets(offsets), [offsets])
   const preview = parsed.ok && parsed.offsets.length > 0
     ? t("reminders.policy.preview", {
@@ -112,7 +116,7 @@ export function ReminderPolicyCard() {
           <input
             type="checkbox"
             checked={enabled}
-            disabled={!loaded}
+            disabled={!editable}
             onChange={(event) => setEnabled(event.target.checked)}
           />
           {t("reminders.policy.enabled.label")}
@@ -134,7 +138,7 @@ export function ReminderPolicyCard() {
                     max={REMINDER_OFFSET_MAX_DAYS}
                     className="w-20"
                     value={value}
-                    disabled={!loaded}
+                    disabled={!editable}
                     onChange={(event) =>
                       setOffsets((current) =>
                         current.map((entry, entryIndex) => (entryIndex === index ? event.target.value : entry))
@@ -147,7 +151,7 @@ export function ReminderPolicyCard() {
                     size="icon"
                     className="size-7 text-muted-foreground"
                     aria-label={t("reminders.policy.offsets.remove")}
-                    disabled={!loaded}
+                    disabled={!editable}
                     onClick={() => setOffsets((current) => current.filter((_, entryIndex) => entryIndex !== index))}
                   >
                     <X className="size-3.5" />
@@ -157,13 +161,13 @@ export function ReminderPolicyCard() {
             </div>
           )}
           <p className="text-xs text-muted-foreground">{t("reminders.policy.offsets.help")}</p>
-          {offsets.length < REMINDER_MAX_OFFSETS && (
+          {editable && offsets.length < REMINDER_MAX_OFFSETS && (
             <div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={!loaded}
+                disabled={!editable}
                 onClick={() => setOffsets((current) => [...current, ""])}
               >
                 <Plus className="size-3.5" />
@@ -183,11 +187,16 @@ export function ReminderPolicyCard() {
           </p>
         )}
 
-        <div>
-          <Button type="button" onClick={handleSave} disabled={!loaded || saving || !parsed.ok}>
-            {saving ? t("reminders.policy.saving") : t("reminders.policy.save")}
-          </Button>
-        </div>
+        {loaded && !canUpdate && (
+          <p className="text-sm text-muted-foreground">{t("reminders.policy.readOnly")}</p>
+        )}
+        {editable && (
+          <div>
+            <Button type="button" onClick={handleSave} disabled={saving || !parsed.ok}>
+              {saving ? t("reminders.policy.saving") : t("reminders.policy.save")}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

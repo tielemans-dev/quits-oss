@@ -23,6 +23,7 @@ import {
 } from "../../../components/recurring/recurring-format"
 import { RecurringScheduleActions } from "../../../components/recurring/recurring-schedule-actions"
 import { RecurringScheduleDialog } from "../../../components/recurring/recurring-schedule-dialog"
+import { useRecurringCapabilities } from "../../../components/recurring/use-recurring-capabilities"
 
 export const Route = createFileRoute("/_app/recurring/")({
   component: RecurringInvoicesPage,
@@ -36,6 +37,7 @@ function RecurringInvoicesPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [message, setMessage] = useState<Message | null>(null)
+  const { canCreate, canUpdate } = useRecurringCapabilities()
 
   const load = useCallback(async () => {
     try {
@@ -51,12 +53,12 @@ function RecurringInvoicesPage() {
     void load()
   }, [load])
 
-  const newButton = (
+  const newButton = canCreate ? (
     <Button onClick={() => setCreating(true)}>
       <Plus />
       {t("recurring.action.new")}
     </Button>
-  )
+  ) : null
 
   return (
     <div className="p-6">
@@ -98,7 +100,7 @@ function RecurringInvoicesPage() {
                 <TableHead>{t("recurring.table.nextRun")}</TableHead>
                 <TableHead>{t("recurring.table.status")}</TableHead>
                 <TableHead>{t("recurring.table.lastInvoice")}</TableHead>
-                <TableHead className="w-[60px]" />
+                {canUpdate && <TableHead className="w-[60px]" />}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -148,13 +150,16 @@ function RecurringInvoicesPage() {
                       </span>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <RecurringScheduleActions
-                      schedule={schedule}
-                      onChanged={() => void load()}
-                      onMessage={setMessage}
-                    />
-                  </TableCell>
+                  {canUpdate && (
+                    <TableCell>
+                      <RecurringScheduleActions
+                        schedule={schedule}
+                        canUpdate={canUpdate}
+                        onChanged={() => void load()}
+                        onMessage={setMessage}
+                      />
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -162,7 +167,9 @@ function RecurringInvoicesPage() {
         </div>
       )}
 
-      <RecurringScheduleDialog open={creating} onOpenChange={setCreating} onSaved={() => void load()} />
+      {canCreate && (
+        <RecurringScheduleDialog open={creating} onOpenChange={setCreating} onSaved={() => void load()} />
+      )}
     </div>
   )
 }

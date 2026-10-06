@@ -17,6 +17,7 @@ import {
   setInvoiceRemindersPaused,
   updateReminderPolicy,
 } from "../../domain/commands/reminders"
+import { actorCan } from "../../domain/actor"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { authorizedProcedure, router } from "../init"
@@ -119,4 +120,14 @@ export const remindersRouter = router({
     .mutation(async ({ ctx, input }) =>
       unwrapOutcome(await executeCommand(sendReminderNow, input, { actor: ctx.actor }))
     ),
+
+  /**
+   * What the current user may do with reminders, mirroring the permissions of `sendNow`,
+   * `setPaused`, and `updatePolicy`, so the UI only offers controls the server allows.
+   */
+  capabilities: authorizedProcedure("invoice:read").query(({ ctx }) => ({
+    canSendNow: actorCan(ctx.actor, "invoice:send"),
+    canPause: actorCan(ctx.actor, "invoice:update"),
+    canUpdatePolicy: actorCan(ctx.actor, "settings:update"),
+  })),
 })

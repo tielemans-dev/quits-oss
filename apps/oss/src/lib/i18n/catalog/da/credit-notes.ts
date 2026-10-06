@@ -14,6 +14,7 @@ export const daCreditNotesMessages = {
   "creditNotes.amountDescription": "Kreditering af {number}",
   "creditNotes.panel.title": "Kreditnotaer",
   "creditNotes.panel.description": "Krediter hele eller dele af fakturaen. Kreditnotaer kan ikke ændres, når de er udstedt.",
+  "creditNotes.panel.readOnly": "Kreditnotaer udstedt for denne faktura.",
   "creditNotes.panel.empty": "Der er ikke udstedt kreditnotaer på denne faktura.",
   "creditNotes.panel.credited": "Krediteret {credited} af {total}",
   "creditNotes.panel.fullyCredited": "Fakturaen er fuldt krediteret.",
