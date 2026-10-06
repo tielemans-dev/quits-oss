@@ -34,6 +34,8 @@ export type TaxComputationInput = {
   items: DocumentLineInput[]
   taxRate: number
   pricesIncludeTax: boolean
+  /** Decimals line and document amounts are rounded to; 0 for currencies such as JPY. Default 2. */
+  fractionDigits?: number
 }
 
 export type ComputedLine = {

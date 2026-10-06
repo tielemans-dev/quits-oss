@@ -91,11 +91,13 @@ export const createQuoteDraft = defineCommand({
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       const number = yield* allocateDocumentNumber("quote")
+      const currency = input.currency ?? settings.defaultCurrency ?? settings.currency
       const priced = priceDocument({
         profile,
         items: input.items,
         taxRate: input.taxRate,
         pricesIncludeTax: settings.pricesIncludeTax,
+        currency,
       })
       const compliance = assessCompliance(profile, sellerTaxIds, input.taxRate)
 
@@ -110,7 +112,7 @@ export const createQuoteDraft = defineCommand({
             subtotalNet: priced.subtotalNet,
             totalTax: priced.totalTax,
             totalGross: priced.totalGross,
-            currency: input.currency ?? settings.defaultCurrency ?? settings.currency,
+            currency,
             countryCode: settings.countryCode,
             locale: settings.locale,
             timezone: settings.timezone,
@@ -170,7 +172,8 @@ export const updateQuoteDraft = defineCommand({
       if (input.currency) data.currency = input.currency
       if (input.notes !== undefined) data.notes = input.notes
 
-      if (input.items || input.taxRate !== undefined) {
+      // A currency change can change rounding precision, so it reprices too.
+      if (input.items || input.taxRate !== undefined || input.currency !== undefined) {
         const items =
           input.items ??
           existing.items.map((item) => ({
@@ -183,6 +186,7 @@ export const updateQuoteDraft = defineCommand({
           items,
           taxRate: input.taxRate ?? impliedTaxRate(existing),
           pricesIncludeTax,
+          currency: input.currency ?? existing.currency,
         })
 
         data.subtotalNet = priced.subtotalNet

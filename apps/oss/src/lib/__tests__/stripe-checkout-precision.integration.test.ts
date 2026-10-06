@@ -70,9 +70,11 @@ describeIfDatabase("public invoice checkout amount precision", () => {
       { actor: org.actors.admin }
     )
     if (sent.status !== "completed") throw new Error("send failed")
+    // New JPY documents are priced in whole yen; fractional totals only exist on invoices created
+    // before that, so set the total directly to cover them.
     const invoice = await prisma.invoice.update({
       where: { id: draft.result.id },
-      data: { publicPaymentIssuedAt: new Date() },
+      data: { publicPaymentIssuedAt: new Date(), subtotalNet: unitPrice, totalGross: unitPrice },
     })
     return signInvoicePaymentToken(
       { invoiceId: invoice.id, keyVersion: invoice.publicPaymentKeyVersion, scope: "invoice_payment" },

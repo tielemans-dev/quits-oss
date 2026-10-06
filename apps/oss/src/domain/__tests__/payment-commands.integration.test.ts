@@ -262,6 +262,8 @@ describeIfDatabase("payment commands", () => {
 
   it("settles an exact fractional balance even when the currency has no minor unit", async () => {
     const { org, invoiceId } = await setupSentInvoice({ currency: "JPY", unitPrice: 50.2 })
+    // New JPY documents are priced in whole yen; fractional totals only exist on older invoices.
+    await prisma.invoice.update({ where: { id: invoiceId }, data: { totalGross: 125.5 } })
     const balance = (await loadInvoice(invoiceId)).totalGross.toNumber()
     expect(balance).toBe(125.5)
 

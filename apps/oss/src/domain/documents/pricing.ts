@@ -1,5 +1,11 @@
 import type { DocumentLineInput } from "@yaip/contracts/invoices"
 import { computeDocumentTotals, type CountryProfile } from "../../lib/compliance"
+import { currencyFractionDigits } from "../../lib/payments/stripe-amounts"
+
+/** Document amounts are stored with two decimals, so three-decimal currencies round to two. */
+export function documentFractionDigits(currency: string) {
+  return Math.min(currencyFractionDigits(currency), 2)
+}
 
 /** Prices lines and returns totals plus item rows ready to persist. */
 export function priceDocument(input: {
@@ -7,11 +13,13 @@ export function priceDocument(input: {
   items: DocumentLineInput[]
   taxRate: number
   pricesIncludeTax: boolean
+  currency: string
 }) {
   const totals = computeDocumentTotals(input.profile, {
     items: input.items,
     taxRate: input.taxRate,
     pricesIncludeTax: input.pricesIncludeTax,
+    fractionDigits: documentFractionDigits(input.currency),
   })
 
   return {
