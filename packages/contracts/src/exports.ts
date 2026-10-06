@@ -29,7 +29,7 @@ export function isPeppolEasCode(value: string | null | undefined): value is Pepp
   return typeof value === "string" && EAS_CODES.has(value.trim())
 }
 
-/** GS1 mod-10 check digit, used by GLNs (EAS 0088). */
+/** GS1 mod-10 check digit, used by GLNs (PEPPOL-COMMON-R040). */
 function hasValidGs1CheckDigit(digits: string) {
   let sum = 0
   for (let index = digits.length - 2, weight = 3; index >= 0; index--, weight = 4 - weight) {
@@ -37,6 +37,51 @@ function hasValidGs1CheckDigit(digits: string) {
   }
   return (10 - (sum % 10)) % 10 === Number(digits[digits.length - 1])
 }
+
+/** Norwegian organization number mod-11 check digit (PEPPOL-COMMON-R041). */
+function hasValidNorwegianCheckDigit(digits: string) {
+  const weights = [3, 2, 7, 6, 5, 4, 3, 2]
+  const sum = weights.reduce((total, weight, index) => total + Number(digits[index]) * weight, 0)
+  return Number(digits) > 0 && (11 - (sum % 11)) % 11 === Number(digits[8])
+}
+
+/** Belgian enterprise number mod-97 check (PEPPOL-COMMON-R043). */
+function hasValidBelgianCheckDigits(digits: string) {
+  return 97 - (Number(digits.slice(0, 8)) % 97) === Number(digits.slice(8))
+}
+
+/** Luhn check digit over the first nine digits, used by Swedish organization numbers (PEPPOL-COMMON-R049). */
+function hasValidSwedishCheckDigit(digits: string) {
+  let sum = 0
+  for (let index = 8, double = true; index >= 0; index--, double = !double) {
+    const value = Number(digits[index]) * (double ? 2 : 1)
+    sum += (value % 10) + Math.floor(value / 10)
+  }
+  return (10 - (sum % 10)) % 10 === Number(digits[9])
+}
+
+/** Australian Business Number mod-89 check (PEPPOL-COMMON-R050). */
+function hasValidAbn(digits: string) {
+  const weights = [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
+  const sum = weights.reduce(
+    (total, weight, index) => total + (Number(digits[index]) - (index === 0 ? 1 : 0)) * weight,
+    0
+  )
+  return sum % 89 === 0
+}
+
+/** Italian partita IVA check digit (PEPPOL-COMMON-R047), on the 11 digits after "IT". */
+function hasValidPartitaIva(digits: string) {
+  let sum = 0
+  for (let index = 0; index < digits.length; index++) {
+    const digit = Number(digits[index])
+    sum += index % 2 === 1 ? Number("0246813579"[digit]) : digit
+  }
+  return sum % 10 === 0
+}
+
+/** Italian codice fiscale (PEPPOL-COMMON-R045): 11 digits, or the 16-character personal format. */
+const CODICE_FISCALE = /^(\d{11}|[A-Za-z]{6}\d{2}[A-Za-z]\d{2}.{3}\d[A-Za-z])$/
 
 /** VAT-number schemes whose identifier is the VAT number with its country prefix. */
 const VAT_SCHEME_PREFIX: Record<string, string> = {
@@ -67,39 +112,70 @@ const VAT_SCHEME_PREFIX: Record<string, string> = {
   "9957": "FR",
 }
 
-/** Identifier formats for schemes with a simple, well-defined shape. Other schemes only need a value. */
-const SCHEME_ID_FORMAT: Record<string, RegExp> = {
-  "0002": /^\d{9}(\d{5})?$/, // FR SIRENE: SIREN or SIRET
-  "0007": /^\d{10}$/, // SE organisationsnummer
-  "0009": /^\d{14}$/, // FR SIRET
-  "0060": /^\d{9}$/, // DUNS
-  "0088": /^\d{13}$/, // GS1 GLN
-  "0106": /^\d{8}$/, // NL KvK
-  "0151": /^\d{11}$/, // AU ABN
-  "0184": /^\d{8}$/, // DK CVR
-  "0192": /^\d{9}$/, // NO organisasjonsnummer
-  "0208": /^[01]\d{9}$/, // BE enterprise number
-  "0211": /^IT\d{11}$/, // IT partita IVA
-  "9930": /^DE\d{9}$/, // DE USt-IdNr.
+/** Schemes whose identifiers carry upper-case letters, so a lower-case entry is normalized. */
+const UPPER_CASE_SCHEMES: ReadonlySet<string> = new Set([...Object.keys(VAT_SCHEME_PREFIX), "0198", "0211"])
+
+type IdentifierRule = { format: RegExp; check?: (id: string) => boolean }
+
+/**
+ * Identifier rules per ISO 6523 ICD / EAS scheme. Checksums and formats follow the PEPPOL-COMMON
+ * rules of Peppol BIS Billing 3.0 (https://docs.peppol.eu/poacc/billing/3.0/rules/ubl-peppol/),
+ * which apply to endpoint IDs, party identifiers and legal registration numbers alike. Some are
+ * stricter than the rule (e.g. 0184 takes only the 8 digits, as Danish endpoints use). Schemes
+ * not listed only need a value.
+ */
+const IDENTIFIER_RULES: Record<string, IdentifierRule> = {
+  "0002": { format: /^\d{9}(\d{5})?$/ }, // FR SIRENE: SIREN or SIRET
+  "0007": { format: /^\d{10}$/, check: hasValidSwedishCheckDigit }, // SE organisationsnummer, R049
+  "0009": { format: /^\d{14}$/ }, // FR SIRET
+  "0060": { format: /^\d{9}$/ }, // DUNS
+  "0088": { format: /^\d{13}$/, check: hasValidGs1CheckDigit }, // GS1 GLN, R040
+  "0096": { format: /^\d{10}$/ }, // DK P-number, R052
+  "0106": { format: /^\d{8}$/ }, // NL KvK, R054
+  "0151": { format: /^\d{11}$/, check: hasValidAbn }, // AU ABN, R050
+  "0184": { format: /^\d{8}$/ }, // DK CVR, R042
+  "0190": { format: /^\d{20}$/ }, // NL OIN, R055
+  "0192": { format: /^\d{9}$/, check: hasValidNorwegianCheckDigit }, // NO organisasjonsnummer, R041
+  "0198": { format: /^DK\d{8}$/ }, // DK SE-number, R053
+  "0201": { format: /^[A-Za-z0-9]{6}$/ }, // IT Codice IPA, R044
+  "0208": { format: /^\d{10}$/, check: hasValidBelgianCheckDigits }, // BE enterprise number, R043
+  "0210": { format: CODICE_FISCALE }, // IT codice fiscale, R045
+  "0211": { format: /^IT\d{11}$/, check: (id) => hasValidPartitaIva(id.slice(2)) }, // IT partita IVA, R047
+  "9930": { format: /^DE\d{9}$/ }, // DE USt-IdNr.
+  "9944": { format: /^NL\d{9}B\d{2}$/ }, // NL btw-nummer, R056-1
+}
+
+/**
+ * The identifier as an e-invoice must carry it: trimmed, and upper-cased for schemes whose
+ * identifiers contain letters (VAT numbers, "DK…", "IT…"). Validate and export this same value.
+ */
+export function normalizePeppolIdentifier(scheme: string, id: string): string {
+  const cleanId = id.trim()
+  return UPPER_CASE_SCHEMES.has(scheme.trim()) ? cleanId.toUpperCase() : cleanId
+}
+
+/**
+ * Whether `id` is a valid identifier for the ISO 6523 ICD / EAS `scheme`, exactly as given (no
+ * normalization), so the value checked is the value exported.
+ */
+export function isValidPeppolIdentifier(scheme: string, id: string): boolean {
+  if (!id || id.length > 80 || /\s/.test(id)) return false
+  const rule = IDENTIFIER_RULES[scheme]
+  if (rule && (!rule.format.test(id) || (rule.check && !rule.check(id)))) return false
+  const prefix = VAT_SCHEME_PREFIX[scheme]
+  if (prefix && !new RegExp(`^${prefix}[0-9A-Z]{2,13}$`).test(id)) return false
+  return true
 }
 
 /**
  * Why a Peppol endpoint is invalid: `scheme` when the scheme is not on the EAS list,
- * `id` when the identifier does not fit the scheme; `null` when it is valid.
+ * `id` when the identifier (after {@link normalizePeppolIdentifier}) does not fit the scheme;
+ * `null` when it is valid.
  */
 export function peppolEndpointIssue(scheme: string, id: string): "scheme" | "id" | null {
   const cleanScheme = scheme.trim()
   if (!isPeppolEasCode(cleanScheme)) return "scheme"
-  const cleanId = id.trim().toUpperCase()
-  if (!cleanId || cleanId.length > 80 || /\s/.test(cleanId)) return "id"
-
-  const format = SCHEME_ID_FORMAT[cleanScheme]
-  if (format && !format.test(cleanId)) return "id"
-  if (cleanScheme === "0088" && !hasValidGs1CheckDigit(cleanId)) return "id"
-
-  const prefix = VAT_SCHEME_PREFIX[cleanScheme]
-  if (prefix && !new RegExp(`^${prefix}[0-9A-Z]{2,13}$`).test(cleanId)) return "id"
-  return null
+  return isValidPeppolIdentifier(cleanScheme, normalizePeppolIdentifier(cleanScheme, id)) ? null : "id"
 }
 
 export const einvoiceDocumentKindSchema = z.enum(["invoice", "creditNote"])
@@ -121,11 +197,13 @@ export const einvoiceMissingFieldSchema = z.enum([
   "seller.address",
   "seller.taxId",
   "seller.legalId",
+  "seller.legalIdInvalid",
   "seller.electronicAddress",
   "seller.electronicAddressInvalid",
   "buyer.name",
   "buyer.country",
   "buyer.address",
+  "buyer.legalIdInvalid",
   "buyer.electronicAddress",
   "buyer.electronicAddressInvalid",
   "creditNote.invoiceReference",

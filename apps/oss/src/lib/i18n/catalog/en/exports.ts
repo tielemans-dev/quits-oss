@@ -15,6 +15,8 @@ export const enExportsMessages = {
   "exports.einvoice.missing.seller.taxId": "Your company VAT number (Settings).",
   "exports.einvoice.missing.seller.legalId":
     "Your CVR number. Danish e-invoices must carry it: add a CVR tax ID or a DK VAT number (Settings).",
+  "exports.einvoice.missing.seller.legalIdInvalid":
+    "Your company registration number (CVR, GLN or DUNS tax ID) is not valid for its scheme, e.g. a wrong check digit. Correct it in Settings.",
   "exports.einvoice.missing.seller.electronicAddress":
     "Your Peppol electronic address. It is derived from your VAT number for supported countries.",
   "exports.einvoice.missing.seller.electronicAddressInvalid":
@@ -22,6 +24,8 @@ export const enExportsMessages = {
   "exports.einvoice.missing.buyer.name": "The customer's name.",
   "exports.einvoice.missing.buyer.country": "The customer's country (use a country name or 2-letter code).",
   "exports.einvoice.missing.buyer.address": "The customer's street address or city.",
+  "exports.einvoice.missing.buyer.legalIdInvalid":
+    "The customer's registration number (CVR, GLN or DUNS tax ID) is not valid for its scheme, e.g. a wrong check digit. Correct it on the customer.",
   "exports.einvoice.missing.buyer.electronicAddress":
     "The customer's Peppol endpoint ID and scheme, or a VAT number they can be reached by.",
   "exports.einvoice.missing.buyer.electronicAddressInvalid":

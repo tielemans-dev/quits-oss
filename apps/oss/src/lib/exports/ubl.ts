@@ -8,6 +8,7 @@ import { formatAmount, formatPlainNumber, toDecimal, type DecimalLike } from "./
 import {
   DANISH_CVR_SCHEME,
   isValidElectronicAddress,
+  isValidLegalIdentifier,
   type ElectronicAddress,
   type LegalIdentifier,
   type PostalAddress,
@@ -86,12 +87,15 @@ export function validateEinvoice(document: EinvoiceDocument): EinvoiceMissingFie
   if (seller.countryCode === "DK" && seller.legalId?.scheme !== DANISH_CVR_SCHEME) {
     missing.push("seller.legalId")
   }
+  // PEPPOL-COMMON-R040 and friends also apply to a legal ID's CompanyID with a schemeID.
+  if (seller.legalId && !isValidLegalIdentifier(seller.legalId)) missing.push("seller.legalIdInvalid")
   if (!seller.electronicAddress) missing.push("seller.electronicAddress")
   else if (!isValidElectronicAddress(seller.electronicAddress)) missing.push("seller.electronicAddressInvalid")
 
   if (!buyer.name?.trim()) missing.push("buyer.name")
   if (!buyer.countryCode) missing.push("buyer.country")
   if (!buyer.street && !buyer.city) missing.push("buyer.address")
+  if (buyer.legalId && !isValidLegalIdentifier(buyer.legalId)) missing.push("buyer.legalIdInvalid")
   if (!buyer.electronicAddress) missing.push("buyer.electronicAddress")
   else if (!isValidElectronicAddress(buyer.electronicAddress)) missing.push("buyer.electronicAddressInvalid")
 

@@ -39,4 +39,23 @@ describe("contact Peppol endpoint fields", () => {
       error: "exports.contact.peppolEndpointId.invalid",
     })
   })
+
+  it("saves the normalized identifier the e-invoice export emits", () => {
+    expect(readPeppolEndpoint(form(" nl123456789b01 ", "9944"))).toEqual({
+      ok: true,
+      peppolEndpointId: "NL123456789B01",
+      peppolEndpointScheme: "9944",
+    })
+  })
+
+  it("rejects identifiers that break the PEPPOL-COMMON rules", () => {
+    expect(readPeppolEndpoint(form("NL12", "9944"))).toEqual({
+      ok: false,
+      error: "exports.contact.peppolEndpointId.invalid",
+    })
+    expect(readPeppolEndpoint(form("123456789", "0192"))).toEqual({
+      ok: false,
+      error: "exports.contact.peppolEndpointId.invalid",
+    })
+  })
 })
