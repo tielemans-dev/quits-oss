@@ -1,7 +1,6 @@
 import { Effect } from "effect"
 import { z } from "zod"
 import { Prisma } from "../../../generated/prisma/client"
-import { prisma } from "../../lib/db"
 import { appLogger } from "../../lib/observability"
 import { schedulerActor, utcTimestamp } from "../commands/reminders"
 import { defineCommand } from "../command"
@@ -12,6 +11,7 @@ import {
   forEachOrganizationWithinBudget,
   organizationSqlFilter,
   registerTickTask,
+  scannedOrganizationSource,
   type OrganizationBudget,
   type OrganizationSource,
   type TickOptions,
@@ -107,32 +107,19 @@ export const markOrganizationInvoicesOverdue = defineCommand({
 /**
  * Organizations with at least one invoice the command would mark: issued, past due, and with a
  * balance due (the same predicate as the command's batch, so settled invoices never make an
- * organization eligible). Selected with DISTINCT in the database, one bounded page at a time.
+ * organization eligible). Claimed in the database, least recently scanned first.
  */
 export function overdueOrganizations(now: Date, options?: TickOptions): OrganizationSource {
-  const eligible = Prisma.sql`
-    FROM "invoice"
-    WHERE "status" IN (${Prisma.join(PRE_OVERDUE_STATUSES)})
-      AND "dueDate" < ${utcTimestamp(now)}
-      AND "totalGross" - "amountCredited" - "amountPaid" > 0
-      ${organizationSqlFilter(Prisma.sql`"organizationId"`, options)}
-  `
-  return {
-    count: async () => {
-      const [row] = await prisma.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(DISTINCT "organizationId") AS "count" ${eligible}
-      `
-      return Number(row?.count ?? 0)
-    },
-    page: async (offset, limit) => {
-      const rows = await prisma.$queryRaw<Array<{ organizationId: string }>>`
-        SELECT DISTINCT "organizationId" ${eligible}
-        ORDER BY "organizationId" ASC
-        OFFSET ${offset} LIMIT ${limit}
-      `
-      return rows.map((row) => row.organizationId)
-    },
-  }
+  return scannedOrganizationSource(
+    "overdue",
+    Prisma.sql`
+      SELECT "organizationId" FROM "invoice"
+      WHERE "status" IN (${Prisma.join(PRE_OVERDUE_STATUSES)})
+        AND "dueDate" < ${utcTimestamp(now)}
+        AND "totalGross" - "amountCredited" - "amountPaid" > 0
+        ${organizationSqlFilter(Prisma.sql`"organizationId"`, options)}
+    `
+  )
 }
 
 /**
@@ -148,7 +135,6 @@ export async function runOverdueTask(
   let failed = 0
   let remaining = 0
   const { organizations, deferred } = await forEachOrganizationWithinBudget(
-    now,
     overdueOrganizations(now, options),
     async (organizationId) => {
       try {

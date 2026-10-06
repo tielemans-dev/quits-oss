@@ -410,7 +410,8 @@ export const ModelName = {
   CommandReceipt: 'CommandReceipt',
   ApprovalRequest: 'ApprovalRequest',
   AgentKey: 'AgentKey',
-  Job: 'Job'
+  Job: 'Job',
+  SchedulerScan: 'SchedulerScan'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -426,7 +427,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job"
+    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2428,6 +2429,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SchedulerScan: {
+      payload: Prisma.$SchedulerScanPayload<ExtArgs>
+      fields: Prisma.SchedulerScanFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SchedulerScanFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SchedulerScanFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload>
+        }
+        findFirst: {
+          args: Prisma.SchedulerScanFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SchedulerScanFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload>
+        }
+        findMany: {
+          args: Prisma.SchedulerScanFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload>[]
+        }
+        create: {
+          args: Prisma.SchedulerScanCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload>
+        }
+        createMany: {
+          args: Prisma.SchedulerScanCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SchedulerScanCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload>[]
+        }
+        delete: {
+          args: Prisma.SchedulerScanDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload>
+        }
+        update: {
+          args: Prisma.SchedulerScanUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload>
+        }
+        deleteMany: {
+          args: Prisma.SchedulerScanDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SchedulerScanUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SchedulerScanUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload>[]
+        }
+        upsert: {
+          args: Prisma.SchedulerScanUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SchedulerScanPayload>
+        }
+        aggregate: {
+          args: Prisma.SchedulerScanAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSchedulerScan>
+        }
+        groupBy: {
+          args: Prisma.SchedulerScanGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SchedulerScanGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SchedulerScanCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SchedulerScanCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -3030,6 +3105,15 @@ export const JobScalarFieldEnum = {
 export type JobScalarFieldEnum = (typeof JobScalarFieldEnum)[keyof typeof JobScalarFieldEnum]
 
 
+export const SchedulerScanScalarFieldEnum = {
+  task: 'task',
+  organizationId: 'organizationId',
+  scannedAt: 'scannedAt'
+} as const
+
+export type SchedulerScanScalarFieldEnum = (typeof SchedulerScanScalarFieldEnum)[keyof typeof SchedulerScanScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -3296,6 +3380,7 @@ export type GlobalOmitConfig = {
   approvalRequest?: Prisma.ApprovalRequestOmit
   agentKey?: Prisma.AgentKeyOmit
   job?: Prisma.JobOmit
+  schedulerScan?: Prisma.SchedulerScanOmit
 }
 
 /* Types for Logging */

@@ -1,4 +1,3 @@
-import { prisma } from "../../lib/db"
 import { appLogger } from "../../lib/observability"
 import { Prisma } from "../../../generated/prisma/client"
 import {
@@ -15,6 +14,7 @@ import {
   forEachOrganizationWithinBudget,
   organizationSqlFilter,
   registerTickTask,
+  scannedOrganizationSource,
   type OrganizationBudget,
   type OrganizationSource,
   type TickOptions,
@@ -24,37 +24,24 @@ const remindersLogger = appLogger.child("reminders")
 
 /**
  * Organizations with reminders turned on and at least one open, unpaused invoice with a balance
- * due and a recipient (the settlement predicate `scheduleDueReminders` uses). Selected with
- * DISTINCT in the database, one bounded page at a time.
+ * due and a recipient (the settlement predicate `scheduleDueReminders` uses). Claimed in the
+ * database, least recently scanned first.
  */
 export function reminderOrganizations(options?: TickOptions): OrganizationSource {
-  const eligible = Prisma.sql`
-    FROM "invoice" i
-    JOIN "org_settings" s ON s."organizationId" = i."organizationId"
-    JOIN "contact" c ON c."id" = i."contactId"
-    WHERE s."reminderPolicy"->>'enabled' = 'true'
-      AND i."status" IN (${Prisma.join([...REMINDABLE_STATUSES])})
-      AND i."remindersPaused" = false
-      AND i."totalGross" - i."amountCredited" - i."amountPaid" > 0
-      AND NULLIF(TRIM(c."email"), '') IS NOT NULL
-      ${organizationSqlFilter(Prisma.sql`i."organizationId"`, options)}
-  `
-  return {
-    count: async () => {
-      const [row] = await prisma.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(DISTINCT i."organizationId") AS "count" ${eligible}
-      `
-      return Number(row?.count ?? 0)
-    },
-    page: async (offset, limit) => {
-      const rows = await prisma.$queryRaw<Array<{ organizationId: string }>>`
-        SELECT DISTINCT i."organizationId" ${eligible}
-        ORDER BY i."organizationId" ASC
-        OFFSET ${offset} LIMIT ${limit}
-      `
-      return rows.map((row) => row.organizationId)
-    },
-  }
+  return scannedOrganizationSource(
+    "reminders",
+    Prisma.sql`
+      SELECT i."organizationId" FROM "invoice" i
+      JOIN "org_settings" s ON s."organizationId" = i."organizationId"
+      JOIN "contact" c ON c."id" = i."contactId"
+      WHERE s."reminderPolicy"->>'enabled' = 'true'
+        AND i."status" IN (${Prisma.join([...REMINDABLE_STATUSES])})
+        AND i."remindersPaused" = false
+        AND i."totalGross" - i."amountCredited" - i."amountPaid" > 0
+        AND NULLIF(TRIM(c."email"), '') IS NOT NULL
+        ${organizationSqlFilter(Prisma.sql`i."organizationId"`, options)}
+    `
+  )
 }
 
 /**
@@ -72,7 +59,6 @@ export async function runReminderTask(
   let failed = 0
   let remaining = 0
   const { organizations, deferred } = await forEachOrganizationWithinBudget(
-    now,
     reminderOrganizations(options),
     async (organizationId) => {
       try {

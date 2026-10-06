@@ -176,3 +176,8 @@ export type AgentKey = Prisma.AgentKeyModel
  * 
  */
 export type Job = Prisma.JobModel
+/**
+ * Model SchedulerScan
+ * When a scheduler task last claimed an organization; ticks claim the least recently scanned.
+ */
+export type SchedulerScan = Prisma.SchedulerScanModel

@@ -5,68 +5,48 @@ import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { overdueOrganizations } from "../features/overdue"
 import { reminderOrganizations } from "../features/reminders"
-import { registerJobHandler, runDueJobs } from "../jobs"
-import { forEachOrganizationWithinBudget, rotationWindow, type OrganizationSource } from "../scheduler"
+import { registerJobHandler, runDueJobs, TerminalJobError } from "../jobs"
+import { Prisma } from "../../../generated/prisma/client"
+import {
+  forEachOrganizationWithinBudget,
+  scannedOrganizationSource,
+  type OrganizationSource,
+} from "../scheduler"
 
 const MINUTE = 60_000
 const DAY = 24 * 60 * MINUTE
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
-describe("rotationWindow", () => {
-  const cadencesInMinutes = [1, 2, 5, 10, 15, 30, 60, 360, 1440, 10080]
-
-  it("visits every page within one cycle at common tick cadences, from any start time", () => {
-    for (const total of [2, 7, 450, 2001, 10_000]) {
-      for (const pageSize of [1, 2, 200]) {
-        for (const cadence of cadencesInMinutes) {
-          for (const startedAt of [0, 1_234_567_890_123, Date.UTC(2026, 9, 6, 23, 59, 59, 999)]) {
-            const { pages, cycle } = rotationWindow(new Date(startedAt), total, pageSize)
-            const visited = new Set<number>()
-            for (let tick = 0; tick < cycle; tick += 1) {
-              visited.add(rotationWindow(new Date(startedAt + tick * cadence * MINUTE), total, pageSize).page)
-            }
-            expect(visited.size, `${total} orgs, pages of ${pageSize}, every ${cadence} min`).toBe(pages)
-          }
-        }
-      }
-    }
-  })
-
-  it("keeps the cycle close to the page count", () => {
-    expect(rotationWindow(new Date(), 150, 200)).toMatchObject({ pages: 1, cycle: 1, page: 0, offset: 0 })
-    expect(rotationWindow(new Date(), 450, 200)).toMatchObject({ pages: 3, cycle: 11 })
-    expect(rotationWindow(new Date(), 200 * 50, 200)).toMatchObject({ pages: 50, cycle: 53 })
-  })
-
-  it("moves the first organization inside a page between slots", () => {
-    const starts = new Set(
-      Array.from({ length: 20 }, (_, slot) => rotationWindow(new Date(slot * MINUTE), 200, 200).start)
-    )
-    expect(starts.size).toBeGreaterThan(10)
-  })
-})
+/** An in-memory source with the same contract as `scannedOrganizationSource`. */
+function sourceOf(organizationIds: string[]): OrganizationSource {
+  const scannedAt = new Map<string, number | null>(organizationIds.map((id) => [id, null]))
+  let clock = 0
+  const order = (id: string) => scannedAt.get(id) ?? -Infinity
+  return {
+    count: async () => organizationIds.length,
+    claim: async (limit) => {
+      const claimed = [...organizationIds]
+        .sort((a, b) => order(a) - order(b) || a.localeCompare(b))
+        .slice(0, limit)
+      for (const id of claimed) scannedAt.set(id, (clock += 1))
+      return claimed
+    },
+    release: async (ids) => {
+      for (const id of ids) scannedAt.set(id, null)
+    },
+  }
+}
 
 describe("forEachOrganizationWithinBudget", () => {
-  function sourceOf(organizationIds: string[]): OrganizationSource {
-    return {
-      count: async () => organizationIds.length,
-      page: async (offset, limit) => organizationIds.slice(offset, offset + limit),
-    }
-  }
-
-  it("reaches every organization across restarts when there are more than the budget allows", async () => {
-    // Every call starts from nothing, as after a process restart, and the organizations never
-    // drain, so starting at the first organization each tick would starve the rest.
+  it("reaches every organization when there are more than the budget allows", async () => {
     const organizationIds = Array.from({ length: 23 }, (_, index) => `org-${String(index).padStart(2, "0")}`)
     const budget = { maxOrganizations: 4, timeBudgetMs: 60_000 }
-    const startedAt = Date.UTC(2026, 9, 6, 8, 3)
+    const source = sourceOf(organizationIds)
     const visited = new Set<string>()
-    const { cycle } = rotationWindow(new Date(startedAt), organizationIds.length, budget.maxOrganizations)
 
-    for (let tick = 0; tick < cycle; tick += 1) {
+    for (let tick = 0; tick < Math.ceil(organizationIds.length / budget.maxOrganizations); tick += 1) {
       const result = await forEachOrganizationWithinBudget(
-        new Date(startedAt + tick * 5 * MINUTE),
-        sourceOf(organizationIds),
+        source,
         async (organizationId) => {
           visited.add(organizationId)
         },
@@ -78,19 +58,20 @@ describe("forEachOrganizationWithinBudget", () => {
     expect([...visited].sort()).toEqual(organizationIds)
   })
 
-  it("stops starting organizations once the time budget is used", async () => {
+  it("stops starting organizations once the time budget is used and releases the rest", async () => {
     const visited: string[] = []
-    const result = await forEachOrganizationWithinBudget(
-      new Date(),
-      sourceOf(["a", "b", "c"]),
-      async (organizationId) => {
-        visited.push(organizationId)
-        await new Promise((resolve) => setTimeout(resolve, 20))
-      },
-      { maxOrganizations: 10, timeBudgetMs: 5 }
-    )
-    expect(visited).toHaveLength(1)
+    const source = sourceOf(["a", "b", "c"])
+    const slow = async (organizationId: string) => {
+      visited.push(organizationId)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    const result = await forEachOrganizationWithinBudget(source, slow, { maxOrganizations: 10, timeBudgetMs: 5 })
+    expect(visited).toEqual(["a"])
     expect(result).toEqual({ organizations: 3, processed: 1, deferred: 2 })
+
+    // The released organizations go before the one that was reached.
+    await forEachOrganizationWithinBudget(source, slow, { maxOrganizations: 2, timeBudgetMs: 60_000 })
+    expect(visited).toEqual(["a", "b", "c"])
   })
 })
 
@@ -131,6 +112,8 @@ describeIfDatabase("scheduler against the database", () => {
     return org.organizationId
   }
 
+  const claimAll = (source: OrganizationSource) => source.claim(100)
+
   it("selects overdue organizations in the database, ignoring settled invoices", async () => {
     const pastDue = await organizationWithInvoices([{ dueInDays: -5 }, { dueInDays: -10 }])
     const settled = await organizationWithInvoices([{ dueInDays: -5, amountPaid: 100 }])
@@ -138,8 +121,7 @@ describeIfDatabase("scheduler against the database", () => {
     const source = overdueOrganizations(new Date(), { organizationIds: [pastDue, settled, notYetDue] })
 
     expect(await source.count()).toBe(1)
-    expect(await source.page(0, 10)).toEqual([pastDue])
-    expect(await source.page(1, 10)).toEqual([])
+    expect(await claimAll(source)).toEqual([pastDue])
   })
 
   it("selects reminder organizations with reminders on and an open invoice with a balance", async () => {
@@ -150,31 +132,60 @@ describeIfDatabase("scheduler against the database", () => {
     const source = reminderOrganizations({ organizationIds: [eligible, remindersOff, settled, noRecipient] })
 
     expect(await source.count()).toBe(1)
-    expect(await source.page(0, 10)).toEqual([eligible])
+    expect(await claimAll(source)).toEqual([eligible])
   })
 
-  it("rotates through more overdue organizations than the budget across restarts", async () => {
+  it("covers every overdue organization in successive ticks, whatever time the ticks pass", async () => {
     const organizationIds = await Promise.all(
       Array.from({ length: 5 }, () => organizationWithInvoices([{ dueInDays: -3 }]))
     )
-    const source = overdueOrganizations(new Date(), { organizationIds })
     const budget = { maxOrganizations: 2, timeBudgetMs: 60_000 }
+    const ticks = Math.ceil(organizationIds.length / budget.maxOrganizations)
     const startedAt = Date.now()
-    const { cycle } = rotationWindow(new Date(startedAt), organizationIds.length, budget.maxOrganizations)
-    const visited = new Set<string>()
 
-    for (let tick = 0; tick < cycle; tick += 1) {
-      await forEachOrganizationWithinBudget(
-        new Date(startedAt + tick * 15 * MINUTE),
-        source,
-        async (organizationId) => {
-          visited.add(organizationId)
-        },
-        budget
-      )
+    // Identical, cadence-aliased (every 11 minutes) and out-of-order tick times all cover every
+    // organization in ceil(5 / 2) ticks, because the rotation is kept in the database.
+    for (const timeOf of [
+      () => startedAt,
+      (tick: number) => startedAt + tick * 11 * MINUTE,
+      (tick: number) => startedAt + (ticks - tick) * DAY,
+    ]) {
+      const visited = new Set<string>()
+      for (let tick = 0; tick < ticks; tick += 1) {
+        await forEachOrganizationWithinBudget(
+          overdueOrganizations(new Date(timeOf(tick)), { organizationIds }),
+          async (organizationId) => {
+            visited.add(organizationId)
+          },
+          budget
+        )
+      }
+      expect([...visited].sort()).toEqual([...organizationIds].sort())
     }
+  })
 
-    expect([...visited].sort()).toEqual([...organizationIds].sort())
+  it("lets concurrent ticks claim within their limit and still cover every organization", async () => {
+    const organizationIds = await Promise.all(Array.from({ length: 4 }, () => organizationWithInvoices([])))
+    const task = `test.${randomUUID()}`
+    const source = scannedOrganizationSource(
+      task,
+      Prisma.sql`SELECT "id" AS "organizationId" FROM "organization" WHERE "id" IN (${Prisma.join(organizationIds)})`
+    )
+
+    const [first, second] = await Promise.all([source.claim(2), source.claim(2)])
+    expect(first.length).toBeLessThanOrEqual(2)
+    expect(second.length).toBeLessThanOrEqual(2)
+
+    const claimed = new Set([...first, ...second])
+    for (let tick = 0; tick < 2 && claimed.size < organizationIds.length; tick += 1) {
+      for (const id of await source.claim(2)) claimed.add(id)
+    }
+    expect([...claimed].sort()).toEqual([...organizationIds].sort())
+
+    // Released organizations go first on the next claim.
+    const [last] = organizationIds.sort().slice(-1)
+    await source.release([last!])
+    expect(await source.claim(1)).toEqual([last])
   })
 
   describe("job sweep", () => {
@@ -211,6 +222,30 @@ describeIfDatabase("scheduler against the database", () => {
         { status: "failed", _count: 2 },
         { status: "pending", _count: 1 },
       ])
+    })
+
+    it("fails a job at once, without retrying, when its handler reports a terminal failure", async () => {
+      const organizationId = await organizationWithInvoices([])
+      let calls = 0
+      registerJobHandler("test.terminal", async () => {
+        calls += 1
+        throw new TerminalJobError("recipient missing")
+      })
+      const [job] = await queueJobs(organizationId, "test.terminal", [0])
+
+      const result = await runDueJobs({ organizationIds: [organizationId] })
+
+      expect(result).toEqual({ processed: 1, succeeded: 0, retrying: 0, failed: 1, deferred: 0, reclaimed: 0 })
+      expect(await prisma.job.findUniqueOrThrow({ where: { id: job!.id } })).toMatchObject({
+        status: "failed",
+        attempts: 1,
+        lastError: "recipient missing",
+      })
+
+      // A later sweep does not pick it up again.
+      const later = await runDueJobs({ organizationIds: [organizationId], now: new Date(Date.now() + DAY) })
+      expect(later).toMatchObject({ processed: 0, failed: 0 })
+      expect(calls).toBe(1)
     })
 
     it("claims no new job once the time budget is used", async () => {

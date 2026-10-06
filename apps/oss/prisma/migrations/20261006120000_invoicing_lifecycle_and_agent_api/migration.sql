@@ -219,6 +219,15 @@ CREATE TABLE "job" (
     CONSTRAINT "job_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "scheduler_scan" (
+    "task" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "scannedAt" TIMESTAMP(3),
+
+    CONSTRAINT "scheduler_scan_pkey" PRIMARY KEY ("task","organizationId")
+);
+
 -- CreateIndex
 CREATE INDEX "credit_note_organizationId_idx" ON "credit_note"("organizationId");
 
@@ -286,6 +295,12 @@ CREATE UNIQUE INDEX "job_dedupeKey_key" ON "job"("dedupeKey");
 CREATE INDEX "job_status_runAfter_idx" ON "job"("status", "runAfter");
 
 -- CreateIndex
+CREATE INDEX "scheduler_scan_task_scannedAt_idx" ON "scheduler_scan"("task", "scannedAt");
+
+-- CreateIndex
+CREATE INDEX "scheduler_scan_organizationId_idx" ON "scheduler_scan"("organizationId");
+
+-- CreateIndex
 CREATE INDEX "invoice_organizationId_dueDate_idx" ON "invoice"("organizationId", "dueDate");
 
 -- CreateIndex
@@ -332,6 +347,9 @@ ALTER TABLE "approval_request" ADD CONSTRAINT "approval_request_agentKeyId_fkey"
 
 -- AddForeignKey
 ALTER TABLE "agent_key" ADD CONSTRAINT "agent_key_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "scheduler_scan" ADD CONSTRAINT "scheduler_scan_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- RenameIndex
 ALTER INDEX "invoice_organization_id_payment_status_idx" RENAME TO "invoice_organizationId_paymentStatus_idx";
