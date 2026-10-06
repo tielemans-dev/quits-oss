@@ -13,7 +13,11 @@ const codeByTag: Record<string, TRPCError["code"]> = {
 }
 
 export function toTrpcError(error: CommandError) {
-  return new TRPCError({ code: codeByTag[error.tag] ?? "INTERNAL_SERVER_ERROR", message: error.message })
+  const code =
+    error.code === "precondition_failed"
+      ? "PRECONDITION_FAILED"
+      : (codeByTag[error.tag] ?? "INTERNAL_SERVER_ERROR")
+  return new TRPCError({ code, message: error.message })
 }
 
 /** UI callers act as users, so commands either complete or fail. */

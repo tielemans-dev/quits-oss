@@ -18,6 +18,8 @@ import { runJobsNow } from "./jobs"
 import { Command, Db, type PendingEvent, type PendingJob } from "./services"
 
 const APPROVAL_TTL_MS = 7 * 24 * 60 * 60 * 1000
+/** Commands such as sending email call providers inside the transaction. */
+const TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 60_000 }
 const domainLogger = appLogger.child("domain")
 
 export type ExecuteOptions = {
@@ -279,7 +281,7 @@ export async function executeCommand<Input, Result>(
       }
 
       return { result: exit.value, jobIds: createdJobs.map((job) => job.id) }
-    })
+    }, TRANSACTION_OPTIONS)
 
     if (jobIds.length > 0) {
       await runJobsNow(jobIds)

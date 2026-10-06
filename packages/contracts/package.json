@@ -14,7 +14,8 @@
     "src/payments.ts",
     "src/quotes.ts",
     "src/agent.ts",
-    "src/contacts.ts"
+    "src/contacts.ts",
+    "src/invoices.ts"
   ],
   "exports": {
     ".": "./src/index.ts",
@@ -23,6 +24,7 @@
     "./contacts": "./src/contacts.ts",
     "./documents": "./src/documents.ts",
     "./email": "./src/email.ts",
+    "./invoices": "./src/invoices.ts",
     "./onboarding": "./src/onboarding.ts",
     "./payments": "./src/payments.ts",
     "./quotes": "./src/quotes.ts",
