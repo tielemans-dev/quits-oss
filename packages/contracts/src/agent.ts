@@ -52,3 +52,115 @@ export type CommandError = z.infer<typeof commandErrorSchema>
 export type CommandRecord = z.infer<typeof commandRecordSchema>
 export type ApprovalStatus = z.infer<typeof approvalStatusSchema>
 export type AgentKeyCreateInput = z.input<typeof agentKeyCreateInputSchema>
+
+export const agentKeyIdInputSchema = z.object({ id: nonEmptyStringSchema })
+
+export const approvalDecisionSchema = z.enum(["approve", "reject"])
+
+export const approvalDecideInputSchema = z.object({
+  approvalRequestId: nonEmptyStringSchema,
+  decision: approvalDecisionSchema,
+  note: z.string().trim().max(1000).optional(),
+})
+
+export const approvalListInputSchema = z.object({
+  view: z.enum(["pending", "history"]).default("pending"),
+  limit: z.number().int().min(1).max(200).default(50),
+})
+
+/**
+ * Starting points for a new key. Each preset is narrowed to the scopes the creating user holds,
+ * so a member never sees scopes they cannot grant.
+ */
+export const agentScopePresetIdSchema = z.enum(["read_only_bookkeeper", "drafting_assistant", "full_access"])
+
+const readScopes = [
+  "settings:read",
+  "contact:read",
+  "invoice:read",
+  "quote:read",
+  "creditNote:read",
+  "payment:read",
+  "recurring:read",
+  "catalog:read",
+  "export:read",
+  "audit:read",
+] as const
+
+export const agentScopePresets = {
+  read_only_bookkeeper: { mode: "read_only", scopes: readScopes },
+  drafting_assistant: {
+    mode: "approval_required",
+    scopes: [
+      ...readScopes,
+      "contact:create",
+      "contact:update",
+      "invoice:create",
+      "invoice:update",
+      "invoice:send",
+      "quote:create",
+      "quote:update",
+      "quote:send",
+      "creditNote:create",
+      "payment:create",
+      "recurring:create",
+      "recurring:update",
+    ],
+  },
+  /** Every scope the creator holds except managing agents. */
+  full_access: { mode: "full_access", scopes: "all" },
+} as const satisfies Record<
+  z.infer<typeof agentScopePresetIdSchema>,
+  { mode: AgentMode; scopes: readonly string[] | "all" }
+>
+
+// Agent tool inputs. Command tools reuse the feature input schemas and add `clientRequestId`.
+
+const listLimitSchema = z.number().int().min(1).max(200).default(50)
+
+export const contactsListToolInputSchema = z.object({
+  search: z.string().trim().max(120).optional().describe("Matches name, email, or company"),
+  limit: listLimitSchema,
+})
+
+export const invoicesListToolInputSchema = z.object({
+  status: z
+    .enum(["draft", "sent", "viewed", "overdue", "paid", "credited"])
+    .optional()
+    .describe("Document status"),
+  paymentStatus: z.enum(["unpaid", "partially_paid", "paid"]).optional(),
+  contactId: z.string().trim().min(1).optional(),
+  limit: listLimitSchema,
+})
+
+export const quotesListToolInputSchema = z.object({
+  status: z.string().trim().max(40).optional().describe("Quote status, e.g. draft, sent, accepted"),
+  contactId: z.string().trim().min(1).optional(),
+  limit: listLimitSchema,
+})
+
+export const documentIdToolInputSchema = z.object({ id: nonEmptyStringSchema })
+
+export const activityReadToolInputSchema = z.object({
+  afterSequence: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe("Return events after this sequence. Pass the previous nextSequence to page."),
+  aggregateType: z.string().trim().max(40).optional().describe("e.g. invoice, contact, approval"),
+  aggregateId: z.string().trim().max(100).optional(),
+  limit: listLimitSchema,
+})
+
+export const commandStatusToolInputSchema = z.object({ commandId: nonEmptyStringSchema })
+
+export const COMMAND_WAIT_MAX_MS = 30_000
+
+export const commandWaitToolInputSchema = z.object({
+  commandId: nonEmptyStringSchema,
+  timeoutMs: z.number().int().min(0).max(COMMAND_WAIT_MAX_MS).default(15_000),
+})
+
+export type ApprovalDecideInput = z.infer<typeof approvalDecideInputSchema>
+export type AgentScopePresetId = z.infer<typeof agentScopePresetIdSchema>
