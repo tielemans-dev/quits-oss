@@ -1,15 +1,7 @@
-import { Effect } from "effect"
-import { EmailSendError, sendQuoteEmail } from "../../lib/email"
-import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
-import { prisma } from "../../lib/db"
-import { appLogger } from "../../lib/observability"
-import { ExternalFailure } from "../errors"
+import { buildQuoteEmailContent, composeMessage } from "../../lib/email"
 import { resolveInvoiceEmailContext } from "./invoice-email"
-import { Command } from "../services"
 
 export { requireRecipientEmail } from "./invoice-email"
-
-const quoteLogger = appLogger.child("quotes")
 
 type Decimalish = { toNumber(): number }
 
@@ -40,79 +32,39 @@ export function resolveQuoteEmailContext(settings: OrgEmailSettings) {
   return { envelope, emailDelivery }
 }
 
-/**
- * Sends the quote email. On failure the failed attempt is written outside the command's
- * transaction so it survives the rollback, then the command fails.
- */
-export function deliverQuoteEmail(input: {
+/** The quote email exactly as it will be delivered. */
+export function composeQuoteEmail(input: {
   quote: QuoteForEmail
   settings: OrgEmailSettings
   to: string
   publicQuoteUrl: string | null
-  failureMessage: string
-  /** Scope for the provider idempotency key; see `DeliveryOptions.idempotencyScope`. */
-  idempotencyScope?: string
-  failureLogEvent: string
-  organizationId: string
 }) {
   const { envelope } = resolveQuoteEmailContext(input.settings)
   const { quote } = input
-
-  return Effect.tryPromise({
-    try: () =>
-      sendQuoteEmail({
-        to: input.to,
-        fromName: envelope.fromName,
-        fromEmail: envelope.fromEmail,
-        replyTo: envelope.replyTo,
-        quote: {
-          ...quote,
-          subtotal: quote.subtotalNet.toNumber(),
-          taxAmount: quote.totalTax.toNumber(),
-          total: quote.totalGross.toNumber(),
-          items: quote.items.map((item) => ({
-            description: item.description,
-            quantity: item.quantity.toNumber(),
-            unitPrice: item.unitPriceGross.toNumber(),
-            total: item.lineGross.toNumber(),
-          })),
-        },
-        org: {
-          companyName: input.settings.companyName,
-          companyEmail: input.settings.companyEmail,
-          locale: input.settings.locale,
-          timezone: input.settings.timezone,
-        },
-        contactName: quote.contact.name,
-        publicQuoteUrl: input.publicQuoteUrl,
-      }, { idempotencyScope: input.idempotencyScope }),
-    catch: (cause) => cause,
-  }).pipe(
-    Effect.catchAll((cause) =>
-      Effect.gen(function* () {
-        const command = yield* Command
-        quoteLogger.error(input.failureLogEvent, {
-          organizationId: input.organizationId,
-          quoteId: quote.id,
-          error: cause,
-        })
-        // Only a provider rejection proves nothing was delivered; see `deliverInvoiceEmail`.
-        if (!(cause instanceof EmailSendError)) {
-          return yield* new ExternalFailure({ message: input.failureMessage, service: "email", cause })
-        }
-        command.onRollback(() =>
-          prisma.quote.update({
-            where: { id: quote.id },
-            data: createEmailDeliveryAttempt({
-              outcome: "failed",
-              code: "send_failed",
-              message: "Failed to send quote email.",
-            }),
-          })
-        )
-        return yield* new ExternalFailure({ message: input.failureMessage, service: "email", cause })
-      })
-    ),
-    Effect.as({ usingBrandedDomain: envelope.usingBrandedDomain })
-  )
+  const content = buildQuoteEmailContent({
+    fromName: envelope.fromName,
+    fromEmail: envelope.fromEmail,
+    replyTo: envelope.replyTo,
+    quote: {
+      ...quote,
+      subtotal: quote.subtotalNet.toNumber(),
+      taxAmount: quote.totalTax.toNumber(),
+      total: quote.totalGross.toNumber(),
+      items: quote.items.map((item) => ({
+        description: item.description,
+        quantity: item.quantity.toNumber(),
+        unitPrice: item.unitPriceGross.toNumber(),
+        total: item.lineGross.toNumber(),
+      })),
+    },
+    org: {
+      companyName: input.settings.companyName,
+      companyEmail: input.settings.companyEmail,
+      locale: input.settings.locale,
+      timezone: input.settings.timezone,
+    },
+    contactName: quote.contact.name,
+    publicQuoteUrl: input.publicQuoteUrl,
+  })
+  return { message: composeMessage(input.to, content), usingBrandedDomain: envelope.usingBrandedDomain }
 }

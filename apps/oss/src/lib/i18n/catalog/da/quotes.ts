@@ -88,5 +88,5 @@ export const daQuotesMessages = {
   "quotes.detail.quoteTo": "Tilbud til",
   "quotes.detail.title": "Tilbud",
   "quotes.detail.email.status.sending": "Sender",
-  "quotes.detail.email.reason.sending": "Afsendelsen blev afbrudt, før den blev bekræftet. Send igen for at fuldføre; kunden får ikke en dublet. Indtil da kan tilbuddet ikke redigeres.",
+  "quotes.detail.email.reason.sending": "E-mailudbyderen har endnu ikke bekræftet leveringen. Der prøves automatisk igen, og kunden får ikke en dublet. Tilbuddet kan ikke redigeres, før leveringen er bekræftet eller opgivet.",
 } as const

@@ -16,12 +16,13 @@ import { applyPublicQuoteDecision } from "../../lib/quotes/public"
 import { getPublicQuoteUrl } from "../../lib/quotes/public-url"
 import { defineCommand } from "../command"
 import { assessCompliance, loadDocumentContext } from "../documents/context"
+import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
 import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { allocateDocumentNumber } from "../documents/numbering"
 import { impliedTaxRate, priceDocument } from "../documents/pricing"
 import {
-  deliverQuoteEmail,
+  composeQuoteEmail,
   requireRecipientEmail,
   resolveQuoteEmailContext,
 } from "../documents/quote-email"
@@ -162,7 +163,7 @@ export const updateQuoteDraft = defineCommand({
       }
       if (existing.lastEmailAttemptOutcome === "sending") {
         return yield* new InvalidState({
-          message: "This quote is being sent. Send it again to finish before changing it.",
+          message: "This quote is being emailed. Wait for that delivery to finish before changing it.",
           code: "send_in_progress",
         })
       }
@@ -242,7 +243,7 @@ export const deleteQuoteDraft = defineCommand({
       }
       if (quote.lastEmailAttemptOutcome === "sending") {
         return yield* new InvalidState({
-          message: "This quote is being sent. Send it again to finish before changing it.",
+          message: "This quote is being emailed. Wait for that delivery to finish before changing it.",
           code: "send_in_progress",
         })
       }
@@ -284,6 +285,13 @@ const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
     }
   })
 
+/** Delivery is attempted right after the command commits; `emailPending` is true until then. */
+export type QuoteSendResult = Awaited<ReturnType<typeof prisma.quote.update>> & {
+  emailSent: boolean
+  emailPending: boolean
+  emailSkipReason?: string
+}
+
 export const sendQuote = defineCommand({
   type: "quote.send",
   permission: "quote:send",
@@ -291,32 +299,7 @@ export const sendQuote = defineCommand({
   input: quoteSendInputSchema,
   summarize: (input) => `Send quote ${input.id} to the customer`,
   approvalContext: (input) => quoteEmailApprovalContext(input.id, "send"),
-  // Records "sending" before the provider is contacted; see `sendInvoice` for why.
-  prepare: (input) =>
-    Effect.gen(function* () {
-      const db = yield* Db
-      const { now } = yield* Command
-      yield* lockDocument("quote", input.id)
-      const quote = yield* findQuote(input.id)
-      if (quote.status !== "draft" || quote.lastEmailAttemptOutcome === "sending") {
-        return
-      }
-      const { settings } = yield* loadDocumentContext
-      if (!resolveQuoteEmailContext(settings).emailDelivery.available) {
-        return
-      }
-      yield* Effect.promise(() =>
-        db.quote.update({
-          where: { id: quote.id },
-          data: createEmailDeliveryAttempt({
-            at: now,
-            outcome: "sending",
-            code: "sending",
-            message: "Sending quote email.",
-          }),
-        })
-      )
-    }),
+  // The quote becomes sent once the provider accepts the queued email; see `sendInvoice`.
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
@@ -328,29 +311,9 @@ export const sendQuote = defineCommand({
       if (quote.status !== "draft") {
         return yield* new InvalidState({ message: "Only draft quotes can be sent", code: "not_draft" })
       }
+      yield* refuseWhileSending("quote", quote)
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
-      // A send interrupted after delivery is finished with the time it was first sent at.
-      const sentAt =
-        quote.lastEmailAttemptOutcome === "sending" && quote.lastEmailAttemptAt
-          ? quote.lastEmailAttemptAt
-          : now
-      const markedByThisAttempt = sentAt.getTime() === now.getTime()
-      let deliveryStarted = false
-      command.onRollback(async () => {
-        if (markedByThisAttempt && !deliveryStarted) {
-          await prisma.quote.updateMany({
-            where: { id: quote.id, lastEmailAttemptOutcome: "sending" },
-            data: {
-              lastEmailAttemptAt: null,
-              lastEmailAttemptOutcome: null,
-              lastEmailAttemptCode: null,
-              lastEmailAttemptMessage: null,
-            },
-          })
-        }
-      })
-
       const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(quote))
       if (compliance.blocking.length > 0) {
         return yield* new InvalidState({
@@ -359,7 +322,8 @@ export const sendQuote = defineCommand({
         })
       }
 
-      const publicAccessIssuedAt = quote.publicAccessIssuedAt ?? sentAt
+      // The emailed link is signed with the date the quote will be shared at.
+      const publicAccessIssuedAt = quote.publicAccessIssuedAt ?? now
       const publicQuoteUrl = getPublicQuoteUrl({
         id: quote.id,
         status: "sent",
@@ -369,15 +333,6 @@ export const sendQuote = defineCommand({
       const emailContext = resolveQuoteEmailContext(settings)
       const recipient = yield* requireRecipientEmail(quote.contact)
 
-      let emailSent = false
-      let emailSkipReason: string | undefined
-      let attempt = createEmailDeliveryAttempt({
-        at: sentAt,
-        outcome: "sent",
-        code: "sent",
-        message: "Quote email sent.",
-      })
-
       if (!emailContext.emailDelivery.available) {
         if (!input.allowSendWithoutEmail) {
           return yield* new InvalidState({
@@ -385,53 +340,58 @@ export const sendQuote = defineCommand({
             code: "email_unavailable",
           })
         }
-        emailSkipReason = "Email delivery is not configured"
-        attempt = createEmailDeliveryAttempt({
-          at: now,
-          outcome: "skipped",
-          code: "provider_missing",
-          message: emailSkipReason,
+        const emailSkipReason = "Email delivery is not configured"
+        quoteLogger.warn("quote.email.skipped", { organizationId, quoteId: quote.id, reason: "provider_missing" })
+        const updated = yield* Effect.promise(() =>
+          db.quote.update({
+            where: { id: quote.id },
+            data: {
+              status: "sent",
+              issueDate: now,
+              publicAccessIssuedAt,
+              ...createEmailDeliveryAttempt({
+                at: now,
+                outcome: "skipped",
+                code: "provider_missing",
+                message: emailSkipReason,
+              }),
+            },
+          })
+        )
+        command.emit({
+          aggregateType: "quote",
+          aggregateId: quote.id,
+          type: "quote.sent",
+          payload: { number: quote.number, emailSent: false, recipient },
         })
-        quoteLogger.warn("quote.email.skipped", {
-          organizationId,
-          quoteId: quote.id,
-          reason: "provider_missing",
-        })
-      } else {
-        deliveryStarted = true
-        const delivery = yield* deliverQuoteEmail({
-          quote: { ...quote, issueDate: sentAt },
-          settings,
-          to: recipient,
-          publicQuoteUrl,
-          idempotencyScope: `quote-send:${quote.id}:${sentAt.getTime()}`,
-          failureMessage: "Failed to send quote email. Quote was not marked as sent.",
-          failureLogEvent: "quote.email.failed",
-          organizationId,
-        })
-        emailSent = true
-        quoteLogger.info("quote.email.sent", {
-          organizationId,
-          quoteId: quote.id,
-          usingBrandedDomain: delivery.usingBrandedDomain,
-          hasPublicQuoteUrl: Boolean(publicQuoteUrl),
-        })
+        const result: QuoteSendResult = { ...updated, emailSent: false, emailPending: false, emailSkipReason }
+        return result
       }
 
-      const updated = yield* Effect.promise(() =>
-        db.quote.update({
-          where: { id: quote.id },
-          data: { status: "sent", issueDate: sentAt, publicAccessIssuedAt, ...attempt },
-        })
-      )
-
-      command.emit({
-        aggregateType: "quote",
-        aggregateId: quote.id,
-        type: "quote.sent",
-        payload: { number: quote.number, emailSent, recipient },
+      const email = composeQuoteEmail({
+        quote: { ...quote, issueDate: now },
+        settings,
+        to: recipient,
+        publicQuoteUrl,
       })
-      return { ...updated, emailSent, emailSkipReason }
+      const updated = yield* queueDocumentEmail({
+        kind: "quote",
+        mode: "send",
+        document: quote,
+        recipient,
+        message: email.message,
+        idempotencyKey: `quote-send:${quote.id}:${now.getTime()}`,
+        publicLinkIssuedAt: publicAccessIssuedAt,
+        markSending: (data) => db.quote.update({ where: { id: quote.id }, data }),
+      })
+      quoteLogger.info("quote.email.queued", {
+        organizationId,
+        quoteId: quote.id,
+        usingBrandedDomain: email.usingBrandedDomain,
+        hasPublicQuoteUrl: Boolean(publicQuoteUrl),
+      })
+      const result: QuoteSendResult = { ...updated, emailSent: false, emailPending: true }
+      return result
     }),
 })
 
@@ -456,6 +416,7 @@ export const resendQuoteEmail = defineCommand({
           code: "not_shared",
         })
       }
+      yield* refuseWhileSending("quote", quote)
 
       const publicQuoteUrl = getPublicQuoteUrl(quote)
       if (!publicQuoteUrl) {
@@ -475,42 +436,24 @@ export const resendQuoteEmail = defineCommand({
         })
       }
 
-      const delivery = yield* deliverQuoteEmail({
-        quote,
-        settings,
-        to: recipient,
-        publicQuoteUrl,
-        idempotencyScope: `quote-resend:${command.commandId}`,
-          failureMessage: "Failed to resend quote email.",
-        failureLogEvent: "quote.email.resend_failed",
-        organizationId,
+      const email = composeQuoteEmail({ quote, settings, to: recipient, publicQuoteUrl })
+      const updated = yield* queueDocumentEmail({
+        kind: "quote",
+        mode: "email",
+        document: quote,
+        recipient,
+        message: email.message,
+        idempotencyKey: `quote-resend:${command.commandId}`,
+        markSending: (data) => db.quote.update({ where: { id: quote.id }, data }),
       })
-      quoteLogger.info("quote.email.resent", {
+      quoteLogger.info("quote.email.resend_queued", {
         organizationId,
         quoteId: quote.id,
-        usingBrandedDomain: delivery.usingBrandedDomain,
+        usingBrandedDomain: email.usingBrandedDomain,
         hasPublicQuoteUrl: Boolean(publicQuoteUrl),
       })
-
-      const updated = yield* Effect.promise(() =>
-        db.quote.update({
-          where: { id: quote.id },
-          data: createEmailDeliveryAttempt({
-            at: command.now,
-            outcome: "sent",
-            code: "sent",
-            message: "Quote email sent.",
-          }),
-        })
-      )
-
-      command.emit({
-        aggregateType: "quote",
-        aggregateId: quote.id,
-        type: "quote.email_resent",
-        payload: { number: quote.number, recipient },
-      })
-      return { ...updated, emailSent: true, emailSkipReason: undefined }
+      const result: QuoteSendResult = { ...updated, emailSent: false, emailPending: true }
+      return result
     }),
 })
 

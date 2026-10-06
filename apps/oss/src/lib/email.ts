@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto"
 import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
@@ -49,39 +48,44 @@ export class EmailSendError extends Error {
 
 export type EmailMessage = Parameters<Resend["emails"]["send"]>[0]
 
-/**
- * Resend reports API failures in the result instead of throwing.
- * Callers rely on a rejected promise to record a failed delivery attempt.
- */
+/** Rendered email content, as returned by the `build*EmailContent` helpers. */
+export type EmailContent = {
+  subject: string
+  html: string
+  fromAddress: string
+  replyTo: string | null
+}
+
+/** The provider message for rendered content. */
+export function composeMessage(to: string, content: EmailContent) {
+  return {
+    from: content.fromAddress,
+    to,
+    subject: content.subject,
+    html: content.html,
+    ...(content.replyTo ? { replyTo: content.replyTo } : {}),
+  }
+}
+
 export type DeliveryOptions = {
-  /** Sent as-is as the provider idempotency key. */
-  idempotencyKey?: string
   /**
-   * Derives the idempotency key from this scope plus the message content, so the provider drops
-   * an identical message (for example a send retried after its database commit was lost) while a
-   * changed message is still delivered.
+   * Sent as-is as the provider idempotency key: the provider drops a repeat of a message it
+   * already accepted under this key.
    */
-  idempotencyScope?: string
+  idempotencyKey?: string
 }
 
-function contentIdempotencyKey(scope: string, message: EmailMessage) {
-  const digest = createHash("sha256")
-    .update(JSON.stringify([message.from, message.to, message.subject, message.html]))
-    .digest("hex")
-    .slice(0, 32)
-  return `${scope}:${digest}`.slice(0, 256)
-}
-
+/**
+ * Resend reports API failures in the result instead of throwing; they are thrown here as
+ * `EmailSendError` so callers can tell a provider answer from a lost request.
+ */
 export async function deliver(
   message: EmailMessage,
   options: DeliveryOptions = {}
 ): Promise<{ id: string }> {
-  const idempotencyKey =
-    options.idempotencyKey ??
-    (options.idempotencyScope ? contentIdempotencyKey(options.idempotencyScope, message) : undefined)
   const result = await getResend().emails.send(
     message,
-    idempotencyKey ? { idempotencyKey } : undefined
+    options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined
   )
   if (result.error) {
     throw new EmailSendError(result.error.name, result.error.message)
@@ -283,35 +287,6 @@ export function buildInvoiceEmailContent({
   }
 }
 
-export async function sendInvoiceEmail({
-  to,
-  fromName,
-  fromEmail,
-  replyTo,
-  invoice,
-  org,
-  contactName,
-  publicPaymentUrl,
-}: SendInvoiceEmailParams, options: DeliveryOptions = {}) {
-  const content = buildInvoiceEmailContent({
-    fromName,
-    fromEmail,
-    replyTo,
-    invoice,
-    org,
-    contactName,
-    publicPaymentUrl,
-  })
-
-  return deliver({
-    from: content.fromAddress,
-    to,
-    subject: content.subject,
-    html: content.html,
-    ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-  }, options)
-}
-
 // ── Quote email ────────────────────────────────────────────────────
 
 export type SendQuoteEmailParams = {
@@ -400,35 +375,6 @@ export function buildQuoteEmailContent({
     fromAddress: fromAddressValue,
     replyTo: replyTo?.trim() || null,
   }
-}
-
-export async function sendQuoteEmail({
-  to,
-  fromName,
-  fromEmail,
-  replyTo,
-  quote,
-  org,
-  contactName,
-  publicQuoteUrl,
-}: SendQuoteEmailParams, options: DeliveryOptions = {}) {
-  const content = buildQuoteEmailContent({
-    fromName,
-    fromEmail,
-    replyTo,
-    quote,
-    org,
-    contactName,
-    publicQuoteUrl,
-  })
-
-  return deliver({
-    from: content.fromAddress,
-    to,
-    subject: content.subject,
-    html: content.html,
-    ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-  }, options)
 }
 
 // ── Invitation email ───────────────────────────────────────────────

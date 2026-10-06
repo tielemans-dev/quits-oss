@@ -1,14 +1,12 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
-vi.mock("../../lib/emails/credit-note-email", async () => {
-  const actual = await vi.importActual<typeof import("../../lib/emails/credit-note-email")>(
-    "../../lib/emails/credit-note-email"
-  )
-  return { ...actual, sendCreditNoteEmail: vi.fn().mockResolvedValue({ id: "email_cn" }) }
+vi.mock("../../lib/email", async () => {
+  const actual = await vi.importActual<typeof import("../../lib/email")>("../../lib/email")
+  return { ...actual, deliver: vi.fn().mockResolvedValue({ id: "email_cn" }) }
 })
 
 import { prisma } from "../../lib/db"
-import { sendCreditNoteEmail } from "../../lib/emails/credit-note-email"
+import { deliver, EmailSendError } from "../../lib/email"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
 import { createContact } from "../commands/contacts"
@@ -38,7 +36,7 @@ describeIfDatabase("credit note commands", () => {
     }
   })
   afterEach(async () => {
-    vi.mocked(sendCreditNoteEmail).mockClear()
+    vi.mocked(deliver).mockClear()
     while (cleanups.length) await cleanups.pop()?.()
   })
 
@@ -358,27 +356,41 @@ describeIfDatabase("credit note commands", () => {
         actor: context.org.actors.admin,
       })
       expect(outcome).toMatchObject({ status: "completed", result: { recipient: "billing@acme.test" } })
-      expect(sendCreditNoteEmail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: "billing@acme.test",
-          creditNote: expect.objectContaining({ number: creditNote.number, total: 50 }),
-          invoice: expect.objectContaining({ number: "INV-0001" }),
-        }),
-        expect.objectContaining({ idempotencyScope: expect.stringMatching(/^credit-note-send:cmd_/) })
-      )
+      expect(deliver).toHaveBeenCalledTimes(1)
+      const [message, options] = vi.mocked(deliver).mock.calls[0]!
+      expect(message.to).toBe("billing@acme.test")
+      expect(message.subject).toContain(creditNote.number)
+      expect(message.html).toContain("INV-0001")
+      expect(options).toEqual({ idempotencyKey: expect.stringMatching(/^credit-note-send:cmd_/) })
       const stored = await prisma.creditNote.findUniqueOrThrow({ where: { id: creditNote.id } })
       expect(stored.lastEmailAttemptOutcome).toBe("sent")
+      const activity = await readActivity({
+        organizationId: context.org.organizationId,
+        aggregateType: "credit_note",
+        aggregateId: creditNote.id,
+      })
+      expect(activity.events.map((event) => event.type)).toContain("credit_note.sent")
     })
 
-    it("records failed attempts even though the command fails", async () => {
+    it("records a refused email on the credit note while the command completes", async () => {
       const { context, creditNote } = await issuedCreditNote()
-      vi.mocked(sendCreditNoteEmail).mockRejectedValueOnce(new Error("provider down"))
+      vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "Invalid recipient"))
       const outcome = await executeCommand(sendCreditNote, { id: creditNote.id }, {
         actor: context.org.actors.admin,
       })
-      expect(outcome.status === "failed" && outcome.error.tag).toBe("ExternalFailure")
+      expect(outcome.status).toBe("completed")
       const stored = await prisma.creditNote.findUniqueOrThrow({ where: { id: creditNote.id } })
-      expect(stored).toMatchObject({ lastEmailAttemptOutcome: "failed", lastEmailAttemptCode: "send_failed" })
+      expect(stored).toMatchObject({
+        lastEmailAttemptOutcome: "failed",
+        lastEmailAttemptCode: "send_failed",
+        lastEmailAttemptMessage: "The email provider refused the credit note email: Invalid recipient",
+      })
+      const activity = await readActivity({
+        organizationId: context.org.organizationId,
+        aggregateType: "credit_note",
+        aggregateId: creditNote.id,
+      })
+      expect(activity.events.map((event) => event.type)).toContain("credit_note.email_failed")
     })
   })
 })

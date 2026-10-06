@@ -610,7 +610,13 @@ export const recordRecurringAutoSendFailure = defineCommand({
 
       yield* Effect.promise(() =>
         db.invoice.updateMany({
-          where: { id: input.invoiceId, organizationId, status: "draft" },
+          // Never replaces the marker of an email that is being delivered; its delivery settles it.
+          where: {
+            id: input.invoiceId,
+            organizationId,
+            status: "draft",
+            OR: [{ lastEmailAttemptOutcome: null }, { lastEmailAttemptOutcome: { not: "sending" } }],
+          },
           data: createEmailDeliveryAttempt({
             at: now,
             outcome: "failed",
@@ -653,8 +659,13 @@ registerJobHandler(AUTO_SEND_JOB, async (job) => {
   if (outcome.status === "completed" || outcome.status === "awaiting_approval") {
     return
   }
-  // Someone sent or deleted the draft in the meantime; there is nothing left to do.
-  if (outcome.error.code === "not_draft" || outcome.error.tag === "NotFound") {
+  // Someone sent or deleted the draft in the meantime, or its email is already being delivered
+  // (the outbox records that delivery's outcome); there is nothing left to do.
+  if (
+    outcome.error.code === "not_draft" ||
+    outcome.error.code === "send_in_progress" ||
+    outcome.error.tag === "NotFound"
+  ) {
     return
   }
 

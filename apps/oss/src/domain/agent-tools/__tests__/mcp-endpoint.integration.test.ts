@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("../../../lib/email", async () => {
   const actual = await vi.importActual<typeof import("../../../lib/email")>("../../../lib/email")
-  return { ...actual, sendInvoiceEmail: vi.fn().mockResolvedValue({ id: "email_123" }) }
+  return { ...actual, deliver: vi.fn().mockResolvedValue({ id: "email_123" }) }
 })
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"

@@ -4,13 +4,11 @@ import {
   readDocumentSendingDomainState,
   resolveDocumentEmailEnvelope,
 } from "../../lib/document-email-sending"
-import { EmailSendError, sendInvoiceEmail } from "../../lib/email"
-import { createEmailDeliveryAttempt, getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
+import { buildInvoiceEmailContent, composeMessage } from "../../lib/email"
+import { getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
-import { prisma } from "../../lib/db"
-import { ExternalFailure, InvalidState } from "../errors"
-import { Command } from "../services"
+import { InvalidState } from "../errors"
 
 type Decimalish = { toNumber(): number }
 
@@ -72,74 +70,39 @@ export function requireRecipientEmail(contact: { email: string | null }) {
     : Effect.fail(new InvalidState({ message: "Contact has no email address", code: "missing_recipient" }))
 }
 
-/**
- * Sends the invoice email. On failure the failed attempt is recorded after the command's
- * transaction rolls back, then the command fails.
- */
-export function deliverInvoiceEmail(input: {
+/** The invoice email exactly as it will be delivered. */
+export function composeInvoiceEmail(input: {
   invoice: InvoiceForEmail
   settings: OrgEmailSettings
   to: string
   publicPaymentUrl: string | null
-  failureMessage: string
-  /** Scope for the provider idempotency key; see `DeliveryOptions.idempotencyScope`. */
-  idempotencyScope?: string
 }) {
   const { envelope } = resolveInvoiceEmailContext(input.settings)
   const { invoice } = input
-
-  return Effect.tryPromise({
-    try: () =>
-      sendInvoiceEmail({
-        to: input.to,
-        fromName: envelope.fromName,
-        fromEmail: envelope.fromEmail,
-        replyTo: envelope.replyTo,
-        invoice: {
-          ...invoice,
-          subtotal: invoice.subtotalNet.toNumber(),
-          taxAmount: invoice.totalTax.toNumber(),
-          total: invoice.totalGross.toNumber(),
-          items: invoice.items.map((item) => ({
-            description: item.description,
-            quantity: item.quantity.toNumber(),
-            unitPrice: item.unitPriceGross.toNumber(),
-            total: item.lineGross.toNumber(),
-          })),
-        },
-        org: {
-          companyName: input.settings.companyName,
-          companyEmail: input.settings.companyEmail,
-          locale: input.settings.locale,
-          timezone: input.settings.timezone,
-        },
-        contactName: invoice.contact.name,
-        publicPaymentUrl: input.publicPaymentUrl,
-      }, { idempotencyScope: input.idempotencyScope }),
-    catch: (cause) => cause,
-  }).pipe(
-    Effect.catchAll((cause) =>
-      Effect.gen(function* () {
-        const command = yield* Command
-        // A provider rejection means nothing was delivered, so the failure is recorded after the
-        // rollback. Any other error (timeout, lost response) may have delivered the email: the
-        // "sending" marker stays so a retry finishes the same send instead of unfreezing it.
-        if (!(cause instanceof EmailSendError)) {
-          return yield* new ExternalFailure({ message: input.failureMessage, service: "email", cause })
-        }
-        command.onRollback(() =>
-          prisma.invoice.update({
-            where: { id: invoice.id },
-            data: createEmailDeliveryAttempt({
-              outcome: "failed",
-              code: "send_failed",
-              message: "Failed to send invoice email.",
-            }),
-          })
-        )
-        return yield* new ExternalFailure({ message: input.failureMessage, service: "email", cause })
-      })
-    ),
-    Effect.as({ usingBrandedDomain: envelope.usingBrandedDomain })
-  )
+  const content = buildInvoiceEmailContent({
+    fromName: envelope.fromName,
+    fromEmail: envelope.fromEmail,
+    replyTo: envelope.replyTo,
+    invoice: {
+      ...invoice,
+      subtotal: invoice.subtotalNet.toNumber(),
+      taxAmount: invoice.totalTax.toNumber(),
+      total: invoice.totalGross.toNumber(),
+      items: invoice.items.map((item) => ({
+        description: item.description,
+        quantity: item.quantity.toNumber(),
+        unitPrice: item.unitPriceGross.toNumber(),
+        total: item.lineGross.toNumber(),
+      })),
+    },
+    org: {
+      companyName: input.settings.companyName,
+      companyEmail: input.settings.companyEmail,
+      locale: input.settings.locale,
+      timezone: input.settings.timezone,
+    },
+    contactName: invoice.contact.name,
+    publicPaymentUrl: input.publicPaymentUrl,
+  })
+  return { message: composeMessage(input.to, content), usingBrandedDomain: envelope.usingBrandedDomain }
 }

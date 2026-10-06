@@ -86,5 +86,5 @@ export const enQuotesMessages = {
   "quotes.detail.quoteTo": "Quote To",
   "quotes.detail.title": "Quote",
   "quotes.detail.email.status.sending": "Sending",
-  "quotes.detail.email.reason.sending": "Sending was interrupted before it was confirmed. Send again to finish; the customer will not get a duplicate. The quote cannot be edited until then.",
+  "quotes.detail.email.reason.sending": "The email provider has not confirmed delivery yet. It is retried automatically, and the customer will not get a duplicate. The quote cannot be edited until delivery is confirmed or given up.",
 } as const

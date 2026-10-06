@@ -1,4 +1,4 @@
-import { actionBlock, deliver, escapeHtml, fromAddress, layout, sanitizeHeader, t } from "../email"
+import { actionBlock, escapeHtml, fromAddress, layout, sanitizeHeader, t } from "../email"
 import { formatCurrency, formatDate } from "../i18n/format"
 
 export type ReminderEmailParams = {
@@ -102,23 +102,3 @@ export function buildReminderEmailContent({
   }
 }
 
-/**
- * `idempotencyKey` lets a retried job resend safely: the provider drops a duplicate if the
- * first attempt was accepted but its outcome was never recorded.
- */
-export async function sendReminderEmail(
-  { to, ...params }: ReminderEmailParams,
-  options: { idempotencyKey?: string } = {}
-) {
-  const content = buildReminderEmailContent(params)
-  return deliver(
-    {
-      from: content.fromAddress,
-      to,
-      subject: content.subject,
-      html: content.html,
-      ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-    },
-    options
-  )
-}

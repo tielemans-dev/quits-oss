@@ -6,9 +6,8 @@ import {
   computeCreditAvailability,
   type CreditableInvoiceLine,
 } from "../../lib/credit-notes/calculation"
-import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
-import { sendCreditNoteEmail } from "../../lib/emails/credit-note-email"
-import { prisma } from "../../lib/db"
+import { composeMessage } from "../../lib/email"
+import { buildCreditNoteEmailContent } from "../../lib/emails/credit-note-email"
 import { translate } from "../../lib/i18n/translate"
 import { appLogger } from "../../lib/observability"
 import type { AnyCommandDefinition } from "../command"
@@ -19,8 +18,9 @@ import { allocateDocumentNumber } from "../documents/numbering"
 import { documentFractionDigits, impliedTaxRate } from "../documents/pricing"
 import { refreshInvoiceSettlement } from "../documents/settlement"
 import { buildBuyerSnapshot, buildSellerSnapshot } from "../documents/snapshots"
-import { ExternalFailure, InvalidState, NotFound, ValidationFailed } from "../errors"
+import { InvalidState, NotFound, ValidationFailed } from "../errors"
 import { Command, Db } from "../services"
+import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
 import { creditNoteIssueApproval, creditNoteSendApproval } from "../approval-contexts"
 
@@ -251,7 +251,7 @@ export const sendCreditNote = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
-      const { organizationId, now } = command
+      const { organizationId } = command
 
       yield* lockDocument("creditNote", input.id)
       const creditNote = yield* Effect.promise(() =>
@@ -278,88 +278,51 @@ export const sendCreditNote = defineCommand({
         })
       }
 
-      yield* Effect.tryPromise({
-        try: () =>
-          sendCreditNoteEmail({
-            to: recipient,
-            fromName: envelope.fromName,
-            fromEmail: envelope.fromEmail,
-            replyTo: envelope.replyTo,
-            creditNote: {
-              number: creditNote.number,
-              issueDate: creditNote.issueDate,
-              reason: creditNote.reason,
-              subtotal: num(creditNote.subtotalNet),
-              taxAmount: num(creditNote.totalTax),
-              total: num(creditNote.totalGross),
-              currency: creditNote.currency,
-              items: creditNote.items.map((item) => ({
-                description: item.description,
-                quantity: num(item.quantity),
-                unitPrice: num(item.unitPriceGross),
-                total: num(item.lineGross),
-              })),
-            },
-            invoice: creditNote.invoice,
-            org: {
-              companyName: settings.companyName,
-              companyEmail: settings.companyEmail,
-              locale: creditNote.locale,
-              timezone: creditNote.timezone,
-            },
-            contactName: creditNote.contact.name,
-          }, { idempotencyScope: `credit-note-send:${command.commandId}` }),
-        catch: (cause) => cause,
-      }).pipe(
-        // Recorded after the rollback so the failed attempt survives the command failing,
-        // matching invoice sending.
-        Effect.catchAll((cause) => {
-          command.onRollback(() =>
-            prisma.creditNote.update({
-              where: { id: creditNote.id },
-              data: createEmailDeliveryAttempt({
-                at: now,
-                outcome: "failed",
-                code: "send_failed",
-                message: "Failed to send credit note email.",
-              }),
-            })
-          )
-          return Effect.fail(
-            new ExternalFailure({
-              message: "Failed to send credit note email.",
-              service: "email",
-              cause,
-            })
-          )
-        })
-      )
-
-      creditNoteLogger.info("credit_note.email.sent", {
+      yield* refuseWhileSending("creditNote", creditNote)
+      const content = buildCreditNoteEmailContent({
+        fromName: envelope.fromName,
+        fromEmail: envelope.fromEmail,
+        replyTo: envelope.replyTo,
+        creditNote: {
+          number: creditNote.number,
+          issueDate: creditNote.issueDate,
+          reason: creditNote.reason,
+          subtotal: num(creditNote.subtotalNet),
+          taxAmount: num(creditNote.totalTax),
+          total: num(creditNote.totalGross),
+          currency: creditNote.currency,
+          items: creditNote.items.map((item) => ({
+            description: item.description,
+            quantity: num(item.quantity),
+            unitPrice: num(item.unitPriceGross),
+            total: num(item.lineGross),
+          })),
+        },
+        invoice: creditNote.invoice,
+        org: {
+          companyName: settings.companyName,
+          companyEmail: settings.companyEmail,
+          locale: creditNote.locale,
+          timezone: creditNote.timezone,
+        },
+        contactName: creditNote.contact.name,
+      })
+      // Recorded as sent once the provider accepts the queued email; see `delivery/outbox.ts`.
+      const updated = yield* queueDocumentEmail({
+        kind: "creditNote",
+        mode: "email",
+        document: creditNote,
+        recipient,
+        message: composeMessage(recipient, content),
+        idempotencyKey: `credit-note-send:${command.commandId}`,
+        markSending: (data) => db.creditNote.update({ where: { id: creditNote.id }, data }),
+      })
+      creditNoteLogger.info("credit_note.email.queued", {
         organizationId,
         creditNoteId: creditNote.id,
         usingBrandedDomain: envelope.usingBrandedDomain,
       })
-
-      const updated = yield* Effect.promise(() =>
-        db.creditNote.update({
-          where: { id: creditNote.id },
-          data: createEmailDeliveryAttempt({
-            at: now,
-            outcome: "sent",
-            code: "sent",
-            message: "Credit note email sent.",
-          }),
-        })
-      )
-
-      command.emit({
-        aggregateType: "credit_note",
-        aggregateId: creditNote.id,
-        type: "credit_note.sent",
-        payload: { number: creditNote.number, recipient },
-      })
-      return { ...updated, emailSent: true, recipient }
+      return { ...updated, emailSent: false, emailPending: true, recipient }
     }),
 })
 

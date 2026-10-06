@@ -17,9 +17,13 @@ import { defineCommandTool, defineQueryTool, type AgentTool } from "../define"
 import { afterNewest, decodeCursor, toPage } from "../pagination"
 import { presentInvoice, type InvoiceRow } from "./documents"
 
-const presentSent = (result: InvoiceRow & { emailSent: boolean; emailSkipReason?: string }) => ({
+const presentSent = (
+  result: InvoiceRow & { emailSent: boolean; emailPending?: boolean; emailSkipReason?: string }
+) => ({
   ...presentInvoice(result),
   emailSent: result.emailSent,
+  // Queued emails are delivered right after the command; invoices_get shows the outcome.
+  emailPending: result.emailPending ?? false,
   emailSkipReason: result.emailSkipReason ?? null,
 })
 
@@ -100,7 +104,9 @@ export const invoiceTools: AgentTool[] = [
     description:
       "Issues a draft invoice and emails it to the contact's email address. The invoice gets an " +
       "issue date and can no longer be edited. Set allowSendWithoutEmail only when the person asked " +
-      "to mark it sent even though email delivery is not configured.",
+      "to mark it sent even though email delivery is not configured. The invoice becomes sent once the " +
+      "email provider accepts the email; if the result has emailPending: true, check invoices_get " +
+      "(lastEmailAttempt) for the outcome instead of sending again.",
     command: sendInvoice,
     input: invoiceSendInputSchema,
     present: presentSent,

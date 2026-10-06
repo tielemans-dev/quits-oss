@@ -59,7 +59,7 @@ export const invoiceRemindersQuerySchema = z.object({
   invoiceId: z.string().min(1),
 })
 
-/** Final outcome recorded on a reminder. `failed` may still be retried by its job. */
+/** Final outcome recorded on a reminder. `failed` means the email provider refused it or never confirmed it. */
 export const reminderOutcomeSchema = z.enum(["sent", "failed", "skipped"])
 
 /**

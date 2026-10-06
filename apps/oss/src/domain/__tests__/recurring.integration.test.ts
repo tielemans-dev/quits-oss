@@ -2,12 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("../../lib/email", async () => {
   const actual = await vi.importActual<typeof import("../../lib/email")>("../../lib/email")
-  return { ...actual, sendInvoiceEmail: vi.fn().mockResolvedValue({ id: "email_123" }) }
+  return { ...actual, deliver: vi.fn().mockResolvedValue({ id: "email_123" }) }
 })
 
 import type { RecurringCreateInput } from "@yaip/contracts/recurring"
 import { prisma } from "../../lib/db"
-import { sendInvoiceEmail } from "../../lib/email"
+import { deliver, EmailSendError } from "../../lib/email"
+import { findEmailDeliveryJobs, retryEmailDeliveries } from "../../test-utils/email-outbox"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import type { Actor, AgentActor } from "../actor"
 import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
@@ -51,8 +52,8 @@ describeIfDatabase("recurring invoices", () => {
       if (previousEnv[key] === undefined) delete process.env[key]
       else process.env[key] = previousEnv[key]
     }
-    vi.mocked(sendInvoiceEmail).mockReset()
-    vi.mocked(sendInvoiceEmail).mockResolvedValue({ id: "email_123" })
+    vi.mocked(deliver).mockReset()
+    vi.mocked(deliver).mockResolvedValue({ id: "email_123" })
     while (cleanups.length) await cleanups.pop()?.()
   })
 
@@ -256,8 +257,9 @@ describeIfDatabase("recurring invoices", () => {
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "sent" })
-    expect(sendInvoiceEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "billing@acme.test" }),
-        expect.objectContaining({ idempotencyScope: expect.stringMatching(/^invoice-send:/) }))
+    expect(deliver).toHaveBeenCalledWith(expect.objectContaining({ to: "billing@acme.test" }), {
+      idempotencyKey: expect.stringMatching(new RegExp(`^invoice-send:${invoice?.id}:`)),
+    })
   })
 
   it("queues auto-sends for the job sweep instead of sending while generating runs", async () => {
@@ -269,7 +271,7 @@ describeIfDatabase("recurring invoices", () => {
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice?.status).toBe("draft")
-    expect(sendInvoiceEmail).not.toHaveBeenCalled()
+    expect(deliver).not.toHaveBeenCalled()
     expect(
       await prisma.job.findUniqueOrThrow({ where: { dedupeKey: `recurring-auto-send:${invoice?.id}` } })
     ).toMatchObject({ type: "recurring.auto_send", status: "pending", attempts: 0 })
@@ -292,7 +294,7 @@ describeIfDatabase("recurring invoices", () => {
       lastEmailAttemptOutcome: "failed",
       lastEmailAttemptCode: "missing_recipient",
     })
-    expect(sendInvoiceEmail).not.toHaveBeenCalled()
+    expect(deliver).not.toHaveBeenCalled()
     // A missing recipient cannot be fixed by retrying: the job fails at once and is reported.
     expect(jobs).toMatchObject({ processed: 1, succeeded: 0, retrying: 0, failed: 1 })
     expect(await prisma.job.findFirstOrThrow({ where: { organizationId: org.organizationId } })).toMatchObject({
@@ -308,20 +310,55 @@ describeIfDatabase("recurring invoices", () => {
     expect(after.status).toBe("active")
   })
 
-  it("keeps the draft and retries later when the email provider fails", async () => {
+  it("hands an uncertain provider failure to the email outbox, which retries the same email", async () => {
     enableEmail()
-    vi.mocked(sendInvoiceEmail).mockRejectedValue(new Error("provider down"))
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("provider down"))
     const { org, contactId } = await setup()
     const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
 
     await tickRecurring(org)
     const jobs = await runOrganizationJobs([org.organizationId])
 
+    // The auto-send is done once its email is queued; the outbox owns the delivery from there.
+    expect(jobs).toMatchObject({ processed: 1, succeeded: 1, retrying: 0, failed: 0 })
     const [invoice] = await generatedInvoices(schedule.id)
-    expect(invoice?.status).toBe("draft")
-    expect(jobs).toMatchObject({ processed: 1, succeeded: 0, retrying: 1, failed: 0 })
-    const job = await prisma.job.findFirstOrThrow({ where: { organizationId: org.organizationId } })
-    expect(job).toMatchObject({ type: "recurring.auto_send", status: "pending", attempts: 1 })
+    expect(invoice).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "sending" })
+    const [delivery] = await findEmailDeliveryJobs(org.organizationId)
+    expect(delivery).toMatchObject({ status: "pending", attempts: 1 })
+
+    await retryEmailDeliveries(org.organizationId)
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoice!.id } })).toMatchObject({
+      status: "sent",
+      lastEmailAttemptOutcome: "sent",
+    })
+    const calls = vi.mocked(deliver).mock.calls
+    expect(calls).toHaveLength(2)
+    expect(calls[1]).toEqual(calls[0])
+  })
+
+  it("keeps the draft editable when the email provider refuses the auto-sent email", async () => {
+    enableEmail()
+    vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "Invalid recipient"))
+    const { org, contactId } = await setup()
+    const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
+
+    await tickRecurring(org)
+    await runOrganizationJobs([org.organizationId])
+
+    const [invoice] = await generatedInvoices(schedule.id)
+    expect(invoice).toMatchObject({
+      status: "draft",
+      lastEmailAttemptOutcome: "failed",
+      lastEmailAttemptCode: "send_failed",
+    })
+    const [delivery] = await findEmailDeliveryJobs(org.organizationId)
+    expect(delivery).toMatchObject({ status: "done", attempts: 1 })
+    const activity = await readActivity({
+      organizationId: org.organizationId,
+      aggregateType: "invoice",
+      aggregateId: invoice!.id,
+    })
+    expect(activity.events.map((event) => event.type)).toContain("invoice.email_failed")
   })
 
   it("pauses a schedule whose run fails and retries it after resume", async () => {

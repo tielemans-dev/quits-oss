@@ -23,6 +23,7 @@ import { computeSettlement } from "../../domain/documents/settlement"
 import { executeCommand } from "../../domain/execute"
 import { markOrganizationInvoicesOverdue } from "../../domain/features/overdue"
 import { router, authorizedProcedure } from "../init"
+import { settleEmailResult } from "../email-delivery-result"
 import { unwrapOutcome } from "../outcome"
 
 const invoiceLogger = appLogger.child("invoices")
@@ -155,13 +156,17 @@ export const invoicesRouter = router({
   send: authorizedProcedure("invoice:send")
     .input(invoiceSendInputSchema)
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(await executeCommand(sendInvoice, input, { actor: ctx.actor }))
+      settleEmailResult(unwrapOutcome(await executeCommand(sendInvoice, input, { actor: ctx.actor })), () =>
+        prisma.invoice.findUniqueOrThrow({ where: { id: input.id } })
+      )
     ),
 
   resendEmail: authorizedProcedure("invoice:send")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(await executeCommand(resendInvoiceEmail, input, { actor: ctx.actor }))
+      settleEmailResult(unwrapOutcome(await executeCommand(resendInvoiceEmail, input, { actor: ctx.actor })), () =>
+        prisma.invoice.findUniqueOrThrow({ where: { id: input.id } })
+      )
     ),
 
   createPaymentLink: authorizedProcedure("invoice:send")

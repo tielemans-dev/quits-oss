@@ -8,18 +8,19 @@ import {
 } from "@yaip/contracts/reminders"
 import { Prisma } from "../../../generated/prisma/client"
 import type { SystemActor } from "../actor"
-import { prisma } from "../../lib/db"
-import { sendReminderEmail } from "../../lib/emails/reminder-email"
+import { composeMessage } from "../../lib/email"
+import { buildReminderEmailContent } from "../../lib/emails/reminder-email"
 import { appLogger } from "../../lib/observability"
 import { getPublicInvoicePaymentUrl } from "../../lib/payments/public"
 import type { AnyCommandDefinition } from "../command"
 import { defineCommand } from "../command"
+import { enqueueEmailDelivery, registerDeliveryCompletion } from "../delivery/outbox"
 import { loadDocumentContext } from "../documents/context"
 import { fingerprint } from "../approval-contexts"
 import { lockDocument } from "../documents/locks"
 import { resolveInvoiceEmailContext } from "../documents/invoice-email"
 import { computeSettlement } from "../documents/settlement"
-import { ExternalFailure, InvalidState, NotFound } from "../errors"
+import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { reminderSendApproval } from "../approval-contexts"
 
@@ -146,20 +147,77 @@ const findInvoice = (id: string) =>
     return invoice
   })
 
+const REMINDER_COMPLETION = "reminder"
+
 /**
- * Sends the reminder email. On failure `recordFailure` is registered to run after the command's
- * transaction rolls back, so the failure is kept.
+ * Settles a queued reminder email: a reminder reads "sending" from when it is queued until the
+ * provider accepts or refuses it, so a reminder is only recorded as sent once it was delivered.
  */
-const deliverReminderEmail = (input: {
+registerDeliveryCompletion(REMINDER_COMPLETION, {
+  pending: async (db, target) =>
+    (await db.invoiceReminder.count({
+      where: { id: target.reminderId, outcome: "sending", sentAt: new Date(target.attemptAt) },
+    })) > 0,
+  delivered: async ({ tx, target }) => {
+    const manual = target.manual === "true"
+    const { count } = await tx.invoiceReminder.updateMany({
+      where: { id: target.reminderId, outcome: "sending", sentAt: new Date(target.attemptAt) },
+      // A manual reminder keeps its "sent manually by" note.
+      data: manual ? { outcome: "sent" } : { outcome: "sent", outcomeMessage: null },
+    })
+    if (count === 0) return []
+    return [
+      {
+        aggregateType: "invoice",
+        aggregateId: target.invoiceId,
+        type: "invoice.reminder_sent",
+        payload: {
+          number: target.number,
+          reminderId: target.reminderId,
+          offsetDays: Number(target.offsetDays),
+          recipient: target.recipient,
+          balanceDue: Number(target.balanceDue),
+          manual,
+        },
+      },
+    ]
+  },
+  rejected: async ({ tx, target }, rejection) => {
+    const { count } = await tx.invoiceReminder.updateMany({
+      where: { id: target.reminderId, outcome: "sending", sentAt: new Date(target.attemptAt) },
+      data: { outcome: "failed", outcomeMessage: `Email delivery failed: ${rejection.message}`.slice(0, 500) },
+    })
+    if (count === 0) return []
+    return [
+      {
+        aggregateType: "invoice",
+        aggregateId: target.invoiceId,
+        type: "invoice.reminder_failed",
+        payload: {
+          number: target.number,
+          reminderId: target.reminderId,
+          reason: rejection.reason,
+          message: rejection.message,
+        },
+      },
+    ]
+  },
+})
+
+/**
+ * Queues the reminder email for a reserved reminder row, which the caller has marked "sending"
+ * with `sentAt` equal to the command's time. The completion above records the outcome.
+ */
+const queueReminderEmail = (input: {
   invoice: ReminderInvoice
+  reminder: { id: string; offsetDays: number }
   recipient: string
-  /** Stable per reminder so provider-side deduplication covers retries. */
+  manual: boolean
+  /** Names exactly this delivery; the provider drops a repeat sent under the same key. */
   idempotencyKey: string
-  recordFailure?: () => Promise<unknown>
 }) =>
   Effect.gen(function* () {
-    const command = yield* Command
-    const { now } = command
+    const { now } = yield* Command
     const { settings } = yield* loadDocumentContext
     const emailContext = resolveInvoiceEmailContext(settings)
     const { invoice } = input
@@ -169,40 +227,43 @@ const deliverReminderEmail = (input: {
         : null
     const { balanceDue } = computeSettlement(invoice)
 
-    yield* Effect.tryPromise({
-      try: () =>
-        sendReminderEmail({
-          to: input.recipient,
-          fromName: emailContext.envelope.fromName,
-          fromEmail: emailContext.envelope.fromEmail,
-          replyTo: emailContext.envelope.replyTo,
-          stage: reminderStage(invoice.dueDate, now),
-          invoice: {
-            number: invoice.number,
-            dueDate: invoice.dueDate,
-            currency: invoice.currency,
-            balanceDue: balanceDue.toNumber(),
-          },
-          org: {
-            companyName: settings.companyName,
-            companyEmail: settings.companyEmail,
-            locale: invoice.locale || settings.locale,
-            timezone: invoice.timezone || settings.timezone,
-          },
-          contactName: invoice.contact.name,
-          publicPaymentUrl,
-        }, { idempotencyKey: input.idempotencyKey }),
-      catch: (cause) => cause,
-    }).pipe(
-      Effect.catchAll((cause) => {
-        if (input.recordFailure) {
-          command.onRollback(input.recordFailure)
-        }
-        return Effect.fail(
-          new ExternalFailure({ message: "Failed to send reminder email", service: "email", cause })
-        )
-      })
-    )
+    const content = buildReminderEmailContent({
+      fromName: emailContext.envelope.fromName,
+      fromEmail: emailContext.envelope.fromEmail,
+      replyTo: emailContext.envelope.replyTo,
+      stage: reminderStage(invoice.dueDate, now),
+      invoice: {
+        number: invoice.number,
+        dueDate: invoice.dueDate,
+        currency: invoice.currency,
+        balanceDue: balanceDue.toNumber(),
+      },
+      org: {
+        companyName: settings.companyName,
+        companyEmail: settings.companyEmail,
+        locale: invoice.locale || settings.locale,
+        timezone: invoice.timezone || settings.timezone,
+      },
+      contactName: invoice.contact.name,
+      publicPaymentUrl,
+    })
+    yield* enqueueEmailDelivery({
+      message: composeMessage(input.recipient, content),
+      idempotencyKey: input.idempotencyKey,
+      completion: {
+        kind: REMINDER_COMPLETION,
+        target: {
+          reminderId: input.reminder.id,
+          invoiceId: invoice.id,
+          attemptAt: now.toISOString(),
+          number: invoice.number,
+          recipient: input.recipient,
+          offsetDays: String(input.reminder.offsetDays),
+          balanceDue: balanceDue.toString(),
+          manual: String(input.manual),
+        },
+      },
+    })
 
     return { balanceDue: balanceDue.toNumber(), hasPublicPaymentUrl: Boolean(publicPaymentUrl) }
   })
@@ -417,19 +478,19 @@ export const sendReminderNow = defineCommand({
           where: { invoiceId_offsetDays: { invoiceId: invoice.id, offsetDays } },
         })
       )
-      if (existing && (existing.outcome === null || existing.outcome === "sent")) {
+      if (existing && (existing.outcome === null || existing.outcome === "sent" || existing.outcome === "sending")) {
         return yield* new InvalidState({
           message: "A reminder for this invoice was already sent today",
           code: "already_reminded",
         })
       }
 
-      // Reserve the slot before sending: a concurrent request waits on the invoice lock and then
-      // finds this reminder. If sending fails the transaction rolls the reservation back.
+      // Reserve the slot: a concurrent request waits on the invoice lock and then finds this
+      // reminder. It reads "sending" until the provider accepts or refuses the queued email.
       const data = {
         scheduledFor: now,
         sentAt: now,
-        outcome: "sent",
+        outcome: "sending",
         outcomeMessage: `${MANUAL_REMINDER_PREFIX}${command.actor.label}`,
       }
       const reminder = yield* Effect.promise(() =>
@@ -437,29 +498,14 @@ export const sendReminderNow = defineCommand({
           ? db.invoiceReminder.update({ where: { id: existing.id }, data })
           : db.invoiceReminder.create({ data: { invoiceId: invoice.id, offsetDays, ...data } })
       )
-      const delivery = yield* deliverReminderEmail({
+      const delivery = yield* queueReminderEmail({
         invoice,
+        reminder,
         recipient,
-        // Derived from the operation, not the reservation row: the row id is new on every attempt,
-        // so a retry after the provider accepted the email but the commit was lost would otherwise
-        // send it again. `(invoiceId, offsetDays)` is unique, so this names exactly one reminder.
-        idempotencyKey: manualReminderIdempotencyKey(invoice.id, offsetDays),
+        manual: true,
+        idempotencyKey: `${manualReminderIdempotencyKey(invoice.id, offsetDays)}-${now.getTime()}`,
       })
-
-      command.emit({
-        aggregateType: "invoice",
-        aggregateId: invoice.id,
-        type: "invoice.reminder_sent",
-        payload: {
-          number: invoice.number,
-          reminderId: reminder.id,
-          offsetDays,
-          recipient,
-          balanceDue: delivery.balanceDue,
-          manual: true,
-        },
-      })
-      remindersLogger.info("reminder.sent", {
+      remindersLogger.info("reminder.queued", {
         organizationId: command.organizationId,
         invoiceId: invoice.id,
         manual: true,
@@ -654,7 +700,13 @@ export const deliverScheduledReminder = defineCommand({
       if (!reminder) {
         return { reminderId: input.reminderId, outcome: "missing" as const }
       }
-      if (reminder.outcome === "sent" || reminder.outcome === "skipped") {
+      // Sent, skipped, and refused reminders are final; a "sending" one is already queued.
+      if (
+        reminder.outcome === "sent" ||
+        reminder.outcome === "skipped" ||
+        reminder.outcome === "sending" ||
+        reminder.outcome === "failed"
+      ) {
         return { reminderId: reminder.id, outcome: reminder.outcome }
       }
 
@@ -671,7 +723,8 @@ export const deliverScheduledReminder = defineCommand({
         (other) =>
           other.offsetDays > reminder.offsetDays &&
           (other.outcome === "sent" ||
-            ((other.outcome === null || other.outcome === "failed") &&
+            other.outcome === "sending" ||
+            (other.outcome === null &&
               other.scheduledFor <= now &&
               (isManualReminder(other) || (policy.enabled && offsetInPolicy(other.offsetDays)))))
       )
@@ -721,44 +774,26 @@ export const deliverScheduledReminder = defineCommand({
       }
 
       const recipient = invoice.contact.email!.trim()
-      const delivery = yield* deliverReminderEmail({
-        invoice,
-        recipient,
-        idempotencyKey: `yaip-reminder-${reminder.id}`,
-        // Written after the rollback so the failure is kept.
-        recordFailure: () =>
-          prisma.invoiceReminder.update({
-            where: { id: reminder.id },
-            data: { outcome: "failed", outcomeMessage: "Email delivery failed; retrying" },
-          }),
-      })
-
       yield* Effect.promise(() =>
         db.invoiceReminder.update({
           where: { id: reminder.id },
-          data: { outcome: "sent", sentAt: now, outcomeMessage: null },
+          data: { outcome: "sending", sentAt: now, outcomeMessage: null },
         })
       )
-      command.emit({
-        aggregateType: "invoice",
-        aggregateId: invoice.id,
-        type: "invoice.reminder_sent",
-        payload: {
-          number: invoice.number,
-          reminderId: reminder.id,
-          offsetDays: reminder.offsetDays,
-          recipient,
-          balanceDue: delivery.balanceDue,
-          manual: false,
-        },
+      const delivery = yield* queueReminderEmail({
+        invoice,
+        reminder,
+        recipient,
+        manual: false,
+        idempotencyKey: `yaip-reminder-${reminder.id}-${now.getTime()}`,
       })
-      remindersLogger.info("reminder.sent", {
+      remindersLogger.info("reminder.queued", {
         organizationId,
         invoiceId: invoice.id,
         manual: false,
         hasPublicPaymentUrl: delivery.hasPublicPaymentUrl,
       })
-      return { reminderId: reminder.id, outcome: "sent" as const }
+      return { reminderId: reminder.id, outcome: "sending" as const }
     }),
 })
 

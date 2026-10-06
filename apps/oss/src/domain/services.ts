@@ -29,11 +29,6 @@ export type CommandScope = {
   readonly emit: (event: PendingEvent) => void
   /** Queues background work; persisted with the transaction and run after commit. */
   readonly enqueue: (job: PendingJob) => void
-  /**
-   * Registers a write that must survive this command failing, such as recording a failed email
-   * attempt. It runs after the transaction rolls back, so it never waits on the command's locks.
-   */
-  readonly onRollback: (write: () => Promise<unknown>) => void
 }
 
 export class Command extends Context.Tag("yaip/Command")<Command, CommandScope>() {}

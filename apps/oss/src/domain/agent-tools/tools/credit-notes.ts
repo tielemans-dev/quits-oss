@@ -103,7 +103,7 @@ export const creditNoteTools: AgentTool[] = [
   defineCommandTool({
     name: "credit_note_send",
     title: "Email credit note",
-    description: "Emails a credit note to the customer of the credited invoice.",
+    description: "Emails a credit note to the customer of the credited invoice. The email is queued and delivered right away; lastEmailAttempt reads \"sending\" until the email provider accepts it, so check it before trying again.",
     command: sendCreditNote,
     input: creditNoteSendInputSchema,
   }),

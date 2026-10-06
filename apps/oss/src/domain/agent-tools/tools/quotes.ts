@@ -91,7 +91,8 @@ export const quoteTools: AgentTool[] = [
     title: "Send quote",
     description:
       "Emails a draft quote to the contact with a link where they can accept or reject it. The quote " +
-      "can no longer be edited afterwards.",
+      "can no longer be edited afterwards. It becomes sent once the email provider accepts the email; " +
+      "until then lastEmailAttempt reads \"sending\", so check it before sending again.",
     command: sendQuote,
     input: quoteSendInputSchema,
     present: presentQuote,
@@ -100,7 +101,7 @@ export const quoteTools: AgentTool[] = [
   defineCommandTool({
     name: "quote_resend_email",
     title: "Resend quote email",
-    description: "Emails a sent quote to the contact again.",
+    description: "Emails a sent quote to the contact again. The email is queued and delivered right away; lastEmailAttempt reads \"sending\" until the email provider accepts it, so check it before trying again.",
     command: resendQuoteEmail,
     input: quoteIdInputSchema,
     present: presentQuote,

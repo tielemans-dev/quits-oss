@@ -9,12 +9,12 @@ vi.mock("../../../lib/email", async () => {
 
   return {
     ...actual,
-    sendQuoteEmail: vi.fn().mockResolvedValue({ id: "email_123" }),
+    deliver: vi.fn().mockResolvedValue({ id: "email_123" }),
   }
 })
 
 import { prisma } from "../../../lib/db"
-import { EmailSendError, sendQuoteEmail } from "../../../lib/email"
+import { deliver, EmailSendError } from "../../../lib/email"
 import { appRouter } from "../../router"
 import { ensureTestMembership } from "../../../test-utils/membership"
 
@@ -111,8 +111,8 @@ async function createQuoteFixture(options?: {
 
 describeIfDatabase("quote send email delivery", () => {
   afterEach(() => {
-    vi.mocked(sendQuoteEmail).mockReset()
-    vi.mocked(sendQuoteEmail).mockResolvedValue({ id: "email_123" })
+    vi.mocked(deliver).mockReset()
+    vi.mocked(deliver).mockResolvedValue({ id: "email_123" })
   })
 
   it("issues public quote access on send, records a sent attempt, and passes the link to the email layer", async () => {
@@ -150,15 +150,14 @@ describeIfDatabase("quote send email delivery", () => {
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
       expect(reloaded.lastEmailAttemptCode).toBe("sent")
 
-      expect(sendQuoteEmail).toHaveBeenCalledWith(
+      expect(deliver).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "buyer@example.com",
-          publicQuoteUrl: expect.stringContaining("https://app.example.test/q/"),
-          fromName: "Acme via YAIP",
-          fromEmail: "billing@example.com",
+          html: expect.stringContaining("https://app.example.test/q/"),
+          from: "Acme via YAIP <billing@example.com>",
           replyTo: "billing@acme.com",
         }),
-        expect.objectContaining({ idempotencyScope: expect.stringMatching(/^quote-(send|resend):/) })
+        { idempotencyKey: expect.stringMatching(new RegExp(`^quote-send:${quote.id}:`)) }
       )
     } finally {
       restoreEnv(previous)
@@ -187,13 +186,12 @@ describeIfDatabase("quote send email delivery", () => {
     try {
       await caller.quotes.send({ id: quote.id })
 
-      expect(sendQuoteEmail).toHaveBeenCalledWith(
+      expect(deliver).toHaveBeenCalledWith(
         expect.objectContaining({
-          fromName: "Acme",
-          fromEmail: "billing@billing.acme.com",
+          from: "Acme <billing@billing.acme.com>",
           replyTo: "billing@acme.com",
         }),
-        expect.objectContaining({ idempotencyScope: expect.stringMatching(/^quote-(send|resend):/) })
+        { idempotencyKey: expect.stringMatching(/^quote-send:/) }
       )
     } finally {
       restoreEnv(previous)
@@ -256,7 +254,7 @@ describeIfDatabase("quote send email delivery", () => {
       expect(reloaded.publicAccessIssuedAt).toBeTruthy()
       expect(reloaded.lastEmailAttemptOutcome).toBe("skipped")
       expect(reloaded.lastEmailAttemptCode).toBe("provider_missing")
-      expect(sendQuoteEmail).not.toHaveBeenCalled()
+      expect(deliver).not.toHaveBeenCalled()
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })
@@ -275,7 +273,7 @@ describeIfDatabase("quote send email delivery", () => {
     process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
-    vi.mocked(sendQuoteEmail).mockRejectedValueOnce(
+    vi.mocked(deliver).mockRejectedValueOnce(
       new EmailSendError("validation_error", "Domain is not verified")
     )
 
@@ -283,7 +281,7 @@ describeIfDatabase("quote send email delivery", () => {
 
     try {
       await expect(caller.quotes.send({ id: quote.id })).rejects.toThrow(
-        "Failed to send quote email. Quote was not marked as sent."
+        "The email provider refused the quote email: Domain is not verified"
       )
 
       const reloaded = await prisma.quote.findUniqueOrThrow({
@@ -338,7 +336,7 @@ describeIfDatabase("quote send email delivery", () => {
       expect(reloaded.status).toBe("draft")
       expect(reloaded.publicAccessIssuedAt).toBeNull()
       expect(reloaded.lastEmailAttemptAt).toBeNull()
-      expect(sendQuoteEmail).not.toHaveBeenCalled()
+      expect(deliver).not.toHaveBeenCalled()
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })
@@ -362,9 +360,9 @@ describeIfDatabase("quote send email delivery", () => {
 
     try {
       await caller.quotes.send({ id: quote.id })
-      const firstCall = vi.mocked(sendQuoteEmail).mock.calls[0]?.[0]
+      const firstCall = vi.mocked(deliver).mock.calls[0]?.[0]
 
-      vi.mocked(sendQuoteEmail).mockClear()
+      vi.mocked(deliver).mockClear()
 
       const resend = await caller.quotes.resendEmail({ id: quote.id })
       expect(resend.emailSent).toBe(true)
@@ -378,12 +376,15 @@ describeIfDatabase("quote send email delivery", () => {
         },
       })
 
-      const secondCall = vi.mocked(sendQuoteEmail).mock.calls[0]?.[0]
+      const secondCall = vi.mocked(deliver).mock.calls[0]
+      const quoteUrl = (html: string | undefined) => html?.match(/https:\/\/app\.example\.test\/q\/[^"'<\s]+/)?.[0]
 
       expect(reloaded.status).toBe("sent")
       expect(reloaded.publicAccessIssuedAt).toBeTruthy()
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
-      expect(secondCall?.publicQuoteUrl).toBe(firstCall?.publicQuoteUrl)
+      expect(quoteUrl(firstCall?.html)).toBeTruthy()
+      expect(quoteUrl(secondCall?.[0].html)).toBe(quoteUrl(firstCall?.html))
+      expect(secondCall?.[1]).toEqual({ idempotencyKey: expect.stringMatching(/^quote-resend:/) })
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })

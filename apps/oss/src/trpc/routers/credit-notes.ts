@@ -16,6 +16,7 @@ import { actorCan } from "../../domain/actor"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { authorizedProcedure, router } from "../init"
+import { settleEmailResult } from "../email-delivery-result"
 import { unwrapOutcome } from "../outcome"
 
 type Decimalish = { toNumber(): number }
@@ -148,7 +149,10 @@ export const creditNotesRouter = router({
   send: authorizedProcedure("creditNote:send")
     .input(creditNoteSendInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const result = unwrapOutcome(await executeCommand(sendCreditNote, input, { actor: ctx.actor }))
+      const result = await settleEmailResult(
+        unwrapOutcome(await executeCommand(sendCreditNote, input, { actor: ctx.actor })),
+        () => prisma.creditNote.findUniqueOrThrow({ where: { id: input.id } })
+      )
       return {
         id: result.id,
         recipient: result.recipient,

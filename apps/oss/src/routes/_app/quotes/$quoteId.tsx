@@ -802,7 +802,7 @@ function QuoteDetailPage() {
                     label: t("quotes.detail.action.send"),
                     pendingLabel: t("quotes.detail.action.sending"),
                     pending: acting,
-                    disabled: acting,
+                    disabled: acting || quote.lastEmailAttemptOutcome === "sending",
                     onClick: () => {
                       void handleSend()
                     },
@@ -812,7 +812,7 @@ function QuoteDetailPage() {
                       label: t("quotes.detail.action.resendEmail"),
                       pendingLabel: t("quotes.detail.action.sending"),
                       pending: acting,
-                      disabled: acting,
+                      disabled: acting || quote.lastEmailAttemptOutcome === "sending",
                       onClick: () => {
                         void handleResendEmail()
                       },

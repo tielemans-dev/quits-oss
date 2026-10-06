@@ -850,7 +850,8 @@ function InvoiceDetailPage() {
                       label: t("invoices.detail.action.send"),
                       pendingLabel: t("invoices.detail.action.sending"),
                       pending: acting,
-                      disabled: acting,
+                      // A queued email settles on its own; sending again is refused meanwhile.
+                      disabled: acting || invoice.lastEmailAttemptOutcome === "sending",
                       onClick: () => {
                         void handleSend()
                       },
@@ -860,7 +861,7 @@ function InvoiceDetailPage() {
                         label: t("invoices.detail.action.resendEmail"),
                         pendingLabel: t("invoices.detail.action.sending"),
                         pending: acting,
-                        disabled: acting,
+                        disabled: acting || invoice.lastEmailAttemptOutcome === "sending",
                         onClick: () => {
                           void handleResendEmail()
                         },

@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("../../lib/email", async () => {
   const actual = await vi.importActual<typeof import("../../lib/email")>("../../lib/email")
-  return { ...actual, sendInvoiceEmail: vi.fn() }
+  return { ...actual, deliver: vi.fn() }
 })
 
-import { sendInvoiceEmail } from "../../lib/email"
+import { prisma } from "../../lib/db"
+import { deliver } from "../../lib/email"
+import { retryEmailDeliveries } from "../../test-utils/email-outbox"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
 import { decideApproval } from "../approvals"
@@ -18,12 +20,12 @@ const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 describeIfDatabase("approved sends and recipient changes", () => {
   const cleanups: Array<() => Promise<void>> = []
   afterEach(async () => {
-    vi.mocked(sendInvoiceEmail).mockReset()
+    vi.mocked(deliver).mockReset()
     vi.unstubAllEnvs()
     while (cleanups.length) await cleanups.pop()?.()
   })
 
-  it("keeps the reviewed recipient while an approved send is delivering", async () => {
+  it("delivers the email queued at approval even if the contact changes before delivery", async () => {
     vi.stubEnv("RESEND_API_KEY", "re_test")
     vi.stubEnv("FROM_EMAIL", "billing@example.com")
     const org = await createTestOrganization()
@@ -55,41 +57,44 @@ describeIfDatabase("approved sends and recipient changes", () => {
     const queued = await executeCommand(sendInvoice, { id: draft.result.id }, { actor: agent, clientRequestId: "s1" })
     if (queued.status !== "awaiting_approval") throw new Error("expected approval")
 
-    let releaseDelivery: () => void = () => undefined
-    const deliveryStarted = new Promise<void>((started) => {
-      vi.mocked(sendInvoiceEmail).mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            started()
-            releaseDelivery = () => resolve({ id: "email_1" })
-          })
+    // The contact's email changes after the approved send committed but before the provider
+    // confirms delivery; the first attempt's outcome is unknown, so it is retried.
+    let contactChange: { status: string } | null = null
+    vi.mocked(deliver).mockImplementationOnce(async () => {
+      contactChange = await executeCommand(
+        updateContact,
+        { id: contact.result.id, email: "attacker@example.test" },
+        { actor: org.actors.admin }
       )
+      throw new Error("socket hang up")
     })
+    vi.mocked(deliver).mockResolvedValue({ id: "email_1" })
 
-    const approval = decideApproval({
+    const approval = await decideApproval({
       approvalRequestId: queued.approvalRequestId,
       decider: org.actors.admin,
       decision: "approve",
     })
-    await deliveryStarted
-
-    let contactChanged = false
-    const change = executeCommand(
-      updateContact,
-      { id: contact.result.id, email: "attacker@example.test" },
-      { actor: org.actors.admin }
-    ).then((outcome) => {
-      contactChanged = true
-      return outcome
+    expect(approval).toMatchObject({ status: "completed" })
+    expect(contactChange).toMatchObject({ status: "completed" })
+    expect(await prisma.contact.findUniqueOrThrow({ where: { id: contact.result.id } })).toMatchObject({
+      email: "attacker@example.test",
     })
 
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    expect(contactChanged).toBe(false)
+    await retryEmailDeliveries(org.organizationId)
 
-    releaseDelivery()
-    await expect(approval).resolves.toMatchObject({ status: "completed" })
-    await expect(change).resolves.toMatchObject({ status: "completed" })
-    expect(sendInvoiceEmail).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(sendInvoiceEmail).mock.calls[0]?.[0]).toMatchObject({ to: "approved@example.test" })
+    // Both attempts deliver the message rendered at approval, to the reviewed recipient.
+    const calls = vi.mocked(deliver).mock.calls
+    expect(calls).toHaveLength(2)
+    expect(calls[0]?.[0]).toMatchObject({ to: "approved@example.test" })
+    expect(calls[1]).toEqual(calls[0])
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).toMatchObject({
+      status: "sent",
+      lastEmailAttemptOutcome: "sent",
+    })
+    const [sentEvent] = await prisma.domainEvent.findMany({
+      where: { organizationId: org.organizationId, type: "invoice.sent", aggregateId: draft.result.id },
+    })
+    expect(sentEvent?.payload).toMatchObject({ recipient: "approved@example.test", emailSent: true })
   })
 })

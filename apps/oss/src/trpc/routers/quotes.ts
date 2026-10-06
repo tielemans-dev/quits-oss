@@ -17,6 +17,7 @@ import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { getPublicQuoteUrl } from "../../lib/quotes/public-url"
 import { router, authorizedProcedure } from "../init"
+import { settleEmailResult } from "../email-delivery-result"
 import { unwrapOutcome } from "../outcome"
 
 function mapQuoteItemForUi(item: {
@@ -128,13 +129,17 @@ export const quotesRouter = router({
   send: authorizedProcedure("quote:send")
     .input(quoteSendInputSchema)
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(await executeCommand(sendQuote, input, { actor: ctx.actor }))
+      settleEmailResult(unwrapOutcome(await executeCommand(sendQuote, input, { actor: ctx.actor })), () =>
+        prisma.quote.findUniqueOrThrow({ where: { id: input.id } })
+      )
     ),
 
   resendEmail: authorizedProcedure("quote:send")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(await executeCommand(resendQuoteEmail, input, { actor: ctx.actor }))
+      settleEmailResult(unwrapOutcome(await executeCommand(resendQuoteEmail, input, { actor: ctx.actor })), () =>
+        prisma.quote.findUniqueOrThrow({ where: { id: input.id } })
+      )
     ),
 
   reject: authorizedProcedure("quote:update")

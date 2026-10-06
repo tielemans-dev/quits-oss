@@ -19,7 +19,7 @@ import { runJobsNow } from "./jobs"
 import { Command, Db, type PendingEvent, type PendingJob } from "./services"
 
 const APPROVAL_TTL_MS = 7 * 24 * 60 * 60 * 1000
-/** Commands such as sending email call providers inside the transaction. */
+/** Long enough for large batch commands. Commands never call providers; email goes through the outbox. */
 const TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 60_000 }
 const domainLogger = appLogger.child("domain")
 
@@ -227,22 +227,8 @@ export async function executeCommand<Input, Result>(
     })
   }
 
-  if (definition.prepare) {
-    const prepared = await runPrepare(definition, input, {
-      actor,
-      organizationId,
-      commandId: provisionalId,
-      now,
-      approvedByUserId: options.approvedByUserId ?? null,
-    })
-    if (prepared) {
-      return prepared
-    }
-  }
-
   const events: PendingEvent[] = []
   const jobs: PendingJob[] = []
-  const rollbackWrites: Array<() => Promise<unknown>> = []
 
   try {
     const { result, jobIds } = await prisma.$transaction(async (tx) => {
@@ -292,7 +278,6 @@ export async function executeCommand<Input, Result>(
           approvedByUserId: options.approvedByUserId ?? null,
           emit: (event) => events.push(event),
           enqueue: (job) => jobs.push(job),
-          onRollback: (write) => rollbackWrites.push(write),
         })
       )
 
@@ -372,16 +357,6 @@ export async function executeCommand<Input, Result>(
       }
     }
 
-    for (const write of rollbackWrites) {
-      await write().catch((writeError: unknown) =>
-        domainLogger.error("command.rollback_write_failed", {
-          commandType: definition.type,
-          organizationId,
-          error: writeError,
-        })
-      )
-    }
-
     if (clientRequestId && !options.resumeReceiptId && isUniqueViolation(error)) {
       const existing = await loadReceiptOutcome<Result>(organizationId, key, clientRequestId)
       if (existing) {
@@ -409,48 +384,6 @@ export async function executeCommand<Input, Result>(
     })
     return winner ?? outcome
   }
-}
-
-/** Runs a command's `prepare` phase in its own committed transaction. Returns a failure, if any. */
-async function runPrepare<Input, Result>(
-  definition: CommandDefinition<Input, Result>,
-  input: Input,
-  scope: {
-    actor: Actor
-    organizationId: string
-    commandId: string
-    now: Date
-    approvedByUserId: string | null
-  }
-): Promise<CommandOutcome<Result> | null> {
-  const prepare = definition.prepare
-  if (!prepare) {
-    return null
-  }
-
-  const exit = await prisma.$transaction(
-    (tx) =>
-      Effect.runPromiseExit(
-        prepare(input).pipe(
-          Effect.provideService(Db, tx),
-          Effect.provideService(Command, {
-            ...scope,
-            emit: () => undefined,
-            enqueue: () => undefined,
-            onRollback: () => undefined,
-          })
-        )
-      ),
-    TRANSACTION_OPTIONS
-  )
-  if (Exit.isSuccess(exit)) {
-    return null
-  }
-  const failureOption = Cause.failureOption(exit.cause)
-  if (Option.isSome(failureOption)) {
-    return failure(scope.commandId, failureOption.value)
-  }
-  throw Cause.squash(exit.cause)
 }
 
 /**
@@ -536,7 +469,6 @@ async function queueForApproval<Input, Result>(
               approvedByUserId: null,
               emit: () => undefined,
               enqueue: () => undefined,
-              onRollback: () => undefined,
             })
           )
         )

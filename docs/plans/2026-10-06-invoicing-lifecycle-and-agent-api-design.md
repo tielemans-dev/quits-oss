@@ -72,6 +72,22 @@ domain/
 6. **Dispatch.** Jobs run immediately after commit when possible, and are swept by the scheduler tick
    otherwise, so a crashed request never loses an email.
 
+Commands never call the email provider. A sending command renders the exact message, marks the
+document's last email attempt `sending` (which freezes a draft), and stores the message with its
+provider idempotency key in an `email.deliver` job. The job settles the document:
+
+- **Accepted:** the document becomes sent (or the attempt is recorded as sent for a resend).
+- **Definitely refused:** a provider validation error means nothing was delivered, so the attempt is
+  recorded as failed and the draft can be edited again.
+- **Uncertain:** a timeout, a lost response, or a provider outage may have delivered it. The identical
+  stored message is retried under the same key, so the provider drops a duplicate. The delivery is
+  only given up as unconfirmed after its last attempt.
+
+Settlement is conditional on the document still showing that delivery's `sending` marker, so a
+delivery can never settle a newer attempt. "Sent" therefore always means the provider accepted the
+email. Revision of 2026-10-06 after review round 3; it replaced an in-transaction send with a
+committed pre-send marker.
+
 Deciders are pure and unit-tested without a database. Handlers are Effect programs over `Database`,
 `Clock`, `Mailer`, and `Numbering` services, wired with Layers and run through a `ManagedRuntime`.
 tRPC routers become thin adapters: parse input, build the actor, call `executeCommand` or a query.
