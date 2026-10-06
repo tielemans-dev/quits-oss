@@ -3,7 +3,7 @@ export const daDashboardMessages = {
   "dashboard.loading": "Indlæser...",
   "dashboard.loadError": "Kunne ikke indlæse oversigtsdata. Sørg for, at du har en aktiv organisation.",
   "dashboard.totalRevenue": "Samlet omsætning",
-  "dashboard.totalRevenueHint": "Fra betalte fakturaer",
+  "dashboard.totalRevenueHint": "Fra modtagne betalinger",
   "dashboard.outstanding": "Udestående",
   "dashboard.outstandingHint": "Afventer betaling",
   "dashboard.overdue": "Forfaldne",
