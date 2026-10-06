@@ -31,6 +31,33 @@ type RemindersState = {
   reminders: InvoiceReminderRecord[]
 }
 
+type PanelMessage = { kind: "error" | "success" | "info" | "warning"; text: string }
+
+/**
+ * How a manual reminder ended: `sent` (the provider accepted it), `pending` (the outbox retries
+ * delivery in the background) or `unconfirmed` (the provider never confirmed delivery).
+ */
+export type ReminderDelivery = "sent" | "pending" | "unconfirmed"
+
+/**
+ * Reads the delivery of a `reminders.sendNow` result. Results without `delivery` come from a
+ * server that only answered once the reminder was sent.
+ */
+export function reminderDelivery(result: object): ReminderDelivery {
+  if ("delivery" in result) {
+    const delivery = (result as { delivery: unknown }).delivery
+    if (delivery === "pending" || delivery === "unconfirmed") return delivery
+  }
+  return "sent"
+}
+
+const messageClassName: Record<PanelMessage["kind"], string> = {
+  error: "text-sm text-destructive",
+  success: "text-sm text-muted-foreground",
+  info: "text-sm text-muted-foreground",
+  warning: "text-sm text-amber-700 dark:text-amber-300",
+}
+
 const statusVariant: Record<ReminderStatus, "default" | "secondary" | "destructive" | "outline"> = {
   upcoming: "outline",
   scheduled: "secondary",
@@ -48,7 +75,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
   // Keyed on the active organization so capabilities refresh after switching organization.
   const organizationId = useActiveOrganizationId()
   const [busy, setBusy] = useState<"pause" | "send" | null>(null)
-  const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null)
+  const [message, setMessage] = useState<PanelMessage | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -83,12 +110,11 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
     return null
   }
 
-  async function run(kind: "pause" | "send", action: () => Promise<unknown>, success?: string) {
+  async function run(kind: "pause", action: () => Promise<unknown>) {
     setBusy(kind)
     setMessage(null)
     try {
       await action()
-      if (success) setMessage({ kind: "success", text: success })
       await load()
       await onChanged()
     } catch (error) {
@@ -96,6 +122,37 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
         kind: "error",
         text: error instanceof Error && error.message ? error.message : t("reminders.panel.error.action"),
       })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function sendNow() {
+    setBusy("send")
+    setMessage(null)
+    try {
+      const result = await trpc.reminders.sendNow.mutate({ invoiceId: invoice.id })
+      const delivery = reminderDelivery(result)
+      setMessage(
+        delivery === "pending"
+          ? { kind: "info", text: t("reminders.panel.pending") }
+          : delivery === "unconfirmed"
+            ? { kind: "warning", text: t("reminders.panel.unconfirmed") }
+            : { kind: "success", text: t("reminders.panel.sent") }
+      )
+      await load()
+      await onChanged()
+    } catch (error) {
+      setMessage({
+        kind: "error",
+        text: error instanceof Error && error.message ? error.message : t("reminders.panel.error.action"),
+      })
+      // A refused reminder is recorded in the history, so show it, keeping the send error visible.
+      try {
+        setState(await trpc.reminders.listForInvoice.query({ invoiceId: invoice.id }))
+      } catch {
+        // The history reloads on the next change.
+      }
     } finally {
       setBusy(null)
     }
@@ -117,13 +174,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
               variant="outline"
               size="sm"
               disabled={!canSend || busy !== null}
-              onClick={() =>
-                run(
-                  "send",
-                  () => trpc.reminders.sendNow.mutate({ invoiceId: invoice.id }),
-                  t("reminders.panel.sent")
-                )
-              }
+              onClick={() => void sendNow()}
             >
               <BellRing className="size-3.5" />
               {busy === "send" ? t("reminders.panel.sending") : t("reminders.panel.sendNow")}
@@ -199,7 +250,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
           </>
         )}
         {message && (
-          <p className={message.kind === "error" ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>
+          <p className={messageClassName[message.kind]} role={message.kind === "error" ? "alert" : "status"}>
             {message.text}
           </p>
         )}

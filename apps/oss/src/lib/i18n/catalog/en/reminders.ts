@@ -44,6 +44,8 @@ export const enRemindersMessages = {
   "reminders.panel.sendNow": "Send reminder now",
   "reminders.panel.sending": "Sending…",
   "reminders.panel.sent": "Reminder sent.",
+  "reminders.panel.pending": "Reminder queued; delivery is being retried.",
+  "reminders.panel.unconfirmed": "The email provider never confirmed delivery of the reminder. The customer may or may not have received it.",
   "reminders.panel.empty": "No reminders yet.",
   "reminders.panel.notEligible": "Reminders are only sent for issued invoices with an outstanding balance.",
   "reminders.panel.noEmail": "Add an email address to the contact to send reminders.",
