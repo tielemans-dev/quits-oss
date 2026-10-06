@@ -363,6 +363,37 @@ describeIfDatabase("recurring invoices", () => {
     expect(updated).toMatchObject({ status: "completed", result: { nextRunAt: addUtcDays(today(), 6) } })
   })
 
+  it("never overwrites progress committed by a concurrent run when the schedule is edited", async () => {
+    const { org, contactId } = await setup()
+    const schedule = await createSchedule(org.actors.admin, contactId, {
+      end: { type: "after_runs", runs: 3 },
+    })
+    const advanced = advanceRunDate(today(), 1, "month", today().getUTCDate())
+
+    // Stands in for a run that holds the schedule while it generates and advances it.
+    let progressWritten!: () => void
+    const written = new Promise<void>((resolve) => (progressWritten = resolve))
+    const run = prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "recurring_invoice" WHERE "id" = ${schedule.id} FOR UPDATE`
+      await tx.recurringInvoice.update({
+        where: { id: schedule.id },
+        data: { nextRunAt: advanced, remainingRuns: 2, lastRunAt: today() },
+      })
+      progressWritten()
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    })
+    await written
+
+    const [edited] = await Promise.all([
+      executeCommand(updateRecurringInvoice, { id: schedule.id, name: "Renamed" }, { actor: org.actors.admin }),
+      run,
+    ])
+    expect(edited.status).toBe("completed")
+
+    const after = await prisma.recurringInvoice.findUniqueOrThrow({ where: { id: schedule.id } })
+    expect(after).toMatchObject({ name: "Renamed", nextRunAt: advanced, remainingRuns: 2, lastRunAt: today() })
+  })
+
   it("enforces role permissions", async () => {
     const { org, contactId } = await setup({ roles: ["admin", "member", "accountant"] })
 

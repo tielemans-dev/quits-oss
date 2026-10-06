@@ -13,6 +13,7 @@ import type { Prisma } from "../../../generated/prisma/client"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { actorKey, type SystemActor } from "../actor"
 import { defineCommand, type AnyCommandDefinition } from "../command"
+import { lockDocument } from "../documents/locks"
 import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { executeCommand } from "../execute"
 import { registerJobHandler } from "../jobs"
@@ -95,6 +96,17 @@ const findSchedule = (id: string) =>
       return yield* new NotFound({ message: "Recurring schedule not found", entity: "recurringInvoice", id })
     }
     return schedule
+  })
+
+/**
+ * Locks the schedule row for the rest of the command, then reads it. Every command that changes
+ * a schedule goes through here, so an edit and a concurrent run (which advances `nextRunAt`,
+ * `remainingRuns`, and `status`) run one after the other and neither writes back stale values.
+ */
+const findScheduleForUpdate = (id: string) =>
+  Effect.gen(function* () {
+    yield* lockDocument("recurringInvoice", id)
+    return yield* findSchedule(id)
   })
 
 const assertContact = (contactId: string) =>
@@ -237,7 +249,7 @@ export const updateRecurringInvoice = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
-      const existing = yield* findSchedule(input.id)
+      const existing = yield* findScheduleForUpdate(input.id)
 
       if (existing.status === "ended") {
         return yield* new InvalidState({
@@ -276,6 +288,8 @@ export const updateRecurringInvoice = defineCommand({
         yield* clearFailedRunAttempts(existing.id)
       }
 
+      // Only fields this edit changes are written, so scheduling progress (`nextRunAt`,
+      // `remainingRuns`, `lastRunAt`) is never overwritten with values read earlier.
       const schedule = yield* Effect.promise(() =>
         db.recurringInvoice.update({
           where: { id: existing.id },
@@ -287,13 +301,17 @@ export const updateRecurringInvoice = defineCommand({
             ...(input.currency !== undefined ? { currency: input.currency } : {}),
             ...(input.notes !== undefined ? { notes: input.notes } : {}),
             ...(input.dueInDays !== undefined ? { dueInDays: input.dueInDays } : {}),
-            startDate: cadence.startDate,
-            intervalCount: cadence.intervalCount,
-            intervalUnit: cadence.intervalUnit,
-            nextRunAt,
-            ...end,
-            autoSend,
-            status,
+            ...(cadenceChanged
+              ? {
+                  startDate: cadence.startDate,
+                  intervalCount: cadence.intervalCount,
+                  intervalUnit: cadence.intervalUnit,
+                  nextRunAt,
+                }
+              : {}),
+            ...(input.end ? end : {}),
+            ...(input.autoSend !== undefined ? { autoSend } : {}),
+            ...(status !== existing.status ? { status } : {}),
           },
         })
       )
@@ -320,7 +338,7 @@ export const setRecurringInvoiceStatus = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
-      const existing = yield* findSchedule(input.id)
+      const existing = yield* findScheduleForUpdate(input.id)
 
       if (existing.status === "ended") {
         return yield* new InvalidState({ message: "The schedule has already ended", code: "schedule_ended" })
@@ -347,7 +365,7 @@ export const resumeRecurringInvoice = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
-      const existing = yield* findSchedule(input.id)
+      const existing = yield* findScheduleForUpdate(input.id)
 
       if (existing.status === "ended") {
         return yield* new InvalidState({ message: "Ended schedules cannot be resumed", code: "schedule_ended" })
@@ -478,7 +496,7 @@ export const runRecurringInvoiceNow = defineCommand({
   summarize: (input) => `Generate the next invoice of recurring schedule ${input.id} now`,
   handle: (input) =>
     Effect.gen(function* () {
-      const schedule = yield* findSchedule(input.id)
+      const schedule = yield* findScheduleForUpdate(input.id)
       if (schedule.status === "ended") {
         return yield* new InvalidState({ message: "The schedule has ended", code: "schedule_ended" })
       }
@@ -503,7 +521,7 @@ export const generateRecurringRun = defineCommand({
       if (command.actor.kind !== "system") {
         return yield* new Forbidden({ message: "Only the scheduler generates scheduled runs" })
       }
-      const schedule = yield* findSchedule(input.id)
+      const schedule = yield* findScheduleForUpdate(input.id)
       const runDate = new Date(input.runDate)
       if (schedule.status !== "active" || schedule.nextRunAt.getTime() !== runDate.getTime()) {
         return yield* new InvalidState({
@@ -526,7 +544,7 @@ export const recordRecurringRunFailure = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
-      const schedule = yield* findSchedule(input.id)
+      const schedule = yield* findScheduleForUpdate(input.id)
 
       command.emit({
         aggregateType: "recurring",
