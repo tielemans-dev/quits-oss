@@ -124,6 +124,52 @@ describe("number and date formatting", () => {
     )
   })
 
+  it("resolves a calendar day whose midnight does not exist to its first valid instant", () => {
+    // Chile springs forward at local midnight: 2026-09-06 00:00 -04 becomes 01:00 -03.
+    expect(startOfDayInTimeZone("2026-09-06", "America/Santiago").toISOString()).toBe(
+      "2026-09-06T04:00:00.000Z"
+    )
+    // Chile falls back at local midnight: 2026-04-05 00:00 -03 becomes 2026-04-04 23:00 -04.
+    expect(startOfDayInTimeZone("2026-04-05", "America/Santiago").toISOString()).toBe(
+      "2026-04-05T04:00:00.000Z"
+    )
+    // Fall-back days whose transition is not at midnight keep their single midnight.
+    expect(startOfDayInTimeZone("2026-11-01", "America/New_York").toISOString()).toBe(
+      "2026-11-01T04:00:00.000Z"
+    )
+    expect(startOfDayInTimeZone("2026-10-25", "Europe/Copenhagen").toISOString()).toBe(
+      "2026-10-24T22:00:00.000Z"
+    )
+    // Ordinary days.
+    expect(startOfDayInTimeZone("2026-06-10", "America/New_York").toISOString()).toBe(
+      "2026-06-10T04:00:00.000Z"
+    )
+    expect(startOfDayInTimeZone("2026-02-10", "Europe/Copenhagen").toISOString()).toBe(
+      "2026-02-09T23:00:00.000Z"
+    )
+  })
+
+  it("stores calendar days that format back to the same date in the time zone", () => {
+    const cases: Array<[string, string]> = [
+      ["2026-09-06", "America/Santiago"],
+      ["2026-09-05", "America/Santiago"],
+      ["2026-09-07", "America/Santiago"],
+      ["2026-04-04", "America/Santiago"],
+      ["2026-04-05", "America/Santiago"],
+      ["2026-03-29", "Europe/Copenhagen"],
+      ["2026-10-25", "Europe/Copenhagen"],
+      ["2026-03-08", "America/New_York"],
+      ["2026-11-01", "America/New_York"],
+      ["2026-06-10", "America/New_York"],
+    ]
+    for (const [date, zone] of cases) {
+      const start = startOfDayInTimeZone(date, zone)
+      expect(formatIsoDate(start, zone), `${date} ${zone}`).toBe(date)
+      // The instant just before is still the previous day.
+      expect(formatIsoDate(new Date(start.getTime() - 1), zone), `${date} ${zone}`).not.toBe(date)
+    }
+  })
+
   it("makes safe file names", () => {
     expect(safeFileName("INV/2026 #1")).toBe("INV-2026-1")
     expect(safeFileName("../..")).toBe("document")
