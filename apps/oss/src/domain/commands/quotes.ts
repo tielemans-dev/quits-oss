@@ -147,6 +147,7 @@ export const updateQuoteDraft = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
+      yield* lockDocument("quote", input.id)
       const existing = yield* findQuote(input.id)
 
       if (existing.status !== "draft") {
@@ -219,6 +220,7 @@ export const deleteQuoteDraft = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
+      yield* lockDocument("quote", input.id)
       const quote = yield* findQuote(input.id)
       if (quote.status !== "draft") {
         return yield* new InvalidState({
@@ -238,12 +240,37 @@ export const deleteQuoteDraft = defineCommand({
     }),
 })
 
+/** What a person approving an agent's quote email sees, versioned by the quote's last change. */
+const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
+  Effect.gen(function* () {
+    yield* lockDocument("quote", id)
+    const quote = yield* findQuote(id)
+    const recipient = quote.contact.email?.trim() || null
+    const total = `${quote.totalGross.toFixed(2)} ${quote.currency}`
+    return {
+      summary:
+        action === "send"
+          ? `Send quote ${quote.number} (${total}) to ${recipient ?? quote.contact.name}`
+          : `Email quote ${quote.number} (${total}) to ${recipient ?? quote.contact.name} again`,
+      version: `${quote.updatedAt.toISOString()}|${recipient ?? ""}`,
+      details: {
+        number: quote.number,
+        customer: quote.contact.name,
+        recipient,
+        total: quote.totalGross.toFixed(2),
+        currency: quote.currency,
+        expiryDate: quote.expiryDate.toISOString().slice(0, 10),
+      },
+    }
+  })
+
 export const sendQuote = defineCommand({
   type: "quote.send",
   permission: "quote:send",
   outwardFacing: true,
   input: quoteSendInputSchema,
   summarize: (input) => `Send quote ${input.id} to the customer`,
+  approvalContext: (input) => quoteEmailApprovalContext(input.id, "send"),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
@@ -346,6 +373,7 @@ export const resendQuoteEmail = defineCommand({
   outwardFacing: true,
   input: quoteIdInputSchema,
   summarize: (input) => `Email quote ${input.id} to the customer again`,
+  approvalContext: (input) => quoteEmailApprovalContext(input.id, "resend"),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
@@ -428,6 +456,7 @@ export const rejectQuote = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
+      yield* lockDocument("quote", input.id)
       const quote = yield* findQuote(input.id)
 
       if (quote.status !== "sent") {
@@ -461,6 +490,7 @@ export const convertQuoteToInvoice = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const { organizationId } = command
+      yield* lockDocument("quote", input.id)
       const quote = yield* findQuote(input.id)
 
       if (quote.status !== "accepted") {

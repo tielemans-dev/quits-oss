@@ -5,9 +5,10 @@ import { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { appLogger } from "../lib/observability"
 import { actorCan, actorId, actorKey, type Actor } from "./actor"
-import type { CommandDefinition } from "./command"
+import type { ApprovalContext, CommandDefinition } from "./command"
 import {
   Forbidden,
+  InvalidState,
   ValidationFailed,
   serializeDomainError,
   type DomainError,
@@ -30,6 +31,8 @@ export type ExecuteOptions = {
   approvedByUserId?: string
   /** Receipt created when the command was queued for approval. */
   resumeReceiptId?: string
+  /** The approval context version a person reviewed; the command is refused if it changed. */
+  expectedApprovalVersion?: string
   now?: Date
 }
 
@@ -227,7 +230,26 @@ export async function executeCommand<Input, Result>(
 
   try {
     const { result, jobIds } = await prisma.$transaction(async (tx) => {
-      const program = definition.handle(input).pipe(
+      const reviewedVersion = options.expectedApprovalVersion
+      const approvalContext = definition.approvalContext
+      const verifyReviewed =
+        reviewedVersion && approvalContext
+          ? approvalContext(input).pipe(
+              Effect.flatMap((current) =>
+                current.version === reviewedVersion
+                  ? Effect.void
+                  : Effect.fail(
+                      new InvalidState({
+                        message:
+                          "The document changed after this request was sent for approval. Ask the agent to request approval again.",
+                        code: "changed_since_review",
+                      })
+                    )
+              )
+            )
+          : Effect.void
+      const program = verifyReviewed.pipe(
+        Effect.zipRight(definition.handle(input)),
         Effect.provideService(Db, tx),
         Effect.provideService(Command, {
           actor,
@@ -419,6 +441,34 @@ async function queueForApproval<Input, Result>(
 ): Promise<CommandOutcome<Result>> {
   try {
     const approval = await prisma.$transaction(async (tx) => {
+      let review: ApprovalContext | null = null
+      if (definition.approvalContext) {
+        const exit = await Effect.runPromiseExit(
+          definition.approvalContext(input).pipe(
+            Effect.provideService(Db, tx),
+            Effect.provideService(Command, {
+              actor: context.actor,
+              organizationId: context.organizationId,
+              commandId: context.commandId,
+              now: context.now,
+              approvedByUserId: null,
+              emit: () => undefined,
+              enqueue: () => undefined,
+              onRollback: () => undefined,
+            })
+          )
+        )
+        if (Exit.isFailure(exit)) {
+          const failureOption = Cause.failureOption(exit.cause)
+          if (Option.isSome(failureOption)) {
+            throw new HandlerFailed(failureOption.value)
+          }
+          throw Cause.squash(exit.cause)
+        }
+        review = exit.value
+      }
+      const summary = review?.summary ?? definition.summarize(input)
+
       await tx.commandReceipt.create({
         data: {
           id: context.commandId,
@@ -437,7 +487,8 @@ async function queueForApproval<Input, Result>(
           commandReceiptId: context.commandId,
           commandType: definition.type,
           command: toJson(input),
-          summary: definition.summarize(input),
+          summary,
+          reviewContext: review ? toJson({ version: review.version, details: review.details }) : Prisma.DbNull,
           expiresAt: new Date(context.now.getTime() + APPROVAL_TTL_MS),
         },
         select: { id: true },
@@ -454,7 +505,7 @@ async function queueForApproval<Input, Result>(
             aggregateType: "approval",
             aggregateId: request.id,
             type: "approval.requested",
-            payload: { commandType: definition.type, summary: definition.summarize(input) },
+            payload: { commandType: definition.type, summary },
           },
         ],
       })
@@ -474,6 +525,10 @@ async function queueForApproval<Input, Result>(
       approvalRequestId: approval.id,
     }
   } catch (error) {
+    // The document the agent wants approved could not be described (e.g. it does not exist).
+    if (error instanceof HandlerFailed) {
+      return failure(context.commandId, error.domainError)
+    }
     if (isUniqueViolation(error)) {
       const existing = await loadReceiptOutcome<Result>(
         context.organizationId,

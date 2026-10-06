@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { Bot } from "lucide-react"
+import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
 import { Badge } from "../ui/badge"
@@ -8,6 +9,19 @@ import { Card, CardContent } from "../ui/card"
 import { Textarea } from "../ui/textarea"
 import { formatDateTime } from "./format"
 import type { ApprovalRow, DecisionRecord } from "./types"
+
+/** Labels for the document facts a command records for its approver. */
+const reviewLabelKeys: Partial<Record<string, TranslationKey>> = {
+  number: "agents.approvals.review.number",
+  customer: "agents.approvals.review.customer",
+  recipient: "agents.approvals.review.recipient",
+  total: "agents.approvals.review.total",
+  amount: "agents.approvals.review.amount",
+  currency: "agents.approvals.review.currency",
+  dueDate: "agents.approvals.review.dueDate",
+  expiryDate: "agents.approvals.review.expiryDate",
+  reason: "agents.approvals.review.reason",
+}
 
 const statusVariant = {
   pending: "outline",
@@ -65,6 +79,11 @@ export function ApprovalItem({
     }
   }
 
+  const reviewLabel = (key: string) => {
+    const labelKey = reviewLabelKeys[key]
+    return labelKey ? t(labelKey) : key
+  }
+
   return (
     <Card className="py-4">
       <CardContent className="grid gap-3 px-4">
@@ -109,6 +128,17 @@ export function ApprovalItem({
             </span>
           ) : null}
         </div>
+
+        {approval.reviewDetails ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm">
+            {Object.entries(approval.reviewDetails).map(([key, value]) => (
+              <Fragment key={key}>
+                <dt className="text-muted-foreground">{reviewLabel(key)}</dt>
+                <dd className="font-medium">{value ?? "—"}</dd>
+              </Fragment>
+            ))}
+          </dl>
+        ) : null}
 
         {approval.decisionNote ? (
           <p className="text-sm">

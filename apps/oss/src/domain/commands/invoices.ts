@@ -166,6 +166,7 @@ export const updateInvoiceDraft = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
+      yield* lockDocument("invoice", input.id)
       const existing = yield* findInvoice(input.id)
 
       if (existing.status !== "draft") {
@@ -238,6 +239,7 @@ export const deleteInvoiceDraft = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
+      yield* lockDocument("invoice", input.id)
       const invoice = yield* findInvoice(input.id)
       if (invoice.status !== "draft") {
         return yield* new InvalidState({
@@ -257,12 +259,37 @@ export const deleteInvoiceDraft = defineCommand({
     }),
 })
 
+/** What a person approving an agent's invoice email sees, versioned by the invoice's last change. */
+const invoiceEmailApprovalContext = (id: string, action: "send" | "resend") =>
+  Effect.gen(function* () {
+    yield* lockDocument("invoice", id)
+    const invoice = yield* findInvoice(id)
+    const recipient = invoice.contact.email?.trim() || null
+    const total = `${invoice.totalGross.toFixed(2)} ${invoice.currency}`
+    return {
+      summary:
+        action === "send"
+          ? `Send invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name}`
+          : `Email invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name} again`,
+      version: `${invoice.updatedAt.toISOString()}|${recipient ?? ""}`,
+      details: {
+        number: invoice.number,
+        customer: invoice.contact.name,
+        recipient,
+        total: invoice.totalGross.toFixed(2),
+        currency: invoice.currency,
+        dueDate: invoice.dueDate.toISOString().slice(0, 10),
+      },
+    }
+  })
+
 export const sendInvoice = defineCommand({
   type: "invoice.send",
   permission: "invoice:send",
   outwardFacing: true,
   input: invoiceSendInputSchema,
   summarize: (input) => `Send invoice ${input.id} to the customer`,
+  approvalContext: (input) => invoiceEmailApprovalContext(input.id, "send"),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
@@ -368,6 +395,7 @@ export const resendInvoiceEmail = defineCommand({
   outwardFacing: true,
   input: invoiceIdInputSchema,
   summarize: (input) => `Email invoice ${input.id} to the customer again`,
+  approvalContext: (input) => invoiceEmailApprovalContext(input.id, "resend"),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db

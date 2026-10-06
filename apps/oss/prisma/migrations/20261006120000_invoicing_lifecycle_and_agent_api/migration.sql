@@ -173,6 +173,7 @@ CREATE TABLE "approval_request" (
     "commandType" TEXT NOT NULL,
     "command" JSONB NOT NULL,
     "summary" TEXT NOT NULL,
+    "reviewContext" JSONB,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "decidedByUserId" TEXT,
     "decidedAt" TIMESTAMP(3),

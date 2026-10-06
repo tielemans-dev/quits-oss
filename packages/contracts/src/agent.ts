@@ -117,10 +117,17 @@ export const agentScopePresets = {
 // Agent tool inputs. Command tools reuse the feature input schemas and add `clientRequestId`.
 
 const listLimitSchema = z.number().int().min(1).max(200).default(50)
+const listCursorSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .optional()
+  .describe("nextCursor from the previous page; omit for the first page")
 
 export const contactsListToolInputSchema = z.object({
   search: z.string().trim().max(120).optional().describe("Matches name, email, or company"),
   limit: listLimitSchema,
+  cursor: listCursorSchema,
 })
 
 export const invoicesListToolInputSchema = z.object({
@@ -131,12 +138,14 @@ export const invoicesListToolInputSchema = z.object({
   paymentStatus: z.enum(["unpaid", "partially_paid", "paid"]).optional(),
   contactId: z.string().trim().min(1).optional(),
   limit: listLimitSchema,
+  cursor: listCursorSchema,
 })
 
 export const quotesListToolInputSchema = z.object({
   status: z.string().trim().max(40).optional().describe("Quote status, e.g. draft, sent, accepted"),
   contactId: z.string().trim().min(1).optional(),
   limit: listLimitSchema,
+  cursor: listCursorSchema,
 })
 
 export const documentIdToolInputSchema = z.object({ id: nonEmptyStringSchema })

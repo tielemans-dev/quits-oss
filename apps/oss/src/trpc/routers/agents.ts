@@ -102,6 +102,9 @@ export const agentsRouter = router({
         commandType: request.commandType,
         command: request.command,
         summary: request.summary,
+        reviewDetails:
+          ((request.reviewContext as { details?: Record<string, string | number | null> } | null)
+            ?.details ?? null),
         status: request.status,
         agent: request.agentKey,
         createdAt: request.createdAt,

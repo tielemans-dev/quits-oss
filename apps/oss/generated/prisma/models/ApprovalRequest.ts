@@ -62,6 +62,7 @@ export type ApprovalRequestCountAggregateOutputType = {
   commandType: number
   command: number
   summary: number
+  reviewContext: number
   status: number
   decidedByUserId: number
   decidedAt: number
@@ -110,6 +111,7 @@ export type ApprovalRequestCountAggregateInputType = {
   commandType?: true
   command?: true
   summary?: true
+  reviewContext?: true
   status?: true
   decidedByUserId?: true
   decidedAt?: true
@@ -199,6 +201,7 @@ export type ApprovalRequestGroupByOutputType = {
   commandType: string
   command: runtime.JsonValue
   summary: string
+  reviewContext: runtime.JsonValue | null
   status: string
   decidedByUserId: string | null
   decidedAt: Date | null
@@ -236,6 +239,7 @@ export type ApprovalRequestWhereInput = {
   commandType?: Prisma.StringFilter<"ApprovalRequest"> | string
   command?: Prisma.JsonFilter<"ApprovalRequest">
   summary?: Prisma.StringFilter<"ApprovalRequest"> | string
+  reviewContext?: Prisma.JsonNullableFilter<"ApprovalRequest">
   status?: Prisma.StringFilter<"ApprovalRequest"> | string
   decidedByUserId?: Prisma.StringNullableFilter<"ApprovalRequest"> | string | null
   decidedAt?: Prisma.DateTimeNullableFilter<"ApprovalRequest"> | Date | string | null
@@ -254,6 +258,7 @@ export type ApprovalRequestOrderByWithRelationInput = {
   commandType?: Prisma.SortOrder
   command?: Prisma.SortOrder
   summary?: Prisma.SortOrder
+  reviewContext?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   decidedByUserId?: Prisma.SortOrderInput | Prisma.SortOrder
   decidedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -275,6 +280,7 @@ export type ApprovalRequestWhereUniqueInput = Prisma.AtLeast<{
   commandType?: Prisma.StringFilter<"ApprovalRequest"> | string
   command?: Prisma.JsonFilter<"ApprovalRequest">
   summary?: Prisma.StringFilter<"ApprovalRequest"> | string
+  reviewContext?: Prisma.JsonNullableFilter<"ApprovalRequest">
   status?: Prisma.StringFilter<"ApprovalRequest"> | string
   decidedByUserId?: Prisma.StringNullableFilter<"ApprovalRequest"> | string | null
   decidedAt?: Prisma.DateTimeNullableFilter<"ApprovalRequest"> | Date | string | null
@@ -293,6 +299,7 @@ export type ApprovalRequestOrderByWithAggregationInput = {
   commandType?: Prisma.SortOrder
   command?: Prisma.SortOrder
   summary?: Prisma.SortOrder
+  reviewContext?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   decidedByUserId?: Prisma.SortOrderInput | Prisma.SortOrder
   decidedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -315,6 +322,7 @@ export type ApprovalRequestScalarWhereWithAggregatesInput = {
   commandType?: Prisma.StringWithAggregatesFilter<"ApprovalRequest"> | string
   command?: Prisma.JsonWithAggregatesFilter<"ApprovalRequest">
   summary?: Prisma.StringWithAggregatesFilter<"ApprovalRequest"> | string
+  reviewContext?: Prisma.JsonNullableWithAggregatesFilter<"ApprovalRequest">
   status?: Prisma.StringWithAggregatesFilter<"ApprovalRequest"> | string
   decidedByUserId?: Prisma.StringNullableWithAggregatesFilter<"ApprovalRequest"> | string | null
   decidedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ApprovalRequest"> | Date | string | null
@@ -329,6 +337,7 @@ export type ApprovalRequestCreateInput = {
   commandType: string
   command: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary: string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: string
   decidedByUserId?: string | null
   decidedAt?: Date | string | null
@@ -347,6 +356,7 @@ export type ApprovalRequestUncheckedCreateInput = {
   commandType: string
   command: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary: string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: string
   decidedByUserId?: string | null
   decidedAt?: Date | string | null
@@ -361,6 +371,7 @@ export type ApprovalRequestUpdateInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -379,6 +390,7 @@ export type ApprovalRequestUncheckedUpdateInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -395,6 +407,7 @@ export type ApprovalRequestCreateManyInput = {
   commandType: string
   command: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary: string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: string
   decidedByUserId?: string | null
   decidedAt?: Date | string | null
@@ -409,6 +422,7 @@ export type ApprovalRequestUpdateManyMutationInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -425,6 +439,7 @@ export type ApprovalRequestUncheckedUpdateManyInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -451,6 +466,7 @@ export type ApprovalRequestCountOrderByAggregateInput = {
   commandType?: Prisma.SortOrder
   command?: Prisma.SortOrder
   summary?: Prisma.SortOrder
+  reviewContext?: Prisma.SortOrder
   status?: Prisma.SortOrder
   decidedByUserId?: Prisma.SortOrder
   decidedAt?: Prisma.SortOrder
@@ -579,6 +595,7 @@ export type ApprovalRequestCreateWithoutOrganizationInput = {
   commandType: string
   command: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary: string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: string
   decidedByUserId?: string | null
   decidedAt?: Date | string | null
@@ -595,6 +612,7 @@ export type ApprovalRequestUncheckedCreateWithoutOrganizationInput = {
   commandType: string
   command: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary: string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: string
   decidedByUserId?: string | null
   decidedAt?: Date | string | null
@@ -640,6 +658,7 @@ export type ApprovalRequestScalarWhereInput = {
   commandType?: Prisma.StringFilter<"ApprovalRequest"> | string
   command?: Prisma.JsonFilter<"ApprovalRequest">
   summary?: Prisma.StringFilter<"ApprovalRequest"> | string
+  reviewContext?: Prisma.JsonNullableFilter<"ApprovalRequest">
   status?: Prisma.StringFilter<"ApprovalRequest"> | string
   decidedByUserId?: Prisma.StringNullableFilter<"ApprovalRequest"> | string | null
   decidedAt?: Prisma.DateTimeNullableFilter<"ApprovalRequest"> | Date | string | null
@@ -654,6 +673,7 @@ export type ApprovalRequestCreateWithoutAgentKeyInput = {
   commandType: string
   command: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary: string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: string
   decidedByUserId?: string | null
   decidedAt?: Date | string | null
@@ -670,6 +690,7 @@ export type ApprovalRequestUncheckedCreateWithoutAgentKeyInput = {
   commandType: string
   command: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary: string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: string
   decidedByUserId?: string | null
   decidedAt?: Date | string | null
@@ -711,6 +732,7 @@ export type ApprovalRequestCreateManyOrganizationInput = {
   commandType: string
   command: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary: string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: string
   decidedByUserId?: string | null
   decidedAt?: Date | string | null
@@ -725,6 +747,7 @@ export type ApprovalRequestUpdateWithoutOrganizationInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -741,6 +764,7 @@ export type ApprovalRequestUncheckedUpdateWithoutOrganizationInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -756,6 +780,7 @@ export type ApprovalRequestUncheckedUpdateManyWithoutOrganizationInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -771,6 +796,7 @@ export type ApprovalRequestCreateManyAgentKeyInput = {
   commandType: string
   command: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary: string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: string
   decidedByUserId?: string | null
   decidedAt?: Date | string | null
@@ -785,6 +811,7 @@ export type ApprovalRequestUpdateWithoutAgentKeyInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -801,6 +828,7 @@ export type ApprovalRequestUncheckedUpdateWithoutAgentKeyInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -816,6 +844,7 @@ export type ApprovalRequestUncheckedUpdateManyWithoutAgentKeyInput = {
   commandType?: Prisma.StringFieldUpdateOperationsInput | string
   command?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   summary?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewContext?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   decidedByUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   decidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -834,6 +863,7 @@ export type ApprovalRequestSelect<ExtArgs extends runtime.Types.Extensions.Inter
   commandType?: boolean
   command?: boolean
   summary?: boolean
+  reviewContext?: boolean
   status?: boolean
   decidedByUserId?: boolean
   decidedAt?: boolean
@@ -852,6 +882,7 @@ export type ApprovalRequestSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   commandType?: boolean
   command?: boolean
   summary?: boolean
+  reviewContext?: boolean
   status?: boolean
   decidedByUserId?: boolean
   decidedAt?: boolean
@@ -870,6 +901,7 @@ export type ApprovalRequestSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   commandType?: boolean
   command?: boolean
   summary?: boolean
+  reviewContext?: boolean
   status?: boolean
   decidedByUserId?: boolean
   decidedAt?: boolean
@@ -888,6 +920,7 @@ export type ApprovalRequestSelectScalar = {
   commandType?: boolean
   command?: boolean
   summary?: boolean
+  reviewContext?: boolean
   status?: boolean
   decidedByUserId?: boolean
   decidedAt?: boolean
@@ -896,7 +929,7 @@ export type ApprovalRequestSelectScalar = {
   createdAt?: boolean
 }
 
-export type ApprovalRequestOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "agentKeyId" | "commandReceiptId" | "commandType" | "command" | "summary" | "status" | "decidedByUserId" | "decidedAt" | "decisionNote" | "expiresAt" | "createdAt", ExtArgs["result"]["approvalRequest"]>
+export type ApprovalRequestOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "agentKeyId" | "commandReceiptId" | "commandType" | "command" | "summary" | "reviewContext" | "status" | "decidedByUserId" | "decidedAt" | "decisionNote" | "expiresAt" | "createdAt", ExtArgs["result"]["approvalRequest"]>
 export type ApprovalRequestInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   agentKey?: boolean | Prisma.AgentKeyDefaultArgs<ExtArgs>
@@ -924,6 +957,10 @@ export type $ApprovalRequestPayload<ExtArgs extends runtime.Types.Extensions.Int
     commandType: string
     command: runtime.JsonValue
     summary: string
+    /**
+     * What the person approving saw: document details and a version the command must still match.
+     */
+    reviewContext: runtime.JsonValue | null
     status: string
     decidedByUserId: string | null
     decidedAt: Date | null
@@ -1362,6 +1399,7 @@ export interface ApprovalRequestFieldRefs {
   readonly commandType: Prisma.FieldRef<"ApprovalRequest", 'String'>
   readonly command: Prisma.FieldRef<"ApprovalRequest", 'Json'>
   readonly summary: Prisma.FieldRef<"ApprovalRequest", 'String'>
+  readonly reviewContext: Prisma.FieldRef<"ApprovalRequest", 'Json'>
   readonly status: Prisma.FieldRef<"ApprovalRequest", 'String'>
   readonly decidedByUserId: Prisma.FieldRef<"ApprovalRequest", 'String'>
   readonly decidedAt: Prisma.FieldRef<"ApprovalRequest", 'DateTime'>

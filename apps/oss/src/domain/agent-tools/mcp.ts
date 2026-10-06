@@ -7,6 +7,7 @@ import type { AgentActor } from "../actor"
 import { authenticateAgentSecret } from "../agent-keys"
 import type { AgentTool } from "./define"
 import { getAgentTool, visibleAgentTools } from "./registry"
+import { resolveUrlOrigin } from "@yaip/shared/runtimeEnv"
 
 const logger = appLogger.child("agent-api")
 
@@ -144,7 +145,31 @@ export function createAgentMcpServer(actor: AgentActor) {
  * Serves one MCP request over Streamable HTTP in stateless mode: every POST authenticates the
  * bearer key and gets a fresh server, so any app instance can handle any request.
  */
+/**
+ * The MCP Streamable HTTP spec requires servers to validate `Origin` to stop DNS-rebinding
+ * attacks from browsers. Non-browser clients send no Origin and are allowed; browser requests
+ * must come from the app itself or an origin listed in `YAIP_MCP_ALLOWED_ORIGINS`.
+ */
+export function isAllowedMcpOrigin(origin: string | null, env: Record<string, string | undefined> = process.env) {
+  if (!origin) {
+    return true
+  }
+
+  const allowed = new Set(
+    [
+      resolveUrlOrigin(env.BETTER_AUTH_URL),
+      resolveUrlOrigin(env.YAIP_APP_ORIGIN),
+      ...(env.YAIP_MCP_ALLOWED_ORIGINS ?? "").split(",").map((value) => resolveUrlOrigin(value.trim())),
+    ].filter((value): value is string => Boolean(value))
+  )
+  return allowed.has(resolveUrlOrigin(origin) ?? "")
+}
+
 export async function handleMcpRequest(request: Request): Promise<Response> {
+  if (!isAllowedMcpOrigin(request.headers.get("origin"))) {
+    return jsonRpcError(403, "Origin not allowed")
+  }
+
   if (request.method !== "POST") {
     // Stateless servers have no server-initiated stream to open or session to delete.
     return jsonRpcError(405, "Method not allowed. Send MCP requests with POST.", { Allow: "POST" })

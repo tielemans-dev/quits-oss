@@ -120,4 +120,13 @@ export const daAgentsMessages = {
   "agents.approvals.commandStatus.rejected": "afvist",
   "agents.approvals.commandStatus.expired": "udløbet",
   "agents.approvals.commandStatus.awaiting_approval": "venter på godkendelse",
+  "agents.approvals.review.number": "Nummer",
+  "agents.approvals.review.customer": "Kunde",
+  "agents.approvals.review.recipient": "Modtager",
+  "agents.approvals.review.total": "Total",
+  "agents.approvals.review.amount": "Beløb",
+  "agents.approvals.review.currency": "Valuta",
+  "agents.approvals.review.dueDate": "Forfaldsdato",
+  "agents.approvals.review.expiryDate": "Gyldig til",
+  "agents.approvals.review.reason": "Årsag",
 } as const

@@ -235,10 +235,12 @@ export async function decideApproval(input: {
     })
   })
 
+  const reviewed = request.reviewContext as { version?: unknown } | null
   return executeCommand(definition, request.command, {
     actor: agent,
     approvedByUserId: approvedBy,
     resumeReceiptId: request.commandReceiptId,
+    expectedApprovalVersion: typeof reviewed?.version === "string" ? reviewed.version : undefined,
     now,
   })
 }

@@ -4,7 +4,7 @@ import { createTestOrganization, hasTestDatabase } from "../../test-utils/organi
 import { authenticateAgentSecret, createAgentKey, revokeAgentKey } from "../agent-keys"
 import { decideApproval, expireStaleApprovals } from "../approvals"
 import { createContact } from "../commands/contacts"
-import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
+import { createInvoiceDraft, sendInvoice, updateInvoiceDraft } from "../commands/invoices"
 import { recordPayment } from "../commands/payments"
 import { executeCommand } from "../execute"
 import { markOrganizationInvoicesOverdue } from "../features/overdue"
@@ -161,6 +161,44 @@ describeIfDatabase("review fixes", () => {
       })
       expect(resumed.status).toBe("completed")
       expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).status).toBe("sent")
+    })
+
+    it("shows reviewers the document and refuses to send it if the agent changes it afterwards", async () => {
+      const ctx = await setup()
+      const { secret } = await createAgentKey(ctx.org.actors.admin, {
+        name: "Drafter",
+        mode: "approval_required",
+        scopes: ["invoice:send", "invoice:update", "invoice:read"],
+      })
+      const agent = await authenticateAgentSecret(secret)
+      const queued = await executeCommand(
+        sendInvoice,
+        { id: ctx.invoiceId, allowSendWithoutEmail: true },
+        { actor: agent, clientRequestId: "send-reviewed" }
+      )
+      if (queued.status !== "awaiting_approval") throw new Error("expected approval")
+
+      const request = await prisma.approvalRequest.findUniqueOrThrow({ where: { id: queued.approvalRequestId } })
+      expect(request.summary).toBe("Send invoice INV-0001 (100.00 USD) to billing@acme.test")
+      expect(request.reviewContext).toMatchObject({
+        details: { number: "INV-0001", recipient: "billing@acme.test", total: "100.00" },
+      })
+
+      // Drafting is not gated, so the agent can still change the invoice after queuing the send.
+      const edited = await executeCommand(
+        updateInvoiceDraft,
+        { id: ctx.invoiceId, items: [{ description: "Design", quantity: 1, unitPrice: 9999 }] },
+        { actor: agent }
+      )
+      expect(edited.status).toBe("completed")
+
+      const decided = await decideApproval({
+        approvalRequestId: queued.approvalRequestId,
+        decider: ctx.org.actors.admin,
+        decision: "approve",
+      })
+      expect(decided).toMatchObject({ status: "failed", error: { code: "changed_since_review" } })
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoiceId } })).status).toBe("draft")
     })
 
     it("requires the command's permission to reject as well as approve", async () => {

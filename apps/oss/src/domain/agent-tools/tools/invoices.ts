@@ -14,6 +14,7 @@ import {
 } from "../../commands/invoices"
 import { NotFound } from "../../errors"
 import { defineCommandTool, defineQueryTool, type AgentTool } from "../define"
+import { afterNewest, decodeCursor, toPage } from "../pagination"
 import { presentInvoice, type InvoiceRow } from "./documents"
 
 const presentSent = (result: InvoiceRow & { emailSent: boolean; emailSkipReason?: string }) => ({
@@ -28,7 +29,8 @@ export const invoiceTools: AgentTool[] = [
     title: "List invoices",
     description:
       "Lists invoices, newest first, with totals, amount paid, amount credited, and balanceDue. " +
-      "Filter by status, paymentStatus, or contactId.",
+      "Filter by status, paymentStatus, or contactId. Returns { items, nextCursor }; pass nextCursor " +
+      "to get the next page.",
     input: invoicesListToolInputSchema,
     permission: "invoice:read",
     run: async ({ actor }, input) => {
@@ -38,12 +40,14 @@ export const invoiceTools: AgentTool[] = [
           ...(input.status ? { status: input.status } : {}),
           ...(input.paymentStatus ? { paymentStatus: input.paymentStatus } : {}),
           ...(input.contactId ? { contactId: input.contactId } : {}),
+          ...afterNewest(decodeCursor(input.cursor)),
         },
         include: { contact: { select: { id: true, name: true, email: true } } },
-        orderBy: { createdAt: "desc" },
-        take: input.limit,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: input.limit + 1,
       })
-      return invoices.map(presentInvoice)
+      const page = toPage(invoices, input.limit, (invoice) => invoice.createdAt.toISOString())
+      return { items: page.items.map(presentInvoice), nextCursor: page.nextCursor }
     },
   }),
 

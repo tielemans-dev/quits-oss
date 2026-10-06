@@ -2983,6 +2983,7 @@ export const ApprovalRequestScalarFieldEnum = {
   commandType: 'commandType',
   command: 'command',
   summary: 'summary',
+  reviewContext: 'reviewContext',
   status: 'status',
   decidedByUserId: 'decidedByUserId',
   decidedAt: 'decidedAt',

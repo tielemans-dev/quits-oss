@@ -195,7 +195,23 @@ describeIfDatabase("MCP endpoint", () => {
       expect(await prisma.contact.count({ where: { organizationId: org.organizationId } })).toBe(1)
 
       const listed = await call(client, "contacts_list", { search: "acme" })
-      expect(listed.value).toHaveLength(1)
+      expect(listed.value).toMatchObject({ items: [expect.anything()], nextCursor: null })
+    })
+
+    it("pages through lists with a cursor", async () => {
+      const org = await setup()
+      const client = await connect((await keyFor(org, "full_access", drafting)).secret)
+      for (const name of ["Alpha", "Bravo", "Charlie"]) {
+        await call(client, "contact_create", { name, clientRequestId: `create-${name}` })
+      }
+
+      const first = await call(client, "contacts_list", { limit: 2 })
+      const firstPage = first.value as { items: Array<{ name: string }>; nextCursor: string | null }
+      expect(firstPage.items.map((contact) => contact.name)).toEqual(["Alpha", "Bravo"])
+      expect(firstPage.nextCursor).toEqual(expect.any(String))
+
+      const second = await call(client, "contacts_list", { limit: 2, cursor: firstPage.nextCursor })
+      expect(second.value).toMatchObject({ items: [{ name: "Charlie" }], nextCursor: null })
     })
 
     it("returns domain errors without internals", async () => {

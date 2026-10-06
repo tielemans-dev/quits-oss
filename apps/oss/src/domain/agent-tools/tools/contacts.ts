@@ -4,6 +4,7 @@ import { prisma } from "../../../lib/db"
 import { createContact, updateContact } from "../../commands/contacts"
 import { NotFound } from "../../errors"
 import { defineCommandTool, defineQueryTool, type AgentTool } from "../define"
+import { decodeCursor, toPage } from "../pagination"
 
 export const contactTools: AgentTool[] = [
   defineQueryTool({
@@ -11,27 +12,34 @@ export const contactTools: AgentTool[] = [
     title: "List contacts",
     description:
       "Lists customers, alphabetically. Search by name, email, or company before creating a contact " +
-      "so you do not create duplicates.",
+      "so you do not create duplicates. Returns { items, nextCursor }; pass nextCursor for the next page.",
     input: contactsListToolInputSchema,
     permission: "contact:read",
     run: async ({ actor }, input) => {
       const search = input.search?.trim()
-      return prisma.contact.findMany({
+      const cursor = decodeCursor(input.cursor)
+      const contacts = await prisma.contact.findMany({
         where: {
           organizationId: actor.organizationId,
-          ...(search
-            ? {
-                OR: [
-                  { name: { contains: search, mode: "insensitive" } },
-                  { email: { contains: search, mode: "insensitive" } },
-                  { company: { contains: search, mode: "insensitive" } },
-                ],
-              }
-            : {}),
+          AND: [
+            cursor
+              ? { OR: [{ name: { gt: cursor.key } }, { name: cursor.key, id: { gt: cursor.id } }] }
+              : {},
+            search
+              ? {
+                  OR: [
+                    { name: { contains: search, mode: "insensitive" } },
+                    { email: { contains: search, mode: "insensitive" } },
+                    { company: { contains: search, mode: "insensitive" } },
+                  ],
+                }
+              : {},
+          ],
         },
-        orderBy: { name: "asc" },
-        take: input.limit,
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        take: input.limit + 1,
       })
+      return toPage(contacts, input.limit, (contact) => contact.name)
     },
   }),
 

@@ -614,6 +614,8 @@ model ApprovalRequest {
   commandType      String
   command          Json
   summary          String
+  /// What the person approving saw: document details and a version the command must still match.
+  reviewContext    Json?
   status           String       @default("pending")
   decidedByUserId  String?
   decidedAt        DateTime?

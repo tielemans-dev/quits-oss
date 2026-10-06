@@ -16,6 +16,21 @@ export type CommandDefinition<Input = unknown, Result = unknown> = {
   /** One line a human approver can act on, e.g. "Send invoice INV-0042 to Acme". */
   readonly summarize: (input: Input) => string
   readonly handle: (input: Input) => Effect.Effect<Result, DomainError, Db | Command>
+  /**
+   * For outward-facing commands: what a person approving the command is shown, plus a version of
+   * the affected document. The command is refused if the version changes before approval runs it,
+   * so an agent cannot edit a document after queuing it for review.
+   */
+  readonly approvalContext?: (input: Input) => Effect.Effect<ApprovalContext, DomainError, Db | Command>
+}
+
+export type ApprovalContext = {
+  /** One line naming the document, e.g. "Send invoice INV-0042 (1,250.00 DKK) to billing@acme.dk". */
+  summary: string
+  /** Changes whenever the reviewed document changes. */
+  version: string
+  /** Key facts shown in the approvals inbox. */
+  details: Record<string, string | number | null>
 }
 
 export function defineCommand<Input, Result>(

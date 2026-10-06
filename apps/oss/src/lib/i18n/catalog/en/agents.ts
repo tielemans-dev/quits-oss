@@ -119,4 +119,13 @@ export const enAgentsMessages = {
   "agents.approvals.commandStatus.rejected": "rejected",
   "agents.approvals.commandStatus.expired": "expired",
   "agents.approvals.commandStatus.awaiting_approval": "awaiting approval",
+  "agents.approvals.review.number": "Number",
+  "agents.approvals.review.customer": "Customer",
+  "agents.approvals.review.recipient": "Recipient",
+  "agents.approvals.review.total": "Total",
+  "agents.approvals.review.amount": "Amount",
+  "agents.approvals.review.currency": "Currency",
+  "agents.approvals.review.dueDate": "Due date",
+  "agents.approvals.review.expiryDate": "Valid until",
+  "agents.approvals.review.reason": "Reason",
 } as const

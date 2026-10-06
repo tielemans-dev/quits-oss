@@ -89,10 +89,16 @@ Command tools return a command record:
 ```
 
 With an `approval_required` key, an outward-facing command returns `awaiting_approval`. It appears in
-the **Approvals** page with the agent, a readable summary, and the stored input. Anyone holding the
-command's permission (for example `invoice:send`) can approve or reject it with an optional note.
-Approving runs the stored command as the agent and records the approver on the resulting events.
-Requests expire after 7 days.
+the **Approvals** page with the agent, a readable summary (for example "Send invoice INV-0042
+(1,250.00 DKK) to billing@acme.dk"), the key facts of the document, and the stored input. Anyone
+holding the command's permission (for example `invoice:send`) can approve or reject it with an
+optional note. Approving runs the stored command as the agent and records the approver on the
+resulting events. Requests expire after 7 days.
+
+Approval is bound to what the person reviewed. If the document changes after the request was queued
+(for example the agent edits the draft or the customer's email address changes), approving fails with
+`code: "changed_since_review"` instead of sending the changed document. Request approval again after
+editing.
 
 The agent follows the outcome with `command_wait` (blocks up to 30 seconds and returns
 `{ command, timedOut }`) or `command_status`. Agents can only see their own commands. Do not resend
@@ -111,24 +117,40 @@ command tools. Money is returned as numbers in the document currency; dates are 
 | Tool | Kind | Scope | Notes |
 | --- | --- | --- | --- |
 | `organization_read` | query | `settings:read` | Company, currency, locale, tax regime, `pricesIncludeTax`, and the key's mode and scopes. Call first. |
-| `contacts_list` | query | `contact:read` | `search` (name, email, company), `limit` |
+| `contacts_list` | query | `contact:read` | `search` (name, email, company), `limit`, `cursor` |
 | `contact_get` | query | `contact:read` | `id` |
 | `contact_create` | command | `contact:create` | Contact fields + `clientRequestId` |
 | `contact_update` | command | `contact:update` | `id`, changed fields + `clientRequestId` |
-| `invoices_list` | query | `invoice:read` | `status`, `paymentStatus`, `contactId`, `limit`; includes `amountPaid`, `amountCredited`, `balanceDue` |
+| `invoices_list` | query | `invoice:read` | `status`, `paymentStatus`, `contactId`, `limit`, `cursor`; includes `amountPaid`, `amountCredited`, `balanceDue` |
 | `invoice_get` | query | `invoice:read` | `id`; includes line items and public payment link |
 | `invoice_create_draft` | command | `invoice:create` | `contactId`, `dueDate`, `items`, `taxRate`, `currency?`, `notes?` |
 | `invoice_update_draft` | command | `invoice:update` | `id` + changed fields; `items` replaces all lines |
 | `invoice_send` | command, outward-facing | `invoice:send` | `id`, `allowSendWithoutEmail?` |
 | `invoice_resend_email` | command, outward-facing | `invoice:send` | `id` |
-| `quotes_list` | query | `quote:read` | `status`, `contactId`, `limit` |
+| `quotes_list` | query | `quote:read` | `status`, `contactId`, `limit`, `cursor` |
 | `quote_get` | query | `quote:read` | `id`; includes line items and linked invoices |
+| `quote_create_draft` | command | `quote:create` | `contactId`, `expiryDate`, `items`, `taxRate`, `currency?`, `notes?` |
+| `quote_update_draft` | command | `quote:update` | `id` + changed fields; `items` replaces all lines |
+| `quote_send` | command, outward-facing | `quote:send` | `id`, `allowSendWithoutEmail?` |
+| `quote_resend_email` | command, outward-facing | `quote:send` | `id` |
+| `quote_convert_to_invoice` | command | `invoice:create` | `id` of an accepted quote; creates a draft invoice |
 | `activity_read` | query | `audit:read` | `afterSequence`, `aggregateType`, `aggregateId`, `limit`; page with `nextSequence` while `hasMore` |
 | `command_status` | query | any write-mode key | `commandId` |
 | `command_wait` | query | any write-mode key | `commandId`, `timeoutMs` (0-30000, default 15000) |
 
 Tool input schemas are generated from the zod contracts in `@yaip/contracts` (`agent`, `contacts`,
 `invoices`), so the MCP schema always matches what the UI accepts.
+
+List tools return `{ items, nextCursor }`. Pass `nextCursor` back as `cursor` to read the next page;
+it is `null` on the last page.
+
+## Security notes
+
+- Keys are stored as SHA-256 hashes; the secret is shown once when the key is created.
+- An agent never has more permissions than the person who created its key, now or later.
+- Browsers are refused unless the request `Origin` is the app's own origin or listed in
+  `YAIP_MCP_ALLOWED_ORIGINS` (comma-separated). CLI and desktop clients send no `Origin` and are not
+  affected.
 
 ## A typical session
 

@@ -18,7 +18,8 @@ const approval: ApprovalRow = {
   commandId: "cmd_1",
   commandType: "invoice.send",
   command: { id: "inv_1" },
-  summary: "Send invoice inv_1 to the customer",
+  summary: "Send invoice INV-0001 (100.00 USD) to billing@acme.test",
+  reviewDetails: { number: "INV-0001", recipient: "billing@acme.test", total: "100.00", currency: "USD" },
   status: "pending",
   agent: { id: "key_1", name: "Bookkeeper", displayPrefix: "yaip_ak_abc123", revokedAt: null },
   createdAt: new Date("2026-10-06T10:00:00Z"),
@@ -43,7 +44,10 @@ describe("agent components", () => {
 
   it("offers approve and reject only to people who may decide", () => {
     const html = renderToStaticMarkup(<ApprovalItem approval={approval} />)
-    expect(html).toContain("Send invoice inv_1 to the customer")
+    expect(html).toContain("Send invoice INV-0001 (100.00 USD) to billing@acme.test")
+    // Reviewers see the document facts the approval is bound to.
+    expect(html).toContain("agents.approvals.review.recipient")
+    expect(html).toContain("billing@acme.test")
     expect(html).toContain("agents.approvals.approve")
     expect(html).toContain("agents.approvals.reject")
 
