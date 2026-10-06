@@ -3,7 +3,10 @@ import {
   contactCreateInputSchema,
   contactDeleteInputSchema,
   contactUpdateInputSchema,
+  PEPPOL_ENDPOINT_ID_MESSAGE,
+  PEPPOL_ENDPOINT_PAIR_MESSAGE,
 } from "@yaip/contracts/contacts"
+import { peppolEndpointIssue } from "@yaip/contracts/exports"
 import {
   getCountryCodeOrFallback,
   validateLocalizedFields,
@@ -40,6 +43,29 @@ function validateLocalized(
   )
 }
 
+/**
+ * Checks the Peppol endpoint a contact will have after the change: both parts or neither, and an
+ * identifier that fits its EAS scheme. Partial updates are merged with the stored values first.
+ */
+function validatePeppolEndpoint(endpoint: { id: string | null; scheme: string | null }) {
+  const path = endpoint.id ? "peppolEndpointScheme" : "peppolEndpointId"
+  if (!endpoint.id !== !endpoint.scheme) {
+    return Effect.fail(
+      new ValidationFailed({
+        message: PEPPOL_ENDPOINT_PAIR_MESSAGE,
+        issues: [{ path, message: PEPPOL_ENDPOINT_PAIR_MESSAGE }],
+      })
+    )
+  }
+  const issue = endpoint.id && endpoint.scheme ? peppolEndpointIssue(endpoint.scheme, endpoint.id) : null
+  if (issue) {
+    const message = issue === "scheme" ? "Use a Peppol EAS code from the Peppol code list" : PEPPOL_ENDPOINT_ID_MESSAGE
+    const issuePath = issue === "scheme" ? "peppolEndpointScheme" : "peppolEndpointId"
+    return Effect.fail(new ValidationFailed({ message, issues: [{ path: issuePath, message }] }))
+  }
+  return Effect.void
+}
+
 const loadOrgCountry = Effect.gen(function* () {
   const db = yield* Db
   const { organizationId } = yield* Command
@@ -67,6 +93,10 @@ export const createContact = defineCommand({
         ),
         input
       )
+      yield* validatePeppolEndpoint({
+        id: input.peppolEndpointId ?? null,
+        scheme: input.peppolEndpointScheme ?? null,
+      })
 
       const contact = yield* Effect.promise(() =>
         db.contact.create({
@@ -102,7 +132,14 @@ export const updateContact = defineCommand({
       const existing = yield* Effect.promise(() =>
         db.contact.findFirst({
           where: { id: input.id, organizationId: command.organizationId },
-          select: { phone: true, zip: true, taxId: true, country: true },
+          select: {
+            phone: true,
+            zip: true,
+            taxId: true,
+            country: true,
+            peppolEndpointId: true,
+            peppolEndpointScheme: true,
+          },
         })
       )
       if (!existing) {
@@ -122,6 +159,11 @@ export const updateContact = defineCommand({
           taxId: input.taxId ?? existing.taxId,
         }
       )
+      yield* validatePeppolEndpoint({
+        id: input.peppolEndpointId !== undefined ? input.peppolEndpointId : existing.peppolEndpointId,
+        scheme:
+          input.peppolEndpointScheme !== undefined ? input.peppolEndpointScheme : existing.peppolEndpointScheme,
+      })
 
       const { id, ...data } = input
       const contact = yield* Effect.promise(() =>
