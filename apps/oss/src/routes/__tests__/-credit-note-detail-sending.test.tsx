@@ -5,6 +5,7 @@ import type { ComponentType } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const api = vi.hoisted(() => ({
+  creditNoteId: "cn_1",
   get: vi.fn(),
   settings: vi.fn(),
   capabilities: vi.fn(),
@@ -14,7 +15,7 @@ const api = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
-    useParams: () => ({ creditNoteId: "cn_1" }),
+    useParams: () => ({ creditNoteId: api.creditNoteId }),
   }),
   Link: ({ children }: { children: unknown }) => children,
 }))
@@ -40,8 +41,9 @@ vi.mock("../../lib/i18n/react", () => ({
 
 import { Route } from "../_app/credit-notes/$creditNoteId"
 
-function translate(key: string) {
-  return key
+/** The key, followed by the document number where one is shown (to tell credit notes apart). */
+function translate(key: string, params?: Record<string, unknown>) {
+  return key === "creditNotes.detail.title" ? `${key} ${String(params?.number)}` : key
 }
 
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
@@ -82,6 +84,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  api.creditNoteId = "cn_1"
   vi.useRealTimers()
   vi.resetAllMocks()
 })
@@ -133,5 +136,41 @@ describe("credit note detail while the email is being delivered", () => {
 
     expect(await screen.findByText("creditNotes.detail.email.pending")).toBeTruthy()
     expect(screen.queryByText("creditNotes.detail.email.success")).toBeNull()
+  })
+
+  it("keeps showing the next credit note when an earlier send settles", async () => {
+    const creditNotes: Record<string, typeof base> = {
+      cn_1: { ...base, lastEmailAttemptAt: null, lastEmailAttemptOutcome: null } as typeof base,
+      cn_2: { ...base, id: "cn_2", number: "CN-0002", lastEmailAttemptAt: null, lastEmailAttemptOutcome: null } as typeof base,
+    }
+    api.get.mockImplementation(async ({ id }: { id: string }) => creditNotes[id])
+    let settleSend: (value: unknown) => void = () => undefined
+    api.send.mockReturnValue(new Promise((resolve) => (settleSend = resolve)))
+
+    const view = render(<RouteComponent />)
+    expect(await screen.findByText("creditNotes.detail.title CN-0001")).toBeTruthy()
+    const send = screen.getByRole("button", { name: "creditNotes.action.send" })
+    await act(async () => {
+      send.click()
+    })
+    expect(api.send).toHaveBeenCalledWith({ id: "cn_1" })
+
+    // Navigate to another credit note while the first one is still being sent.
+    api.creditNoteId = "cn_2"
+    view.rerender(<RouteComponent />)
+    expect(await screen.findByText("creditNotes.detail.title CN-0002")).toBeTruthy()
+    const loadsBeforeSettling = api.get.mock.calls.length
+
+    await act(async () => {
+      settleSend({ id: "cn_1", recipient: "acme@example.com", attemptedAt: new Date(), delivery: "sent" })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(screen.getByText("creditNotes.detail.title CN-0002")).toBeTruthy()
+    expect(screen.queryByText("creditNotes.detail.title CN-0001")).toBeNull()
+    expect(screen.queryByText("creditNotes.detail.email.success")).toBeNull()
+    // The first send's follow-up reload is skipped rather than restoring the first credit note.
+    expect(api.get.mock.calls.slice(loadsBeforeSettling)).toEqual([])
+    expect((screen.getByRole("button", { name: "creditNotes.action.send" }) as HTMLButtonElement).disabled).toBe(false)
   })
 })

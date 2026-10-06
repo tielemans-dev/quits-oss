@@ -62,15 +62,21 @@ function CreditNoteDetailPage() {
   // The page stays mounted when navigating to another credit note; drop answers for the previous one.
   const beginRequest = useDocumentResponseGuard(creditNoteId)
 
+  /**
+   * Loads the credit note with what the user may do. Commits nothing once the page shows another
+   * credit note (it stays mounted when navigating between them) or a newer load started.
+   */
   const load = useCallback(async () => {
     const request = ++latestLoad.current
+    const isCurrent = beginRequest(creditNoteId)
     const [data, settings, capabilities] = await Promise.all([
       trpc.creditNotes.get.query({ id: creditNoteId }),
       trpc.settings.get.query(),
       trpc.creditNotes.capabilities.query(),
     ])
-    // A late answer from before an organization switch must not restore old rights.
-    if (request !== latestLoad.current) return
+    // A late answer for another credit note, or from before an organization switch, must not
+    // replace what is on screen or restore old rights.
+    if (request !== latestLoad.current || !isCurrent()) return
     setCreditNote(data)
     setCanSend(capabilities.canSend)
     setOrg({
@@ -83,7 +89,7 @@ function CreditNoteDetailPage() {
       timezone: settings.timezone,
       emailAvailable: settings.emailDelivery.available,
     })
-  }, [creditNoteId])
+  }, [beginRequest, creditNoteId])
 
   /** Reloads only the credit note; a full load started meanwhile wins. */
   const refreshCreditNote = useCallback(async () => {
@@ -98,9 +104,13 @@ function CreditNoteDetailPage() {
   const emailSending = creditNote?.lastEmailAttemptOutcome === "sending"
   const pollFailure = usePollWhile(emailSending, refreshCreditNote)
 
-  // Switching organization keeps the page mounted, so start over with nothing allowed.
+  // Another credit note (or organization) keeps the page mounted, so start over with nothing
+  // allowed and nothing reported about the previous one.
   useEffect(() => {
     setCanSend(false)
+    setError(null)
+    setNotice(null)
+    setSending(false)
     if (organizationId === undefined) return
     const isCurrent = beginRequest(creditNoteId)
     load()
@@ -114,11 +124,14 @@ function CreditNoteDetailPage() {
 
   async function handleSend() {
     if (!creditNote) return
+    // The answer is only reported while this credit note is still on screen.
+    const isCurrent = beginRequest(creditNote.id)
     setSending(true)
     setError(null)
     setNotice(null)
     try {
       const result = await trpc.creditNotes.send.mutate({ id: creditNote.id })
+      if (!isCurrent()) return
       if (result.delivery === "pending") {
         setNotice({ kind: "info", text: t("creditNotes.detail.email.pending", { email: result.recipient }) })
       } else if (result.delivery === "unconfirmed") {
@@ -132,10 +145,13 @@ function CreditNoteDetailPage() {
         setNotice({ kind: "info", text: t("creditNotes.detail.email.success", { email: result.recipient }) })
       }
     } catch (err) {
+      if (!isCurrent()) return
       setError(err instanceof Error ? err.message : t("creditNotes.error.generic"))
     } finally {
-      setSending(false)
-      await load().catch(() => undefined)
+      if (isCurrent()) {
+        setSending(false)
+        await load().catch(() => undefined)
+      }
     }
   }
 
