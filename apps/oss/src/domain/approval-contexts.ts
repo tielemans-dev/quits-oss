@@ -17,17 +17,31 @@ export function fingerprint(values: ReadonlyArray<unknown>) {
   return createHash("sha256").update(JSON.stringify(values)).digest("hex").slice(0, 32)
 }
 
-type Line = { description: string; quantity: { toString(): string }; lineGross: { toString(): string } }
+type Line = {
+  description: string
+  quantity: { toString(): string }
+  unitPriceNet: { toString(): string }
+  unitPriceGross: { toString(): string }
+  taxRate: { toString(): string }
+  lineGross: { toString(): string }
+}
 
-/** The parts of an invoice or quote a customer receives. */
+/**
+ * The parts of an invoice or quote a customer receives: amounts, lines, dates, and who it is
+ * addressed to (the contact, its name and company, and the buyer snapshot printed on the document).
+ */
 export function documentFingerprint(
   document: {
     number: string
     currency: string
+    issueDate: Date
     subtotalNet: { toString(): string }
     totalTax: { toString(): string }
     totalGross: { toString(): string }
     notes: string | null
+    contactId: string
+    buyerSnapshot: unknown
+    contact: { name: string; company?: string | null }
     items: Line[]
   },
   recipient: string | null,
@@ -36,11 +50,23 @@ export function documentFingerprint(
   return fingerprint([
     document.number,
     document.currency,
+    document.issueDate.toISOString(),
     document.subtotalNet.toString(),
     document.totalTax.toString(),
     document.totalGross.toString(),
     document.notes,
-    document.items.map((item) => [item.description, item.quantity.toString(), item.lineGross.toString()]),
+    document.items.map((item) => [
+      item.description,
+      item.quantity.toString(),
+      item.unitPriceNet.toString(),
+      item.unitPriceGross.toString(),
+      item.taxRate.toString(),
+      item.lineGross.toString(),
+    ]),
+    document.contactId,
+    document.contact.name,
+    document.contact.company ?? null,
+    document.buyerSnapshot ?? null,
     recipient,
     dates.map((date) => date?.toISOString() ?? null),
   ])
@@ -52,11 +78,15 @@ const money = (amount: { toFixed(digits: number): string } | number, currency: s
 /**
  * Locks a contact before its email address is read, so the recipient a person approved cannot
  * change before the command sends to it. Always lock the document first, then the contact.
+ *
+ * Takes FOR NO KEY UPDATE rather than FOR UPDATE: editing the contact's email (a non-key UPDATE)
+ * still waits for this lock, but inserting a document that references the contact (which takes
+ * FOR KEY SHARE on it) does not, so a concurrent draft insert cannot deadlock against an approval.
  */
 export const lockedContact = (contactId: string) =>
   Effect.gen(function* () {
     const db = yield* Db
-    yield* lockDocument("contact", contactId)
+    yield* lockDocument("contact", contactId, { strength: "no_key_update" })
     return yield* Effect.promise(() =>
       db.contact.findUniqueOrThrow({ where: { id: contactId }, select: { name: true, email: true } })
     )
@@ -233,15 +263,25 @@ export const recurringApproval = (
         action === "resume"
           ? `Resume "${schedule.name}" for ${schedule.contact.name}: invoices ${cadence}, ${delivery}`
           : `Generate the next "${schedule.name}" invoice for ${schedule.contact.name} now (${delivery})`,
+      // Every field that shapes a generated invoice or its delivery. Bookkeeping (status, lastRunAt,
+      // updatedAt) is left out so a scheduler tick on another schedule does not invalidate this.
       version: fingerprint([
+        schedule.name,
+        schedule.contactId,
+        schedule.contact.name,
+        schedule.contact.email,
         schedule.items,
         schedule.taxRate.toString(),
         schedule.currency,
         schedule.intervalCount,
         schedule.intervalUnit,
-        schedule.autoSend,
+        schedule.startDate.toISOString(),
         schedule.nextRunAt.toISOString(),
-        schedule.contact.email,
+        schedule.endsAt?.toISOString() ?? null,
+        schedule.remainingRuns,
+        schedule.dueInDays,
+        schedule.notes,
+        schedule.autoSend,
       ]),
       details: {
         name: schedule.name,
@@ -249,6 +289,10 @@ export const recurringApproval = (
         recipient: schedule.autoSend ? (schedule.contact.email ?? null) : null,
         cadence,
         nextRun: schedule.nextRunAt.toISOString().slice(0, 10),
+        endsAt: schedule.endsAt ? schedule.endsAt.toISOString().slice(0, 10) : null,
+        remainingRuns: schedule.remainingRuns,
+        paymentTerms: `Due in ${schedule.dueInDays} day${schedule.dueInDays === 1 ? "" : "s"}`,
+        notes: schedule.notes,
         currency: schedule.currency,
       },
     }

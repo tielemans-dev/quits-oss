@@ -291,7 +291,7 @@ export const reminderResumeApproval = (input: { invoiceId: string }) =>
       return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.invoiceId })
     }
     // Locked so the address the reviewer saw is the address the version was computed from.
-    yield* lockDocument("contact", located.contactId)
+    yield* lockDocument("contact", located.contactId, { strength: "no_key_update" })
     const invoice = yield* Effect.promise(() =>
       db.invoice.findFirstOrThrow({
         where: { id: input.invoiceId, organizationId: command.organizationId },

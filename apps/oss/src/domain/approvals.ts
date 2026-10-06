@@ -1,4 +1,4 @@
-import type { Prisma } from "../../generated/prisma/client"
+import { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { actorCan, type AgentActor, type UserActor } from "./actor"
 import { closeRevokedKeyApprovals, resolveAgentActorById } from "./agent-keys"
@@ -258,31 +258,36 @@ export async function recoverInterruptedApprovals(
   const scope = input.organizationIds ? { organizationId: { in: input.organizationIds } } : {}
   await closeRevokedKeyApprovals(scope, now)
 
-  const decided = await prisma.approvalRequest.findMany({
-    where: { ...scope, status: { in: ["approved", "rejected"] }, decidedByUserId: { not: null } },
-    select: { id: true, organizationId: true, status: true, decidedByUserId: true, commandReceiptId: true },
-    orderBy: { decidedAt: "asc" },
-    take: 500,
-  })
-  const stuckReceipts = new Set(
-    (
-      await prisma.commandReceipt.findMany({
-        where: {
-          id: { in: decided.map((request) => request.commandReceiptId) },
-          status: "awaiting_approval",
-          updatedAt: { lte: new Date(now.getTime() - RESUME_AFTER_MS) },
-        },
-        select: { id: true },
-      })
-    ).map((receipt) => receipt.id)
-  )
+  // Find the stuck receipts directly, joined to their decided requests. Decided requests
+  // accumulate forever, so scanning a window of them would eventually stop reaching the few
+  // receipts that still need finishing.
+  const staleBefore = new Date(now.getTime() - RESUME_AFTER_MS)
+  const organizationFilter = input.organizationIds
+    ? input.organizationIds.length > 0
+      ? Prisma.sql`AND r."organizationId" IN (${Prisma.join(input.organizationIds)})`
+      : Prisma.sql`AND FALSE`
+    : Prisma.empty
+  const stuck = await prisma.$queryRaw<
+    Array<{ id: string; organizationId: string; status: string; decidedByUserId: string; commandReceiptId: string }>
+  >`
+    SELECT a."id", a."organizationId", a."status", a."decidedByUserId", a."commandReceiptId"
+    FROM "command_receipt" r
+    JOIN "approval_request" a ON a."commandReceiptId" = r."id"
+    WHERE r."status" = 'awaiting_approval'
+      AND r."updatedAt" <= ${staleBefore}
+      AND a."status" IN ('approved', 'rejected')
+      AND a."decidedByUserId" IS NOT NULL
+      ${organizationFilter}
+    ORDER BY r."updatedAt" ASC, r."id" ASC
+    LIMIT ${input.limit ?? 50}
+  `
 
   let recovered = 0
   let failed = 0
-  for (const request of decided.filter((candidate) => stuckReceipts.has(candidate.commandReceiptId)).slice(0, input.limit ?? 50)) {
+  for (const request of stuck) {
     const decider = await resolveUserActor({
       organizationId: request.organizationId,
-      userId: request.decidedByUserId ?? "",
+      userId: request.decidedByUserId,
     })
     if (!decider) {
       await prisma.commandReceipt.updateMany({
