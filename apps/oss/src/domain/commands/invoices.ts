@@ -5,6 +5,7 @@ import {
   invoiceSendInputSchema,
   invoiceUpdateDraftInputSchema,
 } from "@yaip/contracts/invoices"
+import type { z } from "zod"
 import { billingProvider } from "../../lib/billing"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { appLogger } from "../../lib/observability"
@@ -69,68 +70,89 @@ const findInvoice = (id: string) =>
     return invoice
   })
 
+/** Links a generated invoice to the recurring schedule run that produced it. */
+export type InvoiceDraftOrigin = {
+  recurringInvoiceId: string
+  recurringRunDate: Date
+}
+
+/**
+ * Creates a priced draft invoice and emits `invoice.draft_created`. Shared by the
+ * `invoice.create_draft` command and recurring schedule runs.
+ */
+export const buildInvoiceDraft = (
+  input: z.infer<typeof invoiceCreateDraftInputSchema>,
+  origin?: InvoiceDraftOrigin
+) =>
+  Effect.gen(function* () {
+    const db = yield* Db
+    const command = yield* Command
+    const { organizationId } = command
+
+    yield* precondition(() => assertCloudOnboardingComplete(organizationId))
+    const contact = yield* findContact(input.contactId)
+    yield* precondition(() => billingProvider.assertInvoiceCreationAllowed(organizationId))
+
+    const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
+    const number = yield* allocateDocumentNumber("invoice")
+    const priced = priceDocument({
+      profile,
+      items: input.items,
+      taxRate: input.taxRate,
+      pricesIncludeTax: settings.pricesIncludeTax,
+    })
+    const compliance = assessCompliance(profile, sellerTaxIds, input.taxRate)
+
+    const invoice = yield* Effect.promise(() =>
+      db.invoice.create({
+        data: {
+          organizationId,
+          contactId: contact.id,
+          number,
+          status: "draft",
+          dueDate: new Date(input.dueDate),
+          subtotalNet: priced.subtotalNet,
+          totalTax: priced.totalTax,
+          totalGross: priced.totalGross,
+          currency: input.currency ?? settings.defaultCurrency ?? settings.currency,
+          countryCode: settings.countryCode,
+          locale: settings.locale,
+          timezone: settings.timezone,
+          taxRegime: settings.taxRegime,
+          pricesIncludeTax: settings.pricesIncludeTax,
+          sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds),
+          buyerSnapshot: buildBuyerSnapshot(contact),
+          complianceStatus: compliance.status,
+          complianceErrors: compliance.issues,
+          notes: input.notes,
+          ...(origin
+            ? {
+                recurringInvoiceId: origin.recurringInvoiceId,
+                recurringRunDate: origin.recurringRunDate,
+              }
+            : {}),
+          items: { create: priced.itemRows },
+        },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      })
+    )
+
+    command.emit({
+      aggregateType: "invoice",
+      aggregateId: invoice.id,
+      type: "invoice.draft_created",
+      payload: { number: invoice.number, contactId: contact.id, totalGross: priced.totalGross },
+    })
+    return invoice
+  })
+
 export const createInvoiceDraft = defineCommand({
   type: "invoice.create_draft",
   permission: "invoice:create",
   outwardFacing: false,
   input: invoiceCreateDraftInputSchema,
   summarize: (input) => `Create a draft invoice with ${input.items.length} line(s)`,
-  handle: (input) =>
-    Effect.gen(function* () {
-      const db = yield* Db
-      const command = yield* Command
-      const { organizationId } = command
-
-      yield* precondition(() => assertCloudOnboardingComplete(organizationId))
-      const contact = yield* findContact(input.contactId)
-      yield* precondition(() => billingProvider.assertInvoiceCreationAllowed(organizationId))
-
-      const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
-      const number = yield* allocateDocumentNumber("invoice")
-      const priced = priceDocument({
-        profile,
-        items: input.items,
-        taxRate: input.taxRate,
-        pricesIncludeTax: settings.pricesIncludeTax,
-      })
-      const compliance = assessCompliance(profile, sellerTaxIds, input.taxRate)
-
-      const invoice = yield* Effect.promise(() =>
-        db.invoice.create({
-          data: {
-            organizationId,
-            contactId: contact.id,
-            number,
-            status: "draft",
-            dueDate: new Date(input.dueDate),
-            subtotalNet: priced.subtotalNet,
-            totalTax: priced.totalTax,
-            totalGross: priced.totalGross,
-            currency: input.currency ?? settings.defaultCurrency ?? settings.currency,
-            countryCode: settings.countryCode,
-            locale: settings.locale,
-            timezone: settings.timezone,
-            taxRegime: settings.taxRegime,
-            pricesIncludeTax: settings.pricesIncludeTax,
-            sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds),
-            buyerSnapshot: buildBuyerSnapshot(contact),
-            complianceStatus: compliance.status,
-            complianceErrors: compliance.issues,
-            notes: input.notes,
-            items: { create: priced.itemRows },
-          },
-          include: { items: { orderBy: { sortOrder: "asc" } } },
-        })
-      )
-
-      command.emit({
-        aggregateType: "invoice",
-        aggregateId: invoice.id,
-        type: "invoice.draft_created",
-        payload: { number: invoice.number, contactId: contact.id, totalGross: priced.totalGross },
-      })
-      return invoice
-    }),
+  handle: (input) => buildInvoiceDraft(input),
 })
 
 export const updateInvoiceDraft = defineCommand({
