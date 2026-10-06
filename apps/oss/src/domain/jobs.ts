@@ -10,12 +10,23 @@ const MAX_ATTEMPTS = 5
 const RUNNING_LEASE_MS = 15 * 60 * 1000
 const jobsLogger = appLogger.child("jobs")
 
+/**
+ * A job handler. Returning means the job is done. Throwing `TerminalJobError` means it failed for
+ * good (retrying cannot help, e.g. a missing recipient or a document that fails validation): the
+ * job is failed at once, without retries. Throwing anything else is treated as transient and the
+ * job is retried with backoff until its attempts run out.
+ */
 export type JobHandler = (job: {
   id: string
   organizationId: string
   payload: Prisma.JsonValue
   attempts: number
 }) => Promise<void>
+
+/** Thrown by a job handler for a failure that retrying cannot fix. */
+export class TerminalJobError extends Error {
+  override readonly name = "TerminalJobError"
+}
 
 const handlers = new Map<string, JobHandler>()
 
@@ -27,8 +38,11 @@ function backoffMs(attempts: number) {
   return Math.min(2 ** attempts, 60) * 60_000
 }
 
-/** What happened to one job run: not claimed (another runner has it), done, or failed. */
-export type JobRunOutcome = "skipped" | "done" | "retrying" | "exhausted"
+/**
+ * What happened to one job run: not claimed (another runner has it), done, failed and queued for a
+ * retry, failed after its last attempt, or failed permanently (`TerminalJobError`).
+ */
+export type JobRunOutcome = "skipped" | "done" | "retrying" | "exhausted" | "terminal"
 
 async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
   // Claim atomically so concurrent runners never execute the same job twice.
@@ -52,23 +66,27 @@ async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
     return "done"
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    const terminal = error instanceof TerminalJobError
     const exhausted = job.attempts >= MAX_ATTEMPTS
+    const failed = terminal || exhausted
     await prisma.job.update({
       where: { id },
-      data: {
-        status: exhausted ? "failed" : "pending",
-        lastError: message.slice(0, 1000),
-        runAfter: new Date(now.getTime() + backoffMs(job.attempts)),
-      },
+      data: failed
+        ? { status: "failed", lastError: message.slice(0, 1000) }
+        : {
+            status: "pending",
+            lastError: message.slice(0, 1000),
+            runAfter: new Date(now.getTime() + backoffMs(job.attempts)),
+          },
     })
-    jobsLogger.warn("job.failed", { jobId: id, type: job.type, attempts: job.attempts, exhausted, error })
-    return exhausted ? "exhausted" : "retrying"
+    jobsLogger.warn("job.failed", { jobId: id, type: job.type, attempts: job.attempts, terminal, exhausted, error })
+    return terminal ? "terminal" : exhausted ? "exhausted" : "retrying"
   }
 }
 
 /**
  * Counts of one batch of job runs. `retrying` failed and will run again after a backoff;
- * `failed` used up their attempts and need a person; `deferred` were not started because the
+ * `failed` failed permanently or used up their attempts and need a person; `deferred` were not started because the
  * batch ran out of time and stay queued for the next sweep.
  */
 export type JobBatchResult = {

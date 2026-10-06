@@ -77,7 +77,8 @@ export const ModelName = {
   CommandReceipt: 'CommandReceipt',
   ApprovalRequest: 'ApprovalRequest',
   AgentKey: 'AgentKey',
-  Job: 'Job'
+  Job: 'Job',
+  SchedulerScan: 'SchedulerScan'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -657,6 +658,15 @@ export const JobScalarFieldEnum = {
 } as const
 
 export type JobScalarFieldEnum = (typeof JobScalarFieldEnum)[keyof typeof JobScalarFieldEnum]
+
+
+export const SchedulerScanScalarFieldEnum = {
+  task: 'task',
+  organizationId: 'organizationId',
+  scannedAt: 'scannedAt'
+} as const
+
+export type SchedulerScanScalarFieldEnum = (typeof SchedulerScanScalarFieldEnum)[keyof typeof SchedulerScanScalarFieldEnum]
 
 
 export const SortOrder = {

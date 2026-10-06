@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Plus, X } from "lucide-react"
 import {
   REMINDER_MAX_OFFSETS,
@@ -61,11 +61,15 @@ export function ReminderPolicyCard() {
   // The policy and the user's rights belong to the active organization; `undefined` while loading.
   // Keyed on the active organization so capabilities refresh after switching organization.
   const organizationId = useActiveOrganizationId()
+  // The organization shown now, read by in-flight saves to tell whether the user switched away.
+  const currentOrganizationId = useRef(organizationId)
 
   // Switching organization keeps the card mounted, so start over read-only and reload.
   useEffect(() => {
+    currentOrganizationId.current = organizationId
     setLoaded(false)
     setCanUpdate(false)
+    setSaving(false)
     setMessage(null)
     if (organizationId === undefined) return
     let cancelled = false
@@ -97,20 +101,26 @@ export function ReminderPolicyCard() {
 
   async function handleSave() {
     if (!parsed.ok) return
+    // A response that arrives after the user switched organization belongs to the previous
+    // organization and must not overwrite the policy now on screen.
+    const savedFor = organizationId
+    const stillCurrent = () => currentOrganizationId.current === savedFor
     setSaving(true)
     setMessage(null)
     try {
       const policy = await trpc.reminders.updatePolicy.mutate({ enabled, offsetsDays: parsed.offsets })
+      if (!stillCurrent()) return
       setEnabled(policy.enabled)
       setOffsets(policy.offsetsDays.map(String))
       setMessage({ kind: "success", text: t("reminders.policy.saved") })
     } catch (error) {
+      if (!stillCurrent()) return
       setMessage({
         kind: "error",
         text: error instanceof Error && error.message ? error.message : t("reminders.policy.error.save"),
       })
     } finally {
-      setSaving(false)
+      if (stillCurrent()) setSaving(false)
     }
   }
 

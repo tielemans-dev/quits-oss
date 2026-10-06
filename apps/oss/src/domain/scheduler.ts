@@ -1,4 +1,5 @@
 import { Prisma } from "../../generated/prisma/client"
+import { prisma } from "../lib/db"
 import { appLogger } from "../lib/observability"
 import { DEFAULT_JOBS_PER_SWEEP, runDueJobs } from "./jobs"
 
@@ -85,71 +86,84 @@ export const DEFAULT_ORGANIZATION_BUDGET: OrganizationBudget = {
 }
 
 /**
- * The organizations a task may work on, ordered by id. `count` and `page` must use the same
- * predicate, so a page is a slice of one consistent ordering.
+ * The organizations a task may work on. `claim` hands out the least recently scanned eligible
+ * organizations and records that they were scanned, so successive ticks work through every
+ * eligible organization whatever their cadence or the time they pass. `release` gives back claimed
+ * organizations a tick did not reach, so they go first next time.
  */
 export type OrganizationSource = {
   count: () => Promise<number>
-  page: (offset: number, limit: number) => Promise<string[]>
-}
-
-/** Length of one rotation slot. Cron cadences are whole minutes. */
-const ROTATION_SLOT_MS = 60_000
-/** Smallest rotation cycle; a prime above 7 so no common cadence aliases with it. */
-const MIN_ROTATION_CYCLE = 11
-/** 2^64 / golden ratio: spreads consecutive slots evenly over a page (Fibonacci hashing). */
-const GOLDEN_64 = 0x9e3779b97f4a7c15n
-const MASK_64 = (1n << 64n) - 1n
-
-function isPrime(value: number) {
-  if (value < 2) return false
-  for (let divisor = 2; divisor * divisor <= value; divisor += 1) {
-    if (value % divisor === 0) return false
-  }
-  return true
-}
-
-function nextPrimeAtLeast(value: number) {
-  let candidate = Math.max(value, 2)
-  while (!isPrime(candidate)) candidate += 1
-  return candidate
+  claim: (limit: number) => Promise<string[]>
+  release: (organizationIds: readonly string[]) => Promise<void>
 }
 
 /**
- * Chooses, from the tick time alone, which page of `total` eligible organizations a tick works
- * on and where inside the page it starts. No state is kept, so a restarted process or a second
- * worker continues the same rotation instead of starting at the first organization.
+ * An organization source backed by `scheduler_scan`, which keeps when `task` last claimed each
+ * organization. `eligible` is a query returning an `"organizationId"` column (repeats allowed).
  *
- * Time is cut into one-minute slots, and the slots cycle through `cycle` positions, where `cycle`
- * is a prime of at least 11 and at least the page count. Positions past the last page fold back
- * onto the pages. Ticks every T minutes visit every position, and so every page, within `cycle`
- * ticks whenever T is not a multiple of `cycle`; that holds for every cadence built from 2, 3, 5
- * and 7 (every minute, 5 or 15 minutes, hourly, daily, weekly). Ticks closer together than a
- * slot repeat the same page, which is harmless because every task is idempotent.
- *
- * The start inside the page also moves with the slot, so when the time budget stops a tick
- * before the end of its page, a different organization goes first the next time round.
+ * Claims order by the last scan, never-scanned first, so the rotation is durable across restarts
+ * and independent of the tick cadence or clock. Concurrent ticks lock the rows they claim and skip
+ * rows another tick holds (`FOR UPDATE SKIP LOCKED`), so they work on different organizations.
+ * Scan times come from the database clock, never from the tick's `now`.
  */
-export function rotationWindow(now: Date, total: number, pageSize: number) {
-  const pages = Math.max(1, Math.ceil(total / pageSize))
-  const slot = Math.floor(now.getTime() / ROTATION_SLOT_MS)
-  const cycle = pages === 1 ? 1 : nextPrimeAtLeast(Math.max(pages, MIN_ROTATION_CYCLE))
-  const page = (slot % cycle) % pages
-  const pageLength = Math.min(pageSize, total - page * pageSize)
-  const spread = (BigInt(slot) * GOLDEN_64) & MASK_64
-  const start = pageLength > 0 ? Number((spread * BigInt(pageLength)) >> 64n) : 0
-  return { page, pages, cycle, offset: page * pageSize, pageLength, start }
+export function scannedOrganizationSource(task: string, eligible: Prisma.Sql): OrganizationSource {
+  return {
+    count: async () => {
+      const [row] = await prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(DISTINCT e."organizationId") AS "count" FROM (${eligible}) e
+      `
+      return Number(row?.count ?? 0)
+    },
+    claim: async (limit) => {
+      // Organizations that became eligible since the last tick start out never scanned.
+      await prisma.$executeRaw`
+        INSERT INTO "scheduler_scan" ("task", "organizationId")
+        SELECT DISTINCT ${task}, e."organizationId" FROM (${eligible}) e
+        ON CONFLICT ("task", "organizationId") DO NOTHING
+      `
+      const rows = await prisma.$queryRaw<Array<{ organizationId: string; previousScannedAt: Date | null }>>`
+        WITH candidates AS (
+          SELECT s."organizationId", s."scannedAt"
+          FROM "scheduler_scan" s
+          WHERE s."task" = ${task}
+            AND s."organizationId" IN (SELECT e."organizationId" FROM (${eligible}) e)
+          ORDER BY s."scannedAt" ASC NULLS FIRST, s."organizationId" ASC
+          LIMIT ${limit}
+          FOR UPDATE SKIP LOCKED
+        )
+        UPDATE "scheduler_scan" s
+        SET "scannedAt" = clock_timestamp()
+        FROM candidates c
+        WHERE s."task" = ${task} AND s."organizationId" = c."organizationId"
+        RETURNING s."organizationId", c."scannedAt" AS "previousScannedAt"
+      `
+      // RETURNING has no order; work oldest first so a time budget cuts the most recently scanned.
+      return rows
+        .sort(
+          (a, b) =>
+            (a.previousScannedAt?.getTime() ?? -Infinity) - (b.previousScannedAt?.getTime() ?? -Infinity) ||
+            a.organizationId.localeCompare(b.organizationId)
+        )
+        .map((row) => row.organizationId)
+    },
+    release: async (organizationIds) => {
+      if (organizationIds.length === 0) return
+      await prisma.$executeRaw`
+        UPDATE "scheduler_scan" SET "scannedAt" = NULL
+        WHERE "task" = ${task} AND "organizationId" IN (${Prisma.join([...organizationIds])})
+      `
+    },
+  }
 }
 
 /**
- * Runs `work` for one page of eligible organizations until the task's per-tick budget is used
- * up. The page and the first organization come from `rotationWindow`, so every organization is
- * reached within a bounded number of ticks however many there are, across restarts and workers.
- * Combined with a bounded amount of work per organization, a tick finishes in bounded time
- * however large the backlog is.
+ * Runs `work` for the organizations `source` claims, least recently scanned first, until the
+ * task's per-tick budget is used up. Claimed organizations the time budget left unreached are
+ * released and go first next tick. Every eligible organization is reached within
+ * ceil(eligible / maxOrganizations) ticks of a full budget, and combined with a bounded amount of
+ * work per organization, a tick finishes in bounded time however large the backlog is.
  */
 export async function forEachOrganizationWithinBudget(
-  now: Date,
   source: OrganizationSource,
   work: (organizationId: string) => Promise<void>,
   budget: OrganizationBudget = DEFAULT_ORGANIZATION_BUDGET
@@ -159,16 +173,21 @@ export async function forEachOrganizationWithinBudget(
     return { organizations: 0, processed: 0, deferred: 0 }
   }
 
-  const window = rotationWindow(now, total, budget.maxOrganizations)
-  const organizationIds = await source.page(window.offset, budget.maxOrganizations)
+  const organizationIds = await source.claim(budget.maxOrganizations)
   const startedAt = Date.now()
   let processed = 0
-  while (
-    processed < organizationIds.length &&
-    (processed === 0 || Date.now() - startedAt < budget.timeBudgetMs)
-  ) {
-    await work(organizationIds[(window.start + processed) % organizationIds.length]!)
-    processed += 1
+  try {
+    while (
+      processed < organizationIds.length &&
+      (processed === 0 || Date.now() - startedAt < budget.timeBudgetMs)
+    ) {
+      await work(organizationIds[processed]!)
+      processed += 1
+    }
+  } finally {
+    if (processed < organizationIds.length) {
+      await source.release(organizationIds.slice(processed))
+    }
   }
 
   return { organizations: total, processed, deferred: total - processed }

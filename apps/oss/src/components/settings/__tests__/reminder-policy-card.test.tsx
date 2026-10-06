@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
-const api = vi.hoisted(() => ({ getPolicy: vi.fn(), capabilities: vi.fn() }))
+const api = vi.hoisted(() => ({ getPolicy: vi.fn(), capabilities: vi.fn(), updatePolicy: vi.fn() }))
 
 vi.mock("../../../trpc/client", () => ({
   trpc: {
     reminders: {
       getPolicy: { query: api.getPolicy },
       capabilities: { query: api.capabilities },
-      updatePolicy: { mutate: vi.fn() },
+      updatePolicy: { mutate: api.updatePolicy },
     },
   },
 }))
@@ -96,5 +96,29 @@ describe("ReminderPolicyCard", () => {
     rerender(<ReminderPolicyCard />)
 
     expect(await screen.findByRole("button", { name: "reminders.policy.save" })).toBeTruthy()
+  })
+
+  it("ignores a save response that arrives after the user switched organization", async () => {
+    const admin = { canSendNow: true, canPause: true, canResume: true, canUpdatePolicy: true }
+    api.getPolicy.mockResolvedValueOnce({ enabled: true, offsetsDays: [-3, 7] })
+    api.capabilities.mockResolvedValue(admin)
+    let resolveSave: (policy: { enabled: boolean; offsetsDays: number[] }) => void = () => undefined
+    api.updatePolicy.mockReturnValueOnce(new Promise((resolve) => (resolveSave = resolve)))
+    const { rerender } = render(<ReminderPolicyCard />)
+    fireEvent.click(await screen.findByRole("button", { name: "reminders.policy.save" }))
+    expect(api.updatePolicy).toHaveBeenCalledTimes(1)
+
+    api.getPolicy.mockResolvedValueOnce({ enabled: false, offsetsDays: [14] })
+    auth.session = { data: { session: { activeOrganizationId: "org_b" } }, isPending: false }
+    rerender(<ReminderPolicyCard />)
+    await waitFor(() => expect(screen.getAllByRole("spinbutton").map((input) => (input as HTMLInputElement).value)).toEqual(["14"]))
+
+    await act(async () => resolveSave({ enabled: true, offsetsDays: [-3, 7] }))
+
+    // Organization B's policy stays on screen, with no success message from organization A's save.
+    expect(screen.getAllByRole("spinbutton").map((input) => (input as HTMLInputElement).value)).toEqual(["14"])
+    expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(false)
+    expect(screen.queryByText("reminders.policy.saved")).toBeNull()
+    expect((screen.getByRole("button", { name: "reminders.policy.save" }) as HTMLButtonElement).disabled).toBe(false)
   })
 })

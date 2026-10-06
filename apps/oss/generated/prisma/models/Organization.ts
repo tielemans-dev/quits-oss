@@ -235,6 +235,7 @@ export type OrganizationWhereInput = {
   domainEvents?: Prisma.DomainEventListRelationFilter
   agentKeys?: Prisma.AgentKeyListRelationFilter
   approvalRequests?: Prisma.ApprovalRequestListRelationFilter
+  schedulerScans?: Prisma.SchedulerScanListRelationFilter
   settings?: Prisma.XOR<Prisma.OrgSettingsNullableScalarRelationFilter, Prisma.OrgSettingsWhereInput> | null
 }
 
@@ -262,6 +263,7 @@ export type OrganizationOrderByWithRelationInput = {
   domainEvents?: Prisma.DomainEventOrderByRelationAggregateInput
   agentKeys?: Prisma.AgentKeyOrderByRelationAggregateInput
   approvalRequests?: Prisma.ApprovalRequestOrderByRelationAggregateInput
+  schedulerScans?: Prisma.SchedulerScanOrderByRelationAggregateInput
   settings?: Prisma.OrgSettingsOrderByWithRelationInput
 }
 
@@ -292,6 +294,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   domainEvents?: Prisma.DomainEventListRelationFilter
   agentKeys?: Prisma.AgentKeyListRelationFilter
   approvalRequests?: Prisma.ApprovalRequestListRelationFilter
+  schedulerScans?: Prisma.SchedulerScanListRelationFilter
   settings?: Prisma.XOR<Prisma.OrgSettingsNullableScalarRelationFilter, Prisma.OrgSettingsWhereInput> | null
 }, "id" | "slug" | "stripeCustomerId">
 
@@ -351,6 +354,7 @@ export type OrganizationCreateInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -378,6 +382,7 @@ export type OrganizationUncheckedCreateInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -405,6 +410,7 @@ export type OrganizationUpdateInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -432,6 +438,7 @@ export type OrganizationUncheckedUpdateInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -714,6 +721,20 @@ export type OrganizationUpdateOneRequiredWithoutAgentKeysNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutAgentKeysInput, Prisma.OrganizationUpdateWithoutAgentKeysInput>, Prisma.OrganizationUncheckedUpdateWithoutAgentKeysInput>
 }
 
+export type OrganizationCreateNestedOneWithoutSchedulerScansInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedCreateWithoutSchedulerScansInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutSchedulerScansInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutSchedulerScansNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedCreateWithoutSchedulerScansInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutSchedulerScansInput
+  upsert?: Prisma.OrganizationUpsertWithoutSchedulerScansInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutSchedulerScansInput, Prisma.OrganizationUpdateWithoutSchedulerScansInput>, Prisma.OrganizationUncheckedUpdateWithoutSchedulerScansInput>
+}
+
 export type OrganizationCreateWithoutMembersInput = {
   id: string
   name: string
@@ -737,6 +758,7 @@ export type OrganizationCreateWithoutMembersInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -763,6 +785,7 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -805,6 +828,7 @@ export type OrganizationUpdateWithoutMembersInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -831,6 +855,7 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -857,6 +882,7 @@ export type OrganizationCreateWithoutInvitationsInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -883,6 +909,7 @@ export type OrganizationUncheckedCreateWithoutInvitationsInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -925,6 +952,7 @@ export type OrganizationUpdateWithoutInvitationsInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -951,6 +979,7 @@ export type OrganizationUncheckedUpdateWithoutInvitationsInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -978,6 +1007,7 @@ export type OrganizationCreateWithoutSettingsInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutSettingsInput = {
@@ -1004,6 +1034,7 @@ export type OrganizationUncheckedCreateWithoutSettingsInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutSettingsInput = {
@@ -1046,6 +1077,7 @@ export type OrganizationUpdateWithoutSettingsInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutSettingsInput = {
@@ -1072,6 +1104,7 @@ export type OrganizationUncheckedUpdateWithoutSettingsInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutContactsInput = {
@@ -1097,6 +1130,7 @@ export type OrganizationCreateWithoutContactsInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1123,6 +1157,7 @@ export type OrganizationUncheckedCreateWithoutContactsInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1165,6 +1200,7 @@ export type OrganizationUpdateWithoutContactsInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1191,6 +1227,7 @@ export type OrganizationUncheckedUpdateWithoutContactsInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1217,6 +1254,7 @@ export type OrganizationCreateWithoutCatalogItemsInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1243,6 +1281,7 @@ export type OrganizationUncheckedCreateWithoutCatalogItemsInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1285,6 +1324,7 @@ export type OrganizationUpdateWithoutCatalogItemsInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1311,6 +1351,7 @@ export type OrganizationUncheckedUpdateWithoutCatalogItemsInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1337,6 +1378,7 @@ export type OrganizationCreateWithoutTaxIdsInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1363,6 +1405,7 @@ export type OrganizationUncheckedCreateWithoutTaxIdsInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1405,6 +1448,7 @@ export type OrganizationUpdateWithoutTaxIdsInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1431,6 +1475,7 @@ export type OrganizationUncheckedUpdateWithoutTaxIdsInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1457,6 +1502,7 @@ export type OrganizationCreateWithoutInvoicesInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1483,6 +1529,7 @@ export type OrganizationUncheckedCreateWithoutInvoicesInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1525,6 +1572,7 @@ export type OrganizationUpdateWithoutInvoicesInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1551,6 +1599,7 @@ export type OrganizationUncheckedUpdateWithoutInvoicesInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1577,6 +1626,7 @@ export type OrganizationCreateWithoutQuotesInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1603,6 +1653,7 @@ export type OrganizationUncheckedCreateWithoutQuotesInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1645,6 +1696,7 @@ export type OrganizationUpdateWithoutQuotesInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1671,6 +1723,7 @@ export type OrganizationUncheckedUpdateWithoutQuotesInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1697,6 +1750,7 @@ export type OrganizationCreateWithoutCreditNotesInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1723,6 +1777,7 @@ export type OrganizationUncheckedCreateWithoutCreditNotesInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1765,6 +1820,7 @@ export type OrganizationUpdateWithoutCreditNotesInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1791,6 +1847,7 @@ export type OrganizationUncheckedUpdateWithoutCreditNotesInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1817,6 +1874,7 @@ export type OrganizationCreateWithoutPaymentsInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1843,6 +1901,7 @@ export type OrganizationUncheckedCreateWithoutPaymentsInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1885,6 +1944,7 @@ export type OrganizationUpdateWithoutPaymentsInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1911,6 +1971,7 @@ export type OrganizationUncheckedUpdateWithoutPaymentsInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1937,6 +1998,7 @@ export type OrganizationCreateWithoutRecurringInvoicesInput = {
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1963,6 +2025,7 @@ export type OrganizationUncheckedCreateWithoutRecurringInvoicesInput = {
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2005,6 +2068,7 @@ export type OrganizationUpdateWithoutRecurringInvoicesInput = {
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2031,6 +2095,7 @@ export type OrganizationUncheckedUpdateWithoutRecurringInvoicesInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2057,6 +2122,7 @@ export type OrganizationCreateWithoutDomainEventsInput = {
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2083,6 +2149,7 @@ export type OrganizationUncheckedCreateWithoutDomainEventsInput = {
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2125,6 +2192,7 @@ export type OrganizationUpdateWithoutDomainEventsInput = {
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2151,6 +2219,7 @@ export type OrganizationUncheckedUpdateWithoutDomainEventsInput = {
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2177,6 +2246,7 @@ export type OrganizationCreateWithoutApprovalRequestsInput = {
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2203,6 +2273,7 @@ export type OrganizationUncheckedCreateWithoutApprovalRequestsInput = {
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2245,6 +2316,7 @@ export type OrganizationUpdateWithoutApprovalRequestsInput = {
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2271,6 +2343,7 @@ export type OrganizationUncheckedUpdateWithoutApprovalRequestsInput = {
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2297,6 +2370,7 @@ export type OrganizationCreateWithoutAgentKeysInput = {
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
   domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2323,6 +2397,7 @@ export type OrganizationUncheckedCreateWithoutAgentKeysInput = {
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2365,6 +2440,7 @@ export type OrganizationUpdateWithoutAgentKeysInput = {
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
   domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2391,6 +2467,131 @@ export type OrganizationUncheckedUpdateWithoutAgentKeysInput = {
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutSchedulerScansInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutSchedulerScansInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutSchedulerScansInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedCreateWithoutSchedulerScansInput>
+}
+
+export type OrganizationUpsertWithoutSchedulerScansInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedUpdateWithoutSchedulerScansInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedCreateWithoutSchedulerScansInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutSchedulerScansInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedUpdateWithoutSchedulerScansInput>
+}
+
+export type OrganizationUpdateWithoutSchedulerScansInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutSchedulerScansInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2413,6 +2614,7 @@ export type OrganizationCountOutputType = {
   domainEvents: number
   agentKeys: number
   approvalRequests: number
+  schedulerScans: number
 }
 
 export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2429,6 +2631,7 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   domainEvents?: boolean | OrganizationCountOutputTypeCountDomainEventsArgs
   agentKeys?: boolean | OrganizationCountOutputTypeCountAgentKeysArgs
   approvalRequests?: boolean | OrganizationCountOutputTypeCountApprovalRequestsArgs
+  schedulerScans?: boolean | OrganizationCountOutputTypeCountSchedulerScansArgs
 }
 
 /**
@@ -2532,6 +2735,13 @@ export type OrganizationCountOutputTypeCountApprovalRequestsArgs<ExtArgs extends
   where?: Prisma.ApprovalRequestWhereInput
 }
 
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountSchedulerScansArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SchedulerScanWhereInput
+}
+
 
 export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2557,6 +2767,7 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   domainEvents?: boolean | Prisma.Organization$domainEventsArgs<ExtArgs>
   agentKeys?: boolean | Prisma.Organization$agentKeysArgs<ExtArgs>
   approvalRequests?: boolean | Prisma.Organization$approvalRequestsArgs<ExtArgs>
+  schedulerScans?: boolean | Prisma.Organization$schedulerScansArgs<ExtArgs>
   settings?: boolean | Prisma.Organization$settingsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["organization"]>
@@ -2615,6 +2826,7 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   domainEvents?: boolean | Prisma.Organization$domainEventsArgs<ExtArgs>
   agentKeys?: boolean | Prisma.Organization$agentKeysArgs<ExtArgs>
   approvalRequests?: boolean | Prisma.Organization$approvalRequestsArgs<ExtArgs>
+  schedulerScans?: boolean | Prisma.Organization$schedulerScansArgs<ExtArgs>
   settings?: boolean | Prisma.Organization$settingsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -2637,6 +2849,7 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     domainEvents: Prisma.$DomainEventPayload<ExtArgs>[]
     agentKeys: Prisma.$AgentKeyPayload<ExtArgs>[]
     approvalRequests: Prisma.$ApprovalRequestPayload<ExtArgs>[]
+    schedulerScans: Prisma.$SchedulerScanPayload<ExtArgs>[]
     settings: Prisma.$OrgSettingsPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -3057,6 +3270,7 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   domainEvents<T extends Prisma.Organization$domainEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$domainEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DomainEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   agentKeys<T extends Prisma.Organization$agentKeysArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$agentKeysArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentKeyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   approvalRequests<T extends Prisma.Organization$approvalRequestsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$approvalRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ApprovalRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  schedulerScans<T extends Prisma.Organization$schedulerScansArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$schedulerScansArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SchedulerScanPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   settings<T extends Prisma.Organization$settingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$settingsArgs<ExtArgs>>): Prisma.Prisma__OrgSettingsClient<runtime.Types.Result.GetResult<Prisma.$OrgSettingsPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -3794,6 +4008,30 @@ export type Organization$approvalRequestsArgs<ExtArgs extends runtime.Types.Exte
   take?: number
   skip?: number
   distinct?: Prisma.ApprovalRequestScalarFieldEnum | Prisma.ApprovalRequestScalarFieldEnum[]
+}
+
+/**
+ * Organization.schedulerScans
+ */
+export type Organization$schedulerScansArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SchedulerScan
+   */
+  select?: Prisma.SchedulerScanSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SchedulerScan
+   */
+  omit?: Prisma.SchedulerScanOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SchedulerScanInclude<ExtArgs> | null
+  where?: Prisma.SchedulerScanWhereInput
+  orderBy?: Prisma.SchedulerScanOrderByWithRelationInput | Prisma.SchedulerScanOrderByWithRelationInput[]
+  cursor?: Prisma.SchedulerScanWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SchedulerScanScalarFieldEnum | Prisma.SchedulerScanScalarFieldEnum[]
 }
 
 /**
