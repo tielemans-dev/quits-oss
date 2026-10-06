@@ -15,7 +15,9 @@ async function handleTrpcRequest(request: Request) {
       const session = await auth.api.getSession({
         headers: request.headers,
       })
-      return { session }
+      // The client's intended organization, checked against the session in orgProcedure.
+      const requestedOrganizationId = request.headers.get("x-yaip-organization-id")?.trim() || null
+      return { session, requestedOrganizationId }
     },
   })
 }
