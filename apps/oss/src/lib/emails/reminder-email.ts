@@ -99,13 +99,23 @@ export function buildReminderEmailContent({
   }
 }
 
-export async function sendReminderEmail({ to, ...params }: ReminderEmailParams) {
+/**
+ * `idempotencyKey` lets a retried job resend safely: the provider drops a duplicate if the
+ * first attempt was accepted but its outcome was never recorded.
+ */
+export async function sendReminderEmail(
+  { to, ...params }: ReminderEmailParams,
+  options: { idempotencyKey?: string } = {}
+) {
   const content = buildReminderEmailContent(params)
-  return deliver({
-    from: content.fromAddress,
-    to,
-    subject: content.subject,
-    html: content.html,
-    ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-  })
+  return deliver(
+    {
+      from: content.fromAddress,
+      to,
+      subject: content.subject,
+      html: content.html,
+      ...(content.replyTo ? { replyTo: content.replyTo } : {}),
+    },
+    options
+  )
 }

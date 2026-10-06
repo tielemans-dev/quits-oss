@@ -49,4 +49,15 @@ describe("email sending", () => {
       })
     ).resolves.toEqual({ id: "email_123" })
   })
+
+  it("forwards an idempotency key so retried sends are deduplicated by the provider", async () => {
+    send.mockResolvedValue({ data: { id: "email_123" }, error: null, headers: null })
+    const { deliver } = await import("../email")
+
+    await deliver(
+      { from: "a@example.com", to: "b@example.com", subject: "Hi", html: "<p>Hi</p>" },
+      { idempotencyKey: "yaip-reminder-1" }
+    )
+    expect(send).toHaveBeenCalledWith(expect.anything(), { idempotencyKey: "yaip-reminder-1" })
+  })
 })

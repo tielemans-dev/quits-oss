@@ -52,8 +52,14 @@ export type EmailMessage = Parameters<Resend["emails"]["send"]>[0]
  * Resend reports API failures in the result instead of throwing.
  * Callers rely on a rejected promise to record a failed delivery attempt.
  */
-export async function deliver(message: EmailMessage): Promise<{ id: string }> {
-  const result = await getResend().emails.send(message)
+export async function deliver(
+  message: EmailMessage,
+  options: { idempotencyKey?: string } = {}
+): Promise<{ id: string }> {
+  const result = await getResend().emails.send(
+    message,
+    options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined
+  )
   if (result.error) {
     throw new EmailSendError(result.error.name, result.error.message)
   }

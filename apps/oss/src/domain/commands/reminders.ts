@@ -130,6 +130,8 @@ const findInvoice = (id: string) =>
 const deliverReminderEmail = (input: {
   invoice: ReminderInvoice
   recipient: string
+  /** Stable per reminder so provider-side deduplication covers job retries. */
+  idempotencyKey?: string
   onFailure?: () => Promise<unknown>
 }) =>
   Effect.gen(function* () {
@@ -165,7 +167,7 @@ const deliverReminderEmail = (input: {
           },
           contactName: invoice.contact.name,
           publicPaymentUrl,
-        }),
+        }, { idempotencyKey: input.idempotencyKey }),
       catch: (cause) => cause,
     }).pipe(
       Effect.catchAll((cause) =>
@@ -499,6 +501,7 @@ export const deliverScheduledReminder = defineCommand({
       const delivery = yield* deliverReminderEmail({
         invoice,
         recipient,
+        idempotencyKey: `yaip-reminder-${reminder.id}`,
         // Written outside the transaction so the failure survives the rollback.
         onFailure: () =>
           prisma.invoiceReminder.update({
