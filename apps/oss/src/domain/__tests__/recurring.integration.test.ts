@@ -283,7 +283,8 @@ describeIfDatabase("recurring invoices", () => {
     const { org, contactId } = await setup({ contactEmail: null })
     const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
 
-    await tickRecurringAndSend(org)
+    await tickRecurring(org)
+    const jobs = await runOrganizationJobs([org.organizationId])
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice).toMatchObject({
@@ -292,6 +293,14 @@ describeIfDatabase("recurring invoices", () => {
       lastEmailAttemptCode: "missing_recipient",
     })
     expect(sendInvoiceEmail).not.toHaveBeenCalled()
+    // A missing recipient cannot be fixed by retrying: the job fails at once and is reported.
+    expect(jobs).toMatchObject({ processed: 1, succeeded: 0, retrying: 0, failed: 1 })
+    expect(await prisma.job.findFirstOrThrow({ where: { organizationId: org.organizationId } })).toMatchObject({
+      type: "recurring.auto_send",
+      status: "failed",
+      attempts: 1,
+      lastError: expect.stringMatching(/.+/),
+    })
     const activity = await readActivity({ organizationId: org.organizationId, aggregateType: "recurring" })
     expect(activity.events.map((event) => event.type)).toContain("recurring.auto_send_failed")
     // The schedule keeps running; only the one invoice needs attention.
@@ -305,10 +314,12 @@ describeIfDatabase("recurring invoices", () => {
     const { org, contactId } = await setup()
     const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
 
-    await tickRecurringAndSend(org)
+    await tickRecurring(org)
+    const jobs = await runOrganizationJobs([org.organizationId])
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice?.status).toBe("draft")
+    expect(jobs).toMatchObject({ processed: 1, succeeded: 0, retrying: 1, failed: 0 })
     const job = await prisma.job.findFirstOrThrow({ where: { organizationId: org.organizationId } })
     expect(job).toMatchObject({ type: "recurring.auto_send", status: "pending", attempts: 1 })
   })

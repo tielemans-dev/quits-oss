@@ -16,7 +16,7 @@ import { defineCommand, type AnyCommandDefinition } from "../command"
 import { lockDocument } from "../documents/locks"
 import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { executeCommand } from "../execute"
-import { registerJobHandler } from "../jobs"
+import { registerJobHandler, TerminalJobError } from "../jobs"
 import { Command, Db, type CommandScope } from "../services"
 import {
   addUtcDays,
@@ -639,7 +639,11 @@ const autoSendPayloadSchema = z.object({
  * scheduler) can run the job right after the generating transaction commits.
  */
 registerJobHandler(AUTO_SEND_JOB, async (job) => {
-  const payload = autoSendPayloadSchema.parse(job.payload)
+  const parsed = autoSendPayloadSchema.safeParse(job.payload)
+  if (!parsed.success) {
+    throw new TerminalJobError(`Invalid ${AUTO_SEND_JOB} payload: ${parsed.error.message}`)
+  }
+  const payload = parsed.data
   const actor = recurringSystemActor(job.organizationId)
   const outcome = await executeCommand(
     sendInvoice,
@@ -655,10 +659,13 @@ registerJobHandler(AUTO_SEND_JOB, async (job) => {
   }
 
   await executeCommand(recordRecurringAutoSendFailure, { ...payload, error: outcome.error }, { actor })
-  // Provider outages are retried by the job runner; other failures leave the draft for a person.
+  // Provider outages are retried by the job runner. Anything else (a missing recipient, a draft
+  // that fails validation or compliance, a lost permission) cannot succeed by retrying: the job
+  // fails at once and the draft is left for a person.
   if (outcome.error.tag === "ExternalFailure") {
     throw new Error(outcome.error.message)
   }
+  throw new TerminalJobError(outcome.error.message)
 })
 
 /** Commands users and agents can run; scheduler-only commands are deliberately not listed. */
