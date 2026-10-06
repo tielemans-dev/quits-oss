@@ -5,7 +5,13 @@ import {
   type EinvoiceMissingField,
 } from "@yaip/contracts/exports"
 import { formatAmount, formatPlainNumber, toDecimal, type DecimalLike } from "./format"
-import type { ElectronicAddress, PostalAddress } from "./parties"
+import {
+  DANISH_CVR_SCHEME,
+  isValidElectronicAddress,
+  type ElectronicAddress,
+  type LegalIdentifier,
+  type PostalAddress,
+} from "./parties"
 import { element, serializeXmlDocument, textElement, type XmlElement } from "./xml"
 
 /** Everything a Peppol BIS Billing 3.0 party needs, already normalized. */
@@ -13,7 +19,8 @@ export type EinvoiceParty = PostalAddress & {
   name: string | null
   countryCode: string | null
   vatId: string | null
-  companyId: string | null
+  /** Legal registration number (BT-30 / BT-47). */
+  legalId: LegalIdentifier | null
   electronicAddress: ElectronicAddress | null
   email: string | null
 }
@@ -75,12 +82,18 @@ export function validateEinvoice(document: EinvoiceDocument): EinvoiceMissingFie
   if (!seller.countryCode) missing.push("seller.country")
   if (!seller.street && !seller.city) missing.push("seller.address")
   if (!seller.vatId) missing.push("seller.taxId")
+  // DK-R-002 and DK-R-014: Danish suppliers must give their CVR number with scheme 0184.
+  if (seller.countryCode === "DK" && seller.legalId?.scheme !== DANISH_CVR_SCHEME) {
+    missing.push("seller.legalId")
+  }
   if (!seller.electronicAddress) missing.push("seller.electronicAddress")
+  else if (!isValidElectronicAddress(seller.electronicAddress)) missing.push("seller.electronicAddressInvalid")
 
   if (!buyer.name?.trim()) missing.push("buyer.name")
   if (!buyer.countryCode) missing.push("buyer.country")
   if (!buyer.street && !buyer.city) missing.push("buyer.address")
   if (!buyer.electronicAddress) missing.push("buyer.electronicAddress")
+  else if (!isValidElectronicAddress(buyer.electronicAddress)) missing.push("buyer.electronicAddressInvalid")
 
   if (document.kind === "creditNote" && !document.billingReference) {
     missing.push("creditNote.invoiceReference")
@@ -159,7 +172,11 @@ export function computeEinvoiceTotals(document: EinvoiceDocument): EinvoiceTotal
   }
 }
 
-const cbc = (name: string, value: string | number | null | undefined, attributes?: Record<string, string>) =>
+const cbc = (
+  name: string,
+  value: string | number | null | undefined,
+  attributes?: Record<string, string | null | undefined>
+) =>
   textElement(`cbc:${name}`, value, attributes)
 const cac = (name: string, ...children: Parameters<typeof element>[2][]) =>
   element(`cac:${name}`, null, ...children)
@@ -185,7 +202,11 @@ function partyElement(party: EinvoiceParty): XmlElement {
       cac("Country", cbc("IdentificationCode", party.countryCode))
     ),
     party.vatId ? cac("PartyTaxScheme", cbc("CompanyID", party.vatId), vatScheme()) : null,
-    cac("PartyLegalEntity", cbc("RegistrationName", party.name), cbc("CompanyID", party.companyId)),
+    cac(
+      "PartyLegalEntity",
+      cbc("RegistrationName", party.name),
+      cbc("CompanyID", party.legalId?.id, { schemeID: party.legalId?.scheme })
+    ),
     party.email ? cac("Contact", cbc("ElectronicMail", party.email)) : null
   )
 }

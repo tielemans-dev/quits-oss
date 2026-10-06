@@ -8,9 +8,9 @@ import type { EinvoiceDocumentKind, EinvoiceExportResult } from "@yaip/contracts
 import { prisma } from "../db"
 import { formatIsoDate, safeFileName } from "./format"
 import {
-  companyIdentifier,
   electronicAddressFromVat,
   explicitElectronicAddress,
+  legalIdentifier,
   parseFreeTextAddress,
   toCountryCode,
   vatIdentifier,
@@ -82,7 +82,7 @@ export function buildSellerParty(source: SellerSource): EinvoiceParty {
     name: source.snapshot?.companyName || source.settings?.companyName || null,
     countryCode,
     vatId,
-    companyId: companyIdentifier(taxIds),
+    legalId: legalIdentifier(taxIds, countryCode, vatId),
     electronicAddress: electronicAddressFromVat(vatId),
     email: source.snapshot?.companyEmail || source.settings?.companyEmail || null,
   }
@@ -116,7 +116,7 @@ export function buildBuyerParty(snapshot: BuyerSnapshot | null, contact: Contact
     name: pick("company") || snapshot?.name?.trim() || contact.name,
     countryCode,
     vatId,
-    companyId: companyIdentifier(taxIds),
+    legalId: legalIdentifier(taxIds, countryCode, vatId),
     electronicAddress:
       explicitElectronicAddress(contact.peppolEndpointId, contact.peppolEndpointScheme) ??
       electronicAddressFromVat(vatId),

@@ -13,13 +13,19 @@ export const daExportsMessages = {
   "exports.einvoice.missing.seller.country": "Jeres virksomheds land (Indstillinger).",
   "exports.einvoice.missing.seller.address": "Jeres virksomheds adresse (Indstillinger).",
   "exports.einvoice.missing.seller.taxId": "Jeres momsnummer (Indstillinger).",
+  "exports.einvoice.missing.seller.legalId":
+    "Jeres CVR-nummer. Danske e-fakturaer skal have det: tilføj et CVR-nummer eller et DK-momsnummer (Indstillinger).",
   "exports.einvoice.missing.seller.electronicAddress":
     "Jeres elektroniske Peppol-adresse. Den udledes af momsnummeret for understøttede lande.",
+  "exports.einvoice.missing.seller.electronicAddressInvalid":
+    "Jeres elektroniske Peppol-adresse er ugyldig. Kontrollér momsnummeret (Indstillinger).",
   "exports.einvoice.missing.buyer.name": "Kundens navn.",
   "exports.einvoice.missing.buyer.country": "Kundens land (brug et landenavn eller en landekode på 2 bogstaver).",
   "exports.einvoice.missing.buyer.address": "Kundens adresse eller by.",
   "exports.einvoice.missing.buyer.electronicAddress":
     "Kundens Peppol-endpoint-id og -skema eller et momsnummer, kunden kan modtage på.",
+  "exports.einvoice.missing.buyer.electronicAddressInvalid":
+    "Kundens Peppol-endpoint er ugyldigt: brug et skema fra Peppols EAS-kodeliste og et id i skemaets format.",
   "exports.einvoice.missing.creditNote.invoiceReference": "Den krediterede faktura skal være udstedt.",
   "exports.einvoice.editContact": "Rediger kunde",
   "exports.accounting.title": "Regnskabseksport",
@@ -38,9 +44,11 @@ export const daExportsMessages = {
   "exports.accounting.forbidden": "Din rolle giver ikke adgang til eksport.",
   "exports.contact.peppolEndpointId": "Peppol-endpoint-id",
   "exports.contact.peppolEndpointScheme": "Peppol-skema (EAS)",
-  "exports.contact.peppolEndpointId.placeholder": "5790000000001",
+  "exports.contact.peppolEndpointId.placeholder": "5790000000005",
   "exports.contact.peppolEndpointScheme.placeholder": "0088",
-  "exports.contact.peppolEndpointScheme.invalid": "Brug en firecifret Peppol EAS-kode",
+  "exports.contact.peppolEndpointScheme.invalid": "Brug en Peppol EAS-kode fra kodelisten, f.eks. 0088 eller 0184.",
+  "exports.contact.peppolEndpointId.invalid": "Endpoint-id'et passer ikke til det valgte skema.",
+  "exports.contact.peppolEndpoint.incomplete": "Udfyld både Peppol-endpoint-id og -skema, eller lad begge stå tomme.",
   "exports.contact.peppolHint":
     "Bruges til e-fakturaer sendt via Peppol. Lad feltet stå tomt for at udlede det af kundens momsnummer, hvor det er muligt.",
 } as const

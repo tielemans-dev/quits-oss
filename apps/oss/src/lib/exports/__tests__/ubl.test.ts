@@ -19,7 +19,7 @@ const seller: EinvoiceParty = {
   region: null,
   countryCode: "DK",
   vatId: "DK12345678",
-  companyId: "12345678",
+  legalId: { id: "12345678", scheme: "0184" },
   electronicAddress: { scheme: "0184", id: "12345678" },
   email: "billing@nordic.test",
 }
@@ -33,7 +33,7 @@ const buyer: EinvoiceParty = {
   region: null,
   countryCode: "DE",
   vatId: "DE123456789",
-  companyId: null,
+  legalId: null,
   electronicAddress: { scheme: "9930", id: "DE123456789" },
   email: null,
 }
@@ -118,6 +118,10 @@ describe("UBL e-invoice", () => {
     expect(xml).toContain("<cbc:Name>Acme &amp; Sons &lt;GmbH&gt;</cbc:Name>")
     expect(between(xml, "cbc:IdentificationCode")).toEqual(["DK", "DE"])
     expect(between(xml, "cbc:CompanyID")).toEqual(["DK12345678", "12345678", "DE123456789"])
+    // DK-R-002 / DK-R-014: a Danish supplier's legal entity is its CVR with scheme 0184.
+    expect(xml).toMatch(
+      /<cac:PartyLegalEntity>\s*<cbc:RegistrationName>Nordic Design ApS<\/cbc:RegistrationName>\s*<cbc:CompanyID schemeID="0184">12345678<\/cbc:CompanyID>/
+    )
     expect(xml).toContain("<cac:OrderReference>")
     expect(xml).not.toContain("BillingReference")
 
@@ -214,5 +218,33 @@ describe("UBL e-invoice", () => {
     expect(validateEinvoice(invoice({ kind: "creditNote", billingReference: null }))).toEqual([
       "creditNote.invoiceReference",
     ])
+  })
+
+  it("requires a CVR with scheme 0184 for Danish suppliers (DK-R-002, DK-R-014)", () => {
+    expect(validateEinvoice(invoice({ seller: { ...seller, legalId: null } }))).toEqual(["seller.legalId"])
+    expect(
+      validateEinvoice(invoice({ seller: { ...seller, legalId: { id: "12345678", scheme: null } } }))
+    ).toEqual(["seller.legalId"])
+    // Outside Denmark the legal entity identifier stays optional.
+    expect(
+      validateEinvoice(invoice({ seller: { ...buyer, name: "Acme GmbH" }, buyer: { ...seller } }))
+    ).toEqual([])
+  })
+
+  it("writes registration numbers without a known scheme without schemeID", () => {
+    const xml = buildUblDocument(invoice({ buyer: { ...buyer, legalId: { id: "HRB 1234", scheme: null } } }))
+    expect(xml).toContain("<cbc:CompanyID>HRB 1234</cbc:CompanyID>")
+  })
+
+  it("rejects endpoints whose scheme or identifier is not valid Peppol (BR-CL-25)", () => {
+    expect(
+      validateEinvoice(invoice({ buyer: { ...buyer, electronicAddress: { scheme: "1234", id: "DE123456789" } } }))
+    ).toEqual(["buyer.electronicAddressInvalid"])
+    expect(
+      validateEinvoice(invoice({ buyer: { ...buyer, electronicAddress: { scheme: "0088", id: "12345" } } }))
+    ).toEqual(["buyer.electronicAddressInvalid"])
+    expect(
+      validateEinvoice(invoice({ seller: { ...seller, electronicAddress: { scheme: "0184", id: "1234" } } }))
+    ).toEqual(["seller.electronicAddressInvalid"])
   })
 })
