@@ -36,6 +36,31 @@ function getResend(): Resend {
   return _resend
 }
 
+export class EmailSendError extends Error {
+  readonly providerCode: string
+
+  constructor(providerCode: string, message: string) {
+    super(message)
+    this.name = "EmailSendError"
+    this.providerCode = providerCode
+  }
+}
+
+type EmailMessage = Parameters<Resend["emails"]["send"]>[0]
+
+/**
+ * Resend reports API failures in the result instead of throwing.
+ * Callers rely on a rejected promise to record a failed delivery attempt.
+ */
+async function deliver(message: EmailMessage): Promise<{ id: string }> {
+  const result = await getResend().emails.send(message)
+  if (result.error) {
+    throw new EmailSendError(result.error.name, result.error.message)
+  }
+
+  return { id: result.data.id }
+}
+
 function fromAddress(): string {
   return sanitizeHeader(process.env.FROM_EMAIL ?? "noreply@yaip.app")
 }
@@ -249,7 +274,7 @@ export async function sendInvoiceEmail({
     publicPaymentUrl,
   })
 
-  return getResend().emails.send({
+  return deliver({
     from: content.fromAddress,
     to,
     subject: content.subject,
@@ -368,7 +393,7 @@ export async function sendQuoteEmail({
     publicQuoteUrl,
   })
 
-  return getResend().emails.send({
+  return deliver({
     from: content.fromAddress,
     to,
     subject: content.subject,
@@ -431,7 +456,7 @@ export async function sendInvitationEmail({
     locale,
   })
 
-  return getResend().emails.send({
+  return deliver({
     from: content.fromAddress,
     to,
     subject: content.subject,
