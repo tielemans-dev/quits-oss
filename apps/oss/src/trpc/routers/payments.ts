@@ -66,8 +66,15 @@ export const paymentsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" })
       }
 
+      const settings = await prisma.orgSettings.findUnique({
+        where: { organizationId: ctx.organizationId },
+        select: { timezone: true },
+      })
+
       const settlement = computeSettlement(invoice)
       return {
+        /** Calendar payment dates are stored as the start of that day in this time zone. */
+        timeZone: settings?.timezone ?? "UTC",
         payments: invoice.payments.map(serializePayment),
         currency: invoice.currency,
         total: settlement.totalGross.toNumber(),

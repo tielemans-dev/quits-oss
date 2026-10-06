@@ -55,11 +55,20 @@ function methodLabelKey(method: string): TranslationKey {
   }
 }
 
-function todayIsoDate() {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, "0")
-  const day = String(now.getDate()).padStart(2, "0")
-  return `${now.getFullYear()}-${month}-${day}`
+/** Today's calendar date (`YYYY-MM-DD`) in the organization's time zone, which the server uses. */
+function todayIsoDate(timeZone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date())
+    const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? ""
+    return `${part("year")}-${part("month")}-${part("day")}`
+  } catch {
+    return new Date().toISOString().slice(0, 10)
+  }
 }
 
 function hasAtMostTwoDecimals(value: number) {
@@ -161,7 +170,7 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
                   const voided = Boolean(payment.voidedAt)
                   return (
                     <TableRow key={payment.id} className={voided ? "text-muted-foreground" : undefined}>
-                      <TableCell>{formatDate(payment.paidAt, locale, "UTC")}</TableCell>
+                      <TableCell>{formatDate(payment.paidAt, locale, view.timeZone)}</TableCell>
                       <TableCell>{t(methodLabelKey(payment.method))}</TableCell>
                       <TableCell className="max-w-[16rem] truncate" title={payment.note ?? undefined}>
                         {payment.reference ?? "—"}
@@ -207,6 +216,7 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
           invoiceNumber={invoice.number}
           currency={invoice.currency}
           balanceDue={balanceDue}
+          timeZone={view?.timeZone ?? "UTC"}
           locale={locale}
           onClose={() => setRecordOpen(false)}
           onRecorded={handleChanged}
@@ -249,6 +259,7 @@ function RecordPaymentDialog({
   invoiceNumber,
   currency,
   balanceDue,
+  timeZone,
   locale,
   onClose,
   onRecorded,
@@ -257,13 +268,14 @@ function RecordPaymentDialog({
   invoiceNumber: string
   currency: string
   balanceDue: number
+  timeZone: string
   locale?: string | null
   onClose: () => void
   onRecorded: () => Promise<void>
 }) {
   const { t } = useI18n()
   const [amount, setAmount] = useState(balanceDue.toFixed(2))
-  const [paidAt, setPaidAt] = useState(todayIsoDate)
+  const [paidAt, setPaidAt] = useState(() => todayIsoDate(timeZone))
   const [method, setMethod] = useState<PaymentMethod>("bank_transfer")
   const [reference, setReference] = useState("")
   const [note, setNote] = useState("")
@@ -282,7 +294,7 @@ function RecordPaymentDialog({
       setError(t("payments.record.error.overpayment", { balance: balanceLabel }))
       return
     }
-    if (!paidAt || paidAt > todayIsoDate()) {
+    if (!paidAt || paidAt > todayIsoDate(timeZone)) {
       setError(t("payments.record.error.date"))
       return
     }

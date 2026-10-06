@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/db"
+import { formatIsoDate } from "../../lib/exports/format"
 import { processStripeWebhookEvent } from "../../lib/payments/webhooks"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { createAgentKey, authenticateAgentSecret } from "../agent-keys"
@@ -19,8 +20,13 @@ describeIfDatabase("payment commands", () => {
   })
 
   /** Creates an organization with one sent invoice totalling 250.00 (200 + 25% tax). */
-  async function setupSentInvoice(options: { currency?: string; dueDate?: string } = {}) {
-    const org = await createTestOrganization({ roles: ["admin", "member"] })
+  async function setupSentInvoice(
+    options: { currency?: string; dueDate?: string; timezone?: string; unitPrice?: number } = {}
+  ) {
+    const org = await createTestOrganization({
+      roles: ["admin", "member"],
+      settings: options.timezone ? { timezone: options.timezone } : undefined,
+    })
     cleanups.push(org.cleanup)
     const contact = await executeCommand(
       createContact,
@@ -35,7 +41,7 @@ describeIfDatabase("payment commands", () => {
         dueDate: options.dueDate ?? "2099-12-01",
         currency: options.currency,
         taxRate: 25,
-        items: [{ description: "Design", quantity: 2, unitPrice: 100 }],
+        items: [{ description: "Design", quantity: 2, unitPrice: options.unitPrice ?? 100 }],
       },
       { actor: org.actors.admin }
     )
@@ -231,6 +237,7 @@ describeIfDatabase("payment commands", () => {
         invoiceId,
         checkoutSessionId: "cs_forged",
         paymentIntentId: null,
+        amount: 100,
         currency: "usd",
         paidAt: new Date().toISOString(),
       },
@@ -239,15 +246,87 @@ describeIfDatabase("payment commands", () => {
     expect(outcome).toMatchObject({ status: "failed", error: { tag: "Forbidden" } })
   })
 
+  it("rejects amounts with more decimals than the invoice currency allows", async () => {
+    const { org, invoiceId } = await setupSentInvoice({ currency: "JPY" })
+    const actor = org.actors.admin
+
+    const fractional = await executeCommand(recordPayment, payment(invoiceId, 100.5), { actor })
+    expect(fractional).toMatchObject({ status: "failed", error: { tag: "ValidationFailed" } })
+    if (fractional.status === "failed") {
+      expect(fractional.error.message).toContain("JPY")
+    }
+
+    const whole = await executeCommand(recordPayment, payment(invoiceId, 100), { actor })
+    expect(whole.status).toBe("completed")
+  })
+
+  it("settles an exact fractional balance even when the currency has no minor unit", async () => {
+    const { org, invoiceId } = await setupSentInvoice({ currency: "JPY", unitPrice: 50.2 })
+    const balance = (await loadInvoice(invoiceId)).totalGross.toNumber()
+    expect(balance).toBe(125.5)
+
+    const exact = await executeCommand(recordPayment, payment(invoiceId, balance), { actor: org.actors.admin })
+    expect(exact.status).toBe("completed")
+  })
+
+  it("stores a calendar payment date as that day in the organization's time zone", async () => {
+    const timeZone = "America/New_York"
+    const { org, invoiceId } = await setupSentInvoice({ timezone: timeZone })
+
+    const recorded = await executeCommand(
+      recordPayment,
+      payment(invoiceId, 100, { paidAt: "2026-10-01" }),
+      { actor: org.actors.admin }
+    )
+    expect(recorded.status).toBe("completed")
+    if (recorded.status !== "completed") return
+    expect(recorded.result.payment.paidAt.toISOString()).toBe("2026-10-01T04:00:00.000Z")
+    expect(formatIsoDate(recorded.result.payment.paidAt, timeZone)).toBe("2026-10-01")
+
+    const winter = await executeCommand(
+      recordPayment,
+      payment(invoiceId, 50, { paidAt: "2026-01-15" }),
+      { actor: org.actors.admin }
+    )
+    if (winter.status !== "completed") throw new Error("winter payment failed")
+    expect(winter.result.payment.paidAt.toISOString()).toBe("2026-01-15T05:00:00.000Z")
+
+    const stamped = await executeCommand(
+      recordPayment,
+      payment(invoiceId, 10, { paidAt: "2026-03-02T18:30:00.000Z" }),
+      { actor: org.actors.admin }
+    )
+    if (stamped.status !== "completed") throw new Error("timestamped payment failed")
+    expect(stamped.result.payment.paidAt.toISOString()).toBe("2026-03-02T18:30:00.000Z")
+  })
+
+  it("rejects a calendar date after today in the organization's time zone", async () => {
+    const { org, invoiceId } = await setupSentInvoice({ timezone: "Pacific/Kiritimati" })
+    const tomorrow = new Date(Date.now() + 2 * 86_400_000)
+    const future = formatIsoDate(tomorrow, "Pacific/Kiritimati")
+    const outcome = await executeCommand(recordPayment, payment(invoiceId, 10, { paidAt: future }), {
+      actor: org.actors.admin,
+    })
+    expect(outcome).toMatchObject({ status: "failed", error: { tag: "ValidationFailed" } })
+
+    const today = formatIsoDate(new Date(), "Pacific/Kiritimati")
+    const ok = await executeCommand(recordPayment, payment(invoiceId, 10, { paidAt: today }), {
+      actor: org.actors.admin,
+    })
+    expect(ok.status).toBe("completed")
+  })
+
   describe("stripe webhooks", () => {
     function checkoutEvent(input: {
       invoiceId: string
       sessionId: string
-      amountTotal?: number
-      currency?: string
+      amountTotal?: number | null
+      currency?: string | null
+      paymentStatus?: string
+      type?: string
     }) {
       return {
-        type: "checkout.session.completed",
+        type: input.type ?? "checkout.session.completed",
         created: 1_772_761_600,
         data: {
           object: {
@@ -256,11 +335,94 @@ describeIfDatabase("payment commands", () => {
             client_reference_id: input.invoiceId,
             amount_total: input.amountTotal,
             currency: input.currency,
+            payment_status: input.paymentStatus ?? "paid",
             metadata: { invoiceId: input.invoiceId },
           },
         },
       }
     }
+
+    it("waits for asynchronous payment methods to succeed before recording money", async () => {
+      const { org, invoiceId } = await setupSentInvoice()
+      const sessionId = `cs_async_${invoiceId}`
+      const options = { organizationId: org.organizationId }
+
+      const pending = await processStripeWebhookEvent(
+        checkoutEvent({ invoiceId, sessionId, amountTotal: 25_000, currency: "usd", paymentStatus: "unpaid" }),
+        options
+      )
+      expect(pending.handled).toBe(false)
+      expect(await prisma.payment.count({ where: { invoiceId } })).toBe(0)
+
+      const succeeded = await processStripeWebhookEvent(
+        checkoutEvent({
+          invoiceId,
+          sessionId,
+          amountTotal: 25_000,
+          currency: "usd",
+          type: "checkout.session.async_payment_succeeded",
+        }),
+        options
+      )
+      expect(succeeded).toEqual({ handled: true, alreadyApplied: false })
+      const invoice = await loadInvoice(invoiceId)
+      expect(invoice).toMatchObject({ paymentStatus: "paid", paymentFailureReason: null })
+      expect(invoice.amountPaid.toNumber()).toBe(250)
+    })
+
+    it("records an asynchronous payment failure on the invoice without recording money", async () => {
+      const { org, invoiceId } = await setupSentInvoice()
+      const sessionId = `cs_async_failed_${invoiceId}`
+
+      const failed = await processStripeWebhookEvent(
+        checkoutEvent({
+          invoiceId,
+          sessionId,
+          amountTotal: 25_000,
+          currency: "usd",
+          paymentStatus: "unpaid",
+          type: "checkout.session.async_payment_failed",
+        }),
+        { organizationId: org.organizationId }
+      )
+      expect(failed).toEqual({ handled: true, alreadyApplied: false })
+      expect(await prisma.payment.count({ where: { invoiceId } })).toBe(0)
+      const invoice = await loadInvoice(invoiceId)
+      expect(invoice.paymentStatus).toBe("unpaid")
+      expect(invoice.paymentFailureReason).toContain(sessionId)
+      expect(invoice.stripeCheckoutSessionId).toBe(sessionId)
+
+      const activity = await readActivity({
+        organizationId: org.organizationId,
+        aggregateType: "invoice",
+        aggregateId: invoiceId,
+      })
+      expect(activity.events.at(-1)).toMatchObject({ type: "payment.failed" })
+    })
+
+    it("never substitutes the balance for a missing or zero amount, or records another currency", async () => {
+      const { org, invoiceId } = await setupSentInvoice()
+      const options = { organizationId: org.organizationId }
+      const cases = [
+        checkoutEvent({ invoiceId, sessionId: `cs_missing_${invoiceId}`, amountTotal: null, currency: "usd" }),
+        checkoutEvent({ invoiceId, sessionId: `cs_zero_${invoiceId}`, amountTotal: 0, currency: "usd" }),
+        checkoutEvent({ invoiceId, sessionId: `cs_nocur_${invoiceId}`, amountTotal: 10_000, currency: null }),
+        checkoutEvent({ invoiceId, sessionId: `cs_eur_${invoiceId}`, amountTotal: 10_000, currency: "eur" }),
+        checkoutEvent({
+          invoiceId,
+          sessionId: `cs_free_${invoiceId}`,
+          amountTotal: 10_000,
+          currency: "usd",
+          paymentStatus: "no_payment_required",
+        }),
+      ]
+      for (const event of cases) {
+        const result = await processStripeWebhookEvent(event, options)
+        expect(result.handled).toBe(false)
+      }
+      expect(await prisma.payment.count({ where: { invoiceId } })).toBe(0)
+      expect((await loadInvoice(invoiceId)).paymentStatus).toBe("unpaid")
+    })
 
     it("records the charged amount once per checkout session", async () => {
       const { org, invoiceId } = await setupSentInvoice()

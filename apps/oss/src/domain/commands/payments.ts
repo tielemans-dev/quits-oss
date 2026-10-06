@@ -7,7 +7,9 @@ import {
   type PaymentSource,
 } from "@yaip/contracts/payments"
 import { Prisma } from "../../../generated/prisma/client"
+import { formatIsoDate, startOfDayInTimeZone } from "../../lib/exports/format"
 import { appLogger } from "../../lib/observability"
+import { currencyFractionDigits, isExactInCurrency } from "../../lib/payments/stripe-amounts"
 import type { Actor } from "../actor"
 import { defineCommand } from "../command"
 import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
@@ -17,10 +19,12 @@ import { Command, Db } from "../services"
 const paymentsLogger = appLogger.child("payments")
 
 /**
- * Payment dates are calendar dates entered in the organization's time zone. A date that is
- * "today" somewhere on Earth can be up to 14 hours ahead of UTC, so allow that much slack.
+ * A full timestamp may come from a client whose clock or zone runs ahead of the server; "today"
+ * somewhere on Earth can be up to 14 hours ahead of UTC, so allow that much slack.
  */
 const FUTURE_DATE_TOLERANCE_MS = 14 * 60 * 60 * 1000
+
+const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 function paymentSource(actor: Actor): PaymentSource {
   if (actor.kind === "system") {
@@ -67,13 +71,13 @@ const lockInvoice = (invoiceId: string) =>
 
 type ApplyPaymentInput = {
   invoiceId: string
-  /** Major units. Omit to pay the full balance due. */
-  amount?: number
+  /** Major units. */
+  amount: number
   paidAt: Date
   method: PaymentMethod
   reference?: string | null
   note?: string | null
-  stripe?: { checkoutSessionId: string; paymentIntentId: string | null; currency: string | null }
+  stripe?: { checkoutSessionId: string; paymentIntentId: string | null; currency: string }
 }
 
 /**
@@ -97,7 +101,7 @@ const applyPayment = (input: ApplyPaymentInput) =>
     const before = computeSettlement(invoice)
     const isStripe = Boolean(input.stripe)
 
-    if (input.stripe?.currency && input.stripe.currency.toUpperCase() !== invoice.currency.toUpperCase()) {
+    if (input.stripe && input.stripe.currency.toUpperCase() !== invoice.currency.toUpperCase()) {
       return yield* new InvalidState({
         message: `Stripe charged ${input.stripe.currency.toUpperCase()} but invoice ${invoice.number} is in ${invoice.currency}`,
         code: "currency_mismatch",
@@ -111,16 +115,19 @@ const applyPayment = (input: ApplyPaymentInput) =>
       })
     }
 
-    if (input.amount === undefined && before.balanceDue.isZero()) {
-      return yield* new InvalidState({
-        message: `Invoice ${invoice.number} has no balance due`,
-        code: "invoice_already_paid",
-      })
-    }
-
-    const amount = input.amount === undefined ? before.balanceDue : toAmount(input.amount)
+    const amount = toAmount(input.amount)
 
     if (!isStripe) {
+      // Settling the exact remaining balance is always allowed, so an invoice whose total was
+      // computed with more precision than its currency has can still be paid off.
+      if (!isExactInCurrency(input.amount, invoice.currency) && !amount.equals(before.balanceDue)) {
+        const digits = currencyFractionDigits(invoice.currency)
+        const message =
+          digits === 0
+            ? `${invoice.currency} amounts cannot have decimals`
+            : `${invoice.currency} amounts can have at most ${digits} decimals`
+        return yield* new ValidationFailed({ message, issues: [{ path: "amount", message }] })
+      }
       if (before.balanceDue.isZero()) {
         return yield* new InvalidState({
           message: `Invoice ${invoice.number} is already paid`,
@@ -209,18 +216,38 @@ const applyPayment = (input: ApplyPaymentInput) =>
     return { payment, invoice: refreshed.invoice, balanceDue: refreshed.settlement.balanceDue }
   })
 
-function parsePaidAt(value: string, now: Date) {
-  const paidAt = new Date(value)
-  if (paidAt.getTime() > now.getTime() + FUTURE_DATE_TOLERANCE_MS) {
-    return Effect.fail(
-      new ValidationFailed({
-        message: "The payment date cannot be in the future",
-        issues: [{ path: "paidAt", message: "The payment date cannot be in the future" }],
-      })
-    )
-  }
-  return Effect.succeed(paidAt)
-}
+const futurePaymentDate = () =>
+  new ValidationFailed({
+    message: "The payment date cannot be in the future",
+    issues: [{ path: "paidAt", message: "The payment date cannot be in the future" }],
+  })
+
+/**
+ * A calendar date (`YYYY-MM-DD`) is the day the money arrived in the organization's time zone,
+ * so it is stored as the instant that day starts there. Accounting exports group payments by the
+ * same time zone, which keeps an October 1 payment in October. Full timestamps are kept as is.
+ */
+const parsePaidAt = (value: string) =>
+  Effect.gen(function* () {
+    const db = yield* Db
+    const { organizationId, now } = yield* Command
+    if (CALENDAR_DATE.test(value)) {
+      const settings = yield* Effect.promise(() =>
+        db.orgSettings.findUnique({ where: { organizationId }, select: { timezone: true } })
+      )
+      const timeZone = settings?.timezone ?? "UTC"
+      if (value > formatIsoDate(now, timeZone)) {
+        return yield* futurePaymentDate()
+      }
+      return startOfDayInTimeZone(value, timeZone)
+    }
+
+    const paidAt = new Date(value)
+    if (paidAt.getTime() > now.getTime() + FUTURE_DATE_TOLERANCE_MS) {
+      return yield* futurePaymentDate()
+    }
+    return paidAt
+  })
 
 export const recordPayment = defineCommand({
   type: "payment.record",
@@ -231,8 +258,7 @@ export const recordPayment = defineCommand({
     `Record a ${input.amount.toFixed(2)} ${input.method.replaceAll("_", " ")} payment on invoice ${input.invoiceId}`,
   handle: (input) =>
     Effect.gen(function* () {
-      const { now } = yield* Command
-      const paidAt = yield* parsePaidAt(input.paidAt, now)
+      const paidAt = yield* parsePaidAt(input.paidAt)
       return yield* applyPayment({
         invoiceId: input.invoiceId,
         amount: input.amount,
@@ -248,9 +274,10 @@ export const stripeCheckoutPaymentInputSchema = z.object({
   invoiceId: z.string().min(1),
   checkoutSessionId: z.string().min(1),
   paymentIntentId: z.string().min(1).nullable(),
-  /** Major units converted from the session's `amount_total`; omitted pays the balance due. */
-  amount: z.number().positive().optional(),
-  currency: z.string().nullable(),
+  /** Major units converted from the session's `amount_total`. */
+  amount: z.number().positive(),
+  /** The currency Stripe charged; it must match the invoice currency. */
+  currency: z.string().min(1),
   paidAt: z.string().min(1),
 })
 
@@ -306,6 +333,63 @@ export const recordStripeCheckoutPayment = defineCommand({
         paymentId: applied.payment.id,
       })
       return { payment: applied.payment, alreadyApplied: false }
+    }),
+})
+
+export const stripeCheckoutFailureInputSchema = z.object({
+  invoiceId: z.string().min(1),
+  checkoutSessionId: z.string().min(1),
+  paymentIntentId: z.string().min(1).nullable(),
+  reason: z.string().min(1).max(500),
+})
+
+/**
+ * Records that an asynchronous Stripe payment (a bank debit, for example) failed after checkout.
+ * No money is recorded; the reason is kept on the invoice so the failure is visible.
+ */
+export const recordStripeCheckoutFailure = defineCommand({
+  type: "payment.record_stripe_checkout_failure",
+  permission: "payment:create",
+  outwardFacing: false,
+  input: stripeCheckoutFailureInputSchema,
+  summarize: (input) => `Record failed Stripe checkout ${input.checkoutSessionId} on invoice ${input.invoiceId}`,
+  handle: (input) =>
+    Effect.gen(function* () {
+      const db = yield* Db
+      const command = yield* Command
+      if (command.actor.kind !== "system" || command.actor.reason !== "stripe_webhook") {
+        return yield* new Forbidden({ message: "Only Stripe webhooks can record Stripe checkout failures" })
+      }
+
+      const invoice = yield* lockInvoice(input.invoiceId)
+      const updated = yield* Effect.promise(() =>
+        db.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            stripeCheckoutSessionId: input.checkoutSessionId,
+            stripePaymentIntentId: input.paymentIntentId,
+            paymentFailureReason: input.reason,
+          },
+        })
+      )
+
+      command.emit({
+        aggregateType: "invoice",
+        aggregateId: invoice.id,
+        type: "payment.failed",
+        payload: {
+          number: invoice.number,
+          method: "stripe",
+          checkoutSessionId: input.checkoutSessionId,
+          reason: input.reason,
+        },
+      })
+      paymentsLogger.warn("payment.stripe_failed", {
+        organizationId: command.organizationId,
+        invoiceId: invoice.id,
+        checkoutSessionId: input.checkoutSessionId,
+      })
+      return { invoice: updated }
     }),
 })
 
@@ -369,4 +453,9 @@ export const voidPayment = defineCommand({
 })
 
 /** Owned by the payments feature. */
-export const paymentCommands = [recordPayment, recordStripeCheckoutPayment, voidPayment] as const
+export const paymentCommands = [
+  recordPayment,
+  recordStripeCheckoutPayment,
+  recordStripeCheckoutFailure,
+  voidPayment,
+] as const
