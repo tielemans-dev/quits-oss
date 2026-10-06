@@ -336,7 +336,7 @@ describeIfDatabase("email outbox", () => {
 
     expect(deliver).toHaveBeenCalledTimes(1)
     const row = await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminder.result.reminderId } })
-    expect(row.outcome).toBe("sent")
+    expect(row.outcome).toBe("unconfirmed")
     expect(row.outcomeMessage).toContain("delivery not confirmed")
     expect(await readDeliveryResult(reminder.result.deliveryKey)).toMatchObject({ outcome: "unconfirmed" })
   })

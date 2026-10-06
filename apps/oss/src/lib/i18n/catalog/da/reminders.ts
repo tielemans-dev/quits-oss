@@ -59,6 +59,7 @@ export const daRemindersMessages = {
   "reminders.status.upcoming": "Kommende",
   "reminders.status.scheduled": "Planlagt",
   "reminders.status.sent": "Sendt",
+  "reminders.status.unconfirmed": "Levering ikke bekræftet",
   "reminders.status.failed": "Mislykket",
   "reminders.status.skipped": "Sprunget over",
 } as const

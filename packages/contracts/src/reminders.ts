@@ -59,14 +59,18 @@ export const invoiceRemindersQuerySchema = z.object({
   invoiceId: z.string().min(1),
 })
 
-/** Final outcome recorded on a reminder. `failed` means the email provider refused it or never confirmed it. */
-export const reminderOutcomeSchema = z.enum(["sent", "failed", "skipped"])
+/**
+ * Final outcome recorded on a reminder. `failed` means the email provider refused it;
+ * `unconfirmed` means the provider never confirmed it, so the customer may have it and it counts
+ * as sent (it is never repeated).
+ */
+export const reminderOutcomeSchema = z.enum(["sent", "unconfirmed", "failed", "skipped"])
 
 /**
  * How a reminder appears in history: `upcoming` is a policy offset not yet due, `scheduled`
  * is reserved and waiting for its send job.
  */
-export const reminderStatusSchema = z.enum(["upcoming", "scheduled", "sent", "failed", "skipped"])
+export const reminderStatusSchema = z.enum(["upcoming", "scheduled", "sent", "unconfirmed", "failed", "skipped"])
 
 export const invoiceReminderRecordSchema = z.object({
   id: z.string().nullable(),

@@ -2,7 +2,7 @@ import { createFileRoute, redirect, Outlet, useNavigate, useRouterState } from '
 import { useEffect } from 'react'
 import { getSession } from '../lib/auth-session'
 import { useSession } from '../lib/auth-client'
-import { setRequestOrganizationId } from '../lib/active-organization'
+import { adoptRequestOrganizationId } from '../lib/active-organization'
 import { getActiveOrgCloudOnboardingStatus } from '../lib/cloud-onboarding-session'
 import { shouldRedirectToCloudOnboarding } from '../lib/cloud-onboarding'
 import { isCloudDistribution } from '../lib/distribution'
@@ -18,8 +18,9 @@ export const Route = createFileRoute('/_app')({
       throw redirect({ to: '/login' })
     }
     const hasActiveOrg = !!session.session.activeOrganizationId
-    // The pages below load data for this organization, so requests from them are sent for it.
-    setRequestOrganizationId(session.session.activeOrganizationId)
+    // Deliberately does not set the organization requests are sent for: this also runs when a
+    // link is preloaded or after another tab switched organization, while this tab still shows a
+    // page of the previous one. The layout adopts it once for this tab (see AppLayout).
     const isOnboarding = location.pathname === '/onboarding' || location.pathname.startsWith('/onboarding/')
     if (!hasActiveOrg && !isOnboarding) {
       throw redirect({ to: '/onboarding' })
@@ -51,12 +52,12 @@ function AppLayout() {
   const activeOrgId = session?.session.activeOrganizationId ?? null
   const loadedOrgId = loadedSession.session.activeOrganizationId ?? null
 
-  // Covers the hydrated first render, where the route context comes from the server. A session
-  // refresh alone (for example a switch in another tab) deliberately does not change it: the
-  // server then rejects requests from this page instead of applying them to the other organization.
-  useEffect(() => {
-    setRequestOrganizationId(loadedOrgId)
-  }, [loadedOrgId])
+  // The first render of this tab (including hydration of the server-rendered page) adopts the
+  // loaded organization for its requests. It runs during render so the pages' own first requests,
+  // made from their effects (which run before this layout's), already carry it. Later renders keep
+  // it: only an explicit switch in this tab changes it, so after a switch in another tab the
+  // server rejects this page's requests instead of applying them to the other organization.
+  adoptRequestOrganizationId(loadedOrgId)
 
   useEffect(() => {
     let cancelled = false

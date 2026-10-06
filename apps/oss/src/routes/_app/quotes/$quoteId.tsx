@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
+import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import {
   readEmailDeliveryAttempt,
@@ -9,6 +10,7 @@ import {
 } from "../../../lib/email-delivery"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { EmailDeliveryPanel } from "../../../components/documents/email-delivery-panel"
+import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
 import {
   formatCurrency as formatCurrencyIntl,
   formatDate as formatDateIntl,
@@ -184,19 +186,30 @@ function QuoteDetailPage() {
   const [editTaxRate, setEditTaxRate] = useState(0)
   const [editItems, setEditItems] = useState<EditItem[]>([])
 
+  // The page stays mounted when navigating to another quote; drop answers for the previous one.
+  const beginRequest = useDocumentResponseGuard(quoteId)
+
   useEffect(() => {
+    const isCurrent = beginRequest(quoteId)
     Promise.all([trpc.quotes.get.query({ id: quoteId }), trpc.settings.get.query()])
       .then(([quoteData, settings]) => {
+        if (!isCurrent()) return
         const q = quoteData as unknown as Quote
         setQuote(q)
         setEmailDelivery(settings.emailDelivery)
       })
-      .catch(() => setError(t("quotes.detail.error.notFound")))
-      .finally(() => setLoading(false))
-  }, [quoteId, t])
+      .catch(() => {
+        if (isCurrent()) setError(t("quotes.detail.error.notFound"))
+      })
+      .finally(() => {
+        if (isCurrent()) setLoading(false)
+      })
+  }, [beginRequest, quoteId, t])
 
   async function reloadQuote() {
+    const isCurrent = beginRequest(quoteId)
     const updated = await trpc.quotes.get.query({ id: quoteId })
+    if (!isCurrent()) return
     setQuote(updated as unknown as Quote)
   }
 
@@ -211,7 +224,7 @@ function QuoteDetailPage() {
 
   // While the outbox is still delivering the email the quote is frozen; follow it until it settles.
   const emailSending = quote?.lastEmailAttemptOutcome === "sending"
-  usePollWhile(emailSending, reloadQuote)
+  const pollFailure = usePollWhile(emailSending, reloadQuote)
 
   function startEditing() {
     if (!quote) return
@@ -268,6 +281,7 @@ function QuoteDetailPage() {
     if (!quote) return
     setError(null)
     setActing(true)
+    const isCurrent = beginRequest(quote.id)
     try {
       const updated = await trpc.quotes.update.mutate({
         id: quote.id,
@@ -281,6 +295,7 @@ function QuoteDetailPage() {
           unitPrice: item.unitPrice,
         })),
       })
+      if (!isCurrent()) return
       setQuote(updated as unknown as Quote)
       setEditing(false)
     } catch (err) {
@@ -762,6 +777,10 @@ function QuoteDetailPage() {
           {error}
         </p>
       )}
+
+      <div className="mb-4 empty:hidden">
+        <ReloadRequiredNotice failure={pollFailure} />
+      </div>
 
       {/* Quote content */}
       <Card>

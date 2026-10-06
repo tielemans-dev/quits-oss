@@ -7,6 +7,7 @@ vi.mock("../../lib/email", async () => {
   return { ...actual, deliver: vi.fn().mockResolvedValue({ id: "email_reminder" }) }
 })
 
+import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import { formatCurrency } from "../../lib/i18n/format"
 import { deliver, EmailSendError } from "../../lib/email"
@@ -20,6 +21,7 @@ import {
   manualReminderIdempotencyKey,
   pauseInvoiceReminders,
   planDueReminders,
+  reminderSkipReason,
   resumeInvoiceReminders,
   sendReminderNow,
   updateReminderPolicy,
@@ -449,6 +451,60 @@ describeIfDatabase("overdue and reminders", () => {
       [7, "upcoming"],
     ])
     expect(await caller.reminders.getPolicy()).toEqual({ enabled: true, offsetsDays: [-3, 7] })
+  })
+
+  it("lists an unconfirmed reminder as unconfirmed and still counts it as sent", async () => {
+    const context = await setup()
+    const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -5, status: "overdue" })
+    const manual = await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
+    expect(manual.status).toBe("completed")
+    const [reminder] = await prisma.invoiceReminder.findMany({ where: { invoiceId: invoice.id } })
+    // As the delivery completion records a reminder the provider never confirmed.
+    await prisma.invoiceReminder.update({
+      where: { id: reminder!.id },
+      data: { outcome: "unconfirmed", outcomeMessage: `${reminder!.outcomeMessage} (delivery not confirmed)` },
+    })
+
+    const again = await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
+    expect(again).toMatchObject({ status: "failed", error: { code: "already_reminded" } })
+
+    const caller = appRouter.createCaller({
+      session: {
+        user: { id: context.org.actors.admin.userId, email: "admin@example.com", name: "Admin" },
+        session: { activeOrganizationId: context.org.organizationId },
+      },
+    } as never)
+    const listing = await caller.reminders.listForInvoice({ invoiceId: invoice.id })
+    expect(listing.reminders).toMatchObject([{ offsetDays: 5, status: "unconfirmed", manual: true, message: null }])
+  })
+
+  it("lets an unconfirmed later reminder supersede an earlier one", () => {
+    const now = new Date("2026-03-20T00:00:00.000Z")
+    const dueDate = new Date("2026-03-01T00:00:00.000Z")
+    const reason = reminderSkipReason({
+      reminder: { offsetDays: 7, outcomeMessage: null },
+      invoice: {
+        status: "overdue",
+        totalGross: new Prisma.Decimal(100),
+        amountPaid: new Prisma.Decimal(0),
+        amountCredited: new Prisma.Decimal(0),
+        remindersPaused: false,
+        dueDate,
+        issueDate: new Date("2026-02-01T00:00:00.000Z"),
+        reminders: [
+          { offsetDays: 7, scheduledFor: new Date("2026-03-08T00:00:00.000Z"), outcome: null, outcomeMessage: null },
+          {
+            offsetDays: 10,
+            scheduledFor: new Date("2026-03-11T00:00:00.000Z"),
+            outcome: "unconfirmed",
+            outcomeMessage: "Sent manually by Admin (delivery not confirmed)",
+          },
+        ],
+      },
+      policy: { enabled: true, offsetsDays: [7] },
+      now,
+    })
+    expect(reason).toBe(SUPERSEDED_MESSAGE)
   })
 
   it("sends one manual reminder when two requests race", async () => {

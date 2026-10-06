@@ -44,6 +44,15 @@ export const REMINDER_BATCH_SIZE = 200
 /** Prefix of the outcome message recorded for reminders sent by hand. */
 export const MANUAL_REMINDER_PREFIX = "Sent manually by "
 
+/**
+ * Outcomes of a reminder that may have reached the customer: it counts as sent, is never
+ * repeated, and supersedes earlier reminders. `unconfirmed` is a reminder the email provider
+ * never confirmed.
+ */
+export function reminderWentOut(outcome: string | null) {
+  return outcome === "sent" || outcome === "unconfirmed"
+}
+
 export function isManualReminder(reminder: { outcomeMessage: string | null }) {
   return reminder.outcomeMessage?.startsWith(MANUAL_REMINDER_PREFIX) ?? false
 }
@@ -224,11 +233,12 @@ registerDeliveryCompletion(REMINDER_COMPLETION, {
     const where = { id: target.reminderId, outcome: "sending", sentAt: new Date(target.attemptAt) }
     const reminder = await tx.invoiceReminder.findFirst({ where, select: { outcomeMessage: true } })
     if (!reminder) return []
-    // The customer may have the reminder, so it counts as sent and is never repeated.
+    // The customer may have the reminder, so it counts as sent and is never repeated, but it is
+    // recorded as unconfirmed rather than sent.
     const data =
       failure.reason === "unconfirmed"
         ? {
-            outcome: "sent",
+            outcome: "unconfirmed",
             outcomeMessage:
               target.manual === "true"
                 ? `${reminder.outcomeMessage ?? MANUAL_REMINDER_PREFIX} (delivery not confirmed)`
@@ -547,7 +557,7 @@ export const sendReminderNow = defineCommand({
           where: { invoiceId_offsetDays: { invoiceId: invoice.id, offsetDays } },
         })
       )
-      if (existing && (existing.outcome === null || existing.outcome === "sent" || existing.outcome === "sending")) {
+      if (existing && (existing.outcome === null || reminderWentOut(existing.outcome) || existing.outcome === "sending")) {
         return yield* new InvalidState({
           message: "A reminder for this invoice was already sent today",
           code: "already_reminded",
@@ -747,7 +757,7 @@ export function reminderSkipReason(input: {
   const laterRowSuperseded = invoice.reminders.some(
     (other) =>
       other.offsetDays > reminder.offsetDays &&
-      (other.outcome === "sent" ||
+      (reminderWentOut(other.outcome) ||
         other.outcome === "sending" ||
         (other.outcome === null &&
           other.scheduledFor <= now &&
@@ -824,9 +834,11 @@ export const deliverScheduledReminder = defineCommand({
       if (!reminder) {
         return { reminderId: input.reminderId, outcome: "missing" as const }
       }
-      // Sent, skipped, and refused reminders are final; a "sending" one is already queued.
+      // Sent (confirmed or not), skipped, and refused reminders are final; a "sending" one is
+      // already queued.
       if (
         reminder.outcome === "sent" ||
+        reminder.outcome === "unconfirmed" ||
         reminder.outcome === "skipped" ||
         reminder.outcome === "sending" ||
         reminder.outcome === "failed"

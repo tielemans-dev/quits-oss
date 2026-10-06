@@ -101,3 +101,30 @@ describe("InvoiceRemindersPanel send now", () => {
     expect(screen.queryByText("reminders.panel.sent")).toBeNull()
   })
 })
+
+describe("InvoiceRemindersPanel history", () => {
+  it("shows a reminder the provider never confirmed as a warning, not as sent", async () => {
+    api.list.mockResolvedValue({
+      remindersPaused: false,
+      policyEnabled: true,
+      remindable: true,
+      hasRecipient: true,
+      reminders: [
+        {
+          id: "r_1",
+          offsetDays: 7,
+          scheduledFor: new Date("2026-10-01T00:00:00.000Z"),
+          sentAt: new Date("2026-10-01T00:00:00.000Z"),
+          status: "unconfirmed",
+          manual: false,
+          message: "Delivery was not confirmed by the email provider",
+        },
+      ],
+    })
+    render(<InvoiceRemindersPanel invoice={invoice} onChanged={onChanged} />)
+
+    const badge = await screen.findByText("reminders.status.unconfirmed")
+    expect(badge.className).toContain("amber")
+    expect(screen.queryByText("reminders.status.sent")).toBeNull()
+  })
+})
