@@ -1,4 +1,6 @@
+export * from "./agent"
 export * from "./baseSchemas"
+export * from "./contacts"
 export * from "./documents"
 export * from "./email"
 export * from "./onboarding"

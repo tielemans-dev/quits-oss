@@ -1,6 +1,9 @@
 import { initTRPC, TRPCError } from "@trpc/server"
 import superjson from "superjson"
 import { auth } from "../lib/auth"
+import { actorCan } from "../domain/actor"
+import type { Permission } from "../domain/permissions"
+import { resolveUserActor } from "../domain/user-actor"
 import { isCloudDistribution } from "../lib/distribution"
 
 export type Context = {
@@ -44,10 +47,38 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
       message: "No active organization selected",
     })
   }
+
+  const actor = await resolveUserActor({
+    organizationId: ctx.organizationId,
+    userId: ctx.user.id,
+    userName: ctx.user.name,
+    userEmail: ctx.user.email,
+  })
+  if (!actor) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You are not a member of the active organization",
+    })
+  }
+
   return next({
     ctx: {
       ...ctx,
       organizationId: ctx.organizationId,
+      actor,
     },
   })
 })
+
+/** An organization procedure that requires one `resource:action` permission. */
+export function authorizedProcedure(permission: Permission) {
+  return orgProcedure.use(async ({ ctx, next }) => {
+    if (!actorCan(ctx.actor, permission)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Your role does not allow ${permission}`,
+      })
+    }
+    return next()
+  })
+}

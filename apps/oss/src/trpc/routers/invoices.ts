@@ -23,7 +23,7 @@ import {
 } from "../../lib/payments/public"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
-import { router, orgProcedure } from "../init"
+import { router, authorizedProcedure } from "../init"
 
 const invoiceLogger = appLogger.child("invoices")
 
@@ -55,7 +55,7 @@ function mapInvoiceItemForUi(item: {
 }
 
 export const invoicesRouter = router({
-  list: orgProcedure
+  list: authorizedProcedure("invoice:read")
     .input(
       z
         .object({
@@ -84,7 +84,7 @@ export const invoicesRouter = router({
       }))
     }),
 
-  get: orgProcedure
+  get: authorizedProcedure("invoice:read")
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const invoice = await prisma.invoice.findFirstOrThrow({
@@ -108,7 +108,7 @@ export const invoicesRouter = router({
       }
     }),
 
-  create: orgProcedure
+  create: authorizedProcedure("invoice:create")
     .input(
       z.object({
         contactId: z.string().trim().min(1),
@@ -256,7 +256,7 @@ export const invoicesRouter = router({
       }
     }),
 
-  update: orgProcedure
+  update: authorizedProcedure("invoice:update")
     .input(
       z.object({
         id: z.string(),
@@ -419,7 +419,7 @@ export const invoicesRouter = router({
       }
     }),
 
-  delete: orgProcedure
+  delete: authorizedProcedure("invoice:delete")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const invoice = await prisma.invoice.findFirstOrThrow({
@@ -438,7 +438,7 @@ export const invoicesRouter = router({
       })
     }),
 
-  send: orgProcedure
+  send: authorizedProcedure("invoice:send")
     .input(
       z.object({
         id: z.string(),
@@ -634,7 +634,7 @@ export const invoicesRouter = router({
       return { ...updated, emailSent, emailSkipReason }
     }),
 
-  resendEmail: orgProcedure
+  resendEmail: authorizedProcedure("invoice:send")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const invoice = await prisma.invoice.findFirstOrThrow({
@@ -760,7 +760,7 @@ export const invoicesRouter = router({
       return { ...updated, emailSent: true, emailSkipReason: undefined }
     }),
 
-  createPaymentLink: orgProcedure
+  createPaymentLink: authorizedProcedure("invoice:send")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const invoice = await prisma.invoice.findFirstOrThrow({
@@ -848,7 +848,7 @@ export const invoicesRouter = router({
       return { url }
     }),
 
-  markOverdue: orgProcedure.mutation(async ({ ctx }) => {
+  markOverdue: authorizedProcedure("invoice:update").mutation(async ({ ctx }) => {
     const { count } = await prisma.invoice.updateMany({
       where: {
         organizationId: ctx.organizationId,
@@ -860,7 +860,7 @@ export const invoicesRouter = router({
     return { count }
   }),
 
-  markPaid: orgProcedure
+  markPaid: authorizedProcedure("payment:create")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const invoice = await prisma.invoice.findFirstOrThrow({

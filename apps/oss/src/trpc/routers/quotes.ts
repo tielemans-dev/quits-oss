@@ -20,7 +20,7 @@ import { appLogger } from "../../lib/observability"
 import { toNullableJsonInput } from "../../lib/prisma-json"
 import { getPublicQuoteUrl } from "../../lib/quotes/public-url"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
-import { router, orgProcedure } from "../init"
+import { router, authorizedProcedure } from "../init"
 
 const quoteLogger = appLogger.child("quotes")
 
@@ -52,7 +52,7 @@ function mapQuoteItemForUi(item: {
 }
 
 export const quotesRouter = router({
-  list: orgProcedure
+  list: authorizedProcedure("quote:read")
     .input(
       z
         .object({
@@ -80,7 +80,7 @@ export const quotesRouter = router({
       }))
     }),
 
-  get: orgProcedure
+  get: authorizedProcedure("quote:read")
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const quote = await prisma.quote.findFirstOrThrow({
@@ -105,7 +105,7 @@ export const quotesRouter = router({
       }
     }),
 
-  create: orgProcedure
+  create: authorizedProcedure("quote:create")
     .input(
       z.object({
         contactId: z.string().trim().min(1),
@@ -251,7 +251,7 @@ export const quotesRouter = router({
       }
     }),
 
-  update: orgProcedure
+  update: authorizedProcedure("quote:update")
     .input(
       z.object({
         id: z.string(),
@@ -413,7 +413,7 @@ export const quotesRouter = router({
       }
     }),
 
-  delete: orgProcedure
+  delete: authorizedProcedure("quote:delete")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const quote = await prisma.quote.findFirstOrThrow({
@@ -432,7 +432,7 @@ export const quotesRouter = router({
       })
     }),
 
-  send: orgProcedure
+  send: authorizedProcedure("quote:send")
     .input(
       z.object({
         id: z.string(),
@@ -617,7 +617,7 @@ export const quotesRouter = router({
       return { ...updated, emailSent, emailSkipReason }
     }),
 
-  resendEmail: orgProcedure
+  resendEmail: authorizedProcedure("quote:send")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const quote = await prisma.quote.findFirstOrThrow({
@@ -742,7 +742,7 @@ export const quotesRouter = router({
       return { ...updated, emailSent: true, emailSkipReason: undefined }
     }),
 
-  reject: orgProcedure
+  reject: authorizedProcedure("quote:update")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const quote = await prisma.quote.findFirstOrThrow({
@@ -762,7 +762,7 @@ export const quotesRouter = router({
       })
     }),
 
-  convertToInvoice: orgProcedure
+  convertToInvoice: authorizedProcedure("invoice:create")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const result = await prisma.$transaction(async (tx) => {

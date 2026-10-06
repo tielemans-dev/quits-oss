@@ -2,6 +2,7 @@ import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../../../lib/db"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -37,6 +38,7 @@ async function createCloudCallerWithContact() {
       subscriptionStatus: "pro",
     },
   })
+  await ensureTestMembership(orgId, "guard-user")
 
   await prisma.contact.create({
     data: {

@@ -1,0 +1,41 @@
+import { Data } from "effect"
+import type { CommandError } from "@yaip/contracts/agent"
+
+export class Forbidden extends Data.TaggedError("Forbidden")<{
+  readonly message: string
+  readonly permission?: string
+}> {}
+
+export class NotFound extends Data.TaggedError("NotFound")<{
+  readonly message: string
+  readonly entity: string
+  readonly id?: string
+}> {}
+
+/** The command is valid but not allowed in the aggregate's current state. */
+export class InvalidState extends Data.TaggedError("InvalidState")<{
+  readonly message: string
+  readonly code: string
+}> {}
+
+export class ValidationFailed extends Data.TaggedError("ValidationFailed")<{
+  readonly message: string
+  readonly issues?: ReadonlyArray<{ path: string; message: string }>
+}> {}
+
+export class ExternalFailure extends Data.TaggedError("ExternalFailure")<{
+  readonly message: string
+  readonly service: string
+  readonly cause?: unknown
+}> {}
+
+export type DomainError = Forbidden | NotFound | InvalidState | ValidationFailed | ExternalFailure
+
+export function serializeDomainError(error: DomainError): CommandError {
+  return {
+    tag: error._tag,
+    message: error.message,
+    ...("code" in error ? { code: error.code } : {}),
+    ...("issues" in error && error.issues ? { issues: [...error.issues] } : {}),
+  }
+}

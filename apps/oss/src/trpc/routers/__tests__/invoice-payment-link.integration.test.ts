@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import { prisma } from "../../../lib/db"
 import { loadPublicInvoiceByToken } from "../../../lib/payments/public-access"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -41,6 +42,7 @@ describeIfDatabase("invoice payment links", () => {
           subscriptionStatus: "pro",
         },
       })
+      await ensureTestMembership(orgId, "invoice-link-user")
 
       await prisma.orgSettings.create({
         data: {

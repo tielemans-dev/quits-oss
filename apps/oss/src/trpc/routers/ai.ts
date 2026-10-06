@@ -12,7 +12,7 @@ import { resolveDraftItemUnitPrice } from "../../lib/ai/pricing"
 import { prisma } from "../../lib/db"
 import { decryptSecret } from "../../lib/secrets"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
-import { orgProcedure, router } from "../init"
+import { authorizedProcedure, router } from "../init"
 
 const aiGenerateInvoiceDraftInputSchema = z.object({
   prompt: z.string().trim().min(10).max(4000),
@@ -20,7 +20,7 @@ const aiGenerateInvoiceDraftInputSchema = z.object({
 })
 
 export const aiRouter = router({
-  listModels: orgProcedure.query(async ({ ctx }) => {
+  listModels: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     const capabilities = getRuntimeCapabilities()
     if (!capabilities.aiInvoiceDraft.byok) {
       return { models: FALLBACK_OPENROUTER_MODELS, source: "fallback" as const }
@@ -52,7 +52,7 @@ export const aiRouter = router({
     }
   }),
 
-  generateInvoiceDraft: orgProcedure
+  generateInvoiceDraft: authorizedProcedure("invoice:create")
     .input(aiGenerateInvoiceDraftInputSchema)
     .mutation(async ({ ctx, input }) => {
       const now = new Date()

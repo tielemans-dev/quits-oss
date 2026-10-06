@@ -16,6 +16,7 @@ vi.mock("../../../lib/email", async () => {
 import { prisma } from "../../../lib/db"
 import { sendInvoiceEmail } from "../../../lib/email"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -57,6 +58,7 @@ async function createInvoiceFixture(options?: {
       subscriptionStatus: "pro",
     },
   })
+  await ensureTestMembership(orgId, "invoice-send-user")
 
   await prisma.orgSettings.create({
     data: {

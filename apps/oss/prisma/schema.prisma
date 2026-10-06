@@ -10,9 +10,9 @@ datasource db {
 // ── Better Auth Core Models ──
 
 model User {
-  id            String    @id
+  id            String       @id
   name          String
-  email         String    @unique
+  email         String       @unique
   emailVerified Boolean
   image         String?
   createdAt     DateTime
@@ -75,16 +75,16 @@ model Verification {
 // ── Organization Models ──
 
 model Organization {
-  id                   String       @id
+  id                   String              @id
   name                 String
-  slug                 String       @unique
+  slug                 String              @unique
   logo                 String?
   metadata             String?
   createdAt            DateTime
-  stripeCustomerId     String?      @unique
+  stripeCustomerId     String?             @unique
   stripeSubscriptionId String?
   stripePriceId        String?
-  subscriptionStatus   String?      @default("free")
+  subscriptionStatus   String?             @default("free")
   members              Member[]
   invitations          Invitation[]
   contacts             Contact[]
@@ -92,6 +92,12 @@ model Organization {
   taxIds               OrganizationTaxId[]
   invoices             Invoice[]
   quotes               Quote[]
+  creditNotes          CreditNote[]
+  payments             Payment[]
+  recurringInvoices    RecurringInvoice[]
+  domainEvents         DomainEvent[]
+  agentKeys            AgentKey[]
+  approvalRequests     ApprovalRequest[]
   settings             OrgSettings?
 
   @@map("organization")
@@ -143,71 +149,81 @@ model InstallationState {
 }
 
 model OrgSettings {
-  id             String       @id @default(cuid())
-  organizationId String       @unique
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  countryCode    String       @default("US")
-  locale         String       @default("en-US")
-  timezone       String       @default("UTC")
-  defaultCurrency String      @default("USD")
-  taxRegime      String       @default("us_sales_tax")
-  pricesIncludeTax Boolean    @default(false)
-  currency       String       @default("USD")
-  taxRate        Decimal?     @db.Decimal(5, 2)
-  companyName    String?
-  companyAddress String?
-  companyEmail   String?
-  companyPhone   String?
-  companyLogo    String?
-  invoicePrefix  String       @default("INV")
-  invoiceNextNum Int          @default(1)
-  quotePrefix    String       @default("QTE")
-  quoteNextNum   Int          @default(1)
-  onboardingStatus String     @default("not_started")
-  onboardingMethod String?
-  onboardingProfile String?
-  onboardingInvoicingIdentity String?
-  onboardingVersion Int?
-  onboardingCompletedAt DateTime?
-  aiOpenRouterApiKeyEnc String?
-  aiOpenRouterModel String @default("openai/gpt-4o-mini")
-  stripePublishableKey String?
-  stripeSecretKeyEnc String?
-  stripeWebhookSecretEnc String?
-  documentSendingDomain String?
-  documentSendingDomainProviderId String?
-  documentSendingDomainStatus String?
-  documentSendingDomainRecords Json?
+  id                                 String       @id @default(cuid())
+  organizationId                     String       @unique
+  organization                       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  countryCode                        String       @default("US")
+  locale                             String       @default("en-US")
+  timezone                           String       @default("UTC")
+  defaultCurrency                    String       @default("USD")
+  taxRegime                          String       @default("us_sales_tax")
+  pricesIncludeTax                   Boolean      @default(false)
+  currency                           String       @default("USD")
+  taxRate                            Decimal?     @db.Decimal(5, 2)
+  companyName                        String?
+  companyAddress                     String?
+  companyEmail                       String?
+  companyPhone                       String?
+  companyLogo                        String?
+  invoicePrefix                      String       @default("INV")
+  invoiceNextNum                     Int          @default(1)
+  quotePrefix                        String       @default("QTE")
+  quoteNextNum                       Int          @default(1)
+  creditNotePrefix                   String       @default("CN")
+  creditNoteNextNum                  Int          @default(1)
+  reminderPolicy                     Json?
+  eventSequence                      Int          @default(0)
+  onboardingStatus                   String       @default("not_started")
+  onboardingMethod                   String?
+  onboardingProfile                  String?
+  onboardingInvoicingIdentity        String?
+  onboardingVersion                  Int?
+  onboardingCompletedAt              DateTime?
+  aiOpenRouterApiKeyEnc              String?
+  aiOpenRouterModel                  String       @default("openai/gpt-4o-mini")
+  stripePublishableKey               String?
+  stripeSecretKeyEnc                 String?
+  stripeWebhookSecretEnc             String?
+  documentSendingDomain              String?
+  documentSendingDomainProviderId    String?
+  documentSendingDomainStatus        String?
+  documentSendingDomainRecords       Json?
   documentSendingDomainFailureReason String?
-  documentSendingDomainVerifiedAt DateTime?
-  documentSendingLastSyncedAt DateTime?
-  documentSendingLastSyncSource String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  documentSendingDomainVerifiedAt    DateTime?
+  documentSendingLastSyncedAt        DateTime?
+  documentSendingLastSyncSource      String?
+  createdAt                          DateTime     @default(now())
+  updatedAt                          DateTime     @updatedAt
 
+  @@index([onboardingStatus])
+  @@index([onboardingCompletedAt])
   @@map("org_settings")
 }
 
 model Contact {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  name           String
-  email          String?
-  phone          String?
-  company        String?
-  address        String?
-  city           String?
-  state          String?
-  zip            String?
-  country        String?
-  taxId          String?
-  taxIds         ContactTaxId[]
-  notes          String?
-  invoices       Invoice[]
-  quotes         Quote[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                   String             @id @default(cuid())
+  organizationId       String
+  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name                 String
+  email                String?
+  phone                String?
+  company              String?
+  address              String?
+  city                 String?
+  state                String?
+  zip                  String?
+  country              String?
+  taxId                String?
+  taxIds               ContactTaxId[]
+  peppolEndpointId     String?
+  peppolEndpointScheme String?
+  notes                String?
+  invoices             Invoice[]
+  quotes               Quote[]
+  creditNotes          CreditNote[]
+  recurringInvoices    RecurringInvoice[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
   @@index([organizationId])
   @@map("contact")
@@ -247,15 +263,15 @@ model OrganizationTaxId {
 }
 
 model ContactTaxId {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   contactId   String
-  contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
   scheme      String
   value       String
   countryCode String?
-  isPrimary   Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([contactId])
   @@index([contactId, scheme])
@@ -263,59 +279,70 @@ model ContactTaxId {
 }
 
 model Invoice {
-  id             String        @id @default(cuid())
-  organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  contactId      String
-  contact        Contact       @relation(fields: [contactId], references: [id])
-  number         String
-  status         String        @default("draft")
-  issueDate      DateTime      @default(now())
-  dueDate        DateTime
-  supplyDate     DateTime?
-  subtotalNet    Decimal       @db.Decimal(12, 2)
-  totalTax       Decimal       @db.Decimal(12, 2) @default(0)
-  totalGross     Decimal       @db.Decimal(12, 2)
-  currency       String        @default("USD")
-  countryCode    String        @default("US")
-  locale         String        @default("en-US")
-  timezone       String        @default("UTC")
-  taxRegime      String        @default("us_sales_tax")
-  pricesIncludeTax Boolean     @default(false)
-  sellerSnapshot Json?
-  buyerSnapshot  Json?
-  complianceStatus String      @default("valid")
-  complianceErrors Json?
-  legalText      Json?
-  paymentStatus  String        @default("unpaid")
-  paidAt         DateTime?
-  publicPaymentIssuedAt DateTime?
-  publicPaymentKeyVersion Int @default(1)
-  lastEmailAttemptAt DateTime?
+  id                      String            @id @default(cuid())
+  organizationId          String
+  organization            Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contactId               String
+  contact                 Contact           @relation(fields: [contactId], references: [id])
+  number                  String
+  status                  String            @default("draft")
+  issueDate               DateTime          @default(now())
+  dueDate                 DateTime
+  supplyDate              DateTime?
+  subtotalNet             Decimal           @db.Decimal(12, 2)
+  totalTax                Decimal           @default(0) @db.Decimal(12, 2)
+  totalGross              Decimal           @db.Decimal(12, 2)
+  currency                String            @default("USD")
+  countryCode             String            @default("US")
+  locale                  String            @default("en-US")
+  timezone                String            @default("UTC")
+  taxRegime               String            @default("us_sales_tax")
+  pricesIncludeTax        Boolean           @default(false)
+  sellerSnapshot          Json?
+  buyerSnapshot           Json?
+  complianceStatus        String            @default("valid")
+  complianceErrors        Json?
+  legalText               Json?
+  paymentStatus           String            @default("unpaid")
+  paidAt                  DateTime?
+  publicPaymentIssuedAt   DateTime?
+  publicPaymentKeyVersion Int               @default(1)
+  lastEmailAttemptAt      DateTime?
   lastEmailAttemptOutcome String?
-  lastEmailAttemptCode String?
+  lastEmailAttemptCode    String?
   lastEmailAttemptMessage String?
   stripeCheckoutSessionId String?
-  stripePaymentIntentId String?
-  paymentFailureReason String?
-  paymentReference String?
-  purchaseOrderRef String?
-  einvoiceFormat String?
-  einvoiceStatus String?
-  einvoiceExternalId String?
-  notes          String?
-  items          InvoiceItem[]
-  quoteId        String?
-  quote          Quote?        @relation(fields: [quoteId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  stripePaymentIntentId   String?
+  paymentFailureReason    String?
+  paymentReference        String?
+  purchaseOrderRef        String?
+  einvoiceFormat          String?
+  einvoiceStatus          String?
+  einvoiceExternalId      String?
+  notes                   String?
+  amountPaid              Decimal           @default(0) @db.Decimal(12, 2)
+  amountCredited          Decimal           @default(0) @db.Decimal(12, 2)
+  remindersPaused         Boolean           @default(false)
+  items                   InvoiceItem[]
+  payments                Payment[]
+  creditNotes             CreditNote[]
+  reminders               InvoiceReminder[]
+  quoteId                 String?
+  quote                   Quote?            @relation(fields: [quoteId], references: [id])
+  recurringInvoiceId      String?
+  recurringInvoice        RecurringInvoice? @relation(fields: [recurringInvoiceId], references: [id], onDelete: SetNull)
+  recurringRunDate        DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
 
   @@unique([organizationId, number])
+  @@unique([recurringInvoiceId, recurringRunDate])
   @@index([organizationId])
   @@index([contactId])
   @@index([organizationId, status])
   @@index([organizationId, paymentStatus])
   @@index([organizationId, publicPaymentIssuedAt])
+  @@index([organizationId, dueDate])
   @@map("invoice")
 }
 
@@ -328,7 +355,7 @@ model InvoiceItem {
   unitPriceNet   Decimal @db.Decimal(12, 2)
   unitPriceGross Decimal @db.Decimal(12, 2)
   lineNet        Decimal @db.Decimal(12, 2)
-  lineTax        Decimal @db.Decimal(12, 2) @default(0)
+  lineTax        Decimal @default(0) @db.Decimal(12, 2)
   lineGross      Decimal @db.Decimal(12, 2)
   taxRate        Decimal @db.Decimal(5, 2)
   taxCategory    String  @default("standard")
@@ -340,45 +367,45 @@ model InvoiceItem {
 }
 
 model Quote {
-  id             String      @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  contactId      String
-  contact        Contact     @relation(fields: [contactId], references: [id])
-  number         String
-  status         String      @default("draft")
-  issueDate      DateTime    @default(now())
-  expiryDate     DateTime
-  supplyDate     DateTime?
-  subtotalNet    Decimal     @db.Decimal(12, 2)
-  totalTax       Decimal     @db.Decimal(12, 2) @default(0)
-  totalGross     Decimal     @db.Decimal(12, 2)
-  currency       String      @default("USD")
-  countryCode    String      @default("US")
-  locale         String      @default("en-US")
-  timezone       String      @default("UTC")
-  taxRegime      String      @default("us_sales_tax")
-  pricesIncludeTax Boolean   @default(false)
-  sellerSnapshot Json?
-  buyerSnapshot  Json?
-  complianceStatus String    @default("valid")
-  complianceErrors Json?
-  legalText      Json?
-  purchaseOrderRef String?
-  paymentReference String?
-  publicAccessKeyVersion Int @default(1)
-  publicAccessIssuedAt DateTime?
-  publicDecisionAt DateTime?
-  publicRejectionReason String?
-  lastEmailAttemptAt DateTime?
+  id                      String       @id @default(cuid())
+  organizationId          String
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contactId               String
+  contact                 Contact      @relation(fields: [contactId], references: [id])
+  number                  String
+  status                  String       @default("draft")
+  issueDate               DateTime     @default(now())
+  expiryDate              DateTime
+  supplyDate              DateTime?
+  subtotalNet             Decimal      @db.Decimal(12, 2)
+  totalTax                Decimal      @default(0) @db.Decimal(12, 2)
+  totalGross              Decimal      @db.Decimal(12, 2)
+  currency                String       @default("USD")
+  countryCode             String       @default("US")
+  locale                  String       @default("en-US")
+  timezone                String       @default("UTC")
+  taxRegime               String       @default("us_sales_tax")
+  pricesIncludeTax        Boolean      @default(false)
+  sellerSnapshot          Json?
+  buyerSnapshot           Json?
+  complianceStatus        String       @default("valid")
+  complianceErrors        Json?
+  legalText               Json?
+  purchaseOrderRef        String?
+  paymentReference        String?
+  publicAccessKeyVersion  Int          @default(1)
+  publicAccessIssuedAt    DateTime?
+  publicDecisionAt        DateTime?
+  publicRejectionReason   String?
+  lastEmailAttemptAt      DateTime?
   lastEmailAttemptOutcome String?
-  lastEmailAttemptCode String?
+  lastEmailAttemptCode    String?
   lastEmailAttemptMessage String?
-  notes          String?
-  items          QuoteItem[]
-  invoices       Invoice[]
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  notes                   String?
+  items                   QuoteItem[]
+  invoices                Invoice[]
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
 
   @@unique([organizationId, number])
   @@index([organizationId])
@@ -389,15 +416,15 @@ model Quote {
 }
 
 model QuoteItem {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   quoteId        String
-  quote          Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote          Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   description    String
   quantity       Decimal @db.Decimal(10, 2)
   unitPriceNet   Decimal @db.Decimal(12, 2)
   unitPriceGross Decimal @db.Decimal(12, 2)
   lineNet        Decimal @db.Decimal(12, 2)
-  lineTax        Decimal @db.Decimal(12, 2) @default(0)
+  lineTax        Decimal @default(0) @db.Decimal(12, 2)
   lineGross      Decimal @db.Decimal(12, 2)
   taxRate        Decimal @db.Decimal(5, 2)
   taxCategory    String  @default("standard")
@@ -406,4 +433,231 @@ model QuoteItem {
 
   @@index([quoteId])
   @@map("quote_item")
+}
+
+model CreditNote {
+  id                      String           @id @default(cuid())
+  organizationId          String
+  organization            Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId               String
+  invoice                 Invoice          @relation(fields: [invoiceId], references: [id])
+  contactId               String
+  contact                 Contact          @relation(fields: [contactId], references: [id])
+  number                  String
+  status                  String           @default("issued")
+  reason                  String
+  issueDate               DateTime         @default(now())
+  subtotalNet             Decimal          @db.Decimal(12, 2)
+  totalTax                Decimal          @default(0) @db.Decimal(12, 2)
+  totalGross              Decimal          @db.Decimal(12, 2)
+  currency                String
+  countryCode             String
+  locale                  String
+  timezone                String
+  taxRegime               String
+  pricesIncludeTax        Boolean          @default(false)
+  sellerSnapshot          Json?
+  buyerSnapshot           Json?
+  notes                   String?
+  lastEmailAttemptAt      DateTime?
+  lastEmailAttemptOutcome String?
+  lastEmailAttemptCode    String?
+  lastEmailAttemptMessage String?
+  items                   CreditNoteItem[]
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@index([organizationId, issueDate])
+  @@map("credit_note")
+}
+
+model CreditNoteItem {
+  id             String     @id @default(cuid())
+  creditNoteId   String
+  creditNote     CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  invoiceItemId  String?
+  description    String
+  quantity       Decimal    @db.Decimal(10, 2)
+  unitPriceNet   Decimal    @db.Decimal(12, 2)
+  unitPriceGross Decimal    @db.Decimal(12, 2)
+  lineNet        Decimal    @db.Decimal(12, 2)
+  lineTax        Decimal    @default(0) @db.Decimal(12, 2)
+  lineGross      Decimal    @db.Decimal(12, 2)
+  taxRate        Decimal    @db.Decimal(5, 2)
+  taxCategory    String     @default("standard")
+  taxCode        String?
+  sortOrder      Int        @default(0)
+
+  @@index([creditNoteId])
+  @@map("credit_note_item")
+}
+
+model Payment {
+  id                      String       @id @default(cuid())
+  organizationId          String
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId               String
+  invoice                 Invoice      @relation(fields: [invoiceId], references: [id])
+  amount                  Decimal      @db.Decimal(12, 2)
+  currency                String
+  paidAt                  DateTime
+  method                  String
+  reference               String?
+  note                    String?
+  source                  String
+  stripeCheckoutSessionId String?      @unique
+  stripePaymentIntentId   String?
+  voidedAt                DateTime?
+  voidReason              String?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@index([organizationId, paidAt])
+  @@map("payment")
+}
+
+model InvoiceReminder {
+  id             String    @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  offsetDays     Int
+  scheduledFor   DateTime
+  sentAt         DateTime?
+  outcome        String?
+  outcomeMessage String?
+  createdAt      DateTime  @default(now())
+
+  @@unique([invoiceId, offsetDays])
+  @@index([sentAt, scheduledFor])
+  @@map("invoice_reminder")
+}
+
+model RecurringInvoice {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact      @relation(fields: [contactId], references: [id])
+  name           String
+  status         String       @default("active")
+  intervalCount  Int          @default(1)
+  intervalUnit   String       @default("month")
+  startDate      DateTime
+  nextRunAt      DateTime
+  endsAt         DateTime?
+  remainingRuns  Int?
+  dueInDays      Int          @default(14)
+  autoSend       Boolean      @default(false)
+  currency       String
+  taxRate        Decimal      @db.Decimal(5, 2)
+  notes          String?
+  items          Json
+  lastRunAt      DateTime?
+  invoices       Invoice[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([status, nextRunAt])
+  @@map("recurring_invoice")
+}
+
+model DomainEvent {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sequence         Int
+  aggregateType    String
+  aggregateId      String
+  type             String
+  payload          Json
+  actorKind        String
+  actorId          String?
+  actorLabel       String?
+  approvedByUserId String?
+  commandId        String?
+  occurredAt       DateTime     @default(now())
+
+  @@unique([organizationId, sequence])
+  @@index([organizationId, aggregateType, aggregateId])
+  @@map("domain_event")
+}
+
+model CommandReceipt {
+  id              String   @id @default(cuid())
+  organizationId  String
+  actorKey        String
+  clientRequestId String
+  commandType     String
+  status          String
+  result          Json?
+  error           Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([organizationId, actorKey, clientRequestId])
+  @@map("command_receipt")
+}
+
+model ApprovalRequest {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentKeyId       String
+  agentKey         AgentKey     @relation(fields: [agentKeyId], references: [id], onDelete: Cascade)
+  commandReceiptId String       @unique
+  commandType      String
+  command          Json
+  summary          String
+  status           String       @default("pending")
+  decidedByUserId  String?
+  decidedAt        DateTime?
+  decisionNote     String?
+  expiresAt        DateTime
+  createdAt        DateTime     @default(now())
+
+  @@index([organizationId, status])
+  @@map("approval_request")
+}
+
+model AgentKey {
+  id               String            @id @default(cuid())
+  organizationId   String
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name             String
+  mode             String            @default("approval_required")
+  scopes           String[]
+  secretHash       String            @unique
+  displayPrefix    String
+  createdByUserId  String
+  lastUsedAt       DateTime?
+  expiresAt        DateTime?
+  revokedAt        DateTime?
+  approvalRequests ApprovalRequest[]
+  createdAt        DateTime          @default(now())
+
+  @@index([organizationId])
+  @@map("agent_key")
+}
+
+model Job {
+  id             String   @id @default(cuid())
+  organizationId String
+  type           String
+  payload        Json
+  status         String   @default("pending")
+  attempts       Int      @default(0)
+  runAfter       DateTime @default(now())
+  lastError      String?
+  dedupeKey      String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status, runAfter])
+  @@map("job")
 }

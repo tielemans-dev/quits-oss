@@ -16,6 +16,7 @@ vi.mock("../../../lib/email", async () => {
 import { prisma } from "../../../lib/db"
 import { sendQuoteEmail } from "../../../lib/email"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -56,6 +57,7 @@ async function createQuoteFixture(options?: {
       subscriptionStatus: "pro",
     },
   })
+  await ensureTestMembership(orgId, "quote-send-user")
 
   await prisma.orgSettings.create({
     data: {

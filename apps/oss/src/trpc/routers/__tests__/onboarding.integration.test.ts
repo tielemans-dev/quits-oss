@@ -2,6 +2,7 @@ import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../../../lib/db"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -47,6 +48,7 @@ async function createCloudCaller() {
       subscriptionStatus: "pro",
     },
   })
+  await ensureTestMembership(orgId, "onboarding-user")
 
   const caller = appRouter.createCaller({
     session: {

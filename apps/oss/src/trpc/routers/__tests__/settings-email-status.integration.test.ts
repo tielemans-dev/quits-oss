@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../../lib/db"
 import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -27,6 +28,7 @@ async function createOrgWithCaller(name: string) {
       subscriptionStatus: "pro",
     },
   })
+  await ensureTestMembership(orgId, `${name}-user`)
 
   return {
     orgId,

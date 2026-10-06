@@ -3,6 +3,7 @@ import { prisma } from "../../../lib/db"
 import { decidePublicQuoteByToken } from "../../../lib/quotes/public-access"
 import { signQuotePublicToken } from "../../../lib/quotes/public"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 export type InvoiceQuoteSmokeResult = {
   orgId: string
@@ -85,6 +86,7 @@ export async function runInvoiceQuoteSmokeFlow(
         subscriptionStatus: "pro",
       },
     })
+    await ensureTestMembership(orgId, "smoke-user")
 
     await prisma.orgSettings.create({
       data: {

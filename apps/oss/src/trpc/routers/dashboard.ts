@@ -1,8 +1,8 @@
-import { router, orgProcedure } from "../init"
+import { router, authorizedProcedure } from "../init"
 import { prisma } from "../../lib/db"
 
 export const dashboardRouter = router({
-  stats: orgProcedure.query(async ({ ctx }) => {
+  stats: authorizedProcedure("invoice:read").query(async ({ ctx }) => {
     const [totalRevenue, outstanding, overdueCount, totalContacts, recentInvoices] =
       await Promise.all([
         prisma.invoice.aggregate({

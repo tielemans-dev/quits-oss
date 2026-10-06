@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
-import { router, orgProcedure } from "../init"
+import { router, authorizedProcedure } from "../init"
 import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import {
@@ -93,7 +93,7 @@ export const settingsUpdateSchema = z.object({
 })
 
 export const settingsRouter = router({
-  get: orgProcedure.query(async ({ ctx }) => {
+  get: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     const primaryTaxId = await prisma.organizationTaxId.findFirst({
       where: { organizationId: ctx.organizationId },
       orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
@@ -156,7 +156,7 @@ export const settingsRouter = router({
     }
   }),
 
-  update: orgProcedure
+  update: authorizedProcedure("settings:update")
     .input(settingsUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       const {
@@ -248,7 +248,7 @@ export const settingsRouter = router({
       })
     }),
 
-  configureDocumentSendingDomain: orgProcedure
+  configureDocumentSendingDomain: authorizedProcedure("settings:update")
     .input(configureDocumentSendingDomainSchema)
     .mutation(async ({ ctx, input }) => {
       const provider = getManagedDocumentDomainProvider()
@@ -308,7 +308,7 @@ export const settingsRouter = router({
       })
     }),
 
-  refreshDocumentSendingDomain: orgProcedure
+  refreshDocumentSendingDomain: authorizedProcedure("settings:update")
     .input(z.void())
     .mutation(async ({ ctx }) => {
       const provider = getManagedDocumentDomainProvider()
@@ -358,7 +358,7 @@ export const settingsRouter = router({
       })
     }),
 
-  disableDocumentSendingDomain: orgProcedure
+  disableDocumentSendingDomain: authorizedProcedure("settings:update")
     .input(z.void())
     .mutation(async ({ ctx }) => {
       const provider = getManagedDocumentDomainProvider()

@@ -67,7 +67,17 @@ export const ModelName = {
   Invoice: 'Invoice',
   InvoiceItem: 'InvoiceItem',
   Quote: 'Quote',
-  QuoteItem: 'QuoteItem'
+  QuoteItem: 'QuoteItem',
+  CreditNote: 'CreditNote',
+  CreditNoteItem: 'CreditNoteItem',
+  Payment: 'Payment',
+  InvoiceReminder: 'InvoiceReminder',
+  RecurringInvoice: 'RecurringInvoice',
+  DomainEvent: 'DomainEvent',
+  CommandReceipt: 'CommandReceipt',
+  ApprovalRequest: 'ApprovalRequest',
+  AgentKey: 'AgentKey',
+  Job: 'Job'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -218,6 +228,10 @@ export const OrgSettingsScalarFieldEnum = {
   invoiceNextNum: 'invoiceNextNum',
   quotePrefix: 'quotePrefix',
   quoteNextNum: 'quoteNextNum',
+  creditNotePrefix: 'creditNotePrefix',
+  creditNoteNextNum: 'creditNoteNextNum',
+  reminderPolicy: 'reminderPolicy',
+  eventSequence: 'eventSequence',
   onboardingStatus: 'onboardingStatus',
   onboardingMethod: 'onboardingMethod',
   onboardingProfile: 'onboardingProfile',
@@ -257,6 +271,8 @@ export const ContactScalarFieldEnum = {
   zip: 'zip',
   country: 'country',
   taxId: 'taxId',
+  peppolEndpointId: 'peppolEndpointId',
+  peppolEndpointScheme: 'peppolEndpointScheme',
   notes: 'notes',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -347,7 +363,12 @@ export const InvoiceScalarFieldEnum = {
   einvoiceStatus: 'einvoiceStatus',
   einvoiceExternalId: 'einvoiceExternalId',
   notes: 'notes',
+  amountPaid: 'amountPaid',
+  amountCredited: 'amountCredited',
+  remindersPaused: 'remindersPaused',
   quoteId: 'quoteId',
+  recurringInvoiceId: 'recurringInvoiceId',
+  recurringRunDate: 'recurringRunDate',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -434,6 +455,209 @@ export const QuoteItemScalarFieldEnum = {
 export type QuoteItemScalarFieldEnum = (typeof QuoteItemScalarFieldEnum)[keyof typeof QuoteItemScalarFieldEnum]
 
 
+export const CreditNoteScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  invoiceId: 'invoiceId',
+  contactId: 'contactId',
+  number: 'number',
+  status: 'status',
+  reason: 'reason',
+  issueDate: 'issueDate',
+  subtotalNet: 'subtotalNet',
+  totalTax: 'totalTax',
+  totalGross: 'totalGross',
+  currency: 'currency',
+  countryCode: 'countryCode',
+  locale: 'locale',
+  timezone: 'timezone',
+  taxRegime: 'taxRegime',
+  pricesIncludeTax: 'pricesIncludeTax',
+  sellerSnapshot: 'sellerSnapshot',
+  buyerSnapshot: 'buyerSnapshot',
+  notes: 'notes',
+  lastEmailAttemptAt: 'lastEmailAttemptAt',
+  lastEmailAttemptOutcome: 'lastEmailAttemptOutcome',
+  lastEmailAttemptCode: 'lastEmailAttemptCode',
+  lastEmailAttemptMessage: 'lastEmailAttemptMessage',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CreditNoteScalarFieldEnum = (typeof CreditNoteScalarFieldEnum)[keyof typeof CreditNoteScalarFieldEnum]
+
+
+export const CreditNoteItemScalarFieldEnum = {
+  id: 'id',
+  creditNoteId: 'creditNoteId',
+  invoiceItemId: 'invoiceItemId',
+  description: 'description',
+  quantity: 'quantity',
+  unitPriceNet: 'unitPriceNet',
+  unitPriceGross: 'unitPriceGross',
+  lineNet: 'lineNet',
+  lineTax: 'lineTax',
+  lineGross: 'lineGross',
+  taxRate: 'taxRate',
+  taxCategory: 'taxCategory',
+  taxCode: 'taxCode',
+  sortOrder: 'sortOrder'
+} as const
+
+export type CreditNoteItemScalarFieldEnum = (typeof CreditNoteItemScalarFieldEnum)[keyof typeof CreditNoteItemScalarFieldEnum]
+
+
+export const PaymentScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  invoiceId: 'invoiceId',
+  amount: 'amount',
+  currency: 'currency',
+  paidAt: 'paidAt',
+  method: 'method',
+  reference: 'reference',
+  note: 'note',
+  source: 'source',
+  stripeCheckoutSessionId: 'stripeCheckoutSessionId',
+  stripePaymentIntentId: 'stripePaymentIntentId',
+  voidedAt: 'voidedAt',
+  voidReason: 'voidReason',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
+
+
+export const InvoiceReminderScalarFieldEnum = {
+  id: 'id',
+  invoiceId: 'invoiceId',
+  offsetDays: 'offsetDays',
+  scheduledFor: 'scheduledFor',
+  sentAt: 'sentAt',
+  outcome: 'outcome',
+  outcomeMessage: 'outcomeMessage',
+  createdAt: 'createdAt'
+} as const
+
+export type InvoiceReminderScalarFieldEnum = (typeof InvoiceReminderScalarFieldEnum)[keyof typeof InvoiceReminderScalarFieldEnum]
+
+
+export const RecurringInvoiceScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  contactId: 'contactId',
+  name: 'name',
+  status: 'status',
+  intervalCount: 'intervalCount',
+  intervalUnit: 'intervalUnit',
+  startDate: 'startDate',
+  nextRunAt: 'nextRunAt',
+  endsAt: 'endsAt',
+  remainingRuns: 'remainingRuns',
+  dueInDays: 'dueInDays',
+  autoSend: 'autoSend',
+  currency: 'currency',
+  taxRate: 'taxRate',
+  notes: 'notes',
+  items: 'items',
+  lastRunAt: 'lastRunAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RecurringInvoiceScalarFieldEnum = (typeof RecurringInvoiceScalarFieldEnum)[keyof typeof RecurringInvoiceScalarFieldEnum]
+
+
+export const DomainEventScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  sequence: 'sequence',
+  aggregateType: 'aggregateType',
+  aggregateId: 'aggregateId',
+  type: 'type',
+  payload: 'payload',
+  actorKind: 'actorKind',
+  actorId: 'actorId',
+  actorLabel: 'actorLabel',
+  approvedByUserId: 'approvedByUserId',
+  commandId: 'commandId',
+  occurredAt: 'occurredAt'
+} as const
+
+export type DomainEventScalarFieldEnum = (typeof DomainEventScalarFieldEnum)[keyof typeof DomainEventScalarFieldEnum]
+
+
+export const CommandReceiptScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  actorKey: 'actorKey',
+  clientRequestId: 'clientRequestId',
+  commandType: 'commandType',
+  status: 'status',
+  result: 'result',
+  error: 'error',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CommandReceiptScalarFieldEnum = (typeof CommandReceiptScalarFieldEnum)[keyof typeof CommandReceiptScalarFieldEnum]
+
+
+export const ApprovalRequestScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  agentKeyId: 'agentKeyId',
+  commandReceiptId: 'commandReceiptId',
+  commandType: 'commandType',
+  command: 'command',
+  summary: 'summary',
+  status: 'status',
+  decidedByUserId: 'decidedByUserId',
+  decidedAt: 'decidedAt',
+  decisionNote: 'decisionNote',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ApprovalRequestScalarFieldEnum = (typeof ApprovalRequestScalarFieldEnum)[keyof typeof ApprovalRequestScalarFieldEnum]
+
+
+export const AgentKeyScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  name: 'name',
+  mode: 'mode',
+  scopes: 'scopes',
+  secretHash: 'secretHash',
+  displayPrefix: 'displayPrefix',
+  createdByUserId: 'createdByUserId',
+  lastUsedAt: 'lastUsedAt',
+  expiresAt: 'expiresAt',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type AgentKeyScalarFieldEnum = (typeof AgentKeyScalarFieldEnum)[keyof typeof AgentKeyScalarFieldEnum]
+
+
+export const JobScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  type: 'type',
+  payload: 'payload',
+  status: 'status',
+  attempts: 'attempts',
+  runAfter: 'runAfter',
+  lastError: 'lastError',
+  dedupeKey: 'dedupeKey',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type JobScalarFieldEnum = (typeof JobScalarFieldEnum)[keyof typeof JobScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -448,6 +672,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {

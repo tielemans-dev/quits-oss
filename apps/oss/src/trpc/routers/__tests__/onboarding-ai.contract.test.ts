@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../../../lib/db"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -109,6 +110,7 @@ describeIfDatabase("onboarding ai contract", () => {
         subscriptionStatus: "pro",
       },
     })
+    await ensureTestMembership(orgId, "onboarding-ai-user")
 
     try {
       const caller = await createCaller("cloud", orgId)

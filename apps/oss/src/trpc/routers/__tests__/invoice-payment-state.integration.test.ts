@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto"
 import { describe, expect, it } from "vitest"
 import { prisma } from "../../../lib/db"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -35,6 +36,7 @@ describeIfDatabase("invoice payment state", () => {
           subscriptionStatus: "pro",
         },
       })
+      await ensureTestMembership(orgId, "invoice-payment-user")
 
       await prisma.orgSettings.create({
         data: {

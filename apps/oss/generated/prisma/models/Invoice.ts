@@ -31,6 +31,8 @@ export type InvoiceAvgAggregateOutputType = {
   totalTax: runtime.Decimal | null
   totalGross: runtime.Decimal | null
   publicPaymentKeyVersion: number | null
+  amountPaid: runtime.Decimal | null
+  amountCredited: runtime.Decimal | null
 }
 
 export type InvoiceSumAggregateOutputType = {
@@ -38,6 +40,8 @@ export type InvoiceSumAggregateOutputType = {
   totalTax: runtime.Decimal | null
   totalGross: runtime.Decimal | null
   publicPaymentKeyVersion: number | null
+  amountPaid: runtime.Decimal | null
+  amountCredited: runtime.Decimal | null
 }
 
 export type InvoiceMinAggregateOutputType = {
@@ -76,7 +80,12 @@ export type InvoiceMinAggregateOutputType = {
   einvoiceStatus: string | null
   einvoiceExternalId: string | null
   notes: string | null
+  amountPaid: runtime.Decimal | null
+  amountCredited: runtime.Decimal | null
+  remindersPaused: boolean | null
   quoteId: string | null
+  recurringInvoiceId: string | null
+  recurringRunDate: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -117,7 +126,12 @@ export type InvoiceMaxAggregateOutputType = {
   einvoiceStatus: string | null
   einvoiceExternalId: string | null
   notes: string | null
+  amountPaid: runtime.Decimal | null
+  amountCredited: runtime.Decimal | null
+  remindersPaused: boolean | null
   quoteId: string | null
+  recurringInvoiceId: string | null
+  recurringRunDate: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -162,7 +176,12 @@ export type InvoiceCountAggregateOutputType = {
   einvoiceStatus: number
   einvoiceExternalId: number
   notes: number
+  amountPaid: number
+  amountCredited: number
+  remindersPaused: number
   quoteId: number
+  recurringInvoiceId: number
+  recurringRunDate: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -174,6 +193,8 @@ export type InvoiceAvgAggregateInputType = {
   totalTax?: true
   totalGross?: true
   publicPaymentKeyVersion?: true
+  amountPaid?: true
+  amountCredited?: true
 }
 
 export type InvoiceSumAggregateInputType = {
@@ -181,6 +202,8 @@ export type InvoiceSumAggregateInputType = {
   totalTax?: true
   totalGross?: true
   publicPaymentKeyVersion?: true
+  amountPaid?: true
+  amountCredited?: true
 }
 
 export type InvoiceMinAggregateInputType = {
@@ -219,7 +242,12 @@ export type InvoiceMinAggregateInputType = {
   einvoiceStatus?: true
   einvoiceExternalId?: true
   notes?: true
+  amountPaid?: true
+  amountCredited?: true
+  remindersPaused?: true
   quoteId?: true
+  recurringInvoiceId?: true
+  recurringRunDate?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -260,7 +288,12 @@ export type InvoiceMaxAggregateInputType = {
   einvoiceStatus?: true
   einvoiceExternalId?: true
   notes?: true
+  amountPaid?: true
+  amountCredited?: true
+  remindersPaused?: true
   quoteId?: true
+  recurringInvoiceId?: true
+  recurringRunDate?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -305,7 +338,12 @@ export type InvoiceCountAggregateInputType = {
   einvoiceStatus?: true
   einvoiceExternalId?: true
   notes?: true
+  amountPaid?: true
+  amountCredited?: true
+  remindersPaused?: true
   quoteId?: true
+  recurringInvoiceId?: true
+  recurringRunDate?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -437,7 +475,12 @@ export type InvoiceGroupByOutputType = {
   einvoiceStatus: string | null
   einvoiceExternalId: string | null
   notes: string | null
+  amountPaid: runtime.Decimal
+  amountCredited: runtime.Decimal
+  remindersPaused: boolean
   quoteId: string | null
+  recurringInvoiceId: string | null
+  recurringRunDate: Date | null
   createdAt: Date
   updatedAt: Date
   _count: InvoiceCountAggregateOutputType | null
@@ -505,13 +548,22 @@ export type InvoiceWhereInput = {
   einvoiceStatus?: Prisma.StringNullableFilter<"Invoice"> | string | null
   einvoiceExternalId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   notes?: Prisma.StringNullableFilter<"Invoice"> | string | null
+  amountPaid?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFilter<"Invoice"> | boolean
   quoteId?: Prisma.StringNullableFilter<"Invoice"> | string | null
+  recurringInvoiceId?: Prisma.StringNullableFilter<"Invoice"> | string | null
+  recurringRunDate?: Prisma.DateTimeNullableFilter<"Invoice"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   items?: Prisma.InvoiceItemListRelationFilter
+  payments?: Prisma.PaymentListRelationFilter
+  creditNotes?: Prisma.CreditNoteListRelationFilter
+  reminders?: Prisma.InvoiceReminderListRelationFilter
   quote?: Prisma.XOR<Prisma.QuoteNullableScalarRelationFilter, Prisma.QuoteWhereInput> | null
+  recurringInvoice?: Prisma.XOR<Prisma.RecurringInvoiceNullableScalarRelationFilter, Prisma.RecurringInvoiceWhereInput> | null
 }
 
 export type InvoiceOrderByWithRelationInput = {
@@ -554,18 +606,28 @@ export type InvoiceOrderByWithRelationInput = {
   einvoiceStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   einvoiceExternalId?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  amountPaid?: Prisma.SortOrder
+  amountCredited?: Prisma.SortOrder
+  remindersPaused?: Prisma.SortOrder
   quoteId?: Prisma.SortOrderInput | Prisma.SortOrder
+  recurringInvoiceId?: Prisma.SortOrderInput | Prisma.SortOrder
+  recurringRunDate?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   organization?: Prisma.OrganizationOrderByWithRelationInput
   contact?: Prisma.ContactOrderByWithRelationInput
   items?: Prisma.InvoiceItemOrderByRelationAggregateInput
+  payments?: Prisma.PaymentOrderByRelationAggregateInput
+  creditNotes?: Prisma.CreditNoteOrderByRelationAggregateInput
+  reminders?: Prisma.InvoiceReminderOrderByRelationAggregateInput
   quote?: Prisma.QuoteOrderByWithRelationInput
+  recurringInvoice?: Prisma.RecurringInvoiceOrderByWithRelationInput
 }
 
 export type InvoiceWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   organizationId_number?: Prisma.InvoiceOrganizationIdNumberCompoundUniqueInput
+  recurringInvoiceId_recurringRunDate?: Prisma.InvoiceRecurringInvoiceIdRecurringRunDateCompoundUniqueInput
   AND?: Prisma.InvoiceWhereInput | Prisma.InvoiceWhereInput[]
   OR?: Prisma.InvoiceWhereInput[]
   NOT?: Prisma.InvoiceWhereInput | Prisma.InvoiceWhereInput[]
@@ -607,14 +669,23 @@ export type InvoiceWhereUniqueInput = Prisma.AtLeast<{
   einvoiceStatus?: Prisma.StringNullableFilter<"Invoice"> | string | null
   einvoiceExternalId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   notes?: Prisma.StringNullableFilter<"Invoice"> | string | null
+  amountPaid?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFilter<"Invoice"> | boolean
   quoteId?: Prisma.StringNullableFilter<"Invoice"> | string | null
+  recurringInvoiceId?: Prisma.StringNullableFilter<"Invoice"> | string | null
+  recurringRunDate?: Prisma.DateTimeNullableFilter<"Invoice"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   items?: Prisma.InvoiceItemListRelationFilter
+  payments?: Prisma.PaymentListRelationFilter
+  creditNotes?: Prisma.CreditNoteListRelationFilter
+  reminders?: Prisma.InvoiceReminderListRelationFilter
   quote?: Prisma.XOR<Prisma.QuoteNullableScalarRelationFilter, Prisma.QuoteWhereInput> | null
-}, "id" | "organizationId_number">
+  recurringInvoice?: Prisma.XOR<Prisma.RecurringInvoiceNullableScalarRelationFilter, Prisma.RecurringInvoiceWhereInput> | null
+}, "id" | "organizationId_number" | "recurringInvoiceId_recurringRunDate">
 
 export type InvoiceOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -656,7 +727,12 @@ export type InvoiceOrderByWithAggregationInput = {
   einvoiceStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   einvoiceExternalId?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  amountPaid?: Prisma.SortOrder
+  amountCredited?: Prisma.SortOrder
+  remindersPaused?: Prisma.SortOrder
   quoteId?: Prisma.SortOrderInput | Prisma.SortOrder
+  recurringInvoiceId?: Prisma.SortOrderInput | Prisma.SortOrder
+  recurringRunDate?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.InvoiceCountOrderByAggregateInput
@@ -709,7 +785,12 @@ export type InvoiceScalarWhereWithAggregatesInput = {
   einvoiceStatus?: Prisma.StringNullableWithAggregatesFilter<"Invoice"> | string | null
   einvoiceExternalId?: Prisma.StringNullableWithAggregatesFilter<"Invoice"> | string | null
   notes?: Prisma.StringNullableWithAggregatesFilter<"Invoice"> | string | null
+  amountPaid?: Prisma.DecimalWithAggregatesFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalWithAggregatesFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolWithAggregatesFilter<"Invoice"> | boolean
   quoteId?: Prisma.StringNullableWithAggregatesFilter<"Invoice"> | string | null
+  recurringInvoiceId?: Prisma.StringNullableWithAggregatesFilter<"Invoice"> | string | null
+  recurringRunDate?: Prisma.DateTimeNullableWithAggregatesFilter<"Invoice"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Invoice"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Invoice"> | Date | string
 }
@@ -752,12 +833,20 @@ export type InvoiceCreateInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
   items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
+  recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
 
 export type InvoiceUncheckedCreateInput = {
@@ -800,10 +889,18 @@ export type InvoiceUncheckedCreateInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
   quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderUncheckedCreateNestedManyWithoutInvoiceInput
 }
 
 export type InvoiceUpdateInput = {
@@ -844,12 +941,20 @@ export type InvoiceUpdateInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
   items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
+  recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
 
 export type InvoiceUncheckedUpdateInput = {
@@ -892,10 +997,18 @@ export type InvoiceUncheckedUpdateInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUncheckedUpdateManyWithoutInvoiceNestedInput
 }
 
 export type InvoiceCreateManyInput = {
@@ -938,7 +1051,12 @@ export type InvoiceCreateManyInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
   quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -981,6 +1099,10 @@ export type InvoiceUpdateManyMutationInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1025,7 +1147,12 @@ export type InvoiceUncheckedUpdateManyInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1043,6 +1170,11 @@ export type InvoiceOrderByRelationAggregateInput = {
 export type InvoiceOrganizationIdNumberCompoundUniqueInput = {
   organizationId: string
   number: string
+}
+
+export type InvoiceRecurringInvoiceIdRecurringRunDateCompoundUniqueInput = {
+  recurringInvoiceId: string
+  recurringRunDate: Date | string
 }
 
 export type InvoiceCountOrderByAggregateInput = {
@@ -1085,7 +1217,12 @@ export type InvoiceCountOrderByAggregateInput = {
   einvoiceStatus?: Prisma.SortOrder
   einvoiceExternalId?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  amountPaid?: Prisma.SortOrder
+  amountCredited?: Prisma.SortOrder
+  remindersPaused?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
+  recurringInvoiceId?: Prisma.SortOrder
+  recurringRunDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1095,6 +1232,8 @@ export type InvoiceAvgOrderByAggregateInput = {
   totalTax?: Prisma.SortOrder
   totalGross?: Prisma.SortOrder
   publicPaymentKeyVersion?: Prisma.SortOrder
+  amountPaid?: Prisma.SortOrder
+  amountCredited?: Prisma.SortOrder
 }
 
 export type InvoiceMaxOrderByAggregateInput = {
@@ -1133,7 +1272,12 @@ export type InvoiceMaxOrderByAggregateInput = {
   einvoiceStatus?: Prisma.SortOrder
   einvoiceExternalId?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  amountPaid?: Prisma.SortOrder
+  amountCredited?: Prisma.SortOrder
+  remindersPaused?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
+  recurringInvoiceId?: Prisma.SortOrder
+  recurringRunDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1174,7 +1318,12 @@ export type InvoiceMinOrderByAggregateInput = {
   einvoiceStatus?: Prisma.SortOrder
   einvoiceExternalId?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  amountPaid?: Prisma.SortOrder
+  amountCredited?: Prisma.SortOrder
+  remindersPaused?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
+  recurringInvoiceId?: Prisma.SortOrder
+  recurringRunDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1184,6 +1333,8 @@ export type InvoiceSumOrderByAggregateInput = {
   totalTax?: Prisma.SortOrder
   totalGross?: Prisma.SortOrder
   publicPaymentKeyVersion?: Prisma.SortOrder
+  amountPaid?: Prisma.SortOrder
+  amountCredited?: Prisma.SortOrder
 }
 
 export type InvoiceScalarRelationFilter = {
@@ -1331,6 +1482,90 @@ export type InvoiceUncheckedUpdateManyWithoutQuoteNestedInput = {
   deleteMany?: Prisma.InvoiceScalarWhereInput | Prisma.InvoiceScalarWhereInput[]
 }
 
+export type InvoiceCreateNestedOneWithoutCreditNotesInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutCreditNotesInput, Prisma.InvoiceUncheckedCreateWithoutCreditNotesInput>
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutCreditNotesInput
+  connect?: Prisma.InvoiceWhereUniqueInput
+}
+
+export type InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutCreditNotesInput, Prisma.InvoiceUncheckedCreateWithoutCreditNotesInput>
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutCreditNotesInput
+  upsert?: Prisma.InvoiceUpsertWithoutCreditNotesInput
+  connect?: Prisma.InvoiceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.InvoiceUpdateToOneWithWhereWithoutCreditNotesInput, Prisma.InvoiceUpdateWithoutCreditNotesInput>, Prisma.InvoiceUncheckedUpdateWithoutCreditNotesInput>
+}
+
+export type InvoiceCreateNestedOneWithoutPaymentsInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutPaymentsInput, Prisma.InvoiceUncheckedCreateWithoutPaymentsInput>
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutPaymentsInput
+  connect?: Prisma.InvoiceWhereUniqueInput
+}
+
+export type InvoiceUpdateOneRequiredWithoutPaymentsNestedInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutPaymentsInput, Prisma.InvoiceUncheckedCreateWithoutPaymentsInput>
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutPaymentsInput
+  upsert?: Prisma.InvoiceUpsertWithoutPaymentsInput
+  connect?: Prisma.InvoiceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.InvoiceUpdateToOneWithWhereWithoutPaymentsInput, Prisma.InvoiceUpdateWithoutPaymentsInput>, Prisma.InvoiceUncheckedUpdateWithoutPaymentsInput>
+}
+
+export type InvoiceCreateNestedOneWithoutRemindersInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutRemindersInput, Prisma.InvoiceUncheckedCreateWithoutRemindersInput>
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutRemindersInput
+  connect?: Prisma.InvoiceWhereUniqueInput
+}
+
+export type InvoiceUpdateOneRequiredWithoutRemindersNestedInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutRemindersInput, Prisma.InvoiceUncheckedCreateWithoutRemindersInput>
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutRemindersInput
+  upsert?: Prisma.InvoiceUpsertWithoutRemindersInput
+  connect?: Prisma.InvoiceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.InvoiceUpdateToOneWithWhereWithoutRemindersInput, Prisma.InvoiceUpdateWithoutRemindersInput>, Prisma.InvoiceUncheckedUpdateWithoutRemindersInput>
+}
+
+export type InvoiceCreateNestedManyWithoutRecurringInvoiceInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutRecurringInvoiceInput, Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput> | Prisma.InvoiceCreateWithoutRecurringInvoiceInput[] | Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput[]
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutRecurringInvoiceInput | Prisma.InvoiceCreateOrConnectWithoutRecurringInvoiceInput[]
+  createMany?: Prisma.InvoiceCreateManyRecurringInvoiceInputEnvelope
+  connect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+}
+
+export type InvoiceUncheckedCreateNestedManyWithoutRecurringInvoiceInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutRecurringInvoiceInput, Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput> | Prisma.InvoiceCreateWithoutRecurringInvoiceInput[] | Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput[]
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutRecurringInvoiceInput | Prisma.InvoiceCreateOrConnectWithoutRecurringInvoiceInput[]
+  createMany?: Prisma.InvoiceCreateManyRecurringInvoiceInputEnvelope
+  connect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+}
+
+export type InvoiceUpdateManyWithoutRecurringInvoiceNestedInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutRecurringInvoiceInput, Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput> | Prisma.InvoiceCreateWithoutRecurringInvoiceInput[] | Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput[]
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutRecurringInvoiceInput | Prisma.InvoiceCreateOrConnectWithoutRecurringInvoiceInput[]
+  upsert?: Prisma.InvoiceUpsertWithWhereUniqueWithoutRecurringInvoiceInput | Prisma.InvoiceUpsertWithWhereUniqueWithoutRecurringInvoiceInput[]
+  createMany?: Prisma.InvoiceCreateManyRecurringInvoiceInputEnvelope
+  set?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  disconnect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  delete?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  connect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  update?: Prisma.InvoiceUpdateWithWhereUniqueWithoutRecurringInvoiceInput | Prisma.InvoiceUpdateWithWhereUniqueWithoutRecurringInvoiceInput[]
+  updateMany?: Prisma.InvoiceUpdateManyWithWhereWithoutRecurringInvoiceInput | Prisma.InvoiceUpdateManyWithWhereWithoutRecurringInvoiceInput[]
+  deleteMany?: Prisma.InvoiceScalarWhereInput | Prisma.InvoiceScalarWhereInput[]
+}
+
+export type InvoiceUncheckedUpdateManyWithoutRecurringInvoiceNestedInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutRecurringInvoiceInput, Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput> | Prisma.InvoiceCreateWithoutRecurringInvoiceInput[] | Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput[]
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutRecurringInvoiceInput | Prisma.InvoiceCreateOrConnectWithoutRecurringInvoiceInput[]
+  upsert?: Prisma.InvoiceUpsertWithWhereUniqueWithoutRecurringInvoiceInput | Prisma.InvoiceUpsertWithWhereUniqueWithoutRecurringInvoiceInput[]
+  createMany?: Prisma.InvoiceCreateManyRecurringInvoiceInputEnvelope
+  set?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  disconnect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  delete?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  connect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  update?: Prisma.InvoiceUpdateWithWhereUniqueWithoutRecurringInvoiceInput | Prisma.InvoiceUpdateWithWhereUniqueWithoutRecurringInvoiceInput[]
+  updateMany?: Prisma.InvoiceUpdateManyWithWhereWithoutRecurringInvoiceInput | Prisma.InvoiceUpdateManyWithWhereWithoutRecurringInvoiceInput[]
+  deleteMany?: Prisma.InvoiceScalarWhereInput | Prisma.InvoiceScalarWhereInput[]
+}
+
 export type InvoiceCreateWithoutOrganizationInput = {
   id?: string
   number: string
@@ -1369,11 +1604,19 @@ export type InvoiceCreateWithoutOrganizationInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
   items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
+  recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
 
 export type InvoiceUncheckedCreateWithoutOrganizationInput = {
@@ -1415,10 +1658,18 @@ export type InvoiceUncheckedCreateWithoutOrganizationInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
   quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderUncheckedCreateNestedManyWithoutInvoiceInput
 }
 
 export type InvoiceCreateOrConnectWithoutOrganizationInput = {
@@ -1490,7 +1741,12 @@ export type InvoiceScalarWhereInput = {
   einvoiceStatus?: Prisma.StringNullableFilter<"Invoice"> | string | null
   einvoiceExternalId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   notes?: Prisma.StringNullableFilter<"Invoice"> | string | null
+  amountPaid?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFilter<"Invoice"> | boolean
   quoteId?: Prisma.StringNullableFilter<"Invoice"> | string | null
+  recurringInvoiceId?: Prisma.StringNullableFilter<"Invoice"> | string | null
+  recurringRunDate?: Prisma.DateTimeNullableFilter<"Invoice"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
 }
@@ -1533,11 +1789,19 @@ export type InvoiceCreateWithoutContactInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
+  recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
 
 export type InvoiceUncheckedCreateWithoutContactInput = {
@@ -1579,10 +1843,18 @@ export type InvoiceUncheckedCreateWithoutContactInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
   quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderUncheckedCreateNestedManyWithoutInvoiceInput
 }
 
 export type InvoiceCreateOrConnectWithoutContactInput = {
@@ -1649,11 +1921,19 @@ export type InvoiceCreateWithoutItemsInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
+  recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
 
 export type InvoiceUncheckedCreateWithoutItemsInput = {
@@ -1696,9 +1976,17 @@ export type InvoiceUncheckedCreateWithoutItemsInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
   quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderUncheckedCreateNestedManyWithoutInvoiceInput
 }
 
 export type InvoiceCreateOrConnectWithoutItemsInput = {
@@ -1755,11 +2043,19 @@ export type InvoiceUpdateWithoutItemsInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
+  recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
 
 export type InvoiceUncheckedUpdateWithoutItemsInput = {
@@ -1802,9 +2098,17 @@ export type InvoiceUncheckedUpdateWithoutItemsInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUncheckedUpdateManyWithoutInvoiceNestedInput
 }
 
 export type InvoiceCreateWithoutQuoteInput = {
@@ -1845,11 +2149,19 @@ export type InvoiceCreateWithoutQuoteInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
   items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
 
 export type InvoiceUncheckedCreateWithoutQuoteInput = {
@@ -1892,9 +2204,17 @@ export type InvoiceUncheckedCreateWithoutQuoteInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderUncheckedCreateNestedManyWithoutInvoiceInput
 }
 
 export type InvoiceCreateOrConnectWithoutQuoteInput = {
@@ -1921,6 +2241,822 @@ export type InvoiceUpdateWithWhereUniqueWithoutQuoteInput = {
 export type InvoiceUpdateManyWithWhereWithoutQuoteInput = {
   where: Prisma.InvoiceScalarWhereInput
   data: Prisma.XOR<Prisma.InvoiceUpdateManyMutationInput, Prisma.InvoiceUncheckedUpdateManyWithoutQuoteInput>
+}
+
+export type InvoiceCreateWithoutCreditNotesInput = {
+  id?: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringRunDate?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
+  contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
+  items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
+  recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
+}
+
+export type InvoiceUncheckedCreateWithoutCreditNotesInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderUncheckedCreateNestedManyWithoutInvoiceInput
+}
+
+export type InvoiceCreateOrConnectWithoutCreditNotesInput = {
+  where: Prisma.InvoiceWhereUniqueInput
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutCreditNotesInput, Prisma.InvoiceUncheckedCreateWithoutCreditNotesInput>
+}
+
+export type InvoiceUpsertWithoutCreditNotesInput = {
+  update: Prisma.XOR<Prisma.InvoiceUpdateWithoutCreditNotesInput, Prisma.InvoiceUncheckedUpdateWithoutCreditNotesInput>
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutCreditNotesInput, Prisma.InvoiceUncheckedCreateWithoutCreditNotesInput>
+  where?: Prisma.InvoiceWhereInput
+}
+
+export type InvoiceUpdateToOneWithWhereWithoutCreditNotesInput = {
+  where?: Prisma.InvoiceWhereInput
+  data: Prisma.XOR<Prisma.InvoiceUpdateWithoutCreditNotesInput, Prisma.InvoiceUncheckedUpdateWithoutCreditNotesInput>
+}
+
+export type InvoiceUpdateWithoutCreditNotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
+  items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
+  recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
+}
+
+export type InvoiceUncheckedUpdateWithoutCreditNotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUncheckedUpdateManyWithoutInvoiceNestedInput
+}
+
+export type InvoiceCreateWithoutPaymentsInput = {
+  id?: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringRunDate?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
+  contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
+  items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
+  recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
+}
+
+export type InvoiceUncheckedCreateWithoutPaymentsInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderUncheckedCreateNestedManyWithoutInvoiceInput
+}
+
+export type InvoiceCreateOrConnectWithoutPaymentsInput = {
+  where: Prisma.InvoiceWhereUniqueInput
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutPaymentsInput, Prisma.InvoiceUncheckedCreateWithoutPaymentsInput>
+}
+
+export type InvoiceUpsertWithoutPaymentsInput = {
+  update: Prisma.XOR<Prisma.InvoiceUpdateWithoutPaymentsInput, Prisma.InvoiceUncheckedUpdateWithoutPaymentsInput>
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutPaymentsInput, Prisma.InvoiceUncheckedCreateWithoutPaymentsInput>
+  where?: Prisma.InvoiceWhereInput
+}
+
+export type InvoiceUpdateToOneWithWhereWithoutPaymentsInput = {
+  where?: Prisma.InvoiceWhereInput
+  data: Prisma.XOR<Prisma.InvoiceUpdateWithoutPaymentsInput, Prisma.InvoiceUncheckedUpdateWithoutPaymentsInput>
+}
+
+export type InvoiceUpdateWithoutPaymentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
+  items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
+  recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
+}
+
+export type InvoiceUncheckedUpdateWithoutPaymentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUncheckedUpdateManyWithoutInvoiceNestedInput
+}
+
+export type InvoiceCreateWithoutRemindersInput = {
+  id?: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringRunDate?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
+  contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
+  items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
+  recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
+}
+
+export type InvoiceUncheckedCreateWithoutRemindersInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
+}
+
+export type InvoiceCreateOrConnectWithoutRemindersInput = {
+  where: Prisma.InvoiceWhereUniqueInput
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutRemindersInput, Prisma.InvoiceUncheckedCreateWithoutRemindersInput>
+}
+
+export type InvoiceUpsertWithoutRemindersInput = {
+  update: Prisma.XOR<Prisma.InvoiceUpdateWithoutRemindersInput, Prisma.InvoiceUncheckedUpdateWithoutRemindersInput>
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutRemindersInput, Prisma.InvoiceUncheckedCreateWithoutRemindersInput>
+  where?: Prisma.InvoiceWhereInput
+}
+
+export type InvoiceUpdateToOneWithWhereWithoutRemindersInput = {
+  where?: Prisma.InvoiceWhereInput
+  data: Prisma.XOR<Prisma.InvoiceUpdateWithoutRemindersInput, Prisma.InvoiceUncheckedUpdateWithoutRemindersInput>
+}
+
+export type InvoiceUpdateWithoutRemindersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
+  items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
+  recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
+}
+
+export type InvoiceUncheckedUpdateWithoutRemindersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
+}
+
+export type InvoiceCreateWithoutRecurringInvoiceInput = {
+  id?: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringRunDate?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
+  contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
+  items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
+}
+
+export type InvoiceUncheckedCreateWithoutRecurringInvoiceInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  quoteId?: string | null
+  recurringRunDate?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderUncheckedCreateNestedManyWithoutInvoiceInput
+}
+
+export type InvoiceCreateOrConnectWithoutRecurringInvoiceInput = {
+  where: Prisma.InvoiceWhereUniqueInput
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutRecurringInvoiceInput, Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput>
+}
+
+export type InvoiceCreateManyRecurringInvoiceInputEnvelope = {
+  data: Prisma.InvoiceCreateManyRecurringInvoiceInput | Prisma.InvoiceCreateManyRecurringInvoiceInput[]
+  skipDuplicates?: boolean
+}
+
+export type InvoiceUpsertWithWhereUniqueWithoutRecurringInvoiceInput = {
+  where: Prisma.InvoiceWhereUniqueInput
+  update: Prisma.XOR<Prisma.InvoiceUpdateWithoutRecurringInvoiceInput, Prisma.InvoiceUncheckedUpdateWithoutRecurringInvoiceInput>
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutRecurringInvoiceInput, Prisma.InvoiceUncheckedCreateWithoutRecurringInvoiceInput>
+}
+
+export type InvoiceUpdateWithWhereUniqueWithoutRecurringInvoiceInput = {
+  where: Prisma.InvoiceWhereUniqueInput
+  data: Prisma.XOR<Prisma.InvoiceUpdateWithoutRecurringInvoiceInput, Prisma.InvoiceUncheckedUpdateWithoutRecurringInvoiceInput>
+}
+
+export type InvoiceUpdateManyWithWhereWithoutRecurringInvoiceInput = {
+  where: Prisma.InvoiceScalarWhereInput
+  data: Prisma.XOR<Prisma.InvoiceUpdateManyMutationInput, Prisma.InvoiceUncheckedUpdateManyWithoutRecurringInvoiceInput>
 }
 
 export type InvoiceCreateManyOrganizationInput = {
@@ -1962,7 +3098,12 @@ export type InvoiceCreateManyOrganizationInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
   quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -2005,11 +3146,19 @@ export type InvoiceUpdateWithoutOrganizationInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
   items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
+  recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
 
 export type InvoiceUncheckedUpdateWithoutOrganizationInput = {
@@ -2051,10 +3200,18 @@ export type InvoiceUncheckedUpdateWithoutOrganizationInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUncheckedUpdateManyWithoutInvoiceNestedInput
 }
 
 export type InvoiceUncheckedUpdateManyWithoutOrganizationInput = {
@@ -2096,7 +3253,12 @@ export type InvoiceUncheckedUpdateManyWithoutOrganizationInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -2140,7 +3302,12 @@ export type InvoiceCreateManyContactInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
   quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -2183,11 +3350,19 @@ export type InvoiceUpdateWithoutContactInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
+  recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
 
 export type InvoiceUncheckedUpdateWithoutContactInput = {
@@ -2229,10 +3404,18 @@ export type InvoiceUncheckedUpdateWithoutContactInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUncheckedUpdateManyWithoutInvoiceNestedInput
 }
 
 export type InvoiceUncheckedUpdateManyWithoutContactInput = {
@@ -2274,7 +3457,12 @@ export type InvoiceUncheckedUpdateManyWithoutContactInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -2319,6 +3507,11 @@ export type InvoiceCreateManyQuoteInput = {
   einvoiceStatus?: string | null
   einvoiceExternalId?: string | null
   notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -2361,11 +3554,19 @@ export type InvoiceUpdateWithoutQuoteInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
   items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
 
 export type InvoiceUncheckedUpdateWithoutQuoteInput = {
@@ -2408,9 +3609,17 @@ export type InvoiceUncheckedUpdateWithoutQuoteInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUncheckedUpdateManyWithoutInvoiceNestedInput
 }
 
 export type InvoiceUncheckedUpdateManyWithoutQuoteInput = {
@@ -2453,6 +3662,215 @@ export type InvoiceUncheckedUpdateManyWithoutQuoteInput = {
   einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type InvoiceCreateManyRecurringInvoiceInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  quoteId?: string | null
+  recurringRunDate?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type InvoiceUpdateWithoutRecurringInvoiceInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
+  items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
+}
+
+export type InvoiceUncheckedUpdateWithoutRecurringInvoiceInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUncheckedUpdateManyWithoutInvoiceNestedInput
+}
+
+export type InvoiceUncheckedUpdateManyWithoutRecurringInvoiceInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -2464,10 +3882,16 @@ export type InvoiceUncheckedUpdateManyWithoutQuoteInput = {
 
 export type InvoiceCountOutputType = {
   items: number
+  payments: number
+  creditNotes: number
+  reminders: number
 }
 
 export type InvoiceCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   items?: boolean | InvoiceCountOutputTypeCountItemsArgs
+  payments?: boolean | InvoiceCountOutputTypeCountPaymentsArgs
+  creditNotes?: boolean | InvoiceCountOutputTypeCountCreditNotesArgs
+  reminders?: boolean | InvoiceCountOutputTypeCountRemindersArgs
 }
 
 /**
@@ -2485,6 +3909,27 @@ export type InvoiceCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exte
  */
 export type InvoiceCountOutputTypeCountItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.InvoiceItemWhereInput
+}
+
+/**
+ * InvoiceCountOutputType without action
+ */
+export type InvoiceCountOutputTypeCountPaymentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PaymentWhereInput
+}
+
+/**
+ * InvoiceCountOutputType without action
+ */
+export type InvoiceCountOutputTypeCountCreditNotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CreditNoteWhereInput
+}
+
+/**
+ * InvoiceCountOutputType without action
+ */
+export type InvoiceCountOutputTypeCountRemindersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.InvoiceReminderWhereInput
 }
 
 
@@ -2528,13 +3973,22 @@ export type InvoiceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   einvoiceStatus?: boolean
   einvoiceExternalId?: boolean
   notes?: boolean
+  amountPaid?: boolean
+  amountCredited?: boolean
+  remindersPaused?: boolean
   quoteId?: boolean
+  recurringInvoiceId?: boolean
+  recurringRunDate?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   items?: boolean | Prisma.Invoice$itemsArgs<ExtArgs>
+  payments?: boolean | Prisma.Invoice$paymentsArgs<ExtArgs>
+  creditNotes?: boolean | Prisma.Invoice$creditNotesArgs<ExtArgs>
+  reminders?: boolean | Prisma.Invoice$remindersArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
+  recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
   _count?: boolean | Prisma.InvoiceCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["invoice"]>
 
@@ -2578,12 +4032,18 @@ export type InvoiceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   einvoiceStatus?: boolean
   einvoiceExternalId?: boolean
   notes?: boolean
+  amountPaid?: boolean
+  amountCredited?: boolean
+  remindersPaused?: boolean
   quoteId?: boolean
+  recurringInvoiceId?: boolean
+  recurringRunDate?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
+  recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
 }, ExtArgs["result"]["invoice"]>
 
 export type InvoiceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -2626,12 +4086,18 @@ export type InvoiceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   einvoiceStatus?: boolean
   einvoiceExternalId?: boolean
   notes?: boolean
+  amountPaid?: boolean
+  amountCredited?: boolean
+  remindersPaused?: boolean
   quoteId?: boolean
+  recurringInvoiceId?: boolean
+  recurringRunDate?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
+  recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
 }, ExtArgs["result"]["invoice"]>
 
 export type InvoiceSelectScalar = {
@@ -2674,28 +4140,39 @@ export type InvoiceSelectScalar = {
   einvoiceStatus?: boolean
   einvoiceExternalId?: boolean
   notes?: boolean
+  amountPaid?: boolean
+  amountCredited?: boolean
+  remindersPaused?: boolean
   quoteId?: boolean
+  recurringInvoiceId?: boolean
+  recurringRunDate?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type InvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "issueDate" | "dueDate" | "supplyDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "complianceStatus" | "complianceErrors" | "legalText" | "paymentStatus" | "paidAt" | "publicPaymentIssuedAt" | "publicPaymentKeyVersion" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "stripeCheckoutSessionId" | "stripePaymentIntentId" | "paymentFailureReason" | "paymentReference" | "purchaseOrderRef" | "einvoiceFormat" | "einvoiceStatus" | "einvoiceExternalId" | "notes" | "quoteId" | "createdAt" | "updatedAt", ExtArgs["result"]["invoice"]>
+export type InvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "issueDate" | "dueDate" | "supplyDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "complianceStatus" | "complianceErrors" | "legalText" | "paymentStatus" | "paidAt" | "publicPaymentIssuedAt" | "publicPaymentKeyVersion" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "stripeCheckoutSessionId" | "stripePaymentIntentId" | "paymentFailureReason" | "paymentReference" | "purchaseOrderRef" | "einvoiceFormat" | "einvoiceStatus" | "einvoiceExternalId" | "notes" | "amountPaid" | "amountCredited" | "remindersPaused" | "quoteId" | "recurringInvoiceId" | "recurringRunDate" | "createdAt" | "updatedAt", ExtArgs["result"]["invoice"]>
 export type InvoiceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   items?: boolean | Prisma.Invoice$itemsArgs<ExtArgs>
+  payments?: boolean | Prisma.Invoice$paymentsArgs<ExtArgs>
+  creditNotes?: boolean | Prisma.Invoice$creditNotesArgs<ExtArgs>
+  reminders?: boolean | Prisma.Invoice$remindersArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
+  recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
   _count?: boolean | Prisma.InvoiceCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type InvoiceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
+  recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
 }
 export type InvoiceIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
+  recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
 }
 
 export type $InvoicePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2704,7 +4181,11 @@ export type $InvoicePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     organization: Prisma.$OrganizationPayload<ExtArgs>
     contact: Prisma.$ContactPayload<ExtArgs>
     items: Prisma.$InvoiceItemPayload<ExtArgs>[]
+    payments: Prisma.$PaymentPayload<ExtArgs>[]
+    creditNotes: Prisma.$CreditNotePayload<ExtArgs>[]
+    reminders: Prisma.$InvoiceReminderPayload<ExtArgs>[]
     quote: Prisma.$QuotePayload<ExtArgs> | null
+    recurringInvoice: Prisma.$RecurringInvoicePayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2746,7 +4227,12 @@ export type $InvoicePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     einvoiceStatus: string | null
     einvoiceExternalId: string | null
     notes: string | null
+    amountPaid: runtime.Decimal
+    amountCredited: runtime.Decimal
+    remindersPaused: boolean
     quoteId: string | null
+    recurringInvoiceId: string | null
+    recurringRunDate: Date | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["invoice"]>
@@ -3146,7 +4632,11 @@ export interface Prisma__InvoiceClient<T, Null = never, ExtArgs extends runtime.
   organization<T extends Prisma.OrganizationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrganizationDefaultArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   contact<T extends Prisma.ContactDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ContactDefaultArgs<ExtArgs>>): Prisma.Prisma__ContactClient<runtime.Types.Result.GetResult<Prisma.$ContactPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   items<T extends Prisma.Invoice$itemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvoiceItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  payments<T extends Prisma.Invoice$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  creditNotes<T extends Prisma.Invoice$creditNotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$creditNotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreditNotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  reminders<T extends Prisma.Invoice$remindersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$remindersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvoiceReminderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   quote<T extends Prisma.Invoice$quoteArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$quoteArgs<ExtArgs>>): Prisma.Prisma__QuoteClient<runtime.Types.Result.GetResult<Prisma.$QuotePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  recurringInvoice<T extends Prisma.Invoice$recurringInvoiceArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$recurringInvoiceArgs<ExtArgs>>): Prisma.Prisma__RecurringInvoiceClient<runtime.Types.Result.GetResult<Prisma.$RecurringInvoicePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3215,7 +4705,12 @@ export interface InvoiceFieldRefs {
   readonly einvoiceStatus: Prisma.FieldRef<"Invoice", 'String'>
   readonly einvoiceExternalId: Prisma.FieldRef<"Invoice", 'String'>
   readonly notes: Prisma.FieldRef<"Invoice", 'String'>
+  readonly amountPaid: Prisma.FieldRef<"Invoice", 'Decimal'>
+  readonly amountCredited: Prisma.FieldRef<"Invoice", 'Decimal'>
+  readonly remindersPaused: Prisma.FieldRef<"Invoice", 'Boolean'>
   readonly quoteId: Prisma.FieldRef<"Invoice", 'String'>
+  readonly recurringInvoiceId: Prisma.FieldRef<"Invoice", 'String'>
+  readonly recurringRunDate: Prisma.FieldRef<"Invoice", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Invoice", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Invoice", 'DateTime'>
 }
@@ -3638,6 +5133,78 @@ export type Invoice$itemsArgs<ExtArgs extends runtime.Types.Extensions.InternalA
 }
 
 /**
+ * Invoice.payments
+ */
+export type Invoice$paymentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Payment
+   */
+  select?: Prisma.PaymentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Payment
+   */
+  omit?: Prisma.PaymentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PaymentInclude<ExtArgs> | null
+  where?: Prisma.PaymentWhereInput
+  orderBy?: Prisma.PaymentOrderByWithRelationInput | Prisma.PaymentOrderByWithRelationInput[]
+  cursor?: Prisma.PaymentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PaymentScalarFieldEnum | Prisma.PaymentScalarFieldEnum[]
+}
+
+/**
+ * Invoice.creditNotes
+ */
+export type Invoice$creditNotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CreditNote
+   */
+  select?: Prisma.CreditNoteSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CreditNote
+   */
+  omit?: Prisma.CreditNoteOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CreditNoteInclude<ExtArgs> | null
+  where?: Prisma.CreditNoteWhereInput
+  orderBy?: Prisma.CreditNoteOrderByWithRelationInput | Prisma.CreditNoteOrderByWithRelationInput[]
+  cursor?: Prisma.CreditNoteWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CreditNoteScalarFieldEnum | Prisma.CreditNoteScalarFieldEnum[]
+}
+
+/**
+ * Invoice.reminders
+ */
+export type Invoice$remindersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the InvoiceReminder
+   */
+  select?: Prisma.InvoiceReminderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the InvoiceReminder
+   */
+  omit?: Prisma.InvoiceReminderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.InvoiceReminderInclude<ExtArgs> | null
+  where?: Prisma.InvoiceReminderWhereInput
+  orderBy?: Prisma.InvoiceReminderOrderByWithRelationInput | Prisma.InvoiceReminderOrderByWithRelationInput[]
+  cursor?: Prisma.InvoiceReminderWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.InvoiceReminderScalarFieldEnum | Prisma.InvoiceReminderScalarFieldEnum[]
+}
+
+/**
  * Invoice.quote
  */
 export type Invoice$quoteArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3654,6 +5221,25 @@ export type Invoice$quoteArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    */
   include?: Prisma.QuoteInclude<ExtArgs> | null
   where?: Prisma.QuoteWhereInput
+}
+
+/**
+ * Invoice.recurringInvoice
+ */
+export type Invoice$recurringInvoiceArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the RecurringInvoice
+   */
+  select?: Prisma.RecurringInvoiceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the RecurringInvoice
+   */
+  omit?: Prisma.RecurringInvoiceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RecurringInvoiceInclude<ExtArgs> | null
+  where?: Prisma.RecurringInvoiceWhereInput
 }
 
 /**
