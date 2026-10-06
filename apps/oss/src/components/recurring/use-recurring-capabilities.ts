@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useSession } from "../../lib/auth-client"
+import { useActiveOrganizationId } from "../../lib/active-organization"
 import { trpc } from "../../trpc/client"
 
 export type RecurringCapabilities = { canCreate: boolean; canUpdate: boolean }
@@ -12,9 +12,8 @@ const NONE: RecurringCapabilities = { canCreate: false, canUpdate: false }
  * view, and starts over whenever the user switches organization: their role may differ there.
  */
 export function useRecurringCapabilities(): RecurringCapabilities {
-  const { data: session, isPending } = useSession()
-  // `undefined` while the session loads; the organization ID (or null) once it is known.
-  const organizationId = isPending ? undefined : (session?.session.activeOrganizationId ?? null)
+  // Keyed on the active organization so capabilities refresh after switching organization.
+  const organizationId = useActiveOrganizationId()
   const [capabilities, setCapabilities] = useState<RecurringCapabilities>(NONE)
   useEffect(() => {
     setCapabilities(NONE)

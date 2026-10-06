@@ -15,6 +15,7 @@ import { getPublicInvoicePaymentUrl } from "../../lib/payments/public"
 import type { AnyCommandDefinition } from "../command"
 import { defineCommand } from "../command"
 import { loadDocumentContext } from "../documents/context"
+import { fingerprint } from "../approval-contexts"
 import { lockDocument } from "../documents/locks"
 import { resolveInvoiceEmailContext } from "../documents/invoice-email"
 import { computeSettlement } from "../documents/settlement"
@@ -271,19 +272,9 @@ export function nextPolicyReminder(input: {
   )
 }
 
-const lockContact = (contactId: string) =>
-  Effect.gen(function* () {
-    const db = yield* Db
-    const { organizationId } = yield* Command
-    yield* Effect.promise(
-      () =>
-        db.$queryRaw`SELECT "id" FROM "contact" WHERE "id" = ${contactId} AND "organizationId" = ${organizationId} FOR UPDATE`
-    )
-  })
-
 /**
- * What a person approving "resume reminders" sees. The version covers the invoice and the
- * recipient's address, so neither can change between review and the reminders starting again.
+ * What a person approving "resume reminders" sees. The version fingerprints the reviewed facts
+ * (amount owed, due date, recipient), so unrelated writes such as overdue marking do not void it.
  */
 export const reminderResumeApproval = (input: { invoiceId: string }) =>
   Effect.gen(function* () {
@@ -300,7 +291,7 @@ export const reminderResumeApproval = (input: { invoiceId: string }) =>
       return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.invoiceId })
     }
     // Locked so the address the reviewer saw is the address the version was computed from.
-    yield* lockContact(located.contactId)
+    yield* lockDocument("contact", located.contactId)
     const invoice = yield* Effect.promise(() =>
       db.invoice.findFirstOrThrow({
         where: { id: input.invoiceId, organizationId: command.organizationId },
@@ -321,7 +312,7 @@ export const reminderResumeApproval = (input: { invoiceId: string }) =>
     const nextText = nextDate ? `next reminder ${nextDate.toISOString().slice(0, 10)}` : "no reminder scheduled"
     return {
       summary: `Resume automatic payment reminders for invoice ${invoice.number} to ${recipient ?? invoice.contact.name} (${nextText})`,
-      version: `${invoice.updatedAt.toISOString()}|${recipient ?? ""}`,
+      version: fingerprint([invoice.number, balanceDue.toString(), invoice.dueDate.toISOString(), recipient]),
       details: {
         number: invoice.number,
         customer: invoice.contact.name,

@@ -5,7 +5,7 @@ import {
   REMINDER_OFFSET_MAX_DAYS,
   REMINDER_OFFSET_MIN_DAYS,
 } from "@yaip/contracts/reminders"
-import { useSession } from "../../lib/auth-client"
+import { useActiveOrganizationId } from "../../lib/active-organization"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
 import { Button } from "../ui/button"
@@ -59,8 +59,8 @@ export function ReminderPolicyCard() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null)
   // The policy and the user's rights belong to the active organization; `undefined` while loading.
-  const { data: session, isPending: sessionPending } = useSession()
-  const organizationId = sessionPending ? undefined : (session?.session.activeOrganizationId ?? null)
+  // Keyed on the active organization so capabilities refresh after switching organization.
+  const organizationId = useActiveOrganizationId()
 
   // Switching organization keeps the card mounted, so start over read-only and reload.
   useEffect(() => {

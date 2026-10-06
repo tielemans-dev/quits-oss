@@ -116,7 +116,8 @@ YAIP runs its automation from one idempotent endpoint, `/api/cron/tick`, protect
 1. marks issued invoices with a balance due past their due date as overdue,
 2. schedules and sends due payment reminders (configure them in **Settings → Payment reminders**),
 3. generates due recurring invoices,
-4. runs queued background jobs, such as retrying failed reminder emails.
+4. finishes agent approvals interrupted by a restart,
+5. runs queued background jobs: reminder emails, auto-sent recurring invoices, and retries.
 
 `docker compose up` starts a small `scheduler` service that calls the tick every five minutes
 (`TICK_INTERVAL_SECONDS` overrides the interval, `TICK_TIMEOUT_SECONDS` the per-request timeout,
@@ -131,7 +132,9 @@ call the endpoint from any scheduler, for example cron:
 
 The tick answers `200` with `ok: true` when every task succeeded, and `500` with `ok: false`, the
 names of the failed tasks in `failedTasks`, and every task's result when any task failed, so a
-monitor or `curl -f` notices. Each tick does a bounded amount of work (a few hundred invoices per
+monitor or `curl -f` notices. Deliveries that failed but will be retried (for example a brief email
+provider outage) are listed in `retryingTasks` and still answer `200`; a delivery that runs out of
+retries counts as failed. Each tick does a bounded amount of work (a few hundred invoices per
 organization and task, within a time budget), so a large backlog drains over several ticks
 instead of making one tick time out. Ticks can overlap or be retried safely: each reminder is sent
 at most once, and a reminder policy enabled late sends only the most recent due reminder instead

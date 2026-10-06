@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { BellRing } from "lucide-react"
 import type { InvoiceReminderRecord, ReminderStatus } from "@yaip/contracts/reminders"
-import { useSession } from "../../../lib/auth-client"
+import { useActiveOrganizationId } from "../../../lib/active-organization"
 import { formatDate } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
 import { trpc } from "../../../trpc/client"
@@ -45,9 +45,8 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
   const [state, setState] = useState<RemindersState | null>(null)
   // Nothing is allowed until the server says so; accountants may only look.
   const [capabilities, setCapabilities] = useState<ReminderCapabilities>(NO_CAPABILITIES)
-  // Capabilities belong to the active organization; `undefined` while the session loads.
-  const { data: session, isPending: sessionPending } = useSession()
-  const organizationId = sessionPending ? undefined : (session?.session.activeOrganizationId ?? null)
+  // Keyed on the active organization so capabilities refresh after switching organization.
+  const organizationId = useActiveOrganizationId()
   const [busy, setBusy] = useState<"pause" | "send" | null>(null)
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null)
 

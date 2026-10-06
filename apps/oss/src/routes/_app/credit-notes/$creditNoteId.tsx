@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowLeft, Download, Mail } from "lucide-react"
 import { parseBuyerSnapshot } from "@yaip/contracts/documents"
 import { trpc } from "../../../trpc/client"
-import { useSession } from "../../../lib/auth-client"
+import { useActiveOrganizationId } from "../../../lib/active-organization"
 import { formatCurrency, formatDate } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
 import type { OrgSettingsForPdf } from "../../../lib/invoice-pdf"
@@ -53,9 +53,8 @@ function CreditNoteDetailPage() {
   const [sending, setSending] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [canSend, setCanSend] = useState(false)
-  // Capabilities belong to the active organization; `undefined` while the session loads.
-  const { data: session, isPending: sessionPending } = useSession()
-  const organizationId = sessionPending ? undefined : (session?.session.activeOrganizationId ?? null)
+  // Keyed on the active organization so capabilities refresh after switching organization.
+  const organizationId = useActiveOrganizationId()
   const latestLoad = useRef(0)
 
   const load = useCallback(async () => {
