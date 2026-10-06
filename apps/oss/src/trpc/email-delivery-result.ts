@@ -1,35 +1,41 @@
 import { TRPCError } from "@trpc/server"
-
-type AttemptFields = {
-  lastEmailAttemptAt: Date | null
-  lastEmailAttemptOutcome: string | null
-  lastEmailAttemptMessage: string | null
-}
+import { readDeliveryResult } from "../domain/delivery/outbox"
 
 /**
- * Reports a queued email the way the UI expects a send to behave. The delivery is attempted right
- * after the command commits, so by now the document usually shows its outcome: sent, refused (an
- * error, with the document left editable), or still pending a retry.
+ * The outcome of one queued email for the UI, read from that delivery's own record rather than
+ * from the document, which a later attempt may already have changed. The delivery is attempted
+ * right after the command commits, so it has usually settled by now. A refused or withdrawn email
+ * throws, with the reason; an uncertain one is still being retried (`pending`) or was given up
+ * without confirmation (`unconfirmed`).
  */
-export async function settleEmailResult<
-  Result extends AttemptFields & { emailSent: boolean; emailPending: boolean },
-  Row extends AttemptFields,
->(result: Result, reload: () => Promise<Row>): Promise<Result | (Result & Row)> {
-  if (!result.emailPending) {
-    return result
-  }
-  const current = await reload()
-  const sameAttempt = current.lastEmailAttemptAt?.getTime() === result.lastEmailAttemptAt?.getTime()
-  if (sameAttempt && current.lastEmailAttemptOutcome === "failed") {
+export async function readEmailDelivery(deliveryKey: string, noun: string) {
+  const result = await readDeliveryResult(deliveryKey)
+  if (result.outcome === "rejected") {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: current.lastEmailAttemptMessage ?? "The email could not be sent.",
+      message: `The email provider refused the ${noun} email: ${result.message ?? "no reason given"}`,
     })
   }
+  if (result.outcome === "withdrawn") {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: result.message ?? `The ${noun} email was not sent.` })
+  }
+  return result.outcome === "delivered" ? "sent" : result.outcome
+}
+
+/** A send command's result, updated with how its email delivery went. */
+export async function settleEmailResult<
+  Result extends { emailSent: boolean; emailPending: boolean; deliveryKey?: string },
+  Row extends object,
+>(result: Result, noun: string, reload: () => Promise<Row>) {
+  if (!result.deliveryKey) {
+    return { ...result, emailUnconfirmed: false }
+  }
+  const delivery = await readEmailDelivery(result.deliveryKey, noun)
   return {
     ...result,
-    ...current,
-    emailSent: sameAttempt && current.lastEmailAttemptOutcome === "sent",
-    emailPending: sameAttempt && current.lastEmailAttemptOutcome === "sending",
+    ...(await reload()),
+    emailSent: delivery === "sent",
+    emailPending: delivery === "pending",
+    emailUnconfirmed: delivery === "unconfirmed",
   }
 }

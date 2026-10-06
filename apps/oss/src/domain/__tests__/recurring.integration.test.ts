@@ -319,8 +319,9 @@ describeIfDatabase("recurring invoices", () => {
     await tickRecurring(org)
     const jobs = await runOrganizationJobs([org.organizationId])
 
-    // The auto-send is done once its email is queued; the outbox owns the delivery from there.
-    expect(jobs).toMatchObject({ processed: 1, succeeded: 1, retrying: 0, failed: 0 })
+    // The auto-send is done once its email is queued; the same sweep then attempts the email,
+    // which is retried by the outbox.
+    expect(jobs).toMatchObject({ processed: 2, succeeded: 1, retrying: 1, failed: 0 })
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "sending" })
     const [delivery] = await findEmailDeliveryJobs(org.organizationId)
@@ -352,7 +353,8 @@ describeIfDatabase("recurring invoices", () => {
       lastEmailAttemptCode: "send_failed",
     })
     const [delivery] = await findEmailDeliveryJobs(org.organizationId)
-    expect(delivery).toMatchObject({ status: "done", attempts: 1 })
+    // A refusal fails the email job permanently and records why.
+    expect(delivery).toMatchObject({ status: "failed", attempts: 1, result: { outcome: "rejected" } })
     const activity = await readActivity({
       organizationId: org.organizationId,
       aggregateType: "invoice",

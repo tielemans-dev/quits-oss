@@ -657,6 +657,8 @@ model Job {
   attempts       Int      @default(0)
   runAfter       DateTime @default(now())
   lastError      String?
+  /// What the job settled as, for handlers that record an outcome (e.g. email delivery).
+  result         Json?
   dedupeKey      String?  @unique
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

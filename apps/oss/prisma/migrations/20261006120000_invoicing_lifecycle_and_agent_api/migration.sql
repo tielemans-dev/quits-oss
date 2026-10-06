@@ -212,6 +212,7 @@ CREATE TABLE "job" (
     "attempts" INTEGER NOT NULL DEFAULT 0,
     "runAfter" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "lastError" TEXT,
+    "result" JSONB,
     "dedupeKey" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,

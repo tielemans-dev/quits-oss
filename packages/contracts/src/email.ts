@@ -1,10 +1,11 @@
 import { z } from "zod"
 
 /**
- * `sending`: delivery was handed to the provider but the outcome was not recorded (for example the
- * process stopped). The document stays frozen until a retry confirms the send.
+ * `sending`: the email is queued or being retried; the document stays frozen until it settles.
+ * `unconfirmed`: the provider never confirmed delivery, so the customer may or may not have it. A
+ * document sent this way is still issued (it may have reached the customer), never editable again.
  */
-export const emailDeliveryOutcomeSchema = z.enum(["sent", "skipped", "failed", "sending"])
+export const emailDeliveryOutcomeSchema = z.enum(["sent", "skipped", "failed", "sending", "unconfirmed"])
 
 export const emailDeliveryAttemptRecordSchema = z
   .object({

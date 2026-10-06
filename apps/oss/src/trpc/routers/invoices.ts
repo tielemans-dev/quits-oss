@@ -156,7 +156,7 @@ export const invoicesRouter = router({
   send: authorizedProcedure("invoice:send")
     .input(invoiceSendInputSchema)
     .mutation(async ({ ctx, input }) =>
-      settleEmailResult(unwrapOutcome(await executeCommand(sendInvoice, input, { actor: ctx.actor })), () =>
+      settleEmailResult(unwrapOutcome(await executeCommand(sendInvoice, input, { actor: ctx.actor })), "invoice", () =>
         prisma.invoice.findUniqueOrThrow({ where: { id: input.id } })
       )
     ),
@@ -164,7 +164,7 @@ export const invoicesRouter = router({
   resendEmail: authorizedProcedure("invoice:send")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) =>
-      settleEmailResult(unwrapOutcome(await executeCommand(resendInvoiceEmail, input, { actor: ctx.actor })), () =>
+      settleEmailResult(unwrapOutcome(await executeCommand(resendInvoiceEmail, input, { actor: ctx.actor })), "invoice", () =>
         prisma.invoice.findUniqueOrThrow({ where: { id: input.id } })
       )
     ),

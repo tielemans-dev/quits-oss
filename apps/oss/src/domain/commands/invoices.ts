@@ -309,6 +309,8 @@ export type InvoiceSendResult = Awaited<ReturnType<typeof prisma.invoice.update>
   emailSent: boolean
   emailPending: boolean
   emailSkipReason?: string
+  /** Identifies the queued delivery, whose outcome `readDeliveryResult` reports. */
+  deliveryKey?: string
 }
 
 export const sendInvoice = defineCommand({
@@ -396,7 +398,7 @@ export const sendInvoice = defineCommand({
         to: recipient,
         publicPaymentUrl,
       })
-      const updated = yield* queueDocumentEmail({
+      const { document: updated, deliveryKey } = yield* queueDocumentEmail({
         kind: "invoice",
         mode: "send",
         document: invoice,
@@ -412,7 +414,7 @@ export const sendInvoice = defineCommand({
         usingBrandedDomain: email.usingBrandedDomain,
         hasPublicPaymentUrl: Boolean(publicPaymentUrl),
       })
-      const result: InvoiceSendResult = { ...updated, emailSent: false, emailPending: true }
+      const result: InvoiceSendResult = { ...updated, emailSent: false, emailPending: true, deliveryKey }
       return result
     }),
 })
@@ -454,7 +456,7 @@ export const resendInvoiceEmail = defineCommand({
       }
 
       const email = composeInvoiceEmail({ invoice, settings, to: recipient, publicPaymentUrl })
-      const updated = yield* queueDocumentEmail({
+      const { document: updated, deliveryKey } = yield* queueDocumentEmail({
         kind: "invoice",
         mode: "email",
         document: invoice,
@@ -469,7 +471,7 @@ export const resendInvoiceEmail = defineCommand({
         usingBrandedDomain: email.usingBrandedDomain,
         hasPublicPaymentUrl: Boolean(publicPaymentUrl),
       })
-      const result: InvoiceSendResult = { ...updated, emailSent: false, emailPending: true }
+      const result: InvoiceSendResult = { ...updated, emailSent: false, emailPending: true, deliveryKey }
       return result
     }),
 })

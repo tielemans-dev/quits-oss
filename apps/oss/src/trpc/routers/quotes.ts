@@ -129,7 +129,7 @@ export const quotesRouter = router({
   send: authorizedProcedure("quote:send")
     .input(quoteSendInputSchema)
     .mutation(async ({ ctx, input }) =>
-      settleEmailResult(unwrapOutcome(await executeCommand(sendQuote, input, { actor: ctx.actor })), () =>
+      settleEmailResult(unwrapOutcome(await executeCommand(sendQuote, input, { actor: ctx.actor })), "quote", () =>
         prisma.quote.findUniqueOrThrow({ where: { id: input.id } })
       )
     ),
@@ -137,7 +137,7 @@ export const quotesRouter = router({
   resendEmail: authorizedProcedure("quote:send")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) =>
-      settleEmailResult(unwrapOutcome(await executeCommand(resendQuoteEmail, input, { actor: ctx.actor })), () =>
+      settleEmailResult(unwrapOutcome(await executeCommand(resendQuoteEmail, input, { actor: ctx.actor })), "quote", () =>
         prisma.quote.findUniqueOrThrow({ where: { id: input.id } })
       )
     ),

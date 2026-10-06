@@ -323,7 +323,7 @@ describeIfDatabase("overdue and reminders", () => {
     const reminder = await prisma.invoiceReminder.findUniqueOrThrow({
       where: { invoiceId_offsetDays: { invoiceId: invoice.id, offsetDays: 7 } },
     })
-    expect(reminder).toMatchObject({ outcome: "failed", outcomeMessage: "Email delivery failed: Invalid recipient" })
+    expect(reminder).toMatchObject({ outcome: "failed", outcomeMessage: "The email provider refused the reminder: Invalid recipient" })
     expect(await eventsOf(context.org.organizationId, "invoice.reminder_failed")).toHaveLength(1)
 
     await handleReminderSendJob({ organizationId: context.org.organizationId, payload: { reminderId: reminder.id } })
@@ -484,7 +484,7 @@ describeIfDatabase("overdue and reminders", () => {
     const refused = await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
     expect(refused.status).toBe("completed")
     expect(await prisma.invoiceReminder.findMany({ where: { invoiceId: invoice.id } })).toMatchObject([
-      { offsetDays: 5, outcome: "failed", outcomeMessage: "Email delivery failed: Invalid recipient" },
+      { offsetDays: 5, outcome: "failed", outcomeMessage: "The email provider refused the reminder: Invalid recipient" },
     ])
     expect(await eventsOf(context.org.organizationId, "invoice.reminder_failed")).toHaveLength(1)
 

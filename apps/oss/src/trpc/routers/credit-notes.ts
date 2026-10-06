@@ -151,6 +151,7 @@ export const creditNotesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const result = await settleEmailResult(
         unwrapOutcome(await executeCommand(sendCreditNote, input, { actor: ctx.actor })),
+        "credit note",
         () => prisma.creditNote.findUniqueOrThrow({ where: { id: input.id } })
       )
       return {

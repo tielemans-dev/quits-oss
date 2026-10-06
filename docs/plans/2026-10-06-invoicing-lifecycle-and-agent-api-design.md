@@ -76,17 +76,29 @@ Commands never call the email provider. A sending command renders the exact mess
 document's last email attempt `sending` (which freezes a draft), and stores the message with its
 provider idempotency key in an `email.deliver` job. The job settles the document:
 
-- **Accepted:** the document becomes sent (or the attempt is recorded as sent for a resend).
-- **Definitely refused:** a provider validation error means nothing was delivered, so the attempt is
-  recorded as failed and the draft can be edited again.
-- **Uncertain:** a timeout, a lost response, or a provider outage may have delivered it. The identical
-  stored message is retried under the same key, so the provider drops a duplicate. The delivery is
-  only given up as unconfirmed after its last attempt.
+- **Delivered:** the provider accepted it, so the document becomes sent (or the attempt is recorded
+  as sent for a resend).
+- **Rejected:** the provider refused the only request ever made, so nothing was delivered. The attempt
+  is recorded as failed and the draft can be edited again.
+- **Unconfirmed:** some request ended without an answer (a timeout, a lost response, an outage, a
+  runner that stopped) and no later request confirmed it. The customer may have the email, so the
+  document is issued but its attempt is marked unconfirmed, and it is never reopened. A refusal
+  after an unanswered request is unconfirmed too, because it proves only that the last request
+  delivered nothing.
+- **Withdrawn:** the email is no longer wanted before any request was made (a reminder for an
+  invoice that was paid meanwhile).
+
+Unanswered requests are retried with the identical stored message under the same key, so the
+provider drops a duplicate, but only while the provider still honors the key (24 hours). The
+provider's acceptance is recorded on the job before the document is settled, so a failed
+settlement never sends again, and a scheduler sweep settles deliveries whose job died. Each
+delivery's outcome is stored on its job, and callers report that outcome, not the document's
+current state, which a later attempt may already have changed.
 
 Settlement is conditional on the document still showing that delivery's `sending` marker, so a
-delivery can never settle a newer attempt. "Sent" therefore always means the provider accepted the
-email. Revision of 2026-10-06 after review round 3; it replaced an in-transaction send with a
-committed pre-send marker.
+delivery can never settle a newer attempt. A delivered or unconfirmed document is
+never edited again, and a document only reopens when nothing can have reached the customer.
+Revised after review rounds 3 and 4.
 
 Deciders are pure and unit-tested without a database. Handlers are Effect programs over `Database`,
 `Clock`, `Mailer`, and `Numbering` services, wired with Layers and run through a `ManagedRuntime`.

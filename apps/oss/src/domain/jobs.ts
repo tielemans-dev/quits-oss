@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks"
 import type { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { appLogger } from "../lib/observability"
@@ -21,6 +22,7 @@ export type JobHandler = (job: {
   organizationId: string
   payload: Prisma.JsonValue
   attempts: number
+  createdAt: Date
 }) => Promise<void>
 
 /** Thrown by a job handler for a failure that retrying cannot fix. */
@@ -29,6 +31,13 @@ export class TerminalJobError extends Error {
 }
 
 const handlers = new Map<string, JobHandler>()
+
+/**
+ * Set while a job handler runs. Jobs a handler creates (for example the email a recurring send
+ * queues) are not run inline then: they wait for the sweep, so its limit, deadline, and counts
+ * cover them too.
+ */
+const insideJob = new AsyncLocalStorage<true>()
 
 export function registerJobHandler(type: string, handler: JobHandler) {
   handlers.set(type, handler)
@@ -61,7 +70,7 @@ async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
     if (!handler) {
       throw new Error(`No handler registered for job type ${job.type}`)
     }
-    await handler(job)
+    await insideJob.run(true, () => handler(job))
     await prisma.job.update({ where: { id }, data: { status: "done", lastError: null } })
     return "done"
   } catch (error) {
@@ -115,8 +124,14 @@ async function runJobBatch(ids: readonly string[], now: Date, deadline?: number)
   return result
 }
 
-/** Runs specific jobs right after the transaction that created them commits. */
+/**
+ * Runs specific jobs right after the transaction that created them commits. Inside a job handler
+ * it does nothing: the sweep running that handler picks the new jobs up.
+ */
 export async function runJobsNow(ids: string[], now = new Date()) {
+  if (insideJob.getStore()) {
+    return { processed: 0, succeeded: 0, retrying: 0, failed: 0, deferred: ids.length } satisfies JobBatchResult
+  }
   return runJobBatch(ids, now)
 }
 
@@ -169,18 +184,38 @@ export async function runDueJobs(
   const now = input.now ?? new Date()
   const deadline = Date.now() + (input.timeBudgetMs ?? DEFAULT_JOBS_TIME_BUDGET_MS)
   const reclaimed = await reclaimStaleJobs(now, input)
-  const due = await prisma.job.findMany({
-    where: { ...scopeFilter(input), status: "pending", runAfter: { lte: now } },
-    orderBy: { runAfter: "asc" },
-    take: input.limit ?? DEFAULT_JOBS_PER_SWEEP,
-    select: { id: true },
-  })
-
-  const batch = await runJobBatch(
-    due.map((job) => job.id),
-    now,
-    deadline
-  )
+  const limit = input.limit ?? DEFAULT_JOBS_PER_SWEEP
+  const batch: JobBatchResult = { processed: 0, succeeded: 0, retrying: 0, failed: 0, deferred: 0 }
+  // Jobs that handlers queue during the sweep (such as emails) are due at once, so the sweep
+  // fetches again until its limit or deadline instead of leaving them for the next tick.
+  let fetched = 0
+  let dueBy = now
+  while (fetched < limit) {
+    const due = await prisma.job.findMany({
+      where: { ...scopeFilter(input), status: "pending", runAfter: { lte: dueBy } },
+      orderBy: { runAfter: "asc" },
+      take: limit - fetched,
+      select: { id: true },
+    })
+    if (due.length === 0) break
+    if (fetched > 0 && Date.now() >= deadline) {
+      batch.deferred += due.length
+      break
+    }
+    fetched += due.length
+    const round = await runJobBatch(
+      due.map((job) => job.id),
+      dueBy,
+      deadline
+    )
+    batch.processed += round.processed
+    batch.succeeded += round.succeeded
+    batch.retrying += round.retrying
+    batch.failed += round.failed
+    batch.deferred += round.deferred
+    if (round.deferred > 0 || round.processed === 0) break
+    dueBy = new Date(Math.max(now.getTime(), Date.now()))
+  }
   return {
     ...batch,
     failed: batch.failed + reclaimed.failed,

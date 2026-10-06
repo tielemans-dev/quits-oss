@@ -308,7 +308,7 @@ export const sendCreditNote = defineCommand({
         contactName: creditNote.contact.name,
       })
       // Recorded as sent once the provider accepts the queued email; see `delivery/outbox.ts`.
-      const updated = yield* queueDocumentEmail({
+      const { document: updated, deliveryKey } = yield* queueDocumentEmail({
         kind: "creditNote",
         mode: "email",
         document: creditNote,
@@ -322,7 +322,7 @@ export const sendCreditNote = defineCommand({
         creditNoteId: creditNote.id,
         usingBrandedDomain: envelope.usingBrandedDomain,
       })
-      return { ...updated, emailSent: false, emailPending: true, recipient }
+      return { ...updated, emailSent: false, emailPending: true, deliveryKey, recipient }
     }),
 })
 

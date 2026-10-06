@@ -22,6 +22,7 @@ import { actorCan } from "../../domain/actor"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { authorizedProcedure, router } from "../init"
+import { readEmailDelivery } from "../email-delivery-result"
 import { unwrapOutcome } from "../outcome"
 
 function storedStatus(outcome: string | null): ReminderStatus {
@@ -128,9 +129,14 @@ export const remindersRouter = router({
 
   sendNow: authorizedProcedure("invoice:send")
     .input(reminderSendNowInputSchema)
-    .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(await executeCommand(sendReminderNow, input, { actor: ctx.actor }))
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const result = unwrapOutcome(await executeCommand(sendReminderNow, input, { actor: ctx.actor }))
+      return {
+        reminderId: result.reminderId,
+        recipient: result.recipient,
+        delivery: await readEmailDelivery(result.deliveryKey, "reminder"),
+      }
+    }),
 
   /**
    * What the current user may do with reminders, mirroring the permissions of `sendNow`,

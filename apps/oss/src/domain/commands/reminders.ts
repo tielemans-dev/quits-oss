@@ -182,22 +182,52 @@ registerDeliveryCompletion(REMINDER_COMPLETION, {
       },
     ]
   },
-  rejected: async ({ tx, target }, rejection) => {
-    const { count } = await tx.invoiceReminder.updateMany({
-      where: { id: target.reminderId, outcome: "sending", sentAt: new Date(target.attemptAt) },
-      data: { outcome: "failed", outcomeMessage: `Email delivery failed: ${rejection.message}`.slice(0, 500) },
+  // Stops a queued reminder that is no longer due a reminder before every request to the provider.
+  withdrawalReason: async (db, target) => {
+    const invoice = await db.invoice.findUnique({
+      where: { id: target.invoiceId },
+      select: { status: true, totalGross: true, amountPaid: true, amountCredited: true, remindersPaused: true },
     })
-    if (count === 0) return []
+    if (!invoice) return "The invoice no longer exists"
+    const blocker = reminderBlocker(invoice)
+    if (blocker === "not_open") return "Invoice is no longer open"
+    if (blocker === "settled") return "Invoice has no balance due"
+    if (invoice.remindersPaused && target.manual !== "true") return "Reminders are paused for this invoice"
+    return null
+  },
+  failed: async ({ tx, target }, failure) => {
+    const where = { id: target.reminderId, outcome: "sending", sentAt: new Date(target.attemptAt) }
+    const reminder = await tx.invoiceReminder.findFirst({ where, select: { outcomeMessage: true } })
+    if (!reminder) return []
+    // The customer may have the reminder, so it counts as sent and is never repeated.
+    const data =
+      failure.reason === "unconfirmed"
+        ? {
+            outcome: "sent",
+            outcomeMessage:
+              target.manual === "true"
+                ? `${reminder.outcomeMessage ?? MANUAL_REMINDER_PREFIX} (delivery not confirmed)`
+                : "Delivery was not confirmed by the email provider",
+          }
+        : failure.reason === "withdrawn"
+          ? { outcome: "skipped", outcomeMessage: failure.message }
+          : { outcome: "failed", outcomeMessage: `The email provider refused the reminder: ${failure.message}`.slice(0, 500) }
+    await tx.invoiceReminder.updateMany({ where, data })
     return [
       {
         aggregateType: "invoice",
         aggregateId: target.invoiceId,
-        type: "invoice.reminder_failed",
+        type:
+          failure.reason === "unconfirmed"
+            ? "invoice.reminder_unconfirmed"
+            : failure.reason === "withdrawn"
+              ? "invoice.reminder_skipped"
+              : "invoice.reminder_failed",
         payload: {
           number: target.number,
           reminderId: target.reminderId,
-          reason: rejection.reason,
-          message: rejection.message,
+          reason: failure.reason === "withdrawn" ? failure.message : failure.reason,
+          message: failure.message,
         },
       },
     ]
@@ -247,7 +277,7 @@ const queueReminderEmail = (input: {
       contactName: invoice.contact.name,
       publicPaymentUrl,
     })
-    yield* enqueueEmailDelivery({
+    const { deliveryKey } = yield* enqueueEmailDelivery({
       message: composeMessage(input.recipient, content),
       idempotencyKey: input.idempotencyKey,
       completion: {
@@ -265,7 +295,7 @@ const queueReminderEmail = (input: {
       },
     })
 
-    return { balanceDue: balanceDue.toNumber(), hasPublicPaymentUrl: Boolean(publicPaymentUrl) }
+    return { balanceDue: balanceDue.toNumber(), hasPublicPaymentUrl: Boolean(publicPaymentUrl), deliveryKey }
   })
 
 export const updateReminderPolicy = defineCommand({
@@ -511,7 +541,7 @@ export const sendReminderNow = defineCommand({
         manual: true,
         hasPublicPaymentUrl: delivery.hasPublicPaymentUrl,
       })
-      return { reminderId: reminder.id, recipient, sentAt: now }
+      return { reminderId: reminder.id, recipient, sentAt: now, deliveryKey: delivery.deliveryKey }
     }),
 })
 

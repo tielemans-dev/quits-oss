@@ -290,6 +290,8 @@ export type QuoteSendResult = Awaited<ReturnType<typeof prisma.quote.update>> & 
   emailSent: boolean
   emailPending: boolean
   emailSkipReason?: string
+  /** Identifies the queued delivery, whose outcome `readDeliveryResult` reports. */
+  deliveryKey?: string
 }
 
 export const sendQuote = defineCommand({
@@ -374,7 +376,7 @@ export const sendQuote = defineCommand({
         to: recipient,
         publicQuoteUrl,
       })
-      const updated = yield* queueDocumentEmail({
+      const { document: updated, deliveryKey } = yield* queueDocumentEmail({
         kind: "quote",
         mode: "send",
         document: quote,
@@ -390,7 +392,7 @@ export const sendQuote = defineCommand({
         usingBrandedDomain: email.usingBrandedDomain,
         hasPublicQuoteUrl: Boolean(publicQuoteUrl),
       })
-      const result: QuoteSendResult = { ...updated, emailSent: false, emailPending: true }
+      const result: QuoteSendResult = { ...updated, emailSent: false, emailPending: true, deliveryKey }
       return result
     }),
 })
@@ -437,7 +439,7 @@ export const resendQuoteEmail = defineCommand({
       }
 
       const email = composeQuoteEmail({ quote, settings, to: recipient, publicQuoteUrl })
-      const updated = yield* queueDocumentEmail({
+      const { document: updated, deliveryKey } = yield* queueDocumentEmail({
         kind: "quote",
         mode: "email",
         document: quote,
@@ -452,7 +454,7 @@ export const resendQuoteEmail = defineCommand({
         usingBrandedDomain: email.usingBrandedDomain,
         hasPublicQuoteUrl: Boolean(publicQuoteUrl),
       })
-      const result: QuoteSendResult = { ...updated, emailSent: false, emailPending: true }
+      const result: QuoteSendResult = { ...updated, emailSent: false, emailPending: true, deliveryKey }
       return result
     }),
 })

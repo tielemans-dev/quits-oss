@@ -5,7 +5,7 @@ import type { StoredEmailMessage } from "../delivery/outbox"
 import {
   enqueueEmailDelivery,
   registerDeliveryCompletion,
-  type DeliveryRejection,
+  type DeliveryFailure,
 } from "../delivery/outbox"
 import { InvalidState } from "../errors"
 import { Command } from "../services"
@@ -58,21 +58,18 @@ function awaiting(target: Record<string, string>, mode: Mode) {
 
 for (const kind of Object.keys(config) as DocumentKind[]) {
   const { aggregateType, noun, publicLinkField } = config[kind]
+  /** What sending a draft changes: it is issued at the attempt's time with its public link date. */
+  const issuedFields = (target: Record<string, string>, attemptAt: Date) => ({
+    status: "sent",
+    issueDate: attemptAt,
+    ...(publicLinkField && target.publicLinkIssuedAt ? { [publicLinkField]: new Date(target.publicLinkIssuedAt) } : {}),
+  })
   for (const mode of ["send", "email"] as const) {
     registerDeliveryCompletion(completionKind(kind, mode), {
       pending: async (db, target) => (await delegate(db, kind).count({ where: awaiting(target, mode) })) > 0,
       delivered: async ({ tx, target }) => {
         const attemptAt = new Date(target.attemptAt)
-        const issued =
-          mode === "send"
-            ? {
-                status: "sent",
-                issueDate: attemptAt,
-                ...(publicLinkField && target.publicLinkIssuedAt
-                  ? { [publicLinkField]: new Date(target.publicLinkIssuedAt) }
-                  : {}),
-              }
-            : {}
+        const issued = mode === "send" ? issuedFields(target, attemptAt) : {}
         const { count } = await delegate(tx, kind).updateMany({
           where: awaiting(target, mode),
           data: {
@@ -99,18 +96,40 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
           },
         ]
       },
-      rejected: async ({ tx, target }, rejection: DeliveryRejection) => {
+      failed: async ({ tx, target }, failure: DeliveryFailure) => {
+        const attemptAt = new Date(target.attemptAt)
+        if (failure.reason === "unconfirmed") {
+          // The customer may have the email, so the document is issued and never reopened.
+          const { count } = await delegate(tx, kind).updateMany({
+            where: awaiting(target, mode),
+            data: {
+              ...(mode === "send" ? issuedFields(target, attemptAt) : {}),
+              ...createEmailDeliveryAttempt({
+                at: attemptAt,
+                outcome: "unconfirmed",
+                code: "delivery_unconfirmed",
+                message: failure.message,
+              }),
+            },
+          })
+          if (count === 0) return []
+          return [
+            {
+              aggregateType,
+              aggregateId: target.documentId,
+              type: `${aggregateType}.email_unconfirmed`,
+              payload: { number: target.number, recipient: target.recipient, issued: mode === "send" },
+            },
+          ]
+        }
         // Nothing reached the customer, so a draft can be edited and sent again.
         const { count } = await delegate(tx, kind).updateMany({
           where: awaiting(target, mode),
           data: createEmailDeliveryAttempt({
-            at: new Date(target.attemptAt),
+            at: attemptAt,
             outcome: "failed",
-            code: rejection.reason === "rejected" ? "send_failed" : "delivery_unconfirmed",
-            message:
-              rejection.reason === "rejected"
-                ? `The email provider refused the ${noun} email: ${rejection.message}`
-                : rejection.message,
+            code: "send_failed",
+            message: `The email provider refused the ${noun} email: ${failure.message}`,
           }),
         })
         if (count === 0) return []
@@ -122,8 +141,8 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
             payload: {
               number: target.number,
               recipient: target.recipient,
-              reason: rejection.reason,
-              message: rejection.message,
+              reason: failure.reason,
+              message: failure.message,
             },
           },
         ]
@@ -146,7 +165,7 @@ export function refuseWhileSending(kind: DocumentKind, document: { lastEmailAtte
 
 /**
  * Marks the document as being emailed (through `markSending`, so the caller keeps its row type)
- * and queues the rendered message. Must run inside the command after every check passes, with the
+ * and queues the rendered message. Returns the updated document and the delivery's key. Must run inside the command after every check passes, with the
  * document locked.
  */
 export const queueDocumentEmail = <Row>(input: {
@@ -173,7 +192,7 @@ export const queueDocumentEmail = <Row>(input: {
         })
       )
     )
-    yield* enqueueEmailDelivery({
+    const { deliveryKey } = yield* enqueueEmailDelivery({
       message: input.message,
       idempotencyKey: input.idempotencyKey,
       completion: {
@@ -187,5 +206,5 @@ export const queueDocumentEmail = <Row>(input: {
         },
       },
     })
-    return updated
+    return { document: updated, deliveryKey }
   })

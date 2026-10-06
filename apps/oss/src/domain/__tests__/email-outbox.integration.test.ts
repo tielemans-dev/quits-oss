@@ -12,10 +12,18 @@ import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
 import { decideApproval } from "../approvals"
 import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice, updateInvoiceDraft } from "../commands/invoices"
-import { EMAIL_DELIVERY_ATTEMPTS, EMAIL_DELIVERY_JOB, isDefiniteRejection } from "../delivery/outbox"
+import { recordPayment } from "../commands/payments"
+import { sendReminderNow } from "../commands/reminders"
+import {
+  EMAIL_DELIVERY_ATTEMPTS,
+  EMAIL_DELIVERY_JOB,
+  isDefiniteRejection,
+  readDeliveryResult,
+  settleAbandonedDeliveries,
+} from "../delivery/outbox"
 import { readActivity } from "../events"
 import { executeCommand } from "../execute"
-import { runDueJobs } from "../jobs"
+import { registerJobHandler, runDueJobs } from "../jobs"
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -114,7 +122,11 @@ describeIfDatabase("email outbox", () => {
       lastEmailAttemptCode: "send_failed",
     })
     expect(invoice.lastEmailAttemptMessage).toContain("Domain is not verified")
-    expect((await deliveryJob(org.organizationId)).status).toBe("done")
+    // A refusal is a permanent failure of the job, counted as failed.
+    expect(await deliveryJob(org.organizationId)).toMatchObject({
+      status: "failed",
+      result: { outcome: "rejected", message: "Domain is not verified" },
+    })
     const edited = await executeCommand(
       updateInvoiceDraft,
       { id: invoiceId, notes: "Fixed the sender" },
@@ -155,7 +167,7 @@ describeIfDatabase("email outbox", () => {
     expect(invoice.issueDate.getTime()).toBe(frozen.lastEmailAttemptAt?.getTime())
   })
 
-  it("gives up an unconfirmed delivery after its last attempt and unfreezes the draft", async () => {
+  it("issues an invoice whose delivery was never confirmed, marked unconfirmed, never reopened", async () => {
     const { org, invoiceId } = await setup()
     vi.mocked(deliver).mockRejectedValue(new Error("socket hang up"))
 
@@ -163,15 +175,120 @@ describeIfDatabase("email outbox", () => {
     const job = await deliveryJob(org.organizationId)
     await prisma.job.update({ where: { id: job.id }, data: { attempts: EMAIL_DELIVERY_ATTEMPTS - 1 } })
     await makeDue(job.id)
+    const sweep = await runDueJobs({ organizationIds: [org.organizationId] })
+
+    expect(sweep).toMatchObject({ failed: 1, succeeded: 0 })
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+    expect(invoice).toMatchObject({
+      status: "sent",
+      lastEmailAttemptOutcome: "unconfirmed",
+      lastEmailAttemptCode: "delivery_unconfirmed",
+    })
+    expect(await deliveryJob(org.organizationId)).toMatchObject({ status: "failed", result: { outcome: "unconfirmed" } })
+  })
+
+  it("treats a refusal after an uncertain attempt as unconfirmed, not as nothing delivered", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver)
+      .mockRejectedValueOnce(new Error("socket hang up"))
+      .mockRejectedValueOnce(new EmailSendError("invalid_api_key", "API key is invalid"))
+
+    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await makeDue((await deliveryJob(org.organizationId)).id)
     await runDueJobs({ organizationIds: [org.organizationId] })
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
-    expect(invoice).toMatchObject({
-      status: "draft",
-      lastEmailAttemptOutcome: "failed",
-      lastEmailAttemptCode: "delivery_unconfirmed",
+    expect(invoice).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "unconfirmed" })
+  })
+
+  it("stops retrying once the provider no longer honors the idempotency key", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
+
+    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const job = await deliveryJob(org.organizationId)
+    await prisma.$executeRaw`UPDATE "job" SET "createdAt" = NOW() - INTERVAL '25 hours' WHERE "id" = ${job.id}`
+    await makeDue(job.id)
+    await runDueJobs({ organizationIds: [org.organizationId] })
+
+    expect(deliver).toHaveBeenCalledTimes(1)
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+    expect(invoice).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "unconfirmed" })
+  })
+
+  it("settles an accepted email without sending again when settling first failed", async () => {
+    const { org, invoiceId } = await setup()
+    // The provider accepted the message and that was recorded, but settling the invoice failed.
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
+    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const queued = await deliveryJob(org.organizationId)
+    await prisma.job.update({
+      where: { id: queued.id },
+      data: { payload: { ...(queued.payload as object), providerMessageId: "email_123" } },
     })
-    expect((await deliveryJob(org.organizationId)).status).toBe("done")
+    vi.mocked(deliver).mockClear()
+
+    const job = await deliveryJob(org.organizationId)
+    expect(job.status).toBe("pending")
+    expect(job.payload).toMatchObject({ providerMessageId: "email_123" })
+    await makeDue(job.id)
+    await runDueJobs({ organizationIds: [org.organizationId] })
+
+    expect(deliver).not.toHaveBeenCalled()
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({
+      status: "sent",
+      lastEmailAttemptOutcome: "sent",
+    })
+  })
+
+  it("settles deliveries whose job ended without settling", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
+    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    // A runner stopped during the job's last allowed attempt; the job runner gave it up.
+    const job = await deliveryJob(org.organizationId)
+    await prisma.job.update({ where: { id: job.id }, data: { status: "failed", lastError: "Runner stopped" } })
+
+    expect(await settleAbandonedDeliveries({ organizationIds: [org.organizationId] })).toMatchObject({ settled: 1 })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({
+      status: "sent",
+      lastEmailAttemptOutcome: "unconfirmed",
+    })
+    expect(await settleAbandonedDeliveries({ organizationIds: [org.organizationId] })).toMatchObject({ abandoned: 0 })
+  })
+
+  it("reports each delivery's own outcome even after a later attempt on the same document", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver)
+      .mockRejectedValueOnce(new EmailSendError("validation_error", "Domain is not verified"))
+      .mockRejectedValueOnce(new Error("socket hang up"))
+
+    const first = await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const second = await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    if (first.status !== "completed" || second.status !== "completed") throw new Error("expected sends")
+
+    expect(await readDeliveryResult(first.result.deliveryKey!)).toMatchObject({ outcome: "rejected" })
+    expect(await readDeliveryResult(second.result.deliveryKey!)).toMatchObject({ outcome: "pending" })
+  })
+
+  it("runs emails queued by background jobs within the same sweep and counts them", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "Domain is not verified"))
+    registerJobHandler("test.send_invoice", async (job) => {
+      const { id } = job.payload as { id: string }
+      await executeCommand(sendInvoice, { id }, { actor: org.actors.admin })
+    })
+    await prisma.job.create({
+      data: { organizationId: org.organizationId, type: "test.send_invoice", payload: { id: invoiceId } },
+    })
+
+    const limited = await runDueJobs({ organizationIds: [org.organizationId], limit: 1 })
+    expect(limited).toMatchObject({ processed: 1, succeeded: 1 })
+    expect(deliver).not.toHaveBeenCalled()
+
+    const sweep = await runDueJobs({ organizationIds: [org.organizationId] })
+    expect(sweep).toMatchObject({ processed: 1, failed: 1 })
+    expect(deliver).toHaveBeenCalledTimes(1)
   })
 
   it("never lets a delivery settle a document that is no longer waiting for it", async () => {
@@ -190,6 +307,30 @@ describeIfDatabase("email outbox", () => {
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
     expect(invoice).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "sending" })
     expect(invoice.lastEmailAttemptAt?.getTime()).toBe(newer.getTime())
+  })
+
+  it("stops retrying a reminder once the invoice is paid, keeping it as possibly delivered", async () => {
+    const { org, invoiceId } = await setup()
+    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    vi.mocked(deliver).mockClear()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
+
+    const reminder = await executeCommand(sendReminderNow, { invoiceId }, { actor: org.actors.admin })
+    if (reminder.status !== "completed") throw new Error("expected the reminder to be queued")
+    await executeCommand(
+      recordPayment,
+      { invoiceId, amount: 100, paidAt: "2026-01-15", method: "bank_transfer" },
+      { actor: org.actors.admin }
+    )
+    const job = await prisma.job.findUniqueOrThrow({ where: { dedupeKey: reminder.result.deliveryKey } })
+    await makeDue(job.id)
+    await runDueJobs({ organizationIds: [org.organizationId] })
+
+    expect(deliver).toHaveBeenCalledTimes(1)
+    const row = await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminder.result.reminderId } })
+    expect(row.outcome).toBe("sent")
+    expect(row.outcomeMessage).toContain("delivery not confirmed")
+    expect(await readDeliveryResult(reminder.result.deliveryKey)).toMatchObject({ outcome: "unconfirmed" })
   })
 
   describe("approved agent sends", () => {
