@@ -16,6 +16,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as QTokenRouteImport } from './routes/q.$token'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
+import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
@@ -73,6 +74,11 @@ const QTokenRoute = QTokenRouteImport.update({
 const PayTokenRoute = PayTokenRouteImport.update({
   id: '/pay/$token',
   path: '/pay/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMcpRoute = ApiMcpRouteImport.update({
+  id: '/api/mcp',
+  path: '/api/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcceptInvitationInvitationIdRoute =
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AppOnboardingRoute
   '/settings': typeof AppSettingsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/contacts/$contactId': typeof AppContactsContactIdRoute
@@ -242,6 +249,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AppOnboardingRoute
   '/settings': typeof AppSettingsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/': typeof AppIndexRoute
@@ -276,6 +284,7 @@ export interface FileRoutesById {
   '/_app/onboarding': typeof AppOnboardingRoute
   '/_app/settings': typeof AppSettingsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/_app/': typeof AppIndexRoute
@@ -311,6 +320,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/accept-invitation/$invitationId'
+    | '/api/mcp'
     | '/pay/$token'
     | '/q/$token'
     | '/contacts/$contactId'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/accept-invitation/$invitationId'
+    | '/api/mcp'
     | '/pay/$token'
     | '/q/$token'
     | '/'
@@ -375,6 +386,7 @@ export interface FileRouteTypes {
     | '/_app/onboarding'
     | '/_app/settings'
     | '/accept-invitation/$invitationId'
+    | '/api/mcp'
     | '/pay/$token'
     | '/q/$token'
     | '/_app/'
@@ -403,6 +415,7 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   SignupRoute: typeof SignupRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
+  ApiMcpRoute: typeof ApiMcpRoute
   PayTokenRoute: typeof PayTokenRoute
   QTokenRoute: typeof QTokenRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -461,6 +474,13 @@ declare module '@tanstack/react-router' {
       path: '/pay/$token'
       fullPath: '/pay/$token'
       preLoaderRoute: typeof PayTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mcp': {
+      id: '/api/mcp'
+      path: '/api/mcp'
+      fullPath: '/api/mcp'
+      preLoaderRoute: typeof ApiMcpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accept-invitation/$invitationId': {
@@ -686,6 +706,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   SignupRoute: SignupRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
+  ApiMcpRoute: ApiMcpRoute,
   PayTokenRoute: PayTokenRoute,
   QTokenRoute: QTokenRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
