@@ -33,24 +33,6 @@ type RemindersState = {
 
 type PanelMessage = { kind: "error" | "success" | "info" | "warning"; text: string }
 
-/**
- * How a manual reminder ended: `sent` (the provider accepted it), `pending` (the outbox retries
- * delivery in the background) or `unconfirmed` (the provider never confirmed delivery).
- */
-export type ReminderDelivery = "sent" | "pending" | "unconfirmed"
-
-/**
- * Reads the delivery of a `reminders.sendNow` result. Results without `delivery` come from a
- * server that only answered once the reminder was sent.
- */
-export function reminderDelivery(result: object): ReminderDelivery {
-  if ("delivery" in result) {
-    const delivery = (result as { delivery: unknown }).delivery
-    if (delivery === "pending" || delivery === "unconfirmed") return delivery
-  }
-  return "sent"
-}
-
 const messageClassName: Record<PanelMessage["kind"], string> = {
   error: "text-sm text-destructive",
   success: "text-sm text-muted-foreground",
@@ -132,7 +114,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
     setMessage(null)
     try {
       const result = await trpc.reminders.sendNow.mutate({ invoiceId: invoice.id })
-      const delivery = reminderDelivery(result)
+      const { delivery } = result
       setMessage(
         delivery === "pending"
           ? { kind: "info", text: t("reminders.panel.pending") }

@@ -32,7 +32,7 @@ function translate(key: string) {
   return key
 }
 
-import { InvoiceRemindersPanel, reminderDelivery } from "../reminders-panel"
+import { InvoiceRemindersPanel } from "../reminders-panel"
 import type { InvoicePanelInvoice } from "../types"
 
 const invoice: InvoicePanelInvoice = {
@@ -99,11 +99,5 @@ describe("InvoiceRemindersPanel send now", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("The provider refused the reminder")
     await waitFor(() => expect(api.list.mock.calls.length).toBeGreaterThan(loadsBefore))
     expect(screen.queryByText("reminders.panel.sent")).toBeNull()
-  })
-
-  it("reads results from a server without a delivery field as sent", () => {
-    expect(reminderDelivery({ reminderId: "r_1", recipient: "a@b.c", sentAt: new Date() })).toBe("sent")
-    expect(reminderDelivery({ delivery: "pending" })).toBe("pending")
-    expect(reminderDelivery({ delivery: "unconfirmed" })).toBe("unconfirmed")
   })
 })
