@@ -17,11 +17,15 @@ import {
   POLICY_DISABLED_MESSAGE,
   REMINDER_BATCH_SIZE,
   SUPERSEDED_MESSAGE,
+  manualReminderIdempotencyKey,
+  pauseInvoiceReminders,
   planDueReminders,
+  resumeInvoiceReminders,
   sendReminderNow,
-  setInvoiceRemindersPaused,
   updateReminderPolicy,
 } from "../commands/reminders"
+import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
+import { decideApproval } from "../approvals"
 import { executeCommand } from "../execute"
 import { OVERDUE_BATCH_SIZE, runOverdueTask } from "../features/overdue"
 import { handleReminderSendJob, runReminderTask } from "../features/reminders"
@@ -317,11 +321,7 @@ describeIfDatabase("overdue and reminders", () => {
     sendMock.mockRejectedValueOnce(new Error("provider down"))
     await remindersTick(context)
 
-    await executeCommand(
-      setInvoiceRemindersPaused,
-      { invoiceId: invoice.id, paused: true },
-      { actor: context.org.actors.admin }
-    )
+    await executeCommand(pauseInvoiceReminders, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
     const reminder = await prisma.invoiceReminder.findFirstOrThrow({ where: { invoiceId: invoice.id } })
     const job = await prisma.job.findUniqueOrThrow({ where: { dedupeKey: `reminder:${reminder.id}` } })
     await runJobsNow([job.id], daysFromNow(1))
@@ -339,8 +339,8 @@ describeIfDatabase("overdue and reminders", () => {
     const paid = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -5, status: "paid", amountPaid: 100 })
 
     const paused = await executeCommand(
-      setInvoiceRemindersPaused,
-      { invoiceId: invoice.id, paused: true },
+      pauseInvoiceReminders,
+      { invoiceId: invoice.id },
       { actor: context.org.actors.member }
     )
     expect(paused).toMatchObject({ status: "completed", result: { remindersPaused: true } })
@@ -432,8 +432,9 @@ describeIfDatabase("overdue and reminders", () => {
     })
     expect(sendsTo(context.email)).toBe(1)
     const [reminder] = await prisma.invoiceReminder.findMany({ where: { invoiceId: invoice.id } })
+    expect(reminder?.offsetDays).toBe(5)
     expect(sendMock.mock.calls.find(([call]) => call.to === context.email)?.[1]).toEqual({
-      idempotencyKey: `yaip-reminder-manual-${reminder?.id}`,
+      idempotencyKey: `yaip-reminder-manual-${invoice.id}-5`,
     })
   })
 
@@ -448,6 +449,124 @@ describeIfDatabase("overdue and reminders", () => {
 
     const retried = await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
     expect(retried.status).toBe("completed")
+  })
+
+  it("reuses the provider idempotency key when a manual reminder is retried after a lost commit", async () => {
+    const context = await setup()
+    const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -5, status: "overdue" })
+    // The provider accepted the email but the command never committed (here: the response was lost).
+    sendMock.mockRejectedValueOnce(new Error("connection reset after the provider accepted the email"))
+
+    const failed = await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
+    expect(failed.status).toBe("failed")
+    const retried = await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
+    expect(retried.status).toBe("completed")
+
+    const keys = sendMock.mock.calls.filter(([call]) => call.to === context.email).map(([, options]) => options)
+    expect(keys).toEqual([
+      { idempotencyKey: manualReminderIdempotencyKey(invoice.id, 5) },
+      { idempotencyKey: manualReminderIdempotencyKey(invoice.id, 5) },
+    ])
+  })
+
+  it("skips an older reminder once a later policy offset is due, even before it is reserved", async () => {
+    const context = await setup({ policy: { enabled: true, offsetsDays: [7, 14] } })
+    const invoice = await createInvoice(context, { issuedDaysAgo: 40, dueInDays: -20, status: "overdue" })
+    // Reserved on day 7; its job only runs now, on day 20, before any 14-day reminder exists.
+    const older = await prisma.invoiceReminder.create({
+      data: { invoiceId: invoice.id, offsetDays: 7, scheduledFor: daysFromNow(-13) },
+    })
+
+    await handleReminderSendJob({ organizationId: context.org.organizationId, payload: { reminderId: older.id } })
+
+    expect(sendsTo(context.email)).toBe(0)
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: older.id } })).toMatchObject({
+      outcome: "skipped",
+      outcomeMessage: SUPERSEDED_MESSAGE,
+    })
+  })
+
+  describe("pausing and resuming for agents in approval mode", () => {
+    async function approvalAgent(organization: Awaited<ReturnType<typeof setup>>["org"], scopes: string[]) {
+      const { secret } = await createAgentKey(organization.actors.admin, {
+        name: "Collections",
+        mode: "approval_required",
+        scopes: scopes as never,
+      })
+      return authenticateAgentSecret(secret)
+    }
+
+    it("lets an update-only agent pause but never resume reminders", async () => {
+      const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
+      const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10, remindersPaused: false })
+      const agent = await approvalAgent(context.org, ["invoice:read", "invoice:update"])
+
+      const paused = await executeCommand(pauseInvoiceReminders, { invoiceId: invoice.id }, {
+        actor: agent,
+        clientRequestId: "pause-1",
+      })
+      expect(paused).toMatchObject({ status: "completed", result: { remindersPaused: true } })
+
+      const resumed = await executeCommand(resumeInvoiceReminders, { invoiceId: invoice.id }, {
+        actor: agent,
+        clientRequestId: "resume-1",
+      })
+      expect(resumed).toMatchObject({ status: "failed", error: { tag: "Forbidden" } })
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).remindersPaused).toBe(true)
+    })
+
+    it("queues a resume for approval naming the recipient and the next reminder", async () => {
+      const context = await setup({ policy: { enabled: true, offsetsDays: [7, 30] } })
+      const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10, remindersPaused: true })
+      const agent = await approvalAgent(context.org, ["invoice:read", "invoice:update", "invoice:send"])
+
+      const queued = await executeCommand(resumeInvoiceReminders, { invoiceId: invoice.id }, {
+        actor: agent,
+        clientRequestId: "resume-queued",
+      })
+      if (queued.status !== "awaiting_approval") throw new Error(`expected approval, got ${queued.status}`)
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).remindersPaused).toBe(true)
+
+      const request = await prisma.approvalRequest.findUniqueOrThrow({ where: { id: queued.approvalRequestId } })
+      expect(request.summary).toContain(invoice.number)
+      expect(request.summary).toContain(context.email)
+      expect(request.reviewContext).toMatchObject({
+        details: {
+          number: invoice.number,
+          recipient: context.email,
+          nextReminder: new Date().toISOString().slice(0, 10),
+        },
+      })
+
+      const approved = await decideApproval({
+        approvalRequestId: queued.approvalRequestId,
+        decider: context.org.actors.admin,
+        decision: "approve",
+      })
+      expect(approved.status).toBe("completed")
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).remindersPaused).toBe(false)
+    })
+
+    it("refuses an approved resume when the recipient changed after review", async () => {
+      const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
+      const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10, remindersPaused: true })
+      const agent = await approvalAgent(context.org, ["invoice:read", "invoice:send"])
+
+      const queued = await executeCommand(resumeInvoiceReminders, { invoiceId: invoice.id }, {
+        actor: agent,
+        clientRequestId: "resume-changed",
+      })
+      if (queued.status !== "awaiting_approval") throw new Error(`expected approval, got ${queued.status}`)
+      await prisma.contact.update({ where: { id: context.contactId }, data: { email: "someone-else@example.com" } })
+
+      const decided = await decideApproval({
+        approvalRequestId: queued.approvalRequestId,
+        decider: context.org.actors.admin,
+        decision: "approve",
+      })
+      expect(decided).toMatchObject({ status: "failed", error: { code: "changed_since_review" } })
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).remindersPaused).toBe(true)
+    })
   })
 
   it("leaves sending to the job sweep instead of the scheduling task", async () => {

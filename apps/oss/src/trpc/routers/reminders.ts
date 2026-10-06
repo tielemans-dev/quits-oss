@@ -13,8 +13,9 @@ import {
   isManualReminder,
   isValidRecipient,
   reminderBlocker,
+  pauseInvoiceReminders,
+  resumeInvoiceReminders,
   sendReminderNow,
-  setInvoiceRemindersPaused,
   updateReminderPolicy,
 } from "../../domain/commands/reminders"
 import { actorCan } from "../../domain/actor"
@@ -109,10 +110,20 @@ export const remindersRouter = router({
       }
     }),
 
+  /**
+   * Pausing needs `invoice:update`; resuming needs `invoice:send`, because it makes the scheduler
+   * email the customer. The command enforces the stricter permission when resuming.
+   */
   setPaused: authorizedProcedure("invoice:update")
     .input(invoiceRemindersPausedInputSchema)
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(await executeCommand(setInvoiceRemindersPaused, input, { actor: ctx.actor }))
+      unwrapOutcome(
+        await executeCommand(
+          input.paused ? pauseInvoiceReminders : resumeInvoiceReminders,
+          { invoiceId: input.invoiceId },
+          { actor: ctx.actor }
+        )
+      )
     ),
 
   sendNow: authorizedProcedure("invoice:send")
@@ -123,11 +134,13 @@ export const remindersRouter = router({
 
   /**
    * What the current user may do with reminders, mirroring the permissions of `sendNow`,
-   * `setPaused`, and `updatePolicy`, so the UI only offers controls the server allows.
+   * `setPaused` (pausing and resuming), and `updatePolicy`, so the UI only offers controls the
+   * server allows.
    */
   capabilities: authorizedProcedure("invoice:read").query(({ ctx }) => ({
     canSendNow: actorCan(ctx.actor, "invoice:send"),
     canPause: actorCan(ctx.actor, "invoice:update"),
+    canResume: actorCan(ctx.actor, "invoice:update") && actorCan(ctx.actor, "invoice:send"),
     canUpdatePolicy: actorCan(ctx.actor, "settings:update"),
   })),
 })

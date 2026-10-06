@@ -18,7 +18,7 @@ import {
 } from "../../ui/table"
 import type { InvoicePanelProps } from "./types"
 
-type ReminderCapabilities = { canSendNow: boolean; canPause: boolean }
+type ReminderCapabilities = { canSendNow: boolean; canPause: boolean; canResume: boolean }
 
 type RemindersState = {
   remindersPaused: boolean
@@ -41,7 +41,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
   const { t } = useI18n()
   const [state, setState] = useState<RemindersState | null>(null)
   // Nothing is allowed until the server says so; accountants may only look.
-  const [capabilities, setCapabilities] = useState<ReminderCapabilities>({ canSendNow: false, canPause: false })
+  const [capabilities, setCapabilities] = useState<ReminderCapabilities>({ canSendNow: false, canPause: false, canResume: false })
   const [busy, setBusy] = useState<"pause" | "send" | null>(null)
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null)
 
@@ -140,7 +140,10 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
               <input
                 type="checkbox"
                 checked={state.remindersPaused}
-                disabled={!capabilities.canPause || busy !== null}
+                // Resuming emails the customer again, so it needs the send permission too.
+                disabled={
+                  (state.remindersPaused ? !capabilities.canResume : !capabilities.canPause) || busy !== null
+                }
                 onChange={(event) => {
                   const paused = event.target.checked
                   void run("pause", () =>

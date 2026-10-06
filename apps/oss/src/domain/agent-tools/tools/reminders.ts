@@ -1,5 +1,10 @@
-import { invoiceRemindersPausedInputSchema, reminderSendNowInputSchema } from "@yaip/contracts/reminders"
-import { sendReminderNow, setInvoiceRemindersPaused } from "../../commands/reminders"
+import { reminderSendNowInputSchema } from "@yaip/contracts/reminders"
+import {
+  invoiceReminderTargetSchema,
+  pauseInvoiceReminders,
+  resumeInvoiceReminders,
+  sendReminderNow,
+} from "../../commands/reminders"
 import { defineCommandTool, type AgentTool } from "../define"
 
 export const reminderTools: AgentTool[] = [
@@ -14,10 +19,20 @@ export const reminderTools: AgentTool[] = [
   }),
 
   defineCommandTool({
-    name: "invoice_set_reminders_paused",
-    title: "Pause or resume reminders",
-    description: "Stops or restarts automatic reminders for one invoice, e.g. while a dispute is open.",
-    command: setInvoiceRemindersPaused,
-    input: invoiceRemindersPausedInputSchema,
+    name: "invoice_pause_reminders",
+    title: "Pause reminders",
+    description: "Stops automatic payment reminders for one invoice, e.g. while a dispute is open.",
+    command: pauseInvoiceReminders,
+    input: invoiceReminderTargetSchema,
+  }),
+
+  defineCommandTool({
+    name: "invoice_resume_reminders",
+    title: "Resume reminders",
+    description:
+      "Restarts automatic payment reminders for one invoice, so the customer is emailed again on the " +
+      "reminder schedule.",
+    command: resumeInvoiceReminders,
+    input: invoiceReminderTargetSchema,
   }),
 ]

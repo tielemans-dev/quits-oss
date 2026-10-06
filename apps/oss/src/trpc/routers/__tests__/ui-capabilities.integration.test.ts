@@ -50,16 +50,19 @@ describeIfDatabase("UI capability flags", () => {
     expect(await admin.reminders.capabilities()).toEqual({
       canSendNow: true,
       canPause: true,
+      canResume: true,
       canUpdatePolicy: true,
     })
     expect(await member.reminders.capabilities()).toEqual({
       canSendNow: true,
       canPause: true,
+      canResume: true,
       canUpdatePolicy: false,
     })
     expect(await accountant.reminders.capabilities()).toEqual({
       canSendNow: false,
       canPause: false,
+      canResume: false,
       canUpdatePolicy: false,
     })
     await expect(member.reminders.updatePolicy({ enabled: true, offsetsDays: [3] })).rejects.toThrow()

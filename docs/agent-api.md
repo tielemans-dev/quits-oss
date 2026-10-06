@@ -142,7 +142,8 @@ command tools. Money is returned as numbers in the document currency; dates are 
 | `credit_note_issue` | command, outward-facing | `creditNote:create` | `invoiceId`, `reason`, `mode` (`full`, `lines` + `lines`, `amount` + `amount`) |
 | `credit_note_send` | command, outward-facing | `creditNote:send` | `id` |
 | `reminder_send_now` | command, outward-facing | `invoice:send` | `invoiceId` |
-| `invoice_set_reminders_paused` | command | `invoice:update` | `invoiceId`, `paused` |
+| `invoice_pause_reminders` | command | `invoice:update` | `invoiceId` |
+| `invoice_resume_reminders` | command, outward-facing | `invoice:send` | `invoiceId`; the approval names the recipient and the next reminder |
 | `recurring_list` | query | `recurring:read` | `status?` |
 | `recurring_create` | command | `recurring:create` | schedule fields; auto-sending schedules from approval-mode keys start paused |
 | `recurring_update` | command | `recurring:update` | `id` + changed fields |
