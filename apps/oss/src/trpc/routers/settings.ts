@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, orgProcedure } from "../init"
+import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import {
   createDocumentSendingSyncUpdate,
@@ -381,7 +382,7 @@ export const settingsRouter = router({
           documentSendingDomain: null,
           documentSendingDomainProviderId: null,
           documentSendingDomainStatus: null,
-          documentSendingDomainRecords: null,
+          documentSendingDomainRecords: Prisma.DbNull,
           documentSendingDomainFailureReason: null,
           documentSendingDomainVerifiedAt: null,
         },

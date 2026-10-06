@@ -57,6 +57,34 @@ export function buildYaipAuthOptions(input: {
   )
   const crossSubDomainDomain = env.getEnv("YAIP_AUTH_COOKIE_DOMAIN")?.trim()
   const password = hooks.password
+  // A tuple (not an array) keeps plugin-specific session fields in Better Auth's inferred types.
+  const organizationPlugin = organization({
+    ac,
+    roles: { admin, member, accountant },
+    allowUserToCreateOrganization: true,
+    creatorRole: "admin",
+    membershipLimit: 50,
+    async sendInvitationEmail(data) {
+      if (!env.getEnv("RESEND_API_KEY") || !betterAuthUrl) {
+        return
+      }
+
+      const invitationUrl = `${betterAuthUrl}/accept-invitation/${data.id}`
+      const orgSettings = await input.prisma.orgSettings.findUnique({
+        where: { organizationId: data.organization.id },
+        select: { locale: true },
+      })
+
+      await sendInvitationEmail({
+        to: data.email,
+        inviterName: data.inviter.user.name,
+        orgName: data.organization.name,
+        invitationUrl,
+        locale: orgSettings?.locale,
+      })
+    },
+  })
+  const cookiesPlugin = tanstackStartCookies()
 
   return {
     database:
@@ -89,34 +117,9 @@ export function buildYaipAuthOptions(input: {
     socialProviders: Object.keys(socialProviders).length
       ? socialProviders
       : undefined,
-    plugins: [
-      organization({
-        ac,
-        roles: { admin, member, accountant },
-        allowUserToCreateOrganization: true,
-        creatorRole: "admin",
-        membershipLimit: 50,
-        async sendInvitationEmail(data) {
-          if (!env.getEnv("RESEND_API_KEY") || !betterAuthUrl) {
-            return
-          }
-
-          const invitationUrl = `${betterAuthUrl}/accept-invitation/${data.id}`
-          const orgSettings = await input.prisma.orgSettings.findUnique({
-            where: { organizationId: data.organization.id },
-            select: { locale: true },
-          })
-
-          await sendInvitationEmail({
-            to: data.email,
-            inviterName: data.inviter.user.name,
-            orgName: data.organization.name,
-            invitationUrl,
-            locale: orgSettings?.locale,
-          })
-        },
-      }),
-      tanstackStartCookies(),
+    plugins: [organizationPlugin, cookiesPlugin] as [
+      typeof organizationPlugin,
+      typeof cookiesPlugin,
     ],
   }
 }

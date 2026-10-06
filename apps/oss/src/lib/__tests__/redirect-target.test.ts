@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { normalizeHostedNext } from "../redirect-target"
+import { normalizeHostedNext, toInternalRedirectPath } from "../redirect-target"
 
 describe("normalizeHostedNext", () => {
   it("accepts app.yaip.com same-origin paths", () => {
@@ -17,5 +17,19 @@ describe("normalizeHostedNext", () => {
   it("falls back when next is missing or invalid", () => {
     expect(normalizeHostedNext(undefined, "https://app.yaip.com")).toBe("https://app.yaip.com/")
     expect(normalizeHostedNext("/invoices", "https://app.yaip.com")).toBe("https://app.yaip.com/")
+  })
+})
+
+describe("toInternalRedirectPath", () => {
+  it("keeps same-site paths", () => {
+    expect(toInternalRedirectPath("/invoices/1?tab=items")).toBe("/invoices/1?tab=items")
+  })
+
+  it("rejects external and protocol-relative targets", () => {
+    expect(toInternalRedirectPath(undefined)).toBeNull()
+    expect(toInternalRedirectPath("https://evil.example")).toBeNull()
+    expect(toInternalRedirectPath("//evil.example")).toBeNull()
+    expect(toInternalRedirectPath("/\\evil.example")).toBeNull()
+    expect(toInternalRedirectPath("invoices")).toBeNull()
   })
 })

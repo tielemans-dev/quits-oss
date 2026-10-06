@@ -5,7 +5,9 @@ import { createLiveBindingProxy } from "./runtime/live-binding"
 import { defaultNodePlatform } from "./runtime/node-platform"
 import { getRuntimePlatformOverride } from "./runtime/platform"
 
-type AuthInstance = ReturnType<typeof betterAuth>
+type AuthInstance = ReturnType<
+  typeof betterAuth<ReturnType<typeof buildYaipAuthOptions>>
+>
 
 let authInstance: AuthInstance | undefined
 let authPlatformId: string | undefined
@@ -22,7 +24,7 @@ export function getAuth() {
         },
         hooks: platform.getAuthHooks(),
       })
-    ) as AuthInstance
+    )
     authPlatformId = platform.id
   }
 

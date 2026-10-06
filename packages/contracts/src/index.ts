@@ -1,4 +1,5 @@
 export * from "./baseSchemas"
+export * from "./documents"
 export * from "./email"
 export * from "./onboarding"
 export * from "./payments"

@@ -42,13 +42,16 @@ vi.mock("../../components/ui/tooltip", () => ({
 }))
 
 import { Route } from "../__root"
+import { asMockedRoute } from "../../test-utils/mocked-route"
+
+const route = asMockedRoute(Route)
 
 describe("root route setup guard", () => {
   it("does not crash when installation status is missing", async () => {
     getInstallationStatus.mockResolvedValue(undefined)
 
     await expect(
-      Route.beforeLoad({
+      route.beforeLoad({
         location: { pathname: "/setup" },
       })
     ).resolves.toEqual({

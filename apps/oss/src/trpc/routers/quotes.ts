@@ -17,6 +17,7 @@ import {
 import { sendQuoteEmail } from "../../lib/email"
 import { assertCloudOnboardingComplete } from "../../lib/onboarding/guard"
 import { appLogger } from "../../lib/observability"
+import { toNullableJsonInput } from "../../lib/prisma-json"
 import { getPublicQuoteUrl } from "../../lib/quotes/public-url"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { router, orgProcedure } from "../init"
@@ -808,11 +809,11 @@ export const quotesRouter = router({
             timezone: quote.timezone,
             taxRegime: quote.taxRegime,
             pricesIncludeTax: quote.pricesIncludeTax,
-            sellerSnapshot: quote.sellerSnapshot,
-            buyerSnapshot: quote.buyerSnapshot,
+            sellerSnapshot: toNullableJsonInput(quote.sellerSnapshot),
+            buyerSnapshot: toNullableJsonInput(quote.buyerSnapshot),
             complianceStatus: quote.complianceStatus,
-            complianceErrors: quote.complianceErrors,
-            legalText: quote.legalText,
+            complianceErrors: toNullableJsonInput(quote.complianceErrors),
+            legalText: toNullableJsonInput(quote.legalText),
             paymentReference: quote.paymentReference,
             purchaseOrderRef: quote.purchaseOrderRef,
             notes: quote.notes,

@@ -8,6 +8,7 @@
     "src/index.ts",
     "src/baseSchemas.ts",
     "src/runtime.ts",
+    "src/documents.ts",
     "src/email.ts",
     "src/onboarding.ts",
     "src/payments.ts",
@@ -16,6 +17,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./baseSchemas": "./src/baseSchemas.ts",
+    "./documents": "./src/documents.ts",
     "./email": "./src/email.ts",
     "./onboarding": "./src/onboarding.ts",
     "./payments": "./src/payments.ts",

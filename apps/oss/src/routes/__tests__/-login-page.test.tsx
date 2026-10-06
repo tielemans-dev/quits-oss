@@ -65,6 +65,10 @@ vi.mock("../../lib/auth-client", () => ({
 }))
 
 import { Route } from "../login"
+import { asMockedRoute } from "../../test-utils/mocked-route"
+
+const route = asMockedRoute(Route)
+const RoutePage = route.component
 
 afterEach(() => {
   cleanup()
@@ -92,7 +96,7 @@ describe("LoginPage", () => {
     })
     setActiveOrganization.mockResolvedValue({ data: { session: { activeOrganizationId: "org_1" } } })
 
-    render(<Route.component />)
+    render(<RoutePage />)
 
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "test@example.com" },
@@ -128,7 +132,7 @@ describe("LoginPage", () => {
       ],
     })
 
-    render(<Route.component />)
+    render(<RoutePage />)
 
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "test@example.com" },

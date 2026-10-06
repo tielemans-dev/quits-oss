@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
+import type { z } from "zod"
 import {
   invoicePaymentTokenPayloadSchema,
   type InvoicePaymentState,
@@ -36,10 +37,12 @@ export function getInvoicePaymentState(snapshot: {
 }
 
 export function signInvoicePaymentToken(
-  payload: InvoicePaymentTokenPayload,
+  payload: z.input<typeof invoicePaymentTokenPayloadSchema>,
   secret: string
 ) {
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload))
+  const encodedPayload = base64UrlEncode(
+    JSON.stringify(invoicePaymentTokenPayloadSchema.parse(payload))
+  )
   const signature = signValue(encodedPayload, secret)
   return `${encodedPayload}.${signature}`
 }

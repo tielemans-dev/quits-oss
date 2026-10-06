@@ -41,9 +41,6 @@ const openRouterModelsResponseSchema = z.object({
     .optional(),
 })
 
-type OpenRouterChatCompletionResponse = z.infer<typeof openRouterChatCompletionResponseSchema>
-type OpenRouterModelsResponse = z.infer<typeof openRouterModelsResponseSchema>
-
 export class OpenRouterNetworkError extends Data.TaggedError("OpenRouterNetworkError")<{
   readonly message: string
   readonly cause: unknown
@@ -110,70 +107,58 @@ function requestOpenRouterJson<T>({
   method: "GET" | "POST"
   body?: string
   schema: z.ZodType<T>
-}) {
+}): Promise<T> {
   const url = `https://openrouter.ai/api/v1/${endpoint}`
 
-  const effect = Effect.tryPromise({
-    try: () =>
-      fetch(url, {
-        method,
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          ...(body ? { "Content-Type": "application/json" } : {}),
-        },
-        ...(body ? { body } : {}),
-      }),
-    catch: (cause) =>
-      new OpenRouterNetworkError({
-        message: `OpenRouter ${endpoint} request failed`,
-        cause,
-      }),
-  }).pipe(
-    Effect.flatMap((response) => {
-      if (!response.ok) {
-        return Effect.tryPromise({
-          try: () => response.text(),
-          catch: () => "",
-        }).pipe(
-          Effect.flatMap((errorBody) =>
-            Effect.fail(
-              new OpenRouterHttpError({
-                message: `OpenRouter ${endpoint} request failed (${response.status})`,
-                endpoint,
-                status: response.status,
-                body: errorBody.slice(0, 500),
-              })
-            )
-          )
-        )
-      }
-
-      return Effect.tryPromise({
-        try: () => response.json() as Promise<unknown>,
-        catch: (cause) =>
-          new OpenRouterPayloadError({
-            message: `OpenRouter ${endpoint} returned invalid JSON`,
-            cause,
-          }),
-      }).pipe(
-        Effect.flatMap((payload) => {
-          const parsed = schema.safeParse(payload)
-          if (!parsed.success) {
-            return Effect.fail(
-              new OpenRouterPayloadError({
-                message: `OpenRouter ${endpoint} returned an invalid payload shape`,
-                cause: parsed.error,
-              })
-            )
-          }
-
-          return Effect.succeed(parsed.data)
-        })
-      )
+  const program = Effect.gen(function* () {
+    const response = yield* Effect.tryPromise({
+      try: () =>
+        fetch(url, {
+          method,
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            ...(body ? { "Content-Type": "application/json" } : {}),
+          },
+          ...(body ? { body } : {}),
+        }),
+      catch: (cause) =>
+        new OpenRouterNetworkError({
+          message: `OpenRouter ${endpoint} request failed`,
+          cause,
+        }),
     })
-  )
 
-  return Effect.runPromiseExit(effect).then((exit) => {
+    if (!response.ok) {
+      const errorBody = yield* Effect.promise(() => response.text().catch(() => ""))
+      return yield* new OpenRouterHttpError({
+        message: `OpenRouter ${endpoint} request failed (${response.status})`,
+        endpoint,
+        status: response.status,
+        body: errorBody.slice(0, 500),
+      })
+    }
+
+    const payload = yield* Effect.tryPromise({
+      try: () => response.json() as Promise<unknown>,
+      catch: (cause) =>
+        new OpenRouterPayloadError({
+          message: `OpenRouter ${endpoint} returned invalid JSON`,
+          cause,
+        }),
+    })
+
+    const parsed = schema.safeParse(payload)
+    if (!parsed.success) {
+      return yield* new OpenRouterPayloadError({
+        message: `OpenRouter ${endpoint} returned an invalid payload shape`,
+        cause: parsed.error,
+      })
+    }
+
+    return parsed.data
+  })
+
+  return Effect.runPromiseExit(program).then((exit) => {
     if (Exit.isSuccess(exit)) {
       return exit.value
     }
@@ -207,7 +192,7 @@ export async function generateInvoiceDraftWithOpenRouter(input: {
     2
   )
 
-  const payload = await requestOpenRouterJson<OpenRouterChatCompletionResponse>({
+  const payload = await requestOpenRouterJson({
     endpoint: "chat/completions",
     apiKey: input.apiKey,
     method: "POST",
@@ -241,7 +226,7 @@ export async function generateInvoiceDraftWithOpenRouter(input: {
 }
 
 export async function fetchOpenRouterModelIds(apiKey: string) {
-  const payload = await requestOpenRouterJson<OpenRouterModelsResponse>({
+  const payload = await requestOpenRouterJson({
     endpoint: "models",
     apiKey,
     method: "GET",

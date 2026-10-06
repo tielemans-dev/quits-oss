@@ -32,6 +32,19 @@ export const publicInvoiceCheckoutResultSchema = z
   })
   .strict()
 
+/** The subset of a Stripe Checkout Session that YAIP reads from webhooks. */
+export const stripeCheckoutSessionSchema = z.object({
+  id: z.string().optional(),
+  payment_intent: z
+    .union([z.string(), z.object({ id: z.string() })])
+    .nullable()
+    .optional(),
+  client_reference_id: z.string().nullable().optional(),
+  amount_total: z.number().int().nullable().optional(),
+  currency: z.string().nullable().optional(),
+  metadata: z.record(z.string(), z.string()).nullable().optional(),
+})
+
 export type InvoicePaymentState = z.infer<typeof invoicePaymentStateSchema>
 export type InvoicePaymentScope = z.infer<typeof invoicePaymentScopeSchema>
 export type InvoicePaymentTokenPayload = z.infer<
@@ -44,3 +57,4 @@ export type PublicInvoiceCheckoutStatus = z.infer<
 export type PublicInvoiceCheckoutResult = z.infer<
   typeof publicInvoiceCheckoutResultSchema
 >
+export type StripeCheckoutSession = z.infer<typeof stripeCheckoutSessionSchema>

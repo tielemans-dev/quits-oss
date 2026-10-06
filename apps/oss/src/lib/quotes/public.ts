@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
+import type { z } from "zod"
 import {
   quotePublicTokenPayloadSchema,
   type QuotePublicDecision,
@@ -70,10 +71,12 @@ export function assertQuoteCommercialFieldsMutable(
 }
 
 export function signQuotePublicToken(
-  payload: QuotePublicTokenPayload,
+  payload: z.input<typeof quotePublicTokenPayloadSchema>,
   secret: string
 ) {
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload))
+  const encodedPayload = base64UrlEncode(
+    JSON.stringify(quotePublicTokenPayloadSchema.parse(payload))
+  )
   const signature = signValue(encodedPayload, secret)
   return `${encodedPayload}.${signature}`
 }

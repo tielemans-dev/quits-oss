@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start"
 import {
+  parseBuyerSnapshot,
+  parseSellerSnapshot,
+} from "@yaip/contracts/documents"
+import {
   publicInvoiceCheckoutResultSchema,
   publicInvoiceTokenInputSchema,
 } from "@yaip/contracts/payments"
@@ -27,16 +31,8 @@ export function serializePublicInvoiceSession(session: {
     subtotalNet: Decimalish
     currency: string
     notes: string | null
-    sellerSnapshot: {
-      companyName?: string | null
-      companyEmail?: string | null
-      companyAddress?: string | null
-    } | null
-    buyerSnapshot: {
-      name?: string | null
-      email?: string | null
-      company?: string | null
-    } | null
+    sellerSnapshot: unknown
+    buyerSnapshot: unknown
     contact: {
       name: string
       email: string | null
@@ -71,8 +67,8 @@ export function serializePublicInvoiceSession(session: {
       subtotalNet: toNumber(invoice.subtotalNet),
       currency: invoice.currency,
       notes: invoice.notes,
-      sellerSnapshot: invoice.sellerSnapshot,
-      buyerSnapshot: invoice.buyerSnapshot,
+      sellerSnapshot: parseSellerSnapshot(invoice.sellerSnapshot),
+      buyerSnapshot: parseBuyerSnapshot(invoice.buyerSnapshot),
       contact: invoice.contact,
       items: invoice.items.map((item) => ({
         id: item.id,

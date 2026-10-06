@@ -48,10 +48,9 @@ describe("runtime bootstrap", () => {
         onboardingAiService: {
           suggestPatch: async () => ({
             patch: {},
-            normalizedUserMessage: "",
-            explanation: "ok",
-            confidence: "high",
-            missingFields: [],
+            rationale: "ok",
+            confidence: 1,
+            followupQuestions: [],
           }),
         },
         managedDocumentDomainProvider: {

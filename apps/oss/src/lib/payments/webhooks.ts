@@ -1,3 +1,4 @@
+import { stripeCheckoutSessionSchema } from "@yaip/contracts/payments"
 import { prisma } from "../db"
 import { appLogger } from "../observability"
 import { decryptSecret } from "../secrets"
@@ -44,14 +45,7 @@ export async function processStripeWebhookRequest(
 export async function processStripeWebhookEvent(event: {
   type: string
   created?: number
-  data: {
-    object: {
-      id?: string
-      payment_intent?: string | { id: string } | null
-      client_reference_id?: string | null
-      metadata?: Record<string, string | undefined> | null
-    }
-  }
+  data: { object: unknown }
 }) {
   if (event.type !== "checkout.session.completed") {
     paymentsLogger.info("stripe.webhook.unhandled", {
@@ -60,7 +54,15 @@ export async function processStripeWebhookEvent(event: {
     return { handled: false, alreadyApplied: false }
   }
 
-  const session = event.data.object
+  const parsedSession = stripeCheckoutSessionSchema.safeParse(event.data.object)
+  if (!parsedSession.success) {
+    paymentsLogger.warn("stripe.webhook.malformed_session", {
+      eventType: event.type,
+    })
+    return { handled: false, alreadyApplied: false }
+  }
+
+  const session = parsedSession.data
   const invoiceId = session.metadata?.invoiceId ?? session.client_reference_id
 
   if (!invoiceId) {

@@ -21,7 +21,7 @@ export type ComplianceError = {
 export type TaxId = {
   scheme?: string
   value: string
-  countryCode?: string
+  countryCode?: string | null
 }
 
 export type DocumentLineInput = {

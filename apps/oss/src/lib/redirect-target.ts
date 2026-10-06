@@ -14,3 +14,15 @@ export function normalizeHostedNext(
     return fallback
   }
 }
+
+/**
+ * Accepts only same-site absolute paths (e.g. `/invoices/1?tab=a`), rejecting
+ * protocol-relative (`//host`) and absolute URLs so redirects cannot leave the app.
+ */
+export function toInternalRedirectPath(target: string | undefined): string | null {
+  if (!target || !target.startsWith("/") || target.startsWith("//") || target.startsWith("/\\")) {
+    return null
+  }
+
+  return target
+}

@@ -16,6 +16,7 @@ import { z } from 'zod'
 import { useI18n } from '../lib/i18n/react'
 import { isCloudDistribution } from '../lib/distribution'
 import { getOrganizationAccessState } from '../lib/organization-access'
+import { toInternalRedirectPath } from '../lib/redirect-target'
 
 const loginSearchSchema = z.object({
   redirect: z.string().optional(),
@@ -78,8 +79,9 @@ function LoginPage() {
         // Fall through to the normal post-login route and let app guards recover.
       }
 
-      if (redirect) {
-        navigate({ to: redirect })
+      const redirectPath = toInternalRedirectPath(redirect)
+      if (redirectPath) {
+        navigate({ href: redirectPath })
       } else {
         navigate({ to: '/' })
       }

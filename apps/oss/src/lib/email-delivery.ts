@@ -5,6 +5,8 @@ import type {
   EmailDeliveryRuntimeStatus,
 } from "@yaip/contracts/email"
 
+export type { EmailDeliveryRuntimeStatus }
+
 export function createEmailDeliveryAttempt(input: {
   at?: Date
   outcome: EmailDeliveryOutcome

@@ -12,8 +12,8 @@ const decimal = (value: number) => ({
 
 describe("public session serialization", () => {
   it("serializes invoice sessions without leaking internal organization settings", () => {
-    const session = serializePublicInvoiceSession({
-      invoice: {
+    // The loaded row carries organization secrets; the serializer must drop them.
+    const invoiceRow = {
         id: "invoice-1",
         number: "INV-0001",
         status: "sent",
@@ -53,7 +53,9 @@ describe("public session serialization", () => {
             stripeWebhookSecretEnc: "webhook",
           },
         },
-      },
+      }
+    const session = serializePublicInvoiceSession({
+      invoice: invoiceRow,
       paymentState: "unpaid",
       stripeEnabled: true,
     })

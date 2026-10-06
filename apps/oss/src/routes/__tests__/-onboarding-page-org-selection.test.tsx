@@ -83,6 +83,10 @@ vi.mock("../../trpc/client", () => ({
 }))
 
 import { Route } from "../_app/onboarding"
+import { asMockedRoute } from "../../test-utils/mocked-route"
+
+const route = asMockedRoute(Route)
+const RoutePage = route.component
 
 afterEach(() => {
   cleanup()
@@ -118,7 +122,7 @@ describe("OnboardingPage org selection", () => {
       data: { session: { activeOrganizationId: "org_1" } },
     })
 
-    render(<Route.component />)
+    render(<RoutePage />)
 
     await waitFor(() => {
       expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_1" })
@@ -152,7 +156,7 @@ describe("OnboardingPage org selection", () => {
       ],
     })
 
-    render(<Route.component />)
+    render(<RoutePage />)
 
     await waitFor(() => {
       expect(listOrganizations).toHaveBeenCalled()
