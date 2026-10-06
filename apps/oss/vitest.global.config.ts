@@ -1,0 +1,14 @@
+import { configDefaults, defineConfig } from "vitest/config"
+import { globalStateTests } from "./vitest.config"
+
+/** Runs the tests that depend on database-wide state, alone and one file at a time. */
+export default defineConfig({
+  test: {
+    environment: "node",
+    watch: false,
+    globals: false,
+    fileParallelism: false,
+    include: [globalStateTests.replace("**/*", "src/**/*") + ".test.ts"],
+    exclude: [...configDefaults.exclude, "tests/e2e/**"],
+  },
+})

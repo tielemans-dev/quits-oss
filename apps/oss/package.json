@@ -51,8 +51,8 @@
     "lint": "oxlint --deny-warnings --report-unused-disable-directives .",
     "typecheck": "tsc --noEmit -p tsconfig.quality.json && tsc --noEmit -p tsconfig.json",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
-    "test": "bun run i18n:check && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.config.ts",
-    "test:integration": "node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.config.ts src/trpc/routers/__tests__/*.integration.test.ts",
+    "test": "bun run i18n:check && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.config.ts && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.global.config.ts",
+    "test:integration": "node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.config.ts src/trpc/routers/__tests__/*.integration.test.ts && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.global.config.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
