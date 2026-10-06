@@ -30,6 +30,18 @@ describe("contact contracts", () => {
     expect(badId.error?.issues.map((issue) => issue.path.join("."))).toContain("peppolEndpointId")
   })
 
+  it("rejects endpoint IDs that break the PEPPOL-COMMON rules", () => {
+    for (const [id, scheme] of [
+      ["NL12", "9944"],
+      ["123456789", "0192"],
+      ["5790000000001", "0088"],
+    ]) {
+      const result = contactCreateInputSchema.safeParse({ name: "Acme", peppolEndpointId: id, peppolEndpointScheme: scheme })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues.map((issue) => issue.path.join("."))).toContain("peppolEndpointId")
+    }
+  })
+
   it("requires the endpoint ID and scheme together", () => {
     expect(contactCreateInputSchema.safeParse({ name: "Acme", peppolEndpointId: "12345678" }).success).toBe(false)
     expect(contactCreateInputSchema.safeParse({ name: "Acme", peppolEndpointScheme: "0184" }).success).toBe(false)

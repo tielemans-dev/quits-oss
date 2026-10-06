@@ -15,6 +15,8 @@ export const daExportsMessages = {
   "exports.einvoice.missing.seller.taxId": "Jeres momsnummer (Indstillinger).",
   "exports.einvoice.missing.seller.legalId":
     "Jeres CVR-nummer. Danske e-fakturaer skal have det: tilføj et CVR-nummer eller et DK-momsnummer (Indstillinger).",
+  "exports.einvoice.missing.seller.legalIdInvalid":
+    "Jeres registreringsnummer (CVR, GLN eller DUNS) er ugyldigt for sit skema, fx et forkert kontrolciffer. Ret det under Indstillinger.",
   "exports.einvoice.missing.seller.electronicAddress":
     "Jeres elektroniske Peppol-adresse. Den udledes af momsnummeret for understøttede lande.",
   "exports.einvoice.missing.seller.electronicAddressInvalid":
@@ -22,6 +24,8 @@ export const daExportsMessages = {
   "exports.einvoice.missing.buyer.name": "Kundens navn.",
   "exports.einvoice.missing.buyer.country": "Kundens land (brug et landenavn eller en landekode på 2 bogstaver).",
   "exports.einvoice.missing.buyer.address": "Kundens adresse eller by.",
+  "exports.einvoice.missing.buyer.legalIdInvalid":
+    "Kundens registreringsnummer (CVR, GLN eller DUNS) er ugyldigt for sit skema, fx et forkert kontrolciffer. Ret det på kunden.",
   "exports.einvoice.missing.buyer.electronicAddress":
     "Kundens Peppol-endpoint-id og -skema eller et momsnummer, kunden kan modtage på.",
   "exports.einvoice.missing.buyer.electronicAddressInvalid":

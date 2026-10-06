@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowLeft, Download, Mail } from "lucide-react"
 import { parseBuyerSnapshot } from "@yaip/contracts/documents"
 import { trpc } from "../../../trpc/client"
+import { useSession } from "../../../lib/auth-client"
 import { formatCurrency, formatDate } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
 import type { OrgSettingsForPdf } from "../../../lib/invoice-pdf"
@@ -52,13 +53,20 @@ function CreditNoteDetailPage() {
   const [sending, setSending] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [canSend, setCanSend] = useState(false)
+  // Capabilities belong to the active organization; `undefined` while the session loads.
+  const { data: session, isPending: sessionPending } = useSession()
+  const organizationId = sessionPending ? undefined : (session?.session.activeOrganizationId ?? null)
+  const latestLoad = useRef(0)
 
   const load = useCallback(async () => {
+    const request = ++latestLoad.current
     const [data, settings, capabilities] = await Promise.all([
       trpc.creditNotes.get.query({ id: creditNoteId }),
       trpc.settings.get.query(),
       trpc.creditNotes.capabilities.query(),
     ])
+    // A late answer from before an organization switch must not restore old rights.
+    if (request !== latestLoad.current) return
     setCreditNote(data)
     setCanSend(capabilities.canSend)
     setOrg({
@@ -73,11 +81,14 @@ function CreditNoteDetailPage() {
     })
   }, [creditNoteId])
 
+  // Switching organization keeps the page mounted, so start over with nothing allowed.
   useEffect(() => {
+    setCanSend(false)
+    if (organizationId === undefined) return
     load()
       .catch(() => setError(t("creditNotes.detail.notFound")))
       .finally(() => setLoading(false))
-  }, [load, t])
+  }, [load, t, organizationId])
 
   async function handleSend() {
     if (!creditNote) return

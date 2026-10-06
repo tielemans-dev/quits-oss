@@ -5,6 +5,7 @@ import {
   REMINDER_OFFSET_MAX_DAYS,
   REMINDER_OFFSET_MIN_DAYS,
 } from "@yaip/contracts/reminders"
+import { useSession } from "../../lib/auth-client"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
 import { Button } from "../ui/button"
@@ -57,8 +58,16 @@ export function ReminderPolicyCard() {
   const [offsets, setOffsets] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null)
+  // The policy and the user's rights belong to the active organization; `undefined` while loading.
+  const { data: session, isPending: sessionPending } = useSession()
+  const organizationId = sessionPending ? undefined : (session?.session.activeOrganizationId ?? null)
 
+  // Switching organization keeps the card mounted, so start over read-only and reload.
   useEffect(() => {
+    setLoaded(false)
+    setCanUpdate(false)
+    setMessage(null)
+    if (organizationId === undefined) return
     let cancelled = false
     // Start inside a promise chain so any client failure lands in the error state.
     Promise.resolve()
@@ -76,7 +85,7 @@ export function ReminderPolicyCard() {
     return () => {
       cancelled = true
     }
-  }, [t])
+  }, [t, organizationId])
 
   const editable = loaded && canUpdate
   const parsed = useMemo(() => parseOffsets(offsets), [offsets])

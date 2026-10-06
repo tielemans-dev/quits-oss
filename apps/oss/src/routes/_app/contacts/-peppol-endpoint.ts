@@ -1,4 +1,4 @@
-import { peppolEndpointIssue } from "@yaip/contracts/exports"
+import { normalizePeppolIdentifier, peppolEndpointIssue } from "@yaip/contracts/exports"
 
 export type PeppolEndpointFormError =
   | "exports.contact.peppolEndpoint.incomplete"
@@ -22,5 +22,6 @@ export function readPeppolEndpoint(form: FormData): PeppolEndpointFormValue {
   const issue = peppolEndpointIssue(scheme, id)
   if (issue === "scheme") return { ok: false, error: "exports.contact.peppolEndpointScheme.invalid" }
   if (issue === "id") return { ok: false, error: "exports.contact.peppolEndpointId.invalid" }
-  return { ok: true, peppolEndpointId: id, peppolEndpointScheme: scheme }
+  // Save the identifier exactly as the e-invoice export will emit it.
+  return { ok: true, peppolEndpointId: normalizePeppolIdentifier(scheme, id), peppolEndpointScheme: scheme }
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { BellRing } from "lucide-react"
 import type { InvoiceReminderRecord, ReminderStatus } from "@yaip/contracts/reminders"
+import { useSession } from "../../../lib/auth-client"
 import { formatDate } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
 import { trpc } from "../../../trpc/client"
@@ -19,6 +20,8 @@ import {
 import type { InvoicePanelProps } from "./types"
 
 type ReminderCapabilities = { canSendNow: boolean; canPause: boolean }
+
+const NO_CAPABILITIES: ReminderCapabilities = { canSendNow: false, canPause: false }
 
 type RemindersState = {
   remindersPaused: boolean
@@ -41,7 +44,10 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
   const { t } = useI18n()
   const [state, setState] = useState<RemindersState | null>(null)
   // Nothing is allowed until the server says so; accountants may only look.
-  const [capabilities, setCapabilities] = useState<ReminderCapabilities>({ canSendNow: false, canPause: false })
+  const [capabilities, setCapabilities] = useState<ReminderCapabilities>(NO_CAPABILITIES)
+  // Capabilities belong to the active organization; `undefined` while the session loads.
+  const { data: session, isPending: sessionPending } = useSession()
+  const organizationId = sessionPending ? undefined : (session?.session.activeOrganizationId ?? null)
   const [busy, setBusy] = useState<"pause" | "send" | null>(null)
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null)
 
@@ -53,7 +59,10 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
     }
   }, [invoice.id, t])
 
+  // Switching organization keeps the panel mounted, so start over with nothing allowed.
   useEffect(() => {
+    setCapabilities(NO_CAPABILITIES)
+    if (organizationId === undefined) return
     let cancelled = false
     Promise.resolve()
       .then(() => trpc.reminders.capabilities.query())
@@ -64,7 +73,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [organizationId])
 
   // Reload when the invoice changes status, e.g. after a payment settles it.
   useEffect(() => {

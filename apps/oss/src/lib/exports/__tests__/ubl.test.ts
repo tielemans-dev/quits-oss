@@ -247,4 +247,28 @@ describe("UBL e-invoice", () => {
       validateEinvoice(invoice({ seller: { ...seller, electronicAddress: { scheme: "0184", id: "1234" } } }))
     ).toEqual(["seller.electronicAddressInvalid"])
   })
+
+  it("rejects endpoints that break the PEPPOL-COMMON rules, checking the exact exported value", () => {
+    expect(
+      validateEinvoice(invoice({ buyer: { ...buyer, electronicAddress: { scheme: "9944", id: "NL12" } } }))
+    ).toEqual(["buyer.electronicAddressInvalid"])
+    expect(
+      validateEinvoice(invoice({ buyer: { ...buyer, electronicAddress: { scheme: "0192", id: "123456789" } } }))
+    ).toEqual(["buyer.electronicAddressInvalid"])
+    expect(
+      validateEinvoice(invoice({ buyer: { ...buyer, electronicAddress: { scheme: "9944", id: "nl123456789b01" } } }))
+    ).toEqual(["buyer.electronicAddressInvalid"])
+  })
+
+  it("rejects legal identifiers with a scheme whose value breaks its rule (PEPPOL-COMMON-R040)", () => {
+    expect(
+      validateEinvoice(invoice({ buyer: { ...buyer, legalId: { id: "5790000000001", scheme: "0088" } } }))
+    ).toEqual(["buyer.legalIdInvalid"])
+    expect(
+      validateEinvoice(invoice({ seller: { ...seller, legalId: { id: "1234", scheme: "0184" } } }))
+    ).toEqual(["seller.legalIdInvalid"])
+    expect(
+      validateEinvoice(invoice({ buyer: { ...buyer, legalId: { id: "5790000000005", scheme: "0088" } } }))
+    ).toEqual([])
+  })
 })

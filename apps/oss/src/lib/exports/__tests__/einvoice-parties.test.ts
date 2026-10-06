@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { buildBuyerParty, buildSellerParty } from "../einvoice"
+import { legalIdentifier } from "../parties"
 
 const contact = {
   name: "Hans Müller",
@@ -118,5 +119,46 @@ describe("e-invoice parties", () => {
   it("keeps an explicit endpoint even when it is invalid so the export can report it", () => {
     const buyer = buildBuyerParty(null, { ...contact, peppolEndpointId: "123", peppolEndpointScheme: "0184" })
     expect(buyer.electronicAddress).toEqual({ scheme: "0184", id: "123" })
+  })
+
+  it("emits the normalized explicit endpoint it validates", () => {
+    const buyer = buildBuyerParty(null, {
+      ...contact,
+      country: "NL",
+      peppolEndpointId: " nl123456789b01 ",
+      peppolEndpointScheme: "9944",
+    })
+    expect(buyer.electronicAddress).toEqual({ scheme: "9944", id: "NL123456789B01" })
+  })
+
+  it("keeps a known-scheme legal identifier with a bad checksum so the export can report it", () => {
+    expect(legalIdentifier([{ scheme: "gln", value: "5790000000001" }], "NL", null)).toEqual({
+      id: "5790000000001",
+      scheme: "0088",
+    })
+    expect(legalIdentifier([{ scheme: "gln", value: "579 0000 000005" }], "NL", null)).toEqual({
+      id: "5790000000005",
+      scheme: "0088",
+    })
+    // A malformed CVR is reported rather than silently dropped.
+    expect(legalIdentifier([{ scheme: "cvr", value: "1234" }], "DK", null)).toEqual({ id: "1234", scheme: "0184" })
+  })
+
+  it("prefers a valid legal identifier over an invalid one", () => {
+    expect(
+      legalIdentifier(
+        [
+          { scheme: "gln", value: "5790000000001" },
+          { scheme: "duns", value: "123456789" },
+        ],
+        "NL",
+        null
+      )
+    ).toMatchObject({ id: "123456789", scheme: "0060" })
+    // A Danish CVR derived from the VAT number wins over a malformed CVR tax ID.
+    expect(legalIdentifier([{ scheme: "cvr", value: "1234" }], "DK", "DK12345678")).toMatchObject({
+      id: "12345678",
+      scheme: "0184",
+    })
   })
 })

@@ -1,13 +1,21 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 
 const api = vi.hoisted(() => ({
   creditNotesList: vi.fn(),
   creditNotesCapabilities: vi.fn(),
   remindersList: vi.fn(),
   remindersCapabilities: vi.fn(),
+}))
+
+const auth = vi.hoisted(() => ({
+  session: { data: { session: { activeOrganizationId: "org_a" } }, isPending: false },
+}))
+
+vi.mock("../../../../lib/auth-client", () => ({
+  useSession: () => auth.session,
 }))
 
 vi.mock("../../../../trpc/client", () => ({
@@ -74,7 +82,34 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  auth.session = { data: { session: { activeOrganizationId: "org_a" } }, isPending: false }
 })
+
+const memberCapabilities = {
+  creditNotes: { canCreate: true, canSend: true },
+  reminders: { canSendNow: true, canPause: true, canUpdatePolicy: false },
+}
+const accountantCapabilities = {
+  creditNotes: { canCreate: false, canSend: false },
+  reminders: { canSendNow: false, canPause: false, canUpdatePolicy: false },
+}
+
+function panels() {
+  return (
+    <>
+      <InvoiceCreditNotesPanel invoice={invoice} onChanged={onChanged} />
+      <InvoiceRemindersPanel invoice={invoice} onChanged={onChanged} />
+    </>
+  )
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
 
 describe("invoice lifecycle panels by role", () => {
   it("offers a member credit notes, reminder sending, and pausing", async () => {
@@ -112,5 +147,52 @@ describe("invoice lifecycle panels by role", () => {
     expect(checkbox.disabled).toBe(true)
     expect(screen.queryByRole("button", { name: /creditNotes.action.create/ })).toBeNull()
     expect(screen.queryByRole("button", { name: /reminders.panel.sendNow/ })).toBeNull()
+  })
+
+  it("hides member controls as soon as the user switches to an organization where they are an accountant", async () => {
+    api.creditNotesCapabilities.mockResolvedValueOnce(memberCapabilities.creditNotes)
+    api.remindersCapabilities.mockResolvedValueOnce(memberCapabilities.reminders)
+    const { rerender } = render(panels())
+    expect(await screen.findByRole("button", { name: /creditNotes.action.create/ })).toBeTruthy()
+    expect(await screen.findByRole("button", { name: /reminders.panel.sendNow/ })).toBeTruthy()
+
+    const creditNotes = deferred<typeof accountantCapabilities.creditNotes>()
+    const reminders = deferred<typeof accountantCapabilities.reminders>()
+    api.creditNotesCapabilities.mockReturnValueOnce(creditNotes.promise)
+    api.remindersCapabilities.mockReturnValueOnce(reminders.promise)
+    // setActive() + router.invalidate() keep the panels mounted; only the session changes.
+    auth.session = { data: { session: { activeOrganizationId: "org_b" } }, isPending: false }
+    rerender(panels())
+
+    // Nothing is allowed while the new organization's capabilities load.
+    expect(screen.queryByRole("button", { name: /creditNotes.action.create/ })).toBeNull()
+    expect(screen.queryByRole("button", { name: /reminders.panel.sendNow/ })).toBeNull()
+    expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(true)
+
+    await act(async () => {
+      creditNotes.resolve(accountantCapabilities.creditNotes)
+      reminders.resolve(accountantCapabilities.reminders)
+    })
+    expect(await screen.findByText("creditNotes.panel.readOnly")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /reminders.panel.sendNow/ })).toBeNull()
+    expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(true)
+    expect(api.creditNotesCapabilities).toHaveBeenCalledTimes(2)
+    expect(api.remindersCapabilities).toHaveBeenCalledTimes(2)
+  })
+
+  it("shows member controls after switching from an accountant organization", async () => {
+    api.creditNotesCapabilities.mockResolvedValueOnce(accountantCapabilities.creditNotes)
+    api.remindersCapabilities.mockResolvedValueOnce(accountantCapabilities.reminders)
+    const { rerender } = render(panels())
+    expect(await screen.findByText("creditNotes.panel.readOnly")).toBeTruthy()
+
+    api.creditNotesCapabilities.mockResolvedValueOnce(memberCapabilities.creditNotes)
+    api.remindersCapabilities.mockResolvedValueOnce(memberCapabilities.reminders)
+    auth.session = { data: { session: { activeOrganizationId: "org_b" } }, isPending: false }
+    rerender(panels())
+
+    expect(await screen.findByRole("button", { name: /creditNotes.action.create/ })).toBeTruthy()
+    expect(await screen.findByRole("button", { name: /reminders.panel.sendNow/ })).toBeTruthy()
+    await waitFor(() => expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(false))
   })
 })
