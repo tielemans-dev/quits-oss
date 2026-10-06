@@ -359,6 +359,46 @@ describeIfDatabase("email outbox", () => {
     })
   })
 
+  it("does not count a delivery that could not reach the provider as possibly delivered", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
+    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const job = await deliveryJob(org.organizationId)
+    // The first request's outcome was lost; then the process restarts without an API key.
+    await prisma.job.update({ where: { id: job.id }, data: { payload: { ...(job.payload as object), requests: 0 } } })
+    delete process.env.RESEND_API_KEY
+    await prisma.job.update({ where: { id: job.id }, data: { attempts: EMAIL_DELIVERY_ATTEMPTS - 1 } })
+    await makeDue(job.id)
+    vi.mocked(deliver).mockClear()
+    await runDueJobs({ organizationIds: [org.organizationId] })
+
+    expect(deliver).not.toHaveBeenCalled()
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({
+      status: "draft",
+      lastEmailAttemptOutcome: "failed",
+    })
+    expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "withdrawn" })
+  })
+
+  it("treats a delivery queued before requests were counted as possibly delivered", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
+    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const job = await deliveryJob(org.organizationId)
+    const { requests: _requests, ...legacy } = job.payload as Record<string, unknown>
+    await prisma.job.update({ where: { id: job.id }, data: { payload: legacy as object } })
+    await prisma.$executeRaw`UPDATE "job" SET "createdAt" = NOW() - INTERVAL '25 hours' WHERE "id" = ${job.id}`
+    await makeDue(job.id)
+    vi.mocked(deliver).mockClear()
+    await runDueJobs({ organizationIds: [org.organizationId] })
+
+    expect(deliver).not.toHaveBeenCalled()
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({
+      status: "sent",
+      lastEmailAttemptOutcome: "unconfirmed",
+    })
+  })
+
   /** A sent invoice with a due scheduled reminder whose email is queued but not yet attempted. */
   async function queuedScheduledReminder() {
     const ctx = await setup()

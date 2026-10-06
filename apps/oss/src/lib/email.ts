@@ -26,14 +26,26 @@ export function formatMultilineHtml(value: string): string {
   return escapeHtml(value).replaceAll("\n", "<br />")
 }
 
+let _resendKey: string | undefined
+
 function getResend(): Resend {
-  if (!_resend) {
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not configured")
-    }
-    _resend = new Resend(process.env.RESEND_API_KEY)
+  const key = process.env.RESEND_API_KEY
+  if (!key) {
+    throw new Error("RESEND_API_KEY is not configured")
+  }
+  if (!_resend || _resendKey !== key) {
+    _resend = new Resend(key)
+    _resendKey = key
   }
   return _resend
+}
+
+/**
+ * Throws if email cannot be sent from this process (e.g. no API key), before any request is made.
+ * Lets callers tell a local configuration problem from a request whose outcome is unknown.
+ */
+export function ensureEmailProvider() {
+  getResend()
 }
 
 export class EmailSendError extends Error {

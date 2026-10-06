@@ -2,7 +2,7 @@ import { Effect } from "effect"
 import { z } from "zod"
 import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
-import { deliver, EmailSendError, type EmailMessage } from "../../lib/email"
+import { deliver, EmailSendError, ensureEmailProvider, type EmailMessage } from "../../lib/email"
 import { appLogger } from "../../lib/observability"
 import type { Actor } from "../actor"
 import { appendEvents } from "../events"
@@ -166,6 +166,7 @@ export const enqueueEmailDelivery = (input: {
       actor: command.actor,
       commandId: command.commandId,
       approvedByUserId: command.approvedByUserId,
+      requests: 0,
     }
     const key = deliveryKey(input.idempotencyKey)
     command.enqueue({ type: EMAIL_DELIVERY_JOB, payload, dedupeKey: key })
@@ -200,6 +201,7 @@ async function settle(
   })
 }
 
+const NOT_CONFIGURED_MESSAGE = "Email delivery is not configured, so nothing was sent. Send it again once it is."
 const NEVER_SENT_MESSAGE = "The email could not be sent, and nothing was delivered. Send it again."
 const UNCONFIRMED_MESSAGE =
   "The email provider never confirmed delivery, so the customer may or may not have received it."
@@ -228,13 +230,21 @@ async function settleDecision(
   }
 }
 
+/**
+ * Provider requests a delivery has started. Payloads written before requests were counted only
+ * know how often the job ran, and any run may have reached the provider.
+ */
+function requestsStarted(payload: DeliveryPayload, jobAttempts: number) {
+  return payload.requests ?? (jobAttempts > 0 ? 1 : 0)
+}
+
 const NOT_WAITING_MESSAGE = "The document no longer waited for this delivery"
 
 /** What a delivery that can no longer settle its document is recorded as. */
-const orphanedResult = (payload: DeliveryPayload): DeliveryResult =>
+const orphanedResult = (payload: DeliveryPayload, jobAttempts: number): DeliveryResult =>
   payload.providerMessageId
     ? { outcome: "delivered", message: null }
-    : (payload.requests ?? 0) > 0
+    : requestsStarted(payload, jobAttempts) > 0
       ? { outcome: "unconfirmed", message: NOT_WAITING_MESSAGE }
       : { outcome: "withdrawn", message: NOT_WAITING_MESSAGE }
 
@@ -248,7 +258,7 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
     // Recorded so callers never wait on it; an outcome already recorded is kept.
     await prisma.job.updateMany({
       where: { id: job.id, result: { equals: Prisma.DbNull } },
-      data: { result: orphanedResult(payload) },
+      data: { result: orphanedResult(payload, job.attempts - 1) },
     })
     return
   }
@@ -264,7 +274,8 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
 
   // Every earlier request ended without an answer (an answer would have settled it), so any of
   // them may have been delivered.
-  const requests = payload.requests ?? 0
+  // This run's claim counts in job.attempts, so earlier runs are attempts - 1.
+  const requests = requestsStarted(payload, job.attempts - 1)
   const possiblyDelivered = requests > 0
   if (possiblyDelivered && Date.now() - job.createdAt.getTime() >= IDEMPOTENCY_WINDOW_MS) {
     return settleDecision(job, payload, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
@@ -279,6 +290,23 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
         ? { reason: "unconfirmed", message: `${UNCONFIRMED_MESSAGE} Further attempts were stopped: ${withdrawal}` }
         : { reason: "withdrawn", message: withdrawal }
     )
+  }
+
+  // A process that cannot send at all makes no request; that is not an unknown outcome.
+  try {
+    ensureEmailProvider()
+  } catch (error) {
+    if (job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {
+      return settleDecision(
+        job,
+        payload,
+        completion,
+        possiblyDelivered
+          ? { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE }
+          : { reason: "withdrawn", message: NOT_CONFIGURED_MESSAGE }
+      )
+    }
+    throw error
   }
 
   // Counted before the request, so a request whose outcome is lost is never mistaken for none.
@@ -340,7 +368,7 @@ export async function settleAbandonedDeliveries(input: { organizationIds?: reado
       if (!completion) throw new Error(`No delivery completion registered for ${payload.completion.kind}`)
       if (!(await completion.pending(prisma, payload.completion.target))) {
         // Nothing left to settle; recorded so the sweep does not look at this job again.
-        await prisma.job.update({ where: { id: job.id }, data: { result: orphanedResult(payload) } })
+        await prisma.job.update({ where: { id: job.id }, data: { result: orphanedResult(payload, job.attempts) } })
         continue
       }
       await settle(
@@ -353,7 +381,7 @@ export async function settleAbandonedDeliveries(input: { organizationIds?: reado
               delivered: false,
               failure:
                 payload.decision ??
-                ((payload.requests ?? 0) > 0
+                (requestsStarted(payload, job.attempts) > 0
                   ? { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE }
                   : { reason: "withdrawn", message: NEVER_SENT_MESSAGE }),
             }
