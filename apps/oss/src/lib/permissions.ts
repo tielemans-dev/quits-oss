@@ -45,7 +45,6 @@ export const memberGrants = {
   catalog: ["create", "read", "update"],
   contact: ["create", "read", "update"],
   settings: ["read"],
-  export: ["read"],
 } as const
 
 export const accountantGrants = {

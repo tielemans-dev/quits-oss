@@ -337,6 +337,10 @@ ALTER INDEX "invoice_organization_id_payment_status_idx" RENAME TO "invoice_orga
 
 
 -- Backfill: invoices already marked paid get a payment record for their full total.
+-- Opening Stripe checkout stored a session id on the invoice before any payment, so a session id
+-- alone does not prove Stripe collected the money. Only the completed-checkout webhook also stored
+-- a payment intent; payments without one are recorded as "other" and keep no Stripe ids, so a
+-- later checkout completion is still recorded instead of being treated as already applied.
 INSERT INTO "payment" ("id", "organizationId", "invoiceId", "amount", "currency", "paidAt", "method", "source", "stripeCheckoutSessionId", "stripePaymentIntentId", "createdAt", "updatedAt")
 SELECT
   'pay_' || replace(gen_random_uuid()::text, '-', ''),
@@ -345,9 +349,9 @@ SELECT
   i."totalGross",
   i."currency",
   COALESCE(i."paidAt", i."updatedAt"),
-  CASE WHEN i."stripeCheckoutSessionId" IS NOT NULL THEN 'stripe' ELSE 'other' END,
+  CASE WHEN i."stripePaymentIntentId" IS NOT NULL THEN 'stripe' ELSE 'other' END,
   'migration',
-  i."stripeCheckoutSessionId",
+  CASE WHEN i."stripePaymentIntentId" IS NOT NULL THEN i."stripeCheckoutSessionId" END,
   i."stripePaymentIntentId",
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP

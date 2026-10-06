@@ -5,6 +5,7 @@ import { prisma } from "../../lib/db"
 import { appLogger } from "../../lib/observability"
 import { ExternalFailure } from "../errors"
 import { resolveInvoiceEmailContext } from "./invoice-email"
+import { Command } from "../services"
 
 export { requireRecipientEmail } from "./invoice-email"
 
@@ -49,6 +50,8 @@ export function deliverQuoteEmail(input: {
   to: string
   publicQuoteUrl: string | null
   failureMessage: string
+  /** Scope for the provider idempotency key; see `DeliveryOptions.idempotencyScope`. */
+  idempotencyScope?: string
   failureLogEvent: string
   organizationId: string
 }) {
@@ -82,29 +85,30 @@ export function deliverQuoteEmail(input: {
         },
         contactName: quote.contact.name,
         publicQuoteUrl: input.publicQuoteUrl,
-      }),
+      }, { idempotencyScope: input.idempotencyScope }),
     catch: (cause) => cause,
   }).pipe(
     Effect.catchAll((cause) =>
-      Effect.promise(async () => {
+      Effect.gen(function* () {
+        const command = yield* Command
         quoteLogger.error(input.failureLogEvent, {
           organizationId: input.organizationId,
           quoteId: quote.id,
           error: cause,
         })
-        await prisma.quote.update({
-          where: { id: quote.id },
-          data: createEmailDeliveryAttempt({
-            outcome: "failed",
-            code: "send_failed",
-            message: "Failed to send quote email.",
-          }),
-        })
-      }).pipe(
-        Effect.flatMap(() =>
-          Effect.fail(new ExternalFailure({ message: input.failureMessage, service: "email", cause }))
+        // Recorded after the rollback so the failed attempt survives the command failing.
+        command.onRollback(() =>
+          prisma.quote.update({
+            where: { id: quote.id },
+            data: createEmailDeliveryAttempt({
+              outcome: "failed",
+              code: "send_failed",
+              message: "Failed to send quote email.",
+            }),
+          })
         )
-      )
+        return yield* new ExternalFailure({ message: input.failureMessage, service: "email", cause })
+      })
     ),
     Effect.as({ usingBrandedDomain: envelope.usingBrandedDomain })
   )

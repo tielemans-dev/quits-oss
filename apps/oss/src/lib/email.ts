@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
@@ -52,13 +53,35 @@ export type EmailMessage = Parameters<Resend["emails"]["send"]>[0]
  * Resend reports API failures in the result instead of throwing.
  * Callers rely on a rejected promise to record a failed delivery attempt.
  */
+export type DeliveryOptions = {
+  /** Sent as-is as the provider idempotency key. */
+  idempotencyKey?: string
+  /**
+   * Derives the idempotency key from this scope plus the message content, so the provider drops
+   * an identical message (for example a send retried after its database commit was lost) while a
+   * changed message is still delivered.
+   */
+  idempotencyScope?: string
+}
+
+function contentIdempotencyKey(scope: string, message: EmailMessage) {
+  const digest = createHash("sha256")
+    .update(JSON.stringify([message.from, message.to, message.subject, message.html]))
+    .digest("hex")
+    .slice(0, 32)
+  return `${scope}:${digest}`.slice(0, 256)
+}
+
 export async function deliver(
   message: EmailMessage,
-  options: { idempotencyKey?: string } = {}
+  options: DeliveryOptions = {}
 ): Promise<{ id: string }> {
+  const idempotencyKey =
+    options.idempotencyKey ??
+    (options.idempotencyScope ? contentIdempotencyKey(options.idempotencyScope, message) : undefined)
   const result = await getResend().emails.send(
     message,
-    options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined
+    idempotencyKey ? { idempotencyKey } : undefined
   )
   if (result.error) {
     throw new EmailSendError(result.error.name, result.error.message)
@@ -269,7 +292,7 @@ export async function sendInvoiceEmail({
   org,
   contactName,
   publicPaymentUrl,
-}: SendInvoiceEmailParams) {
+}: SendInvoiceEmailParams, options: DeliveryOptions = {}) {
   const content = buildInvoiceEmailContent({
     fromName,
     fromEmail,
@@ -286,7 +309,7 @@ export async function sendInvoiceEmail({
     subject: content.subject,
     html: content.html,
     ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-  })
+  }, options)
 }
 
 // ── Quote email ────────────────────────────────────────────────────
@@ -388,7 +411,7 @@ export async function sendQuoteEmail({
   org,
   contactName,
   publicQuoteUrl,
-}: SendQuoteEmailParams) {
+}: SendQuoteEmailParams, options: DeliveryOptions = {}) {
   const content = buildQuoteEmailContent({
     fromName,
     fromEmail,
@@ -405,7 +428,7 @@ export async function sendQuoteEmail({
     subject: content.subject,
     html: content.html,
     ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-  })
+  }, options)
 }
 
 // ── Invitation email ───────────────────────────────────────────────

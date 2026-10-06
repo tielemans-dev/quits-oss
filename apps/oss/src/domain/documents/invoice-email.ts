@@ -10,6 +10,7 @@ import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { prisma } from "../../lib/db"
 import { ExternalFailure, InvalidState } from "../errors"
+import { Command } from "../services"
 
 type Decimalish = { toNumber(): number }
 
@@ -72,8 +73,8 @@ export function requireRecipientEmail(contact: { email: string | null }) {
 }
 
 /**
- * Sends the invoice email. On failure the failed attempt is written outside the command's
- * transaction so it survives the rollback, then the command fails.
+ * Sends the invoice email. On failure the failed attempt is recorded after the command's
+ * transaction rolls back, then the command fails.
  */
 export function deliverInvoiceEmail(input: {
   invoice: InvoiceForEmail
@@ -81,6 +82,8 @@ export function deliverInvoiceEmail(input: {
   to: string
   publicPaymentUrl: string | null
   failureMessage: string
+  /** Scope for the provider idempotency key; see `DeliveryOptions.idempotencyScope`. */
+  idempotencyScope?: string
 }) {
   const { envelope } = resolveInvoiceEmailContext(input.settings)
   const { invoice } = input
@@ -112,24 +115,25 @@ export function deliverInvoiceEmail(input: {
         },
         contactName: invoice.contact.name,
         publicPaymentUrl: input.publicPaymentUrl,
-      }),
+      }, { idempotencyScope: input.idempotencyScope }),
     catch: (cause) => cause,
   }).pipe(
     Effect.catchAll((cause) =>
-      Effect.promise(() =>
-        prisma.invoice.update({
-          where: { id: invoice.id },
-          data: createEmailDeliveryAttempt({
-            outcome: "failed",
-            code: "send_failed",
-            message: "Failed to send invoice email.",
-          }),
-        })
-      ).pipe(
-        Effect.flatMap(() =>
-          Effect.fail(new ExternalFailure({ message: input.failureMessage, service: "email", cause }))
+      Effect.gen(function* () {
+        const command = yield* Command
+        // Recorded after the rollback so the failed attempt survives the command failing.
+        command.onRollback(() =>
+          prisma.invoice.update({
+            where: { id: invoice.id },
+            data: createEmailDeliveryAttempt({
+              outcome: "failed",
+              code: "send_failed",
+              message: "Failed to send invoice email.",
+            }),
+          })
         )
-      )
+        return yield* new ExternalFailure({ message: input.failureMessage, service: "email", cause })
+      })
     ),
     Effect.as({ usingBrandedDomain: envelope.usingBrandedDomain })
   )

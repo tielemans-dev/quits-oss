@@ -16,6 +16,7 @@ import { applyPublicQuoteDecision } from "../../lib/quotes/public"
 import { getPublicQuoteUrl } from "../../lib/quotes/public-url"
 import { defineCommand } from "../command"
 import { assessCompliance, loadDocumentContext } from "../documents/context"
+import { lockDocument } from "../documents/locks"
 import { allocateDocumentNumber } from "../documents/numbering"
 import { impliedTaxRate, priceDocument } from "../documents/pricing"
 import {
@@ -248,6 +249,7 @@ export const sendQuote = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const { organizationId, now } = command
+      yield* lockDocument("quote", input.id)
       const quote = yield* findQuote(input.id)
 
       if (quote.status !== "draft") {
@@ -307,6 +309,7 @@ export const sendQuote = defineCommand({
           settings,
           to: recipient,
           publicQuoteUrl,
+          idempotencyScope: `quote-send:${quote.id}`,
           failureMessage: "Failed to send quote email. Quote was not marked as sent.",
           failureLogEvent: "quote.email.failed",
           organizationId,
@@ -348,6 +351,7 @@ export const resendQuoteEmail = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const { organizationId } = command
+      yield* lockDocument("quote", input.id)
       const quote = yield* findQuote(input.id)
 
       if (!["sent", "accepted", "rejected"].includes(quote.status)) {
@@ -380,7 +384,8 @@ export const resendQuoteEmail = defineCommand({
         settings,
         to: recipient,
         publicQuoteUrl,
-        failureMessage: "Failed to resend quote email.",
+        idempotencyScope: `quote-resend:${command.commandId}`,
+          failureMessage: "Failed to resend quote email.",
         failureLogEvent: "quote.email.resend_failed",
         organizationId,
       })

@@ -21,6 +21,7 @@ import { refreshInvoiceSettlement } from "../documents/settlement"
 import { buildBuyerSnapshot, buildSellerSnapshot } from "../documents/snapshots"
 import { ExternalFailure, InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
+import { lockDocument } from "../documents/locks"
 
 const creditNoteLogger = appLogger.child("credit-notes")
 
@@ -233,6 +234,7 @@ export const sendCreditNote = defineCommand({
       const command = yield* Command
       const { organizationId, now } = command
 
+      yield* lockDocument("creditNote", input.id)
       const creditNote = yield* Effect.promise(() =>
         db.creditNote.findFirst({
           where: { id: input.id, organizationId },
@@ -287,13 +289,13 @@ export const sendCreditNote = defineCommand({
               timezone: creditNote.timezone,
             },
             contactName: creditNote.contact.name,
-          }),
+          }, { idempotencyScope: `credit-note-send:${command.commandId}` }),
         catch: (cause) => cause,
       }).pipe(
-        // The failed attempt is written outside the command's transaction so it survives the
-        // rollback, matching invoice sending.
-        Effect.catchAll((cause) =>
-          Effect.promise(() =>
+        // Recorded after the rollback so the failed attempt survives the command failing,
+        // matching invoice sending.
+        Effect.catchAll((cause) => {
+          command.onRollback(() =>
             prisma.creditNote.update({
               where: { id: creditNote.id },
               data: createEmailDeliveryAttempt({
@@ -303,18 +305,15 @@ export const sendCreditNote = defineCommand({
                 message: "Failed to send credit note email.",
               }),
             })
-          ).pipe(
-            Effect.flatMap(() =>
-              Effect.fail(
-                new ExternalFailure({
-                  message: "Failed to send credit note email.",
-                  service: "email",
-                  cause,
-                })
-              )
-            )
           )
-        )
+          return Effect.fail(
+            new ExternalFailure({
+              message: "Failed to send credit note email.",
+              service: "email",
+              cause,
+            })
+          )
+        })
       )
 
       creditNoteLogger.info("credit_note.email.sent", {

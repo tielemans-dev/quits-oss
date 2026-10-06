@@ -315,7 +315,8 @@ describeIfDatabase("credit note commands", () => {
           to: "billing@acme.test",
           creditNote: expect.objectContaining({ number: creditNote.number, total: 50 }),
           invoice: expect.objectContaining({ number: "INV-0001" }),
-        })
+        }),
+        expect.objectContaining({ idempotencyScope: expect.stringMatching(/^credit-note-send:cmd_/) })
       )
       const stored = await prisma.creditNote.findUniqueOrThrow({ where: { id: creditNote.id } })
       expect(stored.lastEmailAttemptOutcome).toBe("sent")

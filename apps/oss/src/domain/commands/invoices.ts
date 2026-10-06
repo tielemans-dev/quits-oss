@@ -18,6 +18,7 @@ import {
   requireRecipientEmail,
   resolveInvoiceEmailContext,
 } from "../documents/invoice-email"
+import { lockDocument } from "../documents/locks"
 import { allocateDocumentNumber } from "../documents/numbering"
 import { impliedTaxRate, priceDocument } from "../documents/pricing"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
@@ -267,6 +268,7 @@ export const sendInvoice = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const { organizationId, now } = command
+      yield* lockDocument("invoice", input.id)
       const invoice = yield* findInvoice(input.id)
 
       if (invoice.status !== "draft") {
@@ -331,6 +333,7 @@ export const sendInvoice = defineCommand({
           settings,
           to: recipient,
           publicPaymentUrl,
+          idempotencyScope: `invoice-send:${invoice.id}`,
           failureMessage: "Failed to send invoice email. Invoice was not marked as sent.",
         })
         emailSent = true
@@ -369,6 +372,7 @@ export const resendInvoiceEmail = defineCommand({
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
+      yield* lockDocument("invoice", input.id)
       const invoice = yield* findInvoice(input.id)
 
       if (!["sent", "overdue"].includes(invoice.status)) {
@@ -397,7 +401,8 @@ export const resendInvoiceEmail = defineCommand({
         settings,
         to: recipient,
         publicPaymentUrl,
-        failureMessage: "Failed to resend invoice email.",
+        idempotencyScope: `invoice-resend:${command.commandId}`,
+          failureMessage: "Failed to resend invoice email.",
       })
       invoiceLogger.info("invoice.email.resent", {
         organizationId: command.organizationId,

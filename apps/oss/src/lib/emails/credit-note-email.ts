@@ -1,5 +1,6 @@
 import {
   deliver,
+  type DeliveryOptions,
   escapeHtml,
   formatMultilineHtml,
   fromAddress,
@@ -100,13 +101,19 @@ export function buildCreditNoteEmailContent({
   }
 }
 
-export async function sendCreditNoteEmail({ to, ...params }: SendCreditNoteEmailParams) {
+export async function sendCreditNoteEmail(
+  { to, ...params }: SendCreditNoteEmailParams,
+  options: DeliveryOptions = {}
+) {
   const content = buildCreditNoteEmailContent(params)
-  return deliver({
-    from: content.fromAddress,
-    to,
-    subject: content.subject,
-    html: content.html,
-    ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-  })
+  return deliver(
+    {
+      from: content.fromAddress,
+      to,
+      subject: content.subject,
+      html: content.html,
+      ...(content.replyTo ? { replyTo: content.replyTo } : {}),
+    },
+    options
+  )
 }

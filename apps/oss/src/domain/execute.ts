@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { Cause, Effect, Exit, Option } from "effect"
 import type { CommandError, CommandRecord } from "@yaip/contracts/agent"
 import { Prisma } from "../../generated/prisma/client"
@@ -151,18 +151,38 @@ export async function executeCommand<Input, Result>(
     }
   }
 
-  const provisionalId = options.resumeReceiptId ?? `cmd_${randomUUID().replaceAll("-", "")}`
+  // With a client request id the command id is stable across retries, so anything keyed by it
+  // (such as email idempotency keys) recognizes a retry of a rolled-back attempt.
+  const provisionalId =
+    options.resumeReceiptId ??
+    (clientRequestId
+      ? `cmd_${createHash("sha256").update(`${organizationId}\u0000${key}\u0000${clientRequestId}`).digest("hex").slice(0, 32)}`
+      : `cmd_${randomUUID().replaceAll("-", "")}`)
+
+  // A resumed (approved) command already has a receipt; failures before the handler runs must
+  // still finalize it, or it would stay "awaiting approval" forever.
+  const rejectEarly = async (error: DomainError) => {
+    const outcome = failure(provisionalId, error)
+    if (options.resumeReceiptId) {
+      await recordFailedReceipt<Result>(definition.type, outcome, {
+        organizationId,
+        key,
+        clientRequestId,
+        resumeReceiptId: options.resumeReceiptId,
+        transient: false,
+      })
+    }
+    return outcome
+  }
 
   if (actor.kind === "agent" && actor.mode === "read_only") {
-    return failure(
-      provisionalId,
+    return rejectEarly(
       new Forbidden({ message: "This agent key is read-only", permission: definition.permission })
     )
   }
 
   if (!actorCan(actor, definition.permission)) {
-    return failure(
-      provisionalId,
+    return rejectEarly(
       new Forbidden({
         message: `Missing permission ${definition.permission}`,
         permission: definition.permission,
@@ -172,8 +192,7 @@ export async function executeCommand<Input, Result>(
 
   const parsed = definition.input.safeParse(rawInput)
   if (!parsed.success) {
-    return failure(
-      provisionalId,
+    return rejectEarly(
       new ValidationFailed({
         message: "Invalid command input",
         issues: parsed.error.issues.map((issue) => ({
@@ -204,6 +223,7 @@ export async function executeCommand<Input, Result>(
 
   const events: PendingEvent[] = []
   const jobs: PendingJob[] = []
+  const rollbackWrites: Array<() => Promise<unknown>> = []
 
   try {
     const { result, jobIds } = await prisma.$transaction(async (tx) => {
@@ -217,6 +237,7 @@ export async function executeCommand<Input, Result>(
           approvedByUserId: options.approvedByUserId ?? null,
           emit: (event) => events.push(event),
           enqueue: (job) => jobs.push(job),
+          onRollback: (write) => rollbackWrites.push(write),
         })
       )
 
@@ -289,6 +310,16 @@ export async function executeCommand<Input, Result>(
 
     return { status: "completed", commandId: provisionalId, result }
   } catch (error) {
+    for (const write of rollbackWrites) {
+      await write().catch((writeError: unknown) =>
+        domainLogger.error("command.rollback_write_failed", {
+          commandType: definition.type,
+          organizationId,
+          error: writeError,
+        })
+      )
+    }
+
     if (clientRequestId && !options.resumeReceiptId && isUniqueViolation(error)) {
       const existing = await loadReceiptOutcome<Result>(organizationId, key, clientRequestId)
       if (existing) {
@@ -307,18 +338,22 @@ export async function executeCommand<Input, Result>(
     }
 
     const outcome = failure(provisionalId, error.domainError)
-    await recordFailedReceipt(definition.type, outcome, {
+    const winner = await recordFailedReceipt<Result>(definition.type, outcome, {
       organizationId,
       key,
       clientRequestId,
       resumeReceiptId: options.resumeReceiptId,
       transient: error.domainError._tag === "ExternalFailure",
     })
-    return outcome
+    return winner ?? outcome
   }
 }
 
-async function recordFailedReceipt(
+/**
+ * Stores a failure under the caller's request id. If a concurrent call with the same id already
+ * stored an outcome, that outcome wins and is returned so both callers see the same result.
+ */
+async function recordFailedReceipt<Result>(
   commandType: string,
   outcome: FailedOutcome,
   context: {
@@ -328,7 +363,7 @@ async function recordFailedReceipt(
     resumeReceiptId: string | undefined
     transient: boolean
   }
-) {
+): Promise<CommandOutcome<Result> | null> {
   const data = {
     commandType,
     status: "failed",
@@ -338,16 +373,21 @@ async function recordFailedReceipt(
 
   if (context.resumeReceiptId) {
     await prisma.commandReceipt.update({ where: { id: context.resumeReceiptId }, data })
-    return
+    return null
   }
 
-  // Transient failures (provider outages) stay retryable under the same key.
-  if (!context.clientRequestId || context.transient) {
-    return
+  if (!context.clientRequestId) {
+    return null
   }
 
-  await prisma.commandReceipt
-    .create({
+  // Transient failures (provider outages) stay retryable under the same key, but a concurrent
+  // call that already succeeded still wins.
+  if (context.transient) {
+    return loadReceiptOutcome<Result>(context.organizationId, context.key, context.clientRequestId)
+  }
+
+  try {
+    await prisma.commandReceipt.create({
       data: {
         id: outcome.commandId,
         organizationId: context.organizationId,
@@ -356,11 +396,13 @@ async function recordFailedReceipt(
         ...data,
       },
     })
-    .catch((error: unknown) => {
-      if (!isUniqueViolation(error)) {
-        throw error
-      }
-    })
+    return null
+  } catch (error) {
+    if (!isUniqueViolation(error)) {
+      throw error
+    }
+    return loadReceiptOutcome<Result>(context.organizationId, context.key, context.clientRequestId)
+  }
 }
 
 async function queueForApproval<Input, Result>(

@@ -21,6 +21,7 @@ import {
 import { recordPayment } from "../../domain/commands/payments"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { executeCommand } from "../../domain/execute"
+import { markOrganizationInvoicesOverdue } from "../../domain/features/overdue"
 import { router, authorizedProcedure } from "../init"
 import { unwrapOutcome } from "../outcome"
 
@@ -252,15 +253,10 @@ export const invoicesRouter = router({
     }),
 
   markOverdue: authorizedProcedure("invoice:update").mutation(async ({ ctx }) => {
-    const { count } = await prisma.invoice.updateMany({
-      where: {
-        organizationId: ctx.organizationId,
-        status: { in: ["sent", "viewed"] },
-        dueDate: { lt: new Date() },
-      },
-      data: { status: "overdue" },
-    })
-    return { count }
+    const { marked } = unwrapOutcome(
+      await executeCommand(markOrganizationInvoicesOverdue, {}, { actor: ctx.actor })
+    )
+    return { count: marked }
   }),
 
   /** Shortcut that records a payment for the remaining balance through `payment.record`. */

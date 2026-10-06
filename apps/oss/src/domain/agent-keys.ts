@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto"
 import { agentKeyCreateInputSchema, type AgentKeyCreateInput, type AgentMode } from "@yaip/contracts/agent"
 import { prisma } from "../lib/db"
 import { actorCan, type AgentActor, type UserActor } from "./actor"
+import { closePendingApprovals } from "./approvals"
 import { Forbidden, NotFound, ValidationFailed } from "./errors"
 import { appendEvents } from "./events"
 import { isPermission, parseOrganizationRoles, type Permission } from "./permissions"
@@ -96,10 +97,6 @@ export async function revokeAgentKey(user: UserActor, agentKeyId: string, now = 
     if (updated.count === 0) {
       throw new NotFound({ message: "Active agent key not found", entity: "agentKey", id: agentKeyId })
     }
-    await tx.approvalRequest.updateMany({
-      where: { agentKeyId, status: "pending" },
-      data: { status: "expired", decidedAt: now, decisionNote: "Agent key revoked" },
-    })
     await appendEvents(tx, {
       organizationId: user.organizationId,
       actor: user,
@@ -110,6 +107,15 @@ export async function revokeAgentKey(user: UserActor, agentKeyId: string, now = 
         { aggregateType: "agentKey", aggregateId: agentKeyId, type: "agent_key.revoked", payload: {} },
       ],
     })
+  })
+
+  // Pending requests from a revoked key can never run; end them and their receipts.
+  await closePendingApprovals({
+    where: { agentKeyId, organizationId: user.organizationId },
+    status: "expired",
+    error: { tag: "Revoked", message: "The agent key was revoked before anyone decided" },
+    decisionNote: "Agent key revoked",
+    now,
   })
 }
 

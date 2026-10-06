@@ -157,7 +157,8 @@ describeIfDatabase("quote send email delivery", () => {
           fromName: "Acme via YAIP",
           fromEmail: "billing@example.com",
           replyTo: "billing@acme.com",
-        })
+        }),
+        expect.objectContaining({ idempotencyScope: expect.stringMatching(/^quote-(send|resend):/) })
       )
     } finally {
       restoreEnv(previous)
@@ -191,7 +192,8 @@ describeIfDatabase("quote send email delivery", () => {
           fromName: "Acme",
           fromEmail: "billing@billing.acme.com",
           replyTo: "billing@acme.com",
-        })
+        }),
+        expect.objectContaining({ idempotencyScope: expect.stringMatching(/^quote-(send|resend):/) })
       )
     } finally {
       restoreEnv(previous)

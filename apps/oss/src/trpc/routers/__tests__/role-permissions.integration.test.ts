@@ -34,6 +34,19 @@ describeIfDatabase("role permissions", () => {
     })
   })
 
+  it("keeps the accounting export to admins and accountants", async () => {
+    const org = await createTestOrganization({ roles: ["admin", "member", "accountant"] })
+    cleanups.push(org.cleanup)
+    const input = { dataset: "invoices", from: "2026-01-01", to: "2026-01-31" } as never
+
+    await expect(
+      callerFor(org.organizationId, org.actors.member.userId).exports.accounting(input)
+    ).rejects.toMatchObject({ code: "FORBIDDEN" })
+    await expect(
+      callerFor(org.organizationId, org.actors.accountant.userId).exports.accounting(input)
+    ).resolves.toMatchObject({ csv: expect.any(String) })
+  })
+
   it("rejects users who are not members of the active organization", async () => {
     const org = await createTestOrganization()
     cleanups.push(org.cleanup)
