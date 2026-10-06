@@ -59,6 +59,31 @@ describe("PublicInvoicePaymentPage", () => {
     expect(html).toContain("INV-0001")
   })
 
+  it("shows the balance due after a partial payment", () => {
+    const html = renderToStaticMarkup(
+      <PublicInvoicePaymentPage
+        token="signed-token"
+        state={{
+          kind: "ready",
+          paymentState: "unpaid",
+          invoice: {
+            ...baseInvoice,
+            paymentStatus: "partially_paid",
+            amountPaid: 500,
+            amountCredited: 0,
+            balanceDue: 750,
+          },
+          stripeEnabled: true,
+        }}
+      />
+    )
+
+    expect(html).toContain("Partially paid")
+    expect(html).toContain("Balance due")
+    expect(html).toContain("$750.00")
+    expect(html).toContain("Pay now")
+  })
+
   it("renders a read-only confirmation once an invoice is paid", () => {
     const html = renderToStaticMarkup(
       <PublicInvoicePaymentPage
