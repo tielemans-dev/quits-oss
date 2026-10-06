@@ -10,6 +10,7 @@ export type ReminderEmailParams = {
   stage: "upcoming" | "overdue"
   invoice: {
     number: string
+    /** Calendar date (UTC midnight). */
     dueDate: Date | string
     currency: string
     balanceDue: number
@@ -37,7 +38,9 @@ export function buildReminderEmailContent({
   const locale = org.locale
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "YAIP")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
-  const dueDate = formatDate(invoice.dueDate, locale, org.timezone)
+  // Due dates are calendar dates stored as UTC midnight; formatting them in the organization's
+  // timezone would show the previous day west of UTC.
+  const dueDate = formatDate(invoice.dueDate, locale, "UTC")
   const balance = formatCurrency(invoice.balanceDue, invoice.currency, locale)
   const company = org.companyName ?? safeFromName
 
