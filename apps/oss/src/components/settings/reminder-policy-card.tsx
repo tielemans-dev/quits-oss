@@ -61,12 +61,14 @@ export function ReminderPolicyCard() {
   // The policy and the user's rights belong to the active organization; `undefined` while loading.
   // Keyed on the active organization so capabilities refresh after switching organization.
   const organizationId = useActiveOrganizationId()
-  // The organization shown now, read by in-flight saves to tell whether the user switched away.
-  const currentOrganizationId = useRef(organizationId)
+  // Bumped when a save starts and when the organization changes: a save response is applied only
+  // while its token is still the latest. Comparing organization ids is not enough, since after
+  // switching A -> B -> A a slow save from the first visit to A would overwrite a newer one.
+  const latestRequest = useRef(0)
 
   // Switching organization keeps the card mounted, so start over read-only and reload.
   useEffect(() => {
-    currentOrganizationId.current = organizationId
+    latestRequest.current += 1
     setLoaded(false)
     setCanUpdate(false)
     setSaving(false)
@@ -101,10 +103,10 @@ export function ReminderPolicyCard() {
 
   async function handleSave() {
     if (!parsed.ok) return
-    // A response that arrives after the user switched organization belongs to the previous
-    // organization and must not overwrite the policy now on screen.
-    const savedFor = organizationId
-    const stillCurrent = () => currentOrganizationId.current === savedFor
+    // A response that arrives after the user switched organization, or after a newer save started,
+    // is stale and must not overwrite the policy now on screen.
+    const token = ++latestRequest.current
+    const stillCurrent = () => latestRequest.current === token
     setSaving(true)
     setMessage(null)
     try {

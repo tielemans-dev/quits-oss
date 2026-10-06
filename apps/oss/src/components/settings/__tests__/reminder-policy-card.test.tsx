@@ -121,4 +121,35 @@ describe("ReminderPolicyCard", () => {
     expect(screen.queryByText("reminders.policy.saved")).toBeNull()
     expect((screen.getByRole("button", { name: "reminders.policy.save" }) as HTMLButtonElement).disabled).toBe(false)
   })
+
+  it("ignores an older save after switching A -> B -> A and saving again", async () => {
+    const admin = { canSendNow: true, canPause: true, canResume: true, canUpdatePolicy: true }
+    const values = () => screen.getAllByRole("spinbutton").map((input) => (input as HTMLInputElement).value)
+    api.capabilities.mockResolvedValue(admin)
+    api.getPolicy.mockResolvedValueOnce({ enabled: true, offsetsDays: [-3, 7] })
+    let resolveFirstSave: (policy: { enabled: boolean; offsetsDays: number[] }) => void = () => undefined
+    api.updatePolicy.mockReturnValueOnce(new Promise((resolve) => (resolveFirstSave = resolve)))
+    const { rerender } = render(<ReminderPolicyCard />)
+    fireEvent.click(await screen.findByRole("button", { name: "reminders.policy.save" }))
+
+    api.getPolicy.mockResolvedValueOnce({ enabled: false, offsetsDays: [14] })
+    auth.session = { data: { session: { activeOrganizationId: "org_b" } }, isPending: false }
+    rerender(<ReminderPolicyCard />)
+    await waitFor(() => expect(values()).toEqual(["14"]))
+
+    api.getPolicy.mockResolvedValueOnce({ enabled: true, offsetsDays: [30] })
+    auth.session = { data: { session: { activeOrganizationId: "org_a" } }, isPending: false }
+    rerender(<ReminderPolicyCard />)
+    await waitFor(() => expect(values()).toEqual(["30"]))
+
+    // A newer save for organization A finishes first.
+    api.updatePolicy.mockResolvedValueOnce({ enabled: true, offsetsDays: [30] })
+    fireEvent.click(screen.getByRole("button", { name: "reminders.policy.save" }))
+    expect(await screen.findByText("reminders.policy.saved")).toBeTruthy()
+
+    // The first save's late response must not overwrite the newer policy.
+    await act(async () => resolveFirstSave({ enabled: true, offsetsDays: [-3, 7] }))
+    expect(values()).toEqual(["30"])
+    expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true)
+  })
 })
