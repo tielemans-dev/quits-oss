@@ -1,6 +1,7 @@
 export * from "./agent"
 export * from "./baseSchemas"
 export * from "./contacts"
+export * from "./credit-notes"
 export * from "./documents"
 export * from "./email"
 export * from "./invoices"

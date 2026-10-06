@@ -15,13 +15,15 @@
     "src/quotes.ts",
     "src/agent.ts",
     "src/contacts.ts",
-    "src/invoices.ts"
+    "src/invoices.ts",
+    "src/credit-notes.ts"
   ],
   "exports": {
     ".": "./src/index.ts",
     "./agent": "./src/agent.ts",
     "./baseSchemas": "./src/baseSchemas.ts",
     "./contacts": "./src/contacts.ts",
+    "./credit-notes": "./src/credit-notes.ts",
     "./documents": "./src/documents.ts",
     "./email": "./src/email.ts",
     "./invoices": "./src/invoices.ts",

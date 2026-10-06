@@ -112,6 +112,8 @@ type SettingsData = {
   invoiceNextNum: number
   quotePrefix: string
   quoteNextNum: number
+  creditNotePrefix: string
+  creditNoteNextNum: number
   aiByokConfigured: boolean
   aiOpenRouterModel: string
   stripeByokConfigured: boolean
@@ -342,6 +344,7 @@ function SettingsPage() {
     const companyPhoneInput = ((form.get("companyPhone") as string) || "").trim()
     const invoicePrefixInput = ((form.get("invoicePrefix") as string) || "").trim()
     const quotePrefixInput = ((form.get("quotePrefix") as string) || "").trim()
+    const creditNotePrefixInput = ((form.get("creditNotePrefix") as string) || "").trim()
     const aiOpenRouterModelInput = aiOpenRouterModel.trim()
     const aiOpenRouterApiKeyInput = ((form.get("aiOpenRouterApiKey") as string) || "").trim()
     const stripePublishableKeyInput = ((form.get("stripePublishableKey") as string) || "").trim()
@@ -405,6 +408,7 @@ function SettingsPage() {
         companyLogo: normalizedCompanyLogo || null,
         invoicePrefix: invoicePrefixInput || undefined,
         quotePrefix: quotePrefixInput || undefined,
+        creditNotePrefix: creditNotePrefixInput || undefined,
         onboardingInvoicingIdentity: invoicingIdentity,
         aiOpenRouterModel: aiOpenRouterModelInput || undefined,
         aiOpenRouterApiKey: aiOpenRouterApiKeyInput || undefined,
@@ -943,6 +947,27 @@ function SettingsPage() {
                 <Label>{t("settings.nextQuoteNumber.label")}</Label>
                 <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm text-muted-foreground">
                   {settings.quotePrefix}-{String(settings.quoteNextNum).padStart(4, "0")}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="creditNotePrefix">{t("creditNotes.settings.prefix.label")}</Label>
+                <Input
+                  id="creditNotePrefix"
+                  name="creditNotePrefix"
+                  maxLength={10}
+                  pattern="^[A-Z0-9-]{1,10}$"
+                  title={t("creditNotes.validation.invalidPrefix")}
+                  placeholder="CN"
+                  defaultValue={settings.creditNotePrefix}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>{t("creditNotes.settings.nextNumber.label")}</Label>
+                <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm text-muted-foreground">
+                  {settings.creditNotePrefix}-{String(settings.creditNoteNextNum).padStart(4, "0")}
                 </div>
               </div>
             </div>
