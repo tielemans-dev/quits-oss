@@ -7,7 +7,7 @@ services:
       DATABASE_URL: postgresql://yaip:yaip@db:5432/yaip
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
-      CRON_SECRET: ${CRON_SECRET:-change-me-in-production}
+      CRON_SECRET: "${CRON_SECRET:?Set CRON_SECRET in .env to a random secret, e.g. openssl rand -base64 32}"
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       FROM_EMAIL: ${FROM_EMAIL:-}
     depends_on:
@@ -15,20 +15,25 @@ services:
         condition: service_healthy
 
   # Runs scheduled work (overdue marking, payment reminders, recurring invoices, queued jobs)
-  # by calling the app's tick endpoint every five minutes. Every task is idempotent.
+  # by calling the app's tick endpoint every five minutes. Every task is idempotent and does a
+  # bounded amount of work per tick, so a backlog drains over several ticks. Requests time out
+  # so a hung tick never stops later ones; a failed tick is logged and the loop keeps going.
   scheduler:
     image: curlimages/curl:8.11.1
     restart: unless-stopped
     environment:
-      CRON_SECRET: ${CRON_SECRET:-change-me-in-production}
+      CRON_SECRET: "${CRON_SECRET:?Set CRON_SECRET in .env to a random secret, e.g. openssl rand -base64 32}"
       TICK_URL: http://app:3000/api/cron/tick
       TICK_INTERVAL_SECONDS: ${TICK_INTERVAL_SECONDS:-300}
+      TICK_TIMEOUT_SECONDS: ${TICK_TIMEOUT_SECONDS:-240}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         while true; do
           sleep "$$TICK_INTERVAL_SECONDS"
-          curl -fsS -X POST -H "Authorization: Bearer $$CRON_SECRET" "$$TICK_URL" || echo "scheduler: tick request failed"
+          curl -fsS --connect-timeout 10 --max-time "$$TICK_TIMEOUT_SECONDS" \
+            -X POST -H "Authorization: Bearer $$CRON_SECRET" "$$TICK_URL" \
+            || echo "scheduler: tick request failed or timed out"
           echo
         done
     depends_on:

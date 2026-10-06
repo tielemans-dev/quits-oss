@@ -119,16 +119,24 @@ YAIP runs its automation from one idempotent endpoint, `/api/cron/tick`, protect
 4. runs queued background jobs, such as retrying failed reminder emails.
 
 `docker compose up` starts a small `scheduler` service that calls the tick every five minutes
-(`TICK_INTERVAL_SECONDS` overrides the interval). Set `CRON_SECRET` in `.env`; the app and the
-scheduler read the same value. Without Docker, call the endpoint from any scheduler, for example cron:
+(`TICK_INTERVAL_SECONDS` overrides the interval, `TICK_TIMEOUT_SECONDS` the per-request timeout,
+240 seconds by default). `CRON_SECRET` is required: set it in `.env` to a random value, and the app
+and the scheduler read the same value. Compose refuses to start without it, and the cron endpoints
+answer `503` while it is unset or still the placeholder `change-me-in-production`. Without Docker,
+call the endpoint from any scheduler, for example cron:
 
 ```bash
-*/5 * * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-yaip-host/api/cron/tick
+*/5 * * * * curl -fsS --connect-timeout 10 --max-time 240 -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-yaip-host/api/cron/tick
 ```
 
-Ticks can overlap or be retried safely: each reminder is sent at most once, and a reminder policy
-enabled late sends only the most recent due reminder instead of the whole backlog.
-`/api/cron/mark-overdue` remains as a legacy alias that only marks overdue invoices.
+The tick answers `200` with `ok: true` when every task succeeded, and `500` with `ok: false`, the
+names of the failed tasks in `failedTasks`, and every task's result when any task failed, so a
+monitor or `curl -f` notices. Each tick does a bounded amount of work (a few hundred invoices per
+organization and task, within a time budget), so a large backlog drains over several ticks
+instead of making one tick time out. Ticks can overlap or be retried safely: each reminder is sent
+at most once, and a reminder policy enabled late sends only the most recent due reminder instead
+of the whole backlog. `/api/cron/mark-overdue` remains as a legacy alias that only marks overdue
+invoices.
 
 ## OSS and Cloud Split
 
