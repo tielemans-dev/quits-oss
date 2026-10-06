@@ -14,6 +14,7 @@ export const enCreditNotesMessages = {
   "creditNotes.amountDescription": "Credit for {number}",
   "creditNotes.panel.title": "Credit notes",
   "creditNotes.panel.description": "Credit all or part of this invoice. Credit notes cannot be changed once issued.",
+  "creditNotes.panel.readOnly": "Credit notes issued against this invoice.",
   "creditNotes.panel.empty": "No credit notes have been issued for this invoice.",
   "creditNotes.panel.credited": "Credited {credited} of {total}",
   "creditNotes.panel.fullyCredited": "This invoice is fully credited.",

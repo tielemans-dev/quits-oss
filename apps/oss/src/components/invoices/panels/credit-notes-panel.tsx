@@ -16,11 +16,17 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
   const { t } = useI18n()
   const navigate = useNavigate()
   const [creditNotes, setCreditNotes] = useState<CreditNoteListItem[] | null>(null)
+  const [canCreate, setCanCreate] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      setCreditNotes(await trpc.creditNotes.list.query({ invoiceId: invoice.id }))
+      const [list, capabilities] = await Promise.all([
+        trpc.creditNotes.list.query({ invoiceId: invoice.id }),
+        trpc.creditNotes.capabilities.query(),
+      ])
+      setCreditNotes(list)
+      setCanCreate(capabilities.canCreate)
     } catch {
       // Members without credit note access simply do not see the panel.
       setCreditNotes(null)
@@ -36,7 +42,8 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
   const creditedCents = creditNotes.reduce((sum, creditNote) => sum + Math.round(creditNote.total * 100), 0)
   const credited = creditedCents / 100
   const fullyCredited = creditedCents >= Math.round(invoice.total * 100) && invoice.total > 0
-  const canCredit = invoice.status !== "draft" && !fullyCredited
+  // Only offer credit notes to people the server lets issue them (not accountants).
+  const canCredit = canCreate && invoice.status !== "draft" && !fullyCredited
   const money = (value: number) => formatCurrency(value, invoice.currency, locale)
 
   return (
@@ -45,11 +52,13 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
         <div className="grid gap-1.5">
           <CardTitle>{t("creditNotes.panel.title")}</CardTitle>
           <CardDescription>
-            {invoice.status === "draft"
-              ? t("creditNotes.panel.draftHint")
-              : fullyCredited
-                ? t("creditNotes.panel.fullyCredited")
-                : t("creditNotes.panel.description")}
+            {!canCreate
+              ? t("creditNotes.panel.readOnly")
+              : invoice.status === "draft"
+                ? t("creditNotes.panel.draftHint")
+                : fullyCredited
+                  ? t("creditNotes.panel.fullyCredited")
+                  : t("creditNotes.panel.description")}
           </CardDescription>
         </div>
         {canCredit && (

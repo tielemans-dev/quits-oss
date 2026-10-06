@@ -13,6 +13,8 @@ import {
   CardTitle,
 } from "../../../components/ui/card"
 import { useI18n } from "../../../lib/i18n/react"
+import { PEPPOL_EAS_CODES } from "@yaip/contracts/exports"
+import { readPeppolEndpoint } from "./-peppol-endpoint"
 
 export const Route = createFileRoute("/_app/contacts/$contactId")({
   component: EditContactPage,
@@ -58,6 +60,12 @@ function EditContactPage() {
     setSaving(true)
 
     const form = new FormData(e.currentTarget)
+    const peppol = readPeppolEndpoint(form)
+    if (!peppol.ok) {
+      setError(t(peppol.error))
+      setSaving(false)
+      return
+    }
 
     try {
       await trpc.contacts.update.mutate({
@@ -72,8 +80,9 @@ function EditContactPage() {
         zip: (form.get("zip") as string) || undefined,
         country: (form.get("country") as string) || undefined,
         taxId: (form.get("taxId") as string) || undefined,
-        peppolEndpointId: (form.get("peppolEndpointId") as string) || undefined,
-        peppolEndpointScheme: (form.get("peppolEndpointScheme") as string) || undefined,
+        // Both fields empty sends null, which clears a saved endpoint.
+        peppolEndpointId: peppol.peppolEndpointId,
+        peppolEndpointScheme: peppol.peppolEndpointScheme,
         notes: (form.get("notes") as string) || undefined,
       })
       navigate({ to: "/contacts" })
@@ -250,12 +259,18 @@ function EditContactPage() {
                     inputMode="numeric"
                     maxLength={4}
                     pattern="^\d{4}$"
+                    list="peppol-eas-codes"
                     title={t("exports.contact.peppolEndpointScheme.invalid")}
                     placeholder={t("exports.contact.peppolEndpointScheme.placeholder")}
                     defaultValue={contact.peppolEndpointScheme ?? ""}
                   />
                 </div>
               </div>
+              <datalist id="peppol-eas-codes">
+                {PEPPOL_EAS_CODES.map((code) => (
+                  <option key={code} value={code} />
+                ))}
+              </datalist>
               <p className="text-xs text-muted-foreground">{t("exports.contact.peppolHint")}</p>
             </div>
 

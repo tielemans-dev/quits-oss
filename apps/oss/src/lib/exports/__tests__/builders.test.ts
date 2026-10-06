@@ -176,7 +176,7 @@ describe("party normalization", () => {
       scheme: "0088",
       id: "5790000000001",
     })
-    expect(explicitElectronicAddress("5790000000001", "GLN")).toBeNull()
+    expect(explicitElectronicAddress("5790000000005", "GLN")).toEqual({ scheme: "GLN", id: "5790000000005" })
     expect(explicitElectronicAddress(null, "0088")).toBeNull()
   })
 })

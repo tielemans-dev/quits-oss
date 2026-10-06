@@ -21,6 +21,7 @@ export const enRemindersMessages = {
   "reminders.offset.after.other": "{count} days after",
   "reminders.policy.title": "Payment reminders",
   "reminders.policy.description": "Automatically email customers about unpaid invoices before and after the due date.",
+  "reminders.policy.readOnly": "Only admins can change the reminder schedule.",
   "reminders.policy.enabled.label": "Send automatic reminders",
   "reminders.policy.offsets.label": "Reminder schedule (days relative to the due date)",
   "reminders.policy.offsets.help": "Use negative numbers to remind before the due date. Between -30 and 90 days, up to 5 reminders.",

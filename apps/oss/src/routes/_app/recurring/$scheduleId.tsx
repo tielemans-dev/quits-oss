@@ -23,6 +23,7 @@ import {
   type RecurringScheduleDetail,
 } from "../../../components/recurring/recurring-format"
 import { RecurringScheduleActions } from "../../../components/recurring/recurring-schedule-actions"
+import { useRecurringCapabilities } from "../../../components/recurring/use-recurring-capabilities"
 
 export const Route = createFileRoute("/_app/recurring/$scheduleId")({
   component: RecurringSchedulePage,
@@ -37,6 +38,7 @@ function RecurringSchedulePage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [message, setMessage] = useState<Message | null>(null)
+  const { canUpdate } = useRecurringCapabilities()
 
   const load = useCallback(async () => {
     try {
@@ -102,6 +104,7 @@ function RecurringSchedulePage() {
         </div>
         <RecurringScheduleActions
           schedule={schedule}
+          canUpdate={canUpdate}
           variant="buttons"
           onChanged={() => void load()}
           onMessage={setMessage}

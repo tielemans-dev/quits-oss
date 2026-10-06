@@ -13,13 +13,19 @@ export const enExportsMessages = {
   "exports.einvoice.missing.seller.country": "Your company country (Settings).",
   "exports.einvoice.missing.seller.address": "Your company address (Settings).",
   "exports.einvoice.missing.seller.taxId": "Your company VAT number (Settings).",
+  "exports.einvoice.missing.seller.legalId":
+    "Your CVR number. Danish e-invoices must carry it: add a CVR tax ID or a DK VAT number (Settings).",
   "exports.einvoice.missing.seller.electronicAddress":
     "Your Peppol electronic address. It is derived from your VAT number for supported countries.",
+  "exports.einvoice.missing.seller.electronicAddressInvalid":
+    "Your Peppol electronic address is not valid. Check your VAT number (Settings).",
   "exports.einvoice.missing.buyer.name": "The customer's name.",
   "exports.einvoice.missing.buyer.country": "The customer's country (use a country name or 2-letter code).",
   "exports.einvoice.missing.buyer.address": "The customer's street address or city.",
   "exports.einvoice.missing.buyer.electronicAddress":
     "The customer's Peppol endpoint ID and scheme, or a VAT number they can be reached by.",
+  "exports.einvoice.missing.buyer.electronicAddressInvalid":
+    "The customer's Peppol endpoint is not valid: use a scheme from the Peppol EAS code list and an ID in that scheme's format.",
   "exports.einvoice.missing.creditNote.invoiceReference": "The credited invoice must be issued.",
   "exports.einvoice.editContact": "Edit customer",
   "exports.accounting.title": "Accounting export",
@@ -38,9 +44,11 @@ export const enExportsMessages = {
   "exports.accounting.forbidden": "Your role does not allow exports.",
   "exports.contact.peppolEndpointId": "Peppol endpoint ID",
   "exports.contact.peppolEndpointScheme": "Peppol scheme (EAS)",
-  "exports.contact.peppolEndpointId.placeholder": "5790000000001",
+  "exports.contact.peppolEndpointId.placeholder": "5790000000005",
   "exports.contact.peppolEndpointScheme.placeholder": "0088",
-  "exports.contact.peppolEndpointScheme.invalid": "Use a 4-digit Peppol EAS code",
+  "exports.contact.peppolEndpointScheme.invalid": "Use a Peppol EAS code from the code list, e.g. 0088 or 0184.",
+  "exports.contact.peppolEndpointId.invalid": "This endpoint ID does not match the selected scheme.",
+  "exports.contact.peppolEndpoint.incomplete": "Enter both the Peppol endpoint ID and scheme, or leave both empty.",
   "exports.contact.peppolHint":
     "Used for e-invoices sent over Peppol. Leave empty to derive it from the customer's VAT number where possible.",
 } as const

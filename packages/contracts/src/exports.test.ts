@@ -3,6 +3,9 @@ import {
   ACCOUNTING_EXPORT_COLUMNS,
   accountingExportInputSchema,
   einvoiceExportResultSchema,
+  isPeppolEasCode,
+  PEPPOL_EAS_CODES,
+  peppolEndpointIssue,
 } from "./exports"
 
 describe("export contracts", () => {
@@ -40,5 +43,40 @@ describe("export contracts", () => {
     ])
     expect(ACCOUNTING_EXPORT_COLUMNS.creditNotes[0]).toBe("number")
     expect(ACCOUNTING_EXPORT_COLUMNS.payments[0]).toBe("paid_date")
+  })
+
+  it("knows the Peppol EAS code list", () => {
+    expect(PEPPOL_EAS_CODES).toHaveLength(83)
+    expect(isPeppolEasCode("0184")).toBe(true)
+    expect(isPeppolEasCode("9930")).toBe(true)
+    expect(isPeppolEasCode("1234")).toBe(false)
+    expect(isPeppolEasCode("9999")).toBe(false)
+    expect(isPeppolEasCode("GLN")).toBe(false)
+  })
+
+  it("validates Peppol endpoints per scheme (BR-CL-25)", () => {
+    expect(peppolEndpointIssue("0184", "12345678")).toBeNull()
+    expect(peppolEndpointIssue("0184", "1234")).toBe("id")
+    expect(peppolEndpointIssue("0184", "DK12345678")).toBe("id")
+    expect(peppolEndpointIssue("0088", "5790000000005")).toBeNull()
+    expect(peppolEndpointIssue("0088", "4000001000005")).toBeNull()
+    expect(peppolEndpointIssue("0088", "5790000000001")).toBe("id")
+    expect(peppolEndpointIssue("0088", "579000000000")).toBe("id")
+    expect(peppolEndpointIssue("9930", "DE123456789")).toBeNull()
+    expect(peppolEndpointIssue("9930", "de123456789")).toBeNull()
+    expect(peppolEndpointIssue("9930", "123456789")).toBe("id")
+    expect(peppolEndpointIssue("9944", "NL123456789B01")).toBeNull()
+    expect(peppolEndpointIssue("9944", "DE123456789")).toBe("id")
+    expect(peppolEndpointIssue("0192", "123456789")).toBeNull()
+    expect(peppolEndpointIssue("0007", "5560000000")).toBeNull()
+    expect(peppolEndpointIssue("0208", "0123456789")).toBeNull()
+    expect(peppolEndpointIssue("0208", "BE0123456789")).toBe("id")
+    expect(peppolEndpointIssue("0060", "123456789")).toBeNull()
+    expect(peppolEndpointIssue("0211", "IT12345678901")).toBeNull()
+    expect(peppolEndpointIssue("9906", "anything")).toBe("scheme")
+    expect(peppolEndpointIssue("1234", "anything")).toBe("scheme")
+    expect(peppolEndpointIssue("0204", "991-12345-67")).toBeNull()
+    expect(peppolEndpointIssue("0204", "with space")).toBe("id")
+    expect(peppolEndpointIssue("0204", "")).toBe("id")
   })
 })

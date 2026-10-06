@@ -14,6 +14,7 @@ import {
   setRecurringInvoiceStatus,
   updateRecurringInvoice,
 } from "../../domain/commands/recurring"
+import { actorCan } from "../../domain/actor"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { authorizedProcedure, router } from "../init"
@@ -169,4 +170,10 @@ export const recurringRouter = router({
     .mutation(async ({ ctx, input }) =>
       unwrapOutcome(await executeCommand(runRecurringInvoiceNow, input, { actor: ctx.actor }))
     ),
+
+  /** What the current user may do with schedules, so the UI only offers controls the server allows. */
+  capabilities: authorizedProcedure("recurring:read").query(({ ctx }) => ({
+    canCreate: actorCan(ctx.actor, "recurring:create"),
+    canUpdate: actorCan(ctx.actor, "recurring:update"),
+  })),
 })

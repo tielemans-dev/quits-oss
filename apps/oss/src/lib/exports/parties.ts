@@ -1,3 +1,5 @@
+import { peppolEndpointIssue } from "@yaip/contracts/exports"
+
 /**
  * Normalizes the loosely typed party data YAIP stores (free-text countries, addresses and tax
  * IDs) into what an EN 16931 / Peppol document needs.
@@ -6,6 +8,12 @@
 export type TaxIdLike = { scheme?: string | null; value: string; countryCode?: string | null }
 
 export type ElectronicAddress = { scheme: string; id: string }
+
+/** A party's legal registration number with its ISO 6523 ICD scheme, when the scheme is known. */
+export type LegalIdentifier = { id: string; scheme: string | null }
+
+/** ISO 6523 ICD for the Danish CVR register; DK-R-014 requires it on Danish legal entities. */
+export const DANISH_CVR_SCHEME = "0184"
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let regionNames: Map<string, string> | null = null
@@ -146,16 +154,47 @@ export function vatIdentifier(taxIds: readonly TaxIdLike[], countryCode: string 
   return null
 }
 
-/** A registration number that is not the VAT number (e.g. CVR, organisation number). */
-export function companyIdentifier(taxIds: readonly TaxIdLike[]): string | null {
+/** Tax-ID schemes YAIP stores that map to an ISO 6523 ICD, with the identifier format they need. */
+const LEGAL_SCHEMES: Record<string, { scheme: string; normalize: (value: string) => string | null }> = {
+  cvr: { scheme: DANISH_CVR_SCHEME, normalize: danishCvr },
+  gln: { scheme: "0088", normalize: (value) => (/^\d{13}$/.test(value) ? value : null) },
+  duns: { scheme: "0060", normalize: (value) => (/^\d{9}$/.test(value) ? value : null) },
+}
+
+/** An 8-digit Danish CVR number, accepting an optional "DK" prefix. */
+function danishCvr(value: string): string | null {
+  const digits = compact(value).replace(/^DK/, "")
+  return /^\d{8}$/.test(digits) ? digits : null
+}
+
+/**
+ * The party's legal registration number (BT-30 / BT-47) with its scheme where known. Danish
+ * parties use their CVR number (scheme 0184), taken from a CVR tax ID or derived from a DK VAT
+ * number, because DK-R-002 and DK-R-014 require exactly that for Danish suppliers. Other
+ * registration numbers are kept without a scheme.
+ */
+export function legalIdentifier(
+  taxIds: readonly TaxIdLike[],
+  countryCode: string | null,
+  vatId: string | null
+): LegalIdentifier | null {
+  const candidates: LegalIdentifier[] = []
   for (const taxId of taxIds) {
     const scheme = taxId.scheme?.trim().toLowerCase() ?? ""
-    if (scheme && !VAT_SCHEMES.has(scheme) && scheme !== "ein") {
-      const value = taxId.value.trim()
-      if (value) return value
-    }
+    const value = taxId.value.trim()
+    if (!value || !scheme || VAT_SCHEMES.has(scheme) || scheme === "ein") continue
+    const known = LEGAL_SCHEMES[scheme]
+    const id = known ? known.normalize(value) : value
+    if (id) candidates.push({ id, scheme: known ? known.scheme : null })
   }
-  return null
+
+  if (countryCode === "DK") {
+    const cvr = candidates.find((candidate) => candidate.scheme === DANISH_CVR_SCHEME)
+    if (cvr) return cvr
+    const fromVat = vatId?.startsWith("DK") ? danishCvr(vatId) : null
+    if (fromVat) return { id: fromVat, scheme: DANISH_CVR_SCHEME }
+  }
+  return candidates[0] ?? null
 }
 
 /**
@@ -201,13 +240,21 @@ export function electronicAddressFromVat(vatId: string | null): ElectronicAddres
   return rule && id ? { scheme: rule.scheme, id } : null
 }
 
-/** An explicit electronic address when both parts are present and the scheme is a 4-digit EAS code. */
+/**
+ * The contact's explicit electronic address when both parts are present. It is returned even when
+ * invalid so the export reports it instead of silently sending to a different endpoint.
+ */
 export function explicitElectronicAddress(
   id: string | null | undefined,
   scheme: string | null | undefined
 ): ElectronicAddress | null {
   const cleanId = id?.trim()
   const cleanScheme = scheme?.trim()
-  if (!cleanId || !cleanScheme || !/^\d{4}$/.test(cleanScheme)) return null
+  if (!cleanId || !cleanScheme) return null
   return { scheme: cleanScheme, id: cleanId }
+}
+
+/** Whether an electronic address uses a Peppol EAS code and an identifier that fits it (BR-CL-25). */
+export function isValidElectronicAddress(address: ElectronicAddress) {
+  return peppolEndpointIssue(address.scheme, address.id) === null
 }

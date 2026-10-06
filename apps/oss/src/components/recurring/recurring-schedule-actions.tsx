@@ -30,14 +30,19 @@ type ActionSchedule = EditableSchedule & {
 
 type Confirm = "end" | "runNow" | null
 
-/** Edit, pause/resume, generate now, and end for one schedule. */
+/**
+ * Edit, pause/resume, generate now, and end for one schedule. Renders nothing for people who may
+ * not update schedules (`recurring.capabilities`), since the server would reject every action.
+ */
 export function RecurringScheduleActions({
   schedule,
+  canUpdate,
   onChanged,
   onMessage,
   variant = "menu",
 }: {
   schedule: ActionSchedule
+  canUpdate: boolean
   onChanged: () => void
   onMessage: (message: { kind: "info" | "error"; text: string }) => void
   /** `menu` renders a compact dropdown for table rows; `buttons` renders a toolbar. */
@@ -87,6 +92,8 @@ export function RecurringScheduleActions({
       await trpc.recurring.setStatus.mutate({ id: schedule.id, status: "ended" })
       return null
     })
+
+  if (!canUpdate) return null
 
   const pauseLabel = schedule.status === "active" ? t("recurring.action.pause") : t("recurring.action.resume")
   const PauseIcon = schedule.status === "active" ? Pause : Play

@@ -1,0 +1,56 @@
+// @vitest-environment jsdom
+
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { cleanup, render, screen } from "@testing-library/react"
+
+const api = vi.hoisted(() => ({ getPolicy: vi.fn(), capabilities: vi.fn() }))
+
+vi.mock("../../../trpc/client", () => ({
+  trpc: {
+    reminders: {
+      getPolicy: { query: api.getPolicy },
+      capabilities: { query: api.capabilities },
+      updatePolicy: { mutate: vi.fn() },
+    },
+  },
+}))
+
+vi.mock("../../../lib/i18n/react", () => ({
+  useI18n: () => ({ t: (key: string) => key }),
+}))
+
+import { ReminderPolicyCard } from "../reminder-policy-card"
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+
+describe("ReminderPolicyCard", () => {
+  it("lets an admin edit and save the policy", async () => {
+    api.getPolicy.mockResolvedValue({ enabled: true, offsetsDays: [-3, 7] })
+    api.capabilities.mockResolvedValue({ canSendNow: true, canPause: true, canUpdatePolicy: true })
+    render(<ReminderPolicyCard />)
+
+    expect(await screen.findByRole("button", { name: "reminders.policy.save" })).toBeTruthy()
+    expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(false)
+    expect(screen.queryByText("reminders.policy.readOnly")).toBeNull()
+  })
+
+  it.each([
+    ["member", { canSendNow: true, canPause: true, canUpdatePolicy: false }],
+    ["accountant", { canSendNow: false, canPause: false, canUpdatePolicy: false }],
+  ])("shows the policy read-only to a %s", async (_role, capabilities) => {
+    api.getPolicy.mockResolvedValue({ enabled: true, offsetsDays: [-3, 7] })
+    api.capabilities.mockResolvedValue(capabilities)
+    render(<ReminderPolicyCard />)
+
+    expect(await screen.findByText("reminders.policy.readOnly")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "reminders.policy.save" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "reminders.policy.offsets.add" })).toBeNull()
+    expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(true)
+    for (const input of screen.getAllByRole("spinbutton") as HTMLInputElement[]) {
+      expect(input.disabled).toBe(true)
+    }
+  })
+})

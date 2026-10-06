@@ -12,6 +12,7 @@ import {
   issueCreditNote,
   sendCreditNote,
 } from "../../domain/commands/credit-notes"
+import { actorCan } from "../../domain/actor"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { authorizedProcedure, router } from "../init"
@@ -155,4 +156,10 @@ export const creditNotesRouter = router({
         lastEmailAttemptOutcome: result.lastEmailAttemptOutcome,
       }
     }),
+
+  /** What the current user may do with credit notes, so the UI only offers controls the server allows. */
+  capabilities: authorizedProcedure("creditNote:read").query(({ ctx }) => ({
+    canCreate: actorCan(ctx.actor, "creditNote:create"),
+    canSend: actorCan(ctx.actor, "creditNote:send"),
+  })),
 })
