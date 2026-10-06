@@ -26,6 +26,12 @@ type PublicInvoice = {
   issueDate: Date | string
   dueDate: Date | string
   totalGross: Decimalish
+  /** Payments received so far. Defaults to nothing paid. */
+  amountPaid?: number
+  /** Credit notes issued against the invoice. Defaults to none. */
+  amountCredited?: number
+  /** What the customer still owes. Defaults to the invoice total. */
+  balanceDue?: number
   totalTax: Decimalish
   subtotalNet: Decimalish
   currency: string
@@ -82,6 +88,11 @@ export function PublicInvoicePaymentPage({
 
   const { invoice, paymentState } = state
   const sellerName = invoice.sellerSnapshot?.companyName ?? "YAIP"
+  const total = toNumber(invoice.totalGross)
+  const amountPaid = invoice.amountPaid ?? 0
+  const amountCredited = invoice.amountCredited ?? 0
+  const balanceDue = paymentState === "paid" ? 0 : (invoice.balanceDue ?? total)
+  const partiallySettled = paymentState === "unpaid" && (amountPaid > 0 || amountCredited > 0)
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl items-center px-4 py-12">
@@ -93,7 +104,10 @@ export function PublicInvoicePaymentPage({
           </CardHeader>
           <CardContent className="grid gap-6">
             <div className="grid gap-4 sm:grid-cols-3">
-              <InfoBlock label="Status" value={paymentState === "paid" ? "Paid" : "Open"} />
+              <InfoBlock
+                label="Status"
+                value={paymentState === "paid" ? "Paid" : amountPaid > 0 ? "Partially paid" : "Open"}
+              />
               <InfoBlock label="Issued" value={formatDate(invoice.issueDate)} />
               <InfoBlock label="Due" value={formatDate(invoice.dueDate)} />
             </div>
@@ -134,7 +148,7 @@ export function PublicInvoicePaymentPage({
             <CardDescription>
               {paymentState === "paid"
                 ? "This invoice has already been settled."
-                : "Review the invoice total and continue to secure checkout."}
+                : "Review the balance due and continue to secure checkout."}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
@@ -150,10 +164,16 @@ export function PublicInvoicePaymentPage({
                 label="Company"
                 value={invoice.contact.company ?? invoice.buyerSnapshot?.company ?? "Not provided"}
               />
-              <InfoBlock
-                label="Total"
-                value={formatCurrency(toNumber(invoice.totalGross), invoice.currency)}
-              />
+              <InfoBlock label="Total" value={formatCurrency(total, invoice.currency)} />
+              {partiallySettled && amountPaid > 0 ? (
+                <InfoBlock label="Paid" value={formatCurrency(amountPaid, invoice.currency)} />
+              ) : null}
+              {partiallySettled && amountCredited > 0 ? (
+                <InfoBlock label="Credited" value={formatCurrency(amountCredited, invoice.currency)} />
+              ) : null}
+              {paymentState === "unpaid" ? (
+                <InfoBlock label="Balance due" value={formatCurrency(balanceDue, invoice.currency)} />
+              ) : null}
             </div>
 
             {paymentState === "unpaid" ? (
@@ -170,7 +190,9 @@ export function PublicInvoicePaymentPage({
           </CardContent>
           <CardFooter className="justify-between text-sm text-muted-foreground">
             <span>{sellerName}</span>
-            <span>{formatCurrency(toNumber(invoice.totalGross), invoice.currency)}</span>
+            <span>
+              {formatCurrency(paymentState === "paid" ? total : balanceDue, invoice.currency)}
+            </span>
           </CardFooter>
         </Card>
       </div>

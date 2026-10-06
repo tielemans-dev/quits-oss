@@ -52,6 +52,7 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Printer, CheckCircle, Pencil, Trash2, Plus, ArrowLeft, Download } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
 
 export const Route = createFileRoute("/_app/invoices/$invoiceId")({
@@ -93,6 +94,9 @@ type Invoice = {
   subtotal: number
   taxAmount: number
   total: number
+  amountPaid: number
+  amountCredited: number
+  balanceDue: number
   currency: string
   notes: string | null
   publicPaymentUrl: string | null
@@ -116,6 +120,14 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   sent: { label: "Sent", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
   paid: { label: "Paid", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
   overdue: { label: "Overdue", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+  partially_paid: {
+    label: "Partially paid",
+    className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  },
+  credited: {
+    label: "Credited",
+    className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  },
 }
 
 function formatCurrency(amount: number, currency: string, locale?: string | null) {
@@ -139,6 +151,8 @@ function getInvoiceStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"
   if (status === "sent") return t("invoices.status.sent")
   if (status === "paid") return t("invoices.status.paid")
   if (status === "overdue") return t("invoices.status.overdue")
+  if (status === "partially_paid") return t("status.partially_paid")
+  if (status === "credited") return t("status.credited")
   return t("invoices.status.draft")
 }
 
@@ -892,8 +906,8 @@ function InvoiceDetailPage() {
                 </h1>
                 <div className="mt-1">
                   <StatusBadge
-                    status={invoice.status}
-                    label={getInvoiceStatusLabel(invoice.status, t)}
+                    status={invoiceDisplayStatus(invoice)}
+                    label={getInvoiceStatusLabel(invoiceDisplayStatus(invoice), t)}
                   />
                 </div>
               </div>
@@ -984,6 +998,26 @@ function InvoiceDetailPage() {
                   <span>{t("pdf.total")}</span>
                   <span>{formatCurrency(invoice.total, invoice.currency, locale)}</span>
                 </div>
+                {invoice.status !== "draft" && (invoice.amountPaid > 0 || invoice.amountCredited > 0) && (
+                  <>
+                    {invoice.amountPaid > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t("payments.summary.paid")}</span>
+                        <span>-{formatCurrency(invoice.amountPaid, invoice.currency, locale)}</span>
+                      </div>
+                    )}
+                    {invoice.amountCredited > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t("payments.summary.credited")}</span>
+                        <span>-{formatCurrency(invoice.amountCredited, invoice.currency, locale)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold border-t pt-2">
+                      <span>{t("payments.summary.balanceDue")}</span>
+                      <span>{formatCurrency(invoice.balanceDue, invoice.currency, locale)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
