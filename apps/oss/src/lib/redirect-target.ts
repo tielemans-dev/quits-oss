@@ -28,15 +28,18 @@ export function toInternalRedirectPath(target: string | undefined): string | nul
     const code = char.charCodeAt(0)
     return code < 0x20 || code === 0x7f || char === "\\"
   })
-  if (!target || !target.startsWith("/") || hasControlOrBackslash) {
+  if (!target || !target.startsWith("/") || target.startsWith("//") || hasControlOrBackslash) {
     return null
   }
   try {
     const resolved = new URL(target, INTERNAL_BASE)
-    if (resolved.origin !== INTERNAL_BASE) {
+    const path = `${resolved.pathname}${resolved.search}${resolved.hash}`
+    // A path that resolves to `//…` (e.g. `/x/..//evil.example`) is protocol-relative wherever it
+    // is used next, so it is rejected as well; accepted paths stay unchanged when checked again.
+    if (resolved.origin !== INTERNAL_BASE || path.startsWith("//")) {
       return null
     }
-    return `${resolved.pathname}${resolved.search}${resolved.hash}`
+    return path
   } catch {
     return null
   }

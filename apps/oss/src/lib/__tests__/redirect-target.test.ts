@@ -42,4 +42,19 @@ describe("toInternalRedirectPath", () => {
   it("returns the path as the browser resolves it", () => {
     expect(toInternalRedirectPath("/invoices/../quotes#top")).toBe("/quotes#top")
   })
+
+  it("rejects paths that normalize to a protocol-relative URL", () => {
+    for (const target of ["/x/..//internal.invalid//evil.example", "/.//evil.example", "/a/../..//evil.example"]) {
+      expect(toInternalRedirectPath(target)).toBeNull()
+    }
+  })
+
+  it("returns paths that pass the check again unchanged", () => {
+    for (const target of ["/invoices/1?tab=a#b", "/invoices/../quotes", "/x/./y", "/%2F%2Fevil.example"]) {
+      const once = toInternalRedirectPath(target)
+      expect(once).not.toBeNull()
+      expect(toInternalRedirectPath(once!)).toBe(once)
+      expect(new URL(once!, "https://app.example").origin).toBe("https://app.example")
+    }
+  })
 })
