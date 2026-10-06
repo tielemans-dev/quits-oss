@@ -93,4 +93,6 @@ export const enInvoicesMessages = {
   "invoices.detail.paymentLink.description":
     "Share this hosted link with the customer to collect payment through Stripe.",
   "invoices.detail.paymentLink.copy": "Copy link",
+  "invoices.detail.email.status.sending": "Sending",
+  "invoices.detail.email.reason.sending": "Sending was interrupted before it was confirmed. Send again to finish; the customer will not get a duplicate. The invoice cannot be edited until then.",
 } as const

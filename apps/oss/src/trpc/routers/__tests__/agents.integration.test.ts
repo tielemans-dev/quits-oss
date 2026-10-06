@@ -91,7 +91,9 @@ describeIfDatabase("agents router", () => {
       await admin.agents.revokeKey({ id: created.key.id })
       const [revoked] = await admin.agents.listKeys()
       expect(revoked?.revokedAt).toBeInstanceOf(Date)
-      await expect(admin.agents.revokeKey({ id: created.key.id })).rejects.toMatchObject({
+      // Revoking again is safe: it finishes any cleanup an interrupted revocation left behind.
+      await expect(admin.agents.revokeKey({ id: created.key.id })).resolves.toBeTruthy()
+      await expect(admin.agents.revokeKey({ id: "does-not-exist" })).rejects.toMatchObject({
         code: "NOT_FOUND",
       })
     })

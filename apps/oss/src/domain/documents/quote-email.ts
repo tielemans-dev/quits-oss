@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { sendQuoteEmail } from "../../lib/email"
+import { EmailSendError, sendQuoteEmail } from "../../lib/email"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { prisma } from "../../lib/db"
 import { appLogger } from "../../lib/observability"
@@ -96,7 +96,10 @@ export function deliverQuoteEmail(input: {
           quoteId: quote.id,
           error: cause,
         })
-        // Recorded after the rollback so the failed attempt survives the command failing.
+        // Only a provider rejection proves nothing was delivered; see `deliverInvoiceEmail`.
+        if (!(cause instanceof EmailSendError)) {
+          return yield* new ExternalFailure({ message: input.failureMessage, service: "email", cause })
+        }
         command.onRollback(() =>
           prisma.quote.update({
             where: { id: quote.id },

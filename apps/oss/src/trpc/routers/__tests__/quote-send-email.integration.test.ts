@@ -14,7 +14,7 @@ vi.mock("../../../lib/email", async () => {
 })
 
 import { prisma } from "../../../lib/db"
-import { sendQuoteEmail } from "../../../lib/email"
+import { EmailSendError, sendQuoteEmail } from "../../../lib/email"
 import { appRouter } from "../../router"
 import { ensureTestMembership } from "../../../test-utils/membership"
 
@@ -275,7 +275,9 @@ describeIfDatabase("quote send email delivery", () => {
     process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
-    vi.mocked(sendQuoteEmail).mockRejectedValueOnce(new Error("send failed"))
+    vi.mocked(sendQuoteEmail).mockRejectedValueOnce(
+      new EmailSendError("validation_error", "Domain is not verified")
+    )
 
     const { orgId, caller, quote } = await createQuoteFixture()
 

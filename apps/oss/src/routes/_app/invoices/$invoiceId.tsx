@@ -101,7 +101,7 @@ type Invoice = {
   notes: string | null
   publicPaymentUrl: string | null
   lastEmailAttemptAt: string | Date | null
-  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | null
+  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | "sending" | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
   contact: Contact
@@ -695,6 +695,8 @@ function InvoiceDetailPage() {
             ? t("invoices.detail.email.reason.provider_missing")
             : emailAttempt.lastEmailAttemptCode === "send_failed"
               ? t("invoices.detail.email.reason.send_failed")
+              : emailAttempt.lastEmailAttemptOutcome === "sending"
+                ? t("invoices.detail.email.reason.sending")
               : emailAttempt.lastEmailAttemptCode === "sent"
                 ? t("invoices.detail.email.reason.sent")
                 : emailAttempt.lastEmailAttemptMessage,

@@ -42,6 +42,9 @@ export type CommandOutcome<Result> =
   | { status: "failed" | "rejected" | "expired"; commandId: string; error: CommandError }
 
 /** Internal signal used to roll back the transaction when the handler fails. */
+/** Another call with the same client request id already committed while this one waited. */
+class AlreadyRecorded extends Error {}
+
 class HandlerFailed extends Error {
   constructor(readonly domainError: DomainError) {
     super(domainError.message)
@@ -224,12 +227,42 @@ export async function executeCommand<Input, Result>(
     })
   }
 
+  if (definition.prepare) {
+    const prepared = await runPrepare(definition, input, {
+      actor,
+      organizationId,
+      commandId: provisionalId,
+      now,
+      approvedByUserId: options.approvedByUserId ?? null,
+    })
+    if (prepared) {
+      return prepared
+    }
+  }
+
   const events: PendingEvent[] = []
   const jobs: PendingJob[] = []
   const rollbackWrites: Array<() => Promise<unknown>> = []
 
   try {
     const { result, jobIds } = await prisma.$transaction(async (tx) => {
+      // Claim the request id before any side effect: a concurrent call with the same id waits
+      // here, then finds the first call's receipt instead of running (and emailing) again.
+      if (clientRequestId && !options.resumeReceiptId) {
+        // "|" cannot appear in client request ids, so keys of different requests never collide.
+        const lockKey = `${organizationId}|${key}|${clientRequestId}`
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
+        const existing = await tx.commandReceipt.findUnique({
+          where: {
+            organizationId_actorKey_clientRequestId: { organizationId, actorKey: key, clientRequestId },
+          },
+          select: { id: true },
+        })
+        if (existing) {
+          throw new AlreadyRecorded()
+        }
+      }
+
       const reviewedVersion = options.expectedApprovalVersion
       const approvalContext = definition.approvalContext
       const verifyReviewed =
@@ -332,6 +365,13 @@ export async function executeCommand<Input, Result>(
 
     return { status: "completed", commandId: provisionalId, result }
   } catch (error) {
+    if (error instanceof AlreadyRecorded && clientRequestId) {
+      const existing = await loadReceiptOutcome<Result>(organizationId, key, clientRequestId)
+      if (existing) {
+        return existing
+      }
+    }
+
     for (const write of rollbackWrites) {
       await write().catch((writeError: unknown) =>
         domainLogger.error("command.rollback_write_failed", {
@@ -369,6 +409,48 @@ export async function executeCommand<Input, Result>(
     })
     return winner ?? outcome
   }
+}
+
+/** Runs a command's `prepare` phase in its own committed transaction. Returns a failure, if any. */
+async function runPrepare<Input, Result>(
+  definition: CommandDefinition<Input, Result>,
+  input: Input,
+  scope: {
+    actor: Actor
+    organizationId: string
+    commandId: string
+    now: Date
+    approvedByUserId: string | null
+  }
+): Promise<CommandOutcome<Result> | null> {
+  const prepare = definition.prepare
+  if (!prepare) {
+    return null
+  }
+
+  const exit = await prisma.$transaction(
+    (tx) =>
+      Effect.runPromiseExit(
+        prepare(input).pipe(
+          Effect.provideService(Db, tx),
+          Effect.provideService(Command, {
+            ...scope,
+            emit: () => undefined,
+            enqueue: () => undefined,
+            onRollback: () => undefined,
+          })
+        )
+      ),
+    TRANSACTION_OPTIONS
+  )
+  if (Exit.isSuccess(exit)) {
+    return null
+  }
+  const failureOption = Cause.failureOption(exit.cause)
+  if (Option.isSome(failureOption)) {
+    return failure(scope.commandId, failureOption.value)
+  }
+  throw Cause.squash(exit.cause)
 }
 
 /**

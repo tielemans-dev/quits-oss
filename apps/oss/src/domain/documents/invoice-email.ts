@@ -4,7 +4,7 @@ import {
   readDocumentSendingDomainState,
   resolveDocumentEmailEnvelope,
 } from "../../lib/document-email-sending"
-import { sendInvoiceEmail } from "../../lib/email"
+import { EmailSendError, sendInvoiceEmail } from "../../lib/email"
 import { createEmailDeliveryAttempt, getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
@@ -121,7 +121,12 @@ export function deliverInvoiceEmail(input: {
     Effect.catchAll((cause) =>
       Effect.gen(function* () {
         const command = yield* Command
-        // Recorded after the rollback so the failed attempt survives the command failing.
+        // A provider rejection means nothing was delivered, so the failure is recorded after the
+        // rollback. Any other error (timeout, lost response) may have delivered the email: the
+        // "sending" marker stays so a retry finishes the same send instead of unfreezing it.
+        if (!(cause instanceof EmailSendError)) {
+          return yield* new ExternalFailure({ message: input.failureMessage, service: "email", cause })
+        }
         command.onRollback(() =>
           prisma.invoice.update({
             where: { id: invoice.id },

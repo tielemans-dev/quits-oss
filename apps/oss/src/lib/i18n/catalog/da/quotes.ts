@@ -87,4 +87,6 @@ export const daQuotesMessages = {
   "quotes.detail.convertedToInvoice": "Konverteret til faktura:",
   "quotes.detail.quoteTo": "Tilbud til",
   "quotes.detail.title": "Tilbud",
+  "quotes.detail.email.status.sending": "Sender",
+  "quotes.detail.email.reason.sending": "Afsendelsen blev afbrudt, før den blev bekræftet. Send igen for at fuldføre; kunden får ikke en dublet. Indtil da kan tilbuddet ikke redigeres.",
 } as const

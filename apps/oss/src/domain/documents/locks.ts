@@ -6,6 +6,7 @@ const lockableTables = {
   invoice: "invoice",
   quote: "quote",
   creditNote: "credit_note",
+  contact: "contact",
   recurringInvoice: "recurring_invoice",
 } as const
 

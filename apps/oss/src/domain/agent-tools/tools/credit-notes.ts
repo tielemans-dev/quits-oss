@@ -5,6 +5,7 @@ import type { CommandDefinition } from "../../command"
 import { issueCreditNote, sendCreditNote } from "../../commands/credit-notes"
 import { NotFound } from "../../errors"
 import { defineCommandTool, defineQueryTool, type AgentTool } from "../define"
+import { afterNewest, decodeCursor, toPage } from "../pagination"
 
 /**
  * MCP tool inputs must be a single object, so the issue modes are flattened here; the command
@@ -38,19 +39,28 @@ export const creditNoteTools: AgentTool[] = [
   defineQueryTool({
     name: "credit_notes_list",
     title: "List credit notes",
-    description: "Lists credit notes, newest first. Pass invoiceId to see the credit notes for one invoice.",
-    input: z.object({ invoiceId: z.string().min(1).optional(), limit: z.number().int().min(1).max(200).default(50) }),
+    description:
+      "Lists credit notes, newest first. Pass invoiceId to see the credit notes for one invoice. " +
+      "Returns { items, nextCursor }; pass nextCursor to get the next page.",
+    input: z.object({
+      invoiceId: z.string().min(1).optional(),
+      limit: z.number().int().min(1).max(200).default(50),
+      cursor: z.string().trim().max(500).optional(),
+    }),
     permission: "creditNote:read",
-    run: async ({ actor }, input) =>
-      prisma.creditNote.findMany({
+    run: async ({ actor }, input) => {
+      const rows = await prisma.creditNote.findMany({
         where: {
           organizationId: actor.organizationId,
           ...(input.invoiceId ? { invoiceId: input.invoiceId } : {}),
+          ...afterNewest(decodeCursor(input.cursor)),
         },
-        select: creditNoteSummary,
-        orderBy: [{ issueDate: "desc" }, { id: "desc" }],
-        take: input.limit,
-      }),
+        select: { ...creditNoteSummary, createdAt: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: input.limit + 1,
+      })
+      return toPage(rows, input.limit, (row) => row.createdAt.toISOString())
+    },
   }),
 
   defineQueryTool({

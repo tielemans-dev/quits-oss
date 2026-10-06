@@ -1,11 +1,12 @@
 import type { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { actorCan, type AgentActor, type UserActor } from "./actor"
-import { resolveAgentActorById } from "./agent-keys"
+import { closeRevokedKeyApprovals, resolveAgentActorById } from "./agent-keys"
 import { Forbidden, InvalidState, NotFound, serializeDomainError } from "./errors"
 import { appendEvents } from "./events"
 import { executeCommand, receiptToOutcome, type CommandOutcome } from "./execute"
 import { getCommandDefinition } from "./registry"
+import { resolveUserActor } from "./user-actor"
 
 export type ApprovalDecision = "approve" | "reject"
 
@@ -243,4 +244,69 @@ export async function decideApproval(input: {
     expectedApprovalVersion: typeof reviewed?.version === "string" ? reviewed.version : undefined,
     now,
   })
+}
+
+/**
+ * Finishes approval decisions interrupted by a crash: a request already approved or rejected
+ * whose receipt still awaits approval is decided again on behalf of the person who decided it.
+ * Also ends pending requests from revoked keys. Runs on every scheduler tick.
+ */
+export async function recoverInterruptedApprovals(
+  input: { now?: Date; organizationIds?: string[]; limit?: number } = {}
+) {
+  const now = input.now ?? new Date()
+  const scope = input.organizationIds ? { organizationId: { in: input.organizationIds } } : {}
+  await closeRevokedKeyApprovals(scope, now)
+
+  const decided = await prisma.approvalRequest.findMany({
+    where: { ...scope, status: { in: ["approved", "rejected"] }, decidedByUserId: { not: null } },
+    select: { id: true, organizationId: true, status: true, decidedByUserId: true, commandReceiptId: true },
+    orderBy: { decidedAt: "asc" },
+    take: 500,
+  })
+  const stuckReceipts = new Set(
+    (
+      await prisma.commandReceipt.findMany({
+        where: {
+          id: { in: decided.map((request) => request.commandReceiptId) },
+          status: "awaiting_approval",
+          updatedAt: { lte: new Date(now.getTime() - RESUME_AFTER_MS) },
+        },
+        select: { id: true },
+      })
+    ).map((receipt) => receipt.id)
+  )
+
+  let recovered = 0
+  let failed = 0
+  for (const request of decided.filter((candidate) => stuckReceipts.has(candidate.commandReceiptId)).slice(0, input.limit ?? 50)) {
+    const decider = await resolveUserActor({
+      organizationId: request.organizationId,
+      userId: request.decidedByUserId ?? "",
+    })
+    if (!decider) {
+      await prisma.commandReceipt.updateMany({
+        where: { id: request.commandReceiptId, status: "awaiting_approval" },
+        data: {
+          status: "failed",
+          error: rejection("Forbidden", "The person who decided this request is no longer a member"),
+        },
+      })
+      failed += 1
+      continue
+    }
+    try {
+      await decideApproval({
+        approvalRequestId: request.id,
+        decider,
+        decision: request.status === "approved" ? "approve" : "reject",
+        now,
+      })
+      recovered += 1
+    } catch {
+      failed += 1
+    }
+  }
+
+  return { recovered, failed }
 }

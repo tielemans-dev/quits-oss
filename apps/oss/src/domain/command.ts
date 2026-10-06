@@ -17,6 +17,12 @@ export type CommandDefinition<Input = unknown, Result = unknown> = {
   readonly summarize: (input: Input) => string
   readonly handle: (input: Input) => Effect.Effect<Result, DomainError, Db | Command>
   /**
+   * Runs and commits in its own transaction before `handle`. Commands that reach outside YAIP use
+   * it to record that delivery is about to start, so a crash between delivery and commit leaves a
+   * durable trace (and a frozen document) instead of silently rolling back.
+   */
+  readonly prepare?: (input: Input) => Effect.Effect<void, DomainError, Db | Command>
+  /**
    * For outward-facing commands: what a person approving the command is shown, plus a version of
    * the affected document. The command is refused if the version changes before approval runs it,
    * so an agent cannot edit a document after queuing it for review.

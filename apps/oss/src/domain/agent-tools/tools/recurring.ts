@@ -14,23 +14,34 @@ import {
   updateRecurringInvoice,
 } from "../../commands/recurring"
 import { defineCommandTool, defineQueryTool, type AgentTool } from "../define"
+import { afterNewest, decodeCursor, toPage } from "../pagination"
 
 export const recurringTools: AgentTool[] = [
   defineQueryTool({
     name: "recurring_list",
     title: "List recurring invoices",
     description:
-      "Lists recurring invoice schedules with cadence, next run date, status, and whether generated " +
-      "invoices are sent automatically.",
-    input: z.object({ status: z.enum(["active", "paused", "ended"]).optional() }),
+      "Lists recurring invoice schedules, newest first, with cadence, next run date, status, and " +
+      "whether generated invoices are sent automatically. Returns { items, nextCursor }.",
+    input: z.object({
+      status: z.enum(["active", "paused", "ended"]).optional(),
+      limit: z.number().int().min(1).max(200).default(50),
+      cursor: z.string().trim().max(500).optional(),
+    }),
     permission: "recurring:read",
-    run: async ({ actor }, input) =>
-      prisma.recurringInvoice.findMany({
-        where: { organizationId: actor.organizationId, ...(input.status ? { status: input.status } : {}) },
+    run: async ({ actor }, input) => {
+      const rows = await prisma.recurringInvoice.findMany({
+        where: {
+          organizationId: actor.organizationId,
+          ...(input.status ? { status: input.status } : {}),
+          ...afterNewest(decodeCursor(input.cursor)),
+        },
         include: { contact: { select: { id: true, name: true } } },
-        orderBy: [{ status: "asc" }, { nextRunAt: "asc" }],
-        take: 200,
-      }),
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: input.limit + 1,
+      })
+      return toPage(rows, input.limit, (row) => row.createdAt.toISOString())
+    },
   }),
 
   defineCommandTool({

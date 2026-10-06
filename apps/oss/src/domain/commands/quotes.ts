@@ -17,6 +17,7 @@ import { getPublicQuoteUrl } from "../../lib/quotes/public-url"
 import { defineCommand } from "../command"
 import { assessCompliance, loadDocumentContext } from "../documents/context"
 import { lockDocument } from "../documents/locks"
+import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { allocateDocumentNumber } from "../documents/numbering"
 import { impliedTaxRate, priceDocument } from "../documents/pricing"
 import {
@@ -27,6 +28,7 @@ import {
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
+import { prisma } from "../../lib/db"
 
 const quoteLogger = appLogger.child("quotes")
 
@@ -158,6 +160,12 @@ export const updateQuoteDraft = defineCommand({
           code: "not_draft",
         })
       }
+      if (existing.lastEmailAttemptOutcome === "sending") {
+        return yield* new InvalidState({
+          message: "This quote is being sent. Send it again to finish before changing it.",
+          code: "send_in_progress",
+        })
+      }
 
       const { settings, profile } = yield* loadDocumentContext
       const pricesIncludeTax = settings.pricesIncludeTax
@@ -232,6 +240,12 @@ export const deleteQuoteDraft = defineCommand({
           code: "not_draft",
         })
       }
+      if (quote.lastEmailAttemptOutcome === "sending") {
+        return yield* new InvalidState({
+          message: "This quote is being sent. Send it again to finish before changing it.",
+          code: "send_in_progress",
+        })
+      }
 
       const deleted = yield* Effect.promise(() => db.quote.delete({ where: { id: quote.id } }))
       command.emit({
@@ -248,7 +262,9 @@ export const deleteQuoteDraft = defineCommand({
 const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
   Effect.gen(function* () {
     yield* lockDocument("quote", id)
-    const quote = yield* findQuote(id)
+    const found = yield* findQuote(id)
+    // Lock the contact before reading the address, so the approved recipient cannot change.
+    const quote = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
     const recipient = quote.contact.email?.trim() || null
     const total = `${quote.totalGross.toFixed(2)} ${quote.currency}`
     return {
@@ -256,7 +272,7 @@ const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
         action === "send"
           ? `Send quote ${quote.number} (${total}) to ${recipient ?? quote.contact.name}`
           : `Email quote ${quote.number} (${total}) to ${recipient ?? quote.contact.name} again`,
-      version: `${quote.updatedAt.toISOString()}|${recipient ?? ""}`,
+      version: documentFingerprint(quote, recipient, [quote.expiryDate]),
       details: {
         number: quote.number,
         customer: quote.contact.name,
@@ -275,6 +291,32 @@ export const sendQuote = defineCommand({
   input: quoteSendInputSchema,
   summarize: (input) => `Send quote ${input.id} to the customer`,
   approvalContext: (input) => quoteEmailApprovalContext(input.id, "send"),
+  // Records "sending" before the provider is contacted; see `sendInvoice` for why.
+  prepare: (input) =>
+    Effect.gen(function* () {
+      const db = yield* Db
+      const { now } = yield* Command
+      yield* lockDocument("quote", input.id)
+      const quote = yield* findQuote(input.id)
+      if (quote.status !== "draft" || quote.lastEmailAttemptOutcome === "sending") {
+        return
+      }
+      const { settings } = yield* loadDocumentContext
+      if (!resolveQuoteEmailContext(settings).emailDelivery.available) {
+        return
+      }
+      yield* Effect.promise(() =>
+        db.quote.update({
+          where: { id: quote.id },
+          data: createEmailDeliveryAttempt({
+            at: now,
+            outcome: "sending",
+            code: "sending",
+            message: "Sending quote email.",
+          }),
+        })
+      )
+    }),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
@@ -288,6 +330,27 @@ export const sendQuote = defineCommand({
       }
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
+      // A send interrupted after delivery is finished with the time it was first sent at.
+      const sentAt =
+        quote.lastEmailAttemptOutcome === "sending" && quote.lastEmailAttemptAt
+          ? quote.lastEmailAttemptAt
+          : now
+      const markedByThisAttempt = sentAt.getTime() === now.getTime()
+      let deliveryStarted = false
+      command.onRollback(async () => {
+        if (markedByThisAttempt && !deliveryStarted) {
+          await prisma.quote.updateMany({
+            where: { id: quote.id, lastEmailAttemptOutcome: "sending" },
+            data: {
+              lastEmailAttemptAt: null,
+              lastEmailAttemptOutcome: null,
+              lastEmailAttemptCode: null,
+              lastEmailAttemptMessage: null,
+            },
+          })
+        }
+      })
+
       const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(quote))
       if (compliance.blocking.length > 0) {
         return yield* new InvalidState({
@@ -296,7 +359,7 @@ export const sendQuote = defineCommand({
         })
       }
 
-      const publicAccessIssuedAt = quote.publicAccessIssuedAt ?? now
+      const publicAccessIssuedAt = quote.publicAccessIssuedAt ?? sentAt
       const publicQuoteUrl = getPublicQuoteUrl({
         id: quote.id,
         status: "sent",
@@ -309,7 +372,7 @@ export const sendQuote = defineCommand({
       let emailSent = false
       let emailSkipReason: string | undefined
       let attempt = createEmailDeliveryAttempt({
-        at: now,
+        at: sentAt,
         outcome: "sent",
         code: "sent",
         message: "Quote email sent.",
@@ -335,12 +398,13 @@ export const sendQuote = defineCommand({
           reason: "provider_missing",
         })
       } else {
+        deliveryStarted = true
         const delivery = yield* deliverQuoteEmail({
-          quote: { ...quote, issueDate: now },
+          quote: { ...quote, issueDate: sentAt },
           settings,
           to: recipient,
           publicQuoteUrl,
-          idempotencyScope: `quote-send:${quote.id}`,
+          idempotencyScope: `quote-send:${quote.id}:${sentAt.getTime()}`,
           failureMessage: "Failed to send quote email. Quote was not marked as sent.",
           failureLogEvent: "quote.email.failed",
           organizationId,
@@ -357,7 +421,7 @@ export const sendQuote = defineCommand({
       const updated = yield* Effect.promise(() =>
         db.quote.update({
           where: { id: quote.id },
-          data: { status: "sent", issueDate: now, publicAccessIssuedAt, ...attempt },
+          data: { status: "sent", issueDate: sentAt, publicAccessIssuedAt, ...attempt },
         })
       )
 

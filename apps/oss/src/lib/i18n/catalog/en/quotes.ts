@@ -85,4 +85,6 @@ export const enQuotesMessages = {
   "quotes.detail.convertedToInvoice": "Converted to invoice:",
   "quotes.detail.quoteTo": "Quote To",
   "quotes.detail.title": "Quote",
+  "quotes.detail.email.status.sending": "Sending",
+  "quotes.detail.email.reason.sending": "Sending was interrupted before it was confirmed. Send again to finish; the customer will not get a duplicate. The quote cannot be edited until then.",
 } as const

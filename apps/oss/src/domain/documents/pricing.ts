@@ -45,7 +45,14 @@ export function priceDocument(input: {
 export function impliedTaxRate(document: {
   subtotalNet: { toNumber(): number }
   totalTax: { toNumber(): number }
+  items?: ReadonlyArray<{ taxRate: { toNumber(): number } }>
 }) {
+  // Lines store the nominal rate. Deriving it from rounded totals drifts (25% on 105 JPY rounds to
+  // 26 tax, which reads back as 24.76%), so totals are only a fallback for documents without lines.
+  const lineRate = document.items?.[0]?.taxRate.toNumber()
+  if (lineRate !== undefined) {
+    return lineRate
+  }
   const net = document.subtotalNet.toNumber()
   return net > 0 ? (document.totalTax.toNumber() / net) * 100 : 0
 }

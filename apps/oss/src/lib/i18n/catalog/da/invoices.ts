@@ -98,4 +98,6 @@ export const daInvoicesMessages = {
   "invoices.detail.paymentLink.description":
     "Del dette hostede link med kunden for at modtage betaling via Stripe.",
   "invoices.detail.paymentLink.copy": "Kopiér link",
+  "invoices.detail.email.status.sending": "Sender",
+  "invoices.detail.email.reason.sending": "Afsendelsen blev afbrudt, før den blev bekræftet. Send igen for at fuldføre; kunden får ikke en dublet. Indtil da kan fakturaen ikke redigeres.",
 } as const

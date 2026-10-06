@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto"
+import type { Prisma } from "../../generated/prisma/client"
 import { agentKeyCreateInputSchema, type AgentKeyCreateInput, type AgentMode } from "@yaip/contracts/agent"
 import { prisma } from "../lib/db"
 import { actorCan, type AgentActor, type UserActor } from "./actor"
@@ -86,16 +87,28 @@ export async function createAgentKey(user: UserActor, rawInput: AgentKeyCreateIn
   return { key: toAgentKeySummary(key), secret }
 }
 
+/**
+ * Revokes a key and ends its pending approval requests. Calling it again for an already revoked
+ * key finishes that cleanup, so a revocation interrupted part way can always be completed.
+ */
 export async function revokeAgentKey(user: UserActor, agentKeyId: string, now = new Date()) {
   assertCan(user, "agent:revoke")
 
+  const key = await prisma.agentKey.findFirst({
+    where: { id: agentKeyId, organizationId: user.organizationId },
+    select: { id: true },
+  })
+  if (!key) {
+    throw new NotFound({ message: "Agent key not found", entity: "agentKey", id: agentKeyId })
+  }
+
   await prisma.$transaction(async (tx) => {
     const updated = await tx.agentKey.updateMany({
-      where: { id: agentKeyId, organizationId: user.organizationId, revokedAt: null },
+      where: { id: agentKeyId, revokedAt: null },
       data: { revokedAt: now },
     })
     if (updated.count === 0) {
-      throw new NotFound({ message: "Active agent key not found", entity: "agentKey", id: agentKeyId })
+      return
     }
     await appendEvents(tx, {
       organizationId: user.organizationId,
@@ -109,9 +122,16 @@ export async function revokeAgentKey(user: UserActor, agentKeyId: string, now = 
     })
   })
 
-  // Pending requests from a revoked key can never run; end them and their receipts.
+  await closeRevokedKeyApprovals({ agentKeyId, organizationId: user.organizationId }, now)
+}
+
+/** Pending requests from a revoked key can never run; end them and their receipts. */
+export async function closeRevokedKeyApprovals(
+  where: Prisma.ApprovalRequestWhereInput,
+  now = new Date()
+) {
   await closePendingApprovals({
-    where: { agentKeyId, organizationId: user.organizationId },
+    where: { ...where, agentKey: { revokedAt: { not: null } } },
     status: "expired",
     error: { tag: "Revoked", message: "The agent key was revoked before anyone decided" },
     decisionNote: "Agent key revoked",

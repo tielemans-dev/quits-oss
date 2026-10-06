@@ -14,7 +14,7 @@ vi.mock("../../../lib/email", async () => {
 })
 
 import { prisma } from "../../../lib/db"
-import { sendInvoiceEmail } from "../../../lib/email"
+import { EmailSendError, sendInvoiceEmail } from "../../../lib/email"
 import { appRouter } from "../../router"
 import { ensureTestMembership } from "../../../test-utils/membership"
 
@@ -316,6 +316,45 @@ describeIfDatabase("invoice send email delivery", () => {
     }
   })
 
+  it("freezes the invoice when delivery may have happened, then finishes the same send on retry", async () => {
+    const previous = {
+      RESEND_API_KEY: process.env.RESEND_API_KEY,
+      FROM_EMAIL: process.env.FROM_EMAIL,
+    }
+    process.env.RESEND_API_KEY = "resend_test_key"
+    process.env.FROM_EMAIL = "billing@example.com"
+    // A network error: the provider may or may not have accepted the email.
+    vi.mocked(sendInvoiceEmail).mockRejectedValueOnce(new Error("socket hang up"))
+
+    const { orgId, caller, invoice } = await createInvoiceFixture()
+
+    try {
+      await expect(caller.invoices.send({ id: invoice.id })).rejects.toThrow()
+      const frozen = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
+      expect(frozen.status).toBe("draft")
+      expect(frozen.lastEmailAttemptOutcome).toBe("sending")
+
+      await expect(
+        caller.invoices.update({ id: invoice.id, notes: "changed after delivery" })
+      ).rejects.toThrow(/being sent/)
+
+      await caller.invoices.send({ id: invoice.id })
+      const sent = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
+      expect(sent.status).toBe("sent")
+      expect(sent.issueDate.getTime()).toBe(frozen.lastEmailAttemptAt?.getTime())
+
+      // Both attempts use the same provider idempotency scope, so the provider sends one email.
+      const scopes = vi
+        .mocked(sendInvoiceEmail)
+        .mock.calls.map((call) => (call[1] as { idempotencyScope?: string } | undefined)?.idempotencyScope)
+      expect(scopes).toHaveLength(2)
+      expect(scopes[0]).toBe(scopes[1])
+    } finally {
+      restoreEnv(previous)
+      await prisma.organization.deleteMany({ where: { id: orgId } })
+    }
+  })
+
   it("records a failed attempt and keeps the invoice in draft when provider delivery throws", async () => {
     const previous = {
       YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
@@ -328,7 +367,9 @@ describeIfDatabase("invoice send email delivery", () => {
     process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
-    vi.mocked(sendInvoiceEmail).mockRejectedValueOnce(new Error("send failed"))
+    vi.mocked(sendInvoiceEmail).mockRejectedValueOnce(
+      new EmailSendError("validation_error", "Domain is not verified")
+    )
 
     const { orgId, caller, invoice } = await createInvoiceFixture({ configureStripe: true })
 

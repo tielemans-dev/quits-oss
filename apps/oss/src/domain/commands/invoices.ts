@@ -7,6 +7,7 @@ import {
 } from "@yaip/contracts/invoices"
 import type { z } from "zod"
 import { billingProvider } from "../../lib/billing"
+import { prisma } from "../../lib/db"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { appLogger } from "../../lib/observability"
 import { assertCloudOnboardingComplete } from "../../lib/onboarding/guard"
@@ -19,6 +20,7 @@ import {
   resolveInvoiceEmailContext,
 } from "../documents/invoice-email"
 import { lockDocument } from "../documents/locks"
+import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { allocateDocumentNumber } from "../documents/numbering"
 import { impliedTaxRate, priceDocument } from "../documents/pricing"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
@@ -177,6 +179,12 @@ export const updateInvoiceDraft = defineCommand({
           code: "not_draft",
         })
       }
+      if (existing.lastEmailAttemptOutcome === "sending") {
+        return yield* new InvalidState({
+          message: "This invoice is being sent. Send it again to finish before changing it.",
+          code: "send_in_progress",
+        })
+      }
 
       const { settings, profile } = yield* loadDocumentContext
       const pricesIncludeTax = settings.pricesIncludeTax
@@ -251,6 +259,12 @@ export const deleteInvoiceDraft = defineCommand({
           code: "not_draft",
         })
       }
+      if (invoice.lastEmailAttemptOutcome === "sending") {
+        return yield* new InvalidState({
+          message: "This invoice is being sent. Send it again to finish before changing it.",
+          code: "send_in_progress",
+        })
+      }
 
       yield* Effect.promise(() => db.invoice.delete({ where: { id: invoice.id } }))
       command.emit({
@@ -267,7 +281,9 @@ export const deleteInvoiceDraft = defineCommand({
 const invoiceEmailApprovalContext = (id: string, action: "send" | "resend") =>
   Effect.gen(function* () {
     yield* lockDocument("invoice", id)
-    const invoice = yield* findInvoice(id)
+    const found = yield* findInvoice(id)
+    // Lock the contact before reading the address, so the approved recipient cannot change.
+    const invoice = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
     const recipient = invoice.contact.email?.trim() || null
     const total = `${invoice.totalGross.toFixed(2)} ${invoice.currency}`
     return {
@@ -275,7 +291,7 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend") =>
         action === "send"
           ? `Send invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name}`
           : `Email invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name} again`,
-      version: `${invoice.updatedAt.toISOString()}|${recipient ?? ""}`,
+      version: documentFingerprint(invoice, recipient, [invoice.dueDate]),
       details: {
         number: invoice.number,
         customer: invoice.contact.name,
@@ -294,6 +310,34 @@ export const sendInvoice = defineCommand({
   input: invoiceSendInputSchema,
   summarize: (input) => `Send invoice ${input.id} to the customer`,
   approvalContext: (input) => invoiceEmailApprovalContext(input.id, "send"),
+  // Records "sending" and freezes the send time before the provider is contacted. If the process
+  // stops after delivery but before commit, the invoice stays frozen and a retry re-sends the
+  // identical message under the same provider idempotency key, so the customer gets one email.
+  prepare: (input) =>
+    Effect.gen(function* () {
+      const db = yield* Db
+      const { now } = yield* Command
+      yield* lockDocument("invoice", input.id)
+      const invoice = yield* findInvoice(input.id)
+      if (invoice.status !== "draft" || invoice.lastEmailAttemptOutcome === "sending") {
+        return
+      }
+      const { settings } = yield* loadDocumentContext
+      if (!resolveInvoiceEmailContext(settings).emailDelivery.available) {
+        return
+      }
+      yield* Effect.promise(() =>
+        db.invoice.update({
+          where: { id: invoice.id },
+          data: createEmailDeliveryAttempt({
+            at: now,
+            outcome: "sending",
+            code: "sending",
+            message: "Sending invoice email.",
+          }),
+        })
+      )
+    }),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
@@ -307,6 +351,30 @@ export const sendInvoice = defineCommand({
       }
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
+      const emailContext = resolveInvoiceEmailContext(settings)
+      // A send interrupted after delivery is finished with the time it was first sent at.
+      const sentAt =
+        invoice.lastEmailAttemptOutcome === "sending" && invoice.lastEmailAttemptAt
+          ? invoice.lastEmailAttemptAt
+          : now
+      // If this attempt set the "sending" marker and fails before delivery starts, nothing was
+      // sent, so the marker is cleared; a marker left by an interrupted delivery is kept.
+      const markedByThisAttempt = sentAt.getTime() === now.getTime()
+      let deliveryStarted = false
+      command.onRollback(async () => {
+        if (markedByThisAttempt && !deliveryStarted) {
+          await prisma.invoice.updateMany({
+            where: { id: invoice.id, lastEmailAttemptOutcome: "sending" },
+            data: {
+              lastEmailAttemptAt: null,
+              lastEmailAttemptOutcome: null,
+              lastEmailAttemptCode: null,
+              lastEmailAttemptMessage: null,
+            },
+          })
+        }
+      })
+
       const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(invoice))
       if (compliance.blocking.length > 0) {
         return yield* new InvalidState({
@@ -314,10 +382,8 @@ export const sendInvoice = defineCommand({
           code: "compliance_failed",
         })
       }
-
-      const emailContext = resolveInvoiceEmailContext(settings)
       const publicPaymentIssuedAt = emailContext.stripeConfigured
-        ? (invoice.publicPaymentIssuedAt ?? now)
+        ? (invoice.publicPaymentIssuedAt ?? sentAt)
         : null
       const publicPaymentUrl = emailContext.stripeConfigured
         ? getPublicInvoicePaymentUrl({
@@ -333,7 +399,7 @@ export const sendInvoice = defineCommand({
       let emailSent = false
       let emailSkipReason: string | undefined
       let attempt = createEmailDeliveryAttempt({
-        at: now,
+        at: sentAt,
         outcome: "sent",
         code: "sent",
         message: "Invoice email sent.",
@@ -359,12 +425,13 @@ export const sendInvoice = defineCommand({
           reason: "provider_missing",
         })
       } else {
+        deliveryStarted = true
         const delivery = yield* deliverInvoiceEmail({
-          invoice: { ...invoice, issueDate: now },
+          invoice: { ...invoice, issueDate: sentAt },
           settings,
           to: recipient,
           publicPaymentUrl,
-          idempotencyScope: `invoice-send:${invoice.id}`,
+          idempotencyScope: `invoice-send:${invoice.id}:${sentAt.getTime()}`,
           failureMessage: "Failed to send invoice email. Invoice was not marked as sent.",
         })
         emailSent = true
@@ -379,7 +446,7 @@ export const sendInvoice = defineCommand({
       const updated = yield* Effect.promise(() =>
         db.invoice.update({
           where: { id: invoice.id },
-          data: { status: "sent", issueDate: now, publicPaymentIssuedAt, ...attempt },
+          data: { status: "sent", issueDate: sentAt, publicPaymentIssuedAt, ...attempt },
         })
       )
 

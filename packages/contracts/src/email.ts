@@ -1,6 +1,10 @@
 import { z } from "zod"
 
-export const emailDeliveryOutcomeSchema = z.enum(["sent", "skipped", "failed"])
+/**
+ * `sending`: delivery was handed to the provider but the outcome was not recorded (for example the
+ * process stopped). The document stays frozen until a retry confirms the send.
+ */
+export const emailDeliveryOutcomeSchema = z.enum(["sent", "skipped", "failed", "sending"])
 
 export const emailDeliveryAttemptRecordSchema = z
   .object({
