@@ -33,6 +33,7 @@ import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payme
 import { Route as ApiCronTickRouteImport } from './routes/api/cron/tick'
 import { Route as ApiCronMarkOverdueRouteImport } from './routes/api/cron/mark-overdue'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppRecurringScheduleIdRouteImport } from './routes/_app/recurring/$scheduleId'
 import { Route as AppQuotesNewRouteImport } from './routes/_app/quotes/new'
 import { Route as AppQuotesQuoteIdRouteImport } from './routes/_app/quotes/$quoteId'
 import { Route as AppInvoicesNewRouteImport } from './routes/_app/invoices/new'
@@ -162,6 +163,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRecurringScheduleIdRoute = AppRecurringScheduleIdRouteImport.update({
+  id: '/recurring/$scheduleId',
+  path: '/recurring/$scheduleId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppQuotesNewRoute = AppQuotesNewRouteImport.update({
   id: '/quotes/new',
   path: '/quotes/new',
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/invoices/new': typeof AppInvoicesNewRoute
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
+  '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
@@ -252,6 +259,7 @@ export interface FileRoutesByTo {
   '/invoices/new': typeof AppInvoicesNewRoute
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
+  '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
@@ -286,6 +294,7 @@ export interface FileRoutesById {
   '/_app/invoices/new': typeof AppInvoicesNewRoute
   '/_app/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/_app/quotes/new': typeof AppQuotesNewRoute
+  '/_app/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/quotes/$quoteId'
     | '/quotes/new'
+    | '/recurring/$scheduleId'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
@@ -352,6 +362,7 @@ export interface FileRouteTypes {
     | '/invoices/new'
     | '/quotes/$quoteId'
     | '/quotes/new'
+    | '/recurring/$scheduleId'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
@@ -385,6 +396,7 @@ export interface FileRouteTypes {
     | '/_app/invoices/new'
     | '/_app/quotes/$quoteId'
     | '/_app/quotes/new'
+    | '/_app/recurring/$scheduleId'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
@@ -582,6 +594,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/recurring/$scheduleId': {
+      id: '/_app/recurring/$scheduleId'
+      path: '/recurring/$scheduleId'
+      fullPath: '/recurring/$scheduleId'
+      preLoaderRoute: typeof AppRecurringScheduleIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/quotes/new': {
       id: '/_app/quotes/new'
       path: '/quotes/new'
@@ -649,6 +668,7 @@ interface AppRouteChildren {
   AppInvoicesNewRoute: typeof AppInvoicesNewRoute
   AppQuotesQuoteIdRoute: typeof AppQuotesQuoteIdRoute
   AppQuotesNewRoute: typeof AppQuotesNewRoute
+  AppRecurringScheduleIdRoute: typeof AppRecurringScheduleIdRoute
   AppContactsIndexRoute: typeof AppContactsIndexRoute
   AppCreditNotesIndexRoute: typeof AppCreditNotesIndexRoute
   AppInvoicesIndexRoute: typeof AppInvoicesIndexRoute
@@ -671,6 +691,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppInvoicesNewRoute: AppInvoicesNewRoute,
   AppQuotesQuoteIdRoute: AppQuotesQuoteIdRoute,
   AppQuotesNewRoute: AppQuotesNewRoute,
+  AppRecurringScheduleIdRoute: AppRecurringScheduleIdRoute,
   AppContactsIndexRoute: AppContactsIndexRoute,
   AppCreditNotesIndexRoute: AppCreditNotesIndexRoute,
   AppInvoicesIndexRoute: AppInvoicesIndexRoute,
