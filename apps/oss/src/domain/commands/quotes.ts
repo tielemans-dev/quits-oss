@@ -7,6 +7,7 @@ import {
   quoteSendInputSchema,
   quoteUpdateDraftInputSchema,
 } from "@yaip/contracts/quotes"
+import { billingProvider } from "../../lib/billing"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { appLogger } from "../../lib/observability"
 import { assertCloudOnboardingComplete } from "../../lib/onboarding/guard"
@@ -463,6 +464,9 @@ export const convertQuoteToInvoice = defineCommand({
           code: "not_accepted",
         })
       }
+
+      // Conversion creates an invoice, so it is subject to the same billing limits.
+      yield* precondition(() => billingProvider.assertInvoiceCreationAllowed(organizationId))
 
       const number = yield* allocateDocumentNumber("invoice")
       const invoice = yield* Effect.promise(() =>
