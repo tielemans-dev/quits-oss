@@ -52,6 +52,7 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Printer, CheckCircle, Pencil, Trash2, Plus, ArrowLeft, Download } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
 
 export const Route = createFileRoute("/_app/invoices/$invoiceId")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -998,6 +999,12 @@ function InvoiceDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <InvoiceLifecyclePanels
+        invoice={invoice}
+        locale={orgSettings.locale}
+        onChanged={reloadInvoice}
+      />
     </div>
   )
 }

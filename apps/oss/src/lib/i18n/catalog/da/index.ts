@@ -1,3 +1,10 @@
+import { daPaymentsMessages } from "./payments"
+import { daCreditNotesMessages } from "./credit-notes"
+import { daRemindersMessages } from "./reminders"
+import { daRecurringMessages } from "./recurring"
+import { daExportsMessages } from "./exports"
+import { daAgentsMessages } from "./agents"
+import { daActivityMessages } from "./activity"
 import { daAuthMessages } from "./auth"
 import { daBillingMessages } from "./billing"
 import { daCatalogMessages } from "./catalog"
@@ -18,6 +25,13 @@ import { daUiMessages } from "./ui"
 import { daUserMessages } from "./user"
 
 export const daCatalog = {
+  ...daPaymentsMessages,
+  ...daCreditNotesMessages,
+  ...daRemindersMessages,
+  ...daRecurringMessages,
+  ...daExportsMessages,
+  ...daAgentsMessages,
+  ...daActivityMessages,
   ...daAuthMessages,
   ...daBillingMessages,
   ...daCatalogMessages,

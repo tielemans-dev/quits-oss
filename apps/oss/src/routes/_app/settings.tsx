@@ -47,6 +47,9 @@ import { Settings, UserPlus, X, Crown, User, Eye } from "lucide-react"
 import { useI18n } from "../../lib/i18n/react"
 import { shouldAutoLoadOpenRouterModels } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
+import { AgentKeysCard } from "../../components/settings/agent-keys-card"
+import { AuditLogCard } from "../../components/settings/audit-log-card"
+import { ReminderPolicyCard } from "../../components/settings/reminder-policy-card"
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -1300,6 +1303,12 @@ function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="mt-6 grid gap-6">
+        <ReminderPolicyCard />
+        <AgentKeysCard />
+        <AuditLogCard />
+      </div>
     </div>
   )
 }

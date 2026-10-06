@@ -7,4 +7,8 @@ export const daNavMessages = {
   "nav.billing": "Abonnement",
   "nav.settings": "Indstillinger",
   "nav.catalog": "Katalog",
+  "nav.creditNotes": "Kreditnotaer",
+  "nav.recurring": "Gentagne fakturaer",
+  "nav.approvals": "Godkendelser",
+  "nav.activity": "Aktivitet",
 } as const

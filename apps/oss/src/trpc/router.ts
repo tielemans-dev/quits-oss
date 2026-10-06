@@ -1,4 +1,11 @@
 import { router } from "./init"
+import { paymentsRouter } from "./routers/payments"
+import { creditNotesRouter } from "./routers/credit-notes"
+import { remindersRouter } from "./routers/reminders"
+import { recurringRouter } from "./routers/recurring"
+import { exportsRouter } from "./routers/exports"
+import { agentsRouter } from "./routers/agents"
+import { activityRouter } from "./routers/activity"
 import { aiRouter } from "./routers/ai"
 import { billingRouter } from "./routers/billing"
 import { catalogRouter } from "./routers/catalog"
@@ -13,6 +20,13 @@ import { setupRouter } from "./routers/setup"
 import { settingsRouter } from "./routers/settings"
 
 export const appRouter = router({
+  payments: paymentsRouter,
+  creditNotes: creditNotesRouter,
+  reminders: remindersRouter,
+  recurring: recurringRouter,
+  exports: exportsRouter,
+  agents: agentsRouter,
+  activity: activityRouter,
   ai: aiRouter,
   billing: billingRouter,
   catalog: catalogRouter,
