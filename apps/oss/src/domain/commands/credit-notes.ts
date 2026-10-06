@@ -22,6 +22,7 @@ import { buildBuyerSnapshot, buildSellerSnapshot } from "../documents/snapshots"
 import { ExternalFailure, InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { lockDocument } from "../documents/locks"
+import { creditNoteIssueApproval, creditNoteSendApproval } from "../approval-contexts"
 
 const creditNoteLogger = appLogger.child("credit-notes")
 
@@ -142,6 +143,7 @@ export const issueCreditNote = defineCommand({
       : input.mode === "amount"
         ? `Credit ${input.amount} on invoice ${input.invoiceId}: ${input.reason}`
         : `Credit ${input.lines.length} line(s) of invoice ${input.invoiceId}: ${input.reason}`,
+  approvalContext: (input) => creditNoteIssueApproval(input),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
@@ -236,6 +238,7 @@ export const sendCreditNote = defineCommand({
   outwardFacing: true,
   input: creditNoteSendInputSchema,
   summarize: (input) => `Email credit note ${input.id} to the customer`,
+  approvalContext: (input) => creditNoteSendApproval(input),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db

@@ -26,15 +26,25 @@ import type { AgentTool } from "./define"
 import { activityTools } from "./tools/activity"
 import { commandTrackingTools } from "./tools/commands"
 import { contactTools } from "./tools/contacts"
+import { creditNoteTools } from "./tools/credit-notes"
+import { exportTools } from "./tools/exports"
 import { invoiceTools } from "./tools/invoices"
 import { organizationTools } from "./tools/organization"
+import { paymentTools } from "./tools/payments"
 import { quoteTools } from "./tools/quotes"
+import { recurringTools } from "./tools/recurring"
+import { reminderTools } from "./tools/reminders"
 
 const featureTools: AgentTool[] = [
   ...organizationTools,
   ...contactTools,
   ...invoiceTools,
   ...quoteTools,
+  ...paymentTools,
+  ...creditNoteTools,
+  ...reminderTools,
+  ...recurringTools,
+  ...exportTools,
   ...activityTools,
 ]
 

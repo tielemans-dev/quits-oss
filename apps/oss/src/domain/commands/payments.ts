@@ -15,6 +15,7 @@ import { defineCommand } from "../command"
 import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
 import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { Command, Db } from "../services"
+import { paymentRecordApproval, paymentVoidApproval } from "../approval-contexts"
 
 const paymentsLogger = appLogger.child("payments")
 
@@ -256,6 +257,7 @@ export const recordPayment = defineCommand({
   input: paymentRecordInputSchema,
   summarize: (input) =>
     `Record a ${input.amount.toFixed(2)} ${input.method.replaceAll("_", " ")} payment on invoice ${input.invoiceId}`,
+  approvalContext: (input) => paymentRecordApproval(input),
   handle: (input) =>
     Effect.gen(function* () {
       const paidAt = yield* parsePaidAt(input.paidAt)
@@ -399,6 +401,7 @@ export const voidPayment = defineCommand({
   outwardFacing: true,
   input: paymentVoidInputSchema,
   summarize: (input) => `Void payment ${input.paymentId}: ${input.reason}`,
+  approvalContext: (input) => paymentVoidApproval(input),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db

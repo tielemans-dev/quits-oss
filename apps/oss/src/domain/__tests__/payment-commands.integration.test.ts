@@ -215,7 +215,7 @@ describeIfDatabase("payment commands", () => {
     if (queued.status !== "awaiting_approval") return
 
     const approval = await prisma.approvalRequest.findUniqueOrThrow({ where: { id: queued.approvalRequestId } })
-    expect(approval.summary).toContain("50.00 bank transfer payment")
+    expect(approval.summary).toContain("50.00 USD bank transfer payment")
 
     const decided = await decideApproval({
       approvalRequestId: queued.approvalRequestId,

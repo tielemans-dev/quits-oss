@@ -28,6 +28,7 @@ import {
   type IntervalUnit,
 } from "../features/recurring-dates"
 import { buildInvoiceDraft, sendInvoice } from "./invoices"
+import { recurringApproval } from "../approval-contexts"
 
 /*
  * Agent approval rule
@@ -361,6 +362,7 @@ export const resumeRecurringInvoice = defineCommand({
   outwardFacing: true,
   input: recurringIdInputSchema,
   summarize: (input) => `Activate recurring schedule ${input.id}`,
+  approvalContext: (input) => recurringApproval(input, "resume"),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
@@ -494,6 +496,7 @@ export const runRecurringInvoiceNow = defineCommand({
   outwardFacing: true,
   input: recurringIdInputSchema,
   summarize: (input) => `Generate the next invoice of recurring schedule ${input.id} now`,
+  approvalContext: (input) => recurringApproval(input, "run_now"),
   handle: (input) =>
     Effect.gen(function* () {
       const schedule = yield* findScheduleForUpdate(input.id)

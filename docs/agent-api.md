@@ -134,6 +134,23 @@ command tools. Money is returned as numbers in the document currency; dates are 
 | `quote_send` | command, outward-facing | `quote:send` | `id`, `allowSendWithoutEmail?` |
 | `quote_resend_email` | command, outward-facing | `quote:send` | `id` |
 | `quote_convert_to_invoice` | command | `invoice:create` | `id` of an accepted quote; creates a draft invoice |
+| `payments_list` | query | `payment:read` | `invoiceId`; payments (incl. voided) and `balanceDue` |
+| `payment_record` | command, outward-facing | `payment:create` | `invoiceId`, `amount`, `paidAt` (YYYY-MM-DD), `method`, `reference?`, `note?` |
+| `payment_void` | command, outward-facing | `payment:void` | `paymentId`, `reason` |
+| `credit_notes_list` | query | `creditNote:read` | `invoiceId?`, `limit` |
+| `credit_note_get` | query | `creditNote:read` | `id` |
+| `credit_note_issue` | command, outward-facing | `creditNote:create` | `invoiceId`, `reason`, `mode` (`full`, `lines` + `lines`, `amount` + `amount`) |
+| `credit_note_send` | command, outward-facing | `creditNote:send` | `id` |
+| `reminder_send_now` | command, outward-facing | `invoice:send` | `invoiceId` |
+| `invoice_set_reminders_paused` | command | `invoice:update` | `invoiceId`, `paused` |
+| `recurring_list` | query | `recurring:read` | `status?` |
+| `recurring_create` | command | `recurring:create` | schedule fields; auto-sending schedules from approval-mode keys start paused |
+| `recurring_update` | command | `recurring:update` | `id` + changed fields |
+| `recurring_set_status` | command | `recurring:update` | `id`, `status` (`paused`, `ended`) |
+| `recurring_resume` | command, outward-facing | `recurring:update` | `id` |
+| `recurring_run_now` | command, outward-facing | `recurring:update` | `id` |
+| `export_einvoice` | query | `invoice:read` (+ `creditNote:read` for credit notes) | `kind` (`invoice`, `creditNote`), `id`; Peppol UBL XML or the missing fields |
+| `export_accounting` | query | `export:read` | `from`, `to` (YYYY-MM-DD), `dataset` (`invoices`, `creditNotes`, `payments`) |
 | `activity_read` | query | `audit:read` | `afterSequence`, `aggregateType`, `aggregateId`, `limit`; page with `nextSequence` while `hasMore` |
 | `command_status` | query | any write-mode key | `commandId` |
 | `command_wait` | query | any write-mode key | `commandId`, `timeoutMs` (0-30000, default 15000) |

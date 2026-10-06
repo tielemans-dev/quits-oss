@@ -129,4 +129,10 @@ export const daAgentsMessages = {
   "agents.approvals.review.dueDate": "Forfaldsdato",
   "agents.approvals.review.expiryDate": "Gyldig til",
   "agents.approvals.review.reason": "Årsag",
+  "agents.approvals.review.balanceDue": "Restbeløb",
+  "agents.approvals.review.paidAt": "Betalt den",
+  "agents.approvals.review.method": "Metode",
+  "agents.approvals.review.name": "Plan",
+  "agents.approvals.review.cadence": "Interval",
+  "agents.approvals.review.nextRun": "Næste kørsel",
 } as const

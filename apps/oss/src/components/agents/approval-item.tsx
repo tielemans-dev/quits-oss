@@ -21,6 +21,12 @@ const reviewLabelKeys: Partial<Record<string, TranslationKey>> = {
   dueDate: "agents.approvals.review.dueDate",
   expiryDate: "agents.approvals.review.expiryDate",
   reason: "agents.approvals.review.reason",
+  balanceDue: "agents.approvals.review.balanceDue",
+  paidAt: "agents.approvals.review.paidAt",
+  method: "agents.approvals.review.method",
+  name: "agents.approvals.review.name",
+  cadence: "agents.approvals.review.cadence",
+  nextRun: "agents.approvals.review.nextRun",
 }
 
 const statusVariant = {

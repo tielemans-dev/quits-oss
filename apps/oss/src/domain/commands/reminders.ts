@@ -21,6 +21,7 @@ import { resolveInvoiceEmailContext } from "../documents/invoice-email"
 import { computeSettlement } from "../documents/settlement"
 import { ExternalFailure, InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
+import { reminderSendApproval } from "../approval-contexts"
 
 const remindersLogger = appLogger.child("reminders")
 
@@ -267,6 +268,7 @@ export const sendReminderNow = defineCommand({
   outwardFacing: true,
   input: reminderSendNowInputSchema,
   summarize: (input) => `Email a payment reminder for invoice ${input.invoiceId} to the customer`,
+  approvalContext: (input) => reminderSendApproval(input),
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db

@@ -303,4 +303,102 @@ describeIfDatabase("MCP endpoint", () => {
       expect(other).toMatchObject({ isError: true, value: { error: { tag: "NotFound" } } })
     })
   })
+
+  describe("lifecycle tools", () => {
+    const bookkeeping = [
+      ...drafting,
+      "payment:read",
+      "payment:create",
+      "creditNote:read",
+      "creditNote:create",
+      "export:read",
+    ]
+
+    async function sentInvoice(client: Client) {
+      const contact = await call(client, "contact_create", {
+        name: "Acme",
+        email: "billing@acme.test",
+        clientRequestId: "lifecycle-contact",
+      })
+      const contactId = (contact.value as { result: { id: string } }).result.id
+      const draft = await call(client, "invoice_create_draft", {
+        contactId,
+        dueDate: "2099-12-01",
+        taxRate: 0,
+        items: [{ description: "Design", quantity: 1, unitPrice: 100 }],
+        clientRequestId: "lifecycle-draft",
+      })
+      const invoiceId = (draft.value as { result: { id: string } }).result.id
+      await call(client, "invoice_send", { id: invoiceId, allowSendWithoutEmail: true, clientRequestId: "lifecycle-send" })
+      return invoiceId
+    }
+
+    it("records payments, issues credit notes, and exports through MCP", async () => {
+      const org = await setup()
+      const client = await connect((await keyFor(org, "full_access", bookkeeping)).secret)
+      const invoiceId = await sentInvoice(client)
+
+      const paid = await call(client, "payment_record", {
+        invoiceId,
+        amount: 40,
+        paidAt: "2026-01-15",
+        method: "bank_transfer",
+        clientRequestId: "pay-40",
+      })
+      expect(paid.value).toMatchObject({ status: "completed" })
+
+      const listed = await call(client, "payments_list", { invoiceId })
+      expect(listed.value).toMatchObject({ balanceDue: 60, paymentStatus: "partially_paid" })
+
+      const credited = await call(client, "credit_note_issue", {
+        invoiceId,
+        reason: "Discount agreed",
+        mode: "amount",
+        amount: 60,
+        clientRequestId: "credit-60",
+      })
+      expect(credited.value).toMatchObject({ status: "completed" })
+      const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+      expect(invoice.paymentStatus).toBe("paid")
+
+      const csv = await call(client, "export_accounting", {
+        from: "2000-01-01",
+        to: "2100-01-01",
+        dataset: "payments",
+      })
+      expect(csv.value).toMatchObject({ csv: expect.stringContaining("40") })
+    })
+
+    it("queues money-moving tools for approval with the facts a person needs", async () => {
+      const org = await setup()
+      const full = await connect((await keyFor(org, "full_access", bookkeeping, "Setup")).secret)
+      const invoiceId = await sentInvoice(full)
+      const client = await connect((await keyFor(org, "approval_required", bookkeeping)).secret)
+
+      const queued = await call(client, "payment_record", {
+        invoiceId,
+        amount: 100,
+        paidAt: "2026-01-15",
+        method: "bank_transfer",
+        clientRequestId: "pay-all",
+      })
+      expect(queued.value).toMatchObject({ status: "awaiting_approval" })
+
+      const request = await prisma.approvalRequest.findFirstOrThrow({
+        where: { organizationId: org.organizationId, commandType: "payment.record" },
+      })
+      expect(request.summary).toBe("Record a 100.00 USD bank transfer payment on invoice INV-0001")
+      expect(request.reviewContext).toMatchObject({ details: { amount: "100.00", balanceDue: "100.00" } })
+    })
+
+    it("hides lifecycle tools from keys without their scopes", async () => {
+      const org = await setup()
+      const client = await connect((await keyFor(org, "full_access", drafting)).secret)
+      const { tools } = await client.listTools()
+      const names = tools.map((tool) => tool.name)
+      expect(names).not.toContain("payment_record")
+      expect(names).not.toContain("credit_note_issue")
+      expect(names).not.toContain("export_accounting")
+    })
+  })
 })

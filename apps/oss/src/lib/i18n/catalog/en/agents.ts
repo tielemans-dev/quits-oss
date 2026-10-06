@@ -128,4 +128,10 @@ export const enAgentsMessages = {
   "agents.approvals.review.dueDate": "Due date",
   "agents.approvals.review.expiryDate": "Valid until",
   "agents.approvals.review.reason": "Reason",
+  "agents.approvals.review.balanceDue": "Balance due",
+  "agents.approvals.review.paidAt": "Paid on",
+  "agents.approvals.review.method": "Method",
+  "agents.approvals.review.name": "Schedule",
+  "agents.approvals.review.cadence": "Cadence",
+  "agents.approvals.review.nextRun": "Next run",
 } as const
