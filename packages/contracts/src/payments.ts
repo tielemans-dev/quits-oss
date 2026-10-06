@@ -81,6 +81,11 @@ export const stripeCheckoutSessionSchema = z.object({
     .optional(),
   client_reference_id: z.string().nullable().optional(),
   amount_total: z.number().int().nullable().optional(),
+  /**
+   * `paid` once the money is collected. Asynchronous methods (bank debits, vouchers) complete
+   * checkout as `unpaid` and settle later through `checkout.session.async_payment_*` events.
+   */
+  payment_status: z.string().nullable().optional(),
   currency: z.string().nullable().optional(),
   metadata: z.record(z.string(), z.string()).nullable().optional(),
 })

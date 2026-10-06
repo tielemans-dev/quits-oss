@@ -52,6 +52,7 @@ describeIfDatabase("payments router", () => {
     expect(memberView).toMatchObject({ canVoid: false, canRecord: true, balanceDue: 179.5 })
     expect(memberView.payments).toHaveLength(1)
     expect(memberView.payments[0]).toMatchObject({ amount: 120.5, method: "card", reference: "R-1" })
+    expect(memberView.timeZone).toBe("UTC")
 
     await expect(
       member.payments.void({ paymentId: recorded.payment.id, reason: "Mistake" })
