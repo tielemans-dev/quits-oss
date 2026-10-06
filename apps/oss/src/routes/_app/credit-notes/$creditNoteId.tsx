@@ -109,15 +109,13 @@ function CreditNoteDetailPage() {
     setNotice(null)
     try {
       const result = await trpc.creditNotes.send.mutate({ id: creditNote.id })
-      // Compared as a string: the outcome union grows ("unconfirmed") on the server side.
-      const outcome = result.lastEmailAttemptOutcome
-      if (outcome === "sending") {
+      if (result.delivery === "pending") {
         setNotice({ kind: "info", text: t("creditNotes.detail.email.pending", { email: result.recipient }) })
-      } else if (outcome === "unconfirmed") {
+      } else if (result.delivery === "unconfirmed") {
         setNotice({
           kind: "warning",
           text: t("creditNotes.detail.email.unconfirmed", {
-            date: formatDate(result.lastEmailAttemptAt ?? new Date(), locale, creditNote.timezone),
+            date: formatDate(result.attemptedAt ?? new Date(), locale, creditNote.timezone),
           }),
         })
       } else {

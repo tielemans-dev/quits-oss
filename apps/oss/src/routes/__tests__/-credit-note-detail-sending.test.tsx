@@ -121,8 +121,8 @@ describe("credit note detail while the email is being delivered", () => {
     api.send.mockResolvedValue({
       id: "cn_1",
       recipient: "acme@example.com",
-      lastEmailAttemptAt: new Date("2026-10-02T00:00:00.000Z"),
-      lastEmailAttemptOutcome: "sending",
+      attemptedAt: new Date("2026-10-02T00:00:00.000Z"),
+      delivery: "pending",
     })
     render(<RouteComponent />)
 

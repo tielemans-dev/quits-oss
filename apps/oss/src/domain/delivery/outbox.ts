@@ -85,6 +85,12 @@ const payloadSchema = z.object({
   approvedByUserId: z.string().nullable(),
   /** Set once the provider accepted the message, before the document is settled. */
   providerMessageId: z.string().optional(),
+  /** Requests started with the provider, counted before each request is made. */
+  requests: z.number().int().optional(),
+  /** A failure decided but not yet settled, kept so a retried settlement settles the same way. */
+  decision: z
+    .object({ reason: z.enum(["rejected", "unconfirmed", "withdrawn"]), message: z.string() })
+    .optional(),
 })
 type DeliveryPayload = z.infer<typeof payloadSchema>
 
@@ -194,19 +200,43 @@ async function settle(
   })
 }
 
+const NEVER_SENT_MESSAGE = "The email could not be sent, and nothing was delivered. Send it again."
 const UNCONFIRMED_MESSAGE =
   "The email provider never confirmed delivery, so the customer may or may not have received it."
 
-/** Settles a failure and reports it to the job runner as permanent, so it counts as failed. */
-async function settleFailure(
+/** Updates the stored payload; only fields of this delivery's own bookkeeping change. */
+async function recordOnJob(jobId: string, payload: DeliveryPayload) {
+  await prisma.job.update({ where: { id: jobId }, data: { payload } })
+}
+
+/**
+ * Records the decided failure, then settles it. A withdrawal ends the job normally; a refused or
+ * unconfirmed delivery is reported to the job runner as permanent, so it counts as failed.
+ */
+async function settleDecision(
   job: { id: string; organizationId: string },
   payload: DeliveryPayload,
   completion: DeliveryCompletion,
   failure: DeliveryFailure
-): Promise<never> {
+) {
+  if (!payload.decision) {
+    await recordOnJob(job.id, { ...payload, decision: failure })
+  }
   await settle(job, payload, completion, { delivered: false, failure })
-  throw new TerminalJobError(`Email ${failure.reason}: ${failure.message}`)
+  if (failure.reason !== "withdrawn") {
+    throw new TerminalJobError(`Email ${failure.reason}: ${failure.message}`)
+  }
 }
+
+const NOT_WAITING_MESSAGE = "The document no longer waited for this delivery"
+
+/** What a delivery that can no longer settle its document is recorded as. */
+const orphanedResult = (payload: DeliveryPayload): DeliveryResult =>
+  payload.providerMessageId
+    ? { outcome: "delivered", message: null }
+    : (payload.requests ?? 0) > 0
+      ? { outcome: "unconfirmed", message: NOT_WAITING_MESSAGE }
+      : { outcome: "withdrawn", message: NOT_WAITING_MESSAGE }
 
 registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   const payload = payloadSchema.parse(job.payload)
@@ -215,6 +245,11 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
     throw new Error(`No delivery completion registered for ${payload.completion.kind}`)
   }
   if (!(await completion.pending(prisma, payload.completion.target))) {
+    // Recorded so callers never wait on it; an outcome already recorded is kept.
+    await prisma.job.updateMany({
+      where: { id: job.id, result: { equals: Prisma.DbNull } },
+      data: { result: orphanedResult(payload) },
+    })
     return
   }
   // Accepted by an earlier attempt whose settlement failed: settle without sending again.
@@ -222,28 +257,33 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
     await settle(job, payload, completion, { delivered: true })
     return
   }
+  // Decided by an earlier attempt whose settlement failed: settle the same way.
+  if (payload.decision) {
+    return settleDecision(job, payload, completion, payload.decision)
+  }
 
-  // Every earlier attempt ended without an answer (a definite answer would have settled it), so
-  // any of them may have been delivered.
-  const possiblyDelivered = job.attempts > 1
+  // Every earlier request ended without an answer (an answer would have settled it), so any of
+  // them may have been delivered.
+  const requests = payload.requests ?? 0
+  const possiblyDelivered = requests > 0
   if (possiblyDelivered && Date.now() - job.createdAt.getTime() >= IDEMPOTENCY_WINDOW_MS) {
-    return settleFailure(job, payload, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
+    return settleDecision(job, payload, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
   }
   const withdrawal = await completion.withdrawalReason?.(prisma, payload.completion.target)
   if (withdrawal) {
-    if (possiblyDelivered) {
-      return settleFailure(job, payload, completion, {
-        reason: "unconfirmed",
-        message: `${UNCONFIRMED_MESSAGE} Further attempts were stopped: ${withdrawal}`,
-      })
-    }
-    await settle(job, payload, completion, {
-      delivered: false,
-      failure: { reason: "withdrawn", message: withdrawal },
-    })
-    return
+    return settleDecision(
+      job,
+      payload,
+      completion,
+      possiblyDelivered
+        ? { reason: "unconfirmed", message: `${UNCONFIRMED_MESSAGE} Further attempts were stopped: ${withdrawal}` }
+        : { reason: "withdrawn", message: withdrawal }
+    )
   }
 
+  // Counted before the request, so a request whose outcome is lost is never mistaken for none.
+  const requested = { ...payload, requests: requests + 1 }
+  await recordOnJob(job.id, requested)
   let accepted: { id: string }
   try {
     accepted = await deliver(payload.message, { idempotencyKey: payload.idempotencyKey })
@@ -251,9 +291,9 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
     if (isDefiniteRejection(error)) {
       deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, providerCode: error.providerCode })
       // A refusal proves only that this request delivered nothing.
-      return settleFailure(
+      return settleDecision(
         job,
-        payload,
+        requested,
         completion,
         possiblyDelivered
           ? { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE }
@@ -262,24 +302,22 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
     }
     if (job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {
       deliveryLogger.error("email.unconfirmed", { kind: payload.completion.kind, error })
-      return settleFailure(job, payload, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
+      return settleDecision(job, requested, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
     }
     // Retried with backoff by the job runner, replaying the same message and key.
     throw error
   }
 
   // Recorded first, so a settlement that fails is retried without sending again.
-  await prisma.job.update({
-    where: { id: job.id },
-    data: { payload: { ...payload, providerMessageId: accepted.id } },
-  })
+  await recordOnJob(job.id, { ...requested, providerMessageId: accepted.id })
   await settle(job, payload, completion, { delivered: true })
 })
 
 /**
  * Settles deliveries whose job ended without settling: a runner that stopped on the last allowed
- * attempt, or a settlement that kept failing. An accepted message settles as delivered; anything
- * else may have been delivered, so it settles as unconfirmed. Runs on every scheduler tick.
+ * attempt, or a settlement that kept failing. An accepted message settles as delivered and a
+ * decided failure as decided; otherwise a delivery that made a request may have been delivered
+ * (unconfirmed), and one that never made a request delivered nothing. Runs on every scheduler tick.
  */
 export async function settleAbandonedDeliveries(input: { organizationIds?: readonly string[]; limit?: number } = {}) {
   const abandoned = await prisma.job.findMany({
@@ -302,10 +340,7 @@ export async function settleAbandonedDeliveries(input: { organizationIds?: reado
       if (!completion) throw new Error(`No delivery completion registered for ${payload.completion.kind}`)
       if (!(await completion.pending(prisma, payload.completion.target))) {
         // Nothing left to settle; recorded so the sweep does not look at this job again.
-        await prisma.job.update({
-          where: { id: job.id },
-          data: { result: { outcome: "unconfirmed", message: "The document no longer waited for this delivery" } },
-        })
+        await prisma.job.update({ where: { id: job.id }, data: { result: orphanedResult(payload) } })
         continue
       }
       await settle(
@@ -314,7 +349,14 @@ export async function settleAbandonedDeliveries(input: { organizationIds?: reado
         completion,
         payload.providerMessageId
           ? { delivered: true }
-          : { delivered: false, failure: { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE } }
+          : {
+              delivered: false,
+              failure:
+                payload.decision ??
+                ((payload.requests ?? 0) > 0
+                  ? { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE }
+                  : { reason: "withdrawn", message: NEVER_SENT_MESSAGE }),
+            }
       )
       settled += 1
     } catch (error) {

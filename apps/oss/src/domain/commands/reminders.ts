@@ -35,6 +35,7 @@ export const REMINDER_SEND_JOB = "reminder.send"
 
 export const SUPERSEDED_MESSAGE = "Superseded by a later reminder"
 export const POLICY_DISABLED_MESSAGE = "Automatic reminders are turned off"
+export const BALANCE_CHANGED_MESSAGE = "The balance due changed after the reminder was queued"
 export const OFFSET_REMOVED_MESSAGE = "This reminder is no longer in the reminder policy"
 
 /** Invoices one scheduling command reserves reminders for; the rest are handled next tick. */
@@ -184,16 +185,40 @@ registerDeliveryCompletion(REMINDER_COMPLETION, {
   },
   // Stops a queued reminder that is no longer due a reminder before every request to the provider.
   withdrawalReason: async (db, target) => {
-    const invoice = await db.invoice.findUnique({
-      where: { id: target.invoiceId },
-      select: { status: true, totalGross: true, amountPaid: true, amountCredited: true, remindersPaused: true },
+    const reminder = await db.invoiceReminder.findUnique({
+      where: { id: target.reminderId },
+      select: {
+        offsetDays: true,
+        outcomeMessage: true,
+        invoice: {
+          select: {
+            status: true,
+            totalGross: true,
+            amountPaid: true,
+            amountCredited: true,
+            remindersPaused: true,
+            dueDate: true,
+            issueDate: true,
+            organizationId: true,
+            reminders: { select: { offsetDays: true, scheduledFor: true, outcome: true, outcomeMessage: true } },
+          },
+        },
+      },
     })
-    if (!invoice) return "The invoice no longer exists"
-    const blocker = reminderBlocker(invoice)
-    if (blocker === "not_open") return "Invoice is no longer open"
-    if (blocker === "settled") return "Invoice has no balance due"
-    if (invoice.remindersPaused && target.manual !== "true") return "Reminders are paused for this invoice"
-    return null
+    if (!reminder) return "The reminder no longer exists"
+    const settings = await db.orgSettings.findUnique({
+      where: { organizationId: reminder.invoice.organizationId },
+      select: { reminderPolicy: true },
+    })
+    const skip = reminderSkipReason({
+      reminder,
+      invoice: reminder.invoice,
+      policy: parseReminderPolicy(settings?.reminderPolicy ?? null),
+      now: new Date(),
+    })
+    if (skip) return skip
+    // The stored email states the balance due when it was queued.
+    return computeSettlement(reminder.invoice).balanceDue.toString() === target.balanceDue ? null : BALANCE_CHANGED_MESSAGE
   },
   failed: async ({ tx, target }, failure) => {
     const where = { id: target.reminderId, outcome: "sending", sentAt: new Date(target.attemptAt) }
@@ -209,10 +234,24 @@ registerDeliveryCompletion(REMINDER_COMPLETION, {
                 ? `${reminder.outcomeMessage ?? MANUAL_REMINDER_PREFIX} (delivery not confirmed)`
                 : "Delivery was not confirmed by the email provider",
           }
-        : failure.reason === "withdrawn"
-          ? { outcome: "skipped", outcomeMessage: failure.message }
+        : failure.reason === "withdrawn" && failure.message === BALANCE_CHANGED_MESSAGE && target.manual !== "true"
+          ? // Reserved again and re-queued, so the reminder goes out with the current balance.
+            { outcome: null, sentAt: null, outcomeMessage: null }
+          : failure.reason === "withdrawn"
+            ? { outcome: "skipped", outcomeMessage: failure.message }
           : { outcome: "failed", outcomeMessage: `The email provider refused the reminder: ${failure.message}`.slice(0, 500) }
     await tx.invoiceReminder.updateMany({ where, data })
+    if (data.outcome === null) {
+      await tx.job.create({
+        data: {
+          organizationId: (await tx.invoice.findUniqueOrThrow({ where: { id: target.invoiceId } })).organizationId,
+          type: REMINDER_SEND_JOB,
+          payload: { reminderId: target.reminderId, attempt: target.attemptAt },
+          dedupeKey: `reminder:${target.reminderId}:${target.attemptAt}`,
+        },
+      })
+      return []
+    }
     return [
       {
         aggregateType: "invoice",
@@ -683,6 +722,61 @@ export const scheduleDueReminders = defineCommand({
     }),
 })
 
+/**
+ * Why a reserved reminder should no longer go out, or null. The policy is read when sending, not
+ * when the reminder was reserved, so turning reminders off or removing an offset also stops
+ * reminders already queued. Checked when the reminder is queued and again before every request
+ * to the email provider.
+ */
+export function reminderSkipReason(input: {
+  reminder: { offsetDays: number; outcomeMessage: string | null }
+  invoice: SettlementFields & {
+    remindersPaused: boolean
+    dueDate: Date
+    issueDate: Date
+    reminders: ReadonlyArray<{ offsetDays: number; scheduledFor: Date; outcome: string | null; outcomeMessage: string | null }>
+  }
+  policy: ReminderPolicy
+  now: Date
+}): string | null {
+  const { reminder, invoice, policy, now } = input
+  const followsPolicy = !isManualReminder(reminder)
+  const offsetInPolicy = (offsetDays: number) => policy.offsetsDays.includes(offsetDays)
+  // A later reminder that went out, or is due and will go out, replaces this one, so a retried
+  // older reminder never reaches the customer after a newer one.
+  const laterRowSuperseded = invoice.reminders.some(
+    (other) =>
+      other.offsetDays > reminder.offsetDays &&
+      (other.outcome === "sent" ||
+        other.outcome === "sending" ||
+        (other.outcome === null &&
+          other.scheduledFor <= now &&
+          (isManualReminder(other) || (policy.enabled && offsetInPolicy(other.offsetDays)))))
+  )
+  // A later policy offset that is already due supersedes this reminder even before the scheduler
+  // reserved a row for it, e.g. a 7-day job retried after day 14.
+  const laterOffsetDue =
+    policy.enabled &&
+    policy.offsetsDays.some((offsetDays) => {
+      const scheduledFor = addDays(invoice.dueDate, offsetDays)
+      return offsetDays > reminder.offsetDays && scheduledFor <= now && scheduledFor >= invoice.issueDate
+    })
+  const blocker = reminderBlocker(invoice)
+  return blocker === "not_open"
+    ? "Invoice is no longer open"
+    : blocker === "settled"
+      ? "Invoice has no balance due"
+      : followsPolicy && invoice.remindersPaused
+        ? "Reminders are paused for this invoice"
+        : followsPolicy && !policy.enabled
+          ? POLICY_DISABLED_MESSAGE
+          : followsPolicy && !offsetInPolicy(reminder.offsetDays)
+            ? OFFSET_REMOVED_MESSAGE
+            : laterRowSuperseded || laterOffsetDue
+              ? SUPERSEDED_MESSAGE
+              : null
+}
+
 const deliverReminderInputSchema = z.object({ reminderId: z.string().min(1) })
 
 /**
@@ -742,50 +836,13 @@ export const deliverScheduledReminder = defineCommand({
 
       const { invoice } = reminder
       const { settings } = yield* loadDocumentContext
-      // The policy is read now, not when the reminder was reserved, so turning reminders off or
-      // removing an offset also stops reminders already queued.
-      const policy = parseReminderPolicy(settings.reminderPolicy)
-      const followsPolicy = !isManualReminder(reminder)
-      const offsetInPolicy = (offsetDays: number) => policy.offsetsDays.includes(offsetDays)
-      // A later reminder that went out, or is due and will go out, replaces this one, so a
-      // retried older reminder never reaches the customer after a newer one.
-      const laterRowSuperseded = invoice.reminders.some(
-        (other) =>
-          other.offsetDays > reminder.offsetDays &&
-          (other.outcome === "sent" ||
-            other.outcome === "sending" ||
-            (other.outcome === null &&
-              other.scheduledFor <= now &&
-              (isManualReminder(other) || (policy.enabled && offsetInPolicy(other.offsetDays)))))
-      )
-      // A later policy offset that is already due supersedes this reminder even before the
-      // scheduler reserved a row for it, e.g. a 7-day job retried after day 14.
-      const laterOffsetDue =
-        policy.enabled &&
-        policy.offsetsDays.some((offsetDays) => {
-          const scheduledFor = addDays(invoice.dueDate, offsetDays)
-          return offsetDays > reminder.offsetDays && scheduledFor <= now && scheduledFor >= invoice.issueDate
-        })
-      const superseded = laterRowSuperseded || laterOffsetDue
-      const blocker = reminderBlocker(invoice)
       const skipReason =
-        blocker === "not_open"
-          ? "Invoice is no longer open"
-          : blocker === "settled"
-            ? "Invoice has no balance due"
-            : invoice.remindersPaused
-              ? "Reminders are paused for this invoice"
-              : followsPolicy && !policy.enabled
-                ? POLICY_DISABLED_MESSAGE
-                : followsPolicy && !offsetInPolicy(reminder.offsetDays)
-                  ? OFFSET_REMOVED_MESSAGE
-                  : superseded
-                    ? SUPERSEDED_MESSAGE
-                    : !isValidRecipient(invoice.contact.email)
-                      ? "Contact has no email address"
-                      : !resolveInvoiceEmailContext(settings).emailDelivery.available
-                        ? "Email delivery is not configured"
-                        : null
+        reminderSkipReason({ reminder, invoice, policy: parseReminderPolicy(settings.reminderPolicy), now }) ??
+        (!isValidRecipient(invoice.contact.email)
+          ? "Contact has no email address"
+          : !resolveInvoiceEmailContext(settings).emailDelivery.available
+            ? "Email delivery is not configured"
+            : null)
 
       if (skipReason) {
         yield* Effect.promise(() =>

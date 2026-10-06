@@ -89,8 +89,10 @@ export async function runReminderTask(
  * idempotency key and the reminder's final outcome keep retries from sending twice.
  */
 export async function handleReminderSendJob(job: { organizationId: string; payload: unknown }) {
-  const payload = job.payload as { reminderId?: unknown } | null
+  const payload = job.payload as { reminderId?: unknown; attempt?: unknown } | null
   const reminderId = typeof payload?.reminderId === "string" ? payload.reminderId : null
+  // A reminder re-queued after its email was withdrawn runs again under a new request id.
+  const attempt = typeof payload?.attempt === "string" ? `:${payload.attempt}` : ""
   if (!reminderId) {
     throw new Error("reminder.send job is missing reminderId")
   }
@@ -98,7 +100,7 @@ export async function handleReminderSendJob(job: { organizationId: string; paylo
   const outcome = await executeCommand(
     deliverScheduledReminder,
     { reminderId },
-    { actor: schedulerActor(job.organizationId), clientRequestId: `reminder.send:${reminderId}` }
+    { actor: schedulerActor(job.organizationId), clientRequestId: `reminder.send:${reminderId}${attempt}` }
   )
   if (outcome.status !== "completed") {
     throw new Error(

@@ -129,7 +129,10 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
             at: attemptAt,
             outcome: "failed",
             code: "send_failed",
-            message: `The email provider refused the ${noun} email: ${failure.message}`,
+            message:
+              failure.reason === "rejected"
+                ? `The email provider refused the ${noun} email: ${failure.message}`
+                : failure.message,
           }),
         })
         if (count === 0) return []

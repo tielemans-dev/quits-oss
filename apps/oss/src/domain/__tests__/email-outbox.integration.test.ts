@@ -13,7 +13,12 @@ import { decideApproval } from "../approvals"
 import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice, updateInvoiceDraft } from "../commands/invoices"
 import { recordPayment } from "../commands/payments"
-import { sendReminderNow } from "../commands/reminders"
+import {
+  POLICY_DISABLED_MESSAGE,
+  REMINDER_SEND_JOB,
+  sendReminderNow,
+  updateReminderPolicy,
+} from "../commands/reminders"
 import {
   EMAIL_DELIVERY_ATTEMPTS,
   EMAIL_DELIVERY_JOB,
@@ -23,6 +28,7 @@ import {
 } from "../delivery/outbox"
 import { readActivity } from "../events"
 import { executeCommand } from "../execute"
+import "../features/reminders"
 import { registerJobHandler, runDueJobs } from "../jobs"
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
@@ -307,6 +313,8 @@ describeIfDatabase("email outbox", () => {
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
     expect(invoice).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "sending" })
     expect(invoice.lastEmailAttemptAt?.getTime()).toBe(newer.getTime())
+    // The superseded delivery still records an outcome, so nobody waits on it.
+    expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "unconfirmed" })
   })
 
   it("stops retrying a reminder once the invoice is paid, keeping it as possibly delivered", async () => {
@@ -331,6 +339,79 @@ describeIfDatabase("email outbox", () => {
     expect(row.outcome).toBe("sent")
     expect(row.outcomeMessage).toContain("delivery not confirmed")
     expect(await readDeliveryResult(reminder.result.deliveryKey)).toMatchObject({ outcome: "unconfirmed" })
+  })
+
+  it("counts provider requests, not job claims, when deciding whether anything may have arrived", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
+    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    // Earlier claims that never reached the provider (e.g. a database error before the request).
+    const job = await deliveryJob(org.organizationId)
+    const payload = job.payload as Record<string, unknown>
+    await prisma.job.update({ where: { id: job.id }, data: { attempts: 3, payload: { ...payload, requests: 0 } } })
+    vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "Domain is not verified"))
+    await makeDue(job.id)
+    await runDueJobs({ organizationIds: [org.organizationId] })
+
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({
+      status: "draft",
+      lastEmailAttemptOutcome: "failed",
+    })
+  })
+
+  /** A sent invoice with a due scheduled reminder whose email is queued but not yet attempted. */
+  async function queuedScheduledReminder() {
+    const ctx = await setup()
+    await executeCommand(sendInvoice, { id: ctx.invoiceId }, { actor: ctx.org.actors.admin })
+    await executeCommand(updateReminderPolicy, { enabled: true, offsetsDays: [0] }, { actor: ctx.org.actors.admin })
+    const reminder = await prisma.invoiceReminder.create({
+      data: { invoiceId: ctx.invoiceId, offsetDays: 0, scheduledFor: new Date(Date.now() - 1000) },
+    })
+    await prisma.job.create({
+      data: {
+        organizationId: ctx.org.organizationId,
+        type: REMINDER_SEND_JOB,
+        payload: { reminderId: reminder.id },
+        dedupeKey: `reminder:${reminder.id}`,
+      },
+    })
+    vi.mocked(deliver).mockClear()
+    // The reminder job queues the email; the limit leaves the email for the next sweep.
+    await runDueJobs({ organizationIds: [ctx.org.organizationId], limit: 1 })
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminder.id } })).toMatchObject({
+      outcome: "sending",
+    })
+    return { ...ctx, reminderId: reminder.id }
+  }
+
+  it("withdraws a queued scheduled reminder once automatic reminders are turned off", async () => {
+    const { org, reminderId } = await queuedScheduledReminder()
+    await executeCommand(updateReminderPolicy, { enabled: false, offsetsDays: [0] }, { actor: org.actors.admin })
+
+    await runDueJobs({ organizationIds: [org.organizationId] })
+
+    expect(deliver).not.toHaveBeenCalled()
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminderId } })).toMatchObject({
+      outcome: "skipped",
+      outcomeMessage: POLICY_DISABLED_MESSAGE,
+    })
+  })
+
+  it("re-queues a scheduled reminder with the current balance after a partial payment", async () => {
+    const { org, invoiceId, reminderId } = await queuedScheduledReminder()
+    await executeCommand(
+      recordPayment,
+      { invoiceId, amount: 40, paidAt: "2026-01-15", method: "bank_transfer" },
+      { actor: org.actors.admin }
+    )
+
+    await runDueJobs({ organizationIds: [org.organizationId] })
+
+    expect(deliver).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(deliver).mock.calls[0]?.[0].html).toContain("60.00")
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminderId } })).toMatchObject({
+      outcome: "sent",
+    })
   })
 
   describe("approved agent sends", () => {
