@@ -30,6 +30,8 @@ type ContactData = {
   zip: string | null
   country: string | null
   taxId: string | null
+  peppolEndpointId: string | null
+  peppolEndpointScheme: string | null
   notes: string | null
 }
 
@@ -70,6 +72,8 @@ function EditContactPage() {
         zip: (form.get("zip") as string) || undefined,
         country: (form.get("country") as string) || undefined,
         taxId: (form.get("taxId") as string) || undefined,
+        peppolEndpointId: (form.get("peppolEndpointId") as string) || undefined,
+        peppolEndpointScheme: (form.get("peppolEndpointScheme") as string) || undefined,
         notes: (form.get("notes") as string) || undefined,
       })
       navigate({ to: "/contacts" })
@@ -224,6 +228,35 @@ function EditContactPage() {
                 maxLength={40}
                 defaultValue={contact.taxId ?? ""}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="peppolEndpointId">{t("exports.contact.peppolEndpointId")}</Label>
+                  <Input
+                    id="peppolEndpointId"
+                    name="peppolEndpointId"
+                    maxLength={80}
+                    placeholder={t("exports.contact.peppolEndpointId.placeholder")}
+                    defaultValue={contact.peppolEndpointId ?? ""}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="peppolEndpointScheme">{t("exports.contact.peppolEndpointScheme")}</Label>
+                  <Input
+                    id="peppolEndpointScheme"
+                    name="peppolEndpointScheme"
+                    inputMode="numeric"
+                    maxLength={4}
+                    pattern="^\d{4}$"
+                    title={t("exports.contact.peppolEndpointScheme.invalid")}
+                    placeholder={t("exports.contact.peppolEndpointScheme.placeholder")}
+                    defaultValue={contact.peppolEndpointScheme ?? ""}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("exports.contact.peppolHint")}</p>
             </div>
 
             <div className="grid gap-2">
