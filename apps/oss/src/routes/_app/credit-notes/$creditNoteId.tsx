@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowLeft, Download, Mail } from "lucide-react"
 import { parseBuyerSnapshot } from "@yaip/contracts/documents"
 import { trpc } from "../../../trpc/client"
+import { usePollWhile } from "../../../hooks/use-poll-while"
 import { useActiveOrganizationId } from "../../../lib/active-organization"
 import { formatCurrency, formatDate } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
@@ -49,7 +50,7 @@ function CreditNoteDetailPage() {
   const [org, setOrg] = useState<OrgContext>({ emailAvailable: false })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ kind: "info" | "warning"; text: string } | null>(null)
   const [sending, setSending] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [canSend, setCanSend] = useState(false)
@@ -80,6 +81,18 @@ function CreditNoteDetailPage() {
     })
   }, [creditNoteId])
 
+  /** Reloads only the credit note; a full load started meanwhile wins. */
+  const refreshCreditNote = useCallback(async () => {
+    const request = latestLoad.current
+    const data = await trpc.creditNotes.get.query({ id: creditNoteId })
+    if (request !== latestLoad.current) return
+    setCreditNote(data)
+  }, [creditNoteId])
+
+  // While the outbox is still delivering the email, follow it until it settles.
+  const emailSending = creditNote?.lastEmailAttemptOutcome === "sending"
+  usePollWhile(emailSending, refreshCreditNote)
+
   // Switching organization keeps the page mounted, so start over with nothing allowed.
   useEffect(() => {
     setCanSend(false)
@@ -96,7 +109,20 @@ function CreditNoteDetailPage() {
     setNotice(null)
     try {
       const result = await trpc.creditNotes.send.mutate({ id: creditNote.id })
-      setNotice(t("creditNotes.detail.email.success", { email: result.recipient }))
+      // Compared as a string: the outcome union grows ("unconfirmed") on the server side.
+      const outcome: string | null = result.lastEmailAttemptOutcome
+      if (outcome === "sending") {
+        setNotice({ kind: "info", text: t("creditNotes.detail.email.pending", { email: result.recipient }) })
+      } else if (outcome === "unconfirmed") {
+        setNotice({
+          kind: "warning",
+          text: t("creditNotes.detail.email.unconfirmed", {
+            date: formatDate(result.lastEmailAttemptAt ?? new Date(), locale, creditNote.timezone),
+          }),
+        })
+      } else {
+        setNotice({ kind: "info", text: t("creditNotes.detail.email.success", { email: result.recipient }) })
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("creditNotes.error.generic"))
     } finally {
@@ -151,11 +177,16 @@ function CreditNoteDetailPage() {
   const contact = { ...creditNote.contact, ...buyer, name: buyer?.name ?? creditNote.contact.name }
   const recipientValid = isValidEmailAddress(creditNote.contact.email)
   const lastAttemptAt = creditNote.lastEmailAttemptAt
+  const lastOutcome: string | null = creditNote.lastEmailAttemptOutcome
   const emailStatus = !lastAttemptAt
     ? t("creditNotes.detail.email.never")
-    : creditNote.lastEmailAttemptOutcome === "sent"
+    : lastOutcome === "sent"
       ? t("creditNotes.detail.email.sent", { date: formatDate(lastAttemptAt, locale, timezone) })
-      : t("creditNotes.detail.email.failed", { date: formatDate(lastAttemptAt, locale, timezone) })
+      : lastOutcome === "sending"
+        ? t("creditNotes.detail.email.sending")
+        : lastOutcome === "unconfirmed"
+          ? t("creditNotes.detail.email.unconfirmed", { date: formatDate(lastAttemptAt, locale, timezone) })
+          : t("creditNotes.detail.email.failed", { date: formatDate(lastAttemptAt, locale, timezone) })
 
   return (
     <div className="p-6 max-w-3xl grid gap-6">
@@ -173,8 +204,13 @@ function CreditNoteDetailPage() {
         </p>
       )}
       {notice && (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
+        <p
+          className={
+            notice.kind === "warning" ? "text-sm text-amber-700 dark:text-amber-300" : "text-sm text-muted-foreground"
+          }
+          role="status"
+        >
+          {notice.text}
         </p>
       )}
 
@@ -280,7 +316,8 @@ function CreditNoteDetailPage() {
             </CardDescription>
           </div>
           {canSend && org.emailAvailable && recipientValid && (
-            <Button size="sm" disabled={sending} onClick={() => void handleSend()}>
+            // A queued email settles on its own; sending again is refused meanwhile.
+            <Button size="sm" disabled={sending || emailSending} onClick={() => void handleSend()}>
               <Mail className="size-4" />
               {sending
                 ? t("creditNotes.action.sending")

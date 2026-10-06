@@ -21,9 +21,15 @@ export function createEmailDeliveryAttempt(input: {
   }
 }
 
-export function readEmailDeliveryAttempt(
-  input: EmailDeliveryAttemptSnapshot
-): EmailDeliveryAttemptRecord | null {
+/**
+ * The last delivery attempt of a document, or `null` when it is incomplete. Generic over the
+ * outcome so the UI can also read outcomes it knows about before the shared contract does.
+ */
+export function readEmailDeliveryAttempt<TOutcome extends string = EmailDeliveryOutcome>(
+  input: Omit<EmailDeliveryAttemptSnapshot, "lastEmailAttemptOutcome"> & {
+    lastEmailAttemptOutcome: TOutcome | null
+  }
+): (Omit<EmailDeliveryAttemptRecord, "lastEmailAttemptOutcome"> & { lastEmailAttemptOutcome: TOutcome }) | null {
   if (
     !input.lastEmailAttemptAt ||
     !input.lastEmailAttemptOutcome ||

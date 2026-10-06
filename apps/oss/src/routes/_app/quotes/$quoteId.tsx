@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
+import { usePollWhile } from "../../../hooks/use-poll-while"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import {
   readEmailDeliveryAttempt,
@@ -54,8 +55,10 @@ import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle } from "lucide-rea
 import { useI18n } from "../../../lib/i18n/react"
 
 export const Route = createFileRoute("/_app/quotes/$quoteId")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { emailWarning?: string; sendError?: string } => ({
     emailWarning: typeof search.emailWarning === "string" ? search.emailWarning : undefined,
+    // Set when the quote was created but sending it failed, e.g. the provider refused the email.
+    sendError: typeof search.sendError === "string" ? search.sendError : undefined,
   }),
   component: QuoteDetailPage,
 })
@@ -96,7 +99,7 @@ type Quote = {
   publicDecisionAt: string | null
   publicRejectionReason: string | null
   lastEmailAttemptAt: string | Date | null
-  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | "sending" | null
+  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | "sending" | "unconfirmed" | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
   contact: Contact
@@ -156,15 +159,17 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
 function QuoteDetailPage() {
   const { t, locale } = useI18n()
   const { quoteId } = Route.useParams()
-  const { emailWarning } = Route.useSearch()
+  const { emailWarning, sendError } = Route.useSearch()
   const navigate = useNavigate()
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loading, setLoading] = useState(true)
   const [emailDelivery, setEmailDelivery] = useState<EmailDeliveryRuntimeStatus | null>(null)
   const [error, setError] = useState<string | null>(
-    emailWarning
-      ? t("quotes.detail.warning.emailSkipped", { reason: emailWarning })
-      : null
+    sendError
+      ? sendError
+      : emailWarning
+        ? t("quotes.detail.warning.emailSkipped", { reason: emailWarning })
+        : null
   )
   const [acting, setActing] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -194,6 +199,19 @@ function QuoteDetailPage() {
     const updated = await trpc.quotes.get.query({ id: quoteId })
     setQuote(updated as unknown as Quote)
   }
+
+  /** After a failed send: a refused email is recorded on the quote, so show its new state. */
+  async function reloadQuoteAfterFailure() {
+    try {
+      await reloadQuote()
+    } catch {
+      // Keep the send error on screen; the quote reloads on the next visit.
+    }
+  }
+
+  // While the outbox is still delivering the email the quote is frozen; follow it until it settles.
+  const emailSending = quote?.lastEmailAttemptOutcome === "sending"
+  usePollWhile(emailSending, reloadQuote)
 
   function startEditing() {
     if (!quote) return
@@ -300,6 +318,7 @@ function QuoteDetailPage() {
           ? err.message
           : t("quotes.detail.error.sendFailed")
       )
+      await reloadQuoteAfterFailure()
     } finally {
       setActing(false)
     }
@@ -318,6 +337,7 @@ function QuoteDetailPage() {
           ? err.message
           : t("quotes.detail.error.sendFailed")
       )
+      await reloadQuoteAfterFailure()
     } finally {
       setActing(false)
     }
@@ -625,7 +645,9 @@ function QuoteDetailPage() {
           at: formatDate(toDateString(emailAttempt.lastEmailAttemptAt), locale),
         }),
         message:
-          emailAttempt.lastEmailAttemptCode === "provider_missing"
+          emailAttempt.lastEmailAttemptOutcome === "unconfirmed"
+            ? t("quotes.detail.email.reason.unconfirmed")
+            : emailAttempt.lastEmailAttemptCode === "provider_missing"
             ? t("quotes.detail.email.reason.provider_missing")
             : emailAttempt.lastEmailAttemptCode === "send_failed"
               ? t("quotes.detail.email.reason.send_failed")
@@ -683,9 +705,10 @@ function QuoteDetailPage() {
           {t("quotes.detail.action.back")}
         </Button>
         <div className="flex items-center gap-2">
-          {quote.status === "draft" && (
+          {/* A draft whose email is still being delivered can no longer be edited or deleted. */}
+          {quote.status === "draft" && !emailSending && (
             <>
-              <Button variant="outline" size="sm" onClick={startEditing}>
+              <Button variant="outline" size="sm" disabled={acting} onClick={startEditing}>
                 <Pencil className="size-4" />
                 {t("quotes.detail.action.edit")}
               </Button>
@@ -802,7 +825,7 @@ function QuoteDetailPage() {
                     label: t("quotes.detail.action.send"),
                     pendingLabel: t("quotes.detail.action.sending"),
                     pending: acting,
-                    disabled: acting || quote.lastEmailAttemptOutcome === "sending",
+                    disabled: acting || emailSending,
                     onClick: () => {
                       void handleSend()
                     },
@@ -812,7 +835,7 @@ function QuoteDetailPage() {
                       label: t("quotes.detail.action.resendEmail"),
                       pendingLabel: t("quotes.detail.action.sending"),
                       pending: acting,
-                      disabled: acting || quote.lastEmailAttemptOutcome === "sending",
+                      disabled: acting || emailSending,
                       onClick: () => {
                         void handleResendEmail()
                       },
@@ -820,7 +843,7 @@ function QuoteDetailPage() {
                   : null
             }
             degradedAction={
-              canShowDegradedSend
+              canShowDegradedSend && !emailSending
                 ? {
                     open: sendWithoutEmailOpen,
                     triggerLabel: t("quotes.detail.email.degraded.trigger"),
