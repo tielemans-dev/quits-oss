@@ -31,7 +31,10 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   exit 1
 fi
 
-mapfile -t db_parts < <(node <<'NODE'
+db_parts=()
+while IFS= read -r line; do
+  db_parts+=("$line")
+done < <(node <<'NODE'
 const raw = process.env.DATABASE_URL
 if (!raw) {
   console.error("DATABASE_URL is missing")
