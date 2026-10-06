@@ -16,10 +16,10 @@ import { defineCommand } from "../command"
 import { loadDocumentContext } from "../documents/context"
 import { requireRecipientEmail, resolveInvoiceEmailContext } from "../documents/invoice-email"
 import { allocateDocumentNumber } from "../documents/numbering"
-import { impliedTaxRate } from "../documents/pricing"
+import { documentFractionDigits, impliedTaxRate } from "../documents/pricing"
 import { refreshInvoiceSettlement } from "../documents/settlement"
 import { buildBuyerSnapshot, buildSellerSnapshot } from "../documents/snapshots"
-import { ExternalFailure, InvalidState, NotFound } from "../errors"
+import { ExternalFailure, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { Command, Db } from "../services"
 import { lockDocument } from "../documents/locks"
 import { creditNoteIssueApproval, creditNoteSendApproval } from "../approval-contexts"
@@ -63,6 +63,7 @@ type CreditLineAmounts = {
 
 /** What is still creditable on an invoice, given its lines and issued credit notes. */
 export function creditAvailabilityFor(invoice: {
+  currency: string
   subtotalNet: Decimalish
   totalTax: Decimalish
   totalGross: Decimalish
@@ -111,6 +112,7 @@ export function creditAvailabilityFor(invoice: {
     100
 
   return computeCreditAvailability({
+    fractionDigits: documentFractionDigits(invoice.currency),
     lines,
     priorCredits,
     totalNet: num(invoice.subtotalNet),
@@ -167,6 +169,12 @@ export const issueCreditNote = defineCommand({
         }),
       })
       if (!built.ok) {
+        if (built.code === "amount_not_representable") {
+          return yield* new ValidationFailed({
+            message: built.message,
+            issues: [{ path: "amount", message: built.message }],
+          })
+        }
         return yield* new InvalidState({ message: built.message, code: built.code })
       }
 

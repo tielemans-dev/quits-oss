@@ -2,7 +2,9 @@
  * Pure credit note arithmetic shared by the issue command and the create dialog preview.
  *
  * All math runs on integers: money in cents and quantities in hundredths, matching the
- * two-decimal columns they are stored in. Partial line credits are prorated from the invoice
+ * two-decimal columns they are stored in. New credit amounts are additionally rounded to the
+ * precision of the invoice currency (whole units for JPY), so crediting never leaves a balance
+ * the currency cannot be paid in; quantities keep two decimals. Partial line credits are prorated from the invoice
  * line and capped by what is still uncredited on that line, so crediting a line in several
  * steps never credits more than the line, and the final step credits the exact remainder.
  *
@@ -45,6 +47,8 @@ export type CreditLineAvailability = {
 }
 
 export type CreditAvailability = {
+  /** Decimal places credit amounts are rounded to, from the invoice currency (at most 2). */
+  fractionDigits: number
   lines: CreditLineAvailability[]
   totalNet: number
   totalTax: number
@@ -86,6 +90,7 @@ export type CreditBuildErrorCode =
   | "quantity_exceeds_remaining"
   | "exceeds_invoice_total"
   | "nothing_to_credit"
+  | "amount_not_representable"
 
 export type CreditBuildResult =
   | {
@@ -100,12 +105,27 @@ export type CreditBuildResult =
 const toCents = (value: number) => Math.round(value * 100)
 const fromCents = (value: number) => value / 100
 
-/** Rounds half away from zero for non-negative integer ratios. */
-function prorate(amountCents: number, part: number, whole: number) {
-  return whole > 0 ? Math.round((amountCents * part) / whole) : 0
+/** Cents in the smallest unit of a currency with `fractionDigits` decimals, e.g. 100 for JPY. */
+function minorUnitCents(fractionDigits = 2) {
+  return 10 ** (2 - Math.min(Math.max(Math.trunc(fractionDigits), 0), 2))
+}
+
+/** Rounds cents half away from zero to whole minor units of the currency. */
+function roundToUnit(cents: number, unit: number) {
+  return Math.round(cents / unit) * unit
+}
+
+/**
+ * `amountCents * part / whole`, rounded half away from zero (for non-negative inputs) to whole
+ * minor units of `unit` cents.
+ */
+function prorate(amountCents: number, part: number, whole: number, unit = 1) {
+  return whole > 0 ? Math.round((amountCents * part) / (whole * unit)) * unit : 0
 }
 
 export function computeCreditAvailability(input: {
+  /** Decimal places of the invoice currency; credits are rounded to this precision. */
+  fractionDigits?: number
   lines: readonly CreditableInvoiceLine[]
   priorCredits: readonly PriorCreditLine[]
   totalNet: number
@@ -138,6 +158,7 @@ export function computeCreditAvailability(input: {
     fromCents(Math.max(toCents(total) - toCents(credited), 0))
 
   return {
+    fractionDigits: input.fractionDigits ?? 2,
     lines,
     totalNet: input.totalNet,
     totalTax: input.totalTax,
@@ -151,9 +172,17 @@ export function computeCreditAvailability(input: {
   }
 }
 
-/** Credits `quantity` of one invoice line, never more than is left on it. */
-export function creditLine(availability: CreditLineAvailability, quantity: number): CreditDraftLine {
+/**
+ * Credits `quantity` of one invoice line, never more than is left on it. Prorated amounts are
+ * rounded to whole minor units of a currency with `fractionDigits` decimals.
+ */
+export function creditLine(
+  availability: CreditLineAvailability,
+  quantity: number,
+  fractionDigits = 2
+): CreditDraftLine {
   const { line } = availability
+  const unit = minorUnitCents(fractionDigits)
   const quantityHundredths = toCents(quantity)
   const remainingNet = toCents(availability.remainingNet)
   const remainingTax = toCents(availability.remainingTax)
@@ -169,9 +198,12 @@ export function creditLine(availability: CreditLineAvailability, quantity: numbe
     gross = remainingGross
   } else {
     const wholeQuantity = toCents(line.quantity)
-    gross = Math.min(prorate(toCents(line.lineGross), quantityHundredths, wholeQuantity), remainingGross)
+    gross = Math.min(
+      prorate(toCents(line.lineGross), quantityHundredths, wholeQuantity, unit),
+      remainingGross
+    )
     const proratedNet = Math.min(
-      prorate(toCents(line.lineNet), quantityHundredths, wholeQuantity),
+      prorate(toCents(line.lineNet), quantityHundredths, wholeQuantity, unit),
       remainingNet
     )
     tax = Math.min(Math.max(gross - proratedNet, 0), remainingTax)
@@ -194,7 +226,7 @@ export function creditLine(availability: CreditLineAvailability, quantity: numbe
 }
 
 /**
- * Splits a gross credit into net and tax in whole cents that sum exactly to the gross.
+ * Splits a gross credit into net and tax in whole minor units that sum exactly to the gross.
  *
  * Crediting the whole remaining balance reverses exactly the remaining net and tax. A smaller
  * amount takes tax in proportion to what is left, which never exceeds the remaining tax or net.
@@ -204,7 +236,10 @@ export function allocateAmountCredit(input: {
   remainingNet: number
   remainingTax: number
   remainingGross: number
+  /** Decimal places of the currency; the tax share is rounded to this precision. */
+  fractionDigits?: number
 }): { net: number; tax: number; gross: number } {
+  const unit = minorUnitCents(input.fractionDigits)
   const gross = toCents(input.amount)
   const remainingNet = Math.max(toCents(input.remainingNet), 0)
   const remainingTax = Math.max(toCents(input.remainingTax), 0)
@@ -213,7 +248,7 @@ export function allocateAmountCredit(input: {
   if (gross >= toCents(input.remainingGross)) {
     tax = remainingTax
   } else {
-    tax = Math.min(prorate(gross, remainingTax, remainingNet + remainingTax), remainingTax)
+    tax = Math.min(prorate(gross, remainingTax, remainingNet + remainingTax, unit), remainingTax)
   }
   // Keep both components within what is left even when stored totals disagree by a cent.
   tax = Math.min(Math.max(tax, gross - remainingNet, 0), gross)
@@ -230,9 +265,13 @@ export function creditAmountLine(input: {
   description: string
   taxCategory?: string
   split?: { net: number; tax: number }
+  /** Decimal places of the currency; an unsplit net is rounded to this precision. */
+  fractionDigits?: number
 }): CreditDraftLine {
   const gross = toCents(input.amount)
-  const net = input.split ? toCents(input.split.net) : Math.round(gross / (1 + input.taxRate / 100))
+  const net = input.split
+    ? toCents(input.split.net)
+    : roundToUnit(gross / (1 + input.taxRate / 100), minorUnitCents(input.fractionDigits))
   return {
     invoiceItemId: null,
     description: input.description,
@@ -298,6 +337,8 @@ export function buildCreditLines(input: {
   amountDescription: string
 }): CreditBuildResult {
   const { availability, selection } = input
+  const { fractionDigits } = availability
+  const unit = minorUnitCents(fractionDigits)
   const remainingGross = toCents(availability.remainingGross)
 
   if (remainingGross <= 0) {
@@ -309,11 +350,13 @@ export function buildCreditLines(input: {
       amount,
       taxRate: input.taxRate,
       description: input.amountDescription,
+      fractionDigits,
       split: allocateAmountCredit({
         amount,
         remainingNet: availability.remainingNet,
         remainingTax: availability.remainingTax,
         remainingGross: availability.remainingGross,
+        fractionDigits,
       }),
     })
 
@@ -322,7 +365,7 @@ export function buildCreditLines(input: {
   if (selection.mode === "full") {
     const lineCredits = availability.lines
       .filter((entry) => toCents(entry.remainingQuantity) > 0 || toCents(entry.remainingGross) > 0)
-      .map((entry) => creditLine(entry, entry.remainingQuantity))
+      .map((entry) => creditLine(entry, entry.remainingQuantity, fractionDigits))
     const lineTotals = totalsOf(lineCredits)
     // Amount-only credits are not tied to lines, so the per-line remainders no longer add up to
     // what is left on the invoice. Credit the remaining balance as one amount line instead,
@@ -352,11 +395,21 @@ export function buildCreditLines(input: {
         )
       }
       if (toCents(selected.quantity) > 0) {
-        lines.push(creditLine(entry, selected.quantity))
+        lines.push(creditLine(entry, selected.quantity, fractionDigits))
       }
     }
     lines = conserveInvoiceComponents(lines, availability)
   } else {
+    // The exact remaining balance is always creditable, even if earlier data left it fractional.
+    const amount = toCents(selection.amount)
+    if (amount % unit !== 0 && amount !== remainingGross) {
+      return fail(
+        "amount_not_representable",
+        fractionDigits === 0
+          ? "The credit amount must be a whole number in this currency"
+          : `The credit amount can have at most ${fractionDigits} decimal places in this currency`
+      )
+    }
     lines = [amountLine(selection.amount)]
   }
 

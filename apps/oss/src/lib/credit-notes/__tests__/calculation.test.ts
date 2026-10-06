@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { documentFractionDigits } from "../../../domain/documents/pricing"
 import {
   buildCreditLines,
   computeCreditAvailability,
@@ -8,18 +9,25 @@ import {
   type PriorCreditLine,
 } from "../calculation"
 
-function line(id: string, quantity: number, unitNet: number, taxRate = 25): CreditableInvoiceLine {
-  const lineNet = Math.round(quantity * unitNet * 100) / 100
-  const lineTax = Math.round(lineNet * taxRate) / 100
+function line(
+  id: string,
+  quantity: number,
+  unitNet: number,
+  taxRate = 25,
+  fractionDigits = 2
+): CreditableInvoiceLine {
+  const scale = 10 ** fractionDigits
+  const lineNet = Math.round(quantity * unitNet * scale) / scale
+  const lineTax = Math.round((lineNet * taxRate * scale) / 100) / scale
   return {
     id,
     description: `Line ${id}`,
     quantity,
     unitPriceNet: unitNet,
-    unitPriceGross: Math.round(unitNet * (100 + taxRate)) / 100,
+    unitPriceGross: Math.round((unitNet * (100 + taxRate) * scale) / 100) / scale,
     lineNet,
     lineTax,
-    lineGross: Math.round((lineNet + lineTax) * 100) / 100,
+    lineGross: Math.round((lineNet + lineTax) * scale) / scale,
     taxRate,
     taxCategory: "standard",
     taxCode: null,
@@ -32,9 +40,14 @@ const sumCents = <T,>(items: readonly T[], pick: (item: T) => number) =>
   items.reduce((sum, item) => sum + cents(pick(item)), 0)
 const invoiceTotal = sumCents(invoiceLines, (entry) => entry.lineGross) / 100
 
-function availabilityFor(lines: readonly CreditableInvoiceLine[], prior: readonly PriorCreditLine[]) {
+function availabilityFor(
+  lines: readonly CreditableInvoiceLine[],
+  prior: readonly PriorCreditLine[],
+  currency?: string
+) {
   return computeCreditAvailability({
     lines,
+    fractionDigits: currency ? documentFractionDigits(currency) : undefined,
     priorCredits: prior,
     totalNet: sumCents(lines, (entry) => entry.lineNet) / 100,
     totalTax: sumCents(lines, (entry) => entry.lineTax) / 100,
@@ -208,6 +221,55 @@ describe("credit note calculation", () => {
     expect(result.ok && cents(result.subtotalNet) + cents(result.totalTax)).toBe(10000)
   })
 
+  describe("zero-decimal currencies", () => {
+    // 1 x 100 JPY at 25% tax: 125 JPY gross.
+    const yenLines = [line("y", 1, 100, 25, 0)]
+    const credit = (selection: CreditSelection, prior: PriorCreditLine[] = []) =>
+      buildCreditLines({
+        availability: availabilityFor(yenLines, prior, "JPY"),
+        selection,
+        taxRate: 25,
+        amountDescription: "x",
+      })
+
+    it("rejects amount credits the currency cannot represent", () => {
+      expect(credit({ mode: "amount", amount: 0.01 })).toMatchObject({
+        ok: false,
+        code: "amount_not_representable",
+      })
+      expect(credit({ mode: "amount", amount: 10.5 })).toMatchObject({
+        ok: false,
+        code: "amount_not_representable",
+      })
+      expect(credit({ mode: "amount", amount: 10 })).toMatchObject({ ok: true, totalGross: 10 })
+    })
+
+    it("rounds line credits to whole yen and leaves a payable balance", () => {
+      const half = credit({ mode: "lines", lines: [{ invoiceItemId: "y", quantity: 0.5 }] })
+      if (!half.ok) throw new Error(half.message)
+      expect(Number.isInteger(half.totalGross)).toBe(true)
+      expect(Number.isInteger(half.subtotalNet)).toBe(true)
+      expect(Number.isInteger(half.totalTax)).toBe(true)
+      expect(half.lines[0]?.quantity).toBe(0.5)
+      expect(half.subtotalNet + half.totalTax).toBe(half.totalGross)
+
+      const rest = credit({ mode: "lines", lines: [{ invoiceItemId: "y", quantity: 0.5 }] }, half.lines)
+      if (!rest.ok) throw new Error(rest.message)
+      expect(half.totalGross + rest.totalGross).toBe(125)
+      expect(half.subtotalNet + rest.subtotalNet).toBe(100)
+      expect(half.totalTax + rest.totalTax).toBe(25)
+    })
+
+    it("reports the remaining balance in whole yen", () => {
+      const first = credit({ mode: "amount", amount: 7 })
+      if (!first.ok) throw new Error(first.message)
+      const availability = availabilityFor(yenLines, first.lines, "JPY")
+      expect(availability.remainingGross).toBe(118)
+      expect(Number.isInteger(availability.remainingNet)).toBe(true)
+      expect(Number.isInteger(availability.remainingTax)).toBe(true)
+    })
+  })
+
   describe("mixed credit sequences", () => {
     // Deterministic PRNG so failures are reproducible.
     function rng(seed: number) {
@@ -221,27 +283,38 @@ describe("credit note calculation", () => {
       }
     }
 
-    function randomInvoice(random: () => number): CreditableInvoiceLine[] {
+    // Money in minor units of the currency; quantities always in hundredths.
+    const currencies = [
+      { code: "EUR", fractionDigits: 2 },
+      { code: "JPY", fractionDigits: 0 },
+    ] as const
+    type Currency = (typeof currencies)[number]
+    const minorUnit = (currency: Currency) => 10 ** (2 - currency.fractionDigits) // in cents
+
+    function randomInvoice(random: () => number, currency: Currency): CreditableInvoiceLine[] {
       const taxRate = [0, 6, 12.5, 21, 25][Math.floor(random() * 5)]
       const count = 1 + Math.floor(random() * 4)
+      const scale = 10 ** currency.fractionDigits
       return Array.from({ length: count }, (_, index) => {
         const quantity = (1 + Math.floor(random() * 500)) / 100
-        // Tiny prices make cent rounding dominate, where conservation bugs show up.
-        const unitNet = (1 + Math.floor(random() * (random() < 0.5 ? 10 : 20000))) / 100
-        return line(`l${index}`, quantity, unitNet, taxRate)
+        // Tiny prices make rounding dominate, where conservation bugs show up.
+        const unitNet = (1 + Math.floor(random() * (random() < 0.5 ? 10 : 20000))) / scale
+        return line(`l${index}`, quantity, unitNet, taxRate, currency.fractionDigits)
       })
     }
 
     function randomSelection(
       random: () => number,
-      availability: ReturnType<typeof availabilityFor>
+      availability: ReturnType<typeof availabilityFor>,
+      currency: Currency
     ): CreditSelection {
       const roll = random()
       if (roll < 0.15) return { mode: "full" }
       if (roll < 0.6) {
-        const remaining = cents(availability.remainingGross)
+        const unit = minorUnit(currency)
+        const remaining = cents(availability.remainingGross) / unit
         const amount = 1 + Math.floor(random() * Math.max(remaining, 1))
-        return { mode: "amount", amount: Math.min(amount, remaining) / 100 }
+        return { mode: "amount", amount: (Math.min(amount, remaining) * unit) / 100 }
       }
       const lines = availability.lines
         .filter((entry) => cents(entry.remainingQuantity) > 0 && random() < 0.7)
@@ -253,9 +326,11 @@ describe("credit note calculation", () => {
     }
 
     it("never over-credits net, tax or gross and reaches the invoice totals at full credit", () => {
-      for (let seed = 1; seed <= 1000; seed++) {
+      for (let seed = 1; seed <= 2000; seed++) {
         const random = rng(seed)
-        const lines = randomInvoice(random)
+        const currency = currencies[seed % currencies.length]!
+        const unit = minorUnit(currency)
+        const lines = randomInvoice(random, currency)
         const totals = {
           net: sumCents(lines, (entry) => entry.lineNet),
           tax: sumCents(lines, (entry) => entry.lineTax),
@@ -266,8 +341,12 @@ describe("credit note calculation", () => {
         let fullyCredited = false
 
         for (let step = 0; step < 8 && !fullyCredited; step++) {
-          const availability = availabilityFor(lines, prior)
-          const selection = step === 7 ? { mode: "full" as const } : randomSelection(random, availability)
+          const availability = availabilityFor(lines, prior, currency.code)
+          for (const remaining of [availability.remainingNet, availability.remainingTax, availability.remainingGross]) {
+            expect(cents(remaining) % unit, `seed ${seed} remaining`).toBe(0)
+          }
+          const selection =
+            step === 7 ? { mode: "full" as const } : randomSelection(random, availability, currency)
           const result = buildCreditLines({ availability, selection, taxRate: lines[0].taxRate, amountDescription: "x" })
           if (!result.ok) {
             expect(["exceeds_invoice_total", "nothing_to_credit"], `seed ${seed}`).toContain(result.code)
@@ -275,6 +354,9 @@ describe("credit note calculation", () => {
           }
           for (const credited of result.lines) {
             expect(cents(credited.lineNet) + cents(credited.lineTax), `seed ${seed}`).toBe(cents(credited.lineGross))
+            for (const amount of [credited.lineNet, credited.lineTax, credited.lineGross]) {
+              expect(cents(amount) % unit, `seed ${seed} ${currency.code}`).toBe(0)
+            }
           }
           prior.push(...result.lines)
 
