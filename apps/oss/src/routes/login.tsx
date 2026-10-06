@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { authClient } from '../lib/auth-client'
-import { switchActiveOrganization } from '../lib/active-organization'
+import { setRequestOrganizationId, switchActiveOrganization } from '../lib/active-organization'
 import { Button } from '../components/ui/button'
 import {
   Card,
@@ -55,6 +55,8 @@ function LoginPage() {
     setLoading(false)
 
     if (result.data) {
+      // A new session: forget the organization an earlier session of this tab acted for.
+      setRequestOrganizationId(null)
       try {
         const organizations = await authClient.organization.list()
         const accessState = getOrganizationAccessState({
