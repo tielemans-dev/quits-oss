@@ -36,6 +36,7 @@ const buildErrorKeys: Record<CreditBuildErrorCode, TranslationKey> = {
   quantity_exceeds_remaining: "creditNotes.error.quantity_exceeds_remaining",
   exceeds_invoice_total: "creditNotes.error.exceeds_invoice_total",
   nothing_to_credit: "creditNotes.error.nothing_to_credit",
+  amount_not_representable: "creditNotes.error.amount_not_representable",
 }
 
 function parseNumber(value: string) {

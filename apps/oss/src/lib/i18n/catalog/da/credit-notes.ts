@@ -58,6 +58,7 @@ export const daCreditNotesMessages = {
   "creditNotes.error.quantity_exceeds_remaining": "Et antal er større end det, der mangler at blive krediteret på linjen.",
   "creditNotes.error.exceeds_invoice_total": "Dette ville kreditere mere, end der er tilbage på fakturaen.",
   "creditNotes.error.nothing_to_credit": "Vælg noget at kreditere.",
+  "creditNotes.error.amount_not_representable": "Beløbet kan ikke krediteres i denne valuta. Brug færre decimaler.",
   "creditNotes.error.generic": "Noget gik galt. Prøv igen.",
   "creditNotes.settings.prefix.label": "Kreditnotapræfiks",
   "creditNotes.settings.nextNumber.label": "Næste kreditnotanummer",

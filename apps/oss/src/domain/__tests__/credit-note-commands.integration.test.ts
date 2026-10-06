@@ -209,6 +209,54 @@ describeIfDatabase("credit note commands", () => {
     expect(await invoiceState(invoice.id)).toEqual({ status: "credited", amountCredited: 437.5 })
   })
 
+  it("keeps credits and balances in whole units of a zero-decimal currency", async () => {
+    const context = await setup()
+    const created = await executeCommand(
+      createInvoiceDraft,
+      {
+        contactId: context.contactId,
+        dueDate: "2026-12-01",
+        currency: "JPY",
+        taxRate: 25,
+        items: [{ description: "Widget", quantity: 1, unitPrice: 100 }],
+      },
+      { actor: context.org.actors.admin }
+    )
+    if (created.status !== "completed") throw new Error(JSON.stringify(created))
+    const sent = await executeCommand(
+      sendInvoice,
+      { id: created.result.id, allowSendWithoutEmail: true },
+      { actor: context.org.actors.admin }
+    )
+    if (sent.status !== "completed") throw new Error(JSON.stringify(sent))
+    const invoice = created.result
+    expect(invoice.totalGross.toNumber()).toBe(125)
+
+    const fraction = await issue(context, { invoiceId: invoice.id, mode: "amount", amount: 0.01 })
+    expect(fraction.status === "failed" && fraction.error).toMatchObject({
+      tag: "ValidationFailed",
+      issues: [{ path: "amount" }],
+    })
+    expect(await prisma.creditNote.count({ where: { invoiceId: invoice.id } })).toBe(0)
+
+    const half = await issue(context, {
+      invoiceId: invoice.id,
+      mode: "lines",
+      lines: [{ invoiceItemId: invoice.items[0]!.id, quantity: 0.5 }],
+    })
+    if (half.status !== "completed") throw new Error(JSON.stringify(half))
+    for (const value of [half.result.subtotalNet, half.result.totalTax, half.result.totalGross]) {
+      expect(Number.isInteger(value.toNumber())).toBe(true)
+    }
+    expect(half.result.items[0]?.quantity.toNumber()).toBe(0.5)
+    const { amountCredited } = await invoiceState(invoice.id)
+    expect(Number.isInteger(125 - amountCredited)).toBe(true)
+
+    const remainder = await issue(context, { invoiceId: invoice.id, mode: "full" })
+    if (remainder.status !== "completed") throw new Error(JSON.stringify(remainder))
+    expect(await invoiceState(invoice.id)).toEqual({ status: "credited", amountCredited: 125 })
+  })
+
   it("refuses to credit draft invoices", async () => {
     const context = await setup()
     const invoice = await issuedInvoice(context, false)

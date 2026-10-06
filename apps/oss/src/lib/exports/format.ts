@@ -64,15 +64,42 @@ function timeZoneOffset(instant: number, timeZone: string) {
   return asUtc - Math.floor(instant / 1000) * 1000
 }
 
-/** The instant a calendar date (YYYY-MM-DD) starts in a time zone. */
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * The instant a calendar date (YYYY-MM-DD) starts in a time zone.
+ *
+ * Usually that is local midnight. When a daylight saving change skips midnight (clocks jump
+ * from 00:00 to 01:00), the day starts at the first instant that exists on it instead, so the
+ * result always formats back to the requested date in that time zone.
+ */
 export function startOfDayInTimeZone(isoDate: string, timeZone?: string | null): Date {
   const zone = safeTimeZone(timeZone)
   const [year, month, day] = isoDate.split("-").map(Number)
   const utcMidnight = Date.UTC(year!, month! - 1, day!)
-  let instant = utcMidnight - timeZoneOffset(utcMidnight, zone)
-  // A DST change between the guess and the result shifts the offset; correct once.
-  instant = utcMidnight - timeZoneOffset(instant, zone)
-  return new Date(instant)
+
+  // Local midnight under each offset in effect around the date. At most one transition falls in
+  // that window, so these are the only offsets local midnight can resolve with.
+  const candidates = [...new Set(
+    [utcMidnight - DAY_MS, utcMidnight, utcMidnight + DAY_MS].map(
+      (probe) => utcMidnight - timeZoneOffset(probe, zone)
+    )
+  )].sort((a, b) => a - b)
+
+  // A candidate is local midnight when its own offset maps it back to midnight.
+  const exact = candidates.find((candidate) => utcMidnight - timeZoneOffset(candidate, zone) === candidate)
+  if (exact !== undefined) return new Date(exact)
+
+  // Midnight does not exist: find the transition, the first instant that is on the date.
+  const onDate = (instant: number) => formatIsoDate(new Date(instant), zone) === isoDate
+  let before = candidates.filter((candidate) => !onDate(candidate)).at(-1) ?? candidates[0]! - DAY_MS
+  let after = candidates.find(onDate) ?? candidates.at(-1)! + DAY_MS
+  while (after - before > 1) {
+    const middle = Math.floor((before + after) / 2)
+    if (onDate(middle)) after = middle
+    else before = middle
+  }
+  return new Date(after)
 }
 
 /** Half-open [start, end) instants covering the inclusive calendar range in a time zone. */
