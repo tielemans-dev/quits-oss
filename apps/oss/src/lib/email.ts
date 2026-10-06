@@ -5,11 +5,11 @@ import type { TranslationKey } from "./i18n/messages"
 
 let _resend: Resend | null = null
 
-function sanitizeHeader(value: string): string {
+export function sanitizeHeader(value: string): string {
   return value.replace(/[\r\n]+/g, " ").trim()
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -18,11 +18,11 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;")
 }
 
-function escapeAttribute(value: string): string {
+export function escapeAttribute(value: string): string {
   return escapeHtml(value)
 }
 
-function formatMultilineHtml(value: string): string {
+export function formatMultilineHtml(value: string): string {
   return escapeHtml(value).replaceAll("\n", "<br />")
 }
 
@@ -46,13 +46,13 @@ export class EmailSendError extends Error {
   }
 }
 
-type EmailMessage = Parameters<Resend["emails"]["send"]>[0]
+export type EmailMessage = Parameters<Resend["emails"]["send"]>[0]
 
 /**
  * Resend reports API failures in the result instead of throwing.
  * Callers rely on a rejected promise to record a failed delivery attempt.
  */
-async function deliver(message: EmailMessage): Promise<{ id: string }> {
+export async function deliver(message: EmailMessage): Promise<{ id: string }> {
   const result = await getResend().emails.send(message)
   if (result.error) {
     throw new EmailSendError(result.error.name, result.error.message)
@@ -61,11 +61,11 @@ async function deliver(message: EmailMessage): Promise<{ id: string }> {
   return { id: result.data.id }
 }
 
-function fromAddress(): string {
+export function fromAddress(): string {
   return sanitizeHeader(process.env.FROM_EMAIL ?? "noreply@yaip.app")
 }
 
-function t(
+export function t(
   key: TranslationKey,
   locale?: string | null,
   vars?: Record<string, string | number>
@@ -73,7 +73,7 @@ function t(
   return translate(key, locale, vars)
 }
 
-function itemsTable(
+export function itemsTable(
   items: { description: string; quantity: number; unitPrice: number; total: number }[],
   currency: string,
   locale?: string | null
@@ -100,7 +100,7 @@ function itemsTable(
     </table>`
 }
 
-function totalsBlock(
+export function totalsBlock(
   subtotal: number,
   taxAmount: number,
   total: number,
@@ -125,7 +125,7 @@ function totalsBlock(
     </table>`
 }
 
-function layout(content: string, locale?: string | null) {
+export function layout(content: string, locale?: string | null) {
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -145,7 +145,7 @@ function layout(content: string, locale?: string | null) {
 </html>`
 }
 
-function actionBlock(input: {
+export function actionBlock(input: {
   href: string
   label: string
   fallbackLabel: string
