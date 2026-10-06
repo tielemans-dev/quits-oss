@@ -12,7 +12,7 @@ async function handleMarkOverdue(request: Request) {
   const result = await runOverdueTask()
   const ok = result.failed === 0
   return Response.json(
-    { ok, marked: result.marked, failed: result.failed },
+    { ok, marked: result.marked, failed: result.failed, remaining: result.remaining },
     { status: ok ? 200 : 500 }
   )
 }

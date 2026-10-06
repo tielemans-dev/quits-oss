@@ -13,6 +13,9 @@ import { prisma } from "../../lib/db"
 import { sendReminderEmail } from "../../lib/emails/reminder-email"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import {
+  OFFSET_REMOVED_MESSAGE,
+  POLICY_DISABLED_MESSAGE,
+  REMINDER_BATCH_SIZE,
   SUPERSEDED_MESSAGE,
   planDueReminders,
   sendReminderNow,
@@ -20,9 +23,10 @@ import {
   updateReminderPolicy,
 } from "../commands/reminders"
 import { executeCommand } from "../execute"
-import { runOverdueTask } from "../features/overdue"
+import { OVERDUE_BATCH_SIZE, runOverdueTask } from "../features/overdue"
 import { handleReminderSendJob, runReminderTask } from "../features/reminders"
 import { runJobsNow } from "../jobs"
+import { runOrganizationJobs } from "../scheduler"
 import { appRouter } from "../../trpc/router"
 
 const DAY = 24 * 60 * 60 * 1000
@@ -148,6 +152,17 @@ describeIfDatabase("overdue and reminders", () => {
     })
   }
 
+  type Context = { org: { organizationId: string } }
+
+  /** One reminders tick plus the job sweep, scoped to the test's organizations. */
+  async function remindersTick(...contexts: Context[]) {
+    const organizationIds = contexts.map((context) => context.org.organizationId)
+    const now = new Date()
+    const result = await runReminderTask(now, { organizationIds })
+    await runOrganizationJobs(organizationIds, now)
+    return result
+  }
+
   const eventsOf = (organizationId: string, type: string) =>
     prisma.domainEvent.findMany({ where: { organizationId, type }, orderBy: { sequence: "asc" } })
 
@@ -159,8 +174,9 @@ describeIfDatabase("overdue and reminders", () => {
     const settled = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -1, amountPaid: 100 })
     const draft = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -1, status: "draft" })
 
-    await runOverdueTask()
-    await runOverdueTask()
+    const organizationIds = [context.org.organizationId]
+    await runOverdueTask(new Date(), { organizationIds })
+    await runOverdueTask(new Date(), { organizationIds })
 
     const statuses = Object.fromEntries(
       (
@@ -187,8 +203,8 @@ describeIfDatabase("overdue and reminders", () => {
     const context = await setup({ policy: { enabled: true, offsetsDays: [7, -3, 14] } })
     const invoice = await createInvoice(context, { issuedDaysAgo: 20, dueInDays: 2 })
 
-    await runReminderTask()
-    await runReminderTask()
+    await remindersTick(context)
+    await remindersTick(context)
 
     expect(sendsTo(context.email)).toBe(1)
     const [params] = sendMock.mock.calls.find(([call]) => call.to === context.email) ?? []
@@ -205,7 +221,7 @@ describeIfDatabase("overdue and reminders", () => {
     const context = await setup({ policy: { enabled: true, offsetsDays: [-3, 7, 14] } })
     const invoice = await createInvoice(context, { issuedDaysAgo: 40, dueInDays: -20, status: "overdue" })
 
-    await runReminderTask()
+    await remindersTick(context)
 
     expect(sendsTo(context.email)).toBe(1)
     expect(sendMock.mock.calls.find(([call]) => call.to === context.email)?.[0].stage).toBe("overdue")
@@ -234,7 +250,7 @@ describeIfDatabase("overdue and reminders", () => {
     const noEmail = await setup({ policy: { enabled: true, offsetsDays: [7] }, email: null })
     const unreachable = await createInvoice(noEmail, { issuedDaysAgo: 30, dueInDays: -10 })
 
-    await runReminderTask()
+    await remindersTick(context, noEmail)
 
     expect(sendsTo(context.email)).toBe(0)
     expect(
@@ -248,7 +264,7 @@ describeIfDatabase("overdue and reminders", () => {
     const context = await setup({ policy: { enabled: false, offsetsDays: [7] } })
     const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
 
-    await runReminderTask()
+    await remindersTick(context)
 
     expect(await prisma.invoiceReminder.count({ where: { invoiceId: invoice.id } })).toBe(0)
   })
@@ -258,7 +274,7 @@ describeIfDatabase("overdue and reminders", () => {
     const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10, status: "overdue" })
     sendMock.mockRejectedValueOnce(new Error("provider down"))
 
-    await runReminderTask()
+    await remindersTick(context)
 
     const reminder = await prisma.invoiceReminder.findUniqueOrThrow({
       where: { invoiceId_offsetDays: { invoiceId: invoice.id, offsetDays: 7 } },
@@ -270,7 +286,7 @@ describeIfDatabase("overdue and reminders", () => {
     await runJobsNow([job.id], daysFromNow(1))
     await runJobsNow([job.id], daysFromNow(2))
     await handleReminderSendJob({ organizationId: context.org.organizationId, payload: { reminderId: reminder.id } })
-    await runReminderTask()
+    await remindersTick(context)
 
     expect(sendsTo(context.email)).toBe(2)
     expect(await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).toMatchObject({ status: "done" })
@@ -285,7 +301,7 @@ describeIfDatabase("overdue and reminders", () => {
     const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
     delete process.env.RESEND_API_KEY
 
-    await runReminderTask()
+    await remindersTick(context)
 
     expect(sendsTo(context.email)).toBe(0)
     expect(
@@ -299,7 +315,7 @@ describeIfDatabase("overdue and reminders", () => {
     const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
     const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
     sendMock.mockRejectedValueOnce(new Error("provider down"))
-    await runReminderTask()
+    await remindersTick(context)
 
     await executeCommand(
       setInvoiceRemindersPaused,
@@ -379,7 +395,7 @@ describeIfDatabase("overdue and reminders", () => {
   it("lists reminder history with upcoming policy reminders for the invoice page", async () => {
     const context = await setup({ policy: { enabled: true, offsetsDays: [-3, 7] } })
     const invoice = await createInvoice(context, { issuedDaysAgo: 20, dueInDays: 1 })
-    await runReminderTask()
+    await remindersTick(context)
 
     const caller = appRouter.createCaller({
       session: {
@@ -395,5 +411,177 @@ describeIfDatabase("overdue and reminders", () => {
       [7, "upcoming"],
     ])
     expect(await caller.reminders.getPolicy()).toEqual({ enabled: true, offsetsDays: [-3, 7] })
+  })
+
+  it("sends one manual reminder when two requests race", async () => {
+    const context = await setup()
+    const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -5, status: "overdue" })
+    sendMock.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      return { id: "email_reminder" }
+    })
+
+    const outcomes = await Promise.all([
+      executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.member }),
+      executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin }),
+    ])
+
+    expect(outcomes.map((outcome) => outcome.status).sort()).toEqual(["completed", "failed"])
+    expect(outcomes.find((outcome) => outcome.status === "failed")).toMatchObject({
+      error: { code: "already_reminded" },
+    })
+    expect(sendsTo(context.email)).toBe(1)
+    const [reminder] = await prisma.invoiceReminder.findMany({ where: { invoiceId: invoice.id } })
+    expect(sendMock.mock.calls.find(([call]) => call.to === context.email)?.[1]).toEqual({
+      idempotencyKey: `yaip-reminder-manual-${reminder?.id}`,
+    })
+  })
+
+  it("keeps no manual reservation when the manual reminder fails to send", async () => {
+    const context = await setup()
+    const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -5, status: "overdue" })
+    sendMock.mockRejectedValueOnce(new Error("provider down"))
+
+    const failed = await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
+    expect(failed).toMatchObject({ status: "failed", error: { tag: "ExternalFailure" } })
+    expect(await prisma.invoiceReminder.count({ where: { invoiceId: invoice.id } })).toBe(0)
+
+    const retried = await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
+    expect(retried.status).toBe("completed")
+  })
+
+  it("leaves sending to the job sweep instead of the scheduling task", async () => {
+    const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
+    const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
+
+    const result = await runReminderTask(new Date(), { organizationIds: [context.org.organizationId] })
+
+    expect(result).toMatchObject({ scheduled: 1, failed: 0 })
+    expect(sendsTo(context.email)).toBe(0)
+    const reminder = await prisma.invoiceReminder.findFirstOrThrow({ where: { invoiceId: invoice.id } })
+    expect(await prisma.job.findUniqueOrThrow({ where: { dedupeKey: `reminder:${reminder.id}` } })).toMatchObject({
+      status: "pending",
+    })
+
+    await runOrganizationJobs([context.org.organizationId])
+    expect(sendsTo(context.email)).toBe(1)
+  })
+
+  it("skips a retried reminder once a later reminder is due or sent", async () => {
+    const context = await setup({ policy: { enabled: true, offsetsDays: [7, 14] } })
+    const invoice = await createInvoice(context, { issuedDaysAgo: 40, dueInDays: -20, status: "overdue" })
+    const [older, newer] = await Promise.all([
+      prisma.invoiceReminder.create({
+        data: { invoiceId: invoice.id, offsetDays: 7, scheduledFor: daysFromNow(-13), outcome: "failed" },
+      }),
+      prisma.invoiceReminder.create({
+        data: { invoiceId: invoice.id, offsetDays: 14, scheduledFor: daysFromNow(-6) },
+      }),
+    ])
+
+    await handleReminderSendJob({ organizationId: context.org.organizationId, payload: { reminderId: older.id } })
+    await handleReminderSendJob({ organizationId: context.org.organizationId, payload: { reminderId: newer.id } })
+
+    expect(sendsTo(context.email)).toBe(1)
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: older.id } })).toMatchObject({
+      outcome: "skipped",
+      outcomeMessage: SUPERSEDED_MESSAGE,
+    })
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: newer.id } })).toMatchObject({
+      outcome: "sent",
+    })
+  })
+
+  it("skips queued reminders when the policy is turned off or the offset removed", async () => {
+    const context = await setup({ policy: { enabled: true, offsetsDays: [7, 14] } })
+    const first = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10, status: "overdue" })
+    const second = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10, status: "overdue" })
+    const [disabledReminder, removedReminder] = await Promise.all(
+      [first, second].map((invoice) =>
+        prisma.invoiceReminder.create({
+          data: { invoiceId: invoice.id, offsetDays: 7, scheduledFor: daysFromNow(-3), outcome: "failed" },
+        })
+      )
+    )
+    const actor = context.org.actors.admin
+    const deliver = (reminderId: string) =>
+      handleReminderSendJob({ organizationId: context.org.organizationId, payload: { reminderId } })
+
+    await executeCommand(updateReminderPolicy, { enabled: true, offsetsDays: [14] }, { actor })
+    await deliver(removedReminder!.id)
+    await executeCommand(updateReminderPolicy, { enabled: false, offsetsDays: [7, 14] }, { actor })
+    await deliver(disabledReminder!.id)
+
+    expect(sendsTo(context.email)).toBe(0)
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: removedReminder!.id } })).toMatchObject({
+      outcome: "skipped",
+      outcomeMessage: OFFSET_REMOVED_MESSAGE,
+    })
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: disabledReminder!.id } })).toMatchObject({
+      outcome: "skipped",
+      outcomeMessage: POLICY_DISABLED_MESSAGE,
+    })
+  })
+
+  async function createManyInvoices(
+    context: { org: { organizationId: string }; contactId: string },
+    count: number,
+    input: { dueInDays: number; amountPaid?: number }
+  ) {
+    const ids = Array.from({ length: count }, () => randomUUID())
+    await prisma.invoice.createMany({
+      data: ids.map((id) => ({
+        id,
+        organizationId: context.org.organizationId,
+        contactId: context.contactId,
+        number: `INV-${id.slice(0, 8)}`,
+        status: "sent",
+        issueDate: daysFromNow(-60),
+        dueDate: daysFromNow(input.dueInDays),
+        subtotalNet: 100,
+        totalGross: 100,
+        amountPaid: input.amountPaid ?? 0,
+      })),
+    })
+    return ids
+  }
+
+  it("marks overdue in bounded batches and is not held up by settled invoices", async () => {
+    const context = await setup()
+    const organizationIds = [context.org.organizationId]
+    // Settled but still "sent": never overdue, and must not fill the batch tick after tick.
+    await createManyInvoices(context, OVERDUE_BATCH_SIZE, { dueInDays: -30, amountPaid: 100 })
+    await createManyInvoices(context, OVERDUE_BATCH_SIZE + 5, { dueInDays: -10 })
+
+    const first = await runOverdueTask(new Date(), { organizationIds })
+    expect(first).toMatchObject({ marked: OVERDUE_BATCH_SIZE, failed: 0, remaining: 1 })
+    const second = await runOverdueTask(new Date(), { organizationIds })
+    expect(second).toMatchObject({ marked: 5, failed: 0, remaining: 0 })
+    expect(
+      await prisma.invoice.count({ where: { organizationId: context.org.organizationId, status: "overdue" } })
+    ).toBe(OVERDUE_BATCH_SIZE + 5)
+  })
+
+  it("schedules reminders in bounded batches and is not held up by reminded invoices", async () => {
+    const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
+    const organizationIds = [context.org.organizationId]
+    const reminded = await createManyInvoices(context, REMINDER_BATCH_SIZE, { dueInDays: -30 })
+    await prisma.invoiceReminder.createMany({
+      data: reminded.map((invoiceId) => ({
+        invoiceId,
+        offsetDays: 7,
+        scheduledFor: daysFromNow(-23),
+        sentAt: daysFromNow(-23),
+        outcome: "sent",
+      })),
+    })
+    await createManyInvoices(context, REMINDER_BATCH_SIZE + 3, { dueInDays: -10 })
+
+    const first = await runReminderTask(new Date(), { organizationIds })
+    expect(first).toMatchObject({ scheduled: REMINDER_BATCH_SIZE, failed: 0, remaining: 1 })
+    const second = await runReminderTask(new Date(), { organizationIds })
+    expect(second).toMatchObject({ scheduled: 3, failed: 0, remaining: 0 })
+    const third = await runReminderTask(new Date(), { organizationIds })
+    expect(third).toMatchObject({ scheduled: 0, remaining: 0 })
   })
 })

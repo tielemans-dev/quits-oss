@@ -11,8 +11,10 @@ import { Route as MarkOverdueRoute } from "../api/cron/mark-overdue"
 import { Route as TickRoute } from "../api/cron/tick"
 
 type Handler = (context: { request: Request }) => Promise<Response>
-const tick = (TickRoute.options.server?.handlers as { POST: Handler }).POST
-const markOverdue = (MarkOverdueRoute.options.server?.handlers as { GET: Handler }).GET
+const tickHandlers = TickRoute.options.server?.handlers as { POST: Handler }
+const markOverdueHandlers = MarkOverdueRoute.options.server?.handlers as { GET: Handler }
+const tick = tickHandlers.POST
+const markOverdue = markOverdueHandlers.GET
 
 function request(path: string, secret = "s3cret-value") {
   return { request: new Request(`http://localhost${path}`, { headers: { authorization: `Bearer ${secret}` } }) }
