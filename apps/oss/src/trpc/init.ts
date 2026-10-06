@@ -5,6 +5,12 @@ import { actorCan } from "../domain/actor"
 import type { Permission } from "../domain/permissions"
 import { resolveUserActor } from "../domain/user-actor"
 import { isCloudDistribution } from "../lib/distribution"
+import {
+  MIXED_ORGANIZATIONS,
+  ORGANIZATION_CHANGED_MESSAGE,
+  ORGANIZATION_CHANGED_REASON,
+  OrganizationChangedError,
+} from "../lib/organization-request"
 
 export type Context = {
   session: Awaited<ReturnType<typeof auth.api.getSession>> | null
@@ -15,11 +21,40 @@ export type Context = {
   requestedOrganizationId?: string | null
 }
 
-export const ORGANIZATION_CHANGED_MESSAGE = "The active organization changed; reload and try again"
+export { ORGANIZATION_CHANGED_MESSAGE }
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
+  errorFormatter({ shape, error }) {
+    // Lets the client tell "the organization changed" apart from every other CONFLICT.
+    const reason = error.cause instanceof OrganizationChangedError ? ORGANIZATION_CHANGED_REASON : null
+    return { ...shape, data: { ...shape.data, reason } }
+  },
 })
+
+/** The error for a request made for another organization than the session's active one. */
+function organizationChangedError() {
+  return new TRPCError({
+    code: "CONFLICT",
+    message: ORGANIZATION_CHANGED_MESSAGE,
+    cause: new OrganizationChangedError(),
+  })
+}
+
+/**
+ * Rejects a request the client made for another organization than the session's active one, or
+ * for several organizations at once (`MIXED_ORGANIZATIONS`, rejected whatever is active). A
+ * request that names no organization is accepted. Never grants anything: it only refuses.
+ */
+export function assertRequestedOrganization(
+  requestedOrganizationId: string | null | undefined,
+  activeOrganizationId: string | null | undefined
+): void {
+  if (!requestedOrganizationId) return
+  if (requestedOrganizationId === MIXED_ORGANIZATIONS || requestedOrganizationId !== activeOrganizationId) {
+    throw organizationChangedError()
+  }
+}
 
 export const router = t.router
 export const publicProcedure = t.procedure
@@ -35,6 +70,9 @@ export const setupProcedure = publicProcedure.use(async ({ next }) => {
 })
 
 export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  // A batch made for several organizations is never applied, whatever is active now (or whether
+  // any organization is active at all).
+  if (ctx.requestedOrganizationId === MIXED_ORGANIZATIONS) throw organizationChangedError()
   if (!ctx.session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" })
   }
@@ -56,9 +94,7 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   }
 
   // A request started while another organization was active must not be applied to this one.
-  if (ctx.requestedOrganizationId && ctx.requestedOrganizationId !== ctx.organizationId) {
-    throw new TRPCError({ code: "CONFLICT", message: ORGANIZATION_CHANGED_MESSAGE })
-  }
+  assertRequestedOrganization(ctx.requestedOrganizationId, ctx.organizationId)
 
   const actor = await resolveUserActor({
     organizationId: ctx.organizationId,

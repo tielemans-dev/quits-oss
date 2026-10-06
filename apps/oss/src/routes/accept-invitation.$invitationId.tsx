@@ -55,9 +55,13 @@ function AcceptInvitationPage() {
       }
 
       if (result.data) {
-        await switchActiveOrganization(result.data.invitation.organizationId)
-        if (!cancelled) {
-          navigate({ to: '/' })
+        // Loads a new page acting for the organization joined. If this page was left meanwhile,
+        // the session switched anyway and other pages of this tab are asked to reload.
+        const switched = await switchActiveOrganization(result.data.invitation.organizationId, {
+          isCancelled: () => cancelled,
+        })
+        if (switched?.error && !cancelled) {
+          setError(switched.error.message ?? t("acceptInvitation.error.fallback"))
         }
       }
     }

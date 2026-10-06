@@ -2,7 +2,8 @@ import { createTRPCClient, httpBatchLink, type TRPCLink } from "@trpc/client"
 import type { AnyRouter } from "@trpc/server"
 import { observable } from "@trpc/server/observable"
 import superjson from "superjson"
-import { getRequestOrganizationId, organizationRequestHeaders } from "../lib/active-organization"
+import { getRequestOrganizationId, markOrganizationChanged } from "../lib/active-organization"
+import { isOrganizationChangedError, organizationRequestHeaders } from "../lib/organization-request"
 import type { AppRouter } from "./router"
 
 function getBaseUrl() {
@@ -34,6 +35,26 @@ export function organizationStampLink<TRouter extends AnyRouter>(): TRPCLink<TRo
       })
 }
 
+/**
+ * Notices when the server rejected an operation because the session's active organization is no
+ * longer the one this tab acts for (it was switched in another tab), so the app layout can ask to
+ * reload. Every other error, including other `CONFLICT`s, passes through untouched.
+ */
+export function organizationChangedLink<TRouter extends AnyRouter>(): TRPCLink<TRouter> {
+  return () =>
+    ({ op, next }) =>
+      observable((observer) =>
+        next(op).subscribe({
+          next: (value) => observer.next(value),
+          error: (error) => {
+            if (isOrganizationChangedError(error)) markOrganizationChanged()
+            observer.error(error)
+          },
+          complete: () => observer.complete(),
+        })
+      )
+}
+
 export type TrpcClientOptions = {
   url?: string
   fetch?: typeof fetch
@@ -42,6 +63,7 @@ export type TrpcClientOptions = {
 export function createAppTrpcClient(options: TrpcClientOptions = {}) {
   return createTRPCClient<AppRouter>({
     links: [
+      organizationChangedLink<AppRouter>(),
       organizationStampLink<AppRouter>(),
       httpBatchLink({
         url: options.url ?? `${getBaseUrl()}/api/trpc`,

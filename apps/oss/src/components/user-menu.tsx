@@ -1,9 +1,10 @@
-import { useNavigate, useRouter } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { Check, ChevronsUpDown, LogOut, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { authClient, useSession } from '../lib/auth-client'
-import { setRequestOrganizationId, switchActiveOrganization } from '../lib/active-organization'
+import { switchActiveOrganization, useRequestOrganizationId } from '../lib/active-organization'
+import { loadPage } from '../lib/page-navigation'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import {
   DropdownMenu,
@@ -42,12 +43,16 @@ type Organization = {
 export function UserMenu() {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const router = useRouter()
   const { isMobile } = useSidebar()
   const { data: session } = useSession()
 
   const user = session?.user
-  const activeOrgId = session?.session?.activeOrganizationId
+  const sessionOrgId = session?.session?.activeOrganizationId ?? null
+  // The organization this page acts for. It differs from the session's when another tab switched
+  // organization; then every organization, the session's included, can be selected to load it.
+  const tabOrgId = useRequestOrganizationId()
+  const currentOrgId = tabOrgId ?? sessionOrgId
+  const inSync = currentOrgId === sessionOrgId
 
   const [orgs, setOrgs] = useState<Organization[]>([])
 
@@ -61,23 +66,23 @@ export function UserMenu() {
 
   async function handleSignOut() {
     await authClient.signOut()
-    setRequestOrganizationId(null)
-    navigate({ to: '/login' })
+    // A new page load, so nothing of this session's organization survives in this tab.
+    loadPage('/login')
   }
 
   async function handleSwitchOrg(organizationId: string) {
-    if (organizationId === activeOrgId) {
+    if (inSync && organizationId === currentOrgId) {
       return
     }
 
+    // Loads a new page acting for the organization once the session switched to it.
     await switchActiveOrganization(organizationId)
-    await router.invalidate()
   }
 
   if (!user) return null
 
-  const activeOrg = orgs.find((o) => o.id === activeOrgId)
-  const otherOrgs = orgs.filter((o) => o.id !== activeOrgId)
+  const currentOrg = orgs.find((o) => o.id === currentOrgId)
+  const otherOrgs = orgs.filter((o) => o.id !== currentOrgId)
 
   return (
     <SidebarMenu>
@@ -133,10 +138,14 @@ export function UserMenu() {
                 <DropdownMenuLabel className="px-2 py-1 text-xs text-muted-foreground">
                   {t('user.organizations')}
                 </DropdownMenuLabel>
-                {activeOrg && (
-                  <DropdownMenuItem className="gap-2" disabled>
+                {currentOrg && (
+                  <DropdownMenuItem
+                    className="gap-2"
+                    disabled={inSync}
+                    onClick={() => handleSwitchOrg(currentOrg.id)}
+                  >
                     <Check className="size-4 shrink-0" />
-                    <span className="truncate">{activeOrg.name}</span>
+                    <span className="truncate">{currentOrg.name}</span>
                   </DropdownMenuItem>
                 )}
                 {otherOrgs.map((org) => (

@@ -5,4 +5,6 @@ export const daUiMessages = {
   "ui.sidebar.toggle": "Skift sidepanel",
   "ui.reloadRequired.title": "Siden er forældet",
   "ui.reloadRequired.action": "Genindlæs siden",
+  "ui.organizationChanged.message": "Din aktive organisation blev skiftet i en anden fane. Genindlæs for at fortsætte.",
+  "ui.organizationChanged.action": "Genindlæs",
 } as const

@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
-import { ORGANIZATION_CHANGED_MESSAGE } from "../../init"
+import {
+  MIXED_ORGANIZATIONS,
+  ORGANIZATION_CHANGED_MESSAGE,
+  OrganizationChangedError,
+} from "../../../lib/organization-request"
 import { appRouter } from "../../router"
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
@@ -29,6 +33,19 @@ describeIfDatabase("requested organization check", () => {
     await expect(caller.contacts.list()).rejects.toMatchObject({
       code: "CONFLICT",
       message: ORGANIZATION_CHANGED_MESSAGE,
+    })
+    await expect(caller.contacts.create({ name: "Acme" })).rejects.toMatchObject({ code: "CONFLICT" })
+    await expect(caller.contacts.list()).rejects.toMatchObject({ cause: expect.any(OrganizationChangedError) })
+  })
+
+  it("rejects a batch made for several organizations even for the active one's members", async () => {
+    const org = await createTestOrganization()
+    cleanups.push(org.cleanup)
+    const caller = callerFor(org.organizationId, org.actors.admin.userId, MIXED_ORGANIZATIONS)
+
+    await expect(caller.contacts.list()).rejects.toMatchObject({
+      code: "CONFLICT",
+      cause: expect.any(OrganizationChangedError),
     })
     await expect(caller.contacts.create({ name: "Acme" })).rejects.toMatchObject({ code: "CONFLICT" })
   })

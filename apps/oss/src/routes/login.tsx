@@ -1,7 +1,8 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { authClient } from '../lib/auth-client'
-import { setRequestOrganizationId, switchActiveOrganization } from '../lib/active-organization'
+import { switchActiveOrganization } from '../lib/active-organization'
+import { loadPage } from '../lib/page-navigation'
 import { Button } from '../components/ui/button'
 import {
   Card,
@@ -31,7 +32,6 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const { t } = useI18n()
-  const navigate = useNavigate()
   const { redirect, message } = Route.useSearch()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -55,8 +55,9 @@ function LoginPage() {
     setLoading(false)
 
     if (result.data) {
-      // A new session: forget the organization an earlier session of this tab acted for.
-      setRequestOrganizationId(null)
+      // Every way out of here is a new page load, so the app layout sets the organization this
+      // tab acts for from the new session and nothing of an earlier session survives.
+      const redirectPath = toInternalRedirectPath(redirect) ?? '/'
       try {
         const organizations = await authClient.organization.list()
         const accessState = getOrganizationAccessState({
@@ -64,28 +65,21 @@ function LoginPage() {
         })
 
         if (accessState.kind === 'auto-select') {
-          await switchActiveOrganization(accessState.organizationId)
-
-          if (isCloudDistribution) {
-            navigate({ to: '/onboarding' })
-            return
-          }
+          const switched = await switchActiveOrganization(accessState.organizationId, {
+            destination: isCloudDistribution ? '/onboarding' : redirectPath,
+          })
+          if (!switched?.error) return
         }
 
         if (accessState.kind === 'choose' || accessState.kind === 'create') {
-          navigate({ to: '/onboarding' })
+          loadPage('/onboarding')
           return
         }
       } catch {
         // Fall through to the normal post-login route and let app guards recover.
       }
 
-      const redirectPath = toInternalRedirectPath(redirect)
-      if (redirectPath) {
-        navigate({ href: redirectPath })
-      } else {
-        navigate({ to: '/' })
-      }
+      loadPage(redirectPath)
     }
   }
 

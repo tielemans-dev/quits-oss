@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
+import { ORGANIZATION_HEADER } from "../../../lib/organization-request"
 
 async function handleTrpcRequest(request: Request) {
   const [{ appRouter }, { auth }] = await Promise.all([
@@ -16,7 +17,7 @@ async function handleTrpcRequest(request: Request) {
         headers: request.headers,
       })
       // The client's intended organization, checked against the session in orgProcedure.
-      const requestedOrganizationId = request.headers.get("x-yaip-organization-id")?.trim() || null
+      const requestedOrganizationId = request.headers.get(ORGANIZATION_HEADER)?.trim() || null
       return { session, requestedOrganizationId }
     },
   })
