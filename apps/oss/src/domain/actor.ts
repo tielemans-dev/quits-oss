@@ -27,7 +27,8 @@ export type AgentActor = {
 export type SystemActor = {
   kind: "system"
   organizationId: string
-  reason: "scheduler" | "stripe_webhook" | "recurring" | "migration"
+  /** `customer_link`: a customer acting through a signed public document link. */
+  reason: "scheduler" | "stripe_webhook" | "recurring" | "migration" | "customer_link"
   label: string
 }
 
