@@ -15,7 +15,8 @@
     "src/quotes.ts",
     "src/agent.ts",
     "src/contacts.ts",
-    "src/invoices.ts"
+    "src/invoices.ts",
+    "src/reminders.ts"
   ],
   "exports": {
     ".": "./src/index.ts",
@@ -28,6 +29,7 @@
     "./onboarding": "./src/onboarding.ts",
     "./payments": "./src/payments.ts",
     "./quotes": "./src/quotes.ts",
+    "./reminders": "./src/reminders.ts",
     "./runtime": "./src/runtime.ts"
   },
   "scripts": {
