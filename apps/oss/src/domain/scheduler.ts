@@ -143,7 +143,8 @@ const databaseNow = Prisma.sql`(clock_timestamp() AT TIME ZONE 'UTC')`
  * Organizations that became eligible are registered at most `maxRegistrations` per claim, lowest
  * id first; registered organizations are no longer missing, so every eligible organization is
  * registered within ceil(new / maxRegistrations) claims. Claims order by the last scan,
- * never-scanned first, so the rotation is durable across restarts and independent of the tick
+ * longest-waiting first (an organization waits from its last scan, or from when it became
+ * eligible), so the rotation is durable across restarts and independent of the tick
  * cadence or clock. A claim stamps its rows with a token and an expiry; other claims skip rows with
  * a live claim and rows another transaction is claiming (`FOR UPDATE SKIP LOCKED`). Times come
  * from the database clock, never from the tick's `now`.
@@ -163,12 +164,13 @@ export function scannedOrganizationSource(task: string, eligible: Prisma.Sql): O
     },
     claim: async (limit, { leaseMs, maxRegistrations }) => {
       if (maxRegistrations > 0) {
-        // Organizations that became eligible since they were last registered start out never
-        // scanned. The anti-join makes this an index lookup per eligible organization when none
-        // is missing.
+        // Organizations that became eligible join the queue as waiting since now, behind every
+        // organization that has waited longer, so a stream of newcomers cannot postpone existing
+        // organizations at any budget. The anti-join makes this an index lookup per eligible
+        // organization when none is missing.
         await prisma.$executeRaw`
-          INSERT INTO "scheduler_scan" ("task", "organizationId")
-          SELECT ${task}, m."organizationId" FROM (
+          INSERT INTO "scheduler_scan" ("task", "organizationId", "scannedAt")
+          SELECT ${task}, m."organizationId", ${databaseNow} FROM (
             SELECT DISTINCT e."organizationId" FROM (${eligible}) e
             WHERE NOT EXISTS (
               SELECT 1 FROM "scheduler_scan" s
@@ -218,12 +220,19 @@ export function scannedOrganizationSource(task: string, eligible: Prisma.Sql): O
             WHERE ${forClaim(token, finished)}
           `
         },
+        // Unreached organizations keep their place in the queue, so they go first next tick.
         release: async (unreached) => {
-          if (unreached.length === 0) return
-          await prisma.$executeRaw`
-            UPDATE "scheduler_scan" SET "scannedAt" = NULL, "claimToken" = NULL, "claimedUntil" = NULL
-            WHERE ${forClaim(token, unreached)}
-          `
+          for (const organizationId of unreached) {
+            const previous = rows.find((row) => row.organizationId === organizationId)?.previousScannedAt ?? null
+            // The column holds UTC wall-clock time without a zone.
+            const scannedAt = previous
+              ? Prisma.sql`(${previous.toISOString()}::timestamptz AT TIME ZONE 'UTC')`
+              : Prisma.sql`NULL`
+            await prisma.$executeRaw`
+              UPDATE "scheduler_scan" SET "scannedAt" = ${scannedAt}, "claimToken" = NULL, "claimedUntil" = NULL
+              WHERE ${forClaim(token, [organizationId])}
+            `
+          }
         },
       }
     },

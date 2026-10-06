@@ -262,12 +262,43 @@ describeIfDatabase("scheduler against the database", () => {
       )
     }
 
-    // Each tick reaches the organizations it registered and, with the rest of its budget,
-    // organizations registered before, so neither newcomers nor existing ones starve.
+    // Organizations are reached in the order they started waiting: newcomers queue behind
+    // organizations scanned before they arrived, so neither newcomers nor existing ones starve.
     expect(visited[0]).toEqual(organizationIds.slice(0, 2))
-    expect(visited[1]).toEqual([...organizationIds.slice(2, 4), organizationIds[0]])
+    expect(visited[1]).toEqual(organizationIds.slice(0, 3))
     expect(new Set(visited.flat())).toEqual(new Set(organizationIds))
     expect((await scans()).every((scan) => scan.scannedAt && scan.claimToken === null)).toBe(true)
+  })
+
+  it("keeps revisiting existing organizations while newcomers keep arriving, even one per tick", async () => {
+    const organizationIds = (await Promise.all(Array.from({ length: 6 }, () => organizationWithInvoices([])))).sort()
+    const [existing, ...newcomers] = organizationIds
+    let eligible = [existing!]
+    // One task whose eligible set grows by a newcomer every tick.
+    const { task } = testSource(organizationIds)
+    const tick = () =>
+      forEachOrganizationWithinBudget(
+        scannedOrganizationSource(
+          task,
+          Prisma.sql`SELECT "id" AS "organizationId" FROM "organization" WHERE "id" IN (${Prisma.join(eligible)})`
+        ),
+        async (id) => void reached.push(id),
+        { maxOrganizations: 1, timeBudgetMs: 60_000, maxRegistrations: 1 }
+      )
+    const reached: string[] = []
+
+    for (const newcomer of newcomers) {
+      await tick()
+      eligible = [...eligible, newcomer!]
+    }
+    for (let index = 0; index < newcomers.length; index += 1) {
+      await tick()
+    }
+
+    // The existing organization is reached again before every newcomer has been served.
+    const revisit = reached.indexOf(existing!, 1)
+    expect(revisit).toBeGreaterThan(0)
+    expect(revisit).toBeLessThan(reached.length - 1)
   })
 
   describe("job sweep", () => {
