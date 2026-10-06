@@ -99,13 +99,36 @@ git clone https://github.com/yourusername/yaip.git
 cd yaip
 
 # Set your secrets
-echo 'BETTER_AUTH_SECRET=your-secret-here' > .env
+echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" > .env
+echo "CRON_SECRET=$(openssl rand -base64 32)" >> .env
 
 # Start
 docker compose up -d
 ```
 
 The app will be available at [http://localhost:3000](http://localhost:3000).
+
+### Scheduled Work
+
+YAIP runs its automation from one idempotent endpoint, `/api/cron/tick`, protected by
+`Authorization: Bearer $CRON_SECRET`. Each tick, in order:
+
+1. marks issued invoices with a balance due past their due date as overdue,
+2. schedules and sends due payment reminders (configure them in **Settings → Payment reminders**),
+3. generates due recurring invoices,
+4. runs queued background jobs, such as retrying failed reminder emails.
+
+`docker compose up` starts a small `scheduler` service that calls the tick every five minutes
+(`TICK_INTERVAL_SECONDS` overrides the interval). Set `CRON_SECRET` in `.env`; the app and the
+scheduler read the same value. Without Docker, call the endpoint from any scheduler, for example cron:
+
+```bash
+*/5 * * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-yaip-host/api/cron/tick
+```
+
+Ticks can overlap or be retried safely: each reminder is sent at most once, and a reminder policy
+enabled late sends only the most recent due reminder instead of the whole backlog.
+`/api/cron/mark-overdue` remains as a legacy alias that only marks overdue invoices.
 
 ## OSS and Cloud Split
 
@@ -173,7 +196,7 @@ This repository is Bun-native. Use `bun install` and `bun run ...` commands for 
 | `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional) | No |
 | `RESEND_API_KEY` | Resend API key for sending invoice/quote/invite emails | No |
 | `FROM_EMAIL` | Sender email address used for outgoing emails | No |
-| `CRON_SECRET` | Bearer token required by `/api/cron/mark-overdue` | Yes (prod) |
+| `CRON_SECRET` | Bearer token required by `/api/cron/tick` and `/api/cron/mark-overdue` | Yes (prod) |
 | `YAIP_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
 | `YAIP_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
 | `YAIP_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
