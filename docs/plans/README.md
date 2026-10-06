@@ -8,3 +8,4 @@
 6. Effect boundary expansion - harden remote integrations without rewriting the app architecture
 7. Browser smoke coverage - add Playwright coverage for setup, auth, public quote, invoice payment, and document sending
 8. Structured observability - add JSONL logging for payment, onboarding, email, and public document flows
+9. `2026-10-06-invoicing-lifecycle-and-agent-api-design.md` - domain command core, credit notes, payments, reminders, recurring invoices, e-invoice and accounting exports, audit log, and the MCP agent API
