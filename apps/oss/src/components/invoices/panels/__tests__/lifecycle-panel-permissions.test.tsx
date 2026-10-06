@@ -114,7 +114,7 @@ function deferred<T>() {
 describe("invoice lifecycle panels by role", () => {
   it("offers a member credit notes, reminder sending, and pausing", async () => {
     api.creditNotesCapabilities.mockResolvedValue({ canCreate: true, canSend: true })
-    api.remindersCapabilities.mockResolvedValue({ canSendNow: true, canPause: true, canUpdatePolicy: false })
+    api.remindersCapabilities.mockResolvedValue({ canSendNow: true, canPause: true, canResume: true, canUpdatePolicy: false })
 
     render(
       <>
@@ -130,9 +130,33 @@ describe("invoice lifecycle panels by role", () => {
     )
   })
 
+  it("lets a role that cannot send pause reminders but not resume them", async () => {
+    api.creditNotesCapabilities.mockResolvedValue({ canCreate: false, canSend: false })
+    api.remindersCapabilities.mockResolvedValue({
+      canSendNow: false,
+      canPause: true,
+      canResume: false,
+      canUpdatePolicy: false,
+    })
+    api.remindersList.mockResolvedValue({
+      remindersPaused: true,
+      policyEnabled: true,
+      remindable: true,
+      hasRecipient: true,
+      reminders: [],
+    })
+
+    render(<InvoiceRemindersPanel invoice={invoice} onChanged={onChanged} />)
+
+    const checkbox = (await screen.findByRole("checkbox")) as HTMLInputElement
+    await waitFor(() => expect(api.remindersCapabilities).toHaveBeenCalled())
+    expect(checkbox.checked).toBe(true)
+    expect(checkbox.disabled).toBe(true)
+  })
+
   it("shows an accountant credit notes and reminders read-only", async () => {
     api.creditNotesCapabilities.mockResolvedValue({ canCreate: false, canSend: false })
-    api.remindersCapabilities.mockResolvedValue({ canSendNow: false, canPause: false, canUpdatePolicy: false })
+    api.remindersCapabilities.mockResolvedValue({ canSendNow: false, canPause: false, canResume: false, canUpdatePolicy: false })
 
     render(
       <>

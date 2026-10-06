@@ -1,6 +1,6 @@
-import { prisma } from "../lib/db"
+import { Prisma } from "../../generated/prisma/client"
 import { appLogger } from "../lib/observability"
-import { runDueJobs, runJobsNow } from "./jobs"
+import { DEFAULT_JOBS_PER_SWEEP, runDueJobs } from "./jobs"
 
 const schedulerLogger = appLogger.child("scheduler")
 
@@ -20,35 +20,27 @@ export type TickTask = {
 }
 
 /** Queued jobs swept per tick; the rest run on the next tick. */
-const JOBS_PER_TICK = 100
+const JOBS_PER_TICK = DEFAULT_JOBS_PER_SWEEP
 
-/** Runs due jobs of specific organizations, oldest first. */
+/** Runs due jobs of specific organizations, oldest first, within the jobs time budget. */
 export async function runOrganizationJobs(
   organizationIds: readonly string[],
   now: Date = new Date(),
   limit = JOBS_PER_TICK
 ) {
-  const due = await prisma.job.findMany({
-    where: { organizationId: { in: [...organizationIds] }, status: "pending", runAfter: { lte: now } },
-    orderBy: { runAfter: "asc" },
-    take: limit,
-    select: { id: true },
-  })
-  await runJobsNow(
-    due.map((job) => job.id),
-    now
-  )
-  return { processed: due.length }
+  return runDueJobs({ now, limit, organizationIds })
 }
 
+/**
+ * Sends every queued delivery (reminders, recurring auto-sends) and other background work. Its
+ * time budget bounds how long a tick spends emailing; jobs not started stay queued.
+ */
 const tasks: TickTask[] = [
   {
     name: "jobs",
     order: 1000,
     run: async (now, options) =>
-      options?.organizationIds
-        ? runOrganizationJobs(options.organizationIds, now)
-        : runDueJobs({ now, limit: JOBS_PER_TICK }),
+      runDueJobs({ now, limit: JOBS_PER_TICK, organizationIds: options?.organizationIds }),
   },
 ]
 
@@ -92,43 +84,106 @@ export const DEFAULT_ORGANIZATION_BUDGET: OrganizationBudget = {
   timeBudgetMs: 45_000,
 }
 
-/** Where each task continues next tick, so organizations late in the list are not starved. */
-const rotation = new Map<string, number>()
+/**
+ * The organizations a task may work on, ordered by id. `count` and `page` must use the same
+ * predicate, so a page is a slice of one consistent ordering.
+ */
+export type OrganizationSource = {
+  count: () => Promise<number>
+  page: (offset: number, limit: number) => Promise<string[]>
+}
+
+/** Length of one rotation slot. Cron cadences are whole minutes. */
+const ROTATION_SLOT_MS = 60_000
+/** Smallest rotation cycle; a prime above 7 so no common cadence aliases with it. */
+const MIN_ROTATION_CYCLE = 11
+/** 2^64 / golden ratio: spreads consecutive slots evenly over a page (Fibonacci hashing). */
+const GOLDEN_64 = 0x9e3779b97f4a7c15n
+const MASK_64 = (1n << 64n) - 1n
+
+function isPrime(value: number) {
+  if (value < 2) return false
+  for (let divisor = 2; divisor * divisor <= value; divisor += 1) {
+    if (value % divisor === 0) return false
+  }
+  return true
+}
+
+function nextPrimeAtLeast(value: number) {
+  let candidate = Math.max(value, 2)
+  while (!isPrime(candidate)) candidate += 1
+  return candidate
+}
 
 /**
- * Runs `work` for organizations until the task's per-tick budget is used up. Each tick starts
- * where the previous one stopped; organizations not reached are picked up next tick. Combined
- * with a bounded amount of work per organization, a tick finishes in bounded time however
- * large the backlog is.
+ * Chooses, from the tick time alone, which page of `total` eligible organizations a tick works
+ * on and where inside the page it starts. No state is kept, so a restarted process or a second
+ * worker continues the same rotation instead of starting at the first organization.
+ *
+ * Time is cut into one-minute slots, and the slots cycle through `cycle` positions, where `cycle`
+ * is a prime of at least 11 and at least the page count. Positions past the last page fold back
+ * onto the pages. Ticks every T minutes visit every position, and so every page, within `cycle`
+ * ticks whenever T is not a multiple of `cycle`; that holds for every cadence built from 2, 3, 5
+ * and 7 (every minute, 5 or 15 minutes, hourly, daily, weekly). Ticks closer together than a
+ * slot repeat the same page, which is harmless because every task is idempotent.
+ *
+ * The start inside the page also moves with the slot, so when the time budget stops a tick
+ * before the end of its page, a different organization goes first the next time round.
+ */
+export function rotationWindow(now: Date, total: number, pageSize: number) {
+  const pages = Math.max(1, Math.ceil(total / pageSize))
+  const slot = Math.floor(now.getTime() / ROTATION_SLOT_MS)
+  const cycle = pages === 1 ? 1 : nextPrimeAtLeast(Math.max(pages, MIN_ROTATION_CYCLE))
+  const page = (slot % cycle) % pages
+  const pageLength = Math.min(pageSize, total - page * pageSize)
+  const spread = (BigInt(slot) * GOLDEN_64) & MASK_64
+  const start = pageLength > 0 ? Number((spread * BigInt(pageLength)) >> 64n) : 0
+  return { page, pages, cycle, offset: page * pageSize, pageLength, start }
+}
+
+/**
+ * Runs `work` for one page of eligible organizations until the task's per-tick budget is used
+ * up. The page and the first organization come from `rotationWindow`, so every organization is
+ * reached within a bounded number of ticks however many there are, across restarts and workers.
+ * Combined with a bounded amount of work per organization, a tick finishes in bounded time
+ * however large the backlog is.
  */
 export async function forEachOrganizationWithinBudget(
-  task: string,
-  organizationIds: readonly string[],
+  now: Date,
+  source: OrganizationSource,
   work: (organizationId: string) => Promise<void>,
   budget: OrganizationBudget = DEFAULT_ORGANIZATION_BUDGET
 ) {
-  const total = organizationIds.length
+  const total = await source.count()
   if (total === 0) {
-    return { processed: 0, deferred: 0 }
+    return { organizations: 0, processed: 0, deferred: 0 }
   }
 
-  const start = (rotation.get(task) ?? 0) % total
+  const window = rotationWindow(now, total, budget.maxOrganizations)
+  const organizationIds = await source.page(window.offset, budget.maxOrganizations)
   const startedAt = Date.now()
   let processed = 0
   while (
-    processed < total &&
-    processed < budget.maxOrganizations &&
+    processed < organizationIds.length &&
     (processed === 0 || Date.now() - startedAt < budget.timeBudgetMs)
   ) {
-    await work(organizationIds[(start + processed) % total]!)
+    await work(organizationIds[(window.start + processed) % organizationIds.length]!)
     processed += 1
   }
 
-  rotation.set(task, (start + processed) % total)
-  return { processed, deferred: total - processed }
+  return { organizations: total, processed, deferred: total - processed }
 }
 
 /** Builds a Prisma `organizationId` filter from tick options. */
 export function organizationFilter(options?: TickOptions) {
   return options?.organizationIds ? { organizationId: { in: [...options.organizationIds] } } : {}
+}
+
+/** Builds a raw SQL `AND <column> IN (...)` restriction from tick options. */
+export function organizationSqlFilter(column: Prisma.Sql, options?: TickOptions) {
+  return options?.organizationIds
+    ? options.organizationIds.length === 0
+      ? Prisma.sql`AND FALSE`
+      : Prisma.sql`AND ${column} IN (${Prisma.join([...options.organizationIds])})`
+    : Prisma.empty
 }

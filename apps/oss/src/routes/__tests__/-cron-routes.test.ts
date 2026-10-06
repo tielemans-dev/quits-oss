@@ -68,6 +68,23 @@ describe("cron routes", () => {
     })
   })
 
+  it("reports retrying jobs without failing the tick, and fails it once a job is exhausted", async () => {
+    runSchedulerTick.mockResolvedValue({
+      overdue: { marked: 0, failed: 0 },
+      jobs: { processed: 2, succeeded: 1, retrying: 1, failed: 0, deferred: 0, reclaimed: 0 },
+    })
+    const retrying = await tick(request("/api/cron/tick"))
+    expect(retrying.status).toBe(200)
+    expect(await retrying.json()).toMatchObject({ ok: true, failedTasks: [], retryingTasks: ["jobs"] })
+
+    runSchedulerTick.mockResolvedValue({
+      jobs: { processed: 1, succeeded: 0, retrying: 0, failed: 1, deferred: 0, reclaimed: 0 },
+    })
+    const exhausted = await tick(request("/api/cron/tick"))
+    expect(exhausted.status).toBe(500)
+    expect(await exhausted.json()).toMatchObject({ ok: false, failedTasks: ["jobs"] })
+  })
+
   it("reports overdue failures on the legacy endpoint", async () => {
     runOverdueTask.mockResolvedValue({ organizations: 2, marked: 3, failed: 1, remaining: 0 })
     const response = await markOverdue(request("/api/cron/mark-overdue"))

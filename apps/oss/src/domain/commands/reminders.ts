@@ -1,7 +1,6 @@
 import { Effect } from "effect"
 import { z } from "zod"
 import {
-  invoiceRemindersPausedInputSchema,
   parseReminderPolicy,
   reminderPolicyUpdateInputSchema,
   reminderSendNowInputSchema,
@@ -44,6 +43,11 @@ export const MANUAL_REMINDER_PREFIX = "Sent manually by "
 
 export function isManualReminder(reminder: { outcomeMessage: string | null }) {
   return reminder.outcomeMessage?.startsWith(MANUAL_REMINDER_PREFIX) ?? false
+}
+
+/** Provider idempotency key of the manual reminder for one invoice and day. */
+export function manualReminderIdempotencyKey(invoiceId: string, offsetDays: number) {
+  return `yaip-reminder-manual-${invoiceId}-${offsetDays}`
 }
 
 export function schedulerActor(organizationId: string): SystemActor {
@@ -234,32 +238,142 @@ export const updateReminderPolicy = defineCommand({
     }),
 })
 
-export const setInvoiceRemindersPaused = defineCommand({
-  type: "invoice.set_reminders_paused",
+/** Input of the per-invoice pause and resume commands. */
+export const invoiceReminderTargetSchema = z.object({ invoiceId: z.string().min(1) })
+
+/**
+ * The next reminder the policy would send for an invoice: the latest offset already due and not
+ * yet reserved (sent by the next tick), otherwise the earliest one still to come.
+ */
+export function nextPolicyReminder(input: {
+  dueDate: Date
+  issueDate: Date
+  now: Date
+  policy: ReminderPolicy
+  existing: ReadonlyArray<ReminderSlot>
+}): ReminderSlot | null {
+  if (!input.policy.enabled) {
+    return null
+  }
+  const plan = planDueReminders({ ...input, offsetsDays: input.policy.offsetsDays })
+  if (plan.send) {
+    return plan.send
+  }
+  const taken = new Set(input.existing.map((reminder) => reminder.offsetDays))
+  return (
+    input.policy.offsetsDays
+      .map((offsetDays) => ({ offsetDays, scheduledFor: addDays(input.dueDate, offsetDays) }))
+      .filter(
+        (slot) =>
+          !taken.has(slot.offsetDays) && slot.scheduledFor > input.now && slot.scheduledFor >= input.issueDate
+      )
+      .sort((a, b) => a.scheduledFor.getTime() - b.scheduledFor.getTime())[0] ?? null
+  )
+}
+
+const lockContact = (contactId: string) =>
+  Effect.gen(function* () {
+    const db = yield* Db
+    const { organizationId } = yield* Command
+    yield* Effect.promise(
+      () =>
+        db.$queryRaw`SELECT "id" FROM "contact" WHERE "id" = ${contactId} AND "organizationId" = ${organizationId} FOR UPDATE`
+    )
+  })
+
+/**
+ * What a person approving "resume reminders" sees. The version covers the invoice and the
+ * recipient's address, so neither can change between review and the reminders starting again.
+ */
+export const reminderResumeApproval = (input: { invoiceId: string }) =>
+  Effect.gen(function* () {
+    const db = yield* Db
+    const command = yield* Command
+    yield* lockDocument("invoice", input.invoiceId)
+    const located = yield* Effect.promise(() =>
+      db.invoice.findFirst({
+        where: { id: input.invoiceId, organizationId: command.organizationId },
+        select: { contactId: true },
+      })
+    )
+    if (!located) {
+      return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.invoiceId })
+    }
+    // Locked so the address the reviewer saw is the address the version was computed from.
+    yield* lockContact(located.contactId)
+    const invoice = yield* Effect.promise(() =>
+      db.invoice.findFirstOrThrow({
+        where: { id: input.invoiceId, organizationId: command.organizationId },
+        include: { ...reminderInvoiceInclude, reminders: { select: { offsetDays: true, scheduledFor: true } } },
+      })
+    )
+    const { settings } = yield* loadDocumentContext
+    const recipient = invoice.contact.email?.trim() || null
+    const next = nextPolicyReminder({
+      dueDate: invoice.dueDate,
+      issueDate: invoice.issueDate,
+      now: command.now,
+      policy: parseReminderPolicy(settings.reminderPolicy),
+      existing: invoice.reminders,
+    })
+    const nextDate = next ? (next.scheduledFor <= command.now ? command.now : next.scheduledFor) : null
+    const { balanceDue } = computeSettlement(invoice)
+    const nextText = nextDate ? `next reminder ${nextDate.toISOString().slice(0, 10)}` : "no reminder scheduled"
+    return {
+      summary: `Resume automatic payment reminders for invoice ${invoice.number} to ${recipient ?? invoice.contact.name} (${nextText})`,
+      version: `${invoice.updatedAt.toISOString()}|${recipient ?? ""}`,
+      details: {
+        number: invoice.number,
+        customer: invoice.contact.name,
+        recipient,
+        balanceDue: balanceDue.toFixed(2),
+        currency: invoice.currency,
+        nextReminder: nextDate ? nextDate.toISOString().slice(0, 10) : null,
+      },
+    }
+  })
+
+const setRemindersPaused = (invoiceId: string, paused: boolean) =>
+  Effect.gen(function* () {
+    const db = yield* Db
+    const command = yield* Command
+    yield* lockDocument("invoice", invoiceId)
+    const invoice = yield* findInvoice(invoiceId)
+
+    if (invoice.remindersPaused !== paused) {
+      yield* Effect.promise(() => db.invoice.update({ where: { id: invoice.id }, data: { remindersPaused: paused } }))
+      command.emit({
+        aggregateType: "invoice",
+        aggregateId: invoice.id,
+        type: paused ? "invoice.reminders_paused" : "invoice.reminders_resumed",
+        payload: { number: invoice.number },
+      })
+    }
+    return { invoiceId: invoice.id, remindersPaused: paused }
+  })
+
+/** Stops automatic reminders for one invoice. Never outward-facing, so an agent can always stop. */
+export const pauseInvoiceReminders = defineCommand({
+  type: "invoice.pause_reminders",
   permission: "invoice:update",
   outwardFacing: false,
-  input: invoiceRemindersPausedInputSchema,
-  summarize: (input) =>
-    `${input.paused ? "Pause" : "Resume"} payment reminders for invoice ${input.invoiceId}`,
-  handle: (input) =>
-    Effect.gen(function* () {
-      const db = yield* Db
-      const command = yield* Command
-      const invoice = yield* findInvoice(input.invoiceId)
+  input: invoiceReminderTargetSchema,
+  summarize: (input) => `Pause payment reminders for invoice ${input.invoiceId}`,
+  handle: (input) => setRemindersPaused(input.invoiceId, true),
+})
 
-      if (invoice.remindersPaused !== input.paused) {
-        yield* Effect.promise(() =>
-          db.invoice.update({ where: { id: invoice.id }, data: { remindersPaused: input.paused } })
-        )
-        command.emit({
-          aggregateType: "invoice",
-          aggregateId: invoice.id,
-          type: input.paused ? "invoice.reminders_paused" : "invoice.reminders_resumed",
-          payload: { number: invoice.number },
-        })
-      }
-      return { invoiceId: invoice.id, remindersPaused: input.paused }
-    }),
+/**
+ * Restarts automatic reminders for one invoice. Outward-facing and gated by `invoice:send`,
+ * because resuming makes the scheduler email the customer.
+ */
+export const resumeInvoiceReminders = defineCommand({
+  type: "invoice.resume_reminders",
+  permission: "invoice:send",
+  outwardFacing: true,
+  input: invoiceReminderTargetSchema,
+  summarize: (input) => `Resume automatic payment reminders to the customer of invoice ${input.invoiceId}`,
+  approvalContext: (input) => reminderResumeApproval(input),
+  handle: (input) => setRemindersPaused(input.invoiceId, false),
 })
 
 export const sendReminderNow = defineCommand({
@@ -335,7 +449,10 @@ export const sendReminderNow = defineCommand({
       const delivery = yield* deliverReminderEmail({
         invoice,
         recipient,
-        idempotencyKey: `yaip-reminder-manual-${reminder.id}`,
+        // Derived from the operation, not the reservation row: the row id is new on every attempt,
+        // so a retry after the provider accepted the email but the commit was lost would otherwise
+        // send it again. `(invoiceId, offsetDays)` is unique, so this names exactly one reminder.
+        idempotencyKey: manualReminderIdempotencyKey(invoice.id, offsetDays),
       })
 
       command.emit({
@@ -559,7 +676,7 @@ export const deliverScheduledReminder = defineCommand({
       const offsetInPolicy = (offsetDays: number) => policy.offsetsDays.includes(offsetDays)
       // A later reminder that went out, or is due and will go out, replaces this one, so a
       // retried older reminder never reaches the customer after a newer one.
-      const superseded = invoice.reminders.some(
+      const laterRowSuperseded = invoice.reminders.some(
         (other) =>
           other.offsetDays > reminder.offsetDays &&
           (other.outcome === "sent" ||
@@ -567,6 +684,15 @@ export const deliverScheduledReminder = defineCommand({
               other.scheduledFor <= now &&
               (isManualReminder(other) || (policy.enabled && offsetInPolicy(other.offsetDays)))))
       )
+      // A later policy offset that is already due supersedes this reminder even before the
+      // scheduler reserved a row for it, e.g. a 7-day job retried after day 14.
+      const laterOffsetDue =
+        policy.enabled &&
+        policy.offsetsDays.some((offsetDays) => {
+          const scheduledFor = addDays(invoice.dueDate, offsetDays)
+          return offsetDays > reminder.offsetDays && scheduledFor <= now && scheduledFor >= invoice.issueDate
+        })
+      const superseded = laterRowSuperseded || laterOffsetDue
       const blocker = reminderBlocker(invoice)
       const skipReason =
         blocker === "not_open"
@@ -648,6 +774,7 @@ export const deliverScheduledReminder = defineCommand({
 /** Owned by the reminders feature. Commands users and agents may run. */
 export const reminderCommands: readonly AnyCommandDefinition[] = [
   updateReminderPolicy,
-  setInvoiceRemindersPaused,
+  pauseInvoiceReminders,
+  resumeInvoiceReminders,
   sendReminderNow,
 ]

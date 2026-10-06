@@ -43,7 +43,7 @@ afterEach(() => {
 describe("ReminderPolicyCard", () => {
   it("lets an admin edit and save the policy", async () => {
     api.getPolicy.mockResolvedValue({ enabled: true, offsetsDays: [-3, 7] })
-    api.capabilities.mockResolvedValue({ canSendNow: true, canPause: true, canUpdatePolicy: true })
+    api.capabilities.mockResolvedValue({ canSendNow: true, canPause: true, canResume: true, canUpdatePolicy: true })
     render(<ReminderPolicyCard />)
 
     expect(await screen.findByRole("button", { name: "reminders.policy.save" })).toBeTruthy()
@@ -52,8 +52,8 @@ describe("ReminderPolicyCard", () => {
   })
 
   it.each([
-    ["member", { canSendNow: true, canPause: true, canUpdatePolicy: false }],
-    ["accountant", { canSendNow: false, canPause: false, canUpdatePolicy: false }],
+    ["member", { canSendNow: true, canPause: true, canResume: true, canUpdatePolicy: false }],
+    ["accountant", { canSendNow: false, canPause: false, canResume: false, canUpdatePolicy: false }],
   ])("shows the policy read-only to a %s", async (_role, capabilities) => {
     api.getPolicy.mockResolvedValue({ enabled: true, offsetsDays: [-3, 7] })
     api.capabilities.mockResolvedValue(capabilities)

@@ -403,7 +403,16 @@ export const resumeRecurringInvoice = defineCommand({
  * concurrent runs for the same date cannot both proceed; the unique
  * `(recurringInvoiceId, recurringRunDate)` pair backs that up at the database level.
  */
-const generateRun = (schedule: ScheduleRow, runDate: Date) =>
+const generateRun = (
+  schedule: ScheduleRow,
+  runDate: Date,
+  /**
+   * `inline` sends right after the transaction commits (a person asked for this run now).
+   * `queued` only writes the send job to the outbox, so the scheduler's `jobs` task sends it
+   * within its time budget instead of the recurring task sending once per generated run.
+   */
+  autoSendDelivery: "inline" | "queued"
+) =>
   Effect.gen(function* () {
     const db = yield* Db
     const command = yield* Command
@@ -475,11 +484,28 @@ const generateRun = (schedule: ScheduleRow, runDate: Date) =>
 
     if (schedule.autoSend) {
       // Sending runs after this transaction commits, so a failed send keeps the draft.
-      command.enqueue({
+      const job = {
         type: AUTO_SEND_JOB,
         payload: { invoiceId: invoice.id, recurringInvoiceId: schedule.id },
         dedupeKey: `recurring-auto-send:${invoice.id}`,
-      })
+      }
+      if (autoSendDelivery === "inline") {
+        command.enqueue(job)
+      } else {
+        yield* Effect.promise(() =>
+          db.job.upsert({
+            where: { dedupeKey: job.dedupeKey },
+            create: {
+              organizationId: command.organizationId,
+              type: job.type,
+              payload: job.payload,
+              dedupeKey: job.dedupeKey,
+              runAfter: command.now,
+            },
+            update: {},
+          })
+        )
+      }
     }
 
     return {
@@ -507,7 +533,7 @@ export const runRecurringInvoiceNow = defineCommand({
         return yield* new InvalidState({ message: "The schedule has no runs left", code: "schedule_ended" })
       }
       // Pulls the next scheduled run forward rather than adding an extra invoice.
-      return yield* generateRun(schedule, schedule.nextRunAt)
+      return yield* generateRun(schedule, schedule.nextRunAt, "inline")
     }),
 })
 
@@ -532,7 +558,7 @@ export const generateRecurringRun = defineCommand({
           code: "run_not_due",
         })
       }
-      return yield* generateRun(schedule, runDate)
+      return yield* generateRun(schedule, runDate, "queued")
     }),
 })
 
