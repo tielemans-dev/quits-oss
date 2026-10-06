@@ -1,20 +1,24 @@
 import { router, authorizedProcedure } from "../init"
+import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
+import { computeSettlement } from "../../domain/documents/settlement"
 
 export const dashboardRouter = router({
   stats: authorizedProcedure("invoice:read").query(async ({ ctx }) => {
     const [totalRevenue, outstanding, overdueCount, totalContacts, recentInvoices] =
       await Promise.all([
-        prisma.invoice.aggregate({
-          where: { organizationId: ctx.organizationId, status: "paid" },
-          _sum: { totalGross: true },
+        // Money actually received, including partial payments on open invoices.
+        prisma.payment.aggregate({
+          where: { organizationId: ctx.organizationId, voidedAt: null },
+          _sum: { amount: true },
         }),
-        prisma.invoice.aggregate({
+        // What customers still owe on open invoices, after payments and credit notes.
+        prisma.invoice.findMany({
           where: {
             organizationId: ctx.organizationId,
             status: { in: ["sent", "viewed"] },
           },
-          _sum: { totalGross: true },
+          select: { totalGross: true, amountPaid: true, amountCredited: true },
         }),
         prisma.invoice.count({
           where: { organizationId: ctx.organizationId, status: "overdue" },
@@ -31,8 +35,13 @@ export const dashboardRouter = router({
       ])
 
     return {
-      totalRevenue: totalRevenue._sum.totalGross?.toNumber() ?? 0,
-      outstanding: outstanding._sum.totalGross?.toNumber() ?? 0,
+      totalRevenue: totalRevenue._sum.amount?.toNumber() ?? 0,
+      outstanding: outstanding
+        .reduce(
+          (sum, invoice) => sum.plus(computeSettlement(invoice).balanceDue),
+          new Prisma.Decimal(0)
+        )
+        .toNumber(),
       overdueCount,
       totalContacts,
       recentInvoices: recentInvoices.map((inv) => ({
@@ -42,6 +51,8 @@ export const dashboardRouter = router({
         total: inv.totalGross.toNumber(),
         currency: inv.currency,
         status: inv.status,
+        paymentStatus: inv.paymentStatus,
+        balanceDue: computeSettlement(inv).balanceDue.toNumber(),
         issueDate: inv.issueDate.toISOString(),
         dueDate: inv.dueDate.toISOString(),
       })),

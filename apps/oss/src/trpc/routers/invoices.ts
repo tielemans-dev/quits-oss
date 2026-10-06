@@ -18,6 +18,8 @@ import {
   sendInvoice,
   updateInvoiceDraft,
 } from "../../domain/commands/invoices"
+import { recordPayment } from "../../domain/commands/payments"
+import { computeSettlement } from "../../domain/documents/settlement"
 import { executeCommand } from "../../domain/execute"
 import { router, authorizedProcedure } from "../init"
 import { unwrapOutcome } from "../outcome"
@@ -53,6 +55,24 @@ function serializeInvoiceForUi<
   }
 }
 
+/** Paid, credited, and outstanding amounts as plain numbers for the UI. */
+function settlementForUi(invoice: {
+  totalGross: { toNumber: () => number }
+  amountPaid: { toNumber: () => number }
+  amountCredited: { toNumber: () => number }
+}) {
+  const settlement = computeSettlement({
+    totalGross: invoice.totalGross.toNumber(),
+    amountPaid: invoice.amountPaid.toNumber(),
+    amountCredited: invoice.amountCredited.toNumber(),
+  })
+  return {
+    amountPaid: settlement.amountPaid.toNumber(),
+    amountCredited: settlement.amountCredited.toNumber(),
+    balanceDue: settlement.balanceDue.toNumber(),
+  }
+}
+
 export const invoicesRouter = router({
   list: authorizedProcedure("invoice:read")
     .input(
@@ -79,6 +99,7 @@ export const invoicesRouter = router({
         subtotal: inv.subtotalNet.toNumber(),
         taxAmount: inv.totalTax.toNumber(),
         total: inv.totalGross.toNumber(),
+        ...settlementForUi(inv),
         publicPaymentUrl: getPublicInvoicePaymentUrl(inv),
       }))
     }),
@@ -99,6 +120,7 @@ export const invoicesRouter = router({
         subtotal: invoice.subtotalNet.toNumber(),
         taxAmount: invoice.totalTax.toNumber(),
         total: invoice.totalGross.toNumber(),
+        ...settlementForUi(invoice),
         publicPaymentUrl: getPublicInvoicePaymentUrl(invoice),
         items: invoice.items.map((item) => ({
           ...item,
@@ -241,6 +263,7 @@ export const invoicesRouter = router({
     return { count }
   }),
 
+  /** Shortcut that records a payment for the remaining balance through `payment.record`. */
   markPaid: authorizedProcedure("payment:create")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -248,20 +271,27 @@ export const invoicesRouter = router({
         where: { id: input.id, organizationId: ctx.organizationId },
       })
 
-      if (invoice.status !== "sent" && invoice.status !== "overdue") {
+      if (invoice.status !== "sent" && invoice.status !== "viewed" && invoice.status !== "overdue") {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Only sent or overdue invoices can be marked as paid",
         })
       }
 
-      return prisma.invoice.update({
-        where: { id: input.id },
-        data: {
-          status: "paid",
-          paymentStatus: "paid",
-          paidAt: new Date(),
-        },
-      })
+      const { balanceDue } = settlementForUi(invoice)
+      const result = unwrapOutcome(
+        await executeCommand(
+          recordPayment,
+          {
+            invoiceId: invoice.id,
+            amount: balanceDue,
+            paidAt: new Date().toISOString(),
+            method: "other",
+          },
+          { actor: ctx.actor }
+        )
+      )
+
+      return { ...result.invoice, ...settlementForUi(result.invoice) }
     }),
 })

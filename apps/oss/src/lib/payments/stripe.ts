@@ -1,5 +1,6 @@
 import Stripe from "stripe"
 import { decryptSecret } from "../secrets"
+import { toStripeMinorUnits } from "./stripe-amounts"
 
 export type StripePaymentConfigurationSnapshot = {
   stripePublishableKey: string | null
@@ -44,8 +45,9 @@ export async function createStripeInvoiceCheckoutSession(input: {
     number: string
     organizationId: string
     currency: string
-    totalGross: { toNumber(): number }
   }
+  /** What the customer still owes: total minus payments and credit notes, in major units. */
+  amountDue: number
   successUrl: string
   cancelUrl: string
 }) {
@@ -69,7 +71,7 @@ export async function createStripeInvoiceCheckoutSession(input: {
         quantity: 1,
         price_data: {
           currency: input.invoice.currency.toLowerCase(),
-          unit_amount: Math.round(input.invoice.totalGross.toNumber() * 100),
+          unit_amount: toStripeMinorUnits(input.amountDue, input.invoice.currency),
           product_data: {
             name: `Invoice ${input.invoice.number}`,
           },

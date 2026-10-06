@@ -1,4 +1,5 @@
 import { buildAbsoluteUrl, resolveAppOrigin } from "@yaip/shared/http"
+import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { appLogger } from "../observability"
 import { loadPublicInvoiceByToken } from "./public-access"
@@ -16,7 +17,11 @@ export async function resolvePublicInvoiceCheckout(token: string) {
     return { url: null, status: "invalid" } as const
   }
 
-  if (session.paymentState === "paid") {
+  // Customers pay what they still owe, not the invoice total: earlier partial payments and
+  // credit notes reduce the checkout amount.
+  const { balanceDue } = computeSettlement(session.invoice)
+
+  if (session.paymentState === "paid" || balanceDue.isZero()) {
     paymentsLogger.info("invoice.checkout.already_paid", {
       invoiceId: session.invoice.id,
       organizationId: session.invoice.organizationId,
@@ -62,6 +67,7 @@ export async function resolvePublicInvoiceCheckout(token: string) {
   const checkoutSession = await createStripeInvoiceCheckoutSession({
     credentials,
     invoice: session.invoice,
+    amountDue: balanceDue.toNumber(),
     successUrl: publicUrl,
     cancelUrl: publicUrl,
   })
@@ -77,6 +83,7 @@ export async function resolvePublicInvoiceCheckout(token: string) {
     invoiceId: session.invoice.id,
     organizationId: session.invoice.organizationId,
     checkoutSessionId: checkoutSession.id,
+    amountDue: balanceDue.toNumber(),
   })
 
   return { url: checkoutSession.url, status: "redirect" } as const
