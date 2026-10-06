@@ -4,6 +4,8 @@ import { ArrowLeft, Download, Mail } from "lucide-react"
 import { parseBuyerSnapshot } from "@yaip/contracts/documents"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
+import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
+import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
 import { useActiveOrganizationId } from "../../../lib/active-organization"
 import { formatCurrency, formatDate } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
@@ -57,6 +59,8 @@ function CreditNoteDetailPage() {
   // Keyed on the active organization so capabilities refresh after switching organization.
   const organizationId = useActiveOrganizationId()
   const latestLoad = useRef(0)
+  // The page stays mounted when navigating to another credit note; drop answers for the previous one.
+  const beginRequest = useDocumentResponseGuard(creditNoteId)
 
   const load = useCallback(async () => {
     const request = ++latestLoad.current
@@ -84,23 +88,29 @@ function CreditNoteDetailPage() {
   /** Reloads only the credit note; a full load started meanwhile wins. */
   const refreshCreditNote = useCallback(async () => {
     const request = latestLoad.current
+    const isCurrent = beginRequest(creditNoteId)
     const data = await trpc.creditNotes.get.query({ id: creditNoteId })
-    if (request !== latestLoad.current) return
+    if (request !== latestLoad.current || !isCurrent()) return
     setCreditNote(data)
-  }, [creditNoteId])
+  }, [beginRequest, creditNoteId])
 
   // While the outbox is still delivering the email, follow it until it settles.
   const emailSending = creditNote?.lastEmailAttemptOutcome === "sending"
-  usePollWhile(emailSending, refreshCreditNote)
+  const pollFailure = usePollWhile(emailSending, refreshCreditNote)
 
   // Switching organization keeps the page mounted, so start over with nothing allowed.
   useEffect(() => {
     setCanSend(false)
     if (organizationId === undefined) return
+    const isCurrent = beginRequest(creditNoteId)
     load()
-      .catch(() => setError(t("creditNotes.detail.notFound")))
-      .finally(() => setLoading(false))
-  }, [load, t, organizationId])
+      .catch(() => {
+        if (isCurrent()) setError(t("creditNotes.detail.notFound"))
+      })
+      .finally(() => {
+        if (isCurrent()) setLoading(false)
+      })
+  }, [beginRequest, creditNoteId, load, t, organizationId])
 
   async function handleSend() {
     if (!creditNote) return
@@ -201,6 +211,7 @@ function CreditNoteDetailPage() {
           {error}
         </p>
       )}
+      <ReloadRequiredNotice failure={pollFailure} />
       {notice && (
         <p
           className={

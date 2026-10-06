@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
+import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import {
   readEmailDeliveryAttempt,
@@ -9,6 +10,7 @@ import {
 } from "../../../lib/email-delivery"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { EmailDeliveryPanel } from "../../../components/documents/email-delivery-panel"
+import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
 import {
   formatCurrency as formatCurrencyIntl,
   formatDate as formatDateIntl,
@@ -225,12 +227,17 @@ function InvoiceDetailPage() {
   const [editTaxRate, setEditTaxRate] = useState(0)
   const [editItems, setEditItems] = useState<EditItem[]>([])
 
+  // The page stays mounted when navigating to another invoice; drop answers for the previous one.
+  const beginRequest = useDocumentResponseGuard(invoiceId)
+
   useEffect(() => {
+    const isCurrent = beginRequest(invoiceId)
     Promise.all([
       trpc.invoices.get.query({ id: invoiceId }),
       trpc.settings.get.query(),
     ])
       .then(([data, settings]) => {
+        if (!isCurrent()) return
         setInvoice(data as unknown as Invoice)
         setPaymentLinkUrl((data as unknown as Invoice).publicPaymentUrl ?? null)
         setOrgSettings({
@@ -245,14 +252,18 @@ function InvoiceDetailPage() {
         })
         setEmailDelivery(settings.emailDelivery)
       })
-      .catch(() =>
-        setError(t("invoices.detail.error.notFound"))
-      )
-      .finally(() => setLoading(false))
-  }, [invoiceId, t])
+      .catch(() => {
+        if (isCurrent()) setError(t("invoices.detail.error.notFound"))
+      })
+      .finally(() => {
+        if (isCurrent()) setLoading(false)
+      })
+  }, [beginRequest, invoiceId, t])
 
   async function reloadInvoice() {
+    const isCurrent = beginRequest(invoiceId)
     const updated = await trpc.invoices.get.query({ id: invoiceId })
+    if (!isCurrent()) return
     setInvoice(updated as unknown as Invoice)
     setPaymentLinkUrl((updated as unknown as Invoice).publicPaymentUrl ?? null)
   }
@@ -268,7 +279,7 @@ function InvoiceDetailPage() {
 
   // While the outbox is still delivering the email the invoice is frozen; follow it until it settles.
   const emailSending = invoice?.lastEmailAttemptOutcome === "sending"
-  usePollWhile(emailSending, reloadInvoice)
+  const pollFailure = usePollWhile(emailSending, reloadInvoice)
 
   function startEditing() {
     if (!invoice) return
@@ -325,6 +336,7 @@ function InvoiceDetailPage() {
     if (!invoice) return
     setError(null)
     setActing(true)
+    const isCurrent = beginRequest(invoice.id)
     try {
       const updated = await trpc.invoices.update.mutate({
         id: invoice.id,
@@ -338,6 +350,7 @@ function InvoiceDetailPage() {
           unitPrice: item.unitPrice,
         })),
       })
+      if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
       setEditing(false)
     } catch (err) {
@@ -857,6 +870,10 @@ function InvoiceDetailPage() {
           {error}
         </p>
       )}
+
+      <div className="mb-4 no-print empty:hidden">
+        <ReloadRequiredNotice failure={pollFailure} />
+      </div>
 
       {/* Invoice content (printable) */}
       <div className="print-area">
