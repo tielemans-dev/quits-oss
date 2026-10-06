@@ -36,4 +36,16 @@ describe("reminder email", () => {
     expect(content.html).toContain("Balance due")
     expect(content.html).not.toContain("/pay/")
   })
+
+  it("shows the calendar due date west of UTC", () => {
+    const content = buildReminderEmailContent({
+      ...base,
+      stage: "upcoming",
+      org: { companyName: "Acme", locale: "en-US", timezone: "America/New_York" },
+    })
+
+    expect(content.subject).toBe("Reminder: invoice INV-0042 is due June 1, 2026")
+    expect(content.html).toContain("June 1, 2026")
+    expect(content.html).not.toContain("May 31, 2026")
+  })
 })

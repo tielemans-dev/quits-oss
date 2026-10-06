@@ -8,39 +8,55 @@ import {
 } from "../commands/reminders"
 import { executeCommand } from "../execute"
 import { registerJobHandler } from "../jobs"
-import { registerTickTask } from "../scheduler"
+import {
+  forEachOrganizationWithinBudget,
+  organizationFilter,
+  registerTickTask,
+  type TickOptions,
+} from "../scheduler"
 
 const remindersLogger = appLogger.child("reminders")
 
-/** Reserves and dispatches due reminders for every organization with reminders enabled. */
-export async function runReminderTask(now: Date = new Date()) {
+/**
+ * Reserves due reminders for organizations with reminders enabled: one bounded batch per
+ * organization per tick, within the tick's organization budget. Reserved reminders are queued as
+ * jobs that the tick's `jobs` task sends; anything not reached is picked up by the next tick.
+ */
+export async function runReminderTask(now: Date = new Date(), options?: TickOptions) {
   const organizations = await prisma.orgSettings.findMany({
-    where: { reminderPolicy: { path: ["enabled"], equals: true } },
+    where: { ...organizationFilter(options), reminderPolicy: { path: ["enabled"], equals: true } },
+    orderBy: { organizationId: "asc" },
     select: { organizationId: true },
   })
 
   let scheduled = 0
   let skipped = 0
   let failed = 0
-  for (const { organizationId } of organizations) {
-    try {
-      const outcome = await executeCommand(scheduleDueReminders, {}, {
-        actor: schedulerActor(organizationId),
-        now,
-      })
-      if (outcome.status === "completed") {
-        scheduled += outcome.result.scheduled
-        skipped += outcome.result.skipped
-      } else {
+  let remaining = 0
+  const { deferred } = await forEachOrganizationWithinBudget(
+    "reminders",
+    organizations.map((organization) => organization.organizationId),
+    async (organizationId) => {
+      try {
+        const outcome = await executeCommand(scheduleDueReminders, {}, {
+          actor: schedulerActor(organizationId),
+          now,
+        })
+        if (outcome.status === "completed") {
+          scheduled += outcome.result.scheduled
+          skipped += outcome.result.skipped
+          if (outcome.result.more) remaining += 1
+        } else {
+          failed += 1
+        }
+      } catch (error) {
         failed += 1
+        remindersLogger.error("reminders.organization_failed", { organizationId, error })
       }
-    } catch (error) {
-      failed += 1
-      remindersLogger.error("reminders.organization_failed", { organizationId, error })
     }
-  }
+  )
 
-  return { organizations: organizations.length, scheduled, skipped, failed }
+  return { organizations: organizations.length, scheduled, skipped, failed, remaining: remaining + deferred }
 }
 
 /**

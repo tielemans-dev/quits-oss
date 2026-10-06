@@ -1,16 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { authorizeCronRequest } from "../../../lib/cron-auth"
+import { guardCronRequest } from "./-guard"
 
 /** Legacy alias kept for existing schedulers; `/api/cron/tick` runs this and everything else. */
 async function handleMarkOverdue(request: Request) {
-  const denied = authorizeCronRequest(request)
+  const denied = guardCronRequest(request)
   if (denied) {
     return denied
   }
 
   const { runOverdueTask } = await import("../../../domain/features/overdue")
   const result = await runOverdueTask()
-  return Response.json({ ok: true, marked: result.marked })
+  const ok = result.failed === 0
+  return Response.json(
+    { ok, marked: result.marked, failed: result.failed, remaining: result.remaining },
+    { status: ok ? 200 : 500 }
+  )
 }
 
 export const Route = createFileRoute("/api/cron/mark-overdue")({

@@ -121,12 +121,16 @@ describeIfDatabase("recurring invoices", () => {
     })
   }
 
+  /** Ticks scoped to the test's organization, so parallel tests never act on each other's data. */
+  const tickRecurring = (org: { organizationId: string }, now = new Date()) =>
+    runRecurringTick(now, { organizationIds: [org.organizationId] })
+
   it("generates a draft for a due run and advances the schedule", async () => {
     const { org, contactId } = await setup()
     const schedule = await createSchedule(org.actors.admin, contactId)
     expect(schedule).toMatchObject({ status: "active", nextRunAt: today() })
 
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
 
     const invoices = await generatedInvoices(schedule.id)
     expect(invoices).toHaveLength(1)
@@ -158,8 +162,9 @@ describeIfDatabase("recurring invoices", () => {
     await backdate(schedule.id, monthsAgo(2))
 
     const now = new Date()
-    await Promise.all([runRecurringTick(now), runRecurringTick(now), runSchedulerTick(now)])
-    await runRecurringTick(now)
+    const scope = { organizationIds: [org.organizationId] }
+    await Promise.all([runRecurringTick(now, scope), runRecurringTick(now, scope), runSchedulerTick(now, scope)])
+    await runRecurringTick(now, scope)
 
     const invoices = await generatedInvoices(schedule.id)
     expect(invoices.map((invoice) => invoice.recurringRunDate)).toEqual([
@@ -193,11 +198,11 @@ describeIfDatabase("recurring invoices", () => {
     const start = addUtcDays(today(), -7 * 15)
     await backdate(schedule.id, start)
 
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
     let invoices = await generatedInvoices(schedule.id)
     expect(invoices).toHaveLength(12)
 
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
     invoices = await generatedInvoices(schedule.id)
     expect(invoices).toHaveLength(16)
     expect(invoices.map((invoice) => invoice.recurringRunDate)).toEqual(
@@ -215,7 +220,7 @@ describeIfDatabase("recurring invoices", () => {
     })
     await backdate(schedule.id, monthsAgo(3))
 
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
 
     expect(await generatedInvoices(schedule.id)).toHaveLength(2)
     const after = await prisma.recurringInvoice.findUniqueOrThrow({ where: { id: schedule.id } })
@@ -227,7 +232,7 @@ describeIfDatabase("recurring invoices", () => {
     const schedule = await createSchedule(org.actors.admin, contactId)
     await backdate(schedule.id, monthsAgo(3), { endsAt: monthsAgo(2) })
 
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
 
     const invoices = await generatedInvoices(schedule.id)
     expect(invoices.map((invoice) => invoice.recurringRunDate)).toEqual([monthsAgo(3), monthsAgo(2)])
@@ -240,7 +245,7 @@ describeIfDatabase("recurring invoices", () => {
     const { org, contactId } = await setup()
     const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
 
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "sent" })
@@ -253,7 +258,7 @@ describeIfDatabase("recurring invoices", () => {
     const { org, contactId } = await setup({ contactEmail: null })
     const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
 
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice).toMatchObject({
@@ -275,7 +280,7 @@ describeIfDatabase("recurring invoices", () => {
     const { org, contactId } = await setup()
     const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
 
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
 
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice?.status).toBe("draft")
@@ -288,7 +293,7 @@ describeIfDatabase("recurring invoices", () => {
     const schedule = await createSchedule(org.actors.admin, contactId)
     await prisma.recurringInvoice.update({ where: { id: schedule.id }, data: { items: [{ bad: true }] } })
 
-    const result = await runRecurringTick(new Date())
+    const result = await tickRecurring(org)
     expect(result.failed).toBeGreaterThanOrEqual(1)
     let after = await prisma.recurringInvoice.findUniqueOrThrow({ where: { id: schedule.id } })
     expect(after.status).toBe("paused")
@@ -303,7 +308,7 @@ describeIfDatabase("recurring invoices", () => {
     const resumed = await executeCommand(resumeRecurringInvoice, { id: schedule.id }, { actor: org.actors.admin })
     expect(resumed).toMatchObject({ status: "completed", result: { status: "active", nextRunAt: today() } })
 
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
     after = await prisma.recurringInvoice.findUniqueOrThrow({ where: { id: schedule.id } })
     expect(after.status).toBe("active")
     expect(await generatedInvoices(schedule.id)).toHaveLength(1)
@@ -342,7 +347,7 @@ describeIfDatabase("recurring invoices", () => {
     expect(
       await executeCommand(setRecurringInvoiceStatus, { id: schedule.id, status: "paused" }, { actor })
     ).toMatchObject({ status: "completed", result: { status: "paused" } })
-    await runRecurringTick(new Date())
+    await tickRecurring(org)
     expect(await generatedInvoices(schedule.id)).toHaveLength(0)
 
     await executeCommand(setRecurringInvoiceStatus, { id: schedule.id, status: "ended" }, { actor })
@@ -361,6 +366,37 @@ describeIfDatabase("recurring invoices", () => {
       { actor: org.actors.admin }
     )
     expect(updated).toMatchObject({ status: "completed", result: { nextRunAt: addUtcDays(today(), 6) } })
+  })
+
+  it("never overwrites progress committed by a concurrent run when the schedule is edited", async () => {
+    const { org, contactId } = await setup()
+    const schedule = await createSchedule(org.actors.admin, contactId, {
+      end: { type: "after_runs", runs: 3 },
+    })
+    const advanced = advanceRunDate(today(), 1, "month", today().getUTCDate())
+
+    // Stands in for a run that holds the schedule while it generates and advances it.
+    let progressWritten!: () => void
+    const written = new Promise<void>((resolve) => (progressWritten = resolve))
+    const run = prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "recurring_invoice" WHERE "id" = ${schedule.id} FOR UPDATE`
+      await tx.recurringInvoice.update({
+        where: { id: schedule.id },
+        data: { nextRunAt: advanced, remainingRuns: 2, lastRunAt: today() },
+      })
+      progressWritten()
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    })
+    await written
+
+    const [edited] = await Promise.all([
+      executeCommand(updateRecurringInvoice, { id: schedule.id, name: "Renamed" }, { actor: org.actors.admin }),
+      run,
+    ])
+    expect(edited.status).toBe("completed")
+
+    const after = await prisma.recurringInvoice.findUniqueOrThrow({ where: { id: schedule.id } })
+    expect(after).toMatchObject({ name: "Renamed", nextRunAt: advanced, remainingRuns: 2, lastRunAt: today() })
   })
 
   it("enforces role permissions", async () => {

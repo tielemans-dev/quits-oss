@@ -7,7 +7,12 @@ import {
   runRequestId,
 } from "../commands/recurring"
 import { executeCommand } from "../execute"
-import { registerTickTask } from "../scheduler"
+import {
+  DEFAULT_ORGANIZATION_BUDGET,
+  organizationFilter,
+  registerTickTask,
+  type TickOptions,
+} from "../scheduler"
 
 const recurringLogger = appLogger.child("recurring")
 
@@ -82,9 +87,9 @@ async function processSchedule(id: string, organizationId: string, now: Date) {
  * second invoice for the same run. A run that cannot be generated pauses its schedule and
  * records why (`recurring.run_failed`).
  */
-export async function runRecurringTick(now: Date) {
+export async function runRecurringTick(now: Date, options?: TickOptions) {
   const due = await prisma.recurringInvoice.findMany({
-    where: { status: "active", nextRunAt: { lte: now } },
+    where: { ...organizationFilter(options), status: "active", nextRunAt: { lte: now } },
     orderBy: { nextRunAt: "asc" },
     take: MAX_SCHEDULES_PER_TICK,
     select: { id: true, organizationId: true },
@@ -92,8 +97,15 @@ export async function runRecurringTick(now: Date) {
 
   let generated = 0
   let failed = 0
+  let processed = 0
+  const startedAt = Date.now()
 
   for (const { id, organizationId } of due) {
+    // Schedules not reached within the time budget are the oldest due ones next tick.
+    if (processed > 0 && Date.now() - startedAt >= DEFAULT_ORGANIZATION_BUDGET.timeBudgetMs) {
+      break
+    }
+    processed += 1
     try {
       const result = await processSchedule(id, organizationId, now)
       generated += result.generated
@@ -105,7 +117,7 @@ export async function runRecurringTick(now: Date) {
     }
   }
 
-  return { due: due.length, generated, failed }
+  return { due: due.length, generated, failed, remaining: due.length - processed }
 }
 
 registerTickTask({ name: "recurring", order: 30, run: runRecurringTick })

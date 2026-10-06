@@ -9,7 +9,8 @@ import { recordPayment } from "../commands/payments"
 import { executeCommand } from "../execute"
 import { markOrganizationInvoicesOverdue } from "../features/overdue"
 import { readActivity } from "../events"
-import { registerJobHandler, runDueJobs } from "../jobs"
+import { reclaimStaleJobs, registerJobHandler } from "../jobs"
+import { runOrganizationJobs } from "../scheduler"
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -228,7 +229,8 @@ describeIfDatabase("review fixes", () => {
     })
     await prisma.$executeRaw`UPDATE "job" SET "updatedAt" = NOW() - INTERVAL '30 minutes' WHERE "id" = ${job.id}`
 
-    await runDueJobs()
+    await reclaimStaleJobs()
+    await runOrganizationJobs([org.organizationId])
 
     expect(handler).toHaveBeenCalledTimes(1)
     expect((await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).status).toBe("done")

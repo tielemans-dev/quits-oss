@@ -7,7 +7,7 @@ import {
   reminderSendNowInputSchema,
   type ReminderPolicy,
 } from "@yaip/contracts/reminders"
-import type { Prisma } from "../../../generated/prisma/client"
+import { Prisma } from "../../../generated/prisma/client"
 import type { SystemActor } from "../actor"
 import { prisma } from "../../lib/db"
 import { sendReminderEmail } from "../../lib/emails/reminder-email"
@@ -16,6 +16,7 @@ import { getPublicInvoicePaymentUrl } from "../../lib/payments/public"
 import type { AnyCommandDefinition } from "../command"
 import { defineCommand } from "../command"
 import { loadDocumentContext } from "../documents/context"
+import { lockDocument } from "../documents/locks"
 import { resolveInvoiceEmailContext } from "../documents/invoice-email"
 import { computeSettlement } from "../documents/settlement"
 import { ExternalFailure, InvalidState, NotFound } from "../errors"
@@ -31,6 +32,11 @@ export const REMINDABLE_STATUSES = ["sent", "viewed", "overdue"] as const
 export const REMINDER_SEND_JOB = "reminder.send"
 
 export const SUPERSEDED_MESSAGE = "Superseded by a later reminder"
+export const POLICY_DISABLED_MESSAGE = "Automatic reminders are turned off"
+export const OFFSET_REMOVED_MESSAGE = "This reminder is no longer in the reminder policy"
+
+/** Invoices one scheduling command reserves reminders for; the rest are handled next tick. */
+export const REMINDER_BATCH_SIZE = 200
 
 /** Prefix of the outcome message recorded for reminders sent by hand. */
 export const MANUAL_REMINDER_PREFIX = "Sent manually by "
@@ -41,6 +47,14 @@ export function isManualReminder(reminder: { outcomeMessage: string | null }) {
 
 export function schedulerActor(organizationId: string): SystemActor {
   return { kind: "system", organizationId, reason: "scheduler", label: "Scheduler" }
+}
+
+/**
+ * Timestamp columns hold UTC wall-clock time without a zone, so raw SQL compares a JS date as
+ * its UTC wall-clock value whatever the database session's timezone is.
+ */
+export function utcTimestamp(date: Date) {
+  return Prisma.sql`(${date.toISOString()}::timestamptz AT TIME ZONE 'UTC')`
 }
 
 export function addDays(date: Date, days: number) {
@@ -126,16 +140,20 @@ const findInvoice = (id: string) =>
     return invoice
   })
 
-/** Sends the reminder email; on failure runs `onFailure` outside the transaction first. */
+/**
+ * Sends the reminder email. On failure `recordFailure` is registered to run after the command's
+ * transaction rolls back, so the failure is kept.
+ */
 const deliverReminderEmail = (input: {
   invoice: ReminderInvoice
   recipient: string
-  /** Stable per reminder so provider-side deduplication covers job retries. */
-  idempotencyKey?: string
-  onFailure?: () => Promise<unknown>
+  /** Stable per reminder so provider-side deduplication covers retries. */
+  idempotencyKey: string
+  recordFailure?: () => Promise<unknown>
 }) =>
   Effect.gen(function* () {
-    const { now } = yield* Command
+    const command = yield* Command
+    const { now } = command
     const { settings } = yield* loadDocumentContext
     const emailContext = resolveInvoiceEmailContext(settings)
     const { invoice } = input
@@ -170,15 +188,14 @@ const deliverReminderEmail = (input: {
         }, { idempotencyKey: input.idempotencyKey }),
       catch: (cause) => cause,
     }).pipe(
-      Effect.catchAll((cause) =>
-        Effect.promise(() => input.onFailure?.() ?? Promise.resolve()).pipe(
-          Effect.flatMap(() =>
-            Effect.fail(
-              new ExternalFailure({ message: "Failed to send reminder email", service: "email", cause })
-            )
-          )
+      Effect.catchAll((cause) => {
+        if (input.recordFailure) {
+          command.onRollback(input.recordFailure)
+        }
+        return Effect.fail(
+          new ExternalFailure({ message: "Failed to send reminder email", service: "email", cause })
         )
-      )
+      })
     )
 
     return { balanceDue: balanceDue.toNumber(), hasPublicPaymentUrl: Boolean(publicPaymentUrl) }
@@ -255,6 +272,8 @@ export const sendReminderNow = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const { now } = command
+      // Serializes concurrent manual and scheduled reminders for this invoice.
+      yield* lockDocument("invoice", input.invoiceId)
       const invoice = yield* findInvoice(input.invoiceId)
 
       const blocker = reminderBlocker(invoice)
@@ -298,7 +317,8 @@ export const sendReminderNow = defineCommand({
         })
       }
 
-      const delivery = yield* deliverReminderEmail({ invoice, recipient })
+      // Reserve the slot before sending: a concurrent request waits on the invoice lock and then
+      // finds this reminder. If sending fails the transaction rolls the reservation back.
       const data = {
         scheduledFor: now,
         sentAt: now,
@@ -310,6 +330,11 @@ export const sendReminderNow = defineCommand({
           ? db.invoiceReminder.update({ where: { id: existing.id }, data })
           : db.invoiceReminder.create({ data: { invoiceId: invoice.id, offsetDays, ...data } })
       )
+      const delivery = yield* deliverReminderEmail({
+        invoice,
+        recipient,
+        idempotencyKey: `yaip-reminder-manual-${reminder.id}`,
+      })
 
       command.emit({
         aggregateType: "invoice",
@@ -337,9 +362,9 @@ export const sendReminderNow = defineCommand({
 // ── System commands (scheduler only, never exposed to agents) ─────────
 
 /**
- * Reserves due policy reminders for an organization's open invoices and enqueues one send job
- * per reserved reminder. The `(invoiceId, offsetDays)` unique constraint makes overlapping or
- * repeated ticks harmless.
+ * Reserves due policy reminders for one batch of an organization's open invoices and queues one
+ * send job per reserved reminder; `more` tells the caller another batch is waiting. The
+ * `(invoiceId, offsetDays)` unique constraint makes overlapping or repeated ticks harmless.
  */
 export const scheduleDueReminders = defineCommand({
   type: "reminder.schedule_due",
@@ -355,19 +380,47 @@ export const scheduleDueReminders = defineCommand({
       const { settings } = yield* loadDocumentContext
       const policy = parseReminderPolicy(settings.reminderPolicy)
       if (!policy.enabled || policy.offsetsDays.length === 0) {
-        return { scheduled: 0, skipped: 0 }
+        return { scheduled: 0, skipped: 0, more: false }
       }
 
-      // The earliest reminder fires `min(offset)` days around the due date.
-      const horizon = addDays(now, -Math.min(...policy.offsetsDays))
+      // An invoice needs work when the latest policy offset already due for it has no reminder
+      // yet. Selecting only those (in bounded, oldest-first batches) means invoices that are done
+      // never fill the batch, so a large backlog drains over a few ticks.
+      const offsets = [...policy.offsetsDays].sort((a, b) => a - b)
+      const windows = offsets.map((offsetDays, index) => {
+        const nextOffset = offsets[index + 1]
+        return Prisma.sql`(
+          i."dueDate" <= ${utcTimestamp(addDays(now, -offsetDays))}
+          ${nextOffset === undefined ? Prisma.empty : Prisma.sql`AND i."dueDate" > ${utcTimestamp(addDays(now, -nextOffset))}`}
+          AND i."issueDate" <= i."dueDate" + make_interval(days => ${offsetDays}::int)
+          AND NOT EXISTS (
+            SELECT 1 FROM "invoice_reminder" r
+            WHERE r."invoiceId" = i."id" AND r."offsetDays" = ${offsetDays}::int
+          )
+        )`
+      })
+      const batch = yield* Effect.promise(() =>
+        db.$queryRaw<Array<{ id: string }>>`
+          SELECT i."id" FROM "invoice" i
+          JOIN "contact" c ON c."id" = i."contactId"
+          WHERE i."organizationId" = ${organizationId}
+            AND i."status" IN (${Prisma.join([...REMINDABLE_STATUSES])})
+            AND i."remindersPaused" = false
+            AND i."totalGross" - i."amountCredited" - i."amountPaid" > 0
+            AND NULLIF(TRIM(c."email"), '') IS NOT NULL
+            AND (${Prisma.join(windows, " OR ")})
+          ORDER BY i."dueDate" ASC, i."id" ASC
+          LIMIT ${REMINDER_BATCH_SIZE}
+        `
+      )
+      if (batch.length === 0) {
+        return { scheduled: 0, skipped: 0, more: false }
+      }
+
       const invoices = yield* Effect.promise(() =>
         db.invoice.findMany({
-          where: {
-            organizationId,
-            status: { in: [...REMINDABLE_STATUSES] },
-            remindersPaused: false,
-            dueDate: { lte: horizon },
-          },
+          where: { id: { in: batch.map((row) => row.id) }, organizationId },
+          orderBy: { dueDate: "asc" },
           select: {
             id: true,
             status: true,
@@ -421,15 +474,26 @@ export const scheduleDueReminders = defineCommand({
             continue
           }
           scheduled += 1
-          command.enqueue({
-            type: REMINDER_SEND_JOB,
-            payload: { reminderId: reminder.id },
-            dedupeKey: `reminder:${reminder.id}`,
-          })
+          // Written straight to the job outbox in this transaction rather than through
+          // `command.enqueue`, which would send every reminder before the tick moves on. The
+          // tick's `jobs` task sends them, and later ticks pick up whatever it did not reach.
+          yield* Effect.promise(() =>
+            db.job.upsert({
+              where: { dedupeKey: `reminder:${reminder.id}` },
+              create: {
+                organizationId,
+                type: REMINDER_SEND_JOB,
+                payload: { reminderId: reminder.id },
+                dedupeKey: `reminder:${reminder.id}`,
+                runAfter: now,
+              },
+              update: {},
+            })
+          )
         }
       }
 
-      return { scheduled, skipped }
+      return { scheduled, skipped, more: batch.length === REMINDER_BATCH_SIZE }
     }),
 })
 
@@ -452,10 +516,29 @@ export const deliverScheduledReminder = defineCommand({
       const command = yield* Command
       const { organizationId, now } = command
 
+      const target = yield* Effect.promise(() =>
+        db.invoiceReminder.findFirst({
+          where: { id: input.reminderId, invoice: { organizationId } },
+          select: { invoiceId: true },
+        })
+      )
+      if (!target) {
+        return { reminderId: input.reminderId, outcome: "missing" as const }
+      }
+      // Serializes with manual reminders and other deliveries for the same invoice, then reads
+      // the reminder and its siblings fresh.
+      yield* lockDocument("invoice", target.invoiceId)
       const reminder = yield* Effect.promise(() =>
         db.invoiceReminder.findFirst({
           where: { id: input.reminderId, invoice: { organizationId } },
-          include: { invoice: { include: reminderInvoiceInclude } },
+          include: {
+            invoice: {
+              include: {
+                ...reminderInvoiceInclude,
+                reminders: { select: { offsetDays: true, scheduledFor: true, outcome: true, outcomeMessage: true } },
+              },
+            },
+          },
         })
       )
       if (!reminder) {
@@ -467,6 +550,21 @@ export const deliverScheduledReminder = defineCommand({
 
       const { invoice } = reminder
       const { settings } = yield* loadDocumentContext
+      // The policy is read now, not when the reminder was reserved, so turning reminders off or
+      // removing an offset also stops reminders already queued.
+      const policy = parseReminderPolicy(settings.reminderPolicy)
+      const followsPolicy = !isManualReminder(reminder)
+      const offsetInPolicy = (offsetDays: number) => policy.offsetsDays.includes(offsetDays)
+      // A later reminder that went out, or is due and will go out, replaces this one, so a
+      // retried older reminder never reaches the customer after a newer one.
+      const superseded = invoice.reminders.some(
+        (other) =>
+          other.offsetDays > reminder.offsetDays &&
+          (other.outcome === "sent" ||
+            ((other.outcome === null || other.outcome === "failed") &&
+              other.scheduledFor <= now &&
+              (isManualReminder(other) || (policy.enabled && offsetInPolicy(other.offsetDays)))))
+      )
       const blocker = reminderBlocker(invoice)
       const skipReason =
         blocker === "not_open"
@@ -475,11 +573,17 @@ export const deliverScheduledReminder = defineCommand({
             ? "Invoice has no balance due"
             : invoice.remindersPaused
               ? "Reminders are paused for this invoice"
-              : !isValidRecipient(invoice.contact.email)
-                ? "Contact has no email address"
-                : !resolveInvoiceEmailContext(settings).emailDelivery.available
-                  ? "Email delivery is not configured"
-                  : null
+              : followsPolicy && !policy.enabled
+                ? POLICY_DISABLED_MESSAGE
+                : followsPolicy && !offsetInPolicy(reminder.offsetDays)
+                  ? OFFSET_REMOVED_MESSAGE
+                  : superseded
+                    ? SUPERSEDED_MESSAGE
+                    : !isValidRecipient(invoice.contact.email)
+                      ? "Contact has no email address"
+                      : !resolveInvoiceEmailContext(settings).emailDelivery.available
+                        ? "Email delivery is not configured"
+                        : null
 
       if (skipReason) {
         yield* Effect.promise(() =>
@@ -502,8 +606,8 @@ export const deliverScheduledReminder = defineCommand({
         invoice,
         recipient,
         idempotencyKey: `yaip-reminder-${reminder.id}`,
-        // Written outside the transaction so the failure survives the rollback.
-        onFailure: () =>
+        // Written after the rollback so the failure is kept.
+        recordFailure: () =>
           prisma.invoiceReminder.update({
             where: { id: reminder.id },
             data: { outcome: "failed", outcomeMessage: "Email delivery failed; retrying" },

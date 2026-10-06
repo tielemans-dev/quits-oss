@@ -1,18 +1,27 @@
 import { Effect } from "effect"
 import { z } from "zod"
+import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import { appLogger } from "../../lib/observability"
-import { schedulerActor } from "../commands/reminders"
+import { schedulerActor, utcTimestamp } from "../commands/reminders"
 import { defineCommand } from "../command"
 import { computeSettlement } from "../documents/settlement"
 import { executeCommand } from "../execute"
-import { registerTickTask } from "../scheduler"
+import {
+  forEachOrganizationWithinBudget,
+  organizationFilter,
+  registerTickTask,
+  type TickOptions,
+} from "../scheduler"
 import { Command, Db } from "../services"
 
 const overdueLogger = appLogger.child("overdue")
 
 /** Issued invoices that turn overdue once their due date passes with a balance due. */
 const PRE_OVERDUE_STATUSES = ["sent", "viewed"]
+
+/** Invoices one command marks; an organization with more is continued next tick. */
+export const OVERDUE_BATCH_SIZE = 200
 
 /**
  * Marks an organization's issued invoices overdue. Runs as the scheduler so every change is
@@ -31,9 +40,22 @@ export const markOrganizationInvoicesOverdue = defineCommand({
       const command = yield* Command
       const { organizationId, now } = command
 
+      // Settled invoices are excluded in SQL so they never fill the batch tick after tick.
+      const batch = yield* Effect.promise(() =>
+        db.$queryRaw<Array<{ id: string }>>`
+          SELECT "id" FROM "invoice"
+          WHERE "organizationId" = ${organizationId}
+            AND "status" IN (${Prisma.join(PRE_OVERDUE_STATUSES)})
+            AND "dueDate" < ${utcTimestamp(now)}
+            AND "totalGross" - "amountCredited" - "amountPaid" > 0
+          ORDER BY "dueDate" ASC, "id" ASC
+          LIMIT ${OVERDUE_BATCH_SIZE}
+        `
+      )
       const candidates = yield* Effect.promise(() =>
         db.invoice.findMany({
-          where: { organizationId, status: { in: PRE_OVERDUE_STATUSES }, dueDate: { lt: now } },
+          where: { id: { in: batch.map((row) => row.id) }, organizationId },
+          orderBy: { dueDate: "asc" },
           select: {
             id: true,
             number: true,
@@ -75,39 +97,49 @@ export const markOrganizationInvoicesOverdue = defineCommand({
         })
       }
 
-      return { marked }
+      return { marked, more: batch.length === OVERDUE_BATCH_SIZE }
     }),
 })
 
-/** Marks overdue invoices across every organization. */
-export async function runOverdueTask(now: Date = new Date()) {
+/**
+ * Marks overdue invoices across organizations, at most one batch per organization per tick and
+ * within the tick's organization budget; the rest is picked up by the next tick.
+ */
+export async function runOverdueTask(now: Date = new Date(), options?: TickOptions) {
   const organizations = await prisma.invoice.findMany({
-    where: { status: { in: PRE_OVERDUE_STATUSES }, dueDate: { lt: now } },
+    where: { ...organizationFilter(options), status: { in: PRE_OVERDUE_STATUSES }, dueDate: { lt: now } },
     distinct: ["organizationId"],
+    orderBy: { organizationId: "asc" },
     select: { organizationId: true },
   })
 
   let marked = 0
   let failed = 0
-  for (const { organizationId } of organizations) {
-    try {
-      const outcome = await executeCommand(
-        markOrganizationInvoicesOverdue,
-        {},
-        { actor: schedulerActor(organizationId), now }
-      )
-      if (outcome.status === "completed") {
-        marked += outcome.result.marked
-      } else {
+  let remaining = 0
+  const { deferred } = await forEachOrganizationWithinBudget(
+    "overdue",
+    organizations.map((organization) => organization.organizationId),
+    async (organizationId) => {
+      try {
+        const outcome = await executeCommand(
+          markOrganizationInvoicesOverdue,
+          {},
+          { actor: schedulerActor(organizationId), now }
+        )
+        if (outcome.status === "completed") {
+          marked += outcome.result.marked
+          if (outcome.result.more) remaining += 1
+        } else {
+          failed += 1
+        }
+      } catch (error) {
         failed += 1
+        overdueLogger.error("overdue.organization_failed", { organizationId, error })
       }
-    } catch (error) {
-      failed += 1
-      overdueLogger.error("overdue.organization_failed", { organizationId, error })
     }
-  }
+  )
 
-  return { organizations: organizations.length, marked, failed }
+  return { organizations: organizations.length, marked, failed, remaining: remaining + deferred }
 }
 
 registerTickTask({ name: "overdue", order: 10, run: runOverdueTask })
