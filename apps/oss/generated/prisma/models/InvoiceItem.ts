@@ -49,6 +49,7 @@ export type InvoiceItemSumAggregateOutputType = {
 }
 
 export type InvoiceItemMinAggregateOutputType = {
+  deliverableId: string | null
   id: string | null
   invoiceId: string | null
   description: string | null
@@ -72,6 +73,7 @@ export type InvoiceItemMinAggregateOutputType = {
 }
 
 export type InvoiceItemMaxAggregateOutputType = {
+  deliverableId: string | null
   id: string | null
   invoiceId: string | null
   description: string | null
@@ -95,6 +97,7 @@ export type InvoiceItemMaxAggregateOutputType = {
 }
 
 export type InvoiceItemCountAggregateOutputType = {
+  deliverableId: number
   id: number
   invoiceId: number
   description: number
@@ -142,6 +145,7 @@ export type InvoiceItemSumAggregateInputType = {
 }
 
 export type InvoiceItemMinAggregateInputType = {
+  deliverableId?: true
   id?: true
   invoiceId?: true
   description?: true
@@ -165,6 +169,7 @@ export type InvoiceItemMinAggregateInputType = {
 }
 
 export type InvoiceItemMaxAggregateInputType = {
+  deliverableId?: true
   id?: true
   invoiceId?: true
   description?: true
@@ -188,6 +193,7 @@ export type InvoiceItemMaxAggregateInputType = {
 }
 
 export type InvoiceItemCountAggregateInputType = {
+  deliverableId?: true
   id?: true
   invoiceId?: true
   description?: true
@@ -298,6 +304,7 @@ export type InvoiceItemGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inte
 }
 
 export type InvoiceItemGroupByOutputType = {
+  deliverableId: string | null
   id: string
   invoiceId: string
   description: string
@@ -344,6 +351,7 @@ export type InvoiceItemWhereInput = {
   AND?: Prisma.InvoiceItemWhereInput | Prisma.InvoiceItemWhereInput[]
   OR?: Prisma.InvoiceItemWhereInput[]
   NOT?: Prisma.InvoiceItemWhereInput | Prisma.InvoiceItemWhereInput[]
+  deliverableId?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   id?: Prisma.StringFilter<"InvoiceItem"> | string
   invoiceId?: Prisma.StringFilter<"InvoiceItem"> | string
   description?: Prisma.StringFilter<"InvoiceItem"> | string
@@ -364,10 +372,12 @@ export type InvoiceItemWhereInput = {
   quantityInput?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   unitPriceInput?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   inputPrecision?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
+  deliverable?: Prisma.XOR<Prisma.DeliverableNullableScalarRelationFilter, Prisma.DeliverableWhereInput> | null
   invoice?: Prisma.XOR<Prisma.InvoiceScalarRelationFilter, Prisma.InvoiceWhereInput>
 }
 
 export type InvoiceItemOrderByWithRelationInput = {
+  deliverableId?: Prisma.SortOrderInput | Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   description?: Prisma.SortOrder
@@ -388,10 +398,12 @@ export type InvoiceItemOrderByWithRelationInput = {
   quantityInput?: Prisma.SortOrderInput | Prisma.SortOrder
   unitPriceInput?: Prisma.SortOrderInput | Prisma.SortOrder
   inputPrecision?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliverable?: Prisma.DeliverableOrderByWithRelationInput
   invoice?: Prisma.InvoiceOrderByWithRelationInput
 }
 
 export type InvoiceItemWhereUniqueInput = Prisma.AtLeast<{
+  deliverableId?: string
   id?: string
   AND?: Prisma.InvoiceItemWhereInput | Prisma.InvoiceItemWhereInput[]
   OR?: Prisma.InvoiceItemWhereInput[]
@@ -415,10 +427,12 @@ export type InvoiceItemWhereUniqueInput = Prisma.AtLeast<{
   quantityInput?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   unitPriceInput?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   inputPrecision?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
+  deliverable?: Prisma.XOR<Prisma.DeliverableNullableScalarRelationFilter, Prisma.DeliverableWhereInput> | null
   invoice?: Prisma.XOR<Prisma.InvoiceScalarRelationFilter, Prisma.InvoiceWhereInput>
-}, "id">
+}, "id" | "deliverableId">
 
 export type InvoiceItemOrderByWithAggregationInput = {
+  deliverableId?: Prisma.SortOrderInput | Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   description?: Prisma.SortOrder
@@ -450,6 +464,7 @@ export type InvoiceItemScalarWhereWithAggregatesInput = {
   AND?: Prisma.InvoiceItemScalarWhereWithAggregatesInput | Prisma.InvoiceItemScalarWhereWithAggregatesInput[]
   OR?: Prisma.InvoiceItemScalarWhereWithAggregatesInput[]
   NOT?: Prisma.InvoiceItemScalarWhereWithAggregatesInput | Prisma.InvoiceItemScalarWhereWithAggregatesInput[]
+  deliverableId?: Prisma.StringNullableWithAggregatesFilter<"InvoiceItem"> | string | null
   id?: Prisma.StringWithAggregatesFilter<"InvoiceItem"> | string
   invoiceId?: Prisma.StringWithAggregatesFilter<"InvoiceItem"> | string
   description?: Prisma.StringWithAggregatesFilter<"InvoiceItem"> | string
@@ -492,10 +507,12 @@ export type InvoiceItemCreateInput = {
   quantityInput?: string | null
   unitPriceInput?: string | null
   inputPrecision?: string | null
+  deliverable?: Prisma.DeliverableCreateNestedOneWithoutInvoiceItemInput
   invoice: Prisma.InvoiceCreateNestedOneWithoutItemsInput
 }
 
 export type InvoiceItemUncheckedCreateInput = {
+  deliverableId?: string | null
   id?: string
   invoiceId: string
   description: string
@@ -538,10 +555,12 @@ export type InvoiceItemUpdateInput = {
   quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliverable?: Prisma.DeliverableUpdateOneWithoutInvoiceItemNestedInput
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutItemsNestedInput
 }
 
 export type InvoiceItemUncheckedUpdateInput = {
+  deliverableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
@@ -565,6 +584,7 @@ export type InvoiceItemUncheckedUpdateInput = {
 }
 
 export type InvoiceItemCreateManyInput = {
+  deliverableId?: string | null
   id?: string
   invoiceId: string
   description: string
@@ -610,6 +630,7 @@ export type InvoiceItemUpdateManyMutationInput = {
 }
 
 export type InvoiceItemUncheckedUpdateManyInput = {
+  deliverableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
@@ -643,6 +664,7 @@ export type InvoiceItemOrderByRelationAggregateInput = {
 }
 
 export type InvoiceItemCountOrderByAggregateInput = {
+  deliverableId?: Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   description?: Prisma.SortOrder
@@ -677,6 +699,7 @@ export type InvoiceItemAvgOrderByAggregateInput = {
 }
 
 export type InvoiceItemMaxOrderByAggregateInput = {
+  deliverableId?: Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   description?: Prisma.SortOrder
@@ -700,6 +723,7 @@ export type InvoiceItemMaxOrderByAggregateInput = {
 }
 
 export type InvoiceItemMinOrderByAggregateInput = {
+  deliverableId?: Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   description?: Prisma.SortOrder
@@ -731,6 +755,11 @@ export type InvoiceItemSumOrderByAggregateInput = {
   lineGross?: Prisma.SortOrder
   taxRate?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+}
+
+export type InvoiceItemNullableScalarRelationFilter = {
+  is?: Prisma.InvoiceItemWhereInput | null
+  isNot?: Prisma.InvoiceItemWhereInput | null
 }
 
 export type InvoiceItemCreateNestedManyWithoutInvoiceInput = {
@@ -775,6 +804,38 @@ export type InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput = {
   deleteMany?: Prisma.InvoiceItemScalarWhereInput | Prisma.InvoiceItemScalarWhereInput[]
 }
 
+export type InvoiceItemCreateNestedOneWithoutDeliverableInput = {
+  create?: Prisma.XOR<Prisma.InvoiceItemCreateWithoutDeliverableInput, Prisma.InvoiceItemUncheckedCreateWithoutDeliverableInput>
+  connectOrCreate?: Prisma.InvoiceItemCreateOrConnectWithoutDeliverableInput
+  connect?: Prisma.InvoiceItemWhereUniqueInput
+}
+
+export type InvoiceItemUncheckedCreateNestedOneWithoutDeliverableInput = {
+  create?: Prisma.XOR<Prisma.InvoiceItemCreateWithoutDeliverableInput, Prisma.InvoiceItemUncheckedCreateWithoutDeliverableInput>
+  connectOrCreate?: Prisma.InvoiceItemCreateOrConnectWithoutDeliverableInput
+  connect?: Prisma.InvoiceItemWhereUniqueInput
+}
+
+export type InvoiceItemUpdateOneWithoutDeliverableNestedInput = {
+  create?: Prisma.XOR<Prisma.InvoiceItemCreateWithoutDeliverableInput, Prisma.InvoiceItemUncheckedCreateWithoutDeliverableInput>
+  connectOrCreate?: Prisma.InvoiceItemCreateOrConnectWithoutDeliverableInput
+  upsert?: Prisma.InvoiceItemUpsertWithoutDeliverableInput
+  disconnect?: Prisma.InvoiceItemWhereInput | boolean
+  delete?: Prisma.InvoiceItemWhereInput | boolean
+  connect?: Prisma.InvoiceItemWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.InvoiceItemUpdateToOneWithWhereWithoutDeliverableInput, Prisma.InvoiceItemUpdateWithoutDeliverableInput>, Prisma.InvoiceItemUncheckedUpdateWithoutDeliverableInput>
+}
+
+export type InvoiceItemUncheckedUpdateOneWithoutDeliverableNestedInput = {
+  create?: Prisma.XOR<Prisma.InvoiceItemCreateWithoutDeliverableInput, Prisma.InvoiceItemUncheckedCreateWithoutDeliverableInput>
+  connectOrCreate?: Prisma.InvoiceItemCreateOrConnectWithoutDeliverableInput
+  upsert?: Prisma.InvoiceItemUpsertWithoutDeliverableInput
+  disconnect?: Prisma.InvoiceItemWhereInput | boolean
+  delete?: Prisma.InvoiceItemWhereInput | boolean
+  connect?: Prisma.InvoiceItemWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.InvoiceItemUpdateToOneWithWhereWithoutDeliverableInput, Prisma.InvoiceItemUpdateWithoutDeliverableInput>, Prisma.InvoiceItemUncheckedUpdateWithoutDeliverableInput>
+}
+
 export type InvoiceItemCreateWithoutInvoiceInput = {
   id?: string
   description: string
@@ -795,9 +856,11 @@ export type InvoiceItemCreateWithoutInvoiceInput = {
   quantityInput?: string | null
   unitPriceInput?: string | null
   inputPrecision?: string | null
+  deliverable?: Prisma.DeliverableCreateNestedOneWithoutInvoiceItemInput
 }
 
 export type InvoiceItemUncheckedCreateWithoutInvoiceInput = {
+  deliverableId?: string | null
   id?: string
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -849,6 +912,7 @@ export type InvoiceItemScalarWhereInput = {
   AND?: Prisma.InvoiceItemScalarWhereInput | Prisma.InvoiceItemScalarWhereInput[]
   OR?: Prisma.InvoiceItemScalarWhereInput[]
   NOT?: Prisma.InvoiceItemScalarWhereInput | Prisma.InvoiceItemScalarWhereInput[]
+  deliverableId?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   id?: Prisma.StringFilter<"InvoiceItem"> | string
   invoiceId?: Prisma.StringFilter<"InvoiceItem"> | string
   description?: Prisma.StringFilter<"InvoiceItem"> | string
@@ -871,7 +935,116 @@ export type InvoiceItemScalarWhereInput = {
   inputPrecision?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
 }
 
+export type InvoiceItemCreateWithoutDeliverableInput = {
+  id?: string
+  description: string
+  quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
+  unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  unitPriceGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCategory?: string
+  taxCode?: string | null
+  sortOrder?: number
+  vatRateInput?: string | null
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
+  invoice: Prisma.InvoiceCreateNestedOneWithoutItemsInput
+}
+
+export type InvoiceItemUncheckedCreateWithoutDeliverableInput = {
+  id?: string
+  invoiceId: string
+  description: string
+  quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
+  unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  unitPriceGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCategory?: string
+  taxCode?: string | null
+  sortOrder?: number
+  vatRateInput?: string | null
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
+}
+
+export type InvoiceItemCreateOrConnectWithoutDeliverableInput = {
+  where: Prisma.InvoiceItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.InvoiceItemCreateWithoutDeliverableInput, Prisma.InvoiceItemUncheckedCreateWithoutDeliverableInput>
+}
+
+export type InvoiceItemUpsertWithoutDeliverableInput = {
+  update: Prisma.XOR<Prisma.InvoiceItemUpdateWithoutDeliverableInput, Prisma.InvoiceItemUncheckedUpdateWithoutDeliverableInput>
+  create: Prisma.XOR<Prisma.InvoiceItemCreateWithoutDeliverableInput, Prisma.InvoiceItemUncheckedCreateWithoutDeliverableInput>
+  where?: Prisma.InvoiceItemWhereInput
+}
+
+export type InvoiceItemUpdateToOneWithWhereWithoutDeliverableInput = {
+  where?: Prisma.InvoiceItemWhereInput
+  data: Prisma.XOR<Prisma.InvoiceItemUpdateWithoutDeliverableInput, Prisma.InvoiceItemUncheckedUpdateWithoutDeliverableInput>
+}
+
+export type InvoiceItemUpdateWithoutDeliverableInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.StringFieldUpdateOperationsInput | string
+  quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  unitPriceGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
+  taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invoice?: Prisma.InvoiceUpdateOneRequiredWithoutItemsNestedInput
+}
+
+export type InvoiceItemUncheckedUpdateWithoutDeliverableInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.StringFieldUpdateOperationsInput | string
+  quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  unitPriceGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  lineGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
+  taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
 export type InvoiceItemCreateManyInvoiceInput = {
+  deliverableId?: string | null
   id?: string
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -913,9 +1086,11 @@ export type InvoiceItemUpdateWithoutInvoiceInput = {
   quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliverable?: Prisma.DeliverableUpdateOneWithoutInvoiceItemNestedInput
 }
 
 export type InvoiceItemUncheckedUpdateWithoutInvoiceInput = {
+  deliverableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -938,6 +1113,7 @@ export type InvoiceItemUncheckedUpdateWithoutInvoiceInput = {
 }
 
 export type InvoiceItemUncheckedUpdateManyWithoutInvoiceInput = {
+  deliverableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -962,6 +1138,7 @@ export type InvoiceItemUncheckedUpdateManyWithoutInvoiceInput = {
 
 
 export type InvoiceItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  deliverableId?: boolean
   id?: boolean
   invoiceId?: boolean
   description?: boolean
@@ -982,10 +1159,12 @@ export type InvoiceItemSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   quantityInput?: boolean
   unitPriceInput?: boolean
   inputPrecision?: boolean
+  deliverable?: boolean | Prisma.InvoiceItem$deliverableArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["invoiceItem"]>
 
 export type InvoiceItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  deliverableId?: boolean
   id?: boolean
   invoiceId?: boolean
   description?: boolean
@@ -1006,10 +1185,12 @@ export type InvoiceItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   quantityInput?: boolean
   unitPriceInput?: boolean
   inputPrecision?: boolean
+  deliverable?: boolean | Prisma.InvoiceItem$deliverableArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["invoiceItem"]>
 
 export type InvoiceItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  deliverableId?: boolean
   id?: boolean
   invoiceId?: boolean
   description?: boolean
@@ -1030,10 +1211,12 @@ export type InvoiceItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   quantityInput?: boolean
   unitPriceInput?: boolean
   inputPrecision?: boolean
+  deliverable?: boolean | Prisma.InvoiceItem$deliverableArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["invoiceItem"]>
 
 export type InvoiceItemSelectScalar = {
+  deliverableId?: boolean
   id?: boolean
   invoiceId?: boolean
   description?: boolean
@@ -1056,23 +1239,28 @@ export type InvoiceItemSelectScalar = {
   inputPrecision?: boolean
 }
 
-export type InvoiceItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "invoiceId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatRateInput" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["invoiceItem"]>
+export type InvoiceItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"deliverableId" | "id" | "invoiceId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatRateInput" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["invoiceItem"]>
 export type InvoiceItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  deliverable?: boolean | Prisma.InvoiceItem$deliverableArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
 }
 export type InvoiceItemIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  deliverable?: boolean | Prisma.InvoiceItem$deliverableArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
 }
 export type InvoiceItemIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  deliverable?: boolean | Prisma.InvoiceItem$deliverableArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
 }
 
 export type $InvoiceItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "InvoiceItem"
   objects: {
+    deliverable: Prisma.$DeliverablePayload<ExtArgs> | null
     invoice: Prisma.$InvoicePayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
+    deliverableId: string | null
     id: string
     invoiceId: string
     description: string
@@ -1176,8 +1364,8 @@ export interface InvoiceItemDelegate<ExtArgs extends runtime.Types.Extensions.In
    * // Get first 10 InvoiceItems
    * const invoiceItems = await prisma.invoiceItem.findMany({ take: 10 })
    * 
-   * // Only select the `id`
-   * const invoiceItemWithIdOnly = await prisma.invoiceItem.findMany({ select: { id: true } })
+   * // Only select the `deliverableId`
+   * const invoiceItemWithDeliverableIdOnly = await prisma.invoiceItem.findMany({ select: { deliverableId: true } })
    * 
    */
   findMany<T extends InvoiceItemFindManyArgs>(args?: Prisma.SelectSubset<T, InvoiceItemFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvoiceItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
@@ -1221,9 +1409,9 @@ export interface InvoiceItemDelegate<ExtArgs extends runtime.Types.Extensions.In
    *   ]
    * })
    * 
-   * // Create many InvoiceItems and only return the `id`
-   * const invoiceItemWithIdOnly = await prisma.invoiceItem.createManyAndReturn({
-   *   select: { id: true },
+   * // Create many InvoiceItems and only return the `deliverableId`
+   * const invoiceItemWithDeliverableIdOnly = await prisma.invoiceItem.createManyAndReturn({
+   *   select: { deliverableId: true },
    *   data: [
    *     // ... provide data here
    *   ]
@@ -1312,9 +1500,9 @@ export interface InvoiceItemDelegate<ExtArgs extends runtime.Types.Extensions.In
    *   ]
    * })
    * 
-   * // Update zero or more InvoiceItems and only return the `id`
-   * const invoiceItemWithIdOnly = await prisma.invoiceItem.updateManyAndReturn({
-   *   select: { id: true },
+   * // Update zero or more InvoiceItems and only return the `deliverableId`
+   * const invoiceItemWithDeliverableIdOnly = await prisma.invoiceItem.updateManyAndReturn({
+   *   select: { deliverableId: true },
    *   where: {
    *     // ... provide filter here
    *   },
@@ -1487,6 +1675,7 @@ readonly fields: InvoiceItemFieldRefs;
  */
 export interface Prisma__InvoiceItemClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  deliverable<T extends Prisma.InvoiceItem$deliverableArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.InvoiceItem$deliverableArgs<ExtArgs>>): Prisma.Prisma__DeliverableClient<runtime.Types.Result.GetResult<Prisma.$DeliverablePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   invoice<T extends Prisma.InvoiceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.InvoiceDefaultArgs<ExtArgs>>): Prisma.Prisma__InvoiceClient<runtime.Types.Result.GetResult<Prisma.$InvoicePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1517,6 +1706,7 @@ export interface Prisma__InvoiceItemClient<T, Null = never, ExtArgs extends runt
  * Fields of the InvoiceItem model
  */
 export interface InvoiceItemFieldRefs {
+  readonly deliverableId: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly id: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly invoiceId: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly description: Prisma.FieldRef<"InvoiceItem", 'String'>
@@ -1930,6 +2120,25 @@ export type InvoiceItemDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Limit how many InvoiceItems to delete.
    */
   limit?: number
+}
+
+/**
+ * InvoiceItem.deliverable
+ */
+export type InvoiceItem$deliverableArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Deliverable
+   */
+  select?: Prisma.DeliverableSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Deliverable
+   */
+  omit?: Prisma.DeliverableOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DeliverableInclude<ExtArgs> | null
+  where?: Prisma.DeliverableWhereInput
 }
 
 /**

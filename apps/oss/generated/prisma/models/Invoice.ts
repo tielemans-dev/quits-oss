@@ -83,6 +83,8 @@ export type InvoiceMinAggregateOutputType = {
   amountPaid: runtime.Decimal | null
   amountCredited: runtime.Decimal | null
   remindersPaused: boolean | null
+  purpose: $Enums.InvoicePurpose | null
+  agreementId: string | null
   quoteId: string | null
   recurringInvoiceId: string | null
   recurringRunDate: Date | null
@@ -134,6 +136,8 @@ export type InvoiceMaxAggregateOutputType = {
   amountPaid: runtime.Decimal | null
   amountCredited: runtime.Decimal | null
   remindersPaused: boolean | null
+  purpose: $Enums.InvoicePurpose | null
+  agreementId: string | null
   quoteId: string | null
   recurringInvoiceId: string | null
   recurringRunDate: Date | null
@@ -189,6 +193,9 @@ export type InvoiceCountAggregateOutputType = {
   amountPaid: number
   amountCredited: number
   remindersPaused: number
+  purpose: number
+  scheduleSaleChoice: number
+  agreementId: number
   quoteId: number
   recurringInvoiceId: number
   recurringRunDate: number
@@ -261,6 +268,8 @@ export type InvoiceMinAggregateInputType = {
   amountPaid?: true
   amountCredited?: true
   remindersPaused?: true
+  purpose?: true
+  agreementId?: true
   quoteId?: true
   recurringInvoiceId?: true
   recurringRunDate?: true
@@ -312,6 +321,8 @@ export type InvoiceMaxAggregateInputType = {
   amountPaid?: true
   amountCredited?: true
   remindersPaused?: true
+  purpose?: true
+  agreementId?: true
   quoteId?: true
   recurringInvoiceId?: true
   recurringRunDate?: true
@@ -367,6 +378,9 @@ export type InvoiceCountAggregateInputType = {
   amountPaid?: true
   amountCredited?: true
   remindersPaused?: true
+  purpose?: true
+  scheduleSaleChoice?: true
+  agreementId?: true
   quoteId?: true
   recurringInvoiceId?: true
   recurringRunDate?: true
@@ -510,6 +524,9 @@ export type InvoiceGroupByOutputType = {
   amountPaid: runtime.Decimal
   amountCredited: runtime.Decimal
   remindersPaused: boolean
+  purpose: $Enums.InvoicePurpose
+  scheduleSaleChoice: runtime.JsonValue | null
+  agreementId: string | null
   quoteId: string | null
   recurringInvoiceId: string | null
   recurringRunDate: Date | null
@@ -589,6 +606,9 @@ export type InvoiceWhereInput = {
   amountPaid?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFilter<"Invoice"> | boolean
+  purpose?: Prisma.EnumInvoicePurposeFilter<"Invoice"> | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.JsonNullableFilter<"Invoice">
+  agreementId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   quoteId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   recurringInvoiceId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   recurringRunDate?: Prisma.DateTimeNullableFilter<"Invoice"> | Date | string | null
@@ -606,6 +626,7 @@ export type InvoiceWhereInput = {
   payments?: Prisma.PaymentListRelationFilter
   creditNotes?: Prisma.CreditNoteListRelationFilter
   reminders?: Prisma.InvoiceReminderListRelationFilter
+  agreement?: Prisma.XOR<Prisma.AgreementNullableScalarRelationFilter, Prisma.AgreementWhereInput> | null
   quote?: Prisma.XOR<Prisma.QuoteNullableScalarRelationFilter, Prisma.QuoteWhereInput> | null
   recurringInvoice?: Prisma.XOR<Prisma.RecurringInvoiceNullableScalarRelationFilter, Prisma.RecurringInvoiceWhereInput> | null
 }
@@ -653,6 +674,9 @@ export type InvoiceOrderByWithRelationInput = {
   amountPaid?: Prisma.SortOrder
   amountCredited?: Prisma.SortOrder
   remindersPaused?: Prisma.SortOrder
+  purpose?: Prisma.SortOrder
+  scheduleSaleChoice?: Prisma.SortOrderInput | Prisma.SortOrder
+  agreementId?: Prisma.SortOrderInput | Prisma.SortOrder
   quoteId?: Prisma.SortOrderInput | Prisma.SortOrder
   recurringInvoiceId?: Prisma.SortOrderInput | Prisma.SortOrder
   recurringRunDate?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -670,6 +694,7 @@ export type InvoiceOrderByWithRelationInput = {
   payments?: Prisma.PaymentOrderByRelationAggregateInput
   creditNotes?: Prisma.CreditNoteOrderByRelationAggregateInput
   reminders?: Prisma.InvoiceReminderOrderByRelationAggregateInput
+  agreement?: Prisma.AgreementOrderByWithRelationInput
   quote?: Prisma.QuoteOrderByWithRelationInput
   recurringInvoice?: Prisma.RecurringInvoiceOrderByWithRelationInput
 }
@@ -722,6 +747,9 @@ export type InvoiceWhereUniqueInput = Prisma.AtLeast<{
   amountPaid?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFilter<"Invoice"> | boolean
+  purpose?: Prisma.EnumInvoicePurposeFilter<"Invoice"> | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.JsonNullableFilter<"Invoice">
+  agreementId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   quoteId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   recurringInvoiceId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   recurringRunDate?: Prisma.DateTimeNullableFilter<"Invoice"> | Date | string | null
@@ -739,6 +767,7 @@ export type InvoiceWhereUniqueInput = Prisma.AtLeast<{
   payments?: Prisma.PaymentListRelationFilter
   creditNotes?: Prisma.CreditNoteListRelationFilter
   reminders?: Prisma.InvoiceReminderListRelationFilter
+  agreement?: Prisma.XOR<Prisma.AgreementNullableScalarRelationFilter, Prisma.AgreementWhereInput> | null
   quote?: Prisma.XOR<Prisma.QuoteNullableScalarRelationFilter, Prisma.QuoteWhereInput> | null
   recurringInvoice?: Prisma.XOR<Prisma.RecurringInvoiceNullableScalarRelationFilter, Prisma.RecurringInvoiceWhereInput> | null
 }, "id" | "organizationId_number" | "recurringInvoiceId_recurringRunDate">
@@ -786,6 +815,9 @@ export type InvoiceOrderByWithAggregationInput = {
   amountPaid?: Prisma.SortOrder
   amountCredited?: Prisma.SortOrder
   remindersPaused?: Prisma.SortOrder
+  purpose?: Prisma.SortOrder
+  scheduleSaleChoice?: Prisma.SortOrderInput | Prisma.SortOrder
+  agreementId?: Prisma.SortOrderInput | Prisma.SortOrder
   quoteId?: Prisma.SortOrderInput | Prisma.SortOrder
   recurringInvoiceId?: Prisma.SortOrderInput | Prisma.SortOrder
   recurringRunDate?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -850,6 +882,9 @@ export type InvoiceScalarWhereWithAggregatesInput = {
   amountPaid?: Prisma.DecimalWithAggregatesFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalWithAggregatesFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolWithAggregatesFilter<"Invoice"> | boolean
+  purpose?: Prisma.EnumInvoicePurposeWithAggregatesFilter<"Invoice"> | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.JsonNullableWithAggregatesFilter<"Invoice">
+  agreementId?: Prisma.StringNullableWithAggregatesFilter<"Invoice"> | string | null
   quoteId?: Prisma.StringNullableWithAggregatesFilter<"Invoice"> | string | null
   recurringInvoiceId?: Prisma.StringNullableWithAggregatesFilter<"Invoice"> | string | null
   recurringRunDate?: Prisma.DateTimeNullableWithAggregatesFilter<"Invoice"> | Date | string | null
@@ -904,6 +939,8 @@ export type InvoiceCreateInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
   artifactPdfHash?: string | null
@@ -919,6 +956,7 @@ export type InvoiceCreateInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
   reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  agreement?: Prisma.AgreementCreateNestedOneWithoutInvoicesInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
   recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
@@ -966,6 +1004,9 @@ export type InvoiceUncheckedCreateInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -1024,6 +1065,8 @@ export type InvoiceUpdateInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1039,6 +1082,7 @@ export type InvoiceUpdateInput = {
   payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
   reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  agreement?: Prisma.AgreementUpdateOneWithoutInvoicesNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
   recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
@@ -1086,6 +1130,9 @@ export type InvoiceUncheckedUpdateInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1146,6 +1193,9 @@ export type InvoiceCreateManyInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -1200,6 +1250,8 @@ export type InvoiceUpdateManyMutationInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1254,6 +1306,9 @@ export type InvoiceUncheckedUpdateManyInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1330,6 +1385,9 @@ export type InvoiceCountOrderByAggregateInput = {
   amountPaid?: Prisma.SortOrder
   amountCredited?: Prisma.SortOrder
   remindersPaused?: Prisma.SortOrder
+  purpose?: Prisma.SortOrder
+  scheduleSaleChoice?: Prisma.SortOrder
+  agreementId?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
   recurringInvoiceId?: Prisma.SortOrder
   recurringRunDate?: Prisma.SortOrder
@@ -1391,6 +1449,8 @@ export type InvoiceMaxOrderByAggregateInput = {
   amountPaid?: Prisma.SortOrder
   amountCredited?: Prisma.SortOrder
   remindersPaused?: Prisma.SortOrder
+  purpose?: Prisma.SortOrder
+  agreementId?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
   recurringInvoiceId?: Prisma.SortOrder
   recurringRunDate?: Prisma.SortOrder
@@ -1442,6 +1502,8 @@ export type InvoiceMinOrderByAggregateInput = {
   amountPaid?: Prisma.SortOrder
   amountCredited?: Prisma.SortOrder
   remindersPaused?: Prisma.SortOrder
+  purpose?: Prisma.SortOrder
+  agreementId?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
   recurringInvoiceId?: Prisma.SortOrder
   recurringRunDate?: Prisma.SortOrder
@@ -1550,6 +1612,10 @@ export type InvoiceUncheckedUpdateManyWithoutContactNestedInput = {
   update?: Prisma.InvoiceUpdateWithWhereUniqueWithoutContactInput | Prisma.InvoiceUpdateWithWhereUniqueWithoutContactInput[]
   updateMany?: Prisma.InvoiceUpdateManyWithWhereWithoutContactInput | Prisma.InvoiceUpdateManyWithWhereWithoutContactInput[]
   deleteMany?: Prisma.InvoiceScalarWhereInput | Prisma.InvoiceScalarWhereInput[]
+}
+
+export type EnumInvoicePurposeFieldUpdateOperationsInput = {
+  set?: $Enums.InvoicePurpose
 }
 
 export type InvoiceCreateNestedOneWithoutItemsInput = {
@@ -1692,6 +1758,48 @@ export type InvoiceUncheckedUpdateManyWithoutRecurringInvoiceNestedInput = {
   deleteMany?: Prisma.InvoiceScalarWhereInput | Prisma.InvoiceScalarWhereInput[]
 }
 
+export type InvoiceCreateNestedManyWithoutAgreementInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutAgreementInput, Prisma.InvoiceUncheckedCreateWithoutAgreementInput> | Prisma.InvoiceCreateWithoutAgreementInput[] | Prisma.InvoiceUncheckedCreateWithoutAgreementInput[]
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutAgreementInput | Prisma.InvoiceCreateOrConnectWithoutAgreementInput[]
+  createMany?: Prisma.InvoiceCreateManyAgreementInputEnvelope
+  connect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+}
+
+export type InvoiceUncheckedCreateNestedManyWithoutAgreementInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutAgreementInput, Prisma.InvoiceUncheckedCreateWithoutAgreementInput> | Prisma.InvoiceCreateWithoutAgreementInput[] | Prisma.InvoiceUncheckedCreateWithoutAgreementInput[]
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutAgreementInput | Prisma.InvoiceCreateOrConnectWithoutAgreementInput[]
+  createMany?: Prisma.InvoiceCreateManyAgreementInputEnvelope
+  connect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+}
+
+export type InvoiceUpdateManyWithoutAgreementNestedInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutAgreementInput, Prisma.InvoiceUncheckedCreateWithoutAgreementInput> | Prisma.InvoiceCreateWithoutAgreementInput[] | Prisma.InvoiceUncheckedCreateWithoutAgreementInput[]
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutAgreementInput | Prisma.InvoiceCreateOrConnectWithoutAgreementInput[]
+  upsert?: Prisma.InvoiceUpsertWithWhereUniqueWithoutAgreementInput | Prisma.InvoiceUpsertWithWhereUniqueWithoutAgreementInput[]
+  createMany?: Prisma.InvoiceCreateManyAgreementInputEnvelope
+  set?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  disconnect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  delete?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  connect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  update?: Prisma.InvoiceUpdateWithWhereUniqueWithoutAgreementInput | Prisma.InvoiceUpdateWithWhereUniqueWithoutAgreementInput[]
+  updateMany?: Prisma.InvoiceUpdateManyWithWhereWithoutAgreementInput | Prisma.InvoiceUpdateManyWithWhereWithoutAgreementInput[]
+  deleteMany?: Prisma.InvoiceScalarWhereInput | Prisma.InvoiceScalarWhereInput[]
+}
+
+export type InvoiceUncheckedUpdateManyWithoutAgreementNestedInput = {
+  create?: Prisma.XOR<Prisma.InvoiceCreateWithoutAgreementInput, Prisma.InvoiceUncheckedCreateWithoutAgreementInput> | Prisma.InvoiceCreateWithoutAgreementInput[] | Prisma.InvoiceUncheckedCreateWithoutAgreementInput[]
+  connectOrCreate?: Prisma.InvoiceCreateOrConnectWithoutAgreementInput | Prisma.InvoiceCreateOrConnectWithoutAgreementInput[]
+  upsert?: Prisma.InvoiceUpsertWithWhereUniqueWithoutAgreementInput | Prisma.InvoiceUpsertWithWhereUniqueWithoutAgreementInput[]
+  createMany?: Prisma.InvoiceCreateManyAgreementInputEnvelope
+  set?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  disconnect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  delete?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  connect?: Prisma.InvoiceWhereUniqueInput | Prisma.InvoiceWhereUniqueInput[]
+  update?: Prisma.InvoiceUpdateWithWhereUniqueWithoutAgreementInput | Prisma.InvoiceUpdateWithWhereUniqueWithoutAgreementInput[]
+  updateMany?: Prisma.InvoiceUpdateManyWithWhereWithoutAgreementInput | Prisma.InvoiceUpdateManyWithWhereWithoutAgreementInput[]
+  deleteMany?: Prisma.InvoiceScalarWhereInput | Prisma.InvoiceScalarWhereInput[]
+}
+
 export type InvoiceCreateWithoutOrganizationInput = {
   id?: string
   number: string
@@ -1733,6 +1841,8 @@ export type InvoiceCreateWithoutOrganizationInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
   artifactPdfHash?: string | null
@@ -1747,6 +1857,7 @@ export type InvoiceCreateWithoutOrganizationInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
   reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  agreement?: Prisma.AgreementCreateNestedOneWithoutInvoicesInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
   recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
@@ -1793,6 +1904,9 @@ export type InvoiceUncheckedCreateWithoutOrganizationInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -1882,6 +1996,9 @@ export type InvoiceScalarWhereInput = {
   amountPaid?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFilter<"Invoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFilter<"Invoice"> | boolean
+  purpose?: Prisma.EnumInvoicePurposeFilter<"Invoice"> | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.JsonNullableFilter<"Invoice">
+  agreementId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   quoteId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   recurringInvoiceId?: Prisma.StringNullableFilter<"Invoice"> | string | null
   recurringRunDate?: Prisma.DateTimeNullableFilter<"Invoice"> | Date | string | null
@@ -1936,6 +2053,8 @@ export type InvoiceCreateWithoutContactInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
   artifactPdfHash?: string | null
@@ -1950,6 +2069,7 @@ export type InvoiceCreateWithoutContactInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
   reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  agreement?: Prisma.AgreementCreateNestedOneWithoutInvoicesInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
   recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
@@ -1996,6 +2116,9 @@ export type InvoiceUncheckedCreateWithoutContactInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -2080,6 +2203,8 @@ export type InvoiceCreateWithoutItemsInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
   artifactPdfHash?: string | null
@@ -2094,6 +2219,7 @@ export type InvoiceCreateWithoutItemsInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
   reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  agreement?: Prisma.AgreementCreateNestedOneWithoutInvoicesInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
   recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
@@ -2141,6 +2267,9 @@ export type InvoiceUncheckedCreateWithoutItemsInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -2214,6 +2343,8 @@ export type InvoiceUpdateWithoutItemsInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2228,6 +2359,7 @@ export type InvoiceUpdateWithoutItemsInput = {
   payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
   reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  agreement?: Prisma.AgreementUpdateOneWithoutInvoicesNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
   recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
@@ -2275,6 +2407,9 @@ export type InvoiceUncheckedUpdateWithoutItemsInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2332,6 +2467,8 @@ export type InvoiceCreateWithoutQuoteInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
   artifactPdfHash?: string | null
@@ -2347,6 +2484,7 @@ export type InvoiceCreateWithoutQuoteInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
   reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  agreement?: Prisma.AgreementCreateNestedOneWithoutInvoicesInput
   recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
 
@@ -2393,6 +2531,9 @@ export type InvoiceUncheckedCreateWithoutQuoteInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
@@ -2476,6 +2617,8 @@ export type InvoiceCreateWithoutCreditNotesInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
   artifactPdfHash?: string | null
@@ -2490,6 +2633,7 @@ export type InvoiceCreateWithoutCreditNotesInput = {
   items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
   reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  agreement?: Prisma.AgreementCreateNestedOneWithoutInvoicesInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
   recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
@@ -2537,6 +2681,9 @@ export type InvoiceUncheckedCreateWithoutCreditNotesInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -2610,6 +2757,8 @@ export type InvoiceUpdateWithoutCreditNotesInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2624,6 +2773,7 @@ export type InvoiceUpdateWithoutCreditNotesInput = {
   items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
   reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  agreement?: Prisma.AgreementUpdateOneWithoutInvoicesNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
   recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
@@ -2671,6 +2821,9 @@ export type InvoiceUncheckedUpdateWithoutCreditNotesInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2728,6 +2881,8 @@ export type InvoiceCreateWithoutPaymentsInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
   artifactPdfHash?: string | null
@@ -2742,6 +2897,7 @@ export type InvoiceCreateWithoutPaymentsInput = {
   items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
   reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  agreement?: Prisma.AgreementCreateNestedOneWithoutInvoicesInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
   recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
@@ -2789,6 +2945,9 @@ export type InvoiceUncheckedCreateWithoutPaymentsInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -2862,6 +3021,8 @@ export type InvoiceUpdateWithoutPaymentsInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2876,6 +3037,7 @@ export type InvoiceUpdateWithoutPaymentsInput = {
   items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
   reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  agreement?: Prisma.AgreementUpdateOneWithoutInvoicesNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
   recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
@@ -2923,6 +3085,9 @@ export type InvoiceUncheckedUpdateWithoutPaymentsInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2980,6 +3145,8 @@ export type InvoiceCreateWithoutRemindersInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
   artifactPdfHash?: string | null
@@ -2994,6 +3161,7 @@ export type InvoiceCreateWithoutRemindersInput = {
   items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  agreement?: Prisma.AgreementCreateNestedOneWithoutInvoicesInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
   recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
 }
@@ -3041,6 +3209,9 @@ export type InvoiceUncheckedCreateWithoutRemindersInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -3114,6 +3285,8 @@ export type InvoiceUpdateWithoutRemindersInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3128,6 +3301,7 @@ export type InvoiceUpdateWithoutRemindersInput = {
   items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  agreement?: Prisma.AgreementUpdateOneWithoutInvoicesNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
   recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
@@ -3175,6 +3349,9 @@ export type InvoiceUncheckedUpdateWithoutRemindersInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3232,6 +3409,8 @@ export type InvoiceCreateWithoutRecurringInvoiceInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
   artifactPdfHash?: string | null
@@ -3247,6 +3426,7 @@ export type InvoiceCreateWithoutRecurringInvoiceInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
   reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  agreement?: Prisma.AgreementCreateNestedOneWithoutInvoicesInput
   quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
 }
 
@@ -3293,6 +3473,9 @@ export type InvoiceUncheckedCreateWithoutRecurringInvoiceInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
@@ -3333,6 +3516,156 @@ export type InvoiceUpdateWithWhereUniqueWithoutRecurringInvoiceInput = {
 export type InvoiceUpdateManyWithWhereWithoutRecurringInvoiceInput = {
   where: Prisma.InvoiceScalarWhereInput
   data: Prisma.XOR<Prisma.InvoiceUpdateManyMutationInput, Prisma.InvoiceUncheckedUpdateManyWithoutRecurringInvoiceInput>
+}
+
+export type InvoiceCreateWithoutAgreementInput = {
+  id?: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  recurringRunDate?: Date | string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
+  contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
+  items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderCreateNestedManyWithoutInvoiceInput
+  quote?: Prisma.QuoteCreateNestedOneWithoutInvoicesInput
+  recurringInvoice?: Prisma.RecurringInvoiceCreateNestedOneWithoutInvoicesInput
+}
+
+export type InvoiceUncheckedCreateWithoutAgreementInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
+  reminders?: Prisma.InvoiceReminderUncheckedCreateNestedManyWithoutInvoiceInput
+}
+
+export type InvoiceCreateOrConnectWithoutAgreementInput = {
+  where: Prisma.InvoiceWhereUniqueInput
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutAgreementInput, Prisma.InvoiceUncheckedCreateWithoutAgreementInput>
+}
+
+export type InvoiceCreateManyAgreementInputEnvelope = {
+  data: Prisma.InvoiceCreateManyAgreementInput | Prisma.InvoiceCreateManyAgreementInput[]
+  skipDuplicates?: boolean
+}
+
+export type InvoiceUpsertWithWhereUniqueWithoutAgreementInput = {
+  where: Prisma.InvoiceWhereUniqueInput
+  update: Prisma.XOR<Prisma.InvoiceUpdateWithoutAgreementInput, Prisma.InvoiceUncheckedUpdateWithoutAgreementInput>
+  create: Prisma.XOR<Prisma.InvoiceCreateWithoutAgreementInput, Prisma.InvoiceUncheckedCreateWithoutAgreementInput>
+}
+
+export type InvoiceUpdateWithWhereUniqueWithoutAgreementInput = {
+  where: Prisma.InvoiceWhereUniqueInput
+  data: Prisma.XOR<Prisma.InvoiceUpdateWithoutAgreementInput, Prisma.InvoiceUncheckedUpdateWithoutAgreementInput>
+}
+
+export type InvoiceUpdateManyWithWhereWithoutAgreementInput = {
+  where: Prisma.InvoiceScalarWhereInput
+  data: Prisma.XOR<Prisma.InvoiceUpdateManyMutationInput, Prisma.InvoiceUncheckedUpdateManyWithoutAgreementInput>
 }
 
 export type InvoiceCreateManyOrganizationInput = {
@@ -3377,6 +3710,9 @@ export type InvoiceCreateManyOrganizationInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -3431,6 +3767,8 @@ export type InvoiceUpdateWithoutOrganizationInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3445,6 +3783,7 @@ export type InvoiceUpdateWithoutOrganizationInput = {
   payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
   reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  agreement?: Prisma.AgreementUpdateOneWithoutInvoicesNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
   recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
@@ -3491,6 +3830,9 @@ export type InvoiceUncheckedUpdateWithoutOrganizationInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3550,6 +3892,9 @@ export type InvoiceUncheckedUpdateManyWithoutOrganizationInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3605,6 +3950,9 @@ export type InvoiceCreateManyContactInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
@@ -3659,6 +4007,8 @@ export type InvoiceUpdateWithoutContactInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3673,6 +4023,7 @@ export type InvoiceUpdateWithoutContactInput = {
   payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
   reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  agreement?: Prisma.AgreementUpdateOneWithoutInvoicesNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
   recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
@@ -3719,6 +4070,9 @@ export type InvoiceUncheckedUpdateWithoutContactInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3778,6 +4132,9 @@ export type InvoiceUncheckedUpdateManyWithoutContactInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3834,6 +4191,9 @@ export type InvoiceCreateManyQuoteInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   recurringInvoiceId?: string | null
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
@@ -3887,6 +4247,8 @@ export type InvoiceUpdateWithoutQuoteInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3902,6 +4264,7 @@ export type InvoiceUpdateWithoutQuoteInput = {
   payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
   reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  agreement?: Prisma.AgreementUpdateOneWithoutInvoicesNestedInput
   recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
 }
 
@@ -3948,6 +4311,9 @@ export type InvoiceUncheckedUpdateWithoutQuoteInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -4007,6 +4373,9 @@ export type InvoiceUncheckedUpdateManyWithoutQuoteInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -4062,6 +4431,9 @@ export type InvoiceCreateManyRecurringInvoiceInput = {
   amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: string | null
   quoteId?: string | null
   recurringRunDate?: Date | string | null
   artifactPdfRef?: string | null
@@ -4115,6 +4487,8 @@ export type InvoiceUpdateWithoutRecurringInvoiceInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -4130,6 +4504,7 @@ export type InvoiceUpdateWithoutRecurringInvoiceInput = {
   payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
   reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  agreement?: Prisma.AgreementUpdateOneWithoutInvoicesNestedInput
   quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
 }
 
@@ -4176,6 +4551,9 @@ export type InvoiceUncheckedUpdateWithoutRecurringInvoiceInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -4235,7 +4613,250 @@ export type InvoiceUncheckedUpdateManyWithoutRecurringInvoiceInput = {
   amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  agreementId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+}
+
+export type InvoiceCreateManyAgreementInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  number: string
+  status?: string
+  issueDate?: Date | string
+  dueDate: Date | string
+  supplyDate?: Date | string | null
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: string
+  paidAt?: Date | string | null
+  publicPaymentIssuedAt?: Date | string | null
+  publicPaymentKeyVersion?: number
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  paymentFailureReason?: string | null
+  paymentReference?: string | null
+  purchaseOrderRef?: string | null
+  einvoiceFormat?: string | null
+  einvoiceStatus?: string | null
+  einvoiceExternalId?: string | null
+  notes?: string | null
+  amountPaid?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: boolean
+  purpose?: $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  quoteId?: string | null
+  recurringInvoiceId?: string | null
+  recurringRunDate?: Date | string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+}
+
+export type InvoiceUpdateWithoutAgreementInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
+  items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUpdateManyWithoutInvoiceNestedInput
+  quote?: Prisma.QuoteUpdateOneWithoutInvoicesNestedInput
+  recurringInvoice?: Prisma.RecurringInvoiceUpdateOneWithoutInvoicesNestedInput
+}
+
+export type InvoiceUncheckedUpdateWithoutAgreementInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
+  reminders?: Prisma.InvoiceReminderUncheckedUpdateManyWithoutInvoiceNestedInput
+}
+
+export type InvoiceUncheckedUpdateManyWithoutAgreementInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supplyDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  complianceStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  complianceErrors?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  legalText?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  paymentStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  paidAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  publicPaymentKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCheckoutSessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePaymentIntentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentFailureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchaseOrderRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceFormat?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  einvoiceExternalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amountPaid?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  amountCredited?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  remindersPaused?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  purpose?: Prisma.EnumInvoicePurposeFieldUpdateOperationsInput | $Enums.InvoicePurpose
+  scheduleSaleChoice?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  quoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recurringInvoiceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recurringRunDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -4348,6 +4969,9 @@ export type InvoiceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   amountPaid?: boolean
   amountCredited?: boolean
   remindersPaused?: boolean
+  purpose?: boolean
+  scheduleSaleChoice?: boolean
+  agreementId?: boolean
   quoteId?: boolean
   recurringInvoiceId?: boolean
   recurringRunDate?: boolean
@@ -4365,6 +4989,7 @@ export type InvoiceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   payments?: boolean | Prisma.Invoice$paymentsArgs<ExtArgs>
   creditNotes?: boolean | Prisma.Invoice$creditNotesArgs<ExtArgs>
   reminders?: boolean | Prisma.Invoice$remindersArgs<ExtArgs>
+  agreement?: boolean | Prisma.Invoice$agreementArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
   recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
   _count?: boolean | Prisma.InvoiceCountOutputTypeDefaultArgs<ExtArgs>
@@ -4413,6 +5038,9 @@ export type InvoiceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   amountPaid?: boolean
   amountCredited?: boolean
   remindersPaused?: boolean
+  purpose?: boolean
+  scheduleSaleChoice?: boolean
+  agreementId?: boolean
   quoteId?: boolean
   recurringInvoiceId?: boolean
   recurringRunDate?: boolean
@@ -4426,6 +5054,7 @@ export type InvoiceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
+  agreement?: boolean | Prisma.Invoice$agreementArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
   recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
 }, ExtArgs["result"]["invoice"]>
@@ -4473,6 +5102,9 @@ export type InvoiceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   amountPaid?: boolean
   amountCredited?: boolean
   remindersPaused?: boolean
+  purpose?: boolean
+  scheduleSaleChoice?: boolean
+  agreementId?: boolean
   quoteId?: boolean
   recurringInvoiceId?: boolean
   recurringRunDate?: boolean
@@ -4486,6 +5118,7 @@ export type InvoiceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
+  agreement?: boolean | Prisma.Invoice$agreementArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
   recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
 }, ExtArgs["result"]["invoice"]>
@@ -4533,6 +5166,9 @@ export type InvoiceSelectScalar = {
   amountPaid?: boolean
   amountCredited?: boolean
   remindersPaused?: boolean
+  purpose?: boolean
+  scheduleSaleChoice?: boolean
+  agreementId?: boolean
   quoteId?: boolean
   recurringInvoiceId?: boolean
   recurringRunDate?: boolean
@@ -4546,7 +5182,7 @@ export type InvoiceSelectScalar = {
   vatEvidence?: boolean
 }
 
-export type InvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "issueDate" | "dueDate" | "supplyDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "complianceStatus" | "complianceErrors" | "legalText" | "paymentStatus" | "paidAt" | "publicPaymentIssuedAt" | "publicPaymentKeyVersion" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "stripeCheckoutSessionId" | "stripePaymentIntentId" | "paymentFailureReason" | "paymentReference" | "purchaseOrderRef" | "einvoiceFormat" | "einvoiceStatus" | "einvoiceExternalId" | "notes" | "amountPaid" | "amountCredited" | "remindersPaused" | "quoteId" | "recurringInvoiceId" | "recurringRunDate" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["invoice"]>
+export type InvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "issueDate" | "dueDate" | "supplyDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "complianceStatus" | "complianceErrors" | "legalText" | "paymentStatus" | "paidAt" | "publicPaymentIssuedAt" | "publicPaymentKeyVersion" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "stripeCheckoutSessionId" | "stripePaymentIntentId" | "paymentFailureReason" | "paymentReference" | "purchaseOrderRef" | "einvoiceFormat" | "einvoiceStatus" | "einvoiceExternalId" | "notes" | "amountPaid" | "amountCredited" | "remindersPaused" | "purpose" | "scheduleSaleChoice" | "agreementId" | "quoteId" | "recurringInvoiceId" | "recurringRunDate" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["invoice"]>
 export type InvoiceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -4554,6 +5190,7 @@ export type InvoiceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
   payments?: boolean | Prisma.Invoice$paymentsArgs<ExtArgs>
   creditNotes?: boolean | Prisma.Invoice$creditNotesArgs<ExtArgs>
   reminders?: boolean | Prisma.Invoice$remindersArgs<ExtArgs>
+  agreement?: boolean | Prisma.Invoice$agreementArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
   recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
   _count?: boolean | Prisma.InvoiceCountOutputTypeDefaultArgs<ExtArgs>
@@ -4561,12 +5198,14 @@ export type InvoiceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
 export type InvoiceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
+  agreement?: boolean | Prisma.Invoice$agreementArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
   recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
 }
 export type InvoiceIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
+  agreement?: boolean | Prisma.Invoice$agreementArgs<ExtArgs>
   quote?: boolean | Prisma.Invoice$quoteArgs<ExtArgs>
   recurringInvoice?: boolean | Prisma.Invoice$recurringInvoiceArgs<ExtArgs>
 }
@@ -4580,6 +5219,7 @@ export type $InvoicePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     payments: Prisma.$PaymentPayload<ExtArgs>[]
     creditNotes: Prisma.$CreditNotePayload<ExtArgs>[]
     reminders: Prisma.$InvoiceReminderPayload<ExtArgs>[]
+    agreement: Prisma.$AgreementPayload<ExtArgs> | null
     quote: Prisma.$QuotePayload<ExtArgs> | null
     recurringInvoice: Prisma.$RecurringInvoicePayload<ExtArgs> | null
   }
@@ -4626,6 +5266,9 @@ export type $InvoicePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     amountPaid: runtime.Decimal
     amountCredited: runtime.Decimal
     remindersPaused: boolean
+    purpose: $Enums.InvoicePurpose
+    scheduleSaleChoice: runtime.JsonValue | null
+    agreementId: string | null
     quoteId: string | null
     recurringInvoiceId: string | null
     recurringRunDate: Date | null
@@ -5037,6 +5680,7 @@ export interface Prisma__InvoiceClient<T, Null = never, ExtArgs extends runtime.
   payments<T extends Prisma.Invoice$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   creditNotes<T extends Prisma.Invoice$creditNotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$creditNotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreditNotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   reminders<T extends Prisma.Invoice$remindersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$remindersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvoiceReminderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  agreement<T extends Prisma.Invoice$agreementArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$agreementArgs<ExtArgs>>): Prisma.Prisma__AgreementClient<runtime.Types.Result.GetResult<Prisma.$AgreementPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   quote<T extends Prisma.Invoice$quoteArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$quoteArgs<ExtArgs>>): Prisma.Prisma__QuoteClient<runtime.Types.Result.GetResult<Prisma.$QuotePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   recurringInvoice<T extends Prisma.Invoice$recurringInvoiceArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invoice$recurringInvoiceArgs<ExtArgs>>): Prisma.Prisma__RecurringInvoiceClient<runtime.Types.Result.GetResult<Prisma.$RecurringInvoicePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
@@ -5110,6 +5754,9 @@ export interface InvoiceFieldRefs {
   readonly amountPaid: Prisma.FieldRef<"Invoice", 'Decimal'>
   readonly amountCredited: Prisma.FieldRef<"Invoice", 'Decimal'>
   readonly remindersPaused: Prisma.FieldRef<"Invoice", 'Boolean'>
+  readonly purpose: Prisma.FieldRef<"Invoice", 'InvoicePurpose'>
+  readonly scheduleSaleChoice: Prisma.FieldRef<"Invoice", 'Json'>
+  readonly agreementId: Prisma.FieldRef<"Invoice", 'String'>
   readonly quoteId: Prisma.FieldRef<"Invoice", 'String'>
   readonly recurringInvoiceId: Prisma.FieldRef<"Invoice", 'String'>
   readonly recurringRunDate: Prisma.FieldRef<"Invoice", 'DateTime'>
@@ -5610,6 +6257,25 @@ export type Invoice$remindersArgs<ExtArgs extends runtime.Types.Extensions.Inter
   take?: number
   skip?: number
   distinct?: Prisma.InvoiceReminderScalarFieldEnum | Prisma.InvoiceReminderScalarFieldEnum[]
+}
+
+/**
+ * Invoice.agreement
+ */
+export type Invoice$agreementArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Agreement
+   */
+  select?: Prisma.AgreementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Agreement
+   */
+  omit?: Prisma.AgreementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AgreementInclude<ExtArgs> | null
+  where?: Prisma.AgreementWhereInput
 }
 
 /**
