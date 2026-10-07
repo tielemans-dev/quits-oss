@@ -97,6 +97,7 @@ export type AgreementMinAggregateOutputType = {
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  calculationVersion: string | null
 }
 
 export type AgreementMaxAggregateOutputType = {
@@ -148,6 +149,7 @@ export type AgreementMaxAggregateOutputType = {
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  calculationVersion: string | null
 }
 
 export type AgreementCountAggregateOutputType = {
@@ -202,6 +204,8 @@ export type AgreementCountAggregateOutputType = {
   notes: number
   createdAt: number
   updatedAt: number
+  calculationVersion: number
+  vatEvidence: number
   _all: number
 }
 
@@ -277,6 +281,7 @@ export type AgreementMinAggregateInputType = {
   notes?: true
   createdAt?: true
   updatedAt?: true
+  calculationVersion?: true
 }
 
 export type AgreementMaxAggregateInputType = {
@@ -328,6 +333,7 @@ export type AgreementMaxAggregateInputType = {
   notes?: true
   createdAt?: true
   updatedAt?: true
+  calculationVersion?: true
 }
 
 export type AgreementCountAggregateInputType = {
@@ -382,6 +388,8 @@ export type AgreementCountAggregateInputType = {
   notes?: true
   createdAt?: true
   updatedAt?: true
+  calculationVersion?: true
+  vatEvidence?: true
   _all?: true
 }
 
@@ -523,6 +531,8 @@ export type AgreementGroupByOutputType = {
   notes: string | null
   createdAt: Date
   updatedAt: Date
+  calculationVersion: string
+  vatEvidence: runtime.JsonValue | null
   _count: AgreementCountAggregateOutputType | null
   _avg: AgreementAvgAggregateOutputType | null
   _sum: AgreementSumAggregateOutputType | null
@@ -600,6 +610,8 @@ export type AgreementWhereInput = {
   notes?: Prisma.StringNullableFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
+  calculationVersion?: Prisma.StringFilter<"Agreement"> | string
+  vatEvidence?: Prisma.JsonNullableFilter<"Agreement">
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   template?: Prisma.XOR<Prisma.AgreementTemplateNullableScalarRelationFilter, Prisma.AgreementTemplateWhereInput> | null
@@ -658,6 +670,8 @@ export type AgreementOrderByWithRelationInput = {
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
+  vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
   organization?: Prisma.OrganizationOrderByWithRelationInput
   contact?: Prisma.ContactOrderByWithRelationInput
   template?: Prisma.AgreementTemplateOrderByWithRelationInput
@@ -720,6 +734,8 @@ export type AgreementWhereUniqueInput = Prisma.AtLeast<{
   notes?: Prisma.StringNullableFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
+  calculationVersion?: Prisma.StringFilter<"Agreement"> | string
+  vatEvidence?: Prisma.JsonNullableFilter<"Agreement">
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   template?: Prisma.XOR<Prisma.AgreementTemplateNullableScalarRelationFilter, Prisma.AgreementTemplateWhereInput> | null
@@ -778,6 +794,8 @@ export type AgreementOrderByWithAggregationInput = {
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
+  vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.AgreementCountOrderByAggregateInput
   _avg?: Prisma.AgreementAvgOrderByAggregateInput
   _max?: Prisma.AgreementMaxOrderByAggregateInput
@@ -840,6 +858,8 @@ export type AgreementScalarWhereWithAggregatesInput = {
   notes?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Agreement"> | Date | string
+  calculationVersion?: Prisma.StringWithAggregatesFilter<"Agreement"> | string
+  vatEvidence?: Prisma.JsonNullableWithAggregatesFilter<"Agreement">
 }
 
 export type AgreementCreateInput = {
@@ -891,6 +911,8 @@ export type AgreementCreateInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
@@ -949,6 +971,8 @@ export type AgreementUncheckedCreateInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -1001,6 +1025,8 @@ export type AgreementUpdateInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
@@ -1059,6 +1085,8 @@ export type AgreementUncheckedUpdateInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -1114,6 +1142,8 @@ export type AgreementCreateManyInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementUpdateManyMutationInput = {
@@ -1165,6 +1195,8 @@ export type AgreementUpdateManyMutationInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementUncheckedUpdateManyInput = {
@@ -1219,6 +1251,8 @@ export type AgreementUncheckedUpdateManyInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementListRelationFilter = {
@@ -1288,6 +1322,8 @@ export type AgreementCountOrderByAggregateInput = {
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
+  vatEvidence?: Prisma.SortOrder
 }
 
 export type AgreementAvgOrderByAggregateInput = {
@@ -1350,6 +1386,7 @@ export type AgreementMaxOrderByAggregateInput = {
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
 }
 
 export type AgreementMinOrderByAggregateInput = {
@@ -1401,6 +1438,7 @@ export type AgreementMinOrderByAggregateInput = {
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
 }
 
 export type AgreementSumOrderByAggregateInput = {
@@ -1608,6 +1646,8 @@ export type AgreementCreateWithoutOrganizationInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
   deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
@@ -1664,6 +1704,8 @@ export type AgreementUncheckedCreateWithoutOrganizationInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -1748,6 +1790,8 @@ export type AgreementScalarWhereInput = {
   notes?: Prisma.StringNullableFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
+  calculationVersion?: Prisma.StringFilter<"Agreement"> | string
+  vatEvidence?: Prisma.JsonNullableFilter<"Agreement">
 }
 
 export type AgreementCreateWithoutContactInput = {
@@ -1799,6 +1843,8 @@ export type AgreementCreateWithoutContactInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
   deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
@@ -1855,6 +1901,8 @@ export type AgreementUncheckedCreateWithoutContactInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -1933,6 +1981,8 @@ export type AgreementCreateWithoutDeliverablesInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
@@ -1990,6 +2040,8 @@ export type AgreementUncheckedCreateWithoutDeliverablesInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementCreateOrConnectWithoutDeliverablesInput = {
@@ -2057,6 +2109,8 @@ export type AgreementUpdateWithoutDeliverablesInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
@@ -2114,6 +2168,8 @@ export type AgreementUncheckedUpdateWithoutDeliverablesInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementCreateWithoutTemplateInput = {
@@ -2165,6 +2221,8 @@ export type AgreementCreateWithoutTemplateInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
@@ -2221,6 +2279,8 @@ export type AgreementUncheckedCreateWithoutTemplateInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -2301,6 +2361,8 @@ export type AgreementCreateManyOrganizationInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementUpdateWithoutOrganizationInput = {
@@ -2352,6 +2414,8 @@ export type AgreementUpdateWithoutOrganizationInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
   deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
@@ -2408,6 +2472,8 @@ export type AgreementUncheckedUpdateWithoutOrganizationInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -2462,6 +2528,8 @@ export type AgreementUncheckedUpdateManyWithoutOrganizationInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementCreateManyContactInput = {
@@ -2515,6 +2583,8 @@ export type AgreementCreateManyContactInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementUpdateWithoutContactInput = {
@@ -2566,6 +2636,8 @@ export type AgreementUpdateWithoutContactInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
   deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
@@ -2622,6 +2694,8 @@ export type AgreementUncheckedUpdateWithoutContactInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -2676,6 +2750,8 @@ export type AgreementUncheckedUpdateManyWithoutContactInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementCreateManyTemplateInput = {
@@ -2729,6 +2805,8 @@ export type AgreementCreateManyTemplateInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AgreementUpdateWithoutTemplateInput = {
@@ -2780,6 +2858,8 @@ export type AgreementUpdateWithoutTemplateInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
@@ -2836,6 +2916,8 @@ export type AgreementUncheckedUpdateWithoutTemplateInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -2890,6 +2972,8 @@ export type AgreementUncheckedUpdateManyWithoutTemplateInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 
@@ -2975,6 +3059,8 @@ export type AgreementSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  calculationVersion?: boolean
+  vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   template?: boolean | Prisma.Agreement$templateArgs<ExtArgs>
@@ -3034,6 +3120,8 @@ export type AgreementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  calculationVersion?: boolean
+  vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   template?: boolean | Prisma.Agreement$templateArgs<ExtArgs>
@@ -3091,6 +3179,8 @@ export type AgreementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  calculationVersion?: boolean
+  vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   template?: boolean | Prisma.Agreement$templateArgs<ExtArgs>
@@ -3148,9 +3238,11 @@ export type AgreementSelectScalar = {
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  calculationVersion?: boolean
+  vatEvidence?: boolean
 }
 
-export type AgreementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "title" | "summary" | "termsMarkdown" | "templateId" | "taxRate" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "dueInDays" | "billingTrigger" | "subtotalNet" | "totalTax" | "totalGross" | "sellerSnapshot" | "buyerSnapshot" | "validUntil" | "issueDate" | "expiresAt" | "offerRevision" | "offerSnapshot" | "offerSnapshotHash" | "issuedToEmail" | "issuedVia" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "acceptedAt" | "acceptedOfferRevision" | "acceptedByName" | "acceptanceIp" | "acceptanceUserAgent" | "acceptanceMethod" | "acceptanceEvidenceNote" | "declinedAt" | "declineReason" | "closedAt" | "closeReason" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["agreement"]>
+export type AgreementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "title" | "summary" | "termsMarkdown" | "templateId" | "taxRate" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "dueInDays" | "billingTrigger" | "subtotalNet" | "totalTax" | "totalGross" | "sellerSnapshot" | "buyerSnapshot" | "validUntil" | "issueDate" | "expiresAt" | "offerRevision" | "offerSnapshot" | "offerSnapshotHash" | "issuedToEmail" | "issuedVia" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "acceptedAt" | "acceptedOfferRevision" | "acceptedByName" | "acceptanceIp" | "acceptanceUserAgent" | "acceptanceMethod" | "acceptanceEvidenceNote" | "declinedAt" | "declineReason" | "closedAt" | "closeReason" | "notes" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["agreement"]>
 export type AgreementInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -3229,6 +3321,8 @@ export type $AgreementPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     notes: string | null
     createdAt: Date
     updatedAt: Date
+    calculationVersion: string
+    vatEvidence: runtime.JsonValue | null
   }, ExtArgs["result"]["agreement"]>
   composites: {}
 }
@@ -3707,6 +3801,8 @@ export interface AgreementFieldRefs {
   readonly notes: Prisma.FieldRef<"Agreement", 'String'>
   readonly createdAt: Prisma.FieldRef<"Agreement", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Agreement", 'DateTime'>
+  readonly calculationVersion: Prisma.FieldRef<"Agreement", 'String'>
+  readonly vatEvidence: Prisma.FieldRef<"Agreement", 'Json'>
 }
     
 

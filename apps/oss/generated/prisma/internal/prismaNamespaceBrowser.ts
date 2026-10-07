@@ -379,7 +379,9 @@ export const InvoiceScalarFieldEnum = {
   recurringInvoiceId: 'recurringInvoiceId',
   recurringRunDate: 'recurringRunDate',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  calculationVersion: 'calculationVersion',
+  vatEvidence: 'vatEvidence'
 } as const
 
 export type InvoiceScalarFieldEnum = (typeof InvoiceScalarFieldEnum)[keyof typeof InvoiceScalarFieldEnum]
@@ -398,7 +400,13 @@ export const InvoiceItemScalarFieldEnum = {
   taxRate: 'taxRate',
   taxCategory: 'taxCategory',
   taxCode: 'taxCode',
-  sortOrder: 'sortOrder'
+  sortOrder: 'sortOrder',
+  vatTreatment: 'vatTreatment',
+  vatCountry: 'vatCountry',
+  vatReasonCode: 'vatReasonCode',
+  quantityInput: 'quantityInput',
+  unitPriceInput: 'unitPriceInput',
+  inputPrecision: 'inputPrecision'
 } as const
 
 export type InvoiceItemScalarFieldEnum = (typeof InvoiceItemScalarFieldEnum)[keyof typeof InvoiceItemScalarFieldEnum]
@@ -439,7 +447,9 @@ export const QuoteScalarFieldEnum = {
   lastEmailAttemptMessage: 'lastEmailAttemptMessage',
   notes: 'notes',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  calculationVersion: 'calculationVersion',
+  vatEvidence: 'vatEvidence'
 } as const
 
 export type QuoteScalarFieldEnum = (typeof QuoteScalarFieldEnum)[keyof typeof QuoteScalarFieldEnum]
@@ -458,7 +468,13 @@ export const QuoteItemScalarFieldEnum = {
   taxRate: 'taxRate',
   taxCategory: 'taxCategory',
   taxCode: 'taxCode',
-  sortOrder: 'sortOrder'
+  sortOrder: 'sortOrder',
+  vatTreatment: 'vatTreatment',
+  vatCountry: 'vatCountry',
+  vatReasonCode: 'vatReasonCode',
+  quantityInput: 'quantityInput',
+  unitPriceInput: 'unitPriceInput',
+  inputPrecision: 'inputPrecision'
 } as const
 
 export type QuoteItemScalarFieldEnum = (typeof QuoteItemScalarFieldEnum)[keyof typeof QuoteItemScalarFieldEnum]
@@ -490,7 +506,9 @@ export const CreditNoteScalarFieldEnum = {
   lastEmailAttemptCode: 'lastEmailAttemptCode',
   lastEmailAttemptMessage: 'lastEmailAttemptMessage',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  calculationVersion: 'calculationVersion',
+  vatEvidence: 'vatEvidence'
 } as const
 
 export type CreditNoteScalarFieldEnum = (typeof CreditNoteScalarFieldEnum)[keyof typeof CreditNoteScalarFieldEnum]
@@ -510,7 +528,13 @@ export const CreditNoteItemScalarFieldEnum = {
   taxRate: 'taxRate',
   taxCategory: 'taxCategory',
   taxCode: 'taxCode',
-  sortOrder: 'sortOrder'
+  sortOrder: 'sortOrder',
+  vatTreatment: 'vatTreatment',
+  vatCountry: 'vatCountry',
+  vatReasonCode: 'vatReasonCode',
+  quantityInput: 'quantityInput',
+  unitPriceInput: 'unitPriceInput',
+  inputPrecision: 'inputPrecision'
 } as const
 
 export type CreditNoteItemScalarFieldEnum = (typeof CreditNoteItemScalarFieldEnum)[keyof typeof CreditNoteItemScalarFieldEnum]
@@ -733,7 +757,9 @@ export const AgreementScalarFieldEnum = {
   closeReason: 'closeReason',
   notes: 'notes',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  calculationVersion: 'calculationVersion',
+  vatEvidence: 'vatEvidence'
 } as const
 
 export type AgreementScalarFieldEnum = (typeof AgreementScalarFieldEnum)[keyof typeof AgreementScalarFieldEnum]
@@ -765,7 +791,13 @@ export const DeliverableScalarFieldEnum = {
   acceptedVia: 'acceptedVia',
   acceptanceEvidenceNote: 'acceptanceEvidenceNote',
   changeRequestNote: 'changeRequestNote',
-  sortOrder: 'sortOrder'
+  sortOrder: 'sortOrder',
+  vatTreatment: 'vatTreatment',
+  vatCountry: 'vatCountry',
+  vatReasonCode: 'vatReasonCode',
+  quantityInput: 'quantityInput',
+  unitPriceInput: 'unitPriceInput',
+  inputPrecision: 'inputPrecision'
 } as const
 
 export type DeliverableScalarFieldEnum = (typeof DeliverableScalarFieldEnum)[keyof typeof DeliverableScalarFieldEnum]

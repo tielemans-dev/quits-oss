@@ -62,6 +62,12 @@ export type QuoteItemMinAggregateOutputType = {
   taxCategory: string | null
   taxCode: string | null
   sortOrder: number | null
+  vatTreatment: string | null
+  vatCountry: string | null
+  vatReasonCode: string | null
+  quantityInput: string | null
+  unitPriceInput: string | null
+  inputPrecision: string | null
 }
 
 export type QuoteItemMaxAggregateOutputType = {
@@ -78,6 +84,12 @@ export type QuoteItemMaxAggregateOutputType = {
   taxCategory: string | null
   taxCode: string | null
   sortOrder: number | null
+  vatTreatment: string | null
+  vatCountry: string | null
+  vatReasonCode: string | null
+  quantityInput: string | null
+  unitPriceInput: string | null
+  inputPrecision: string | null
 }
 
 export type QuoteItemCountAggregateOutputType = {
@@ -94,6 +106,12 @@ export type QuoteItemCountAggregateOutputType = {
   taxCategory: number
   taxCode: number
   sortOrder: number
+  vatTreatment: number
+  vatCountry: number
+  vatReasonCode: number
+  quantityInput: number
+  unitPriceInput: number
+  inputPrecision: number
   _all: number
 }
 
@@ -134,6 +152,12 @@ export type QuoteItemMinAggregateInputType = {
   taxCategory?: true
   taxCode?: true
   sortOrder?: true
+  vatTreatment?: true
+  vatCountry?: true
+  vatReasonCode?: true
+  quantityInput?: true
+  unitPriceInput?: true
+  inputPrecision?: true
 }
 
 export type QuoteItemMaxAggregateInputType = {
@@ -150,6 +174,12 @@ export type QuoteItemMaxAggregateInputType = {
   taxCategory?: true
   taxCode?: true
   sortOrder?: true
+  vatTreatment?: true
+  vatCountry?: true
+  vatReasonCode?: true
+  quantityInput?: true
+  unitPriceInput?: true
+  inputPrecision?: true
 }
 
 export type QuoteItemCountAggregateInputType = {
@@ -166,6 +196,12 @@ export type QuoteItemCountAggregateInputType = {
   taxCategory?: true
   taxCode?: true
   sortOrder?: true
+  vatTreatment?: true
+  vatCountry?: true
+  vatReasonCode?: true
+  quantityInput?: true
+  unitPriceInput?: true
+  inputPrecision?: true
   _all?: true
 }
 
@@ -269,6 +305,12 @@ export type QuoteItemGroupByOutputType = {
   taxCategory: string
   taxCode: string | null
   sortOrder: number
+  vatTreatment: string
+  vatCountry: string | null
+  vatReasonCode: string | null
+  quantityInput: string | null
+  unitPriceInput: string | null
+  inputPrecision: string | null
   _count: QuoteItemCountAggregateOutputType | null
   _avg: QuoteItemAvgAggregateOutputType | null
   _sum: QuoteItemSumAggregateOutputType | null
@@ -308,6 +350,12 @@ export type QuoteItemWhereInput = {
   taxCategory?: Prisma.StringFilter<"QuoteItem"> | string
   taxCode?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
   sortOrder?: Prisma.IntFilter<"QuoteItem"> | number
+  vatTreatment?: Prisma.StringFilter<"QuoteItem"> | string
+  vatCountry?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  vatReasonCode?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  quantityInput?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  unitPriceInput?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  inputPrecision?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
   quote?: Prisma.XOR<Prisma.QuoteScalarRelationFilter, Prisma.QuoteWhereInput>
 }
 
@@ -325,6 +373,12 @@ export type QuoteItemOrderByWithRelationInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrderInput | Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  quantityInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrderInput | Prisma.SortOrder
   quote?: Prisma.QuoteOrderByWithRelationInput
 }
 
@@ -345,6 +399,12 @@ export type QuoteItemWhereUniqueInput = Prisma.AtLeast<{
   taxCategory?: Prisma.StringFilter<"QuoteItem"> | string
   taxCode?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
   sortOrder?: Prisma.IntFilter<"QuoteItem"> | number
+  vatTreatment?: Prisma.StringFilter<"QuoteItem"> | string
+  vatCountry?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  vatReasonCode?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  quantityInput?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  unitPriceInput?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  inputPrecision?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
   quote?: Prisma.XOR<Prisma.QuoteScalarRelationFilter, Prisma.QuoteWhereInput>
 }, "id">
 
@@ -362,6 +422,12 @@ export type QuoteItemOrderByWithAggregationInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrderInput | Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  quantityInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.QuoteItemCountOrderByAggregateInput
   _avg?: Prisma.QuoteItemAvgOrderByAggregateInput
   _max?: Prisma.QuoteItemMaxOrderByAggregateInput
@@ -386,6 +452,12 @@ export type QuoteItemScalarWhereWithAggregatesInput = {
   taxCategory?: Prisma.StringWithAggregatesFilter<"QuoteItem"> | string
   taxCode?: Prisma.StringNullableWithAggregatesFilter<"QuoteItem"> | string | null
   sortOrder?: Prisma.IntWithAggregatesFilter<"QuoteItem"> | number
+  vatTreatment?: Prisma.StringWithAggregatesFilter<"QuoteItem"> | string
+  vatCountry?: Prisma.StringNullableWithAggregatesFilter<"QuoteItem"> | string | null
+  vatReasonCode?: Prisma.StringNullableWithAggregatesFilter<"QuoteItem"> | string | null
+  quantityInput?: Prisma.StringNullableWithAggregatesFilter<"QuoteItem"> | string | null
+  unitPriceInput?: Prisma.StringNullableWithAggregatesFilter<"QuoteItem"> | string | null
+  inputPrecision?: Prisma.StringNullableWithAggregatesFilter<"QuoteItem"> | string | null
 }
 
 export type QuoteItemCreateInput = {
@@ -401,6 +473,12 @@ export type QuoteItemCreateInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
   quote: Prisma.QuoteCreateNestedOneWithoutItemsInput
 }
 
@@ -418,6 +496,12 @@ export type QuoteItemUncheckedCreateInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type QuoteItemUpdateInput = {
@@ -433,6 +517,12 @@ export type QuoteItemUpdateInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quote?: Prisma.QuoteUpdateOneRequiredWithoutItemsNestedInput
 }
 
@@ -450,6 +540,12 @@ export type QuoteItemUncheckedUpdateInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type QuoteItemCreateManyInput = {
@@ -466,6 +562,12 @@ export type QuoteItemCreateManyInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type QuoteItemUpdateManyMutationInput = {
@@ -481,6 +583,12 @@ export type QuoteItemUpdateManyMutationInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type QuoteItemUncheckedUpdateManyInput = {
@@ -497,6 +605,12 @@ export type QuoteItemUncheckedUpdateManyInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type QuoteItemListRelationFilter = {
@@ -523,6 +637,12 @@ export type QuoteItemCountOrderByAggregateInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrder
+  quantityInput?: Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrder
 }
 
 export type QuoteItemAvgOrderByAggregateInput = {
@@ -550,6 +670,12 @@ export type QuoteItemMaxOrderByAggregateInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrder
+  quantityInput?: Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrder
 }
 
 export type QuoteItemMinOrderByAggregateInput = {
@@ -566,6 +692,12 @@ export type QuoteItemMinOrderByAggregateInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrder
+  quantityInput?: Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrder
 }
 
 export type QuoteItemSumOrderByAggregateInput = {
@@ -634,6 +766,12 @@ export type QuoteItemCreateWithoutQuoteInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type QuoteItemUncheckedCreateWithoutQuoteInput = {
@@ -649,6 +787,12 @@ export type QuoteItemUncheckedCreateWithoutQuoteInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type QuoteItemCreateOrConnectWithoutQuoteInput = {
@@ -694,6 +838,12 @@ export type QuoteItemScalarWhereInput = {
   taxCategory?: Prisma.StringFilter<"QuoteItem"> | string
   taxCode?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
   sortOrder?: Prisma.IntFilter<"QuoteItem"> | number
+  vatTreatment?: Prisma.StringFilter<"QuoteItem"> | string
+  vatCountry?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  vatReasonCode?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  quantityInput?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  unitPriceInput?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
+  inputPrecision?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
 }
 
 export type QuoteItemCreateManyQuoteInput = {
@@ -709,6 +859,12 @@ export type QuoteItemCreateManyQuoteInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type QuoteItemUpdateWithoutQuoteInput = {
@@ -724,6 +880,12 @@ export type QuoteItemUpdateWithoutQuoteInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type QuoteItemUncheckedUpdateWithoutQuoteInput = {
@@ -739,6 +901,12 @@ export type QuoteItemUncheckedUpdateWithoutQuoteInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type QuoteItemUncheckedUpdateManyWithoutQuoteInput = {
@@ -754,6 +922,12 @@ export type QuoteItemUncheckedUpdateManyWithoutQuoteInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -772,6 +946,12 @@ export type QuoteItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatTreatment?: boolean
+  vatCountry?: boolean
+  vatReasonCode?: boolean
+  quantityInput?: boolean
+  unitPriceInput?: boolean
+  inputPrecision?: boolean
   quote?: boolean | Prisma.QuoteDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["quoteItem"]>
 
@@ -789,6 +969,12 @@ export type QuoteItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatTreatment?: boolean
+  vatCountry?: boolean
+  vatReasonCode?: boolean
+  quantityInput?: boolean
+  unitPriceInput?: boolean
+  inputPrecision?: boolean
   quote?: boolean | Prisma.QuoteDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["quoteItem"]>
 
@@ -806,6 +992,12 @@ export type QuoteItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatTreatment?: boolean
+  vatCountry?: boolean
+  vatReasonCode?: boolean
+  quantityInput?: boolean
+  unitPriceInput?: boolean
+  inputPrecision?: boolean
   quote?: boolean | Prisma.QuoteDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["quoteItem"]>
 
@@ -823,9 +1015,15 @@ export type QuoteItemSelectScalar = {
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatTreatment?: boolean
+  vatCountry?: boolean
+  vatReasonCode?: boolean
+  quantityInput?: boolean
+  unitPriceInput?: boolean
+  inputPrecision?: boolean
 }
 
-export type QuoteItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "quoteId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder", ExtArgs["result"]["quoteItem"]>
+export type QuoteItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "quoteId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["quoteItem"]>
 export type QuoteItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   quote?: boolean | Prisma.QuoteDefaultArgs<ExtArgs>
 }
@@ -855,6 +1053,12 @@ export type $QuoteItemPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     taxCategory: string
     taxCode: string | null
     sortOrder: number
+    vatTreatment: string
+    vatCountry: string | null
+    vatReasonCode: string | null
+    quantityInput: string | null
+    unitPriceInput: string | null
+    inputPrecision: string | null
   }, ExtArgs["result"]["quoteItem"]>
   composites: {}
 }
@@ -1292,6 +1496,12 @@ export interface QuoteItemFieldRefs {
   readonly taxCategory: Prisma.FieldRef<"QuoteItem", 'String'>
   readonly taxCode: Prisma.FieldRef<"QuoteItem", 'String'>
   readonly sortOrder: Prisma.FieldRef<"QuoteItem", 'Int'>
+  readonly vatTreatment: Prisma.FieldRef<"QuoteItem", 'String'>
+  readonly vatCountry: Prisma.FieldRef<"QuoteItem", 'String'>
+  readonly vatReasonCode: Prisma.FieldRef<"QuoteItem", 'String'>
+  readonly quantityInput: Prisma.FieldRef<"QuoteItem", 'String'>
+  readonly unitPriceInput: Prisma.FieldRef<"QuoteItem", 'String'>
+  readonly inputPrecision: Prisma.FieldRef<"QuoteItem", 'String'>
 }
     
 
