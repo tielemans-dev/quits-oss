@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import { randomUUID } from "node:crypto"
 import { prisma } from "../../../lib/db"
 import { decidePublicQuoteByToken } from "../../../lib/quotes/public-access"
@@ -238,6 +239,6 @@ export async function runInvoiceQuoteSmokeFlow(
     }
   } finally {
     process.env.QUITS_PUBLIC_QUOTE_SECRET = previousQuoteSecret
-    await prisma.organization.deleteMany({ where: { id: orgId } })
+    await cleanupTestOrganizations({ where: { id: orgId } })
   }
 }

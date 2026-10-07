@@ -276,6 +276,7 @@ export const deleteAgreementDraft = defineCommand({
           message: "This agreement has a pending approval",
           code: "approval_pending",
         })
+      yield* Effect.promise(() => db.deliverable.deleteMany({ where: { agreementId: agreement.id } }))
       yield* Effect.promise(() => db.agreement.delete({ where: { id: agreement.id } }))
       command.emit({
         aggregateType: "agreement",

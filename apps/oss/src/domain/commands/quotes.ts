@@ -252,6 +252,7 @@ export const deleteQuoteDraft = defineCommand({
         })
       }
 
+      yield* Effect.promise(() => db.quoteItem.deleteMany({ where: { quoteId: quote.id } }))
       const deleted = yield* Effect.promise(() => db.quote.delete({ where: { id: quote.id } }))
       command.emit({
         aggregateType: "quote",

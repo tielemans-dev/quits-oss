@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { describe, expect, it } from "vitest"
@@ -90,7 +91,7 @@ describeIfDatabase("catalog integration", () => {
       const listAAfterArchive = await callerA.catalog.list()
       expect(listAAfterArchive).toHaveLength(0)
     } finally {
-      await prisma.organization.deleteMany({
+      await cleanupTestOrganizations({
         where: { id: { in: [orgAId, orgBId] } },
       })
     }
@@ -139,7 +140,7 @@ describeIfDatabase("catalog integration", () => {
       expect(reloaded.items[0]?.unitPrice).toBe(100)
       expect(reloaded.total).toBe(200)
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 })

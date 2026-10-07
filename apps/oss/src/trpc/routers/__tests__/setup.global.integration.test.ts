@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { describe, expect, it, beforeEach, afterEach } from "vitest"
@@ -37,7 +38,7 @@ async function cleanupSetupData() {
   const testOrganizationIds = testOrganizations.map((org) => org.id)
 
   if (testOrganizationIds.length > 0) {
-    await prisma.organization.deleteMany({
+    await cleanupTestOrganizations({
       where: {
         id: {
           in: testOrganizationIds,

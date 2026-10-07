@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -172,7 +173,7 @@ describeIfDatabase("invoice send email delivery", () => {
       )
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -207,7 +208,7 @@ describeIfDatabase("invoice send email delivery", () => {
       )
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -248,7 +249,7 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(options).toEqual({ idempotencyKey: expect.stringMatching(/^invoice-send:/) })
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -310,7 +311,7 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(deliver).not.toHaveBeenCalled()
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -358,7 +359,7 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(calls[0]![1]?.idempotencyKey).toMatch(new RegExp(`^invoice-send:${invoice.id}:`))
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -401,7 +402,7 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(reloaded.lastEmailAttemptCode).toBe("send_failed")
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -438,7 +439,7 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(deliver).not.toHaveBeenCalled()
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -486,7 +487,7 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(secondCall?.[1]).toEqual({ idempotencyKey: expect.stringMatching(/^invoice-resend:/) })
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 })

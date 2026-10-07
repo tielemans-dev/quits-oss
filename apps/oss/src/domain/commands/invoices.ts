@@ -282,6 +282,8 @@ export const deleteInvoiceDraft = defineCommand({
       }
 
       if (invoice.agreementId) yield* releaseLines(invoice.agreementId, invoice.id, invoice.items)
+      yield* Effect.promise(() => db.invoiceReminder.deleteMany({ where: { invoiceId: invoice.id } }))
+      yield* Effect.promise(() => db.invoiceItem.deleteMany({ where: { invoiceId: invoice.id } }))
       yield* Effect.promise(() => db.invoice.delete({ where: { id: invoice.id } }))
       command.emit({
         aggregateType: "invoice",

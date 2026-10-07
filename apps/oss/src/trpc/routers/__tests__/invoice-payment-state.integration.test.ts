@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { describe, expect, it } from "vitest"
@@ -109,7 +110,7 @@ describeIfDatabase("invoice payment state", () => {
       const reloaded = await caller.invoices.get({ id: invoice.id })
       expect(reloaded.paymentStatus).toBe("paid")
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   }, 10_000)
 })

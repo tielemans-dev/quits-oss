@@ -54,10 +54,7 @@ describeIfDatabase("public invoice links after settlement changes", () => {
   /** A sent 100 USD invoice with a public payment link and Stripe configured. */
   async function setup() {
     const org = await createTestOrganization()
-    cleanups.push(async () => {
-      await prisma.creditNote.deleteMany({ where: { organizationId: org.organizationId } })
-      await org.cleanup()
-    })
+    cleanups.push(org.cleanup)
     await prisma.orgSettings.update({
       where: { organizationId: org.organizationId },
       data: {

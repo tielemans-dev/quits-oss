@@ -14,7 +14,7 @@ describe.skipIf(!hasTestDatabase)("v2 credit persistence", () => {
   afterEach(async () => { while (cleanups.length) await cleanups.pop()?.() })
   async function setup(pricesIncludeTax = false) {
     const org = await createTestOrganization({ settings: { currency: "DKK", countryCode: "DK", pricesIncludeTax } })
-    cleanups.push(async () => { await prisma.creditNote.deleteMany({ where: { organizationId: org.organizationId } }); await org.cleanup() })
+    cleanups.push(org.cleanup)
     await prisma.organizationTaxId.create({ data: { organizationId: org.organizationId, scheme: "cvr", value: "12345678", countryCode: "DK", isPrimary: true } })
     const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Buyer", country: "DK", email: "buyer@synthetic.test" } })
     const actor = org.actors.admin

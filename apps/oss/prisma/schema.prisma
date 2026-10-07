@@ -169,7 +169,7 @@ model InstallationState {
 model OrgSettings {
   id                                 String       @id @default(cuid())
   organizationId                     String       @unique
-  organization                       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization                       Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   countryCode                        String       @default("US")
   locale                             String       @default("en-US")
   timezone                           String       @default("UTC")
@@ -224,7 +224,7 @@ model OrgSettings {
 model Contact {
   id                   String             @id @default(cuid())
   organizationId       String
-  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   name                 String
   email                String?
   phone                String?
@@ -271,7 +271,7 @@ model CatalogItem {
 model OrganizationTaxId {
   id             String       @id @default(cuid())
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   scheme         String
   value          String
   countryCode    String?
@@ -308,7 +308,7 @@ enum InvoicePurpose {
 model Invoice {
   id                      String            @id @default(cuid())
   organizationId          String
-  organization            Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization            Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   contactId               String
   contact                 Contact           @relation(fields: [contactId], references: [id])
   number                  String
@@ -395,7 +395,7 @@ model InvoiceItem {
   deliverable    Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: Restrict)
   id             String  @id @default(cuid())
   invoiceId      String
-  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   description    String
   quantity       Decimal @db.Decimal(10, 2)
   unitPriceNet   Decimal @db.Decimal(12, 2)
@@ -423,7 +423,7 @@ model InvoiceItem {
 model Quote {
   id                      String       @id @default(cuid())
   organizationId          String
-  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   contactId               String
   contact                 Contact      @relation(fields: [contactId], references: [id])
   number                  String
@@ -476,7 +476,7 @@ model Quote {
 model QuoteItem {
   id             String  @id @default(cuid())
   quoteId        String
-  quote          Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote          Quote   @relation(fields: [quoteId], references: [id], onDelete: Restrict)
   description    String
   quantity       Decimal @db.Decimal(10, 2)
   unitPriceNet   Decimal @db.Decimal(12, 2)
@@ -504,7 +504,7 @@ model QuoteItem {
 model CreditNote {
   id                      String           @id @default(cuid())
   organizationId          String
-  organization            Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization            Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   invoiceId               String
   invoice                 Invoice          @relation(fields: [invoiceId], references: [id])
   contactId               String
@@ -556,7 +556,7 @@ model CreditNote {
 model CreditNoteItem {
   id             String     @id @default(cuid())
   creditNoteId   String
-  creditNote     CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  creditNote     CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Restrict)
   invoiceItemId  String?
   description    String
   quantity       Decimal    @db.Decimal(10, 2)
@@ -585,7 +585,7 @@ model CreditNoteItem {
 model Payment {
   id                      String       @id @default(cuid())
   organizationId          String
-  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   invoiceId               String
   invoice                 Invoice      @relation(fields: [invoiceId], references: [id])
   amount                  Decimal      @db.Decimal(12, 2)
@@ -611,7 +611,7 @@ model Payment {
 model InvoiceReminder {
   id             String    @id @default(cuid())
   invoiceId      String
-  invoice        Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice        Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   offsetDays     Int
   scheduledFor   DateTime
   sentAt         DateTime?
@@ -627,7 +627,7 @@ model InvoiceReminder {
 model RecurringInvoice {
   id             String       @id @default(cuid())
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   contactId      String
   contact        Contact      @relation(fields: [contactId], references: [id])
   name           String
@@ -659,7 +659,7 @@ model DomainEvent {
   schemaVersion    Int          @default(1)
   id               String       @id @default(cuid())
   organizationId   String
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   sequence         Int
   aggregateType    String
   aggregateId      String
@@ -696,9 +696,9 @@ model CommandReceipt {
 model ApprovalRequest {
   id               String       @id @default(cuid())
   organizationId   String
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   agentKeyId       String
-  agentKey         AgentKey     @relation(fields: [agentKeyId], references: [id], onDelete: Cascade)
+  agentKey         AgentKey     @relation(fields: [agentKeyId], references: [id], onDelete: Restrict)
   commandReceiptId String       @unique
   commandType      String
   command          Json
@@ -719,7 +719,7 @@ model ApprovalRequest {
 model AgentKey {
   id               String            @id @default(cuid())
   organizationId   String
-  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   name             String
   mode             String            @default("approval_required")
   scopes           String[]
@@ -782,7 +782,7 @@ model Agreement {
   invoices                Invoice[]
   id                      String             @id @default(cuid())
   organizationId          String
-  organization            Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization            Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   contactId               String
   contact                 Contact            @relation(fields: [contactId], references: [id], onDelete: Restrict)
   number                  String?
@@ -855,7 +855,7 @@ model Deliverable {
   vatRateInput           String?
   id                     String    @id @default(cuid())
   agreementId            String
-  agreement              Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  agreement              Agreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
   title                  String
   description            String
   quantity               Decimal   @db.Decimal(10, 2)
@@ -895,7 +895,7 @@ model Deliverable {
 model AgreementTemplate {
   id             String       @id @default(cuid())
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   name           String
   termsMarkdown  String
   isDefault      Boolean      @default(false)
@@ -969,7 +969,7 @@ model EventConsumerDelivery {
 model ArtifactStaging {
   id                 String @id @default(cuid())
   organizationId     String
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   documentKind       String
   documentId         String
   requestKey         String
@@ -998,7 +998,7 @@ model ArtifactStaging {
 model IssuanceCandidate {
   id              String @id @default(cuid())
   organizationId  String
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   documentKind    String
   documentId      String
   stagingId       String
