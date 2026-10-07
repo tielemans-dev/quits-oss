@@ -152,9 +152,45 @@ describe.skipIf(!localDatabase)("shared database password recovery guards", () =
     expect(await Promise.all(responses.map((response) => response.json()))).toEqual([
       expect.objectContaining({ code: "INVALID_TOKEN" }), expect.objectContaining({ code: "INVALID_TOKEN" }),
     ])
-    expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(2)
+    expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(0)
     expect(await clients[0]!.session.count({ where: { userId: f.userId } })).toBe(1)
     expect((await f.post(0, "/sign-in/email", { email: f.email, password: "original-password123" })).status).toBe(200)
+  })
+
+  it("redirects an expired native GET while reset holds that token and needs an expired sibling", async () => {
+    let entered!: () => void
+    let release!: () => void
+    const hashing = new Promise<void>((resolve) => { entered = resolve })
+    const held = new Promise<void>((resolve) => { release = resolve })
+    const f = await fixture({ password: { hash: async (password) => {
+      if (password === "held-replacement123") { entered(); await held }
+      return hashPassword(password)
+    } } })
+    await f.requestReset()
+    await Promise.all(f.background)
+    const expiresAt = new Date(Date.now() + 1000)
+    await clients[0]!.verification.updateMany({ where: { value: f.userId }, data: { expiresAt } })
+    const resetting = f.post(0, "/reset-password", { token: f.token(), newPassword: "held-replacement123" })
+    let callback: Promise<Response> | undefined
+    try {
+      await hashing
+      // Insert after reset acquires its token, so request-time cleanup cannot remove it early.
+      await clients[1]!.verification.create({ data: { id: randomUUID(), identifier: `reset-password:${randomUUID()}`, value: f.userId, expiresAt: new Date(Date.now() - 60_000) } })
+      await vi.waitFor(() => { expect(Date.now()).toBeGreaterThan(expiresAt.getTime()) }, { timeout: 2000, interval: 10 })
+      callback = f.auths[1]!.handler(new Request(f.sendResetPassword.mock.calls[0]![0].url))
+      // GET must finish before releasing reset. A blocked cleanup cannot pass this assertion.
+      const response = await Promise.race([callback, new Promise<undefined>((resolve) => setTimeout(resolve, 1500))])
+      expect(response?.status).toBe(302)
+      expect(new URL(response!.headers.get("location")!).searchParams.get("error")).toBe("INVALID_TOKEN")
+      expect(await clients[1]!.verification.count({ where: { value: f.userId } })).toBe(1)
+    } finally {
+      release()
+      await callback
+      expect((await resetting).status).toBe(200)
+    }
+    expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(0)
+    expect(await clients[0]!.session.count({ where: { userId: f.userId } })).toBe(0)
+    expect((await f.post(0, "/sign-in/email", { email: f.email, password: "held-replacement123" })).status).toBe(200)
   })
 
   it("rolls back password and token writes if native session revocation fails", async () => {

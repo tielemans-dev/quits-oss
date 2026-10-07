@@ -14,6 +14,7 @@ import { sendInvitationEmail } from "../email"
 import { sendPasswordResetEmail } from "../emails/password-reset-email"
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_RESET_EXPIRES_IN } from "../auth/password-policy"
 import { admitRecoveryRequest, recoveryClientKey } from "../auth/password-recovery"
+import { cleanupExpiredVerifications } from "../auth/verification-cleanup"
 import { selectedEmailProvider, readSmtpConfiguration, requireSmtpFromEmail } from "../email-provider-config"
 import { ac, accountant, admin, member } from "../permissions"
 
@@ -110,6 +111,8 @@ export function buildQuitsAuthOptions(input: {
 
   return {
     ...(betterAuthUrl ? { baseURL: betterAuthUrl } : {}),
+    // Every native verification reader, including GET reset callbacks, must use the same policy.
+    verification: { disableCleanup: true },
     rateLimit: {
       customRules: {
         // Recovery uses atomic database admission below. Do not also use post-response memory
@@ -143,6 +146,8 @@ export function buildQuitsAuthOptions(input: {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // Auth traffic drains expired records in bounded batches, outside row-locked transactions.
+        await cleanupExpiredVerifications(input.prisma)
         if (ctx.path !== "/request-password-reset" && ctx.path !== "/reset-password") return
         const clientKey = hooks.getRecoveryClientKey
           ? await hooks.getRecoveryClientKey(ctx.request)
@@ -162,10 +167,6 @@ export function buildQuitsAuthOptions(input: {
           const adapter = (adapterFactory as (options: BetterAuthOptions) => DBAdapter)(ctx.context.options)
           const internalAdapter = createInternalAdapter(adapter, {
             ...ctx.context,
-            options: {
-              ...ctx.context.options,
-              verification: { ...ctx.context.options.verification, disableCleanup: true },
-            },
             hooks: [ctx.context.options.databaseHooks ?? {}],
           })
           // Lock the user before any reset token. Different tokens for one user must serialize,
@@ -181,8 +182,7 @@ export function buildQuitsAuthOptions(input: {
           const verification = await internalAdapter.findVerificationValue(`reset-password:${token}`)
           if (verification) await tx.$queryRaw`SELECT id FROM "user" WHERE id = ${verification.value} FOR UPDATE`
           await tx.$queryRaw`SELECT id FROM verification WHERE identifier = ${`reset-password:${token}`} FOR UPDATE`
-          // Native expiry validation still applies. Its broad expired-record cleanup must not
-          // acquire other verification locks while this transaction holds a reset-record lock.
+          // Native expiry validation still applies to records skipped by request-time cleanup.
           const resetResult = await runWithAdapter(adapter, () => resetPassword({
             ...ctx,
             method: "POST",
