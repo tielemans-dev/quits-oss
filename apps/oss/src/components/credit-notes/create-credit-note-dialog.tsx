@@ -30,6 +30,7 @@ const modes: Array<{ value: Mode; label: TranslationKey }> = [
 ]
 
 const buildErrorKeys: Record<CreditBuildErrorCode, TranslationKey> = {
+  line_components_conflict: "creditNotes.error.line_components_conflict",
   fully_credited: "creditNotes.error.fully_credited",
   unknown_invoice_line: "creditNotes.error.generic",
   duplicate_invoice_line: "creditNotes.error.generic",

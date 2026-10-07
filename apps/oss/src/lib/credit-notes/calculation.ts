@@ -1,3 +1,6 @@
+import { creditComponents } from "@quits/shared/pricing"
+import type { CreditedGroup, FrozenVatGroup } from "@quits/contracts/pricing"
+
 /**
  * Pure credit note arithmetic shared by the issue command and the create dialog preview.
  *
@@ -26,6 +29,11 @@ export type CreditableInvoiceLine = {
   taxRate: number
   taxCategory: string
   taxCode: string | null
+  vatRateInput?: string | null
+  groupKey?: string
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
 }
 
 /** A line of an earlier credit note for the same invoice. */
@@ -49,6 +57,7 @@ export type CreditLineAvailability = {
 export type CreditAvailability = {
   /** Decimal places credit amounts are rounded to, from the invoice currency (at most 2). */
   fractionDigits: number
+  groups?: Array<{ original: FrozenVatGroup; creditedGross: string; creditedTax: string; creditedRounding: string }>
   lines: CreditLineAvailability[]
   totalNet: number
   totalTax: number
@@ -81,6 +90,11 @@ export type CreditDraftLine = {
   taxRate: number
   taxCategory: string
   taxCode: string | null
+  vatRateInput?: string | null
+  groupKey?: string
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
 }
 
 export type CreditBuildErrorCode =
@@ -91,6 +105,7 @@ export type CreditBuildErrorCode =
   | "exceeds_invoice_total"
   | "nothing_to_credit"
   | "amount_not_representable"
+  | "line_components_conflict"
 
 export type CreditBuildResult =
   | {
@@ -99,6 +114,8 @@ export type CreditBuildResult =
       subtotalNet: number
       totalTax: number
       totalGross: number
+      payableRounding?: number
+      creditedGroups?: CreditedGroup[]
     }
   | { ok: false; code: CreditBuildErrorCode; message: string }
 
@@ -337,6 +354,7 @@ export function buildCreditLines(input: {
   amountDescription: string
 }): CreditBuildResult {
   const { availability, selection } = input
+  if (availability.groups) return buildGroupCredits(input)
   const { fractionDigits } = availability
   const unit = minorUnitCents(fractionDigits)
   const remainingGross = toCents(availability.remainingGross)
@@ -425,4 +443,129 @@ export function buildCreditLines(input: {
   }
 
   return { ok: true, lines, ...totals }
+}
+
+/** Largest remainder in currency minor units. Canonical group keys break ties. */
+function allocateGross(amount: number, weights: number[], keys: string[]) {
+  const whole = weights.reduce((sum, weight) => sum + BigInt(weight), 0n)
+  const shares = weights.map((weight, index) => {
+    const product = BigInt(amount) * BigInt(weight)
+    return { index, value: Number(product / whole), remainder: product % whole }
+  })
+  let left = amount - shares.reduce((sum, share) => sum + share.value, 0)
+  for (const share of [...shares].sort((a, b) =>
+    a.remainder === b.remainder ? keys[a.index]!.localeCompare(keys[b.index]!) : a.remainder > b.remainder ? -1 : 1
+  )) {
+    if (left-- <= 0) break
+    share.value++
+  }
+  return shares.map((share) => share.value)
+}
+
+/** V2 consumes frozen group components and records every cumulative reversal. */
+function buildGroupCredits(input: Parameters<typeof buildCreditLines>[0]): CreditBuildResult {
+  const { availability } = input
+  let { selection } = input
+  const groups = availability.groups!
+  const unit = minorUnitCents(availability.fractionDigits)
+  const remaining = groups.map(({ original, creditedGross }) => toCents(Number(original.gross)) - toCents(Number(creditedGross)))
+  const remainingTotal = remaining.reduce((sum, value) => sum + value, 0)
+  if (remainingTotal <= 0) return fail("fully_credited", "The invoice is already fully credited")
+  if (selection.mode === "full" && groups.every(({ original, creditedTax, creditedRounding }, index) => {
+    const entries = availability.lines.filter((entry) => entry.line.groupKey === original.key)
+    const sum = (pick: (entry: CreditLineAvailability) => number) => entries.reduce((sum, entry) => sum + toCents(pick(entry)), 0)
+    const gross = sum((entry) => entry.remainingGross), tax = sum((entry) => entry.remainingTax), net = sum((entry) => entry.remainingNet)
+    return gross === remaining[index] && tax === toCents(Number(original.tax)) - toCents(Number(creditedTax)) &&
+      gross - net - tax === toCents(Number(original.payableRounding)) - toCents(Number(creditedRounding))
+  })) selection = { mode: "lines", lines: availability.lines.filter((entry) => entry.remainingQuantity > 0).map((entry) => ({ invoiceItemId: entry.line.id, quantity: entry.remainingQuantity })) }
+  const selectedLines: CreditDraftLine[] = []
+  let amounts: number[]
+  if (selection.mode === "lines") {
+    const seen = new Set<string>()
+    for (const selected of selection.lines) {
+      if (seen.has(selected.invoiceItemId)) return fail("duplicate_invoice_line", "Each invoice line can be selected once")
+      seen.add(selected.invoiceItemId)
+      const entry = availability.lines.find((entry) => entry.line.id === selected.invoiceItemId)
+      if (!entry) return fail("unknown_invoice_line", "The selected line is not on this invoice")
+      if (toCents(selected.quantity) > toCents(entry.remainingQuantity))
+        return fail("quantity_exceeds_remaining", `Only ${entry.remainingQuantity} can still be credited`)
+      if (selected.quantity <= 0) continue
+      // Each component comes from the selected frozen line, including its final residual.
+      const whole = toCents(entry.line.quantity)
+      const final = toCents(selected.quantity) === toCents(entry.remainingQuantity)
+      const portion = (original: number, rest: number) => final ? rest : fromCents(prorate(toCents(original), toCents(selected.quantity), whole, unit))
+      const { id: _id, ...frozen } = entry.line
+      selectedLines.push({ ...frozen, invoiceItemId: entry.line.id, quantity: selected.quantity,
+        lineNet: portion(entry.line.lineNet, entry.remainingNet),
+        lineTax: portion(entry.line.lineTax, entry.remainingTax),
+        lineGross: portion(entry.line.lineGross, entry.remainingGross),
+      })
+    }
+    amounts = groups.map(({ original }) => selectedLines.filter((line) => line.groupKey === original.key).reduce((sum, line) => sum + toCents(line.lineGross), 0))
+  } else {
+    const amount = selection.mode === "full" ? remainingTotal : toCents(selection.amount)
+    if (amount <= 0) return fail("nothing_to_credit", "The credit note total must be greater than zero")
+    if (amount > remainingTotal) return fail("exceeds_invoice_total", `Only ${fromCents(remainingTotal)} can still be credited`)
+    if (amount % unit !== 0) return fail("amount_not_representable", "The credit amount must use currency precision")
+    amounts = allocateGross(amount / unit, remaining.map((value) => value / unit), groups.map(({ original }) => original.key)).map((value) => value * unit)
+  }
+  const lines: CreditDraftLine[] = []
+  const creditedGroups: CreditedGroup[] = []
+  for (const [index, previous] of groups.entries()) {
+    const gross = amounts[index]!
+    if (!gross) continue
+    if (gross > remaining[index]!) return fail("exceeds_invoice_total", "Credit exceeds remaining VAT group gross")
+    const { original } = previous
+    // No valuation exists yet. Zero placeholders let the shared document arithmetic run;
+    // they are never persisted or reported as a base valuation.
+    const valued = original.grossBase !== null
+    const component = creditComponents({ group: { ...original,
+      netBase: original.netBase ?? "0", taxBase: original.taxBase ?? "0",
+      grossBase: original.grossBase ?? "0", payableRoundingBase: original.payableRoundingBase ?? "0",
+    }, cumulativeBefore: previous.creditedGross, creditedGross: String(fromCents(gross)) })
+    let tax = toCents(Number(component.tax))
+    let rounding = toCents(Number(component.payableRounding))
+    const groupLines = selectedLines.filter((line) => line.groupKey === original.key)
+    if (selection.mode === "lines") {
+      tax = groupLines.reduce((sum, line) => sum + toCents(line.lineTax), 0)
+      rounding = gross - tax - groupLines.reduce((sum, line) => sum + toCents(line.lineNet), 0)
+      if (gross === remaining[index] && (
+        tax !== toCents(Number(original.tax)) - toCents(Number(previous.creditedTax)) ||
+        rounding !== toCents(Number(original.payableRounding)) - toCents(Number(previous.creditedRounding))
+      )) return fail("line_components_conflict", "These frozen lines no longer match the remaining components. Credit the remaining amount instead.")
+      lines.push(...groupLines)
+    } else {
+      // A frozen line's tax share can differ from its group's proportional entitlement.
+      // Carry that residual into the next amount credit; the cumulative target is unchanged.
+      if (Number(previous.creditedGross) > 0) {
+        const entitled = creditComponents({ group: { ...original, netBase: "0", taxBase: "0", grossBase: "0", payableRoundingBase: "0" }, cumulativeBefore: "0", creditedGross: previous.creditedGross })
+        tax += toCents(Number(entitled.tax)) - toCents(Number(previous.creditedTax))
+        rounding += toCents(Number(entitled.payableRounding)) - toCents(Number(previous.creditedRounding))
+      }
+      lines.push({ invoiceItemId: null, description: input.amountDescription, quantity: 1,
+        unitPriceNet: fromCents(gross - tax - rounding), unitPriceGross: fromCents(gross),
+        lineNet: fromCents(gross - tax - rounding), lineTax: fromCents(tax), lineGross: fromCents(gross),
+        vatRateInput: original.rate, taxRate: Number(original.rate) * 100, taxCategory: original.treatment, taxCode: null,
+        vatTreatment: original.treatment, vatCountry: original.country, vatReasonCode: original.reasonCode,
+      })
+    }
+    const net = gross - tax - rounding
+    const before = toCents(Number(previous.creditedGross)), after = before + gross
+    const taxBefore = toCents(Number(previous.creditedTax)), taxAfter = taxBefore + tax
+    const roundingBefore = toCents(Number(previous.creditedRounding)), roundingAfter = roundingBefore + rounding
+    const str = (value: number) => fromCents(value).toFixed(availability.fractionDigits)
+    creditedGroups.push({ original, creditedGross: str(gross), creditedTax: str(tax), creditedNet: str(net), creditedRounding: str(rounding),
+      cumulativeBefore: str(before), cumulativeAfter: str(after), cumulativeTaxBefore: str(taxBefore), cumulativeTaxAfter: str(taxAfter),
+      cumulativeRoundingBefore: str(roundingBefore), cumulativeRoundingAfter: str(roundingAfter),
+      remainingGross: str(toCents(Number(original.gross)) - after), remainingTax: str(toCents(Number(original.tax)) - taxAfter),
+      remainingRounding: str(toCents(Number(original.payableRounding)) - roundingAfter),
+      remainingNet: str(toCents(Number(original.net)) - (after - taxAfter - roundingAfter)),
+      netBase: valued ? component.netBase : null, taxBase: valued ? component.taxBase : null,
+      grossBase: valued ? component.grossBase : null, payableRoundingBase: valued ? component.payableRoundingBase : null,
+    })
+  }
+  const totals = totalsOf(lines)
+  if (totals.totalGross <= 0) return fail("nothing_to_credit", "The credit note total must be greater than zero")
+  return { ok: true, lines, ...totals, creditedGroups,
+    payableRounding: fromCents(creditedGroups.reduce((sum, group) => sum + toCents(Number(group.creditedRounding)), 0)) }
 }

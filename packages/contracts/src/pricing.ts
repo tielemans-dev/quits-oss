@@ -90,3 +90,40 @@ export type CalculateDocumentInput = z.input<typeof calculateDocumentInputSchema
 export type CalculateDocumentOutput = z.infer<typeof calculateDocumentOutputSchema>
 export type CreditComponentsInput = z.input<typeof creditComponentsInputSchema>
 export type CreditComponentsOutput = z.infer<typeof creditComponentsOutputSchema>
+
+/** Frozen document groups before valuation exists. Null never means a 1:1 valuation. */
+export const frozenVatGroupSchema = z.strictObject({
+  ...vatGroupSchema.shape,
+  netBase: decimalStringSchema.nullable(), taxBase: decimalStringSchema.nullable(),
+  grossBase: nonnegativeMoneyStringSchema.nullable(), payableRoundingBase: decimalStringSchema.nullable(),
+}).superRefine((group, ctx) => {
+  const vat = vatClassificationSchema.safeParse({ treatment: group.treatment, reasonCode: group.reasonCode, rate: group.rate, country: group.country })
+  if (!vat.success) for (const issue of vat.error.issues) ctx.addIssue({ code: "custom", path: issue.path, message: issue.message })
+  const base = [group.netBase, group.taxBase, group.grossBase, group.payableRoundingBase]
+  if (base.some((value) => value === null) && base.some((value) => value !== null))
+    ctx.addIssue({ code: "custom", message: "Frozen base components must all be valued or all be null" })
+})
+export const creditedGroupSchema = z.strictObject({
+  original: frozenVatGroupSchema,
+  creditedGross: nonnegativeMoneyStringSchema,
+  creditedTax: decimalStringSchema,
+  creditedNet: decimalStringSchema,
+  creditedRounding: decimalStringSchema,
+  cumulativeBefore: nonnegativeMoneyStringSchema,
+  cumulativeAfter: nonnegativeMoneyStringSchema,
+  cumulativeTaxBefore: decimalStringSchema,
+  cumulativeTaxAfter: decimalStringSchema,
+  cumulativeRoundingBefore: decimalStringSchema,
+  cumulativeRoundingAfter: decimalStringSchema,
+  remainingGross: nonnegativeMoneyStringSchema,
+  remainingTax: decimalStringSchema,
+  remainingNet: decimalStringSchema,
+  remainingRounding: decimalStringSchema,
+  grossBase: decimalStringSchema.nullable(),
+  netBase: decimalStringSchema.nullable(),
+  taxBase: decimalStringSchema.nullable(),
+  payableRoundingBase: decimalStringSchema.nullable(),
+})
+export const creditedGroupsSchema = z.array(creditedGroupSchema)
+export type FrozenVatGroup = z.infer<typeof frozenVatGroupSchema>
+export type CreditedGroup = z.infer<typeof creditedGroupSchema>

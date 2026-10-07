@@ -520,7 +520,9 @@ export const CreditNoteScalarFieldEnum = {
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   calculationVersion: 'calculationVersion',
-  vatEvidence: 'vatEvidence'
+  vatEvidence: 'vatEvidence',
+  creditedGroups: 'creditedGroups',
+  payableRounding: 'payableRounding'
 } as const
 
 export type CreditNoteScalarFieldEnum = (typeof CreditNoteScalarFieldEnum)[keyof typeof CreditNoteScalarFieldEnum]
@@ -541,6 +543,7 @@ export const CreditNoteItemScalarFieldEnum = {
   taxCategory: 'taxCategory',
   taxCode: 'taxCode',
   sortOrder: 'sortOrder',
+  vatRateInput: 'vatRateInput',
   vatTreatment: 'vatTreatment',
   vatCountry: 'vatCountry',
   vatReasonCode: 'vatReasonCode',

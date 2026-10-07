@@ -511,6 +511,9 @@ model CreditNote {
 
   calculationVersion String @default("legacy_per_line")
   vatEvidence        Json?
+  // Immutable v2 credited components and cumulative group residuals.
+  creditedGroups     Json?
+  payableRounding    Decimal @default(0) @db.Decimal(12, 2)
 
   @@unique([organizationId, number])
   @@index([organizationId])
@@ -536,6 +539,7 @@ model CreditNoteItem {
   taxCode        String?
   sortOrder      Int        @default(0)
 
+  vatRateInput   String?
   vatTreatment   String  @default("standard")
   vatCountry     String?
   vatReasonCode  String?
