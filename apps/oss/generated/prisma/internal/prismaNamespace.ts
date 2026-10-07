@@ -411,7 +411,10 @@ export const ModelName = {
   ApprovalRequest: 'ApprovalRequest',
   AgentKey: 'AgentKey',
   Job: 'Job',
-  SchedulerScan: 'SchedulerScan'
+  SchedulerScan: 'SchedulerScan',
+  Agreement: 'Agreement',
+  Deliverable: 'Deliverable',
+  AgreementTemplate: 'AgreementTemplate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -427,7 +430,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan"
+    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2503,6 +2506,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Agreement: {
+      payload: Prisma.$AgreementPayload<ExtArgs>
+      fields: Prisma.AgreementFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AgreementFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AgreementFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload>
+        }
+        findFirst: {
+          args: Prisma.AgreementFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AgreementFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload>
+        }
+        findMany: {
+          args: Prisma.AgreementFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload>[]
+        }
+        create: {
+          args: Prisma.AgreementCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload>
+        }
+        createMany: {
+          args: Prisma.AgreementCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AgreementCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload>[]
+        }
+        delete: {
+          args: Prisma.AgreementDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload>
+        }
+        update: {
+          args: Prisma.AgreementUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload>
+        }
+        deleteMany: {
+          args: Prisma.AgreementDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AgreementUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AgreementUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload>[]
+        }
+        upsert: {
+          args: Prisma.AgreementUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementPayload>
+        }
+        aggregate: {
+          args: Prisma.AgreementAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAgreement>
+        }
+        groupBy: {
+          args: Prisma.AgreementGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgreementGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AgreementCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgreementCountAggregateOutputType> | number
+        }
+      }
+    }
+    Deliverable: {
+      payload: Prisma.$DeliverablePayload<ExtArgs>
+      fields: Prisma.DeliverableFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DeliverableFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DeliverableFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload>
+        }
+        findFirst: {
+          args: Prisma.DeliverableFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DeliverableFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload>
+        }
+        findMany: {
+          args: Prisma.DeliverableFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload>[]
+        }
+        create: {
+          args: Prisma.DeliverableCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload>
+        }
+        createMany: {
+          args: Prisma.DeliverableCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DeliverableCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload>[]
+        }
+        delete: {
+          args: Prisma.DeliverableDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload>
+        }
+        update: {
+          args: Prisma.DeliverableUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload>
+        }
+        deleteMany: {
+          args: Prisma.DeliverableDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DeliverableUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DeliverableUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload>[]
+        }
+        upsert: {
+          args: Prisma.DeliverableUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverablePayload>
+        }
+        aggregate: {
+          args: Prisma.DeliverableAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDeliverable>
+        }
+        groupBy: {
+          args: Prisma.DeliverableGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DeliverableGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DeliverableCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DeliverableCountAggregateOutputType> | number
+        }
+      }
+    }
+    AgreementTemplate: {
+      payload: Prisma.$AgreementTemplatePayload<ExtArgs>
+      fields: Prisma.AgreementTemplateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AgreementTemplateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AgreementTemplateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload>
+        }
+        findFirst: {
+          args: Prisma.AgreementTemplateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AgreementTemplateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload>
+        }
+        findMany: {
+          args: Prisma.AgreementTemplateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload>[]
+        }
+        create: {
+          args: Prisma.AgreementTemplateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload>
+        }
+        createMany: {
+          args: Prisma.AgreementTemplateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AgreementTemplateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload>[]
+        }
+        delete: {
+          args: Prisma.AgreementTemplateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload>
+        }
+        update: {
+          args: Prisma.AgreementTemplateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload>
+        }
+        deleteMany: {
+          args: Prisma.AgreementTemplateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AgreementTemplateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AgreementTemplateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload>[]
+        }
+        upsert: {
+          args: Prisma.AgreementTemplateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgreementTemplatePayload>
+        }
+        aggregate: {
+          args: Prisma.AgreementTemplateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAgreementTemplate>
+        }
+        groupBy: {
+          args: Prisma.AgreementTemplateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgreementTemplateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AgreementTemplateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgreementTemplateCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2672,6 +2897,8 @@ export const OrgSettingsScalarFieldEnum = {
   companyLogo: 'companyLogo',
   invoicePrefix: 'invoicePrefix',
   invoiceNextNum: 'invoiceNextNum',
+  agreementPrefix: 'agreementPrefix',
+  agreementNextNum: 'agreementNextNum',
   quotePrefix: 'quotePrefix',
   quoteNextNum: 'quoteNextNum',
   creditNotePrefix: 'creditNotePrefix',
@@ -3118,6 +3345,90 @@ export const SchedulerScanScalarFieldEnum = {
 export type SchedulerScanScalarFieldEnum = (typeof SchedulerScanScalarFieldEnum)[keyof typeof SchedulerScanScalarFieldEnum]
 
 
+export const AgreementScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  contactId: 'contactId',
+  number: 'number',
+  status: 'status',
+  title: 'title',
+  summary: 'summary',
+  termsMarkdown: 'termsMarkdown',
+  templateId: 'templateId',
+  taxRate: 'taxRate',
+  currency: 'currency',
+  countryCode: 'countryCode',
+  locale: 'locale',
+  timezone: 'timezone',
+  taxRegime: 'taxRegime',
+  pricesIncludeTax: 'pricesIncludeTax',
+  dueInDays: 'dueInDays',
+  billingTrigger: 'billingTrigger',
+  subtotalNet: 'subtotalNet',
+  totalTax: 'totalTax',
+  totalGross: 'totalGross',
+  sellerSnapshot: 'sellerSnapshot',
+  buyerSnapshot: 'buyerSnapshot',
+  validUntil: 'validUntil',
+  issueDate: 'issueDate',
+  expiresAt: 'expiresAt',
+  offerRevision: 'offerRevision',
+  offerSnapshot: 'offerSnapshot',
+  offerSnapshotHash: 'offerSnapshotHash',
+  issuedToEmail: 'issuedToEmail',
+  issuedVia: 'issuedVia',
+  publicAccessKeyVersion: 'publicAccessKeyVersion',
+  publicAccessIssuedAt: 'publicAccessIssuedAt',
+  lastEmailAttemptAt: 'lastEmailAttemptAt',
+  lastEmailAttemptOutcome: 'lastEmailAttemptOutcome',
+  lastEmailAttemptCode: 'lastEmailAttemptCode',
+  lastEmailAttemptMessage: 'lastEmailAttemptMessage',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AgreementScalarFieldEnum = (typeof AgreementScalarFieldEnum)[keyof typeof AgreementScalarFieldEnum]
+
+
+export const DeliverableScalarFieldEnum = {
+  id: 'id',
+  agreementId: 'agreementId',
+  title: 'title',
+  description: 'description',
+  quantity: 'quantity',
+  unitPriceNet: 'unitPriceNet',
+  unitPriceGross: 'unitPriceGross',
+  lineNet: 'lineNet',
+  lineTax: 'lineTax',
+  lineGross: 'lineGross',
+  taxRate: 'taxRate',
+  taxCategory: 'taxCategory',
+  taxCode: 'taxCode',
+  agreedDate: 'agreedDate',
+  expectedDate: 'expectedDate',
+  isDeposit: 'isDeposit',
+  status: 'status',
+  billingStatus: 'billingStatus',
+  sortOrder: 'sortOrder'
+} as const
+
+export type DeliverableScalarFieldEnum = (typeof DeliverableScalarFieldEnum)[keyof typeof DeliverableScalarFieldEnum]
+
+
+export const AgreementTemplateScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  name: 'name',
+  termsMarkdown: 'termsMarkdown',
+  isDefault: 'isDefault',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AgreementTemplateScalarFieldEnum = (typeof AgreementTemplateScalarFieldEnum)[keyof typeof AgreementTemplateScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -3385,6 +3696,9 @@ export type GlobalOmitConfig = {
   agentKey?: Prisma.AgentKeyOmit
   job?: Prisma.JobOmit
   schedulerScan?: Prisma.SchedulerScanOmit
+  agreement?: Prisma.AgreementOmit
+  deliverable?: Prisma.DeliverableOmit
+  agreementTemplate?: Prisma.AgreementTemplateOmit
 }
 
 /* Types for Logging */

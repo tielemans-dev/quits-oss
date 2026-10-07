@@ -183,3 +183,18 @@ export type Job = Prisma.JobModel
  * until the claim is finished, released or expires.
  */
 export type SchedulerScan = Prisma.SchedulerScanModel
+/**
+ * Model Agreement
+ * 
+ */
+export type Agreement = Prisma.AgreementModel
+/**
+ * Model Deliverable
+ * 
+ */
+export type Deliverable = Prisma.DeliverableModel
+/**
+ * Model AgreementTemplate
+ * 
+ */
+export type AgreementTemplate = Prisma.AgreementTemplateModel

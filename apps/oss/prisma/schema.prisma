@@ -91,6 +91,8 @@ model Organization {
   catalogItems         CatalogItem[]
   taxIds               OrganizationTaxId[]
   invoices             Invoice[]
+  agreements           Agreement[]
+  agreementTemplates   AgreementTemplate[]
   quotes               Quote[]
   creditNotes          CreditNote[]
   payments             Payment[]
@@ -168,6 +170,8 @@ model OrgSettings {
   companyLogo                        String?
   invoicePrefix                      String       @default("INV")
   invoiceNextNum                     Int          @default(1)
+  agreementPrefix                    String       @default("AGR")
+  agreementNextNum                   Int          @default(1)
   quotePrefix                        String       @default("QTE")
   quoteNextNum                       Int          @default(1)
   creditNotePrefix                   String       @default("CN")
@@ -220,6 +224,7 @@ model Contact {
   peppolEndpointScheme String?
   notes                String?
   invoices             Invoice[]
+  agreements           Agreement[]
   quotes               Quote[]
   creditNotes          CreditNote[]
   recurringInvoices    RecurringInvoice[]
@@ -684,4 +689,97 @@ model SchedulerScan {
   @@index([task, scannedAt])
   @@index([organizationId])
   @@map("scheduler_scan")
+}
+
+model Agreement {
+  id                      String             @id @default(cuid())
+  organizationId          String
+  organization            Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contactId               String
+  contact                 Contact            @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  number                  String?
+  status                  String             @default("draft")
+  title                   String
+  summary                 String?
+  termsMarkdown           String
+  templateId              String?
+  template                AgreementTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  taxRate                 Decimal            @default(0) @db.Decimal(5, 2)
+  currency                String             @default("USD")
+  countryCode             String             @default("US")
+  locale                  String             @default("en-US")
+  timezone                String             @default("UTC")
+  taxRegime               String             @default("us_sales_tax")
+  pricesIncludeTax        Boolean            @default(false)
+  dueInDays               Int                @default(30)
+  billingTrigger          String             @default("on_acceptance")
+  subtotalNet             Decimal            @db.Decimal(12, 2)
+  totalTax                Decimal            @default(0) @db.Decimal(12, 2)
+  totalGross              Decimal            @db.Decimal(12, 2)
+  sellerSnapshot          Json?
+  buyerSnapshot           Json?
+  validUntil              DateTime           @db.Date
+  issueDate               DateTime?
+  expiresAt               DateTime?
+  offerRevision           Int                @default(0)
+  offerSnapshot           Json?
+  offerSnapshotHash       String?
+  issuedToEmail           String?
+  issuedVia               String?
+  publicAccessKeyVersion  Int                @default(1)
+  publicAccessIssuedAt    DateTime?
+  lastEmailAttemptAt      DateTime?
+  lastEmailAttemptOutcome String?
+  lastEmailAttemptCode    String?
+  lastEmailAttemptMessage String?
+  notes                   String?
+  deliverables            Deliverable[]
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status])
+  @@index([contactId])
+  @@map("agreement")
+}
+
+model Deliverable {
+  id             String    @id @default(cuid())
+  agreementId    String
+  agreement      Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  quantity       Decimal   @db.Decimal(10, 2)
+  unitPriceNet   Decimal   @db.Decimal(12, 2)
+  unitPriceGross Decimal   @db.Decimal(12, 2)
+  lineNet        Decimal   @db.Decimal(12, 2)
+  lineTax        Decimal   @default(0) @db.Decimal(12, 2)
+  lineGross      Decimal   @db.Decimal(12, 2)
+  taxRate        Decimal   @db.Decimal(5, 2)
+  taxCategory    String    @default("standard")
+  taxCode        String?
+  agreedDate     DateTime? @db.Date
+  expectedDate   DateTime? @db.Date
+  isDeposit      Boolean   @default(false)
+  status         String    @default("planned")
+  billingStatus  String    @default("unbilled")
+  sortOrder      Int       @default(0)
+
+  @@index([agreementId])
+  @@map("deliverable")
+}
+
+model AgreementTemplate {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  termsMarkdown  String
+  isDefault      Boolean      @default(false)
+  agreements     Agreement[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, name])
+  @@map("agreement_template")
 }
