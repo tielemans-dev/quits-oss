@@ -1,0 +1,17 @@
+{
+  "type": "invoice.dispute_acknowledged",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/invoices.ts",
+      "typeExpression": "\"invoice.dispute_acknowledged\"",
+      "payloadExpression": "{ number: invoice.number, disputedRevision: invoice.disputedRevision, acknowledgeDisputed: true }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "disputedRevision": 1,
+        "acknowledgeDisputed": true
+      }
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import {
   getPublicAgreementSession,
   submitPublicAgreementDecision,
 } from "../lib/agreements/public-session"
+import { PublicDeliverablePage } from "../components/agreements/public-deliverable-page"
 import { PublicAgreementPage } from "../components/agreements/public-agreement-page"
 import { useI18n } from "../lib/i18n/react"
 export const Route = createFileRoute("/a/$token")({
@@ -51,6 +52,7 @@ function AgreementRoute() {
         <h1 className="text-2xl font-semibold">{t("agreements.invalidLink")}</h1>
       </main>
     )
+  if (state.scope === "sign_off") return <PublicDeliverablePage token={token} initial={state.deliverable} />
   return (
     <PublicAgreementPage
       document={state.document}

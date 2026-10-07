@@ -27,7 +27,7 @@ export default defineConfig({
     env: {
       ...process.env,
       DATABASE_URL: databaseURL,
-      BETTER_AUTH_SECRET: "agreement-browser-only-secret-over-32-characters",
+      BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? "agreement-browser-only-secret-over-32-characters",
       BETTER_AUTH_URL: baseURL,
       QUITS_APP_ORIGIN: baseURL,
       QUITS_DISTRIBUTION: "selfhost",

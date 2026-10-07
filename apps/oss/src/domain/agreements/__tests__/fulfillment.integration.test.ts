@@ -481,7 +481,7 @@ describe.runIf(hasTestDatabase)("deliverable fulfillment transition table", () =
       acceptedVia: null,
       acceptanceEvidenceNote: null,
     })
-    // Phase 3 will enter changes_requested; seed it to verify the Phase 1c redelivery row.
+    // Seed changes_requested to exercise redelivery without the public decision path.
     await prisma.deliverable.update({
       where: { id: ctx.input.id },
       data: { status: "changes_requested", ...acceptance },
@@ -551,7 +551,7 @@ describe.runIf(hasTestDatabase)("deliverable fulfillment transition table", () =
         where: { id: queued.approvalRequestId },
       })
       expect(request.reviewContext).toMatchObject({
-        version: `${ctx.input.id}:in_progress:0`,
+        version: `${ctx.input.id}:in_progress:0::${(await ctx.get()).publicAccessKeyVersion}`,
         details: {
           agreementNumber: (await ctx.get()).number,
           deliverableTitle: "Website",

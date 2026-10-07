@@ -15,6 +15,20 @@
         "acceptedVia": "internal",
         "acceptanceEvidenceNote": "Written confirmation"
       }
+    },
+    {
+      "source": "commands/public-deliverables.ts",
+      "typeExpression": "\"deliverable.accepted\"",
+      "payloadExpression": "{ deliverableId: line.id, deliveryRevision: line.deliveryRevision, ...acceptanceRecord(updated) }",
+      "variant": "default",
+      "payload": {
+        "deliverableId": "document-1",
+        "deliveryRevision": 1,
+        "acceptedAt": "2026-01-15T12:00:00.000Z",
+        "acceptedRevision": 1,
+        "acceptedVia": "customer_link",
+        "acceptanceEvidenceNote": null
+      }
     }
   ]
 }

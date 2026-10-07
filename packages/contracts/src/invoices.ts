@@ -77,6 +77,7 @@ export const invoiceIdInputSchema = z.object({ id: z.string().min(1) })
 export const invoiceSendInputSchema = z.object({
   id: z.string().min(1),
   allowSendWithoutEmail: z.boolean().optional(),
+  acknowledgeDisputed: z.boolean().optional(),
 })
 
 export const invoiceStatusSchema = z.enum(["draft", "sent", "viewed", "overdue", "paid", "credited"])

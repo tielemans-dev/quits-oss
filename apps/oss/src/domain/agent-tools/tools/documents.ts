@@ -55,6 +55,8 @@ function safely<T>(build: () => T): T | null {
 }
 
 export type InvoiceRow = {
+  disputed?: boolean
+  disputedRevision?: number
   purpose?: string
   agreementId?: string | null
   scheduleSaleChoice?: unknown
@@ -96,6 +98,8 @@ export function presentInvoice(invoice: InvoiceRow) {
     number: invoice.number,
     status: invoice.status,
     paymentStatus: invoice.paymentStatus,
+    disputed: invoice.disputed ?? false,
+    disputedRevision: invoice.disputedRevision ?? 0,
     purpose: invoice.purpose ?? "sale",
     agreementId: invoice.agreementId ?? null,
     scheduleSaleChoice: invoice.scheduleSaleChoice ?? null,

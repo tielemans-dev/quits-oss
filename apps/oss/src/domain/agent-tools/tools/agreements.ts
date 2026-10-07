@@ -36,7 +36,7 @@ export const agreementTools: AgentTool[] = [
     name: "deliverable_mark_delivered",
     title: "Mark deliverable delivered",
     description:
-      "Marks planned, in-progress or changes-requested work delivered on an accepted agreement. Excludes deposits. Increments deliveryRevision and clears current acceptance. Requires approval in approval_required mode; no email is sent yet.",
+      "Marks planned, in-progress or changes-requested work delivered on an accepted agreement. Excludes deposits. Increments deliveryRevision and clears current acceptance. Requires approval in approval_required mode. Notifies issuedToEmail when email is available and returns the 90-day sign-off link for manual sharing.",
     command: markDeliverableDelivered,
     input: deliverableIdInputSchema,
   }),
@@ -92,7 +92,7 @@ export const agreementTools: AgentTool[] = [
     name: "agreement_get",
     title: "Get agreement",
     description:
-      "Returns an agreement with status, offer revision, acceptance record, customer, progress, deliverables, fulfillment status, deliveryRevision, current acceptance and billing status.",
+      "Returns an agreement with status, offer revision, acceptance record, customer, progress, deliverables, fulfillment status, deliveryRevision, current acceptance, billing status, changes_requested and changeRequestNote.",
     permission: "agreement:read",
     input: agreementIdInputSchema,
     run: async ({ actor }, input) => {
@@ -107,7 +107,7 @@ export const agreementTools: AgentTool[] = [
     name: "deliverable_list",
     title: "List deliverables",
     description:
-      "Lists deliverables in agreement order, with fulfillment status, deliveryRevision, current acceptance and billing status.",
+      "Lists deliverables in agreement order, with fulfillment status, deliveryRevision, current acceptance, billing status, changes_requested and changeRequestNote.",
     permission: "deliverable:read",
     input: z.object({ agreementId: z.string().min(1) }).strict(),
     run: async ({ actor }, input) =>

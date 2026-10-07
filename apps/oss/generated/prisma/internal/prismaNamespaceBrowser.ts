@@ -378,6 +378,8 @@ export const InvoiceScalarFieldEnum = {
   amountCredited: 'amountCredited',
   remindersPaused: 'remindersPaused',
   purpose: 'purpose',
+  disputed: 'disputed',
+  disputedRevision: 'disputedRevision',
   scheduleSaleChoice: 'scheduleSaleChoice',
   agreementId: 'agreementId',
   quoteId: 'quoteId',

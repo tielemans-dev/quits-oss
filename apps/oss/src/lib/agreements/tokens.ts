@@ -69,3 +69,20 @@ export function mintAgreementLink(
   )
   return { token, url: agreementTokenUrl(token) }
 }
+
+/** Recreating a delivery link uses its delivery instant, so reads do not extend its lifetime. */
+export function mintDeliverableSignOffLink(
+  agreement: { id: string; publicAccessKeyVersion: number },
+  line: { id: string; deliveryRevision: number; deliveredAt: Date | null },
+) {
+  if (!line.deliveredAt || line.deliveryRevision < 1) throw new Error("Deliverable has not been delivered")
+  const token = signAgreementPublicToken({
+    agreementId: agreement.id,
+    keyVersion: agreement.publicAccessKeyVersion,
+    scope: "sign_off",
+    deliverableId: line.id,
+    deliveryRevision: line.deliveryRevision,
+    exp: new Date(line.deliveredAt.getTime() + 90 * 86400_000).toISOString(),
+  }, getAgreementPublicSecret())
+  return { token, url: agreementTokenUrl(token) }
+}

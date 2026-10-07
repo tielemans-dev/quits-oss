@@ -463,3 +463,9 @@ agreement exists. Template create, update, delete under `agreement:manageTemplat
 - `issue` stays, with an explicit optional recipient.
 - One `billingTrigger` per agreement plus `isDeposit` per line.
 - `validUntil` is a calendar date with one derived, frozen `expiresAt`.
+
+## Known open issues
+
+- Phase 3 keeps a disputed draft flagged after re-delivery or removal of the disputed line. Each send requires explicit acknowledgement; resolving disputes automatically needs a separate policy.
+- A customer can request changes while an invoice email is already in flight. The request is recorded and the draft is flagged, but an email already submitted to the provider cannot be recalled. Subsequent sends require acknowledgement.
+- Delivery links shown for manual sharing retain the original delivery's 90-day expiry. Key revocation invalidates existing links; opening the authenticated detail page can recreate a link under the current key.
