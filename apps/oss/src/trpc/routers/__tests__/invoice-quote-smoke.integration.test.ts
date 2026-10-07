@@ -28,7 +28,7 @@ describeIfDatabase("invoice/quote smoke integration", () => {
 
     expect(result.directInvoice.sentStatus).toBe("sent")
     expect(result.directInvoice.updatedTotal).toBe(DK_SCENARIO.expectedTotals?.directInvoice)
-  }, 10_000)
+  })
 
   it("runs US flow without requiring seller tax ID", async () => {
     const { runInvoiceQuoteSmokeFlow } = await import("./invoice-quote-smoke")
