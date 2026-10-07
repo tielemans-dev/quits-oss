@@ -1,6 +1,7 @@
 import { CurrencyPrecisionUnsupported } from "@quits/shared/currency"
 import { initTRPC, TRPCError } from "@trpc/server"
 import superjson from "superjson"
+import { DomainRefusal } from "./outcome"
 import { auth } from "../lib/auth"
 import { actorCan } from "../domain/actor"
 import type { Permission } from "../domain/permissions"
@@ -29,7 +30,8 @@ const t = initTRPC.context<Context>().create({
   errorFormatter({ shape, error }) {
     // Preserve machine-readable reasons for organization and currency boundary errors.
     const reason = error.cause instanceof OrganizationChangedError ? ORGANIZATION_CHANGED_REASON
-      : error.cause instanceof CurrencyPrecisionUnsupported ? error.cause.code : null
+      : error.cause instanceof CurrencyPrecisionUnsupported ? error.cause.code
+      : error.cause instanceof DomainRefusal ? (error.cause.code ?? null) : null
     return { ...shape, data: { ...shape.data, reason } }
   },
 })

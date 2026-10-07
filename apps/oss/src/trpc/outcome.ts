@@ -17,7 +17,21 @@ export function toTrpcError(error: CommandError) {
     error.code === "precondition_failed"
       ? "PRECONDITION_FAILED"
       : (codeByTag[error.tag] ?? "INTERNAL_SERVER_ERROR")
-  return new TRPCError({ code, message: error.message })
+  // Carry the domain refusal code so clients can key on it; the error formatter in init.ts
+  // exposes it as `data.reason`.
+  return new TRPCError({ code, message: error.message, cause: new DomainRefusal(error) })
+}
+
+/** The cause attached to tRPC errors that originate from a domain command refusal. */
+export class DomainRefusal extends Error {
+  readonly code: string | undefined
+  readonly tag: string
+  constructor(error: CommandError) {
+    super(error.message)
+    this.name = "DomainRefusal"
+    this.tag = error.tag
+    this.code = error.code
+  }
 }
 
 /** UI callers act as users, so commands either complete or fail. */
@@ -34,7 +48,7 @@ export function unwrapOutcome<Result>(outcome: CommandOutcome<Result>): Result {
 /** Maps errors thrown by domain services (tagged errors) to tRPC errors. */
 export function rethrowDomainError(error: unknown): never {
   if (error && typeof error === "object" && "_tag" in error && "message" in error) {
-    throw toTrpcError({ tag: String(error._tag), message: String(error.message) })
+    throw toTrpcError({ tag: String(error._tag), message: String(error.message), ...("code" in error && typeof error.code === "string" ? { code: error.code } : {}) })
   }
   throw error
 }
