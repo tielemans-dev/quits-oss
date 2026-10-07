@@ -12,6 +12,7 @@ type Transform = (payload: unknown) => unknown
 /** Key N transforms a payload from N to N+1. Transforms must be pure and total. */
 const transforms: Partial<Record<EventType, Record<number, Transform>>> = {
   "credit_note.issued": { 1: payload => ({ ...(payload as Record<string, unknown>), postable: false, incompleteReason: "historical_payload_incomplete" }) },
+  "agreement.draft_created": { 1: (payload) => ({ ...(payload as Record<string, unknown>), sourceQuoteId: null }) },
 }
 
 /** Known v1 envelopes are unchanged. Unknown types, invalid versions and missing steps refuse. */

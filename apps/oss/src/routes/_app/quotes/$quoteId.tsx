@@ -119,6 +119,7 @@ type Quote = {
   lastEmailAttemptMessage: string | null
   contact: Contact
   items: QuoteItem[]
+  agreement: { id: string; title: string } | null
   invoices: { id: string; number: string }[]
   pricesIncludeTax?: boolean
   vatEvidence?: unknown
@@ -389,6 +390,21 @@ function QuoteDetailPage() {
           : t("quotes.detail.error.rejectFailed")
       )
     } finally {
+      setActing(false)
+    }
+  }
+
+  const [showAgreementForm, setShowAgreementForm] = useState(false)
+  const [agreementValidUntil, setAgreementValidUntil] = useState("")
+  async function handleCreateAgreement() {
+    if (!quote) return
+    setActing(true)
+    setError(null)
+    try {
+      const agreement = await trpc.agreements.createDraftDecimal.mutate({ sourceQuoteId: quote.id, validUntil: agreementValidUntil })
+      await navigate({ to: "/agreements/$agreementId/edit", params: { agreementId: agreement.id } })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("agreements.error"))
       setActing(false)
     }
   }
@@ -778,17 +794,28 @@ function QuoteDetailPage() {
               </Button>
             </>
           )}
-          {quote.status === "accepted" && quote.invoices.length === 0 && (
-            <Button size="sm" disabled={acting} onClick={handleConvertToInvoice}>
+          {quote.status === "accepted" && (
+            <>
+            <Button variant="outline" size="sm" disabled={acting || quote.invoices.length > 0 || !!quote.agreement} onClick={() => setShowAgreementForm(true)}>{t("agreements.createFromQuote")}</Button>
+            <Button size="sm" disabled={acting || !!quote.agreement || quote.invoices.length > 0} onClick={handleConvertToInvoice}>
               <ArrowRight className="size-4" />
               {acting
                 ? t("quotes.detail.action.converting")
                 : t("quotes.detail.action.convertToInvoice")}
             </Button>
+            </>
           )}
         </div>
       </div>
 
+      {quote.status === "accepted" && quote.agreement && <p className="mb-4 text-sm">{t("agreements.quoteHasAgreement")} <Link to="/agreements/$agreementId" params={{ agreementId: quote.agreement.id }}>{quote.agreement.title}</Link></p>}
+      {quote.status === "accepted" && quote.invoices.length > 0 && <p className="mb-4 text-sm">{t("agreements.quoteHasInvoices")}</p>}
+      {showAgreementForm && !quote.agreement && quote.invoices.length === 0 && <div className="border rounded-md p-4 mb-4 grid gap-3 max-w-md">
+        <p>{t("agreements.quoteConversionNotice")}</p>
+        <Label htmlFor="agreement-valid-until">{t("agreements.validUntil")}</Label>
+        <LocalizedDateField id="agreement-valid-until" locale={locale} value={agreementValidUntil} placeholder={t("docForm.selectDate")} onChange={setAgreementValidUntil} required />
+        <div className="flex gap-2"><Button disabled={acting || !agreementValidUntil} onClick={handleCreateAgreement}>{t("agreements.save")}</Button><Button variant="outline" disabled={acting} onClick={() => setShowAgreementForm(false)}>{t("agreements.cancel")}</Button></div>
+      </div>}
       {error && (
         <p className="text-sm text-destructive mb-4" role="alert">
           {error}

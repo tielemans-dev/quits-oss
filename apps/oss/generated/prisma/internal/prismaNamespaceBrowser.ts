@@ -165,6 +165,7 @@ export type VerificationScalarFieldEnum = (typeof VerificationScalarFieldEnum)[k
 
 
 export const OrganizationScalarFieldEnum = {
+  agreementTemplatesSeeded: 'agreementTemplatesSeeded',
   id: 'id',
   name: 'name',
   slug: 'slug',
@@ -734,6 +735,7 @@ export type SchedulerScanScalarFieldEnum = (typeof SchedulerScanScalarFieldEnum)
 
 
 export const AgreementScalarFieldEnum = {
+  sourceQuoteId: 'sourceQuoteId',
   taxRateInput: 'taxRateInput',
   offerFormatVersion: 'offerFormatVersion',
   id: 'id',

@@ -215,3 +215,24 @@ export const deliverableAcceptInputSchema = deliverableIdInputSchema
     evidenceNote: z.string().trim().min(1).max(5000),
   })
   .strict()
+
+/** Quote prices and customer are authoritative; a fresh validity date is required. */
+export const agreementFromQuoteInputSchema = z.object({
+  sourceQuoteId: z.string().min(1),
+  title: z.string().trim().min(1).max(200).optional(),
+  validUntil: agreementDateSchema,
+  templateId: z.string().min(1).nullable().optional(),
+  termsMarkdown: agreementTermsSchema.optional(),
+  dueInDays: z.number().int().min(0).max(3650).optional(),
+  billingTrigger: agreementBillingTriggerSchema.optional(),
+}).strict()
+export const agreementCreateDraftRequestSchema = z.union([agreementCreateDraftInputSchema.extend({ termsMarkdown: agreementTermsSchema.optional() }), agreementFromQuoteInputSchema])
+export const agreementCreateDraftDecimalRequestSchema = z.union([agreementCreateDraftDecimalInputSchema.extend({ termsMarkdown: agreementTermsSchema.optional() }), agreementFromQuoteInputSchema])
+export const agreementTemplateCreateInputSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  termsMarkdown: agreementTermsSchema,
+  isDefault: z.boolean().default(false),
+}).strict()
+export const agreementTemplateUpdateInputSchema = agreementTemplateCreateInputSchema.partial().extend({
+  id: z.string().min(1), isDefault: z.boolean().optional(),
+}).strict()

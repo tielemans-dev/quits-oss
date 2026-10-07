@@ -1,3 +1,4 @@
+import { AgreementTemplateManager } from "../../../components/agreements/template-manager"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { trpc } from "../../../trpc/client"
@@ -50,6 +51,7 @@ function AgreementsPage() {
           <Link to="/agreements/new">{t("agreements.new")}</Link>
         </Button>
       </div>
+      <AgreementTemplateManager />
       <p className="text-sm text-muted-foreground">{t("agreements.draftOnly")}</p>
       {error && (
         <p role="alert" className="text-destructive">

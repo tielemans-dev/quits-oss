@@ -7,7 +7,7 @@ import { moneyEmitterState } from "./money-emitter-state"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
-  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables"].map((name) => `commands/${name}.ts`),
+  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables"].map((name) => `commands/${name}.ts`),
   "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
@@ -37,6 +37,7 @@ const instant = new Date("2026-01-15T12:00:00.000Z")
 const money = { toFixed: () => "100.00", toNumber: () => 100, greaterThan: () => true }
 const record = {
   id: "document-1", deliverableId: "deliverable-1", number: "DOC-0001", contactId: "contact-1", name: "Acme", title: "Website",
+  sourceQuoteId: null, isDefault: false,
   currency: "USD", totalGross: money, status: "sent", autoSend: true, nextRunAt: instant,
   offerRevision: 1, offerSnapshot: { title: "Frozen offer" }, offerSnapshotHash: "hash-1",
   issuedToEmail: "customer@example.test", publicAccessKeyVersion: 1,
@@ -49,7 +50,7 @@ const record = {
 }
 
 export const variants = [
-  "default", "no_optional", "manual_no_recipient", "unchanged_retry", "validation_error", "user", "decline", "no_previous_acceptance", "in_progress", "completed",
+  "default", "from_quote", "no_optional", "manual_no_recipient", "unchanged_retry", "validation_error", "user", "decline", "no_previous_acceptance", "in_progress", "completed",
   ...["invoice", "quote", "creditNote", "agreement"].flatMap((kind) =>
     ["send", "email"].flatMap((mode) => ["delivered", "rejected", "unconfirmed", "withdrawn"].map((reason) => `${kind}/${mode}/${reason}`))),
 ]
@@ -67,7 +68,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     organizationId: "organization-1", reservationId: "reservation-1", rendererVersion: "fixture-v1",
     artifacts: { pdf: { ref: "organization-1/invoice/document-1/artifact.pdf", hash: "a".repeat(64), size: 100 },
       ...(optional ? { ubl: { ref: "organization-1/invoice/document-1/artifact.xml", hash: "b".repeat(64), size: 200 } } : {}) },
-    invoice: record, quote: record, creditNote: record, agreement: record, contact: record, schedule: record,
+    invoice: record, quote: record, creditNote: record, agreement: { ...record, sourceQuoteId: variant === "from_quote" ? "quote-1" : null }, template: record, contact: record, schedule: record,
     candidate: record, existing: line, line: { ...line, status: variant === "in_progress" ? "in_progress" : "delivered" },
     delivered: { deliveryRevision: 2 }, accepted: record, updated: expression.source === "commands/public-deliverables.ts" ? { ...record, acceptedVia: "customer_link", acceptanceEvidenceNote: null } : record,
     input: { ...(expression.typeExpression.includes("agreement.completed") ? { disposition: variant === "completed" ? "completed" : "cancelled" } : {}), checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", ...(expression.source === "commands/public-deliverables.ts" ? { note: "Please revise" } : {}), decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },
@@ -79,7 +80,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     priced: { totalGross: 100 }, built: { totalGross: 100 }, number: "DOC-0001", recipient: manual && ["agreements/issuance.ts", "commands/invoices.ts", "commands/quotes.ts"].includes(expression.source) ? null : "customer@example.test",
     reason: "paused_by_user", from: "active", to: "paused", status: expression.source === "commands/agreements.ts" && !optional ? undefined : variant === "in_progress" ? "in_progress" : "active",
     name: "Customer", method: manual ? "manual" : "email", unchanged: variant === "unchanged_retry", hash: "hash-1", policy: { enabled: true, offsetsDays: [-1, 0, 7] },
-    data: { name: "Updated", email: "customer@example.test" }, id: "deliverable-1", url: "https://example.test/read",
+    data: expression.source === "commands/agreement-templates.ts" ? { name: "Updated" } : { name: "Updated", email: "customer@example.test" }, id: "deliverable-1", url: "https://example.test/read",
     runDate: instant, formatCalendarDate: () => "2026-01-15", balanceDue: money, paused: optional,
     reminder: { id: "reminder-1" }, skipReason: "not_open", manual: optional,
     // The email_failed return is reached only after the unconfirmed early return.

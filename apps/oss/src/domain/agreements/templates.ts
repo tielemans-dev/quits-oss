@@ -17,6 +17,8 @@ const templates = [
 export async function seedAgreementTemplates(db: Prisma.TransactionClient, organizationId: string) {
   // Serialize first opens and any future default changes on the parent organization.
   await db.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR UPDATE`
+  const organization = await db.organization.findUniqueOrThrow({ where: { id: organizationId } })
+  if (organization.agreementTemplatesSeeded) return
   for (const template of templates) {
     await db.agreementTemplate.upsert({
       where: { organizationId_name: { organizationId, name: template.name } },
@@ -30,6 +32,7 @@ export async function seedAgreementTemplates(db: Prisma.TransactionClient, organ
       data: { isDefault: true },
     })
   }
+  await db.organization.update({ where: { id: organizationId }, data: { agreementTemplatesSeeded: true } })
 }
 
 export async function listAgreementTemplates(organizationId: string) {

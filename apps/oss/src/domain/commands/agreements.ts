@@ -1,3 +1,4 @@
+import { toNullableJsonInput } from "../../lib/prisma-json"
 import { requireDraftCurrency } from "../documents/currency"
 import { deliverableCommands } from "./deliverables"
 import {
@@ -11,7 +12,7 @@ import { agreementLifecycleCommands } from "./agreement-lifecycle"
 import { refuseWhileSending } from "../documents/document-delivery"
 import { Effect } from "effect"
 import {
-  agreementCreateDraftInputSchema,
+  agreementCreateDraftRequestSchema,
   agreementUpdateDraftInputSchema,
   agreementIdInputSchema,
   deliverableUpdateInputSchema,
@@ -25,6 +26,8 @@ import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { priceAgreement, priceAgreementV2 } from "../agreements/pricing"
+import { resolveQuoteDraft } from "../agreements/quote-draft"
+import { agreementTemplateCommands } from "./agreement-templates"
 import type { Deliverable } from "../../../generated/prisma/client"
 
 const include = { contact: true, deliverables: { orderBy: { sortOrder: "asc" as const } } }
@@ -55,6 +58,7 @@ const validateTemplate = (id: string | null | undefined) =>
         message: "Invalid template for this organization",
         code: "invalid_template",
       })
+    return template
   })
 const lockedDraft = (id: string) =>
   Effect.gen(function* () {
@@ -91,9 +95,9 @@ export const createAgreementDraft = defineCommand({
   type: "agreement.create_draft",
   permission: "agreement:create",
   outwardFacing: false,
-  input: agreementCreateDraftInputSchema,
-  summarize: (input) => `Create draft agreement ${input.title}`,
-  handle: (input) =>
+  input: agreementCreateDraftRequestSchema,
+  summarize: (input) => `Create draft agreement ${input.title ?? ("sourceQuoteId" in input ? input.sourceQuoteId : "")}`,
+  handle: (request) =>
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
@@ -106,29 +110,33 @@ export const createAgreementDraft = defineCommand({
             code: "precondition_failed",
           }),
       })
+      const { input, quote } = yield* resolveQuoteDraft(request)
       const contact = yield* findContact(input.contactId)
-      yield* validateTemplate(input.templateId)
+      const template = yield* validateTemplate(input.templateId)
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
+      const context = quote ?? settings
       const currency = input.currency ?? settings.defaultCurrency
       yield* requireDraftCurrency(currency)
       const priced = priceAgreementV2({
-        profile,
+        profile: quote ? resolveCountryProfile(quote.countryCode) : profile,
         deliverables: input.deliverables,
         taxRate: input.taxRate,
-        pricesIncludeTax: settings.pricesIncludeTax,
+        pricesIncludeTax: context.pricesIncludeTax,
         currency,
       })
       const agreement = yield* Effect.promise(() =>
         db.agreement.create({
           data: {
             organizationId,
+            sourceQuoteId: quote?.id,
+            vatEvidence: toNullableJsonInput(quote?.vatEvidence),
             offerFormatVersion: 2,
             taxRateInput: String(input.taxRate),
             calculationVersion: "v2",
             contactId: contact.id,
             title: input.title,
             summary: input.summary,
-            termsMarkdown: input.termsMarkdown,
+            termsMarkdown: input.termsMarkdown ?? template?.termsMarkdown ?? "",
             templateId: input.templateId,
             validUntil: new Date(input.validUntil),
             taxRate: input.taxRate,
@@ -136,17 +144,21 @@ export const createAgreementDraft = defineCommand({
             dueInDays: input.dueInDays,
             billingTrigger: input.billingTrigger,
             notes: input.notes,
-            countryCode: settings.countryCode,
-            locale: settings.locale,
-            timezone: settings.timezone,
-            taxRegime: settings.taxRegime,
-            pricesIncludeTax: settings.pricesIncludeTax,
+            countryCode: context.countryCode,
+            locale: context.locale,
+            timezone: context.timezone,
+            taxRegime: context.taxRegime,
+            pricesIncludeTax: context.pricesIncludeTax,
             sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds),
             buyerSnapshot: buildBuyerSnapshot(contact),
             subtotalNet: priced.subtotalNet,
             totalTax: priced.totalTax,
             totalGross: priced.totalGross,
-            deliverables: { create: priced.deliverableRows },
+            deliverables: { create: priced.deliverableRows.map((row, index) => quote ? {
+              ...row,
+              inputPrecision: quote.items[index]!.inputPrecision ?? "backfilled",
+              taxCode: quote.items[index]!.taxCode,
+            } : row) },
           },
           include,
         }),
@@ -155,7 +167,7 @@ export const createAgreementDraft = defineCommand({
         aggregateType: "agreement",
         aggregateId: agreement.id,
         type: "agreement.draft_created",
-        payload: { title: agreement.title, contactId: contact.id, totalGross: Number(priced.totalGross) },
+        payload: { title: agreement.title, contactId: contact.id, totalGross: Number(priced.totalGross), sourceQuoteId: agreement.sourceQuoteId },
       })
       return agreement
     }),
@@ -350,6 +362,7 @@ export const updateDeliverable = defineCommand({
 })
 
 export const agreementCommands = [
+  ...agreementTemplateCommands,
   ...agreementLifecycleCommands,
   ...deliverableCommands,
   createAgreementDraft,

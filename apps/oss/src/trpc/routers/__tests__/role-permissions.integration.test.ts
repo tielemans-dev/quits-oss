@@ -47,6 +47,22 @@ describeIfDatabase("role permissions", () => {
     ).resolves.toMatchObject({ csv: expect.any(String) })
   })
 
+  it("denies template CRUD to members and accountants without manageTemplates", async () => {
+    const org = await createTestOrganization({ roles: ["admin", "member", "accountant"] })
+    cleanups.push(org.cleanup)
+    const admin = callerFor(org.organizationId, org.actors.admin.userId)
+    const template = await admin.agreements.createTemplate({ name: "Managed", termsMarkdown: "Terms" })
+    for (const role of ["member", "accountant"] as const) {
+      const api = callerFor(org.organizationId, org.actors[role].userId)
+      await expect(api.agreements.createTemplate({ name: "Denied", termsMarkdown: "Terms" })).rejects.toMatchObject({ code: "FORBIDDEN" })
+      await expect(api.agreements.updateTemplate({ id: template.id, name: "Denied" })).rejects.toMatchObject({ code: "FORBIDDEN" })
+      await expect(api.agreements.deleteTemplate({ id: template.id })).rejects.toMatchObject({ code: "FORBIDDEN" })
+      await expect(api.agreements.listTemplates()).resolves.toEqual(expect.any(Array))
+    }
+    await expect(admin.agreements.updateTemplate({ id: template.id, name: "Edited" })).resolves.toMatchObject({ name: "Edited" })
+    await expect(admin.agreements.deleteTemplate({ id: template.id })).resolves.toEqual({ id: template.id })
+  })
+
   it("rejects users who are not members of the active organization", async () => {
     const org = await createTestOrganization()
     cleanups.push(org.cleanup)

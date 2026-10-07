@@ -75,6 +75,7 @@ model Verification {
 // ── Organization Models ──
 
 model Organization {
+  agreementTemplatesSeeded Boolean @default(false)
   id                      String                  @id
   name                    String
   slug                    String                  @unique
@@ -447,6 +448,7 @@ model Quote {
   notes                   String?
   items                   QuoteItem[]
   invoices                Invoice[]
+  agreement               Agreement?
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
 
@@ -763,6 +765,8 @@ model SchedulerScan {
 }
 
 model Agreement {
+  sourceQuoteId           String? @unique
+  sourceQuote             Quote? @relation(fields: [sourceQuoteId], references: [id], onDelete: Restrict)
   taxRateInput            String?
   offerFormatVersion      Int?
   invoices                Invoice[]

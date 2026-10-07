@@ -1,0 +1,17 @@
+{
+  "type": "agreement_template.updated",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-templates.ts",
+      "typeExpression": "\"agreement_template.updated\"",
+      "payloadExpression": "{ fields: Object.keys(data) }",
+      "variant": "default",
+      "payload": {
+        "fields": [
+          "name"
+        ]
+      }
+    }
+  ]
+}
