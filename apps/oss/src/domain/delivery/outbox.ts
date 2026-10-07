@@ -462,3 +462,9 @@ export async function readDeliveryResult(
   const parsed = resultSchema.safeParse(job?.result)
   return parsed.success ? parsed.data : { outcome: "pending", message: null }
 }
+
+registerDeliveryCompletion("agreement.notification", {
+  pending: async () => true,
+  delivered: async () => [],
+  failed: async () => [],
+})

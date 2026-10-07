@@ -414,7 +414,8 @@ export const ModelName = {
   SchedulerScan: 'SchedulerScan',
   Agreement: 'Agreement',
   Deliverable: 'Deliverable',
-  AgreementTemplate: 'AgreementTemplate'
+  AgreementTemplate: 'AgreementTemplate',
+  PublicLinkAttempt: 'PublicLinkAttempt'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -430,7 +431,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate"
+    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2728,6 +2729,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    PublicLinkAttempt: {
+      payload: Prisma.$PublicLinkAttemptPayload<ExtArgs>
+      fields: Prisma.PublicLinkAttemptFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PublicLinkAttemptFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PublicLinkAttemptFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload>
+        }
+        findFirst: {
+          args: Prisma.PublicLinkAttemptFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PublicLinkAttemptFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload>
+        }
+        findMany: {
+          args: Prisma.PublicLinkAttemptFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload>[]
+        }
+        create: {
+          args: Prisma.PublicLinkAttemptCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload>
+        }
+        createMany: {
+          args: Prisma.PublicLinkAttemptCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PublicLinkAttemptCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload>[]
+        }
+        delete: {
+          args: Prisma.PublicLinkAttemptDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload>
+        }
+        update: {
+          args: Prisma.PublicLinkAttemptUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload>
+        }
+        deleteMany: {
+          args: Prisma.PublicLinkAttemptDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PublicLinkAttemptUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PublicLinkAttemptUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload>[]
+        }
+        upsert: {
+          args: Prisma.PublicLinkAttemptUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PublicLinkAttemptPayload>
+        }
+        aggregate: {
+          args: Prisma.PublicLinkAttemptAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePublicLinkAttempt>
+        }
+        groupBy: {
+          args: Prisma.PublicLinkAttemptGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PublicLinkAttemptGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PublicLinkAttemptCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PublicLinkAttemptCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -3383,6 +3458,17 @@ export const AgreementScalarFieldEnum = {
   lastEmailAttemptOutcome: 'lastEmailAttemptOutcome',
   lastEmailAttemptCode: 'lastEmailAttemptCode',
   lastEmailAttemptMessage: 'lastEmailAttemptMessage',
+  acceptedAt: 'acceptedAt',
+  acceptedOfferRevision: 'acceptedOfferRevision',
+  acceptedByName: 'acceptedByName',
+  acceptanceIp: 'acceptanceIp',
+  acceptanceUserAgent: 'acceptanceUserAgent',
+  acceptanceMethod: 'acceptanceMethod',
+  acceptanceEvidenceNote: 'acceptanceEvidenceNote',
+  declinedAt: 'declinedAt',
+  declineReason: 'declineReason',
+  closedAt: 'closedAt',
+  closeReason: 'closeReason',
   notes: 'notes',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -3427,6 +3513,20 @@ export const AgreementTemplateScalarFieldEnum = {
 } as const
 
 export type AgreementTemplateScalarFieldEnum = (typeof AgreementTemplateScalarFieldEnum)[keyof typeof AgreementTemplateScalarFieldEnum]
+
+
+export const PublicLinkAttemptScalarFieldEnum = {
+  id: 'id',
+  documentKind: 'documentKind',
+  documentId: 'documentId',
+  scope: 'scope',
+  keyVersion: 'keyVersion',
+  targetId: 'targetId',
+  revision: 'revision',
+  createdAt: 'createdAt'
+} as const
+
+export type PublicLinkAttemptScalarFieldEnum = (typeof PublicLinkAttemptScalarFieldEnum)[keyof typeof PublicLinkAttemptScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -3699,6 +3799,7 @@ export type GlobalOmitConfig = {
   agreement?: Prisma.AgreementOmit
   deliverable?: Prisma.DeliverableOmit
   agreementTemplate?: Prisma.AgreementTemplateOmit
+  publicLinkAttempt?: Prisma.PublicLinkAttemptOmit
 }
 
 /* Types for Logging */

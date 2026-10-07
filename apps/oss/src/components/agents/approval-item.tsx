@@ -135,6 +135,16 @@ export function ApprovalItem({
           ) : null}
         </div>
 
+        {["agreement.send", "agreement.issue"].includes(approval.commandType) && (
+          <a
+            className="text-sm underline"
+            href={`/app/approvals/${approval.id}/preview.pdf`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("agreements.previewPdf")}
+          </a>
+        )}
         {approval.reviewDetails ? (
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm">
             {Object.entries(approval.reviewDetails).map(([key, value]) => (

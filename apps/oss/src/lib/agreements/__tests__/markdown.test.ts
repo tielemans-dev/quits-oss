@@ -1,27 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest"
+import { hostileAgreementMarkdown as hostile } from "./fixtures"
 import { renderAgreementMarkdown } from "../markdown"
 
 describe("restricted agreement Markdown", () => {
-  const hostile = [
-    "<script>alert(1)</script><img src=x onerror=alert(1)>",
-    '<svg onload=alert(1)><a href="javascript:alert(1)">x</a></svg>',
-    "[x](javascript:alert%281%29)",
-    "[x](JaVaScRiPt:alert%281%29)",
-    "[x](data:text/html;base64,PHNjcmlwdD4=)",
-    "[x](vbscript:evil)",
-    "[x](//evil.example)",
-    "[x](/relative)",
-    "[x](file:///etc/passwd)",
-    "[x](javascript&#58;alert%281%29)",
-    "[x](java\u0000script:evil)",
-    "[x](java\nscript:evil)",
-    "![image](https://evil.example/pixel)",
-    '<iframe src="https://evil.example"></iframe>',
-    '<a href="https://example.test" onclick="evil()">link</a>',
-    "<style>body{display:none}</style>",
-    '<math><mtext><table><mglyph><style><!--</style><img title="--><img src=1 onerror=alert(1)>">',
-  ]
   it.each(hostile)("sanitizes hostile input %j", (input) => {
     const html = renderAgreementMarkdown(input)
     const document = new DOMParser().parseFromString(html, "text/html")

@@ -81,7 +81,8 @@ export const ModelName = {
   SchedulerScan: 'SchedulerScan',
   Agreement: 'Agreement',
   Deliverable: 'Deliverable',
-  AgreementTemplate: 'AgreementTemplate'
+  AgreementTemplate: 'AgreementTemplate',
+  PublicLinkAttempt: 'PublicLinkAttempt'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -716,6 +717,17 @@ export const AgreementScalarFieldEnum = {
   lastEmailAttemptOutcome: 'lastEmailAttemptOutcome',
   lastEmailAttemptCode: 'lastEmailAttemptCode',
   lastEmailAttemptMessage: 'lastEmailAttemptMessage',
+  acceptedAt: 'acceptedAt',
+  acceptedOfferRevision: 'acceptedOfferRevision',
+  acceptedByName: 'acceptedByName',
+  acceptanceIp: 'acceptanceIp',
+  acceptanceUserAgent: 'acceptanceUserAgent',
+  acceptanceMethod: 'acceptanceMethod',
+  acceptanceEvidenceNote: 'acceptanceEvidenceNote',
+  declinedAt: 'declinedAt',
+  declineReason: 'declineReason',
+  closedAt: 'closedAt',
+  closeReason: 'closeReason',
   notes: 'notes',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -760,6 +772,20 @@ export const AgreementTemplateScalarFieldEnum = {
 } as const
 
 export type AgreementTemplateScalarFieldEnum = (typeof AgreementTemplateScalarFieldEnum)[keyof typeof AgreementTemplateScalarFieldEnum]
+
+
+export const PublicLinkAttemptScalarFieldEnum = {
+  id: 'id',
+  documentKind: 'documentKind',
+  documentId: 'documentId',
+  scope: 'scope',
+  keyVersion: 'keyVersion',
+  targetId: 'targetId',
+  revision: 'revision',
+  createdAt: 'createdAt'
+} as const
+
+export type PublicLinkAttemptScalarFieldEnum = (typeof PublicLinkAttemptScalarFieldEnum)[keyof typeof PublicLinkAttemptScalarFieldEnum]
 
 
 export const SortOrder = {

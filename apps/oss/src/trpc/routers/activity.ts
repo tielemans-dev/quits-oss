@@ -6,6 +6,7 @@ import { documentActivity, listActivity, type ActivityDocumentType } from "../..
 import { authorizedProcedure, orgProcedure, router } from "../init"
 
 const DOCUMENT_READ_PERMISSION: Record<ActivityDocumentType, Permission> = {
+  agreement: "agreement:read",
   invoice: "invoice:read",
   quote: "quote:read",
   creditNote: "creditNote:read",
@@ -32,7 +33,7 @@ export const activityRouter = router({
   forDocument: orgProcedure
     .input(
       z.object({
-        aggregateType: z.enum(["invoice", "quote", "creditNote"]),
+        aggregateType: z.enum(["invoice", "quote", "creditNote", "agreement"]),
         aggregateId: z.string().trim().min(1).max(100),
       })
     )

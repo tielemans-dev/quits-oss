@@ -198,3 +198,8 @@ export type Deliverable = Prisma.DeliverableModel
  * 
  */
 export type AgreementTemplate = Prisma.AgreementTemplateModel
+/**
+ * Model PublicLinkAttempt
+ * 
+ */
+export type PublicLinkAttempt = Prisma.PublicLinkAttemptModel

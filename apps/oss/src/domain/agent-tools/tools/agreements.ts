@@ -1,4 +1,11 @@
 import {
+  sendAgreement,
+  issueAgreement,
+  resendAgreement,
+  sendAgreementReadLink,
+} from "../../commands/agreement-lifecycle"
+import { agreementIssueInputSchema, agreementResendInputSchema } from "@quits/contracts/agreements"
+import {
   agreementCreateDraftInputSchema,
   agreementUpdateDraftInputSchema,
   agreementIdInputSchema,
@@ -22,11 +29,43 @@ const agreementListToolInputSchema = agreementListInputSchema.extend({
 })
 
 export const agreementTools: AgentTool[] = [
+  defineCommandTool({
+    name: "agreement_send",
+    title: "Send agreement",
+    description:
+      "Freezes and emails the draft offer to the contact email. Delivery refusal leaves a draft.",
+    command: sendAgreement,
+    input: agreementIdInputSchema,
+  }),
+  defineCommandTool({
+    name: "agreement_issue",
+    title: "Issue agreement",
+    description:
+      "Makes a draft offer live without email. An optional recipient is recorded as the intended recipient.",
+    command: issueAgreement,
+    input: agreementIssueInputSchema,
+  }),
+  defineCommandTool({
+    name: "agreement_resend",
+    title: "Resend agreement",
+    description:
+      "Emails the same live offer, rotating its links. Optional recipient changes are audited. Does not extend validity.",
+    command: resendAgreement,
+    input: agreementResendInputSchema,
+  }),
+  defineCommandTool({
+    name: "agreement_send_read_link",
+    title: "Send agreement read link",
+    description:
+      "Emails a fresh two-year read link for the accepted agreement to its intended recipient. Does not rotate the key.",
+    command: sendAgreementReadLink,
+    input: agreementIdInputSchema,
+  }),
   defineQueryTool({
     name: "agreement_list",
     title: "List agreements",
     description:
-      "Lists agreement drafts, newest first. Filter by status or contactId. Returns { items, nextCursor }; pass nextCursor for another page.",
+      "Lists agreements with status, offer revision and acceptance fields, newest first. Filter by status or contactId. Returns { items, nextCursor }; pass nextCursor for another page.",
     permission: "agreement:read",
     input: agreementListToolInputSchema,
     run: async ({ actor }, input) => {
@@ -38,7 +77,8 @@ export const agreementTools: AgentTool[] = [
   defineQueryTool({
     name: "agreement_get",
     title: "Get agreement",
-    description: "Returns an agreement with its customer, deliverables, prices and draft context.",
+    description:
+      "Returns an agreement with status, offer revision, acceptance record, customer, deliverables and billing status.",
     permission: "agreement:read",
     input: agreementIdInputSchema,
     run: ({ actor }, input) => getAgreement(actor.organizationId, input.id),

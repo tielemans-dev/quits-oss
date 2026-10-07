@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start"
+import { z } from "zod"
 import {
   parseBuyerSnapshot,
   parseSellerSnapshot,
 } from "@quits/contracts/documents"
 import {
-  publicQuoteDecisionInputSchema,
   publicQuoteTokenInputSchema,
 } from "@quits/contracts/quotes"
 
@@ -111,7 +111,12 @@ export const getPublicQuoteSession = createServerFn({ method: "GET" })
   })
 
 export const submitPublicQuoteDecision = createServerFn({ method: "POST" })
-  .inputValidator(publicQuoteDecisionInputSchema)
+  // Count refusals after verifying the signed identity, before business validation.
+  .inputValidator(
+    publicQuoteTokenInputSchema
+      .extend({ decision: z.unknown(), rejectionReason: z.unknown().optional() })
+      .strict()
+  )
   .handler(async ({ data }) => {
     try {
       const [{ decidePublicQuoteByToken }, { getPublicQuoteSecret }] = await Promise.all([
@@ -127,7 +132,10 @@ export const submitPublicQuoteDecision = createServerFn({ method: "POST" })
         kind: "ready",
         ...serializePublicQuoteSession(session),
       } as const
-    } catch {
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "retry_later") {
+        return { kind: "retry_later" } as const
+      }
       return { kind: "invalid" } as const
     }
   })

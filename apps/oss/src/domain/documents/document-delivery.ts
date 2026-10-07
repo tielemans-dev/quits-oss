@@ -21,7 +21,7 @@ import { Command } from "../services"
  * - `email` mails a document that is already issued and only records the attempt.
  */
 
-type DocumentKind = "invoice" | "quote" | "creditNote"
+type DocumentKind = "invoice" | "quote" | "creditNote" | "agreement"
 
 type Delegate = {
   count(args: { where: Record<string, unknown> }): Promise<number>
@@ -29,6 +29,7 @@ type Delegate = {
 }
 
 const config = {
+  agreement: { aggregateType: "agreement", noun: "agreement", publicLinkField: "publicAccessIssuedAt" },
   invoice: { aggregateType: "invoice", noun: "invoice", publicLinkField: "publicPaymentIssuedAt" },
   quote: { aggregateType: "quote", noun: "quote", publicLinkField: "publicAccessIssuedAt" },
   creditNote: { aggregateType: "credit_note", noun: "credit note", publicLinkField: null },
@@ -61,7 +62,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
   /** What sending a draft changes: it is issued at the attempt's time with its public link date. */
   const issuedFields = (target: Record<string, string>, attemptAt: Date) => ({
     status: "sent",
-    issueDate: attemptAt,
+    ...(kind === "agreement" ? {} : { issueDate: attemptAt }),
     ...(publicLinkField && target.publicLinkIssuedAt ? { [publicLinkField]: new Date(target.publicLinkIssuedAt) } : {}),
   })
   for (const mode of ["send", "email"] as const) {
@@ -174,7 +175,7 @@ export function refuseWhileSending(kind: DocumentKind, document: { lastEmailAtte
 export const queueDocumentEmail = <Row>(input: {
   kind: DocumentKind
   mode: Mode
-  document: { id: string; number: string }
+  document: { id: string; number: string | null }
   recipient: string
   message: StoredEmailMessage
   /** Names exactly this delivery; the provider drops a repeat sent under the same key. */
@@ -203,7 +204,7 @@ export const queueDocumentEmail = <Row>(input: {
         target: {
           documentId: input.document.id,
           attemptAt: now.toISOString(),
-          number: input.document.number,
+          number: input.document.number ?? "",
           recipient: input.recipient,
           ...(input.publicLinkIssuedAt ? { publicLinkIssuedAt: input.publicLinkIssuedAt.toISOString() } : {}),
         },

@@ -18,6 +18,7 @@ import { Route as QTokenRouteImport } from './routes/q.$token'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
+import { Route as ATokenRouteImport } from './routes/a.$token'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AppCatalogRouteImport } from './routes/_app/catalog'
@@ -35,6 +36,7 @@ import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payme
 import { Route as ApiCronTickRouteImport } from './routes/api/cron/tick'
 import { Route as ApiCronMarkOverdueRouteImport } from './routes/api/cron/mark-overdue'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ATokenPdfRouteImport } from './routes/a.$token_.pdf'
 import { Route as AppRecurringScheduleIdRouteImport } from './routes/_app/recurring/$scheduleId'
 import { Route as AppQuotesNewRouteImport } from './routes/_app/quotes/new'
 import { Route as AppQuotesQuoteIdRouteImport } from './routes/_app/quotes/$quoteId'
@@ -45,6 +47,8 @@ import { Route as AppContactsNewRouteImport } from './routes/_app/contacts/new'
 import { Route as AppContactsContactIdRouteImport } from './routes/_app/contacts/$contactId'
 import { Route as AppAgreementsNewRouteImport } from './routes/_app/agreements/new'
 import { Route as AppAgreementsAgreementIdRouteImport } from './routes/_app/agreements/$agreementId'
+import { Route as AppApprovalsApprovalIdPreviewDotpdfRouteImport } from './routes/app.approvals.$approvalId.preview[.]pdf'
+import { Route as ApiAgreementsAgreementIdPdfRouteImport } from './routes/api/agreements/$agreementId.pdf'
 import { Route as AppAgreementsAgreementIdEditRouteImport } from './routes/_app/agreements/$agreementId_.edit'
 
 const SignupRoute = SignupRouteImport.update({
@@ -92,6 +96,11 @@ const AcceptInvitationInvitationIdRoute =
     path: '/accept-invitation/$invitationId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ATokenRoute = ATokenRouteImport.update({
+  id: '/a/$token',
+  path: '/a/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -178,6 +187,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ATokenPdfRoute = ATokenPdfRouteImport.update({
+  id: '/a/$token_/pdf',
+  path: '/a/$token/pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRecurringScheduleIdRoute = AppRecurringScheduleIdRouteImport.update({
   id: '/recurring/$scheduleId',
   path: '/recurring/$scheduleId',
@@ -230,6 +244,18 @@ const AppAgreementsAgreementIdRoute =
     path: '/agreements/$agreementId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppApprovalsApprovalIdPreviewDotpdfRoute =
+  AppApprovalsApprovalIdPreviewDotpdfRouteImport.update({
+    id: '/app/approvals/$approvalId/preview.pdf',
+    path: '/app/approvals/$approvalId/preview.pdf',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAgreementsAgreementIdPdfRoute =
+  ApiAgreementsAgreementIdPdfRouteImport.update({
+    id: '/api/agreements/$agreementId/pdf',
+    path: '/api/agreements/$agreementId/pdf',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppAgreementsAgreementIdEditRoute =
   AppAgreementsAgreementIdEditRouteImport.update({
     id: '/agreements/$agreementId_/edit',
@@ -248,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof AppCatalogRoute
   '/onboarding': typeof AppOnboardingRoute
   '/settings': typeof AppSettingsRoute
+  '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
@@ -262,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
   '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
+  '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
@@ -274,6 +302,8 @@ export interface FileRoutesByFullPath {
   '/quotes/': typeof AppQuotesIndexRoute
   '/recurring/': typeof AppRecurringIndexRoute
   '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
+  '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
+  '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -285,6 +315,7 @@ export interface FileRoutesByTo {
   '/catalog': typeof AppCatalogRoute
   '/onboarding': typeof AppOnboardingRoute
   '/settings': typeof AppSettingsRoute
+  '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
@@ -300,6 +331,7 @@ export interface FileRoutesByTo {
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
   '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
+  '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
@@ -312,6 +344,8 @@ export interface FileRoutesByTo {
   '/quotes': typeof AppQuotesIndexRoute
   '/recurring': typeof AppRecurringIndexRoute
   '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
+  '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
+  '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -325,6 +359,7 @@ export interface FileRoutesById {
   '/_app/catalog': typeof AppCatalogRoute
   '/_app/onboarding': typeof AppOnboardingRoute
   '/_app/settings': typeof AppSettingsRoute
+  '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
@@ -340,6 +375,7 @@ export interface FileRoutesById {
   '/_app/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/_app/quotes/new': typeof AppQuotesNewRoute
   '/_app/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
+  '/a/$token_/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
@@ -352,6 +388,8 @@ export interface FileRoutesById {
   '/_app/quotes/': typeof AppQuotesIndexRoute
   '/_app/recurring/': typeof AppRecurringIndexRoute
   '/_app/agreements/$agreementId_/edit': typeof AppAgreementsAgreementIdEditRoute
+  '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
+  '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -366,6 +404,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/onboarding'
     | '/settings'
+    | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
     | '/pay/$token'
@@ -380,6 +419,7 @@ export interface FileRouteTypes {
     | '/quotes/$quoteId'
     | '/quotes/new'
     | '/recurring/$scheduleId'
+    | '/a/$token/pdf'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
@@ -392,6 +432,8 @@ export interface FileRouteTypes {
     | '/quotes/'
     | '/recurring/'
     | '/agreements/$agreementId/edit'
+    | '/api/agreements/$agreementId/pdf'
+    | '/app/approvals/$approvalId/preview.pdf'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -403,6 +445,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/onboarding'
     | '/settings'
+    | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
     | '/pay/$token'
@@ -418,6 +461,7 @@ export interface FileRouteTypes {
     | '/quotes/$quoteId'
     | '/quotes/new'
     | '/recurring/$scheduleId'
+    | '/a/$token/pdf'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
@@ -430,6 +474,8 @@ export interface FileRouteTypes {
     | '/quotes'
     | '/recurring'
     | '/agreements/$agreementId/edit'
+    | '/api/agreements/$agreementId/pdf'
+    | '/app/approvals/$approvalId/preview.pdf'
   id:
     | '__root__'
     | '/_app'
@@ -442,6 +488,7 @@ export interface FileRouteTypes {
     | '/_app/catalog'
     | '/_app/onboarding'
     | '/_app/settings'
+    | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
     | '/pay/$token'
@@ -457,6 +504,7 @@ export interface FileRouteTypes {
     | '/_app/quotes/$quoteId'
     | '/_app/quotes/new'
     | '/_app/recurring/$scheduleId'
+    | '/a/$token_/pdf'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
@@ -469,6 +517,8 @@ export interface FileRouteTypes {
     | '/_app/quotes/'
     | '/_app/recurring/'
     | '/_app/agreements/$agreementId_/edit'
+    | '/api/agreements/$agreementId/pdf'
+    | '/app/approvals/$approvalId/preview.pdf'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -476,15 +526,19 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SetupRoute: typeof SetupRoute
   SignupRoute: typeof SignupRoute
+  ATokenRoute: typeof ATokenRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiMcpRoute: typeof ApiMcpRoute
   PayTokenRoute: typeof PayTokenRoute
   QTokenRoute: typeof QTokenRoute
+  ATokenPdfRoute: typeof ATokenPdfRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCronMarkOverdueRoute: typeof ApiCronMarkOverdueRoute
   ApiCronTickRoute: typeof ApiCronTickRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
+  ApiAgreementsAgreementIdPdfRoute: typeof ApiAgreementsAgreementIdPdfRoute
+  AppApprovalsApprovalIdPreviewDotpdfRoute: typeof AppApprovalsApprovalIdPreviewDotpdfRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -550,6 +604,13 @@ declare module '@tanstack/react-router' {
       path: '/accept-invitation/$invitationId'
       fullPath: '/accept-invitation/$invitationId'
       preLoaderRoute: typeof AcceptInvitationInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/a/$token': {
+      id: '/a/$token'
+      path: '/a/$token'
+      fullPath: '/a/$token'
+      preLoaderRoute: typeof ATokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/settings': {
@@ -671,6 +732,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/a/$token_/pdf': {
+      id: '/a/$token_/pdf'
+      path: '/a/$token/pdf'
+      fullPath: '/a/$token/pdf'
+      preLoaderRoute: typeof ATokenPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/recurring/$scheduleId': {
       id: '/_app/recurring/$scheduleId'
       path: '/recurring/$scheduleId'
@@ -740,6 +808,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/agreements/$agreementId'
       preLoaderRoute: typeof AppAgreementsAgreementIdRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/app/approvals/$approvalId/preview.pdf': {
+      id: '/app/approvals/$approvalId/preview.pdf'
+      path: '/app/approvals/$approvalId/preview.pdf'
+      fullPath: '/app/approvals/$approvalId/preview.pdf'
+      preLoaderRoute: typeof AppApprovalsApprovalIdPreviewDotpdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agreements/$agreementId/pdf': {
+      id: '/api/agreements/$agreementId/pdf'
+      path: '/api/agreements/$agreementId/pdf'
+      fullPath: '/api/agreements/$agreementId/pdf'
+      preLoaderRoute: typeof ApiAgreementsAgreementIdPdfRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/agreements/$agreementId_/edit': {
       id: '/_app/agreements/$agreementId_/edit'
@@ -812,15 +894,20 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SetupRoute: SetupRoute,
   SignupRoute: SignupRoute,
+  ATokenRoute: ATokenRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiMcpRoute: ApiMcpRoute,
   PayTokenRoute: PayTokenRoute,
   QTokenRoute: QTokenRoute,
+  ATokenPdfRoute: ATokenPdfRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCronMarkOverdueRoute: ApiCronMarkOverdueRoute,
   ApiCronTickRoute: ApiCronTickRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
+  ApiAgreementsAgreementIdPdfRoute: ApiAgreementsAgreementIdPdfRoute,
+  AppApprovalsApprovalIdPreviewDotpdfRoute:
+    AppApprovalsApprovalIdPreviewDotpdfRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,3 +1,7 @@
+import { AgreementActions } from "../../../components/agreements/agreement-actions"
+import { AcceptanceRecord } from "../../../components/agreements/acceptance-record"
+import { ActivityList } from "../../../components/activity/activity-list"
+import type { ActivityEntry } from "../../../lib/exports/activity"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import { trpc } from "../../../trpc/client"
@@ -29,14 +33,37 @@ function AgreementDetail() {
   const [agreement, setAgreement] = useState<Awaited<
     ReturnType<typeof trpc.agreements.get.query>
   > | null>(null)
+  const [capabilities, setCapabilities] = useState<Awaited<
+    ReturnType<typeof trpc.agreements.capabilities.query>
+  > | null>(null)
+  const [events, setEvents] = useState<ActivityEntry[]>([])
+  const [publicLink, setPublicLink] = useState<string | null>(null)
+  async function refresh() {
+    const [data, activity, link] = await Promise.all([
+      trpc.agreements.get.query({ id: agreementId }),
+      trpc.activity.forDocument.query({ aggregateType: "agreement", aggregateId: agreementId }),
+      trpc.agreements.publicLink.query({ id: agreementId }),
+    ])
+    setAgreement(data)
+    setEvents(activity.events)
+    setPublicLink(link?.url ?? null)
+  }
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   useEffect(() => {
     let cancelled = false
-    trpc.agreements.get
-      .query({ id: agreementId })
-      .then((data) => {
-        if (!cancelled) setAgreement(data)
+    Promise.all([
+      trpc.agreements.get.query({ id: agreementId }),
+      trpc.agreements.capabilities.query(),
+      trpc.activity.forDocument.query({ aggregateType: "agreement", aggregateId: agreementId }),
+      trpc.agreements.publicLink.query({ id: agreementId }),
+    ])
+      .then(([data, access, activity, link]) => {
+        if (cancelled) return
+        setAgreement(data)
+        setCapabilities(access)
+        setEvents(activity.events)
+        setPublicLink(link?.url ?? null)
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : t("agreements.error"))
@@ -47,6 +74,8 @@ function AgreementDetail() {
   }, [agreementId, t])
   const preview = useMemo(() => {
     if (!agreement) return { html: "", error: null }
+    if (agreement.offerSnapshot)
+      return { html: (agreement.offerSnapshot as { termsHtml: string }).termsHtml, error: null }
     const seller = agreement.sellerSnapshot as { companyName?: string | null } | null
     const buyer = agreement.buyerSnapshot as { name?: string } | null
     try {
@@ -99,7 +128,7 @@ function AgreementDetail() {
           </Badge>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {agreement.status === "draft" && (
+          {agreement.status === "draft" && capabilities?.update && (
             <>
               <Button asChild variant="outline">
                 <Link to="/agreements/$agreementId/edit" params={{ agreementId }}>
@@ -108,7 +137,14 @@ function AgreementDetail() {
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" disabled={deleting}>
+                  <Button
+                    variant="destructive"
+                    disabled={
+                      deleting ||
+                      !capabilities?.delete ||
+                      agreement.lastEmailAttemptOutcome === "sending"
+                    }
+                  >
                     {t("agreements.delete")}
                   </Button>
                 </AlertDialogTrigger>
@@ -125,16 +161,45 @@ function AgreementDetail() {
               </AlertDialog>
             </>
           )}
-          <div className="grid gap-1">
-            <Button disabled aria-describedby="sending-later">
-              {t("agreements.send")}
-            </Button>
-            <p id="sending-later" className="text-xs text-muted-foreground">
-              {t("agreements.sendingLater")}
-            </p>
-          </div>
         </div>
       </div>
+      {capabilities && (
+        <AgreementActions
+          agreement={agreement}
+          capabilities={capabilities}
+          onChanged={refresh}
+          onError={setError}
+        />
+      )}
+      {publicLink && (
+        <p className="break-all">
+          <a href={publicLink} target="_blank" rel="noreferrer" className="underline">
+            {t("agreements.shareLink")}
+          </a>
+          {!agreement.issuedToEmail && (
+            <span className="block text-sm text-muted-foreground">
+              {t("agreements.shareManually")}
+            </span>
+          )}
+        </p>
+      )}
+      {agreement.acceptedAt && (
+        <AcceptanceRecord
+          record={{
+            name: agreement.acceptedByName,
+            intendedRecipient: agreement.issuedToEmail,
+            at: agreement.acceptedAt.toISOString(),
+            method: agreement.acceptanceMethod,
+            revision: agreement.acceptedOfferRevision,
+            hash: agreement.offerSnapshotHash,
+          }}
+        />
+      )}
+      {agreement.acceptanceEvidenceNote && (
+        <p>
+          {t("agreements.evidenceNote")}: {agreement.acceptanceEvidenceNote}
+        </p>
+      )}
       <Card>
         <CardContent className="pt-6 grid gap-3">
           <p>
@@ -202,6 +267,14 @@ function AgreementDetail() {
               dangerouslySetInnerHTML={{ __html: preview.html }}
             />
           )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("activity.panel.title")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ActivityList events={events} />
         </CardContent>
       </Card>
       {agreement.notes && (

@@ -1,3 +1,5 @@
+import { agreementLifecycleCommands } from "./agreement-lifecycle"
+import { refuseWhileSending } from "../documents/document-delivery"
 import { Effect } from "effect"
 import {
   agreementCreateDraftInputSchema,
@@ -55,11 +57,7 @@ const lockedDraft = (id: string) =>
     )
     if (!agreement)
       return yield* new NotFound({ message: "Agreement not found", entity: "agreement", id })
-    if (agreement.lastEmailAttemptOutcome === "sending")
-      return yield* new InvalidState({
-        message: "This agreement is being emailed. Wait for delivery to finish.",
-        code: "send_in_progress",
-      })
+    yield* refuseWhileSending("agreement", agreement)
     if (agreement.status !== "draft")
       return yield* new InvalidState({
         message: "Only draft agreements can be edited or deleted",
@@ -317,6 +315,7 @@ export const updateDeliverable = defineCommand({
 })
 
 export const agreementCommands = [
+  ...agreementLifecycleCommands,
   createAgreementDraft,
   updateAgreementDraft,
   deleteAgreementDraft,

@@ -85,6 +85,7 @@ export function verifyQuotePublicToken(
   token: string,
   secret: string
 ): QuotePublicTokenPayload | null {
+  if (token.split(".").length !== 2) return null
   const [encodedPayload, signature] = token.split(".")
   if (!encodedPayload || !signature) {
     return null
