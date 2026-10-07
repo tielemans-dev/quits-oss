@@ -53,6 +53,7 @@ import { unwrapOutcome } from "../outcome"
 
 export const agreementsRouter = router({
   capabilities: authorizedProcedure("agreement:read").query(({ ctx }) => ({
+    invoice: actorCan(ctx.actor, "invoice:create"),
     send: actorCan(ctx.actor, "agreement:send"),
     update: actorCan(ctx.actor, "agreement:update"),
     accept: actorCan(ctx.actor, "agreement:accept"),

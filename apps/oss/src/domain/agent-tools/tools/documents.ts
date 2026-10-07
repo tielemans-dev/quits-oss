@@ -7,6 +7,8 @@ import { computeSettlement } from "../../documents/settlement"
 type Money = Prisma.Decimal
 
 type LineItem = {
+  id?: string
+  deliverableId?: string | null
   description: string
   quantity: Money
   unitPriceNet: Money
@@ -26,6 +28,8 @@ type LineItem = {
 
 function presentLines(items: LineItem[]) {
   return items.map((item) => ({
+    id: item.id,
+    deliverableId: item.deliverableId ?? null,
     description: item.description,
     quantity: item.quantity,
     unitPriceNet: item.unitPriceNet,
@@ -51,6 +55,9 @@ function safely<T>(build: () => T): T | null {
 }
 
 export type InvoiceRow = {
+  purpose?: string
+  agreementId?: string | null
+  scheduleSaleChoice?: unknown
   id: string
   number: string
   status: string
@@ -89,6 +96,9 @@ export function presentInvoice(invoice: InvoiceRow) {
     number: invoice.number,
     status: invoice.status,
     paymentStatus: invoice.paymentStatus,
+    purpose: invoice.purpose ?? "sale",
+    agreementId: invoice.agreementId ?? null,
+    scheduleSaleChoice: invoice.scheduleSaleChoice ?? null,
     contact: invoice.contact
       ? { id: invoice.contact.id ?? invoice.contactId, name: invoice.contact.name, email: invoice.contact.email }
       : { id: invoice.contactId },

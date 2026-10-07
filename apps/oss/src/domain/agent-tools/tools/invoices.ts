@@ -1,3 +1,5 @@
+import { createInvoiceFromDeliverables, addInvoiceDeliverables } from "../../commands/invoices-from-deliverables"
+import { invoiceCreateFromDeliverablesInputSchema, invoiceAddDeliverablesInputSchema } from "@quits/contracts/invoices"
 import {
   invoiceCreateDraftV2InputSchema,
   invoiceIdInputSchema,
@@ -28,6 +30,13 @@ const presentSent = (
 })
 
 export const invoiceTools: AgentTool[] = [
+  defineCommandTool({ name: "invoice_create_from_deliverables", title: "Invoice deliverables",
+    description: "Reserves billable deliverables and creates drafts atomically. Returns { saleInvoiceId?, prepaymentInvoiceId? }. Schedule lines create prepayment drafts whose issuance is not supported yet. Set scheduleAsSale only on explicit instruction to invoice schedule lines as sales; that choice is recorded. Nothing is sent.",
+    command: createInvoiceFromDeliverables, input: invoiceCreateFromDeliverablesInputSchema }),
+  defineCommandTool({ name: "invoice_add_deliverables", title: "Add deliverables to invoice",
+    description: "Reserves billable work on a draft linked to the same agreement. The draft purpose must match; scheduleAsSale records an explicit sale choice. Nothing is sent.",
+    command: addInvoiceDeliverables, input: invoiceAddDeliverablesInputSchema, present: presentInvoice }),
+
   defineQueryTool({
     name: "invoices_list",
     title: "List invoices",

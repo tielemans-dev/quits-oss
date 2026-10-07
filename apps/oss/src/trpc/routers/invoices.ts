@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto"
+import { createInvoiceFromDeliverables, addInvoiceDeliverables, invoiceScheduleAsSale } from "../../domain/commands/invoices-from-deliverables"
+import { invoiceCreateFromDeliverablesInputSchema, invoiceAddDeliverablesInputSchema } from "@quits/contracts/invoices"
 import { executeIssuanceCommand } from "../../application/issuance"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
@@ -84,6 +87,10 @@ function settlementForUi(invoice: {
 }
 
 export const invoicesRouter = router({
+  createFromDeliverables: authorizedProcedure("invoice:create").input(invoiceCreateFromDeliverablesInputSchema).mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(createInvoiceFromDeliverables, input, { actor: ctx.actor, clientRequestId: randomUUID() }))),
+  addDeliverables: authorizedProcedure("invoice:update").input(invoiceAddDeliverablesInputSchema).mutation(async ({ ctx, input }) => serializeInvoiceForUi(unwrapOutcome(await executeCommand(addInvoiceDeliverables, input, { actor: ctx.actor })))),
+  scheduleAsSale: authorizedProcedure("invoice:update").input(invoiceScheduleAsSale.input).mutation(async ({ ctx, input }) => serializeInvoiceForUi(unwrapOutcome(await executeCommand(invoiceScheduleAsSale, input, { actor: ctx.actor })))),
+
   list: authorizedProcedure("invoice:read")
     .input(
       z
@@ -121,12 +128,14 @@ export const invoicesRouter = router({
         where: { id: input.id, organizationId: ctx.organizationId },
         include: {
           contact: true,
+          agreement: { select: { taxRateInput: true, taxRate: true } },
           items: { orderBy: { sortOrder: "asc" } },
         },
       })
 
       return {
         ...invoice,
+        agreementTaxRate: invoice.agreement?.taxRateInput ?? invoice.agreement?.taxRate.toString() ?? null,
         subtotal: invoice.subtotalNet.toNumber(),
         taxAmount: invoice.totalTax.toNumber(),
         total: invoice.totalGross.toNumber(),
