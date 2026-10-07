@@ -7,6 +7,7 @@ import { resetRuntimePlatform, setRuntimePlatform } from "../runtime/platform"
 import { buildQuitsAuthOptions } from "../runtime/auth-config"
 import { readFileSync } from "node:fs"
 import { parse as parseDotenv } from "dotenv"
+import { isSmtpPreSubmissionFailure } from "../email-smtp-node"
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -16,6 +17,18 @@ afterEach(() => {
 const message = { from: "Quits <billing@example.com>", to: "customer@example.com", subject: "Invoice 42", html: "<p>Amount €42</p>", replyTo: "reply@example.com" }
 
 describe("SMTP configuration", () => {
+  it("requires evidence of no submission and preserves unknown or post-DATA socket failures", () => {
+    expect(isSmtpPreSubmissionFailure({ code: "EDNS", command: "CONN" })).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "CONN", syscall: "connect" })).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ETIMEDOUT", command: "CONN", message: "Connection timeout" })).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ETIMEDOUT", command: "CONN", message: "Greeting never received" })).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ETIMEDOUT", command: "CONN", message: "Timeout" })).toBe(false)
+    expect(isSmtpPreSubmissionFailure({ code: "ETIMEDOUT", command: "DATA", message: "Timeout" })).toBe(false)
+    expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "CONN", syscall: "read" })).toBe(false)
+    expect(isSmtpPreSubmissionFailure({ code: "ECONNECTION", command: "CONN" })).toBe(false)
+    expect(isSmtpPreSubmissionFailure({ code: "ETIMEDOUT", message: "Greeting never received" })).toBe(false)
+    expect(isSmtpPreSubmissionFailure(new Error("Unknown failure"))).toBe(false)
+  })
   it("keeps Resend as the default and rejects unknown providers", () => {
     expect(selectedEmailProvider("")).toBe("resend")
     expect(selectedEmailProvider("smtp")).toBe("smtp")
@@ -66,13 +79,13 @@ describe("SMTP configuration", () => {
 })
 
 /** Disposable local relay, including the ambiguous disconnect after the body arrives. */
-async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect", run: (bodies: string[]) => Promise<void>) {
+async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | "greeting-timeout", run: (bodies: string[]) => Promise<void>) {
   const bodies: string[] = []
   const sockets = new Set<Socket>()
   const server = createServer((socket) => {
     sockets.add(socket)
     socket.on("close", () => sockets.delete(socket))
-    socket.write("220 local.test ESMTP\r\n")
+    if (mode !== "greeting-timeout") socket.write("220 local.test ESMTP\r\n")
     let buffered = ""
     let inData = false
     socket.on("data", (chunk) => {
@@ -119,6 +132,22 @@ async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect", r
 }
 
 describe("real SMTP transport", () => {
+  it("reports a refused connection as definitely not submitted", async () => {
+    const server = createServer()
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+    const address = server.address()
+    if (!address || typeof address === "string") throw new Error("Expected a local port")
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+    await expect(deliver(message, { environment: { EMAIL_PROVIDER: "smtp", SMTP_HOST: "127.0.0.1", SMTP_PORT: String(address.port), SMTP_SECURE: "false", SMTP_REQUIRE_TLS: "false" } })).rejects.toMatchObject({ name: "EmailSendError", providerCode: "smtp_unavailable" })
+  })
+
+  it("reports a greeting timeout as definitely not submitted", async () => {
+    await withRelay("greeting-timeout", async (bodies) => {
+      await expect(deliver(message)).rejects.toMatchObject({ name: "EmailSendError", providerCode: "smtp_unavailable" })
+      expect(bodies).toHaveLength(0)
+    })
+  })
+
   it("uses the independent auth environment for the provider, relay, and invitation sender", async () => {
     await withRelay("accept", async (bodies) => {
       const authEnvironment: Record<string, string> = {

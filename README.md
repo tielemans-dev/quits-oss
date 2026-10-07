@@ -281,8 +281,9 @@ SMTP supports rendered HTML or text and inline attachments.
 SMTP servers do not deduplicate email by an idempotency key or Message-ID. If a
 connection is lost after submission, the outbox records the delivery as unconfirmed
 and stops automatic retries. The customer may have received the message. Check your
-relay's logs before choosing to resend it. Explicit server refusals record a failed
-send. A relay that accepts only some recipients records an unconfirmed delivery and
+relay's logs before choosing to resend it. Explicit server refusals, DNS failures,
+refused connections, and initial connection or greeting timeouts record a failed
+send and leave drafts editable. A relay that accepts only some recipients records an unconfirmed delivery and
 stops retries, because retrying could duplicate the recipients it accepted. Fully
 accepted messages settle without contacting the relay again. Resend keeps its
 existing idempotent retry behavior. A queued delivery keeps the provider recorded

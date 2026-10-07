@@ -3,6 +3,20 @@ import { EmailSendError, type EmailMessage } from "./email"
 import { readSmtpConfiguration, type EmailEnvironment } from "./email-provider-config"
 import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
 
+/** Nodemailer also labels post-DATA socket errors CONN, so the command alone is not proof. */
+export function isSmtpPreSubmissionFailure(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  const smtpError = error as { code?: string; command?: string; syscall?: string; message?: string }
+  if (smtpError.command !== "CONN") return false
+  return smtpError.code === "EDNS"
+    || (smtpError.code === "ESOCKET" && smtpError.syscall === "connect")
+    || (smtpError.code === "ETIMEDOUT" && (
+      // These are generated only by Nodemailer's initial connection and greeting timers.
+      // Its later socket timeout is simply "Timeout", even though command is still CONN.
+      smtpError.message === "Connection timeout" || smtpError.message === "Greeting never received"
+    ))
+}
+
 /** Node/Bun only. The computed import keeps socket dependencies out of Worker bundles. */
 export async function deliverSmtp(message: EmailMessage, environment: EmailEnvironment = getRuntimeEnv()): Promise<{ id: string }> {
   if (getRuntimePlatform().getRuntimeKind() !== "node") {
@@ -51,6 +65,9 @@ export async function deliverSmtp(message: EmailMessage, environment: EmailEnvir
     return { id: result.messageId }
   } catch (error) {
     if (error instanceof EmailSendError) throw error
+    if (isSmtpPreSubmissionFailure(error)) {
+      throw new EmailSendError("smtp_unavailable", "The SMTP relay could not be reached before message submission, so nothing was delivered")
+    }
     const smtpError = error as { responseCode?: number }
     // A completed negative SMTP response proves this submission was refused. A connection
     // loss or timeout may occur after DATA was accepted and must remain unconfirmed.

@@ -41,6 +41,7 @@ describe("isDefiniteRejection", () => {
   it("treats provider validation errors as refusals and outages or lost requests as uncertain", () => {
     expect(isDefiniteRejection(new EmailSendError("validation_error", "bad"))).toBe(true)
     expect(isDefiniteRejection(new EmailSendError("invalid_from_address", "bad"))).toBe(true)
+    expect(isDefiniteRejection(new EmailSendError("smtp_unavailable", "Connection never opened"))).toBe(true)
     // The Resend SDK reports network failures as application_error.
     expect(isDefiniteRejection(new EmailSendError("application_error", "fetch failed"))).toBe(false)
     expect(isDefiniteRejection(new EmailSendError("internal_server_error", "oops"))).toBe(false)
@@ -183,6 +184,17 @@ describeIfDatabase("email outbox", () => {
     expect(deliver).toHaveBeenCalledTimes(1)
     expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "failed" })
     expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "rejected" })
+  })
+
+  it("does not issue an invoice when SMTP proves the connection never opened", async () => {
+    const { org, invoiceId } = await setup()
+    useSmtp()
+    vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("smtp_unavailable", "Connection never opened"))
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "failed" })
+    expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "rejected" })
+    expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, aggregateId: invoiceId, type: "invoice.sent" } })).toBe(0)
+    expect(deliver).toHaveBeenCalledTimes(1)
   })
 
   it("settles a recorded SMTP acceptance without another submission", async () => {

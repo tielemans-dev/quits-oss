@@ -1,7 +1,7 @@
 import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../../../lib/db"
 import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
 import { resetRuntimePlatform, setRuntimePlatform } from "../../../lib/runtime/platform"
@@ -60,6 +60,7 @@ describeIfDatabase("settings email delivery status", () => {
     clearEmailEnv()
     setRuntimeExtensions([])
     resetRuntimePlatform()
+    vi.unstubAllEnvs()
   })
 
   it("reports configured SMTP without a Resend key and never exposes relay credentials", async () => {
@@ -86,6 +87,22 @@ describeIfDatabase("settings email delivery status", () => {
     try {
       const settings = await caller.settings.get()
       expect(settings.emailDelivery).toMatchObject({ managed: false, configured: false, available: false, sender: "worker-reader@example.com", missing: ["EMAIL_PROVIDER"], status: "missing_configuration" })
+    } finally {
+      resetRuntimePlatform()
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
+  it("uses the same platform sender for delivery status and both document sender previews", async () => {
+    const { orgId, caller } = await createOrgWithCaller("Settings Platform Sender Org")
+    vi.stubEnv("FROM_EMAIL", "process@example.com")
+    const environment: Record<string, string> = { EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example", FROM_EMAIL: "platform@example.com" }
+    setRuntimePlatform({ ...defaultNodePlatform, id: "test-platform-sender", getEnv: (name) => environment[name] })
+    try {
+      const settings = await caller.settings.get()
+      expect(settings.emailDelivery.sender).toBe("platform@example.com")
+      expect(settings.documentSending.sharedSender.fromEmail).toBe("platform@example.com")
+      expect(settings.documentSending.effectiveSender.fromEmail).toBe("platform@example.com")
     } finally {
       resetRuntimePlatform()
       await cleanupTestOrganizations({ where: { id: orgId } })

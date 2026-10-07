@@ -434,10 +434,11 @@ function buildDocumentSendingState(input: {
   managed: boolean
   supportsCustomDomain: boolean
 }) {
+  const environment = getRuntimeEnv()
   const sharedSender = resolveDocumentEmailEnvelope({
     orgName: input.settings.companyName,
     orgBillingEmail: input.settings.companyEmail,
-    sharedFromEmail: process.env.FROM_EMAIL ?? "noreply@yaip.app",
+    sharedFromEmail: environment.FROM_EMAIL ?? "noreply@yaip.app",
   })
   const brandedState = input.supportsCustomDomain
     ? readDocumentSendingDomainState(input.settings)
@@ -445,7 +446,7 @@ function buildDocumentSendingState(input: {
   const effectiveSender = resolveDocumentEmailEnvelope({
     orgName: input.settings.companyName,
     orgBillingEmail: input.settings.companyEmail,
-    sharedFromEmail: process.env.FROM_EMAIL ?? "noreply@yaip.app",
+    sharedFromEmail: environment.FROM_EMAIL ?? "noreply@yaip.app",
     branded: brandedState,
   })
   const syncState = readDocumentSendingSyncState(input.settings)
