@@ -6,6 +6,7 @@ services:
     environment:
       DATABASE_URL: postgresql://yaip:yaip@db:5432/yaip
       BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env to a random secret, e.g. openssl rand -base64 32}"
+      QUITS_AUTH_TRUSTED_PROXIES: ${QUITS_AUTH_TRUSTED_PROXIES:-}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       CRON_SECRET: "${CRON_SECRET:?Set CRON_SECRET in .env to a random secret, e.g. openssl rand -base64 32}"
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}

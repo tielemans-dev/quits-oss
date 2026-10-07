@@ -159,6 +159,14 @@ This repository is Bun-native. Use `bun install` and `bun run ...` commands for 
 - Completion requires invoice-readiness fields (company identity, locale/timezone/currency, tax regime, numbering defaults).
 - Cloud-only onboarding AI endpoints are available under `onboardingAi.*` and only suggest/apply patches through the same canonical readiness checks.
 
+### Password recovery
+
+Password recovery uses Better Auth's verification records and the installation email sender. Reset links expire after 30 minutes. A successful reset consumes the link and revokes existing sessions. Database admission limits are shared across app instances.
+
+The Node runtime uses the direct connection address for recovery limits and ignores forwarding headers. If no peer address is available, requests share a conservative bucket. Deployments behind a trusted proxy can provide `AuthHooks.getRecoveryClientKey` using metadata that the proxy overwrites. Do not read an arbitrary client-supplied forwarding header.
+
+Long-running Node processes keep reset email delivery in the background. Runtimes with request-scoped lifetimes must provide `AuthHooks.runInBackground` to keep the delivery task alive after the response. Custom auth adapters must provide `createTransactionDatabaseAdapter` bound only to the supplied transaction client.
+
 ## Environment Variables
 
 | Variable | Description | Required |
@@ -233,3 +241,23 @@ stops retries, because retrying could duplicate the recipients it accepted. Full
 accepted messages settle without contacting the relay again. Resend keeps its
 existing idempotent retry behavior. A queued delivery keeps the provider recorded
 before its first submission even if deployment settings later change.
+
+### Password recovery behind a reverse proxy
+
+Recovery admission uses the actual direct connection peer by default and ignores
+forwarding headers. If your Node/Bun deployment sits behind a reverse proxy, set
+`QUITS_AUTH_TRUSTED_PROXIES` to a comma-separated list of its literal IP addresses
+or CIDR ranges (for example `127.0.0.1,::1,10.20.0.0/24`). Docker Compose passes
+this setting through. `YAIP_AUTH_TRUSTED_PROXIES` remains an alias.
+
+Only allow networks controlled by your proxy infrastructure. The proxy must append
+the actual connecting address to `X-Forwarded-For` or replace that header with a
+verified chain. Quits walks the chain from right to left, skipping trusted proxy
+hops and using the first untrusted address. Headers from untrusted direct peers
+are ignored. Do not allow arbitrary client networks or `0.0.0.0/0`. If the direct
+peer cannot be determined, recovery uses one conservative shared bucket.
+
+Password-reset requests are limited to three per minute per client, and reset
+attempts to five. The counters use atomic database admission across instances.
+A successful reset revokes sessions and all outstanding reset links for that user
+in the same transaction. Requesting a fresh link after that reset remains possible.

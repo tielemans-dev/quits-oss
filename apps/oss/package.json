@@ -28,7 +28,8 @@
     "./runtime/extensions": "./src/lib/runtime/extensions.ts",
     "./runtime/platform": "./src/lib/runtime/platform.ts",
     "./runtime/services": "./src/lib/runtime/services.ts",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./emails/password-reset-email": "./src/lib/emails/password-reset-email.ts"
   },
   "imports": {
     "#/*": "./src/*"
@@ -56,6 +57,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "ipaddr.js": "^1.9.1",
+    "@better-auth/core": "^1.4.19",
     "@hookform/resolvers": "^5.2.2",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@prisma/adapter-pg": "^7.4.1",

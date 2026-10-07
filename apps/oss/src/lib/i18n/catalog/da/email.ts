@@ -15,4 +15,11 @@ export const daEmailMessages = {
   "email.invitation.accept": "Accepter invitation",
   "email.invitation.expiry": "Denne invitation udløber om 48 timer. Hvis du ikke forventede den, kan du ignorere denne e-mail.",
   "email.invitation.subject": "{inviterName} inviterede dig til at blive en del af {orgName} på Quits",
+  "email.passwordReset.subject": "Nulstil din Quits-adgangskode",
+  "email.passwordReset.title": "Nulstil din adgangskode",
+  "email.passwordReset.greeting": "Hej {name},",
+  "email.passwordReset.body": "Brug linket nedenfor til at vælge en ny adgangskode. Linket udløber om {minutes} minutter.",
+  "email.passwordReset.action": "Nulstil adgangskode",
+  "email.passwordReset.fallback": "Hvis knappen ikke virker, kan du åbne dette link:",
+  "email.passwordReset.ignore": "Hvis du ikke har anmodet om dette, kan du ignorere denne e-mail. Din adgangskode forbliver den samme.",
 } as const

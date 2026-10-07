@@ -388,6 +388,7 @@ export const ModelName = {
   Session: 'Session',
   Account: 'Account',
   Verification: 'Verification',
+  AuthRecoveryRateLimit: 'AuthRecoveryRateLimit',
   Organization: 'Organization',
   Member: 'Member',
   Invitation: 'Invitation',
@@ -435,7 +436,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
+    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -732,6 +733,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.VerificationCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.VerificationCountAggregateOutputType> | number
+        }
+      }
+    }
+    AuthRecoveryRateLimit: {
+      payload: Prisma.$AuthRecoveryRateLimitPayload<ExtArgs>
+      fields: Prisma.AuthRecoveryRateLimitFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AuthRecoveryRateLimitFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AuthRecoveryRateLimitFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload>
+        }
+        findFirst: {
+          args: Prisma.AuthRecoveryRateLimitFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AuthRecoveryRateLimitFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload>
+        }
+        findMany: {
+          args: Prisma.AuthRecoveryRateLimitFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload>[]
+        }
+        create: {
+          args: Prisma.AuthRecoveryRateLimitCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload>
+        }
+        createMany: {
+          args: Prisma.AuthRecoveryRateLimitCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AuthRecoveryRateLimitCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload>[]
+        }
+        delete: {
+          args: Prisma.AuthRecoveryRateLimitDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload>
+        }
+        update: {
+          args: Prisma.AuthRecoveryRateLimitUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload>
+        }
+        deleteMany: {
+          args: Prisma.AuthRecoveryRateLimitDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AuthRecoveryRateLimitUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AuthRecoveryRateLimitUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload>[]
+        }
+        upsert: {
+          args: Prisma.AuthRecoveryRateLimitUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthRecoveryRateLimitPayload>
+        }
+        aggregate: {
+          args: Prisma.AuthRecoveryRateLimitAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAuthRecoveryRateLimit>
+        }
+        groupBy: {
+          args: Prisma.AuthRecoveryRateLimitGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuthRecoveryRateLimitGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AuthRecoveryRateLimitCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuthRecoveryRateLimitCountAggregateOutputType> | number
         }
       }
     }
@@ -3201,6 +3276,15 @@ export const VerificationScalarFieldEnum = {
 export type VerificationScalarFieldEnum = (typeof VerificationScalarFieldEnum)[keyof typeof VerificationScalarFieldEnum]
 
 
+export const AuthRecoveryRateLimitScalarFieldEnum = {
+  key: 'key',
+  count: 'count',
+  resetAt: 'resetAt'
+} as const
+
+export type AuthRecoveryRateLimitScalarFieldEnum = (typeof AuthRecoveryRateLimitScalarFieldEnum)[keyof typeof AuthRecoveryRateLimitScalarFieldEnum]
+
+
 export const OrganizationScalarFieldEnum = {
   agreementTemplatesSeeded: 'agreementTemplatesSeeded',
   id: 'id',
@@ -4248,6 +4332,7 @@ export type GlobalOmitConfig = {
   session?: Prisma.SessionOmit
   account?: Prisma.AccountOmit
   verification?: Prisma.VerificationOmit
+  authRecoveryRateLimit?: Prisma.AuthRecoveryRateLimitOmit
   organization?: Prisma.OrganizationOmit
   member?: Prisma.MemberOmit
   invitation?: Prisma.InvitationOmit

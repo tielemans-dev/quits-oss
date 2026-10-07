@@ -3,6 +3,8 @@ export function isSetupGuardBypassPath(pathname: string) {
     pathname === "/setup" ||
     pathname.startsWith("/setup/") ||
     pathname === "/login" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
     pathname === "/signup" ||
     pathname === "/accept-invitation" ||
     pathname.startsWith("/accept-invitation/") ||

@@ -8,6 +8,8 @@ import { buildQuitsAuthOptions } from "../runtime/auth-config"
 import { readFileSync } from "node:fs"
 import { parse as parseDotenv } from "dotenv"
 import { isSmtpPreSubmissionFailure } from "../email-smtp-node"
+import { betterAuth } from "better-auth"
+import { memoryAdapter } from "better-auth/adapters/memory"
 import { withSmtpDisconnect, withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
 
 afterEach(() => {
@@ -88,10 +90,11 @@ describe("SMTP configuration", () => {
 })
 
 /** Disposable local relay, including the ambiguous disconnect after the body arrives. */
-async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | "greeting-timeout" | "malformed-auth", run: (bodies: string[], commands: string[]) => Promise<void>) {
+async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | "greeting-timeout" | "malformed-auth" | "hold", run: (bodies: string[], commands: string[], release: () => void) => Promise<void>) {
   const bodies: string[] = []
   const commands: string[] = []
   const sockets = new Set<Socket>()
+  const pending = new Set<Socket>()
   const server = createServer((socket) => {
     sockets.add(socket)
     socket.on("close", () => sockets.delete(socket))
@@ -108,7 +111,8 @@ async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | 
           buffered = buffered.slice(end + 5)
           inData = false
           if (mode === "disconnect") { socket.destroy(); return }
-          socket.write("250 queued as local-42\r\n")
+          if (mode === "hold") pending.add(socket)
+          else socket.write("250 queued as local-42\r\n")
         } else {
           const end = buffered.indexOf("\r\n")
           if (end < 0) return
@@ -141,13 +145,107 @@ async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | 
   vi.stubEnv("SMTP_USER", "")
   vi.stubEnv("SMTP_PASS", "")
   vi.stubEnv("SMTP_PASSWORD", "")
-  try { await run(bodies, commands) } finally {
+  try { await run(bodies, commands, () => {
+    for (const socket of pending) socket.write("250 queued as local-42\r\n")
+    pending.clear()
+  }) } finally {
     for (const socket of sockets) socket.destroy()
     await new Promise<void>((resolve) => server.close(() => resolve()))
   }
 }
 
+function recoveryAuth(environment: Record<string, string | undefined>) {
+  const database: Record<string, Record<string, unknown>[]> = { user: [], session: [], account: [], verification: [] }
+  const background: Promise<void>[] = []
+  const origin = "http://localhost:3102"
+  const options = buildQuitsAuthOptions({
+    prisma: {
+      $queryRaw: vi.fn().mockResolvedValue([{ count: 1 }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
+      $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $queryRaw: vi.fn().mockResolvedValue([]) }),
+    } as never,
+    env: { getEnv: (name) => name === "BETTER_AUTH_URL" ? origin : environment[name] },
+    hooks: {
+      createDatabaseAdapter: () => memoryAdapter(database),
+      createTransactionDatabaseAdapter: () => memoryAdapter(database),
+      runInBackground: (task) => { background.push(task) },
+    },
+  })
+  const auth = betterAuth({ ...options, secret: "smtp-recovery-test-secret-at-least-32-characters", logger: { disabled: true } })
+  const post = (path: string, body: unknown) => auth.handler(new Request(`${origin}/api/auth${path}`, {
+    method: "POST", headers: { "content-type": "application/json", origin }, body: JSON.stringify(body),
+  }))
+  return { database, background, origin, options, post }
+}
+
 describe("real SMTP transport", () => {
+  it("recovers through the supplied SMTP environment while delivery is pending and global Resend has no key", async () => {
+    await withRelay("hold", async (bodies, _commands, release) => {
+      const environment = {
+        EMAIL_PROVIDER: "smtp", SMTP_HOST: "127.0.0.1", SMTP_PORT: process.env.SMTP_PORT!,
+        SMTP_SECURE: "false", SMTP_REQUIRE_TLS: "false", FROM_EMAIL: "initial@example.com",
+      }
+      vi.stubEnv("EMAIL_PROVIDER", "resend")
+      vi.stubEnv("RESEND_API_KEY", "")
+      vi.stubEnv("SMTP_HOST", "wrong-relay.invalid")
+      vi.stubEnv("FROM_EMAIL", "process@example.com")
+      const f = recoveryAuth(environment)
+      // Keep the reader live after constructing auth rather than copying its configuration.
+      environment.FROM_EMAIL = "reader@example.com"
+      expect(f.options.plugins[0].options.disableOrganizationDeletion).toBe(true)
+      expect((await f.post("/sign-up/email", { name: "Recovery User", email: "customer@example.com", password: "old-password123" })).status).toBe(200)
+      try {
+        const known = await f.post("/request-password-reset", { email: "customer@example.com", redirectTo: `${f.origin}/reset-password` })
+        const unknown = await f.post("/request-password-reset", { email: "missing@example.com", redirectTo: `${f.origin}/reset-password` })
+        expect(known.status).toBe(200)
+        expect(await known.json()).toEqual(await unknown.json())
+        await vi.waitFor(() => expect(bodies).toHaveLength(1))
+        let settled = false
+        f.background[0]!.then(() => { settled = true })
+        await Promise.resolve()
+        expect(settled).toBe(false)
+        const token = (f.database.verification[0]!.identifier as string).slice("reset-password:".length)
+        const rendered = bodies[0]!.replace(/=\r?\n/g, "").replace(/=3D/g, "=")
+        expect(rendered).toContain("From: Quits <reader@example.com>")
+        expect(rendered).toContain("Subject: Reset your Quits password")
+        expect(rendered).toContain(`${f.origin}/api/auth/reset-password/${token}`)
+        expect(rendered).not.toContain("process@example.com")
+        release()
+        await Promise.all(f.background)
+        expect((await f.post("/reset-password", { token, newPassword: "new-password456" })).status).toBe(200)
+        expect(f.database.verification).toHaveLength(0)
+        expect(f.database.session).toHaveLength(0)
+        expect((await f.post("/sign-in/email", { email: "customer@example.com", password: "old-password123" })).status).toBe(401)
+        expect((await f.post("/sign-in/email", { email: "customer@example.com", password: "new-password456" })).status).toBe(200)
+      } finally { release(); await Promise.all(f.background) }
+    })
+  })
+
+  it.each([undefined, "", " \t "].map((fromEmail) => ({ fromEmail })))("keeps SMTP recovery generic without a supplied sender ($fromEmail)", async ({ fromEmail }) => {
+    await withRelay("accept", async (bodies) => {
+      const environment = {
+        EMAIL_PROVIDER: "smtp", SMTP_HOST: "127.0.0.1", SMTP_PORT: process.env.SMTP_PORT!,
+        SMTP_SECURE: "false", SMTP_REQUIRE_TLS: "false", FROM_EMAIL: fromEmail,
+      }
+      vi.stubEnv("EMAIL_PROVIDER", "resend")
+      vi.stubEnv("RESEND_API_KEY", "")
+      vi.stubEnv("FROM_EMAIL", "process@example.com")
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+      const f = recoveryAuth(environment)
+      try {
+        await f.post("/sign-up/email", { name: "Recovery User", email: "customer@example.com", password: "old-password123" })
+        const known = await f.post("/request-password-reset", { email: "customer@example.com", redirectTo: `${f.origin}/reset-password` })
+        const unknown = await f.post("/request-password-reset", { email: "missing@example.com", redirectTo: `${f.origin}/reset-password` })
+        expect(known.status).toBe(200)
+        expect(await known.json()).toEqual(await unknown.json())
+        await Promise.all(f.background)
+        expect(bodies).toHaveLength(0)
+        expect(logged.mock.calls).toEqual([["Password reset email delivery failed"]])
+      } finally { await Promise.all(f.background); logged.mockRestore() }
+    })
+  })
+
+
   it("processes bounded malformed EHLO AUTH padding and ignores lookalike mechanisms", async () => {
     await withRelay("malformed-auth", async (bodies, commands) => {
       vi.stubEnv("SMTP_USER", "test-user")

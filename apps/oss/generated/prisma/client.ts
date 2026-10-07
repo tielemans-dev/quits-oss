@@ -62,6 +62,11 @@ export type Account = Prisma.AccountModel
  */
 export type Verification = Prisma.VerificationModel
 /**
+ * Model AuthRecoveryRateLimit
+ *
+ */
+export type AuthRecoveryRateLimit = Prisma.AuthRecoveryRateLimitModel
+/**
  * Model Organization
  * 
  */
