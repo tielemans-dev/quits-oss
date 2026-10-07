@@ -5,7 +5,9 @@ const databaseUrl =
   process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/yaip?schema=public"
 const distribution =
   process.env.PLAYWRIGHT_QUITS_DISTRIBUTION ??
+  process.env.PLAYWRIGHT_YAIP_DISTRIBUTION ??
   process.env.QUITS_DISTRIBUTION ??
+  process.env.YAIP_DISTRIBUTION ??
   "selfhost"
 
 export default defineConfig({
@@ -36,9 +38,13 @@ export default defineConfig({
       QUITS_DISTRIBUTION: distribution,
       QUITS_JSON_LOGS: "false",
       QUITS_PUBLIC_PAYMENT_SECRET:
-        process.env.QUITS_PUBLIC_PAYMENT_SECRET ?? "payment-link-e2e-secret-123456",
+        process.env.QUITS_PUBLIC_PAYMENT_SECRET ??
+        process.env.YAIP_PUBLIC_PAYMENT_SECRET ??
+        "payment-link-e2e-secret-123456",
       QUITS_PUBLIC_QUOTE_SECRET:
-        process.env.QUITS_PUBLIC_QUOTE_SECRET ?? "quote-link-e2e-secret-123456",
+        process.env.QUITS_PUBLIC_QUOTE_SECRET ??
+        process.env.YAIP_PUBLIC_QUOTE_SECRET ??
+        "quote-link-e2e-secret-123456",
     },
   },
 })

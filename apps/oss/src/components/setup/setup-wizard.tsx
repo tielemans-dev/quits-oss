@@ -10,6 +10,8 @@ import { InstanceProfileStep } from "./steps/step-instance-profile"
 import type { SetupStatus, SetupStage, SetupWizardState } from "./types"
 
 const WIZARD_STORAGE_KEY = "quits.setup.wizard.v1"
+/** Where drafts were saved before the product was renamed; read once, then removed. */
+const LEGACY_WIZARD_STORAGE_KEY = "yaip.setup.wizard.v1"
 
 const DEFAULT_SETUP_STATE: SetupWizardState = {
   instanceProfile: "smb",
@@ -82,7 +84,9 @@ function loadDraftState(): SetupWizardState {
   }
 
   try {
-    const raw = window.localStorage.getItem(WIZARD_STORAGE_KEY)
+    const raw =
+      window.localStorage.getItem(WIZARD_STORAGE_KEY) ??
+      window.localStorage.getItem(LEGACY_WIZARD_STORAGE_KEY)
     if (!raw) {
       return DEFAULT_SETUP_STATE
     }
@@ -132,6 +136,8 @@ export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
   useEffect(() => {
     if (typeof window === "undefined") return
     window.localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(setupState))
+    // The draft now lives under the new key; drop the old copy (it can hold the admin password).
+    window.localStorage.removeItem(LEGACY_WIZARD_STORAGE_KEY)
   }, [setupState])
 
   const currentStepValid = useMemo(() => isStepValid(step, setupState), [step, setupState])
@@ -148,6 +154,7 @@ export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
 
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(WIZARD_STORAGE_KEY)
+        window.localStorage.removeItem(LEGACY_WIZARD_STORAGE_KEY)
       }
       onCompleted()
     } catch (cause) {
