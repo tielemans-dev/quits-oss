@@ -26,11 +26,35 @@ Quits OSS is the self-deployable runtime baseline for Quits. This repository als
 - `packages/shared`: Shared helpers with explicit subpath exports.
 - `scripts`: Shared repository automation and verification scripts.
 
+## Which Repository?
+
+Quits has two repositories. This one, `quits-oss`, is public. `quits-cloud` is private and runs the
+hosted service on top of this repository's published packages. Before changing code, decide where
+the request belongs.
+
+- **Here:** anything self-hosters would also get. That covers invoicing, quotes, credit notes,
+  payments, reminders, recurring invoices, contacts, exports, the agent API, the UI, settings, the
+  app database schema, and the runtime extension points the hosted service plugs into.
+- **In `quits-cloud`:** only what the hosted service alone needs:
+  - Stripe billing for the hosted plan and its limits;
+  - Cloudflare, deploy and runtime configuration;
+  - edge auth and the hosted gateway;
+  - managed email domains and webhooks;
+  - cloud-only operational tables.
+
+If a request belongs in `quits-cloud`, stop before writing code. Tell the person it belongs there,
+say why, and suggest continuing in the `quits-cloud` project. Use the `quits` project if the work
+spans both repositories.
+
+If a feature needs both repositories, build the general part here behind a runtime extension
+interface or capability patch. The hosted part is wired up in `quits-cloud` after an OSS release.
+
 ## OSS/Cloud Boundary
 
 - Hosted-only billing lifecycle behavior and cloud infrastructure enforcement stay outside this repository.
 - Use runtime extension interfaces and capability patches for cloud-specific behavior.
 - Do not weaken self-host viability to make hosted behavior easier.
+- Never reference private cloud code, names or infrastructure here: this repository is public.
 
 ## Migration Rules
 
