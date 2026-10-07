@@ -1,3 +1,4 @@
+import { EinvoiceVatError } from "../../lib/exports/ubl"
 import { TRPCError } from "@trpc/server"
 import { accountingExportInputSchema, einvoiceExportInputSchema } from "@quits/contracts/exports"
 import { actorCan } from "../../domain/actor"
@@ -17,6 +18,9 @@ export const exportsRouter = router({
     } catch (error) {
       if (error instanceof EinvoiceSourceNotFound) {
         throw new TRPCError({ code: "NOT_FOUND", message: error.message })
+      }
+      if (error instanceof EinvoiceVatError) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error })
       }
       throw error
     }

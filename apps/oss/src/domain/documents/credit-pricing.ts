@@ -1,3 +1,6 @@
+import { creditedGroupsSchema } from "@quits/contracts/pricing"
+import { vatGroupKey, percentageToFraction } from "@quits/shared/pricing"
+import { frozenVatGroups } from "./frozen-vat-groups"
 import { Effect } from "effect"
 import {
   buildCreditLines,
@@ -28,6 +31,8 @@ type CreditLineAmounts = {
 /** What is still creditable on an invoice, given its lines and issued credit notes. */
 export function creditAvailabilityFor(invoice: {
   currency: string
+  calculationVersion?: string
+  vatEvidence?: unknown
   subtotalNet: Decimalish
   totalTax: Decimalish
   totalGross: Decimalish
@@ -40,9 +45,14 @@ export function creditAvailabilityFor(invoice: {
       taxRate: Decimalish
       taxCategory: string
       taxCode: string | null
+      vatTreatment?: string
+      vatReasonCode?: string | null
+      vatCountry?: string | null
+      vatRateInput?: string | null
     }
   >
   creditNotes: Array<{
+    creditedGroups?: unknown
     subtotalNet: Decimalish
     totalTax: Decimalish
     totalGross: Decimalish
@@ -61,6 +71,10 @@ export function creditAvailabilityFor(invoice: {
     taxRate: num(item.taxRate),
     taxCategory: item.taxCategory,
     taxCode: item.taxCode,
+    ...(invoice.calculationVersion === "v2" ? {
+      vatRateInput: item.vatRateInput, vatTreatment: item.vatTreatment, vatCountry: item.vatCountry, vatReasonCode: item.vatReasonCode,
+      groupKey: vatGroupKey({ treatment: item.vatTreatment!, reasonCode: item.vatReasonCode, country: item.vatCountry, rate: item.vatRateInput ?? percentageToFraction(String(num(item.taxRate))) }),
+    } : {}),
   }))
   const priorCredits = invoice.creditNotes.flatMap((creditNote) =>
     creditNote.items.map((item) => ({
@@ -75,7 +89,7 @@ export function creditAvailabilityFor(invoice: {
     invoice.creditNotes.reduce((total, creditNote) => total + Math.round(num(pick(creditNote)) * 100), 0) /
     100
 
-  return computeCreditAvailability({
+  const availability = computeCreditAvailability({
     fractionDigits: documentFractionDigits(invoice.currency),
     lines,
     priorCredits,
@@ -86,6 +100,18 @@ export function creditAvailabilityFor(invoice: {
     creditedTax: credited((creditNote) => creditNote.totalTax),
     creditedGross: credited((creditNote) => creditNote.totalGross),
   })
+  if (invoice.calculationVersion === "v2") {
+    const groups = frozenVatGroups({ currency: invoice.currency, vatEvidence: invoice.vatEvidence,
+      items: invoice.items.map((item) => ({ ...item, vatTreatment: item.vatTreatment!, vatReasonCode: item.vatReasonCode ?? null, vatCountry: item.vatCountry ?? null })) })
+    const prior = invoice.creditNotes.flatMap((credit) => creditedGroupsSchema.parse(credit.creditedGroups))
+    availability.groups = groups.map((original) => {
+      const matches = prior.filter((group) => group.original.key === original.key)
+      const sum = (pick: (group: (typeof matches)[number]) => string) =>
+        String(matches.reduce((sum, group) => sum + Math.round(Number(pick(group)) * 100), 0) / 100)
+      return { original, creditedGross: sum((g) => g.creditedGross), creditedTax: sum((g) => g.creditedTax), creditedRounding: sum((g) => g.creditedRounding) }
+    })
+  }
+  return availability
 }
 
 /** The tax rate amount credits are priced at: the invoice's line rate, else its implied rate. */
@@ -117,14 +143,14 @@ export const priceCreditNote = (invoice: CreditableInvoice, selection: CreditSel
       })
     }
 
-    const built = buildCreditLines({
+    const built = yield* Effect.try({ try: () => buildCreditLines({
       availability: creditAvailabilityFor(invoice),
       selection,
       taxRate: creditTaxRate(invoice),
       amountDescription: translate("creditNotes.amountDescription", invoice.locale, {
         number: invoice.number,
       }),
-    })
+    }), catch: () => new InvalidState({ code: "credit_groups_unavailable", message: "The invoice lacks valid frozen credit groups or prior credit components" }) })
     if (!built.ok) {
       if (built.code === "amount_not_representable") {
         return yield* new ValidationFailed({

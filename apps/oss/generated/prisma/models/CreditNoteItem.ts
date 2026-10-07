@@ -63,6 +63,7 @@ export type CreditNoteItemMinAggregateOutputType = {
   taxCategory: string | null
   taxCode: string | null
   sortOrder: number | null
+  vatRateInput: string | null
   vatTreatment: string | null
   vatCountry: string | null
   vatReasonCode: string | null
@@ -86,6 +87,7 @@ export type CreditNoteItemMaxAggregateOutputType = {
   taxCategory: string | null
   taxCode: string | null
   sortOrder: number | null
+  vatRateInput: string | null
   vatTreatment: string | null
   vatCountry: string | null
   vatReasonCode: string | null
@@ -109,6 +111,7 @@ export type CreditNoteItemCountAggregateOutputType = {
   taxCategory: number
   taxCode: number
   sortOrder: number
+  vatRateInput: number
   vatTreatment: number
   vatCountry: number
   vatReasonCode: number
@@ -156,6 +159,7 @@ export type CreditNoteItemMinAggregateInputType = {
   taxCategory?: true
   taxCode?: true
   sortOrder?: true
+  vatRateInput?: true
   vatTreatment?: true
   vatCountry?: true
   vatReasonCode?: true
@@ -179,6 +183,7 @@ export type CreditNoteItemMaxAggregateInputType = {
   taxCategory?: true
   taxCode?: true
   sortOrder?: true
+  vatRateInput?: true
   vatTreatment?: true
   vatCountry?: true
   vatReasonCode?: true
@@ -202,6 +207,7 @@ export type CreditNoteItemCountAggregateInputType = {
   taxCategory?: true
   taxCode?: true
   sortOrder?: true
+  vatRateInput?: true
   vatTreatment?: true
   vatCountry?: true
   vatReasonCode?: true
@@ -312,6 +318,7 @@ export type CreditNoteItemGroupByOutputType = {
   taxCategory: string
   taxCode: string | null
   sortOrder: number
+  vatRateInput: string | null
   vatTreatment: string
   vatCountry: string | null
   vatReasonCode: string | null
@@ -358,6 +365,7 @@ export type CreditNoteItemWhereInput = {
   taxCategory?: Prisma.StringFilter<"CreditNoteItem"> | string
   taxCode?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
   sortOrder?: Prisma.IntFilter<"CreditNoteItem"> | number
+  vatRateInput?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
   vatTreatment?: Prisma.StringFilter<"CreditNoteItem"> | string
   vatCountry?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
   vatReasonCode?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
@@ -382,6 +390,7 @@ export type CreditNoteItemOrderByWithRelationInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrderInput | Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrderInput | Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -409,6 +418,7 @@ export type CreditNoteItemWhereUniqueInput = Prisma.AtLeast<{
   taxCategory?: Prisma.StringFilter<"CreditNoteItem"> | string
   taxCode?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
   sortOrder?: Prisma.IntFilter<"CreditNoteItem"> | number
+  vatRateInput?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
   vatTreatment?: Prisma.StringFilter<"CreditNoteItem"> | string
   vatCountry?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
   vatReasonCode?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
@@ -433,6 +443,7 @@ export type CreditNoteItemOrderByWithAggregationInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrderInput | Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrderInput | Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -464,6 +475,7 @@ export type CreditNoteItemScalarWhereWithAggregatesInput = {
   taxCategory?: Prisma.StringWithAggregatesFilter<"CreditNoteItem"> | string
   taxCode?: Prisma.StringNullableWithAggregatesFilter<"CreditNoteItem"> | string | null
   sortOrder?: Prisma.IntWithAggregatesFilter<"CreditNoteItem"> | number
+  vatRateInput?: Prisma.StringNullableWithAggregatesFilter<"CreditNoteItem"> | string | null
   vatTreatment?: Prisma.StringWithAggregatesFilter<"CreditNoteItem"> | string
   vatCountry?: Prisma.StringNullableWithAggregatesFilter<"CreditNoteItem"> | string | null
   vatReasonCode?: Prisma.StringNullableWithAggregatesFilter<"CreditNoteItem"> | string | null
@@ -486,6 +498,7 @@ export type CreditNoteItemCreateInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -510,6 +523,7 @@ export type CreditNoteItemUncheckedCreateInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -532,6 +546,7 @@ export type CreditNoteItemUpdateInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -556,6 +571,7 @@ export type CreditNoteItemUncheckedUpdateInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -579,6 +595,7 @@ export type CreditNoteItemCreateManyInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -601,6 +618,7 @@ export type CreditNoteItemUpdateManyMutationInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -624,6 +642,7 @@ export type CreditNoteItemUncheckedUpdateManyInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -657,6 +676,7 @@ export type CreditNoteItemCountOrderByAggregateInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrder
@@ -691,6 +711,7 @@ export type CreditNoteItemMaxOrderByAggregateInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrder
@@ -714,6 +735,7 @@ export type CreditNoteItemMinOrderByAggregateInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrder
@@ -789,6 +811,7 @@ export type CreditNoteItemCreateWithoutCreditNoteInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -811,6 +834,7 @@ export type CreditNoteItemUncheckedCreateWithoutCreditNoteInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -863,6 +887,7 @@ export type CreditNoteItemScalarWhereInput = {
   taxCategory?: Prisma.StringFilter<"CreditNoteItem"> | string
   taxCode?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
   sortOrder?: Prisma.IntFilter<"CreditNoteItem"> | number
+  vatRateInput?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
   vatTreatment?: Prisma.StringFilter<"CreditNoteItem"> | string
   vatCountry?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
   vatReasonCode?: Prisma.StringNullableFilter<"CreditNoteItem"> | string | null
@@ -885,6 +910,7 @@ export type CreditNoteItemCreateManyCreditNoteInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -907,6 +933,7 @@ export type CreditNoteItemUpdateWithoutCreditNoteInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -929,6 +956,7 @@ export type CreditNoteItemUncheckedUpdateWithoutCreditNoteInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -951,6 +979,7 @@ export type CreditNoteItemUncheckedUpdateManyWithoutCreditNoteInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -976,6 +1005,7 @@ export type CreditNoteItemSelect<ExtArgs extends runtime.Types.Extensions.Intern
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatRateInput?: boolean
   vatTreatment?: boolean
   vatCountry?: boolean
   vatReasonCode?: boolean
@@ -1000,6 +1030,7 @@ export type CreditNoteItemSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatRateInput?: boolean
   vatTreatment?: boolean
   vatCountry?: boolean
   vatReasonCode?: boolean
@@ -1024,6 +1055,7 @@ export type CreditNoteItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatRateInput?: boolean
   vatTreatment?: boolean
   vatCountry?: boolean
   vatReasonCode?: boolean
@@ -1048,6 +1080,7 @@ export type CreditNoteItemSelectScalar = {
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatRateInput?: boolean
   vatTreatment?: boolean
   vatCountry?: boolean
   vatReasonCode?: boolean
@@ -1056,7 +1089,7 @@ export type CreditNoteItemSelectScalar = {
   inputPrecision?: boolean
 }
 
-export type CreditNoteItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "creditNoteId" | "invoiceItemId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["creditNoteItem"]>
+export type CreditNoteItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "creditNoteId" | "invoiceItemId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatRateInput" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["creditNoteItem"]>
 export type CreditNoteItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   creditNote?: boolean | Prisma.CreditNoteDefaultArgs<ExtArgs>
 }
@@ -1087,6 +1120,7 @@ export type $CreditNoteItemPayload<ExtArgs extends runtime.Types.Extensions.Inte
     taxCategory: string
     taxCode: string | null
     sortOrder: number
+    vatRateInput: string | null
     vatTreatment: string
     vatCountry: string | null
     vatReasonCode: string | null
@@ -1531,6 +1565,7 @@ export interface CreditNoteItemFieldRefs {
   readonly taxCategory: Prisma.FieldRef<"CreditNoteItem", 'String'>
   readonly taxCode: Prisma.FieldRef<"CreditNoteItem", 'String'>
   readonly sortOrder: Prisma.FieldRef<"CreditNoteItem", 'Int'>
+  readonly vatRateInput: Prisma.FieldRef<"CreditNoteItem", 'String'>
   readonly vatTreatment: Prisma.FieldRef<"CreditNoteItem", 'String'>
   readonly vatCountry: Prisma.FieldRef<"CreditNoteItem", 'String'>
   readonly vatReasonCode: Prisma.FieldRef<"CreditNoteItem", 'String'>

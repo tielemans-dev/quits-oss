@@ -91,12 +91,18 @@ export const issueCreditNote = defineCommand({
             timezone: invoice.timezone,
             taxRegime: invoice.taxRegime,
             pricesIncludeTax: invoice.pricesIncludeTax,
+            calculationVersion: invoice.calculationVersion,
+            ...(built.creditedGroups ? {
+              creditedGroups: built.creditedGroups as Prisma.InputJsonValue,
+              payableRounding: built.payableRounding,
+              vatEvidence: invoice.vatEvidence ?? undefined,
+            } : {}),
             sellerSnapshot: (invoice.sellerSnapshot ??
               buildSellerSnapshot(settings, sellerTaxIds)) as Prisma.InputJsonValue,
             buyerSnapshot: (invoice.buyerSnapshot ??
               buildBuyerSnapshot(invoice.contact)) as Prisma.InputJsonValue,
             items: {
-              create: built.lines.map((line, index) => ({ ...line, sortOrder: index })),
+              create: built.lines.map(({ groupKey: _groupKey, ...line }, index) => ({ ...line, sortOrder: index })),
             },
           },
           include: { items: { orderBy: { sortOrder: "asc" } } },

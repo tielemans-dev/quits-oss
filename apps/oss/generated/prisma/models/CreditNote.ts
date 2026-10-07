@@ -30,12 +30,14 @@ export type CreditNoteAvgAggregateOutputType = {
   subtotalNet: runtime.Decimal | null
   totalTax: runtime.Decimal | null
   totalGross: runtime.Decimal | null
+  payableRounding: runtime.Decimal | null
 }
 
 export type CreditNoteSumAggregateOutputType = {
   subtotalNet: runtime.Decimal | null
   totalTax: runtime.Decimal | null
   totalGross: runtime.Decimal | null
+  payableRounding: runtime.Decimal | null
 }
 
 export type CreditNoteMinAggregateOutputType = {
@@ -68,6 +70,7 @@ export type CreditNoteMinAggregateOutputType = {
   createdAt: Date | null
   updatedAt: Date | null
   calculationVersion: string | null
+  payableRounding: runtime.Decimal | null
 }
 
 export type CreditNoteMaxAggregateOutputType = {
@@ -100,6 +103,7 @@ export type CreditNoteMaxAggregateOutputType = {
   createdAt: Date | null
   updatedAt: Date | null
   calculationVersion: string | null
+  payableRounding: runtime.Decimal | null
 }
 
 export type CreditNoteCountAggregateOutputType = {
@@ -135,6 +139,8 @@ export type CreditNoteCountAggregateOutputType = {
   updatedAt: number
   calculationVersion: number
   vatEvidence: number
+  creditedGroups: number
+  payableRounding: number
   _all: number
 }
 
@@ -143,12 +149,14 @@ export type CreditNoteAvgAggregateInputType = {
   subtotalNet?: true
   totalTax?: true
   totalGross?: true
+  payableRounding?: true
 }
 
 export type CreditNoteSumAggregateInputType = {
   subtotalNet?: true
   totalTax?: true
   totalGross?: true
+  payableRounding?: true
 }
 
 export type CreditNoteMinAggregateInputType = {
@@ -181,6 +189,7 @@ export type CreditNoteMinAggregateInputType = {
   createdAt?: true
   updatedAt?: true
   calculationVersion?: true
+  payableRounding?: true
 }
 
 export type CreditNoteMaxAggregateInputType = {
@@ -213,6 +222,7 @@ export type CreditNoteMaxAggregateInputType = {
   createdAt?: true
   updatedAt?: true
   calculationVersion?: true
+  payableRounding?: true
 }
 
 export type CreditNoteCountAggregateInputType = {
@@ -248,6 +258,8 @@ export type CreditNoteCountAggregateInputType = {
   updatedAt?: true
   calculationVersion?: true
   vatEvidence?: true
+  creditedGroups?: true
+  payableRounding?: true
   _all?: true
 }
 
@@ -370,6 +382,8 @@ export type CreditNoteGroupByOutputType = {
   updatedAt: Date
   calculationVersion: string
   vatEvidence: runtime.JsonValue | null
+  creditedGroups: runtime.JsonValue | null
+  payableRounding: runtime.Decimal
   _count: CreditNoteCountAggregateOutputType | null
   _avg: CreditNoteAvgAggregateOutputType | null
   _sum: CreditNoteSumAggregateOutputType | null
@@ -428,6 +442,8 @@ export type CreditNoteWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   calculationVersion?: Prisma.StringFilter<"CreditNote"> | string
   vatEvidence?: Prisma.JsonNullableFilter<"CreditNote">
+  creditedGroups?: Prisma.JsonNullableFilter<"CreditNote">
+  payableRounding?: Prisma.DecimalFilter<"CreditNote"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   invoice?: Prisma.XOR<Prisma.InvoiceScalarRelationFilter, Prisma.InvoiceWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
@@ -467,6 +483,8 @@ export type CreditNoteOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
   vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
+  creditedGroups?: Prisma.SortOrderInput | Prisma.SortOrder
+  payableRounding?: Prisma.SortOrder
   organization?: Prisma.OrganizationOrderByWithRelationInput
   invoice?: Prisma.InvoiceOrderByWithRelationInput
   contact?: Prisma.ContactOrderByWithRelationInput
@@ -510,6 +528,8 @@ export type CreditNoteWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   calculationVersion?: Prisma.StringFilter<"CreditNote"> | string
   vatEvidence?: Prisma.JsonNullableFilter<"CreditNote">
+  creditedGroups?: Prisma.JsonNullableFilter<"CreditNote">
+  payableRounding?: Prisma.DecimalFilter<"CreditNote"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   invoice?: Prisma.XOR<Prisma.InvoiceScalarRelationFilter, Prisma.InvoiceWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
@@ -549,6 +569,8 @@ export type CreditNoteOrderByWithAggregationInput = {
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
   vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
+  creditedGroups?: Prisma.SortOrderInput | Prisma.SortOrder
+  payableRounding?: Prisma.SortOrder
   _count?: Prisma.CreditNoteCountOrderByAggregateInput
   _avg?: Prisma.CreditNoteAvgOrderByAggregateInput
   _max?: Prisma.CreditNoteMaxOrderByAggregateInput
@@ -592,6 +614,8 @@ export type CreditNoteScalarWhereWithAggregatesInput = {
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"CreditNote"> | Date | string
   calculationVersion?: Prisma.StringWithAggregatesFilter<"CreditNote"> | string
   vatEvidence?: Prisma.JsonNullableWithAggregatesFilter<"CreditNote">
+  creditedGroups?: Prisma.JsonNullableWithAggregatesFilter<"CreditNote">
+  payableRounding?: Prisma.DecimalWithAggregatesFilter<"CreditNote"> | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteCreateInput = {
@@ -624,6 +648,8 @@ export type CreditNoteCreateInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
@@ -663,6 +689,8 @@ export type CreditNoteUncheckedCreateInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
@@ -696,6 +724,8 @@ export type CreditNoteUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
@@ -735,6 +765,8 @@ export type CreditNoteUncheckedUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
@@ -771,6 +803,8 @@ export type CreditNoteCreateManyInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteUpdateManyMutationInput = {
@@ -803,6 +837,8 @@ export type CreditNoteUpdateManyMutationInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteUncheckedUpdateManyInput = {
@@ -838,6 +874,8 @@ export type CreditNoteUncheckedUpdateManyInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteListRelationFilter = {
@@ -888,12 +926,15 @@ export type CreditNoteCountOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
   vatEvidence?: Prisma.SortOrder
+  creditedGroups?: Prisma.SortOrder
+  payableRounding?: Prisma.SortOrder
 }
 
 export type CreditNoteAvgOrderByAggregateInput = {
   subtotalNet?: Prisma.SortOrder
   totalTax?: Prisma.SortOrder
   totalGross?: Prisma.SortOrder
+  payableRounding?: Prisma.SortOrder
 }
 
 export type CreditNoteMaxOrderByAggregateInput = {
@@ -926,6 +967,7 @@ export type CreditNoteMaxOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
+  payableRounding?: Prisma.SortOrder
 }
 
 export type CreditNoteMinOrderByAggregateInput = {
@@ -958,12 +1000,14 @@ export type CreditNoteMinOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
+  payableRounding?: Prisma.SortOrder
 }
 
 export type CreditNoteSumOrderByAggregateInput = {
   subtotalNet?: Prisma.SortOrder
   totalTax?: Prisma.SortOrder
   totalGross?: Prisma.SortOrder
+  payableRounding?: Prisma.SortOrder
 }
 
 export type CreditNoteScalarRelationFilter = {
@@ -1141,6 +1185,8 @@ export type CreditNoteCreateWithoutOrganizationInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
@@ -1178,6 +1224,8 @@ export type CreditNoteUncheckedCreateWithoutOrganizationInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
@@ -1243,6 +1291,8 @@ export type CreditNoteScalarWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   calculationVersion?: Prisma.StringFilter<"CreditNote"> | string
   vatEvidence?: Prisma.JsonNullableFilter<"CreditNote">
+  creditedGroups?: Prisma.JsonNullableFilter<"CreditNote">
+  payableRounding?: Prisma.DecimalFilter<"CreditNote"> | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteCreateWithoutContactInput = {
@@ -1275,6 +1325,8 @@ export type CreditNoteCreateWithoutContactInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
@@ -1312,6 +1364,8 @@ export type CreditNoteUncheckedCreateWithoutContactInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
@@ -1371,6 +1425,8 @@ export type CreditNoteCreateWithoutInvoiceInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
@@ -1408,6 +1464,8 @@ export type CreditNoteUncheckedCreateWithoutInvoiceInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
@@ -1467,6 +1525,8 @@ export type CreditNoteCreateWithoutItemsInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
@@ -1505,6 +1565,8 @@ export type CreditNoteUncheckedCreateWithoutItemsInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteCreateOrConnectWithoutItemsInput = {
@@ -1553,6 +1615,8 @@ export type CreditNoteUpdateWithoutItemsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
@@ -1591,6 +1655,8 @@ export type CreditNoteUncheckedUpdateWithoutItemsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteCreateManyOrganizationInput = {
@@ -1625,6 +1691,8 @@ export type CreditNoteCreateManyOrganizationInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteUpdateWithoutOrganizationInput = {
@@ -1657,6 +1725,8 @@ export type CreditNoteUpdateWithoutOrganizationInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
@@ -1694,6 +1764,8 @@ export type CreditNoteUncheckedUpdateWithoutOrganizationInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
@@ -1729,6 +1801,8 @@ export type CreditNoteUncheckedUpdateManyWithoutOrganizationInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteCreateManyContactInput = {
@@ -1763,6 +1837,8 @@ export type CreditNoteCreateManyContactInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteUpdateWithoutContactInput = {
@@ -1795,6 +1871,8 @@ export type CreditNoteUpdateWithoutContactInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
@@ -1832,6 +1910,8 @@ export type CreditNoteUncheckedUpdateWithoutContactInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
@@ -1867,6 +1947,8 @@ export type CreditNoteUncheckedUpdateManyWithoutContactInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteCreateManyInvoiceInput = {
@@ -1901,6 +1983,8 @@ export type CreditNoteCreateManyInvoiceInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type CreditNoteUpdateWithoutInvoiceInput = {
@@ -1933,6 +2017,8 @@ export type CreditNoteUpdateWithoutInvoiceInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
@@ -1970,6 +2056,8 @@ export type CreditNoteUncheckedUpdateWithoutInvoiceInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
@@ -2005,6 +2093,8 @@ export type CreditNoteUncheckedUpdateManyWithoutInvoiceInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 
@@ -2071,6 +2161,8 @@ export type CreditNoteSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   updatedAt?: boolean
   calculationVersion?: boolean
   vatEvidence?: boolean
+  creditedGroups?: boolean
+  payableRounding?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -2111,6 +2203,8 @@ export type CreditNoteSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   updatedAt?: boolean
   calculationVersion?: boolean
   vatEvidence?: boolean
+  creditedGroups?: boolean
+  payableRounding?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -2149,6 +2243,8 @@ export type CreditNoteSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   updatedAt?: boolean
   calculationVersion?: boolean
   vatEvidence?: boolean
+  creditedGroups?: boolean
+  payableRounding?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -2187,9 +2283,11 @@ export type CreditNoteSelectScalar = {
   updatedAt?: boolean
   calculationVersion?: boolean
   vatEvidence?: boolean
+  creditedGroups?: boolean
+  payableRounding?: boolean
 }
 
-export type CreditNoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "invoiceId" | "contactId" | "number" | "status" | "reason" | "issueDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "notes" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["creditNote"]>
+export type CreditNoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "invoiceId" | "contactId" | "number" | "status" | "reason" | "issueDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "notes" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence" | "creditedGroups" | "payableRounding", ExtArgs["result"]["creditNote"]>
 export type CreditNoteInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
@@ -2249,6 +2347,8 @@ export type $CreditNotePayload<ExtArgs extends runtime.Types.Extensions.Internal
     updatedAt: Date
     calculationVersion: string
     vatEvidence: runtime.JsonValue | null
+    creditedGroups: runtime.JsonValue | null
+    payableRounding: runtime.Decimal
   }, ExtArgs["result"]["creditNote"]>
   composites: {}
 }
@@ -2708,6 +2808,8 @@ export interface CreditNoteFieldRefs {
   readonly updatedAt: Prisma.FieldRef<"CreditNote", 'DateTime'>
   readonly calculationVersion: Prisma.FieldRef<"CreditNote", 'String'>
   readonly vatEvidence: Prisma.FieldRef<"CreditNote", 'Json'>
+  readonly creditedGroups: Prisma.FieldRef<"CreditNote", 'Json'>
+  readonly payableRounding: Prisma.FieldRef<"CreditNote", 'Decimal'>
 }
     
 

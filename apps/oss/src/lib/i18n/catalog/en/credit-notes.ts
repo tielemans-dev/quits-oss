@@ -62,6 +62,7 @@ export const enCreditNotesMessages = {
   "creditNotes.error.exceeds_invoice_total": "This would credit more than is left on the invoice.",
   "creditNotes.error.nothing_to_credit": "Choose something to credit.",
   "creditNotes.error.amount_not_representable": "This currency cannot be credited in that amount. Use fewer decimal places.",
+  "creditNotes.error.line_components_conflict": "The selected lines no longer match the remaining VAT amounts. Credit the remaining amount instead.",
   "creditNotes.error.generic": "Something went wrong. Please try again.",
   "creditNotes.settings.prefix.label": "Credit Note Prefix",
   "creditNotes.settings.nextNumber.label": "Next Credit Note Number",

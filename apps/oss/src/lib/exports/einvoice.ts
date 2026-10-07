@@ -1,3 +1,6 @@
+import { creditedGroupsSchema } from "@quits/contracts/pricing"
+import { vatGroupKey, percentageToFraction } from "@quits/shared/pricing"
+import { frozenVatGroups } from "../../domain/documents/frozen-vat-groups"
 import {
   parseBuyerSnapshot,
   parseSellerSnapshot,
@@ -173,7 +176,9 @@ export async function loadEinvoiceDocument(
         documentCountryCode: invoice.countryCode,
       }),
       buyer,
-      lines: invoice.items,
+      calculationVersion: invoice.calculationVersion,
+      frozenGroups: invoice.calculationVersion === "v2" ? frozenVatGroups(invoice) : undefined,
+      lines: invoice.items.map(exportLine),
       storedGross: invoice.totalGross,
       amountPaid: invoice.amountPaid,
     }
@@ -215,7 +220,12 @@ export async function loadEinvoiceDocument(
       documentCountryCode: creditNote.countryCode,
     }),
     buyer,
-    lines: creditNote.items,
+    calculationVersion: creditNote.calculationVersion,
+    frozenGroups: creditNote.calculationVersion === "v2" ? creditedGroupsSchema.parse(creditNote.creditedGroups).map((group) => ({
+      ...group.original, net: group.creditedNet, tax: group.creditedTax, gross: group.creditedGross, payableRounding: group.creditedRounding,
+      netBase: group.netBase, taxBase: group.taxBase, grossBase: group.grossBase, payableRoundingBase: group.payableRoundingBase,
+    })) : undefined,
+    lines: creditNote.items.map(exportLine),
     storedGross: creditNote.totalGross,
     amountPaid: 0,
   }
@@ -237,4 +247,9 @@ export async function exportEinvoice(
     filename: `${safeFileName(document.number, kind)}.xml`,
     xml: buildUblDocument(document),
   }
+}
+
+function exportLine<T extends { vatTreatment: string; vatReasonCode: string | null; vatCountry: string | null; vatRateInput?: string | null; taxRate: { toString(): string } }>(line: T) {
+  return { ...line, groupKey: vatGroupKey({ treatment: line.vatTreatment, reasonCode: line.vatReasonCode, country: line.vatCountry,
+    rate: line.vatRateInput ?? percentageToFraction(line.taxRate.toString()) }) }
 }
