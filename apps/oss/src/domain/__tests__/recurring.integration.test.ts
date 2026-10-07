@@ -576,13 +576,16 @@ describeIfDatabase("recurring invoices", () => {
       // Simulates the schedule switching to auto-send between the approval check and the run.
       const staleCheck = { requiresApproval: () => Effect.succeed(false) }
 
-      for (const command of [runRecurringInvoiceNow, resumeRecurringInvoice]) {
-        const outcome = await executeCommand({ ...command, ...staleCheck }, { id: schedule.id }, {
-          actor: agent,
-          clientRequestId: `stale-${command.type}`,
-        })
-        expect(outcome).toMatchObject({ status: "failed", error: { code: "approval_required" } })
-      }
+      const run = await executeCommand({ ...runRecurringInvoiceNow, ...staleCheck }, { id: schedule.id }, {
+        actor: agent,
+        clientRequestId: "stale-run",
+      })
+      expect(run).toMatchObject({ status: "failed", error: { code: "approval_required" } })
+      const resume = await executeCommand({ ...resumeRecurringInvoice, ...staleCheck }, { id: schedule.id }, {
+        actor: agent,
+        clientRequestId: "stale-resume",
+      })
+      expect(resume).toMatchObject({ status: "failed", error: { code: "approval_required" } })
       expect(await generatedInvoices(schedule.id)).toHaveLength(0)
     })
 
