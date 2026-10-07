@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -110,7 +111,7 @@ describeIfDatabase("onboarding router integration", () => {
       expect(completed.isComplete).toBe(true)
       expect(completed.missing).toEqual([])
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -139,7 +140,7 @@ describeIfDatabase("onboarding router integration", () => {
       const completed = await caller.onboarding.completeManual({ method: "manual" })
       expect(completed.isComplete).toBe(true)
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 })

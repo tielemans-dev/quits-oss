@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -161,7 +162,7 @@ describeIfDatabase("quote send email delivery", () => {
       )
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -195,7 +196,7 @@ describeIfDatabase("quote send email delivery", () => {
       )
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -257,7 +258,7 @@ describeIfDatabase("quote send email delivery", () => {
       expect(deliver).not.toHaveBeenCalled()
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -300,7 +301,7 @@ describeIfDatabase("quote send email delivery", () => {
       expect(reloaded.lastEmailAttemptCode).toBe("send_failed")
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -339,7 +340,7 @@ describeIfDatabase("quote send email delivery", () => {
       expect(deliver).not.toHaveBeenCalled()
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -387,7 +388,7 @@ describeIfDatabase("quote send email delivery", () => {
       expect(secondCall?.[1]).toEqual({ idempotencyKey: expect.stringMatching(/^quote-resend:/) })
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 })

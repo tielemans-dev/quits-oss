@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -105,7 +106,7 @@ describeIfDatabase("settings branded document sending", () => {
       })
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -163,7 +164,7 @@ describeIfDatabase("settings branded document sending", () => {
       expect(settings.documentSending.lastSyncSource).toBeNull()
     } finally {
       restoreEnv(previous)
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -226,7 +227,7 @@ describeIfDatabase("settings branded document sending", () => {
         documentSendingDomainStatus: "pending_dns",
       })
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -290,7 +291,7 @@ describeIfDatabase("settings branded document sending", () => {
       expect(stored.documentSendingLastSyncedAt).toBeInstanceOf(Date)
       expect(stored.documentSendingLastSyncSource).toBe("manual")
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -354,7 +355,7 @@ describeIfDatabase("settings branded document sending", () => {
         documentSendingDomainStatus: null,
       })
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 })

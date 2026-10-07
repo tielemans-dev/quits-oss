@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { TRPCError } from "@trpc/server"
@@ -177,7 +178,7 @@ describeIfDatabase("onboarding ai contract", () => {
       })
       expect(followups.questions.length).toBeGreaterThan(0)
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 })

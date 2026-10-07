@@ -40,13 +40,7 @@ describeIfDatabase("exports and activity routers", () => {
         companyName: "Nordic Design ApS",
       },
     })
-    cleanups.push(async () => {
-      await prisma.payment.deleteMany({ where: { organizationId: org.organizationId } })
-      await prisma.creditNote.deleteMany({ where: { organizationId: org.organizationId } })
-      await prisma.domainEvent.deleteMany({ where: { organizationId: org.organizationId } })
-      await prisma.invoice.deleteMany({ where: { organizationId: org.organizationId } })
-      await org.cleanup()
-    })
+    cleanups.push(org.cleanup)
     await prisma.orgSettings.update({
       where: { organizationId: org.organizationId },
       data: { companyAddress: "Vesterbrogade 1\n1620 København V" },

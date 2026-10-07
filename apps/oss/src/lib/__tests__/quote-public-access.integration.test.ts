@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it } from "vitest"
@@ -81,7 +82,7 @@ async function seedPublicQuote() {
 
 describeIfDatabase("quote public access", () => {
   afterEach(async () => {
-    await prisma.organization.deleteMany({
+    await cleanupTestOrganizations({
       where: {
         name: "Public Quote Org",
       },

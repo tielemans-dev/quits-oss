@@ -22,6 +22,19 @@ test("lets the initial admin sign in to the dashboard", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible()
 })
 
+test("blocks organization deletion through the authenticated browser API and keeps the session usable", async ({ page }) => {
+  const setup = await seedCompletedSetup()
+  await loginAsAdmin(page)
+  const response = await page.request.post("/api/auth/organization/delete", {
+    headers: { origin: new URL(page.url()).origin },
+    data: { organizationId: setup.organizationId },
+  })
+  expect(response.status()).toBe(404)
+  expect(await response.json()).toMatchObject({ code: "ORGANIZATION_DELETION_DISABLED" })
+  await page.reload()
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible()
+})
+
 test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   await seedCompletedSetup()
 

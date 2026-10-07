@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it } from "vitest"
@@ -71,7 +72,7 @@ describeIfDatabase("settings email delivery status", () => {
         status: "configured",
       })
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -90,7 +91,7 @@ describeIfDatabase("settings email delivery status", () => {
         status: "missing_configuration",
       })
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -123,7 +124,7 @@ describeIfDatabase("settings email delivery status", () => {
         status: "managed",
       })
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 })

@@ -89,10 +89,7 @@ describeIfDatabase("MCP endpoint", () => {
 
   async function setup(roles: Array<"admin" | "member" | "accountant"> = ["admin"]) {
     const org = await createTestOrganization({ roles })
-    cleanups.push(async () => {
-      await prisma.agentKey.deleteMany({ where: { organizationId: org.organizationId } })
-      await org.cleanup()
-    })
+    cleanups.push(org.cleanup)
     return org
   }
 

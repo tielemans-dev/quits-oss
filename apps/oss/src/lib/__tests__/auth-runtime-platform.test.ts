@@ -1,8 +1,21 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { buildQuitsAuthOptions } from "../runtime/auth-config"
+import { buildQuitsAuthOptions, buildYaipAuthOptions } from "../runtime/auth-config"
 
 describe("auth runtime platform", () => {
+  it.each([
+    [buildQuitsAuthOptions, "QUITS_DISTRIBUTION", "selfhost"],
+    [buildQuitsAuthOptions, "QUITS_DISTRIBUTION", "cloud"],
+    [buildYaipAuthOptions, "YAIP_DISTRIBUTION", "selfhost"],
+    [buildYaipAuthOptions, "YAIP_DISTRIBUTION", "cloud"],
+  ] as const)("disables organization deletion through %s with %s=%s", (buildOptions, key, distribution) => {
+    const options = buildOptions({
+      prisma: {} as never,
+      env: { getEnv: (name) => name === key ? distribution : undefined },
+    })
+    expect(options.plugins[0].options.disableOrganizationDeletion).toBe(true)
+  })
+
   it("uses the provided env reader and auth hooks", () => {
     const fakeAdapter = { type: "custom-adapter" }
 
