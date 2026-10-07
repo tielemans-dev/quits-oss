@@ -28,9 +28,7 @@ const lockInvoiceForCredit = (invoiceId: string) =>
     const db = yield* Db
     const { organizationId } = yield* Command
 
-    yield* Effect.promise(
-      () => db.$queryRaw`SELECT id FROM "invoice" WHERE id = ${invoiceId} FOR UPDATE`
-    )
+    yield* lockDocument("invoice", invoiceId)
     const invoice = yield* Effect.promise(() =>
       db.invoice.findFirst({
         where: { id: invoiceId, organizationId },

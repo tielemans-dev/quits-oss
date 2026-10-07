@@ -220,6 +220,14 @@ export function AgreementActions({
           </div>
         </details>
       )}
+      {agreement.status === "accepted" && capabilities.close && <details>
+        <summary className="cursor-pointer">{t("agreements.completeAgreement")}</summary>
+        <div className="grid gap-2 mt-3">
+          <Label htmlFor="completion-reason">{t("agreements.completionReason")}</Label>
+          <Textarea id="completion-reason" value={reason} onChange={event => setReason(event.target.value)} maxLength={5000} />
+          <ConfirmAction label={t("agreements.completeAgreement")} description={t("agreements.completeConfirm")} disabled={disabled || !reason.trim()} run={() => void run(() => trpc.agreements.close.mutate({ id, disposition: "completed", reason }))} />
+        </div>
+      </details>}
       {agreement.lastEmailAttemptMessage && (
         <p className="text-sm text-muted-foreground">{agreement.lastEmailAttemptMessage}</p>
       )}

@@ -6,8 +6,8 @@ import ts from "typescript"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
-  ...["invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-lifecycle", "deliverables"].map((name) => `commands/${name}.ts`),
-  "documents/artifacts.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
+  ...["invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-lifecycle", "deliverables", "invoices-from-deliverables"].map((name) => `commands/${name}.ts`),
+  "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
 
@@ -35,7 +35,7 @@ export function emitterExpressions() {
 const instant = new Date("2026-01-15T12:00:00.000Z")
 const money = { toFixed: () => "100.00", toNumber: () => 100, greaterThan: () => true }
 const record = {
-  id: "document-1", number: "DOC-0001", contactId: "contact-1", name: "Acme", title: "Website",
+  id: "document-1", deliverableId: "deliverable-1", number: "DOC-0001", contactId: "contact-1", name: "Acme", title: "Website",
   currency: "USD", totalGross: money, status: "sent", autoSend: true, nextRunAt: instant,
   offerRevision: 1, offerSnapshot: { title: "Frozen offer" }, offerSnapshotHash: "hash-1",
   issuedToEmail: "customer@example.test", publicAccessKeyVersion: 1,
@@ -47,7 +47,7 @@ const record = {
 }
 
 export const variants = [
-  "default", "no_optional", "manual_no_recipient", "unchanged_retry", "validation_error", "user", "decline", "no_previous_acceptance", "in_progress",
+  "default", "no_optional", "manual_no_recipient", "unchanged_retry", "validation_error", "user", "decline", "no_previous_acceptance", "in_progress", "completed",
   ...["invoice", "quote", "creditNote", "agreement"].flatMap((kind) =>
     ["send", "email"].flatMap((mode) => ["delivered", "rejected", "unconfirmed", "withdrawn"].map((reason) => `${kind}/${mode}/${reason}`))),
 ]
@@ -59,6 +59,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
   const optional = variant !== "no_optional"
   const line = { ...record, status: "delivered", ...(variant === "no_previous_acceptance" ? { acceptedAt: null } : {}) }
   const scope = {
+    invoiceId: "invoice-1",
     documentKind: kind === "quote" ? "invoice" : kind, documentId: "document-1", candidateId: "candidate-1",
     organizationId: "organization-1", reservationId: "reservation-1", rendererVersion: "fixture-v1",
     artifacts: { pdf: { ref: "organization-1/invoice/document-1/artifact.pdf", hash: "a".repeat(64), size: 100 },
@@ -66,7 +67,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     invoice: record, quote: record, creditNote: record, agreement: record, contact: record, schedule: record,
     candidate: record, existing: line, line: { ...line, status: variant === "in_progress" ? "in_progress" : "delivered" },
     delivered: { deliveryRevision: 2 }, accepted: record, updated: record,
-    input: { checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },
+    input: { ...(expression.typeExpression.includes("agreement.completed") ? { disposition: variant === "completed" ? "completed" : "cancelled" } : {}), checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },
     decision: { decision: variant === "decline" ? "decline" : "accept", acceptedByName: "Customer", reason: optional ? "Not needed" : undefined },
     next: { publicRejectionReason: optional ? "Not needed" : null },
     current: optional, overpaidBy: { ...money, greaterThan: () => optional },

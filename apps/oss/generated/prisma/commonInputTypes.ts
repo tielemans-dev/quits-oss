@@ -307,6 +307,23 @@ export type DecimalWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedDecimalFilter<$PrismaModel>
 }
 
+export type EnumInvoicePurposeFilter<$PrismaModel = never> = {
+  equals?: $Enums.InvoicePurpose | Prisma.EnumInvoicePurposeFieldRefInput<$PrismaModel>
+  in?: $Enums.InvoicePurpose[] | Prisma.ListEnumInvoicePurposeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InvoicePurpose[] | Prisma.ListEnumInvoicePurposeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInvoicePurposeFilter<$PrismaModel> | $Enums.InvoicePurpose
+}
+
+export type EnumInvoicePurposeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.InvoicePurpose | Prisma.EnumInvoicePurposeFieldRefInput<$PrismaModel>
+  in?: $Enums.InvoicePurpose[] | Prisma.ListEnumInvoicePurposeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InvoicePurpose[] | Prisma.ListEnumInvoicePurposeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInvoicePurposeWithAggregatesFilter<$PrismaModel> | $Enums.InvoicePurpose
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumInvoicePurposeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumInvoicePurposeFilter<$PrismaModel>
+}
+
 export type JsonFilter<$PrismaModel = never> =
 | Prisma.PatchUndefined<
     Prisma.Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -652,6 +669,23 @@ export type NestedDecimalWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedDecimalFilter<$PrismaModel>
   _min?: Prisma.NestedDecimalFilter<$PrismaModel>
   _max?: Prisma.NestedDecimalFilter<$PrismaModel>
+}
+
+export type NestedEnumInvoicePurposeFilter<$PrismaModel = never> = {
+  equals?: $Enums.InvoicePurpose | Prisma.EnumInvoicePurposeFieldRefInput<$PrismaModel>
+  in?: $Enums.InvoicePurpose[] | Prisma.ListEnumInvoicePurposeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InvoicePurpose[] | Prisma.ListEnumInvoicePurposeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInvoicePurposeFilter<$PrismaModel> | $Enums.InvoicePurpose
+}
+
+export type NestedEnumInvoicePurposeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.InvoicePurpose | Prisma.EnumInvoicePurposeFieldRefInput<$PrismaModel>
+  in?: $Enums.InvoicePurpose[] | Prisma.ListEnumInvoicePurposeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InvoicePurpose[] | Prisma.ListEnumInvoicePurposeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInvoicePurposeWithAggregatesFilter<$PrismaModel> | $Enums.InvoicePurpose
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumInvoicePurposeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumInvoicePurposeFilter<$PrismaModel>
 }
 
 export type NestedJsonFilter<$PrismaModel = never> =

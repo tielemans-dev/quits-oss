@@ -27,6 +27,7 @@ export type AggregateAgreement = {
 }
 
 export type AgreementAvgAggregateOutputType = {
+  offerFormatVersion: number | null
   taxRate: runtime.Decimal | null
   dueInDays: number | null
   subtotalNet: runtime.Decimal | null
@@ -38,6 +39,7 @@ export type AgreementAvgAggregateOutputType = {
 }
 
 export type AgreementSumAggregateOutputType = {
+  offerFormatVersion: number | null
   taxRate: runtime.Decimal | null
   dueInDays: number | null
   subtotalNet: runtime.Decimal | null
@@ -49,6 +51,8 @@ export type AgreementSumAggregateOutputType = {
 }
 
 export type AgreementMinAggregateOutputType = {
+  taxRateInput: string | null
+  offerFormatVersion: number | null
   id: string | null
   organizationId: string | null
   contactId: string | null
@@ -105,6 +109,8 @@ export type AgreementMinAggregateOutputType = {
 }
 
 export type AgreementMaxAggregateOutputType = {
+  taxRateInput: string | null
+  offerFormatVersion: number | null
   id: string | null
   organizationId: string | null
   contactId: string | null
@@ -161,6 +167,8 @@ export type AgreementMaxAggregateOutputType = {
 }
 
 export type AgreementCountAggregateOutputType = {
+  taxRateInput: number
+  offerFormatVersion: number
   id: number
   organizationId: number
   contactId: number
@@ -223,6 +231,7 @@ export type AgreementCountAggregateOutputType = {
 
 
 export type AgreementAvgAggregateInputType = {
+  offerFormatVersion?: true
   taxRate?: true
   dueInDays?: true
   subtotalNet?: true
@@ -234,6 +243,7 @@ export type AgreementAvgAggregateInputType = {
 }
 
 export type AgreementSumAggregateInputType = {
+  offerFormatVersion?: true
   taxRate?: true
   dueInDays?: true
   subtotalNet?: true
@@ -245,6 +255,8 @@ export type AgreementSumAggregateInputType = {
 }
 
 export type AgreementMinAggregateInputType = {
+  taxRateInput?: true
+  offerFormatVersion?: true
   id?: true
   organizationId?: true
   contactId?: true
@@ -301,6 +313,8 @@ export type AgreementMinAggregateInputType = {
 }
 
 export type AgreementMaxAggregateInputType = {
+  taxRateInput?: true
+  offerFormatVersion?: true
   id?: true
   organizationId?: true
   contactId?: true
@@ -357,6 +371,8 @@ export type AgreementMaxAggregateInputType = {
 }
 
 export type AgreementCountAggregateInputType = {
+  taxRateInput?: true
+  offerFormatVersion?: true
   id?: true
   organizationId?: true
   contactId?: true
@@ -504,6 +520,8 @@ export type AgreementGroupByArgs<ExtArgs extends runtime.Types.Extensions.Intern
 }
 
 export type AgreementGroupByOutputType = {
+  taxRateInput: string | null
+  offerFormatVersion: number | null
   id: string
   organizationId: string
   contactId: string
@@ -587,6 +605,8 @@ export type AgreementWhereInput = {
   AND?: Prisma.AgreementWhereInput | Prisma.AgreementWhereInput[]
   OR?: Prisma.AgreementWhereInput[]
   NOT?: Prisma.AgreementWhereInput | Prisma.AgreementWhereInput[]
+  taxRateInput?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  offerFormatVersion?: Prisma.IntNullableFilter<"Agreement"> | number | null
   id?: Prisma.StringFilter<"Agreement"> | string
   organizationId?: Prisma.StringFilter<"Agreement"> | string
   contactId?: Prisma.StringFilter<"Agreement"> | string
@@ -644,6 +664,7 @@ export type AgreementWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   calculationVersion?: Prisma.StringFilter<"Agreement"> | string
   vatEvidence?: Prisma.JsonNullableFilter<"Agreement">
+  invoices?: Prisma.InvoiceListRelationFilter
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   template?: Prisma.XOR<Prisma.AgreementTemplateNullableScalarRelationFilter, Prisma.AgreementTemplateWhereInput> | null
@@ -651,6 +672,8 @@ export type AgreementWhereInput = {
 }
 
 export type AgreementOrderByWithRelationInput = {
+  taxRateInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  offerFormatVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
@@ -708,6 +731,7 @@ export type AgreementOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
   vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
+  invoices?: Prisma.InvoiceOrderByRelationAggregateInput
   organization?: Prisma.OrganizationOrderByWithRelationInput
   contact?: Prisma.ContactOrderByWithRelationInput
   template?: Prisma.AgreementTemplateOrderByWithRelationInput
@@ -720,6 +744,8 @@ export type AgreementWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.AgreementWhereInput | Prisma.AgreementWhereInput[]
   OR?: Prisma.AgreementWhereInput[]
   NOT?: Prisma.AgreementWhereInput | Prisma.AgreementWhereInput[]
+  taxRateInput?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  offerFormatVersion?: Prisma.IntNullableFilter<"Agreement"> | number | null
   organizationId?: Prisma.StringFilter<"Agreement"> | string
   contactId?: Prisma.StringFilter<"Agreement"> | string
   number?: Prisma.StringNullableFilter<"Agreement"> | string | null
@@ -776,6 +802,7 @@ export type AgreementWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   calculationVersion?: Prisma.StringFilter<"Agreement"> | string
   vatEvidence?: Prisma.JsonNullableFilter<"Agreement">
+  invoices?: Prisma.InvoiceListRelationFilter
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   template?: Prisma.XOR<Prisma.AgreementTemplateNullableScalarRelationFilter, Prisma.AgreementTemplateWhereInput> | null
@@ -783,6 +810,8 @@ export type AgreementWhereUniqueInput = Prisma.AtLeast<{
 }, "id" | "organizationId_number">
 
 export type AgreementOrderByWithAggregationInput = {
+  taxRateInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  offerFormatVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
@@ -851,6 +880,8 @@ export type AgreementScalarWhereWithAggregatesInput = {
   AND?: Prisma.AgreementScalarWhereWithAggregatesInput | Prisma.AgreementScalarWhereWithAggregatesInput[]
   OR?: Prisma.AgreementScalarWhereWithAggregatesInput[]
   NOT?: Prisma.AgreementScalarWhereWithAggregatesInput | Prisma.AgreementScalarWhereWithAggregatesInput[]
+  taxRateInput?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  offerFormatVersion?: Prisma.IntNullableWithAggregatesFilter<"Agreement"> | number | null
   id?: Prisma.StringWithAggregatesFilter<"Agreement"> | string
   organizationId?: Prisma.StringWithAggregatesFilter<"Agreement"> | string
   contactId?: Prisma.StringWithAggregatesFilter<"Agreement"> | string
@@ -911,6 +942,8 @@ export type AgreementScalarWhereWithAggregatesInput = {
 }
 
 export type AgreementCreateInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   number?: string | null
   status?: string
@@ -965,6 +998,7 @@ export type AgreementCreateInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
@@ -972,6 +1006,8 @@ export type AgreementCreateInput = {
 }
 
 export type AgreementUncheckedCreateInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   organizationId: string
   contactId: string
@@ -1029,10 +1065,13 @@ export type AgreementUncheckedCreateInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
 export type AgreementUpdateInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1087,6 +1126,7 @@ export type AgreementUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
@@ -1094,6 +1134,8 @@ export type AgreementUpdateInput = {
 }
 
 export type AgreementUncheckedUpdateInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1151,10 +1193,13 @@ export type AgreementUncheckedUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
 export type AgreementCreateManyInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   organizationId: string
   contactId: string
@@ -1215,6 +1260,8 @@ export type AgreementCreateManyInput = {
 }
 
 export type AgreementUpdateManyMutationInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1272,6 +1319,8 @@ export type AgreementUpdateManyMutationInput = {
 }
 
 export type AgreementUncheckedUpdateManyInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1341,12 +1390,19 @@ export type AgreementOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type AgreementNullableScalarRelationFilter = {
+  is?: Prisma.AgreementWhereInput | null
+  isNot?: Prisma.AgreementWhereInput | null
+}
+
 export type AgreementOrganizationIdNumberCompoundUniqueInput = {
   organizationId: string
   number: string
 }
 
 export type AgreementCountOrderByAggregateInput = {
+  taxRateInput?: Prisma.SortOrder
+  offerFormatVersion?: Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
@@ -1407,6 +1463,7 @@ export type AgreementCountOrderByAggregateInput = {
 }
 
 export type AgreementAvgOrderByAggregateInput = {
+  offerFormatVersion?: Prisma.SortOrder
   taxRate?: Prisma.SortOrder
   dueInDays?: Prisma.SortOrder
   subtotalNet?: Prisma.SortOrder
@@ -1418,6 +1475,8 @@ export type AgreementAvgOrderByAggregateInput = {
 }
 
 export type AgreementMaxOrderByAggregateInput = {
+  taxRateInput?: Prisma.SortOrder
+  offerFormatVersion?: Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
@@ -1474,6 +1533,8 @@ export type AgreementMaxOrderByAggregateInput = {
 }
 
 export type AgreementMinOrderByAggregateInput = {
+  taxRateInput?: Prisma.SortOrder
+  offerFormatVersion?: Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
@@ -1530,6 +1591,7 @@ export type AgreementMinOrderByAggregateInput = {
 }
 
 export type AgreementSumOrderByAggregateInput = {
+  offerFormatVersion?: Prisma.SortOrder
   taxRate?: Prisma.SortOrder
   dueInDays?: Prisma.SortOrder
   subtotalNet?: Prisma.SortOrder
@@ -1629,6 +1691,22 @@ export type AgreementUncheckedUpdateManyWithoutContactNestedInput = {
   deleteMany?: Prisma.AgreementScalarWhereInput | Prisma.AgreementScalarWhereInput[]
 }
 
+export type AgreementCreateNestedOneWithoutInvoicesInput = {
+  create?: Prisma.XOR<Prisma.AgreementCreateWithoutInvoicesInput, Prisma.AgreementUncheckedCreateWithoutInvoicesInput>
+  connectOrCreate?: Prisma.AgreementCreateOrConnectWithoutInvoicesInput
+  connect?: Prisma.AgreementWhereUniqueInput
+}
+
+export type AgreementUpdateOneWithoutInvoicesNestedInput = {
+  create?: Prisma.XOR<Prisma.AgreementCreateWithoutInvoicesInput, Prisma.AgreementUncheckedCreateWithoutInvoicesInput>
+  connectOrCreate?: Prisma.AgreementCreateOrConnectWithoutInvoicesInput
+  upsert?: Prisma.AgreementUpsertWithoutInvoicesInput
+  disconnect?: Prisma.AgreementWhereInput | boolean
+  delete?: Prisma.AgreementWhereInput | boolean
+  connect?: Prisma.AgreementWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AgreementUpdateToOneWithWhereWithoutInvoicesInput, Prisma.AgreementUpdateWithoutInvoicesInput>, Prisma.AgreementUncheckedUpdateWithoutInvoicesInput>
+}
+
 export type AgreementCreateNestedOneWithoutDeliverablesInput = {
   create?: Prisma.XOR<Prisma.AgreementCreateWithoutDeliverablesInput, Prisma.AgreementUncheckedCreateWithoutDeliverablesInput>
   connectOrCreate?: Prisma.AgreementCreateOrConnectWithoutDeliverablesInput
@@ -1686,6 +1764,8 @@ export type AgreementUncheckedUpdateManyWithoutTemplateNestedInput = {
 }
 
 export type AgreementCreateWithoutOrganizationInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   number?: string | null
   status?: string
@@ -1740,12 +1820,15 @@ export type AgreementCreateWithoutOrganizationInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
   deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
 }
 
 export type AgreementUncheckedCreateWithoutOrganizationInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   contactId: string
   number?: string | null
@@ -1802,6 +1885,7 @@ export type AgreementUncheckedCreateWithoutOrganizationInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -1835,6 +1919,8 @@ export type AgreementScalarWhereInput = {
   AND?: Prisma.AgreementScalarWhereInput | Prisma.AgreementScalarWhereInput[]
   OR?: Prisma.AgreementScalarWhereInput[]
   NOT?: Prisma.AgreementScalarWhereInput | Prisma.AgreementScalarWhereInput[]
+  taxRateInput?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  offerFormatVersion?: Prisma.IntNullableFilter<"Agreement"> | number | null
   id?: Prisma.StringFilter<"Agreement"> | string
   organizationId?: Prisma.StringFilter<"Agreement"> | string
   contactId?: Prisma.StringFilter<"Agreement"> | string
@@ -1895,6 +1981,8 @@ export type AgreementScalarWhereInput = {
 }
 
 export type AgreementCreateWithoutContactInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   number?: string | null
   status?: string
@@ -1949,12 +2037,15 @@ export type AgreementCreateWithoutContactInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
   deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
 }
 
 export type AgreementUncheckedCreateWithoutContactInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   organizationId: string
   number?: string | null
@@ -2011,6 +2102,7 @@ export type AgreementUncheckedCreateWithoutContactInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -2040,7 +2132,9 @@ export type AgreementUpdateManyWithWhereWithoutContactInput = {
   data: Prisma.XOR<Prisma.AgreementUpdateManyMutationInput, Prisma.AgreementUncheckedUpdateManyWithoutContactInput>
 }
 
-export type AgreementCreateWithoutDeliverablesInput = {
+export type AgreementCreateWithoutInvoicesInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   number?: string | null
   status?: string
@@ -2098,9 +2192,12 @@ export type AgreementCreateWithoutDeliverablesInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
+  deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
 }
 
-export type AgreementUncheckedCreateWithoutDeliverablesInput = {
+export type AgreementUncheckedCreateWithoutInvoicesInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   organizationId: string
   contactId: string
@@ -2158,25 +2255,28 @@ export type AgreementUncheckedCreateWithoutDeliverablesInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
-export type AgreementCreateOrConnectWithoutDeliverablesInput = {
+export type AgreementCreateOrConnectWithoutInvoicesInput = {
   where: Prisma.AgreementWhereUniqueInput
-  create: Prisma.XOR<Prisma.AgreementCreateWithoutDeliverablesInput, Prisma.AgreementUncheckedCreateWithoutDeliverablesInput>
+  create: Prisma.XOR<Prisma.AgreementCreateWithoutInvoicesInput, Prisma.AgreementUncheckedCreateWithoutInvoicesInput>
 }
 
-export type AgreementUpsertWithoutDeliverablesInput = {
-  update: Prisma.XOR<Prisma.AgreementUpdateWithoutDeliverablesInput, Prisma.AgreementUncheckedUpdateWithoutDeliverablesInput>
-  create: Prisma.XOR<Prisma.AgreementCreateWithoutDeliverablesInput, Prisma.AgreementUncheckedCreateWithoutDeliverablesInput>
+export type AgreementUpsertWithoutInvoicesInput = {
+  update: Prisma.XOR<Prisma.AgreementUpdateWithoutInvoicesInput, Prisma.AgreementUncheckedUpdateWithoutInvoicesInput>
+  create: Prisma.XOR<Prisma.AgreementCreateWithoutInvoicesInput, Prisma.AgreementUncheckedCreateWithoutInvoicesInput>
   where?: Prisma.AgreementWhereInput
 }
 
-export type AgreementUpdateToOneWithWhereWithoutDeliverablesInput = {
+export type AgreementUpdateToOneWithWhereWithoutInvoicesInput = {
   where?: Prisma.AgreementWhereInput
-  data: Prisma.XOR<Prisma.AgreementUpdateWithoutDeliverablesInput, Prisma.AgreementUncheckedUpdateWithoutDeliverablesInput>
+  data: Prisma.XOR<Prisma.AgreementUpdateWithoutInvoicesInput, Prisma.AgreementUncheckedUpdateWithoutInvoicesInput>
 }
 
-export type AgreementUpdateWithoutDeliverablesInput = {
+export type AgreementUpdateWithoutInvoicesInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2234,9 +2334,12 @@ export type AgreementUpdateWithoutDeliverablesInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
+  deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
 }
 
-export type AgreementUncheckedUpdateWithoutDeliverablesInput = {
+export type AgreementUncheckedUpdateWithoutInvoicesInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2294,9 +2397,12 @@ export type AgreementUncheckedUpdateWithoutDeliverablesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
-export type AgreementCreateWithoutTemplateInput = {
+export type AgreementCreateWithoutDeliverablesInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   number?: string | null
   status?: string
@@ -2351,12 +2457,283 @@ export type AgreementCreateWithoutTemplateInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
+  organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
+  contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
+  template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
+}
+
+export type AgreementUncheckedCreateWithoutDeliverablesInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
+  id?: string
+  organizationId: string
+  contactId: string
+  number?: string | null
+  status?: string
+  title: string
+  summary?: string | null
+  termsMarkdown: string
+  templateId?: string | null
+  taxRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  dueInDays?: number
+  billingTrigger?: string
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  validUntil: Date | string
+  issueDate?: Date | string | null
+  expiresAt?: Date | string | null
+  offerRevision?: number
+  offerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  offerSnapshotHash?: string | null
+  issuedToEmail?: string | null
+  issuedVia?: string | null
+  publicAccessKeyVersion?: number
+  publicAccessIssuedAt?: Date | string | null
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
+  notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
+}
+
+export type AgreementCreateOrConnectWithoutDeliverablesInput = {
+  where: Prisma.AgreementWhereUniqueInput
+  create: Prisma.XOR<Prisma.AgreementCreateWithoutDeliverablesInput, Prisma.AgreementUncheckedCreateWithoutDeliverablesInput>
+}
+
+export type AgreementUpsertWithoutDeliverablesInput = {
+  update: Prisma.XOR<Prisma.AgreementUpdateWithoutDeliverablesInput, Prisma.AgreementUncheckedUpdateWithoutDeliverablesInput>
+  create: Prisma.XOR<Prisma.AgreementCreateWithoutDeliverablesInput, Prisma.AgreementUncheckedCreateWithoutDeliverablesInput>
+  where?: Prisma.AgreementWhereInput
+}
+
+export type AgreementUpdateToOneWithWhereWithoutDeliverablesInput = {
+  where?: Prisma.AgreementWhereInput
+  data: Prisma.XOR<Prisma.AgreementUpdateWithoutDeliverablesInput, Prisma.AgreementUncheckedUpdateWithoutDeliverablesInput>
+}
+
+export type AgreementUpdateWithoutDeliverablesInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  termsMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  dueInDays?: Prisma.IntFieldUpdateOperationsInput | number
+  billingTrigger?: Prisma.StringFieldUpdateOperationsInput | string
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  validUntil?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  issueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  offerRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  offerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  offerSnapshotHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  issuedToEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  issuedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publicAccessKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  publicAccessIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
+  template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
+}
+
+export type AgreementUncheckedUpdateWithoutDeliverablesInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  termsMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  templateId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  dueInDays?: Prisma.IntFieldUpdateOperationsInput | number
+  billingTrigger?: Prisma.StringFieldUpdateOperationsInput | string
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  validUntil?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  issueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  offerRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  offerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  offerSnapshotHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  issuedToEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  issuedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publicAccessKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  publicAccessIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
+}
+
+export type AgreementCreateWithoutTemplateInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
+  id?: string
+  number?: string | null
+  status?: string
+  title: string
+  summary?: string | null
+  termsMarkdown: string
+  taxRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  dueInDays?: number
+  billingTrigger?: string
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  validUntil: Date | string
+  issueDate?: Date | string | null
+  expiresAt?: Date | string | null
+  offerRevision?: number
+  offerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  offerSnapshotHash?: string | null
+  issuedToEmail?: string | null
+  issuedVia?: string | null
+  publicAccessKeyVersion?: number
+  publicAccessIssuedAt?: Date | string | null
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
+  notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
 }
 
 export type AgreementUncheckedCreateWithoutTemplateInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   organizationId: string
   contactId: string
@@ -2413,6 +2790,7 @@ export type AgreementUncheckedCreateWithoutTemplateInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -2443,6 +2821,8 @@ export type AgreementUpdateManyWithWhereWithoutTemplateInput = {
 }
 
 export type AgreementCreateManyOrganizationInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   contactId: string
   number?: string | null
@@ -2502,6 +2882,8 @@ export type AgreementCreateManyOrganizationInput = {
 }
 
 export type AgreementUpdateWithoutOrganizationInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2556,12 +2938,15 @@ export type AgreementUpdateWithoutOrganizationInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
   deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
 }
 
 export type AgreementUncheckedUpdateWithoutOrganizationInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2618,10 +3003,13 @@ export type AgreementUncheckedUpdateWithoutOrganizationInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
 export type AgreementUncheckedUpdateManyWithoutOrganizationInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2681,6 +3069,8 @@ export type AgreementUncheckedUpdateManyWithoutOrganizationInput = {
 }
 
 export type AgreementCreateManyContactInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   organizationId: string
   number?: string | null
@@ -2740,6 +3130,8 @@ export type AgreementCreateManyContactInput = {
 }
 
 export type AgreementUpdateWithoutContactInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2794,12 +3186,15 @@ export type AgreementUpdateWithoutContactInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
   deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
 }
 
 export type AgreementUncheckedUpdateWithoutContactInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2856,10 +3251,13 @@ export type AgreementUncheckedUpdateWithoutContactInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
 export type AgreementUncheckedUpdateManyWithoutContactInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2919,6 +3317,8 @@ export type AgreementUncheckedUpdateManyWithoutContactInput = {
 }
 
 export type AgreementCreateManyTemplateInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
   id?: string
   organizationId: string
   contactId: string
@@ -2978,6 +3378,8 @@ export type AgreementCreateManyTemplateInput = {
 }
 
 export type AgreementUpdateWithoutTemplateInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3032,12 +3434,15 @@ export type AgreementUpdateWithoutTemplateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
 }
 
 export type AgreementUncheckedUpdateWithoutTemplateInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3094,10 +3499,13 @@ export type AgreementUncheckedUpdateWithoutTemplateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
 export type AgreementUncheckedUpdateManyWithoutTemplateInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3162,10 +3570,12 @@ export type AgreementUncheckedUpdateManyWithoutTemplateInput = {
  */
 
 export type AgreementCountOutputType = {
+  invoices: number
   deliverables: number
 }
 
 export type AgreementCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  invoices?: boolean | AgreementCountOutputTypeCountInvoicesArgs
   deliverables?: boolean | AgreementCountOutputTypeCountDeliverablesArgs
 }
 
@@ -3182,12 +3592,21 @@ export type AgreementCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Ex
 /**
  * AgreementCountOutputType without action
  */
+export type AgreementCountOutputTypeCountInvoicesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.InvoiceWhereInput
+}
+
+/**
+ * AgreementCountOutputType without action
+ */
 export type AgreementCountOutputTypeCountDeliverablesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.DeliverableWhereInput
 }
 
 
 export type AgreementSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  taxRateInput?: boolean
+  offerFormatVersion?: boolean
   id?: boolean
   organizationId?: boolean
   contactId?: boolean
@@ -3245,6 +3664,7 @@ export type AgreementSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   updatedAt?: boolean
   calculationVersion?: boolean
   vatEvidence?: boolean
+  invoices?: boolean | Prisma.Agreement$invoicesArgs<ExtArgs>
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   template?: boolean | Prisma.Agreement$templateArgs<ExtArgs>
@@ -3253,6 +3673,8 @@ export type AgreementSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
 }, ExtArgs["result"]["agreement"]>
 
 export type AgreementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  taxRateInput?: boolean
+  offerFormatVersion?: boolean
   id?: boolean
   organizationId?: boolean
   contactId?: boolean
@@ -3316,6 +3738,8 @@ export type AgreementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
 }, ExtArgs["result"]["agreement"]>
 
 export type AgreementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  taxRateInput?: boolean
+  offerFormatVersion?: boolean
   id?: boolean
   organizationId?: boolean
   contactId?: boolean
@@ -3379,6 +3803,8 @@ export type AgreementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
 }, ExtArgs["result"]["agreement"]>
 
 export type AgreementSelectScalar = {
+  taxRateInput?: boolean
+  offerFormatVersion?: boolean
   id?: boolean
   organizationId?: boolean
   contactId?: boolean
@@ -3438,8 +3864,9 @@ export type AgreementSelectScalar = {
   vatEvidence?: boolean
 }
 
-export type AgreementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "title" | "summary" | "termsMarkdown" | "templateId" | "taxRate" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "dueInDays" | "billingTrigger" | "subtotalNet" | "totalTax" | "totalGross" | "sellerSnapshot" | "buyerSnapshot" | "validUntil" | "issueDate" | "expiresAt" | "offerRevision" | "offerSnapshot" | "offerSnapshotHash" | "issuedToEmail" | "issuedVia" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "acceptedAt" | "acceptedOfferRevision" | "acceptedByName" | "acceptanceIp" | "acceptanceUserAgent" | "acceptanceMethod" | "acceptanceEvidenceNote" | "declinedAt" | "declineReason" | "closedAt" | "closeReason" | "notes" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["agreement"]>
+export type AgreementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"taxRateInput" | "offerFormatVersion" | "id" | "organizationId" | "contactId" | "number" | "status" | "title" | "summary" | "termsMarkdown" | "templateId" | "taxRate" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "dueInDays" | "billingTrigger" | "subtotalNet" | "totalTax" | "totalGross" | "sellerSnapshot" | "buyerSnapshot" | "validUntil" | "issueDate" | "expiresAt" | "offerRevision" | "offerSnapshot" | "offerSnapshotHash" | "issuedToEmail" | "issuedVia" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "acceptedAt" | "acceptedOfferRevision" | "acceptedByName" | "acceptanceIp" | "acceptanceUserAgent" | "acceptanceMethod" | "acceptanceEvidenceNote" | "declinedAt" | "declineReason" | "closedAt" | "closeReason" | "notes" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["agreement"]>
 export type AgreementInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  invoices?: boolean | Prisma.Agreement$invoicesArgs<ExtArgs>
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   template?: boolean | Prisma.Agreement$templateArgs<ExtArgs>
@@ -3460,12 +3887,15 @@ export type AgreementIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
 export type $AgreementPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Agreement"
   objects: {
+    invoices: Prisma.$InvoicePayload<ExtArgs>[]
     organization: Prisma.$OrganizationPayload<ExtArgs>
     contact: Prisma.$ContactPayload<ExtArgs>
     template: Prisma.$AgreementTemplatePayload<ExtArgs> | null
     deliverables: Prisma.$DeliverablePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
+    taxRateInput: string | null
+    offerFormatVersion: number | null
     id: string
     organizationId: string
     contactId: string
@@ -3606,8 +4036,8 @@ export interface AgreementDelegate<ExtArgs extends runtime.Types.Extensions.Inte
    * // Get first 10 Agreements
    * const agreements = await prisma.agreement.findMany({ take: 10 })
    * 
-   * // Only select the `id`
-   * const agreementWithIdOnly = await prisma.agreement.findMany({ select: { id: true } })
+   * // Only select the `taxRateInput`
+   * const agreementWithTaxRateInputOnly = await prisma.agreement.findMany({ select: { taxRateInput: true } })
    * 
    */
   findMany<T extends AgreementFindManyArgs>(args?: Prisma.SelectSubset<T, AgreementFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgreementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
@@ -3651,9 +4081,9 @@ export interface AgreementDelegate<ExtArgs extends runtime.Types.Extensions.Inte
    *   ]
    * })
    * 
-   * // Create many Agreements and only return the `id`
-   * const agreementWithIdOnly = await prisma.agreement.createManyAndReturn({
-   *   select: { id: true },
+   * // Create many Agreements and only return the `taxRateInput`
+   * const agreementWithTaxRateInputOnly = await prisma.agreement.createManyAndReturn({
+   *   select: { taxRateInput: true },
    *   data: [
    *     // ... provide data here
    *   ]
@@ -3742,9 +4172,9 @@ export interface AgreementDelegate<ExtArgs extends runtime.Types.Extensions.Inte
    *   ]
    * })
    * 
-   * // Update zero or more Agreements and only return the `id`
-   * const agreementWithIdOnly = await prisma.agreement.updateManyAndReturn({
-   *   select: { id: true },
+   * // Update zero or more Agreements and only return the `taxRateInput`
+   * const agreementWithTaxRateInputOnly = await prisma.agreement.updateManyAndReturn({
+   *   select: { taxRateInput: true },
    *   where: {
    *     // ... provide filter here
    *   },
@@ -3917,6 +4347,7 @@ readonly fields: AgreementFieldRefs;
  */
 export interface Prisma__AgreementClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  invoices<T extends Prisma.Agreement$invoicesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agreement$invoicesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvoicePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   organization<T extends Prisma.OrganizationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrganizationDefaultArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   contact<T extends Prisma.ContactDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ContactDefaultArgs<ExtArgs>>): Prisma.Prisma__ContactClient<runtime.Types.Result.GetResult<Prisma.$ContactPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   template<T extends Prisma.Agreement$templateArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agreement$templateArgs<ExtArgs>>): Prisma.Prisma__AgreementTemplateClient<runtime.Types.Result.GetResult<Prisma.$AgreementTemplatePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
@@ -3950,6 +4381,8 @@ export interface Prisma__AgreementClient<T, Null = never, ExtArgs extends runtim
  * Fields of the Agreement model
  */
 export interface AgreementFieldRefs {
+  readonly taxRateInput: Prisma.FieldRef<"Agreement", 'String'>
+  readonly offerFormatVersion: Prisma.FieldRef<"Agreement", 'Int'>
   readonly id: Prisma.FieldRef<"Agreement", 'String'>
   readonly organizationId: Prisma.FieldRef<"Agreement", 'String'>
   readonly contactId: Prisma.FieldRef<"Agreement", 'String'>
@@ -4400,6 +4833,30 @@ export type AgreementDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Limit how many Agreements to delete.
    */
   limit?: number
+}
+
+/**
+ * Agreement.invoices
+ */
+export type Agreement$invoicesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Invoice
+   */
+  select?: Prisma.InvoiceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Invoice
+   */
+  omit?: Prisma.InvoiceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.InvoiceInclude<ExtArgs> | null
+  where?: Prisma.InvoiceWhereInput
+  orderBy?: Prisma.InvoiceOrderByWithRelationInput | Prisma.InvoiceOrderByWithRelationInput[]
+  cursor?: Prisma.InvoiceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.InvoiceScalarFieldEnum | Prisma.InvoiceScalarFieldEnum[]
 }
 
 /**

@@ -1,0 +1,16 @@
+{
+  "type": "deliverable.released",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "agreements/billing.ts",
+      "typeExpression": "\"deliverable.released\"",
+      "payloadExpression": "{ deliverableId: line.deliverableId, invoiceId }",
+      "variant": "default",
+      "payload": {
+        "deliverableId": "deliverable-1",
+        "invoiceId": "invoice-1"
+      }
+    }
+  ]
+}

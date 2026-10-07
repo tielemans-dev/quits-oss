@@ -9,6 +9,14 @@
 * 🟢 You can import this file directly.
 */
 
+export const InvoicePurpose = {
+  sale: 'sale',
+  prepayment: 'prepayment'
+} as const
+
+export type InvoicePurpose = (typeof InvoicePurpose)[keyof typeof InvoicePurpose]
+
+
 export const EventConsumerDeliveryStatus = {
   pending: 'pending',
   claimed: 'claimed',

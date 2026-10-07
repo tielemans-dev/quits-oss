@@ -34,6 +34,7 @@ export type AgreementPdfInput = {
   acceptance?: PublicAgreementDto["acceptance"]
 }
 export function AgreementPdf({ snapshot, number, issueDate, acceptance }: AgreementPdfInput) {
+  const v2 = "offerFormatVersion" in snapshot ? snapshot : null
   return (
     <Document title={snapshot.title} creationDate={new Date(issueDate ?? 0)} modificationDate={new Date(issueDate ?? 0)}>
       <Page size="A4" style={styles.page}>
@@ -53,7 +54,7 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
           <Text>{snapshot.summary}</Text>
         </View>
         <Text style={styles.heading}>Deliverables</Text>
-        {snapshot.deliverables.map((line, i) => (
+        {snapshot.deliverables.map((line, i) => v2 && line.isDeposit ? null : (
           <View key={i} style={styles.row} wrap={false}>
             <Text>
               {line.title}
@@ -68,13 +69,14 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
         ))}
         <View style={styles.section}>
           <Text>
-            Subtotal: {snapshot.subtotalNet} {snapshot.currency}
+            Subtotal: {v2?.serviceTotal.net ?? snapshot.subtotalNet} {snapshot.currency}
           </Text>
           <Text>
-            Tax: {snapshot.totalTax} {snapshot.currency}
+            Tax: {v2?.serviceTotal.tax ?? snapshot.totalTax} {snapshot.currency}
           </Text>
+          {v2 && Number(v2.serviceTotal.payableRounding) !== 0 && <Text>Payable rounding: {v2.serviceTotal.payableRounding} {snapshot.currency}</Text>}
           <Text>
-            Total: {snapshot.totalGross} {snapshot.currency}
+            {v2 ? "Service total" : "Total"}: {v2?.serviceTotal.gross ?? snapshot.totalGross} {snapshot.currency}
           </Text>
           <Text>Payment due in {snapshot.dueInDays} days</Text>
           <Text>
@@ -82,6 +84,13 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
             {snapshot.billingTrigger === "on_acceptance" ? "After acceptance" : "After delivery"}
           </Text>
         </View>
+        {v2 && <View style={styles.section}>
+          <Text style={styles.heading}>Payment schedule</Text>
+          {v2.paymentSchedule.map(line => <View key={line.sortOrder} style={styles.row}>
+            <Text>{line.title}: {line.amount} {snapshot.currency} ({line.vatBasis === "gross" ? "including VAT" : "excluding VAT"})</Text>
+            <Text>On agreement acceptance</Text>
+          </View>)}
+        </View>}
         <Text style={styles.heading}>Terms</Text>
         <Text style={styles.section}>{agreementTermsText(snapshot.termsHtml)}</Text>
         {acceptance && (

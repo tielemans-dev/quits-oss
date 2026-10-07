@@ -24,7 +24,7 @@ test.beforeEach(async () => {
   await resetDatabase()
   messages.length = 0
 })
-async function createDraftInUi(page: Page, title: string) {
+async function createDraftInUi(page: Page, title: string, withSchedule = false) {
   await page.goto("/agreements/new")
   await waitForClientReady(page)
   await page.getByLabel("Title", { exact: true }).fill(title)
@@ -46,6 +46,13 @@ async function createDraftInUi(page: Page, title: string) {
     .fill(
       "# Scope\n\n**Website work** for {{buyer.name}}.\n\n[x](javascript:alert%281%29)\n<script>alert(1)</script>",
     )
+  if (withSchedule) {
+    await page.getByRole("button", { name: "Add deliverable", exact: true }).click()
+    await page.getByLabel("Deliverable title", { exact: true }).nth(1).fill("Initial payment")
+    await page.getByLabel("Description", { exact: true }).nth(1).fill("Payment on agreement acceptance")
+    await page.getByLabel("Unit price", { exact: true }).nth(1).fill("100")
+    await page.getByLabel("Payment schedule line", { exact: true }).nth(1).check()
+  }
   await page.getByRole("button", { name: "Save draft", exact: true }).click()
   await expect(page).toHaveURL(/\/agreements\/[^/]+$/)
   await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible()
@@ -119,5 +126,62 @@ test("create, send, accept, inspect acceptance record and PDF; recall invalidate
       2,
     ),
   )
+  await customerContext.close()
+})
+
+test("accept, deliver, sign off, reserve and send an invoice from the agreement", async ({ page, browser }) => {
+  const setup = await seedCompletedSetup()
+  await prisma.contact.create({ data: { organizationId: setup.organizationId, name: "Agreement Customer", email: "customer@example.test" } })
+  await loginAsAdmin(page)
+  await createDraftInUi(page, "Phase 2 browser agreement", true)
+  const agreementId = new URL(page.url()).pathname.split("/").at(-1)!
+  await page.getByRole("button", { name: "Send", exact: true }).click()
+  const customerLink = page.getByRole("link", { name: "Open customer link" })
+  await expect(customerLink).toBeVisible()
+  const url = await customerLink.getAttribute("href")
+  const customerContext = await browser.newContext(), customer = await customerContext.newPage()
+  await customer.goto(url!)
+  await waitForClientReady(customer)
+  await expect(customer.getByRole("heading", { name: "Payment schedule", exact: true })).toBeVisible()
+  await expect(customer.getByText(/Service total/)).toBeVisible()
+  await customer.getByLabel("Your full name").fill("Phase 2 customer")
+  await customer.getByRole("checkbox").check()
+  await customer.getByRole("button", { name: "Accept agreement", exact: true }).click()
+  await expect(customer.getByRole("heading", { name: "Acceptance record" })).toBeVisible()
+  await page.reload()
+  const deliverable = page.getByRole("group", { name: "Website delivery", exact: true })
+  await expect(deliverable.getByText("Unbilled", { exact: true })).toBeVisible()
+  await deliverable.getByRole("button", { name: "Mark delivered", exact: true }).click()
+  await deliverable.locator("summary").filter({ hasText: "Record acceptance" }).click()
+  await deliverable.getByLabel("Evidence note (required)").fill("Customer accepted the finished website")
+  await deliverable.getByRole("button", { name: "Record acceptance", exact: true }).click()
+  await expect(deliverable.getByText("Accepted", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Invoice", exact: true }).click()
+  await expect(page.getByRole("checkbox", { name: /Website delivery/ })).toBeChecked()
+  await expect(page.getByRole("checkbox", { name: /Initial payment/ })).toBeChecked()
+  await expect(page.getByRole("checkbox", { name: /Invoice these schedule/ })).not.toBeChecked()
+  await page.getByRole("button", { name: "Create draft invoices", exact: true }).click()
+  await expect(deliverable.getByText("Reserved", { exact: true })).toBeVisible()
+  const saleHref = await page.getByRole("link", { name: "Open sale invoice", exact: true }).getAttribute("href")
+  await page.getByRole("link", { name: "Open prepayment draft", exact: true }).click()
+  await expect(page.getByText("Prepayment drafts cannot be issued yet. You can explicitly invoice a schedule line as a sale instead.", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toHaveCount(0)
+  const prepaymentId = new URL(page.url()).pathname.split("/").at(-1)!
+  await page.getByRole("button", { name: "Invoice schedule as sale", exact: true }).click()
+  await page.getByRole("alertdialog").getByRole("button", { name: "Invoice schedule as sale", exact: true }).click()
+  await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id: prepaymentId } })).purpose).toBe("sale")
+  expect((await prisma.invoice.findUniqueOrThrow({ where: { id: prepaymentId } })).scheduleSaleChoice).toMatchObject({ deliverableIds: [expect.any(String)] })
+  await page.goto(saleHref!)
+  await expect(page).toHaveURL(/\/invoices\/[^/]+$/)
+  const invoiceId = new URL(page.url()).pathname.split("/").at(-1)!
+  await page.getByRole("button", { name: "Send", exact: true }).click()
+  await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).status).toBe("sent")
+  await page.goto(`/agreements/${agreementId}`)
+  await expect(page.getByRole("group", { name: "Website delivery", exact: true }).getByText("Invoiced", { exact: true })).toBeVisible()
+  const line = await prisma.deliverable.findFirstOrThrow({ where: { agreementId } })
+  expect(line).toMatchObject({ status: "accepted", billingStatus: "invoiced" })
+  await mkdir("/var/tmp/quits-agreements-phase2", { recursive: true })
+  await page.screenshot({ path: "/var/tmp/quits-agreements-phase2/invoiced-agreement.png", fullPage: true })
+  await writeFile("/var/tmp/quits-agreements-phase2/browser-evidence.json", JSON.stringify({ agreementId, invoiceId, customerAccepted: true, fulfillment: line.status, billing: line.billingStatus, emailMessages: messages.length }, null, 2))
   await customerContext.close()
 })

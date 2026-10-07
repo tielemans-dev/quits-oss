@@ -1,3 +1,4 @@
+import { InvoiceDeliverables } from "../../../components/agreements/invoice-deliverables"
 import { DeliverableControls } from "../../../components/agreements/deliverable-controls"
 import { AgreementActions } from "../../../components/agreements/agreement-actions"
 import { AcceptanceRecord } from "../../../components/agreements/acceptance-record"
@@ -215,6 +216,7 @@ function AgreementDetail() {
           {t("agreements.evidenceNote")}: {agreement.acceptanceEvidenceNote}
         </p>
       )}
+      {agreement.status === "accepted" && capabilities?.invoice && <InvoiceDeliverables key={agreement.id} agreement={agreement} onChanged={refresh} />}
       <Card>
         <CardContent className="pt-6 grid gap-3">
           <p>
@@ -225,7 +227,7 @@ function AgreementDetail() {
           </p>
           <p className="whitespace-pre-wrap">{agreement.summary}</p>
           <p>
-            {t("agreements.total")}: {formatCurrency(agreement.total, agreement.currency, locale)}
+            {t(agreement.offerFormatVersion === 2 ? "agreements.serviceTotal" : "agreements.total")}: {formatCurrency(agreement.total, agreement.currency, locale)}
           </p>
           <p>
             {t("agreements.dueInDays")}: {agreement.dueInDays}
@@ -277,6 +279,7 @@ function AgreementDetail() {
                 {line.description}
               </p>
               <p>{formatCurrency(line.lineGross, agreement.currency, locale)}</p>
+              <Badge variant="outline">{t(line.billingStatus === "invoiced" ? "agreements.billing.invoiced" : line.billingStatus === "reserved" ? "agreements.billing.reserved" : "agreements.billing.unbilled")}</Badge>
               {line.agreedDate && (
                 <p className="text-sm">
                   {t("agreements.agreedDate")}: {formatDate(line.agreedDate, locale, "UTC")}
@@ -288,7 +291,7 @@ function AgreementDetail() {
                 </p>
               )}
               <div className="flex flex-wrap gap-2">
-                {line.isDeposit && <Badge variant="outline">{t("agreements.deposit")}</Badge>}
+                {line.isDeposit && <Badge variant="outline">{t(agreement.offerFormatVersion === 2 ? "agreements.scheduleLine" : "agreements.deposit")}</Badge>}
                 <Badge variant="secondary">
                   {t(
                     `agreements.fulfillment.${line.status as "planned" | "in_progress" | "delivered" | "accepted" | "changes_requested" | "cancelled"}`,

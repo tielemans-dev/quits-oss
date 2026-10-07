@@ -84,6 +84,10 @@ type Contact = {
 }
 
 type InvoiceItem = {
+  deliverableId?: string | null
+  lineNet?: string | number
+  lineTax?: string | number
+  lineGross?: string | number
   id: string
   description: string
   quantity: number
@@ -102,6 +106,9 @@ type InvoiceItem = {
 }
 
 type Invoice = {
+  purpose?: "sale" | "prepayment"
+  agreementId?: string | null
+  agreementTaxRate?: string | null
   id: string
   number: string
   status: string
@@ -129,6 +136,11 @@ type Invoice = {
 }
 
 type EditItem = {
+  id?: string
+  deliverableId?: string
+  frozenNet?: number
+  frozenTax?: number
+  frozenGross?: number
   description: string
   quantity: string
   unitPrice: string
@@ -291,10 +303,12 @@ function InvoiceDetailPage() {
     setEditContactId(invoice.contact.id)
     setEditDueDate(new Date(invoice.dueDate).toISOString().split("T")[0])
     setEditNotes(invoice.notes ?? "")
-    setEditTaxRate(String(invoice.items.find((item) => Number(item.taxRate) > 0)?.taxRate ?? 0))
+    setEditTaxRate(invoice.agreementTaxRate ?? String(invoice.items.find((item) => Number(item.taxRate) > 0)?.taxRate ?? 0))
     setEditVatEvidence(draftVatEvidenceSchema.parse(invoice.vatEvidence ?? {}))
     setEditItems(
       invoice.items.map((item) => ({
+        id: item.id, deliverableId: item.deliverableId ?? undefined,
+        ...(item.deliverableId ? { frozenNet: Number(item.lineNet), frozenTax: Number(item.lineTax), frozenGross: Number(item.lineGross) } : {}),
         description: item.description,
         quantity: item.quantityInput ?? String(item.quantity),
         unitPrice: item.unitPriceInput ?? String(invoice.pricesIncludeTax ? item.unitPriceGross ?? item.unitPrice : item.unitPriceNet ?? item.unitPrice),
@@ -346,9 +360,10 @@ function InvoiceDetailPage() {
         contactId: editContactId,
         dueDate: editDueDate,
         notes: editNotes,
-        taxRate: editTaxRate,
+        ...(invoice.agreementId ? {} : { taxRate: editTaxRate }),
         vatEvidence: editVatEvidence,
         items: editItems.map((item) => ({
+          id: item.id, deliverableId: item.deliverableId,
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -499,10 +514,10 @@ function InvoiceDetailPage() {
 
   // Edit mode
   if (editing) {
-    const preview = previewDraft({ items: editItems, taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
-    const editSubtotal = Number(preview.result?.net ?? "0")
-    const editTaxAmount = Number(preview.result?.tax ?? "0")
-    const editTotal = Number(preview.result?.gross ?? "0")
+    const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
+    const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
+    const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0)
+    const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0)
 
     return (
       <div className="p-6 max-w-3xl">
@@ -522,7 +537,7 @@ function InvoiceDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>{t("docForm.contact")} *</Label>
-                <Select value={editContactId} onValueChange={setEditContactId}>
+                <Select disabled={!!invoice.agreementId} value={editContactId} onValueChange={setEditContactId}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={t("docForm.selectContact")} />
                   </SelectTrigger>
@@ -566,6 +581,7 @@ function InvoiceDetailPage() {
                     className="grid grid-cols-[180px_1fr_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
                   >
                     <Select
+                      disabled={!!item.deliverableId}
                       value={item.catalogItemId}
                       onValueChange={(value) => applyCatalogItemToEditItem(index, value)}
                     >
@@ -588,6 +604,7 @@ function InvoiceDetailPage() {
                     </Select>
                     <Input
                       placeholder={t("docForm.column.description")}
+                      disabled={!!item.deliverableId}
                       value={item.description}
                       onChange={(e) => updateEditItem(index, "description", e.target.value)}
                     />
@@ -595,6 +612,7 @@ function InvoiceDetailPage() {
                       type="number"
                       min="0.000001"
                       step="0.000001"
+                      disabled={!!item.deliverableId}
                       value={item.quantity || ""}
                       onChange={(e) =>
                         updateEditItem(index, "quantity", e.target.value)
@@ -604,13 +622,14 @@ function InvoiceDetailPage() {
                       type="number"
                       min="0"
                       step="0.0001"
+                      disabled={!!item.deliverableId}
                       value={item.unitPrice || ""}
                       onChange={(e) =>
                         updateEditItem(index, "unitPrice", e.target.value)
                       }
                     />
                     <span className="text-sm text-right pr-2">
-                      {preview.result ? formatCurrency(Number(preview.result?.lines[index]?.[invoice.pricesIncludeTax ? "gross" : "net"] ?? "0"), invoice.currency, locale) : "—"}
+                      {preview.result ? formatCurrency(item.deliverableId ? (invoice.pricesIncludeTax ? item.frozenGross ?? 0 : item.frozenNet ?? 0) : Number(preview.result.lines[editItems.slice(0, index + 1).filter(line => !line.deliverableId).length - 1]?.[invoice.pricesIncludeTax ? "gross" : "net"] ?? "0"), invoice.currency, locale) : "—"}
                     </span>
                     <Button
                       type="button"
@@ -637,8 +656,8 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} />
-            <VatGroupPreview {...preview} />
+            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} />
+            {!invoice.agreementId && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">
                 <div className="flex justify-between">
@@ -652,6 +671,7 @@ function InvoiceDetailPage() {
                       type="number"
                       min="0"
                       max="100"
+                      disabled={!!invoice.agreementId}
                       step="0.01"
                       value={editTaxRate || ""}
                       onChange={(e) => { setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
@@ -715,7 +735,7 @@ function InvoiceDetailPage() {
   const recipientEmailValid = isValidEmailAddress(contact.email)
   const canResendEmail = invoice.status === "sent" || invoice.status === "overdue"
   const canShowDegradedSend =
-    invoice.status === "draft" && recipientEmailValid && emailDelivery && !emailDelivery.available
+    invoice.purpose !== "prepayment" && invoice.status === "draft" && recipientEmailValid && emailDelivery && !emailDelivery.available
   const deliveryStatus = emailAttempt
     ? {
         tone: emailAttempt.lastEmailAttemptOutcome,
@@ -777,6 +797,19 @@ function InvoiceDetailPage() {
 
   return (
     <div className="p-6 max-w-3xl">
+      {invoice.purpose === "prepayment" && invoice.status === "draft" && <section className="rounded-md border p-4 grid gap-3">
+        <p>{t("agreements.prepaymentNotice")}</p>
+        <AlertDialog><AlertDialogTrigger asChild><Button disabled={acting}>{t("agreements.convertSchedule")}</Button></AlertDialogTrigger>
+          <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t("agreements.convertSchedule")}</AlertDialogTitle><AlertDialogDescription>{t("agreements.convertScheduleConfirm")}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>{t("agreements.cancel")}</AlertDialogCancel><AlertDialogAction onClick={async () => {
+            setActing(true)
+            try { await trpc.invoices.scheduleAsSale.mutate({ id: invoice.id, confirmed: true }); await reloadInvoice() }
+            catch (failure) { setError(failure instanceof Error ? failure.message : t("agreements.error")) }
+            finally { setActing(false) }
+          }}>{t("agreements.convertSchedule")}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        </AlertDialog>
+      </section>}
+
       {/* Print styles */}
       <style>{`
         @media print {
@@ -890,7 +923,7 @@ function InvoiceDetailPage() {
               description={t("invoices.detail.email.description")}
               status={deliveryStatus}
               action={
-                invoice.status === "draft" && recipientEmailValid && emailDelivery?.available
+                invoice.purpose !== "prepayment" && invoice.status === "draft" && recipientEmailValid && emailDelivery?.available
                   ? {
                       label: t("invoices.detail.action.send"),
                       pendingLabel: t("invoices.detail.action.sending"),

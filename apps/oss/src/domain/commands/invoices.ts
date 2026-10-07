@@ -1,3 +1,6 @@
+import { invoiceDeliverableCommands } from "./invoices-from-deliverables"
+import { updateLinkedInvoice } from "../agreements/linked-invoice"
+import { releaseLines } from "../agreements/billing"
 import { Effect } from "effect"
 import {
   invoiceCreateDraftInputSchema,
@@ -196,6 +199,9 @@ export const updateInvoiceDraft = defineCommand({
         })
       }
 
+      if (existing.agreementId) return yield* updateLinkedInvoice(existing, input)
+      if (input.items?.some(item => item.deliverableId)) return yield* new InvalidState({ code: "invalid_linked_item", message: "Use invoice.createFromDeliverables to reserve work" })
+
       const data: Parameters<typeof db.invoice.update>[0]["data"] = {}
 
       if (input.contactId) {
@@ -272,6 +278,7 @@ export const deleteInvoiceDraft = defineCommand({
         })
       }
 
+      if (invoice.agreementId) yield* releaseLines(invoice.agreementId, invoice.id, invoice.items)
       yield* Effect.promise(() => db.invoice.delete({ where: { id: invoice.id } }))
       command.emit({
         aggregateType: "invoice",
@@ -288,6 +295,7 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend") =>
   Effect.gen(function* () {
     yield* lockDocument("invoice", id)
     const found = yield* findInvoice(id)
+    if (action === "send" && found.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
     // Lock the contact before reading the address, so the approved recipient cannot change.
     const invoice = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
     const recipient = invoice.contact.email?.trim() || null
@@ -339,6 +347,8 @@ export const sendInvoice = defineCommand({
         return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
       }
       yield* refuseWhileSending("invoice", invoice)
+      if (invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet. You can explicitly invoice the schedule as a sale instead." })
+      if (invoice.agreementId && !command.issuance) return yield* new InvalidState({ code: "issuance_required", message: "Linked invoices must issue through issueDocument" })
       yield* requireVatIssuance(invoice)
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
@@ -483,6 +493,7 @@ export const resendInvoiceEmail = defineCommand({
 })
 
 export const invoiceCommands = [
+  ...invoiceDeliverableCommands,
   createInvoiceDraft,
   updateInvoiceDraft,
   deleteInvoiceDraft,

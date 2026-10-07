@@ -24,7 +24,7 @@ import { lockDocument } from "../documents/locks"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
-import { priceAgreement } from "../agreements/pricing"
+import { priceAgreement, priceAgreementV2 } from "../agreements/pricing"
 import type { Deliverable } from "../../../generated/prisma/client"
 
 const include = { contact: true, deliverables: { orderBy: { sortOrder: "asc" as const } } }
@@ -74,8 +74,9 @@ const lockedDraft = (id: string) =>
       })
     return agreement
   })
-function lineInput(line: Deliverable, pricesIncludeTax: boolean) {
+function lineInput(line: Deliverable, pricesIncludeTax: boolean): import("@quits/contracts/agreements").DeliverableInput {
   return {
+    vat: { treatment: line.vatTreatment as import("@quits/contracts/vat").VatTreatment, rate: line.vatRateInput ?? String(Number(line.taxRate) / 100), country: line.vatCountry, reasonCode: line.vatReasonCode as import("@quits/contracts/vat").VatReasonCode | null },
     title: line.title,
     description: line.description,
     quantity: line.quantityInput ?? line.quantity.toString(),
@@ -110,7 +111,7 @@ export const createAgreementDraft = defineCommand({
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       const currency = input.currency ?? settings.defaultCurrency
       yield* requireDraftCurrency(currency)
-      const priced = priceAgreement({
+      const priced = priceAgreementV2({
         profile,
         deliverables: input.deliverables,
         taxRate: input.taxRate,
@@ -121,6 +122,9 @@ export const createAgreementDraft = defineCommand({
         db.agreement.create({
           data: {
             organizationId,
+            offerFormatVersion: 2,
+            taxRateInput: String(input.taxRate),
+            calculationVersion: "v2",
             contactId: contact.id,
             title: input.title,
             summary: input.summary,
@@ -151,7 +155,7 @@ export const createAgreementDraft = defineCommand({
         aggregateType: "agreement",
         aggregateId: agreement.id,
         type: "agreement.draft_created",
-        payload: { title: agreement.title, contactId: contact.id, totalGross: priced.totalGross },
+        payload: { title: agreement.title, contactId: contact.id, totalGross: Number(priced.totalGross) },
       })
       return agreement
     }),
@@ -187,18 +191,18 @@ export const updateAgreementDraft = defineCommand({
       if (input.dueInDays !== undefined) data.dueInDays = input.dueInDays
       if (input.billingTrigger !== undefined) data.billingTrigger = input.billingTrigger
       if (input.currency !== undefined) data.currency = input.currency
-      if (input.taxRate !== undefined) data.taxRate = input.taxRate
+      if (input.taxRate !== undefined) { data.taxRate = input.taxRate; if (existing.offerFormatVersion === 2) data.taxRateInput = String(input.taxRate) }
       if (
         input.deliverables !== undefined ||
         input.taxRate !== undefined ||
         input.currency !== undefined
       ) {
-        const priced = priceAgreement({
+        const priced = (existing.offerFormatVersion === 2 ? priceAgreementV2 : priceAgreement)({
           profile: resolveCountryProfile(existing.countryCode),
           deliverables:
             input.deliverables ??
-            existing.deliverables.map((line) => lineInput(line, existing.pricesIncludeTax)),
-          taxRate: input.taxRate ?? existing.taxRate.toNumber(),
+            existing.deliverables.map((line) => ({ ...lineInput(line, existing.pricesIncludeTax), ...(input.taxRate !== undefined && existing.offerFormatVersion === 2 ? { vat: undefined } : {}) })),
+          taxRate: input.taxRate ?? existing.taxRateInput ?? existing.taxRate.toString(),
           currency: input.currency ?? existing.currency,
           pricesIncludeTax: existing.pricesIncludeTax,
         })
@@ -305,10 +309,10 @@ export const updateDeliverable = defineCommand({
           lineInput(line, agreement.pricesIncludeTax),
         )
         lines[index] = { ...lines[index]!, ...changes, quantity: String(changes.quantity ?? lines[index]!.quantity), unitPrice: String(changes.unitPrice ?? lines[index]!.unitPrice) }
-        const priced = priceAgreement({
+        const priced = (agreement.offerFormatVersion === 2 ? priceAgreementV2 : priceAgreement)({
           profile: resolveCountryProfile(agreement.countryCode),
           deliverables: lines,
-          taxRate: agreement.taxRate.toNumber(),
+          taxRate: agreement.taxRateInput ?? agreement.taxRate.toString(),
           pricesIncludeTax: agreement.pricesIncludeTax,
           currency: agreement.currency,
         })

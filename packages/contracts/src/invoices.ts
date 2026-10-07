@@ -31,6 +31,15 @@ export const documentLineV2InputSchema = documentLineInputSchema.extend({
   unitPrice: unitPriceDecimalSchema,
 })
 
+export const invoiceUpdateLineInputSchema = documentLineInputSchema.extend({
+  id: z.string().min(1).optional(),
+  deliverableId: z.string().min(1).optional(),
+})
+export const invoiceUpdateLineV2InputSchema = invoiceUpdateLineInputSchema.extend({
+  quantity: quantityDecimalSchema,
+  unitPrice: unitPriceDecimalSchema,
+})
+
 const currencySchema = z.string().trim().regex(/^[A-Z]{3}$/)
 
 export const invoiceCreateDraftInputSchema = z.object({
@@ -51,7 +60,7 @@ export const invoiceUpdateDraftInputSchema = z.object({
   notes: z.string().trim().max(5000).optional(),
   taxRate: documentTaxRateSchema.optional(),
   vatEvidence: draftVatEvidenceSchema.optional(),
-  items: z.array(documentLineInputSchema).min(1).max(100).optional(),
+  items: z.array(invoiceUpdateLineInputSchema).min(1).max(100).optional(),
 })
 
 export const invoiceCreateDraftV2InputSchema = invoiceCreateDraftInputSchema.extend({
@@ -60,7 +69,7 @@ export const invoiceCreateDraftV2InputSchema = invoiceCreateDraftInputSchema.ext
 })
 export const invoiceUpdateDraftV2InputSchema = invoiceUpdateDraftInputSchema.extend({
   taxRate: documentTaxRateV2Schema.optional(),
-  items: z.array(documentLineV2InputSchema).min(1).max(100).optional(),
+  items: z.array(invoiceUpdateLineV2InputSchema).min(1).max(100).optional(),
 })
 
 export const invoiceIdInputSchema = z.object({ id: z.string().min(1) })
@@ -78,3 +87,13 @@ export type InvoiceCreateDraftInput = z.input<typeof invoiceCreateDraftInputSche
 export type InvoiceUpdateDraftInput = z.infer<typeof invoiceUpdateDraftInputSchema>
 export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>
 export type InvoicePaymentProgress = z.infer<typeof invoicePaymentProgressSchema>
+
+export const invoiceCreateFromDeliverablesInputSchema = z.strictObject({
+  agreementId: z.string().min(1),
+  deliverableIds: z.array(z.string().min(1)).min(1).max(100),
+  issueDate: calendarDateInputSchema.optional(),
+  dueDate: calendarDateInputSchema.optional(),
+  // The explicit choice is recorded on the sale draft and the reservation event.
+  scheduleAsSale: z.boolean().optional(),
+})
+export const invoiceAddDeliverablesInputSchema = invoiceCreateFromDeliverablesInputSchema.omit({ issueDate: true, dueDate: true }).extend({ id: z.string().min(1) })

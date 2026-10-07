@@ -1,3 +1,5 @@
+import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
+import { lockDocument } from "./locks"
 import { createHash } from "node:crypto"
 import { Effect } from "effect"
 import type { InvoicePdfDocument, OrgSettingsForPdf } from "../../lib/invoice-pdf"
@@ -8,7 +10,7 @@ import { creditNoteIssueInputSchema } from "@quits/contracts/credit-notes"
 import { buildBuyerSnapshot, buildSellerSnapshot } from "./snapshots"
 import { loadDocumentContext } from "./context"
 import { priceCreditNote } from "./credit-pricing"
-import { NotFound } from "../errors"
+import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 
 type InvoiceForPdf = import("react").ComponentProps<typeof InvoicePdfDocument>["invoice"]
@@ -59,29 +61,34 @@ export const prospectiveRenderInput = (input: {
     number: input.number, issuedAt: input.issuedAt.toISOString(),
     commandInputHash: createHash("sha256").update(canonicalizeOffer({ input: input.commandInput, method: input.method ?? "email" })).digest("hex") }
   if (input.kind === "invoice") {
+    yield* lockDocument("invoice", input.documentId)
     const invoice = yield* Effect.promise(() => db.invoice.findFirst({
       where: { id: input.documentId, organizationId },
       include: { contact: true, items: { orderBy: { sortOrder: "asc" } } },
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.documentId })
+    if (invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
+    const seller = invoice.agreementId ? parseSellerSnapshot(invoice.sellerSnapshot) : buildSellerSnapshot(settings, sellerTaxIds)
+    const buyer = invoice.agreementId ? parseBuyerSnapshot(invoice.buyerSnapshot) : buildBuyerSnapshot(invoice.contact)
     // All PDF fields, including branding and the intended customer, are frozen here.
     const pdfInvoice: InvoiceForPdf = {
       number: input.number, status: "sent", issueDate: base.issuedAt, dueDate: invoice.dueDate.toISOString(),
       subtotal: num(invoice.subtotalNet), taxAmount: num(invoice.totalTax), total: num(invoice.totalGross),
-      currency: invoice.currency, notes: invoice.notes, contact: { ...buildBuyerSnapshot(invoice.contact), name: invoice.contact.name },
+      currency: invoice.currency, notes: invoice.notes, contact: { ...buyer, name: buyer?.name ?? invoice.contact.name },
       items: invoice.items.map(line => ({ description: line.description, quantity: num(line.quantity),
         unitPrice: num(line.unitPriceGross), total: num(line.lineGross) })),
     }
     return { ...base, kind: "invoice" as const, recipient: invoice.contact.email?.trim() || null,
-      snapshot: { seller: buildSellerSnapshot(settings, sellerTaxIds), buyer: pdfInvoice.contact,
+      snapshot: { purpose: invoice.purpose, agreementId: invoice.agreementId, seller, buyer: pdfInvoice.contact,
         invoice: pdfInvoice, items: invoice.items, supplyDate: invoice.supplyDate,
         pricesIncludeTax: invoice.pricesIncludeTax, countryCode: invoice.countryCode,
         taxRegime: invoice.taxRegime, paymentReference: invoice.paymentReference,
         purchaseOrderRef: invoice.purchaseOrderRef },
-      pdf: { invoice: pdfInvoice, org: { ...org, locale: invoice.locale, timezone: invoice.timezone } } }
+      pdf: { invoice: pdfInvoice, org: { ...org, ...(invoice.agreementId ? { companyName: seller?.companyName, companyEmail: seller?.companyEmail, companyAddress: seller?.companyAddress } : {}), locale: invoice.locale, timezone: invoice.timezone } } }
   }
   if (input.kind === "creditNote") {
     const selection = creditNoteIssueInputSchema.parse(input.commandInput)
+    yield* lockDocument("invoice", selection.invoiceId)
     const invoice = yield* Effect.promise(() => db.invoice.findFirst({
       where: { id: selection.invoiceId, organizationId },
       include: { contact: true, items: { orderBy: { sortOrder: "asc" } },

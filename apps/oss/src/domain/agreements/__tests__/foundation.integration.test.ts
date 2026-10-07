@@ -163,7 +163,7 @@ describe.runIf(hasTestDatabase)("agreement foundation database behavior", () => 
       issueDate: null,
       offerSnapshot: null,
       offerRevision: 0,
-      total: 1250,
+      total: 875,
       taxRate: 25,
       buyerSnapshot: { name: "Buyer" },
       sellerSnapshot: { companyName: settings.companyName },
@@ -174,7 +174,7 @@ describe.runIf(hasTestDatabase)("agreement foundation database behavior", () => 
       title: draft.title,
       termsMarkdown: draft.termsMarkdown,
       taxRate: 25,
-      total: 1250,
+      total: 875,
     })
     expect(notesEdit.deliverables.map((l) => l.id)).toEqual(draft.deliverables.map((l) => l.id))
     const line = draft.deliverables[1]!
@@ -185,7 +185,7 @@ describe.runIf(hasTestDatabase)("agreement foundation database behavior", () => 
       expectedDate: "2099-11-02",
     })
     expect(await api.agreements.get({ id: draft.id })).toMatchObject({
-      total: 1375,
+      total: 1000,
       deliverables: [
         { id: draft.deliverables[0]!.id },
         { id: line.id, lineGross: 1000, expectedDate: new Date("2099-11-02") },
@@ -366,7 +366,7 @@ describe.runIf(hasTestDatabase)("agreement foundation database behavior", () => 
       ),
     )
     outcomes.forEach(completed)
-    expect(await api.agreements.get({ id: draft.id })).toMatchObject({ total: 1500 })
+    expect(await api.agreements.get({ id: draft.id })).toMatchObject({ total: 1000 })
   })
   it("seeds concurrently once, preserves edits/defaults and enforces the partial index", async () => {
     const { org, api } = await setup()

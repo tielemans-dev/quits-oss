@@ -8,12 +8,13 @@ import { Input } from "./ui/input"
 import { Label } from "./ui/label"
 
 /** Per-line classifications and document evidence. Evidence may stay incomplete in a draft. */
-export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, evidence, onEvidenceChange }: {
+export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, evidence, onEvidenceChange, classificationReadOnly = false }: {
   items: Line[]
   onItemsChange: (items: Line[]) => void
   taxRate: string
   evidence: DraftVatEvidence
   onEvidenceChange: (evidence: DraftVatEvidence) => void
+  classificationReadOnly?: boolean
 }) {
   const { t } = useI18n()
   const treatments = items.map((item) => documentVat(item, taxRate || "0").treatment)
@@ -22,7 +23,7 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
   const statement = intra || treatments.includes("exempt") || treatments.includes("reverse_charge_domestic")
   const buyerId = intra || treatments.includes("reverse_charge_domestic")
   return <div className="grid gap-3">
-    {items.map((item, index) => {
+    {!classificationReadOnly && items.map((item, index) => {
       const vat = documentVat(item, taxRate || "0")
       const reasons: readonly VatReasonCode[] = vatReasonCodes[vat.treatment]
       const patch = (changes: Partial<NonNullable<DocumentLineInput["vat"]>>) => onItemsChange(items.map((line, i) => i === index ? { ...line, vat: { ...vat, ...changes } } : line))

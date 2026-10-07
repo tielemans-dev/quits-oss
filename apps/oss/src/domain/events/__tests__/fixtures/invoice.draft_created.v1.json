@@ -24,6 +24,17 @@
         "totalGross": 100,
         "quoteId": "document-1"
       }
+    },
+    {
+      "source": "commands/invoices-from-deliverables.ts",
+      "typeExpression": "\"invoice.draft_created\"",
+      "payloadExpression": "{ number: invoice.number, contactId: invoice.contactId, totalGross: invoice.totalGross.toNumber() }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "contactId": "contact-1",
+        "totalGross": 100
+      }
     }
   ]
 }

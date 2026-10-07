@@ -3414,6 +3414,9 @@ export const InvoiceScalarFieldEnum = {
   amountPaid: 'amountPaid',
   amountCredited: 'amountCredited',
   remindersPaused: 'remindersPaused',
+  purpose: 'purpose',
+  scheduleSaleChoice: 'scheduleSaleChoice',
+  agreementId: 'agreementId',
   quoteId: 'quoteId',
   recurringInvoiceId: 'recurringInvoiceId',
   recurringRunDate: 'recurringRunDate',
@@ -3431,6 +3434,7 @@ export type InvoiceScalarFieldEnum = (typeof InvoiceScalarFieldEnum)[keyof typeo
 
 
 export const InvoiceItemScalarFieldEnum = {
+  deliverableId: 'deliverableId',
   id: 'id',
   invoiceId: 'invoiceId',
   description: 'description',
@@ -3760,6 +3764,8 @@ export type SchedulerScanScalarFieldEnum = (typeof SchedulerScanScalarFieldEnum)
 
 
 export const AgreementScalarFieldEnum = {
+  taxRateInput: 'taxRateInput',
+  offerFormatVersion: 'offerFormatVersion',
   id: 'id',
   organizationId: 'organizationId',
   contactId: 'contactId',
@@ -3823,6 +3829,7 @@ export type AgreementScalarFieldEnum = (typeof AgreementScalarFieldEnum)[keyof t
 
 
 export const DeliverableScalarFieldEnum = {
+  vatRateInput: 'vatRateInput',
   id: 'id',
   agreementId: 'agreementId',
   title: 'title',
@@ -4089,6 +4096,20 @@ export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'J
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
+ * Reference to a field of type 'InvoicePurpose'
+ */
+export type EnumInvoicePurposeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InvoicePurpose'>
+    
+
+
+/**
+ * Reference to a field of type 'InvoicePurpose[]'
+ */
+export type ListEnumInvoicePurposeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InvoicePurpose[]'>
     
 
 

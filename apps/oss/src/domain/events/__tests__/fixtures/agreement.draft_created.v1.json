@@ -5,7 +5,7 @@
     {
       "source": "commands/agreements.ts",
       "typeExpression": "\"agreement.draft_created\"",
-      "payloadExpression": "{ title: agreement.title, contactId: contact.id, totalGross: priced.totalGross }",
+      "payloadExpression": "{ title: agreement.title, contactId: contact.id, totalGross: Number(priced.totalGross) }",
       "variant": "default",
       "payload": {
         "title": "Website",

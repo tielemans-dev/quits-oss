@@ -36,6 +36,7 @@ export function PublicAgreementPage({
 }) {
   const { t } = useI18n()
   const { snapshot } = document
+  const v2 = "offerFormatVersion" in snapshot ? snapshot : null
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-12 grid min-w-0 gap-6 [overflow-wrap:anywhere]">
       <header>
@@ -59,7 +60,7 @@ export function PublicAgreementPage({
       </section>
       <section className="grid gap-4">
         <h2 className="text-xl font-semibold">{t("agreements.deliverables")}</h2>
-        {snapshot.deliverables.map((line, i) => (
+        {snapshot.deliverables.map((line, i) => v2 && line.isDeposit ? null : (
           <div key={i} className="border-b pb-3">
             <h3 className="font-medium">{line.title}</h3>
             <p className="whitespace-pre-wrap">{line.description}</p>
@@ -82,16 +83,25 @@ export function PublicAgreementPage({
         ))}
         <p>
           {t("agreements.subtotal")}:{" "}
-          {formatCurrency(Number(snapshot.subtotalNet), snapshot.currency, snapshot.locale)}
+          {formatCurrency(Number(v2?.serviceTotal.net ?? snapshot.subtotalNet), snapshot.currency, snapshot.locale)}
         </p>
         <p>
           {t("agreements.tax")}:{" "}
-          {formatCurrency(Number(snapshot.totalTax), snapshot.currency, snapshot.locale)}
+          {formatCurrency(Number(v2?.serviceTotal.tax ?? snapshot.totalTax), snapshot.currency, snapshot.locale)}
         </p>
+        {v2 && Number(v2.serviceTotal.payableRounding) !== 0 && <p>{t("agreements.payableRounding")}: {formatCurrency(Number(v2.serviceTotal.payableRounding), snapshot.currency, snapshot.locale)}</p>}
         <p>
-          {t("agreements.total")}:{" "}
-          {formatCurrency(Number(snapshot.totalGross), snapshot.currency, snapshot.locale)}
+          {t(v2 ? "agreements.serviceTotal" : "agreements.total")}:{" "}
+          {formatCurrency(Number(v2?.serviceTotal.gross ?? snapshot.totalGross), snapshot.currency, snapshot.locale)}
         </p>
+        {v2 && <section className="grid gap-3">
+          <h2 className="text-xl font-semibold">{t("agreements.paymentSchedule")}</h2>
+          {v2.paymentSchedule.map(line => <div key={line.sortOrder} className="border-b pb-3">
+            <h3 className="font-medium">{line.title}</h3>
+            <p>{formatCurrency(Number(line.amount), snapshot.currency, snapshot.locale)} {t(line.vatBasis === "gross" ? "agreements.vatBasis.gross" : "agreements.vatBasis.net")}</p>
+            <p>{t("agreements.scheduleTrigger")}</p>
+          </div>)}
+        </section>}
         <p>{t("agreements.paymentDue", { days: snapshot.dueInDays })}</p>
         <p>
           {t("agreements.billingTrigger")}:{" "}

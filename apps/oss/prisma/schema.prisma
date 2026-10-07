@@ -288,6 +288,11 @@ model ContactTaxId {
   @@map("contact_tax_id")
 }
 
+enum InvoicePurpose {
+  sale
+  prepayment
+}
+
 model Invoice {
   id                      String            @id @default(cuid())
   organizationId          String
@@ -337,6 +342,10 @@ model Invoice {
   payments                Payment[]
   creditNotes             CreditNote[]
   reminders               InvoiceReminder[]
+  purpose                 InvoicePurpose    @default(sale)
+  scheduleSaleChoice      Json?
+  agreementId             String?
+  agreement               Agreement?        @relation(fields: [agreementId], references: [id], onDelete: Restrict)
   quoteId                 String?
   quote                   Quote?            @relation(fields: [quoteId], references: [id])
   recurringInvoiceId      String?
@@ -355,6 +364,7 @@ model Invoice {
 
   @@unique([organizationId, number])
   @@unique([recurringInvoiceId, recurringRunDate])
+  @@index([agreementId])
   @@index([organizationId])
   @@index([contactId])
   @@index([organizationId, status])
@@ -365,6 +375,8 @@ model Invoice {
 }
 
 model InvoiceItem {
+  deliverableId  String?     @unique
+  deliverable    Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: Restrict)
   id             String  @id @default(cuid())
   invoiceId      String
   invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -744,6 +756,9 @@ model SchedulerScan {
 }
 
 model Agreement {
+  taxRateInput            String?
+  offerFormatVersion      Int?
+  invoices                Invoice[]
   id                      String             @id @default(cuid())
   organizationId          String
   organization            Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -815,6 +830,8 @@ model Agreement {
 }
 
 model Deliverable {
+  invoiceItem            InvoiceItem?
+  vatRateInput           String?
   id                     String    @id @default(cuid())
   agreementId            String
   agreement              Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)

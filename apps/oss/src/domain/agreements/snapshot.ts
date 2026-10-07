@@ -1,5 +1,7 @@
+import { calculateDraft, percentageToFraction } from "@quits/shared/pricing"
+import type { VatTreatment, VatReasonCode } from "@quits/contracts/vat"
 import { createHash } from "node:crypto"
-import { agreementOfferSnapshotSchema } from "@quits/contracts/agreements"
+import { agreementOfferSnapshotV1Schema, agreementOfferSnapshotV2Schema } from "@quits/contracts/agreements"
 import type { Agreement, Deliverable } from "../../../generated/prisma/client"
 import { renderAgreementMarkdown } from "../../lib/agreements/markdown"
 
@@ -33,8 +35,8 @@ export function agreementPlaceholders(agreement: Agreement & { deliverables: Del
 }
 
 /** Explicit allowlist: operational state, identity, and audit data cannot enter the frozen offer. */
-export function buildOfferSnapshot(agreement: Agreement & { deliverables: Deliverable[] }) {
-  return agreementOfferSnapshotSchema.parse({
+export function buildOfferSnapshotV1(agreement: Agreement & { deliverables: Deliverable[] }) {
+  return agreementOfferSnapshotV1Schema.parse({
     sellerSnapshot: agreement.sellerSnapshot,
     buyerSnapshot: agreement.buyerSnapshot,
     title: agreement.title,
@@ -72,6 +74,44 @@ export function buildOfferSnapshot(agreement: Agreement & { deliverables: Delive
         isDeposit: line.isDeposit,
         sortOrder: line.sortOrder,
       })),
+  })
+}
+
+/** Explicit version dispatch preserves every byte of the v1 builder above. */
+export function buildOfferSnapshot(agreement: Agreement & { deliverables: Deliverable[] }) {
+  if (agreement.offerFormatVersion == null) return buildOfferSnapshotV1(agreement)
+  if (agreement.offerFormatVersion !== 2) throw new Error("Unsupported offer format version")
+  const lines = agreement.deliverables.slice().sort((a, b) => a.sortOrder - b.sortOrder)
+  const input = (line: Deliverable) => ({
+    description: line.description || line.title,
+    quantity: line.quantityInput ?? line.quantity.toString(),
+    unitPrice: line.unitPriceInput ?? (agreement.pricesIncludeTax ? line.unitPriceGross : line.unitPriceNet).toString(),
+    vat: { treatment: line.vatTreatment as VatTreatment,
+      rate: line.vatRateInput ?? percentageToFraction(line.taxRate.toString()),
+      country: line.vatCountry, reasonCode: line.vatReasonCode as VatReasonCode | null },
+  })
+  const services = calculateDraft({ currency: agreement.currency, pricesIncludeTax: agreement.pricesIncludeTax,
+    taxRate: agreement.taxRateInput ?? agreement.taxRate.toString(), items: lines.filter(line => !line.isDeposit).map(input) })
+  const schedule = calculateDraft({ currency: agreement.currency, pricesIncludeTax: agreement.pricesIncludeTax,
+    taxRate: agreement.taxRateInput ?? agreement.taxRate.toString(), items: lines.filter(line => line.isDeposit).map(input) })
+  const vatBasis = agreement.pricesIncludeTax ? "gross" as const : "net" as const
+  // Reuse the frozen v1 field allowlist, then extend it only on the v2 branch.
+  const common = buildOfferSnapshotV1(agreement)
+  let scheduleIndex = 0
+  return agreementOfferSnapshotV2Schema.parse({
+    ...common, deliverables: common.deliverables.map((line, i) => ({ ...line, quantity: input(lines[i]!).quantity })),
+    offerFormatVersion: 2, calculationVersion: "v2",
+    serviceTotal: { net: services.net, tax: services.tax, gross: services.gross, payableRounding: services.payableRounding, vatBasis },
+    paymentSchedule: lines.filter(line => line.isDeposit).map(line => {
+      const priced = schedule.lines[scheduleIndex++]!
+      return { title: line.title, sortOrder: line.sortOrder,
+        amount: vatBasis === "gross" ? priced.gross : priced.net, vatBasis,
+        trigger: "on_agreement_acceptance", vatGroupKey: priced.groupKey,
+        net: priced.net, tax: priced.tax, gross: priced.gross }
+    }),
+    originalInputs: lines.map(line => ({ sortOrder: line.sortOrder, quantity: input(line).quantity,
+      unitPrice: input(line).unitPrice, inputPrecision: line.inputPrecision ?? "backfilled", vat: input(line).vat })),
+    vatGroups: services.groups, scheduleVatGroups: schedule.groups,
   })
 }
 

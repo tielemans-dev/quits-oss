@@ -68,18 +68,32 @@ export async function publishCandidate(tx: Prisma.TransactionClient, input: {
   else await tx.agreement.update({ where: { id: candidate.documentId }, data })
   await tx.issuanceCandidate.update({ where: { id: candidate.id }, data: { status: "published" } })
   await tx.artifactStaging.update({ where: { id: candidate.stagingId }, data: { status: "published" } })
+  const billingEvents: PendingEvent[] = []
+  if (candidate.documentKind === "invoice") {
+    const snapshot = (candidate.renderInput as unknown as RenderInput).snapshot as { agreementId?: string | null; items?: Array<{ deliverableId: string | null }> }
+    if (snapshot.agreementId) {
+      for (const line of snapshot.items ?? []) {
+        if (!line.deliverableId) continue
+        const changed = await tx.deliverable.updateMany({ where: { id: line.deliverableId, agreementId: snapshot.agreementId, billingStatus: "reserved" }, data: { billingStatus: "invoiced" } })
+        if (changed.count !== 1) throw new InvalidState({ code: "reservation_mismatch", message: "Candidate deliverable reservation does not match" })
+        const invoiceId = candidate.documentId
+        billingEvents.push({ aggregateType: "agreement", aggregateId: snapshot.agreementId, type: "deliverable.invoiced", payload: { deliverableId: line.deliverableId, invoiceId } })
+      }
+    }
+  }
   const documentKind = candidate.documentKind
   const documentId = candidate.documentId
   const candidateId = candidate.id
   const rendererVersion = candidate.staging.rendererVersion
   const reason = candidate.staging.missingReason ?? "renderer_unavailable"
-  return artifacts ? [{
+  const artifactEvents: PendingEvent[] = artifacts ? [{
     aggregateType: "document", aggregateId: documentId, type: "document.artifact_stored",
     payload: { documentKind, documentId, candidateId, artifacts, rendererVersion },
   }] : [{
     aggregateType: "document", aggregateId: documentId, type: "document.artifact_missing",
     payload: { documentKind, documentId, candidateId, reason },
   }]
+  return [...billingEvents, ...artifactEvents]
 }
 export async function retireCandidate(tx: Prisma.TransactionClient, target: Record<string, string>, organizationId: string) {
   if (!target.candidateId) return
