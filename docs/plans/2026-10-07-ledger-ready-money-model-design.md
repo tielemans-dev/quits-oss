@@ -514,3 +514,16 @@ Kept verbatim in spirit from review round 3 so a human can decide:
   Explicitly converted sale drafts receive the same valuation and date snapshot as other sales.
 - Historical valuation recording requires a human actor and balancing stored components. It
   refuses incomplete historical rows rather than inferring their missing amounts or tax treatment.
+
+## Known open issues and verification boundaries in A4 implementation
+
+- The shared currency catalogue has no supported exponent-1 currency, although the money contract
+  allows exponents 0, 1 and 2. A4 uses the existing currency guard and refuses unsupported currencies
+  with `not_postable`; it does not extend pricing or the catalogue. Unit fixtures cover current
+  exponent-0 and exponent-2 currencies.
+- Unsupported treatment/rate/evidence combinations cannot be emitted by successful A3b issuance.
+  Likewise prepayment issuance is blocked, advance/application arrays are reserved empty, and new
+  issuance requires valuation. Acceptance refusal probes therefore perturb policy facts on real
+  `issueDocument` events. Supported invoices and credits, the paid incomplete credit, earlier-supply
+  review and payment event are unmodified real emitted events. A separate calculator-built pure
+  catalogue covers legacy/sparse events and all refusals. No emitter is changed or bypassed.
