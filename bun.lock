@@ -96,6 +96,10 @@
     "packages/shared": {
       "name": "@quits/shared",
       "version": "0.1.4",
+      "dependencies": {
+        "@quits/contracts": "workspace:*",
+        "decimal.js-light": "2.5.1",
+      },
       "devDependencies": {
         "@types/node": "^22.10.2",
         "oxlint": "^1.50.0",

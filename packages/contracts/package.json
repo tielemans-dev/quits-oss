@@ -20,7 +20,9 @@
     "src/credit-notes.ts",
     "src/reminders.ts",
     "src/recurring.ts",
-    "src/exports.ts"
+    "src/exports.ts",
+    "src/vat.ts",
+    "src/pricing.ts"
   ],
   "exports": {
     ".": "./src/index.ts",
@@ -38,7 +40,9 @@
     "./quotes": "./src/quotes.ts",
     "./recurring": "./src/recurring.ts",
     "./reminders": "./src/reminders.ts",
-    "./runtime": "./src/runtime.ts"
+    "./runtime": "./src/runtime.ts",
+    "./vat": "./src/vat.ts",
+    "./pricing": "./src/pricing.ts"
   },
   "scripts": {
     "lint": "oxlint --deny-warnings --report-unused-disable-directives src",

@@ -8,13 +8,17 @@
     "src/index.ts",
     "src/logging.ts",
     "src/runtimeEnv.ts",
-    "src/http.ts"
+    "src/http.ts",
+    "src/pricing/index.ts",
+    "src/currency.ts"
   ],
   "exports": {
     ".": "./src/index.ts",
     "./http": "./src/http.ts",
     "./logging": "./src/logging.ts",
-    "./runtimeEnv": "./src/runtimeEnv.ts"
+    "./runtimeEnv": "./src/runtimeEnv.ts",
+    "./pricing": "./src/pricing/index.ts",
+    "./currency": "./src/currency.ts"
   },
   "scripts": {
     "lint": "oxlint --deny-warnings --report-unused-disable-directives src",
@@ -29,5 +33,9 @@
     "oxlint": "^1.50.0",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"
+  },
+  "dependencies": {
+    "@quits/contracts": "workspace:*",
+    "decimal.js-light": "2.5.1"
   }
 }
