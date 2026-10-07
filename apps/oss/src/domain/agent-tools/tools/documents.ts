@@ -1,6 +1,7 @@
 import { Prisma } from "../../../../generated/prisma/client"
 import { getPublicInvoicePaymentUrl } from "../../../lib/payments/public"
 import { getPublicQuoteUrl } from "../../../lib/quotes/public-url"
+import { computeSettlement } from "../../documents/settlement"
 
 type Money = Prisma.Decimal
 
@@ -85,7 +86,8 @@ export function presentInvoice(invoice: InvoiceRow) {
     totalGross: invoice.totalGross,
     amountPaid,
     amountCredited,
-    balanceDue: invoice.totalGross.minus(amountPaid).minus(amountCredited),
+    // The same balance the rest of the app shows: never negative, even after an overpayment.
+    balanceDue: computeSettlement({ totalGross: invoice.totalGross, amountPaid, amountCredited }).balanceDue,
     remindersPaused: invoice.remindersPaused ?? false,
     lastEmailAttempt: invoice.lastEmailAttemptOutcome
       ? { outcome: invoice.lastEmailAttemptOutcome, message: invoice.lastEmailAttemptMessage ?? null }
