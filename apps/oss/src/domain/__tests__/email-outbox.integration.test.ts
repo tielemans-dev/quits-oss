@@ -43,6 +43,7 @@ describe("isDefiniteRejection", () => {
     expect(isDefiniteRejection(new EmailSendError("internal_server_error", "oops"))).toBe(false)
     expect(isDefiniteRejection(new EmailSendError("rate_limit_exceeded", "slow down"))).toBe(false)
     expect(isDefiniteRejection(new Error("socket hang up"))).toBe(false)
+    expect(isDefiniteRejection(new EmailSendError("smtp_partial_acceptance", "Some recipients refused"))).toBe(false)
   })
 })
 
@@ -127,6 +128,19 @@ describeIfDatabase("email outbox", () => {
     await runDueJobs({ organizationIds: [org.organizationId] })
     expect(deliver).not.toHaveBeenCalled()
     expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "unconfirmed" })
+  })
+
+  it("settles partial SMTP acceptance as unconfirmed without reopening or retrying", async () => {
+    const { org, invoiceId } = await setup()
+    useSmtp()
+    vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("smtp_partial_acceptance", "Some recipients refused"))
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const job = await deliveryJob(org.organizationId)
+    expect(job).toMatchObject({ status: "failed", result: { outcome: "unconfirmed" } })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "unconfirmed" })
+    await makeDue(job.id)
+    await runDueJobs({ organizationIds: [org.organizationId] })
+    expect(deliver).toHaveBeenCalledTimes(1)
   })
 
   it("preserves Resend deduplication after the configured provider changes to SMTP", async () => {

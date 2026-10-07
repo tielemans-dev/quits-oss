@@ -34,11 +34,11 @@ export function readSmtpConfiguration(env: EmailEnvironment = getRuntimeEnv()) {
     throw new SmtpConfigurationError(["SMTP_PORT"], "SMTP_PORT must be an integer between 1 and 65535")
   }
   const user = env.SMTP_USER?.trim()
-  const pass = env.SMTP_PASSWORD
+  const pass = env.SMTP_PASS || env.SMTP_PASSWORD
   if (Boolean(user) !== Boolean(pass)) {
     throw new SmtpConfigurationError(
-      [user ? "SMTP_PASSWORD" : "SMTP_USER"],
-      "SMTP_USER and SMTP_PASSWORD must be configured together"
+      [user ? "SMTP_PASS" : "SMTP_USER"],
+      "SMTP_USER and SMTP_PASS must be configured together"
     )
   }
   const requireTLS = booleanSetting(env, "SMTP_REQUIRE_TLS", true)

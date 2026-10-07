@@ -40,10 +40,13 @@ export async function deliverSmtp(message: EmailMessage): Promise<{ id: string }
       }),
     }
     const result = await transport.sendMail(options)
-    // SMTP may accept some recipients and reject others. A retry could duplicate the accepted
-    // recipients, so any acceptance is recorded as delivered. Quits document emails have one.
     if (result.accepted.length === 0) {
       throw new EmailSendError("smtp_rejected", "The SMTP server refused all recipients")
+    }
+    // A mixed outcome does not prove delivery to the intended recipient. A second submission
+    // could duplicate the accepted recipients, so the outbox must settle without retrying.
+    if (result.rejected.length > 0) {
+      throw new EmailSendError("smtp_partial_acceptance", "The SMTP server accepted some recipients and refused others")
     }
     return { id: result.messageId }
   } catch (error) {

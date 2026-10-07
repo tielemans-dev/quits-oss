@@ -69,6 +69,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  * or will accept it when retried with the same key.
  */
 const UNCERTAIN_PROVIDER_ERRORS = new Set([
+  "smtp_partial_acceptance",
   "application_error",
   "internal_server_error",
   "rate_limit_exceeded",

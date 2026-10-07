@@ -16,6 +16,7 @@ function clearEmailEnv() {
   delete process.env.EMAIL_PROVIDER
   delete process.env.SMTP_HOST
   delete process.env.SMTP_USER
+  delete process.env.SMTP_PASS
   delete process.env.SMTP_PASSWORD
 }
 
@@ -61,7 +62,7 @@ describeIfDatabase("settings email delivery status", () => {
     process.env.EMAIL_PROVIDER = "smtp"
     process.env.SMTP_HOST = "relay.example.com"
     process.env.SMTP_USER = "smtp-user"
-    process.env.SMTP_PASSWORD = "synthetic-smtp-password"
+    process.env.SMTP_PASS = "synthetic-smtp-password"
     process.env.FROM_EMAIL = "billing@acme.example"
     const { orgId, caller } = await createOrgWithCaller("Settings SMTP Org")
     try {

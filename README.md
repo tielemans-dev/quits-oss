@@ -216,7 +216,8 @@ This repository is Bun-native. Use `bun install` and `bun run ...` commands for 
 | `SMTP_PORT` | Relay port; defaults to 587, or 465 when `SMTP_SECURE=true` | No |
 | `SMTP_SECURE` | `true` for implicit TLS, `false` for STARTTLS (default) | No |
 | `SMTP_REQUIRE_TLS` | Require STARTTLS; defaults to `true` for non-implicit TLS | No |
-| `SMTP_USER`, `SMTP_PASSWORD` | Optional relay authentication; set both or neither | No |
+| `SMTP_USER`, `SMTP_PASS` | Optional relay authentication; set both or neither | No |
+| `SMTP_PASSWORD` | Compatibility alias for `SMTP_PASS`; `SMTP_PASS` takes precedence when nonempty | No |
 | `FROM_EMAIL` | Sender email address used for outgoing emails | No |
 | `CRON_SECRET` | Bearer token required by `/api/cron/tick` and `/api/cron/mark-overdue` | Yes (prod) |
 | `QUITS_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
@@ -259,8 +260,9 @@ without both adapters can still issue documents and record `document.artifact_mi
 Set `EMAIL_PROVIDER=smtp`, `SMTP_HOST`, and `FROM_EMAIL` to use your own relay. For
 port 587, keep `SMTP_SECURE=false` and `SMTP_REQUIRE_TLS=true`. For port 465, set
 `SMTP_SECURE=true`. TLS certificates are always validated. `SMTP_USER` and
-`SMTP_PASSWORD` are optional for a trusted relay; configure both when authentication
-is required. Docker Compose forwards these settings to the app.
+`SMTP_PASS` are optional for a trusted relay; configure both when authentication
+is required. `SMTP_PASSWORD` remains a compatibility alias for `SMTP_PASS`. Docker
+Compose forwards these settings to the app.
 
 For a development mail catcher or a trusted local plaintext relay, set its port and
 `SMTP_REQUIRE_TLS=false`. Do not use plaintext for a relay reached over the internet.
@@ -276,6 +278,8 @@ SMTP servers do not deduplicate email by an idempotency key or Message-ID. If a
 connection is lost after submission, the outbox records the delivery as unconfirmed
 and stops automatic retries. The customer may have received the message. Check your
 relay's logs before choosing to resend it. Explicit server refusals record a failed
-send; accepted messages settle without contacting the relay again. Resend keeps its
+send. A relay that accepts only some recipients records an unconfirmed delivery and
+stops retries, because retrying could duplicate the recipients it accepted. Fully
+accepted messages settle without contacting the relay again. Resend keeps its
 existing idempotent retry behavior. A queued delivery keeps the provider recorded
 before its first submission even if deployment settings later change.
