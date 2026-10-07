@@ -6,12 +6,8 @@ import {
   creditNoteSendInputSchema,
 } from "@quits/contracts/credit-notes"
 import { z } from "zod"
-import {
-  creditAvailabilityFor,
-  creditTaxRate,
-  issueCreditNote,
-  sendCreditNote,
-} from "../../domain/commands/credit-notes"
+import { issueCreditNote, sendCreditNote } from "../../domain/commands/credit-notes"
+import { creditAvailabilityFor, creditTaxRate } from "../../domain/documents/credit-pricing"
 import { actorCan } from "../../domain/actor"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"

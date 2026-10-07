@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto"
 import { Effect } from "effect"
+import type { CreditNoteIssueInput } from "@quits/contracts/credit-notes"
 import type { ApprovalContext } from "./command"
 import { formatIsoDate } from "../lib/exports/format"
 import { lockDocument } from "./documents/locks"
+import { priceCreditNote } from "./documents/credit-pricing"
 import { computeSettlement } from "./documents/settlement"
-import { NotFound } from "./errors"
+import { NotFound, type DomainError } from "./errors"
 import { Command, Db } from "./services"
 
 /**
@@ -164,29 +166,56 @@ export const paymentVoidApproval = (input: {
     }
   })
 
-export const creditNoteIssueApproval = (input: {
-  invoiceId: string
-  reason: string
-  mode: "full" | "lines" | "amount"
-  amount?: number
-}): Effect.Effect<ApprovalContext, NotFound, Db | Command> =>
+/** At most this many credited lines are named in an approval summary; details list them all. */
+const SUMMARY_LINES = 3
+
+const quantityText = (quantity: number) => (Number.isInteger(quantity) ? `${quantity}` : quantity.toFixed(2))
+
+export const creditNoteIssueApproval = (
+  input: CreditNoteIssueInput
+): Effect.Effect<ApprovalContext, DomainError, Db | Command> =>
   Effect.gen(function* () {
+    const db = yield* Db
     const invoice = yield* loadInvoice(input.invoiceId)
+    const [items, creditNotes] = yield* Effect.promise(() =>
+      Promise.all([
+        db.invoiceItem.findMany({ where: { invoiceId: invoice.id }, orderBy: { sortOrder: "asc" } }),
+        db.creditNote.findMany({
+          where: { invoiceId: invoice.id, status: "issued" },
+          include: { items: true },
+        }),
+      ])
+    )
+    // Priced exactly as the issue command will price it, so the reviewer sees what is credited.
+    const credit = yield* priceCreditNote({ ...invoice, items, creditNotes }, input)
+    const amount = money(credit.totalGross, invoice.currency)
+    const creditedLines = credit.lines.map((line) => `${quantityText(line.quantity)} × ${line.description}`)
+    const named =
+      creditedLines.length > SUMMARY_LINES
+        ? `${creditedLines.slice(0, SUMMARY_LINES).join(", ")} and ${creditedLines.length - SUMMARY_LINES} more`
+        : creditedLines.join(", ")
     const scope =
       input.mode === "full"
-        ? "everything still uncredited on"
-        : input.mode === "amount" && input.amount !== undefined
-          ? `${money(input.amount, invoice.currency)} of`
-          : "selected lines of"
+        ? `everything still uncredited on invoice ${invoice.number} (${amount})`
+        : input.mode === "amount"
+          ? `${amount} of invoice ${invoice.number}`
+          : `${named} on invoice ${invoice.number} (${amount})`
     return {
-      summary: `Issue a credit note for ${scope} invoice ${invoice.number}: ${input.reason}`,
-      version: fingerprint([invoice.totalGross.toString(), invoice.amountCredited.toString(), invoice.currency]),
+      summary: `Issue a credit note for ${scope}: ${input.reason}`,
+      version: fingerprint([
+        invoice.totalGross.toString(),
+        invoice.amountCredited.toString(),
+        invoice.currency,
+        credit.lines.map((line) => [line.invoiceItemId, line.description, line.quantity, line.lineGross]),
+        credit.totalGross,
+      ]),
       details: {
         number: invoice.number,
         customer: invoice.contact.name,
         total: invoice.totalGross.toFixed(2),
         currency: invoice.currency,
-        amount: input.amount !== undefined ? input.amount.toFixed(2) : null,
+        amount: credit.totalGross.toFixed(2),
+        lines: creditedLines.join("; "),
         reason: input.reason,
       },
     }
@@ -209,7 +238,13 @@ export const creditNoteSendApproval = (input: {
     const recipient = creditNote.contact.email?.trim() || null
     return {
       summary: `Email credit note ${creditNote.number} (${money(creditNote.totalGross, creditNote.currency)}) to ${recipient ?? creditNote.contact.name}`,
-      version: fingerprint([creditNote.number, creditNote.totalGross.toString(), recipient]),
+      version: fingerprint([
+        creditNote.number,
+        creditNote.totalGross.toString(),
+        creditNote.contactId,
+        creditNote.contact.name,
+        recipient,
+      ]),
       details: {
         number: creditNote.number,
         customer: creditNote.contact.name,
