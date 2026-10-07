@@ -37,6 +37,7 @@ const navItems: Array<{
   { key: 'nav.invoices', icon: FileText, path: '/invoices' },
   { key: 'nav.creditNotes', icon: FileMinus, path: '/credit-notes' },
   { key: 'nav.recurring', icon: Repeat, path: '/recurring' },
+  { key: 'nav.agreements', icon: ClipboardList, path: '/agreements' },
   { key: 'nav.quotes', icon: ClipboardList, path: '/quotes' },
   { key: 'nav.contacts', icon: Users, path: '/contacts' },
   { key: 'nav.approvals', icon: ShieldCheck, path: '/approvals' },

@@ -2,6 +2,7 @@ export const enNavMessages = {
   "nav.navigation": "Navigation",
   "nav.dashboard": "Dashboard",
   "nav.invoices": "Invoices",
+  "nav.agreements": "Agreements",
   "nav.quotes": "Quotes",
   "nav.contacts": "Contacts",
   "nav.billing": "Billing",
