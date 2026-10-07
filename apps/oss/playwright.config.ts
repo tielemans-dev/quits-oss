@@ -12,6 +12,8 @@ const distribution =
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // This fixture needs its own fake-provider server and explicit throwaway database.
+  testIgnore: "**/public-agreement.spec.ts",
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,

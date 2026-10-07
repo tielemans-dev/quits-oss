@@ -1,10 +1,11 @@
 import type { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../db"
 
-export type ActivityDocumentType = "invoice" | "quote" | "creditNote"
+export type ActivityDocumentType = "invoice" | "quote" | "creditNote" | "agreement"
 
 /** Payload keys that link an event on another aggregate (payment, credit note) to a document. */
 const DOCUMENT_PAYLOAD_KEYS: Record<ActivityDocumentType, string> = {
+  agreement: "agreementId",
   invoice: "invoiceId",
   quote: "quoteId",
   creditNote: "creditNoteId",
