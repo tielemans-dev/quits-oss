@@ -89,7 +89,7 @@ describe("agreement role and agent scope matrix", () => {
       })
     }
   }
-  it("registers the permission table, presets and exactly eight draft tools", () => {
+  it("registers the permission table, presets and draft and issuance tools", () => {
     expect(ALL_PERMISSIONS.filter((p) => p.startsWith("agreement:")).sort()).toEqual(
       ["create", "read", "update", "send", "delete", "accept", "close", "manageTemplates"]
         .map((a) => `agreement:${a}`)
@@ -117,6 +117,10 @@ describe("agreement role and agent scope matrix", () => {
     ).toBe(true)
     expect(agreementTools.map((tool) => tool.name).sort()).toEqual(
       [
+        "agreement_send",
+        "agreement_issue",
+        "agreement_resend",
+        "agreement_send_read_link",
         "agreement_list",
         "agreement_get",
         "deliverable_list",

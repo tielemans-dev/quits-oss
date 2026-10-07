@@ -33,7 +33,9 @@ function PublicQuoteRoutePage() {
         },
       })
         .then((nextState) => {
-          setState(nextState)
+          if (nextState.kind === "retry_later")
+            setError("Too many submissions. Please try again later.")
+          else setState(nextState)
         })
         .catch(() => {
           setError("Unable to update this quote right now. Please try again.")

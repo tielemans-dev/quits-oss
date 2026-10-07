@@ -6,3 +6,5 @@ import "./features/overdue"
 import "./features/reminders"
 import "./features/recurring"
 import "./features/approvals"
+
+import "./features/agreement-expiry"

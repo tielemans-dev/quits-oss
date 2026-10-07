@@ -1,10 +1,11 @@
+import { publicQuoteDecisionInputSchema } from "@quits/contracts/quotes"
+import { recordPublicLinkAttempt } from "../public-links/rate-limit"
 import type { SystemActor } from "../../domain/actor"
 import { recordQuoteCustomerDecision } from "../../domain/commands/quotes"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../db"
 import {
   getQuotePublicDecisionState,
-  type QuotePublicDecision,
   verifyQuotePublicToken,
 } from "./public"
 
@@ -69,14 +70,25 @@ export async function decidePublicQuoteByToken(
   token: string,
   secret: string,
   input: {
-    decision: QuotePublicDecision
-    rejectionReason?: string
+    decision: unknown
+    rejectionReason?: unknown
   }
 ) {
   const payload = verifyQuotePublicToken(token, secret)
   if (!payload) {
     throw new Error("Invalid public quote link")
   }
+
+  await recordPublicLinkAttempt({
+    documentKind: "quote",
+    documentId: payload.quoteId,
+    scope: payload.scope,
+    keyVersion: payload.keyVersion,
+    targetId: null,
+    revision: 0,
+  })
+
+  const parsed = publicQuoteDecisionInputSchema.parse({ ...input, token })
 
   const target = await prisma.quote.findUnique({
     where: { id: payload.quoteId },
@@ -91,8 +103,8 @@ export async function decidePublicQuoteByToken(
     {
       quoteId: payload.quoteId,
       keyVersion: payload.keyVersion,
-      decision: input.decision,
-      rejectionReason: input.rejectionReason,
+      decision: parsed.decision,
+      rejectionReason: parsed.rejectionReason,
     },
     { actor: customerLinkActor(target.organizationId) }
   )
