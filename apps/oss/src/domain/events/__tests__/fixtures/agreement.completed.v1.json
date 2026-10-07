@@ -1,12 +1,12 @@
 {
-  "type": "agreement.cancelled",
+  "type": "agreement.completed",
   "schemaVersion": 1,
   "cases": [
     {
       "source": "commands/agreement-lifecycle.ts",
       "typeExpression": "input.disposition === \"completed\" ? \"agreement.completed\" : \"agreement.cancelled\"",
       "payloadExpression": "{ reason: input.reason, previousStatus: agreement.status }",
-      "variant": "default",
+      "variant": "completed",
       "payload": {
         "reason": "Correction",
         "previousStatus": "sent"

@@ -663,7 +663,7 @@ describe("agreement validity", () => {
     )
     expect(
       await ctx.run(closeAgreement, { id, disposition: "completed", reason: "Done" }),
-    ).toMatchObject({ status: "failed", error: { tag: "ValidationFailed" } })
+    ).toMatchObject({ status: "failed", error: { code: "not_closable" } })
   })
   it("recovers notifications without markers, and renewals have independent dedupe keys", async () => {
     const ctx = await setup()

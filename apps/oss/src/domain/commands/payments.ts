@@ -12,6 +12,7 @@ import { appLogger } from "../../lib/observability"
 import { currencyFractionDigits, isExactInCurrency } from "../../lib/payments/stripe-amounts"
 import type { Actor } from "../actor"
 import { defineCommand } from "../command"
+import { lockDocument } from "../documents/locks"
 import { expireReplacedCheckoutSession } from "../documents/checkout-sessions"
 import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
 import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
@@ -47,9 +48,7 @@ const lockInvoice = (invoiceId: string) =>
   Effect.gen(function* () {
     const db = yield* Db
     const { organizationId } = yield* Command
-    yield* Effect.promise(
-      () => db.$queryRaw`SELECT "id" FROM "invoice" WHERE "id" = ${invoiceId} AND "organizationId" = ${organizationId} FOR UPDATE`
-    )
+    yield* lockDocument("invoice", invoiceId)
     const invoice = yield* Effect.promise(() =>
       db.invoice.findFirst({
         where: { id: invoiceId, organizationId },

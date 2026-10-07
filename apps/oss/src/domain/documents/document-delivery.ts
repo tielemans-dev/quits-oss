@@ -1,3 +1,4 @@
+import { lockInvoiceForCompletion } from "./locks"
 import { Effect } from "effect"
 import type { Prisma } from "../../../generated/prisma/client"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
@@ -70,6 +71,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
     registerDeliveryCompletion(completionKind(kind, mode), {
       pending: async (db, target) => (await pendingCandidate(db, target)) && (await delegate(db, kind).count({ where: awaiting(target, mode) })) > 0,
       delivered: async ({ tx, target, organizationId }) => {
+        if (kind === "invoice") await lockInvoiceForCompletion(tx, target.documentId!, organizationId)
         if (!await pendingCandidate(tx, target)) return []
         const attemptAt = new Date(target.attemptAt)
         const issued = mode === "send" ? issuedFields(target, attemptAt) : {}
@@ -104,6 +106,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
         ]
       },
       failed: async ({ tx, target, organizationId }, failure: DeliveryFailure) => {
+        if (kind === "invoice") await lockInvoiceForCompletion(tx, target.documentId!, organizationId)
         if (!await pendingCandidate(tx, target)) return []
         const attemptAt = new Date(target.attemptAt)
         if (failure.reason === "unconfirmed") {

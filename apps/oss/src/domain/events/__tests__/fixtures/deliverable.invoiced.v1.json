@@ -1,0 +1,16 @@
+{
+  "type": "deliverable.invoiced",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "\"deliverable.invoiced\"",
+      "payloadExpression": "{ deliverableId: line.deliverableId, invoiceId }",
+      "variant": "default",
+      "payload": {
+        "deliverableId": "deliverable-1",
+        "invoiceId": "invoice-1"
+      }
+    }
+  ]
+}

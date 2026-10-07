@@ -7,7 +7,7 @@ import {
   agreementResendInputSchema,
   agreementRecordAcceptanceInputSchema,
   agreementCloseInputSchema,
-  agreementOfferSnapshotSchema,
+  readAgreementOfferSnapshot,
   agreementPublicDecisionSchema,
 } from "@quits/contracts/agreements"
 import { defineCommand } from "../command"
@@ -62,7 +62,7 @@ export const sendAgreement = defineCommand({
       const { url } = mintAgreementLink(agreement, "decide", command.now)
       const recipient = agreement.issuedToEmail!
       const message = composeAgreementEmail({
-        snapshot: agreementOfferSnapshotSchema.parse(agreement.offerSnapshot),
+        snapshot: readAgreementOfferSnapshot(agreement.offerSnapshot),
         number: agreement.number,
         settings,
         recipient,
@@ -116,7 +116,7 @@ const frozenApproval = (input: { id: string; recipient?: string }, action: "rese
     const recipient = yield* requireRecipientEmail({
       email: input.recipient ?? agreement.issuedToEmail,
     })
-    const snapshot = agreementOfferSnapshotSchema.parse(agreement.offerSnapshot)
+    const snapshot = readAgreementOfferSnapshot(agreement.offerSnapshot)
     return {
       summary: `${action === "resend" ? "Resend agreement" : "Send read link for"} ${agreement.number} to ${recipient ?? "no recipient"}`,
       version: `${agreement.offerSnapshotHash}:${recipient ?? ""}`,
@@ -171,7 +171,7 @@ export const resendAgreement = defineCommand({
         })
       const { url } = mintAgreementLink(updated, "decide", command.now)
       const message = composeAgreementEmail({
-        snapshot: agreementOfferSnapshotSchema.parse(updated.offerSnapshot),
+        snapshot: readAgreementOfferSnapshot(updated.offerSnapshot),
         number: updated.number,
         settings,
         recipient,
@@ -272,7 +272,7 @@ const notifyAccepted = (
     const command = yield* Command
     const { settings } = yield* loadDocumentContext
     const { url } = mintAgreementLink(agreement, "read", command.now)
-    const snapshot = agreementOfferSnapshotSchema.parse(agreement.offerSnapshot)
+    const snapshot = readAgreementOfferSnapshot(agreement.offerSnapshot)
     const recipients = new Set(
       [settings.companyEmail?.trim(), agreement.issuedToEmail].filter((email): email is string =>
         Boolean(email),
@@ -345,7 +345,7 @@ export const closeAgreement = defineCommand({
   permission: "agreement:close",
   outwardFacing: false,
   input: agreementCloseInputSchema,
-  summarize: ({ id }) => `Cancel agreement ${id}`,
+  summarize: ({ id, disposition }) => `Close agreement ${id} as ${disposition}`,
   handle: (input) =>
     Effect.gen(function* () {
       yield* humanOnly
@@ -353,29 +353,25 @@ export const closeAgreement = defineCommand({
       const command = yield* Command
       const agreement = yield* lockedAgreement(input.id)
       yield* refuseWhileSending("agreement", agreement)
-      if (!["sent", "accepted"].includes(agreement.status))
-        return yield* new InvalidState({
-          code: "not_closable",
-          message: "Only sent or accepted agreements can be cancelled",
-        })
-      const reserved = agreement.deliverables.filter((line) => line.billingStatus === "reserved")
-      if (reserved.length)
-        return yield* new InvalidState({
-          code: "reserved_deliverables",
-          message:
-            "This agreement has reserved deliverables. Release their reservations before cancelling.",
-        })
-      yield* Effect.promise(() =>
-        db.deliverable.updateMany({
-          where: { agreementId: agreement.id, billingStatus: { not: "invoiced" } },
-          data: { status: "cancelled" },
-        }),
-      )
+      if (input.disposition === "completed" ? agreement.status !== "accepted" : !["sent", "accepted"].includes(agreement.status))
+        return yield* new InvalidState({ code: "not_closable", message: "Completion requires an accepted agreement; cancellation requires a sent or accepted agreement" })
+      const reserved = agreement.deliverables.filter(line => line.billingStatus === "reserved")
+      if (reserved.length) {
+        const drafts = yield* Effect.promise(() => db.invoice.findMany({ where: { organizationId: command.organizationId, agreementId: agreement.id, status: "draft", items: { some: { deliverableId: { in: reserved.map(line => line.id) } } } }, select: { id: true, number: true }, orderBy: { id: "asc" } }))
+        return yield* new InvalidState({ code: "reserved_deliverables", message: `Release the reservations on these linked drafts before closing: ${drafts.map(draft => `${draft.number} (${draft.id})`).join(", ")}` })
+      }
+      if (input.disposition === "completed") {
+        const terminal = agreement.deliverables.map(line => input.cancelRemaining && line.billingStatus === "unbilled" && line.status !== "accepted" ? { ...line, status: "cancelled" } : line)
+        if (terminal.some(line => (!line.isDeposit && !["accepted", "cancelled"].includes(line.status)) ||
+          !(line.billingStatus === "invoiced" || (line.billingStatus === "unbilled" && line.status === "cancelled"))))
+          return yield* new InvalidState({ code: "open_deliverables", message: "Completion requires terminal fulfillment and billing for every deliverable" })
+        if (input.cancelRemaining) yield* Effect.promise(() => db.deliverable.updateMany({ where: { agreementId: agreement.id, billingStatus: "unbilled", status: { not: "accepted" } }, data: { status: "cancelled" } }))
+      } else yield* Effect.promise(() => db.deliverable.updateMany({ where: { agreementId: agreement.id, billingStatus: { not: "invoiced" } }, data: { status: "cancelled" } }))
       const updated = yield* Effect.promise(() =>
         db.agreement.update({
           where: { id: agreement.id },
           data: {
-            status: "cancelled",
+            status: input.disposition,
             closedAt: command.now,
             closeReason: input.reason,
             ...(agreement.status === "sent"
@@ -388,7 +384,7 @@ export const closeAgreement = defineCommand({
       command.emit({
         aggregateType: "agreement",
         aggregateId: agreement.id,
-        type: "agreement.cancelled",
+        type: input.disposition === "completed" ? "agreement.completed" : "agreement.cancelled",
         payload: { reason: input.reason, previousStatus: agreement.status },
       })
       return updated
@@ -454,7 +450,7 @@ export const sendAgreementReadLink = defineCommand({
       const { url } = mintAgreementLink(agreement, "read", command.now)
       const queued = yield* enqueueEmailDelivery({
         message: composeAgreementEmail({
-          snapshot: agreementOfferSnapshotSchema.parse(agreement.offerSnapshot),
+          snapshot: readAgreementOfferSnapshot(agreement.offerSnapshot),
           number: agreement.number,
           settings,
           recipient,

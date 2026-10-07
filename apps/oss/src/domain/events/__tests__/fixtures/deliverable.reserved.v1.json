@@ -1,0 +1,16 @@
+{
+  "type": "deliverable.reserved",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "agreements/billing.ts",
+      "typeExpression": "\"deliverable.reserved\"",
+      "payloadExpression": "{ deliverableId: line.id, invoiceId }",
+      "variant": "default",
+      "payload": {
+        "deliverableId": "document-1",
+        "invoiceId": "invoice-1"
+      }
+    }
+  ]
+}
