@@ -95,6 +95,6 @@ export function getOnboardingRules(input: OnboardingRulesInput): OnboardingRules
     showPrimaryTaxId,
     requirePrimaryTaxId: showPrimaryTaxId,
     primaryTaxIdCopy: getPrimaryTaxIdCopy(countryCode),
-    primaryTaxIdSchemes: taxIdSchemeOptions(countryCode),
+    primaryTaxIdSchemes: taxIdSchemeOptions(countryCode, taxRegime),
   }
 }

@@ -23,7 +23,7 @@ import {
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useI18n } from '../../lib/i18n/react'
-import { countryOptionsIncluding, LOCALE_OPTIONS, TAX_REGIMES } from '../../lib/compliance/countries'
+import { countryOptionsIncluding, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
 import { AiAssistantPanel } from '../../components/onboarding/ai-assistant-panel'
 
@@ -745,7 +745,7 @@ function OnboardingPage() {
                     value={values.locale}
                     onChange={(e) => updateValue('locale', e.target.value)}
                   >
-                    {LOCALE_OPTIONS.map((locale) => (
+                    {localeOptionsIncluding(values.locale).map((locale) => (
                       <option key={locale} value={locale}>
                         {locale}
                       </option>

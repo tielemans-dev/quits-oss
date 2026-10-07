@@ -1,4 +1,5 @@
-import { COUNTRY_MODULES, countryLabel, normalizeCountryCode } from "./registry"
+import { z } from "zod"
+import { COUNTRY_MODULES, countryLabel, isCountryCode, normalizeCountryCode } from "./registry"
 
 export type CountryOption = {
   code: string
@@ -34,6 +35,33 @@ export const LOCALE_OPTIONS = [
   "en-GB",
   "es-ES",
 ]
+
+/**
+ * The canonical form of a locale whose language Intl can format and whose region, if any, is a
+ * country or a numeric UN region (es-419). Null otherwise; Intl alone would accept en-XX.
+ */
+export function canonicalLocale(value: string | null | undefined): string | null {
+  try {
+    const locale = new Intl.Locale(value?.trim() ?? "")
+    const region = locale.region
+    if (region && !isCountryCode(region) && !/^\d{3}$/.test(region)) return null
+    return Intl.DateTimeFormat.supportedLocalesOf(locale.language).length > 0 ? locale.toString() : null
+  } catch {
+    return null
+  }
+}
+
+/** Any formattable locale, not only the suggested ones, stored in canonical form. */
+export const localeSchema = z
+  .string()
+  .trim()
+  .refine((value) => canonicalLocale(value) !== null, "Unsupported locale")
+  .transform((value) => canonicalLocale(value) ?? value)
+
+/** The suggested locales, plus the current one when it is not among them. */
+export function localeOptionsIncluding(current: string | null | undefined): string[] {
+  return current && !LOCALE_OPTIONS.includes(current) ? [...LOCALE_OPTIONS, current] : LOCALE_OPTIONS
+}
 
 export const TAX_REGIMES = [
   { value: "us_sales_tax", label: "US Sales Tax" },

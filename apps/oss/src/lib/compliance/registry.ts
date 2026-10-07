@@ -1,6 +1,7 @@
 import type { CountryModule, NationalRegistration, TaxIdSchemeOption, TaxRegimeModule } from "./country-module"
 import type { CountryProfile } from "./country-profile"
 import { denmark } from "./countries/dk"
+import { ISO_COUNTRY_CODES } from "./iso-countries"
 import { germany } from "./countries/de"
 import { france } from "./countries/fr"
 import { netherlands } from "./countries/nl"
@@ -21,15 +22,12 @@ export function normalizeCountryCode(value: string | null | undefined): string |
   return /^[A-Z]{2}$/.test(code) ? code : null
 }
 
-// Region codes Intl knows that are not countries: groupings, "Unknown Region" and the
-// user-assigned ranges (Kosovo's XK is the one user-assigned code in general use).
-const NON_COUNTRY_REGIONS = /^(EU|EZ|UN|ZZ|Q[M-Z]|X[A-JL-Z])$/
 let regionNames: Intl.DisplayNames | null = null
 
 /** The English name of an ISO 3166 country, or null when the code names no country. */
 export function countryLabel(value: string | null | undefined): string | null {
   const code = normalizeCountryCode(value)
-  if (!code || NON_COUNTRY_REGIONS.test(code)) return null
+  if (!code || !ISO_COUNTRY_CODES.has(code)) return null
   regionNames ??= new Intl.DisplayNames(["en"], { type: "region", fallback: "none" })
   return byCode.get(code)?.label ?? regionNames.of(code) ?? null
 }
@@ -100,13 +98,19 @@ export function isVatNumberScheme(scheme: string | null | undefined): boolean {
   return TAX_REGIME_MODULES.some((regime) => regime.vatIdScheme === key) || nationalRegistrationForScheme(key) !== null
 }
 
-/** Primary tax-ID schemes offered to an organization in this country. */
-export function taxIdSchemeOptions(countryCode: string | null | undefined): TaxIdSchemeOption[] {
-  const regime = findTaxRegime(countryCode)
+/**
+ * Primary tax-ID schemes offered to an organization in this country: those of the tax regime it
+ * selected first, then its country's regime and national registration number.
+ */
+export function taxIdSchemeOptions(
+  countryCode: string | null | undefined,
+  selectedRegime?: string | null
+): TaxIdSchemeOption[] {
+  const selected = TAX_REGIME_MODULES.find((regime) => regime.id === selectedRegime)
+  const countryRegime = findTaxRegime(countryCode)
   const registration = findCountryModule(countryCode)?.nationalRegistration
-  const options = regime
-    ? [...regime.taxIdSchemes]
-    : TAX_REGIME_MODULES.flatMap((candidate) => candidate.taxIdSchemes)
+  const regimes = [selected, countryRegime].filter((regime) => regime !== undefined && regime !== null)
+  const options = (regimes.length > 0 ? regimes : TAX_REGIME_MODULES).flatMap((regime) => regime.taxIdSchemes)
   if (registration) options.push({ value: registration.scheme, label: registration.label })
-  return options
+  return options.filter((option, index) => options.findIndex((other) => other.value === option.value) === index)
 }

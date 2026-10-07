@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { localeSchema } from "../compliance/countries"
 import { isCountryCode } from "../compliance/registry"
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -22,7 +23,7 @@ export const setupInitializeSchema = z.object({
     mode: authModeSchema,
   }),
   locale: z.object({
-    locale: z.string().trim().min(2).max(16),
+    locale: localeSchema,
     countryCode: z
       .string()
       .trim()

@@ -40,7 +40,8 @@ describe("country codes", () => {
     expect(countryLabel("dk")).toBe("Denmark")
     expect(countryLabel("GB")).toBe("United Kingdom")
     expect(isCountryCode("XK")).toBe(true)
-    for (const code of ["ZZ", "EU", "UN", "QO", "XX", "Denmark", "", null]) {
+    // Intl names retired and reserved codes too; UK reaching an e-invoice would be wrong (GB).
+    for (const code of ["ZZ", "EU", "UN", "QO", "XX", "UK", "YU", "AN", "EA", "Denmark", "", null]) {
       expect(isCountryCode(code)).toBe(false)
     }
   })
@@ -74,6 +75,12 @@ describe("tax-ID schemes", () => {
     expect(taxIdSchemeOptions("DE").map((option) => option.value)).toEqual(["vat"])
     expect(taxIdSchemeOptions("US").map((option) => option.value)).toEqual(["ein"])
     expect(taxIdSchemeOptions("GB").map((option) => option.value)).toEqual(["ein", "vat"])
+  })
+
+  it("puts the selected regime's schemes first", () => {
+    expect(taxIdSchemeOptions("US", "eu_vat").map((option) => option.value)).toEqual(["vat", "ein"])
+    expect(taxIdSchemeOptions("DK", "eu_vat").map((option) => option.value)).toEqual(["vat", "cvr"])
+    expect(taxIdSchemeOptions("DK", "custom").map((option) => option.value)).toEqual(["vat", "cvr"])
   })
 })
 

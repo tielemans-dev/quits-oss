@@ -9,7 +9,7 @@ import {
 import {
   COUNTRY_OPTIONS,
   countryOptionsIncluding,
-  LOCALE_OPTIONS,
+  localeOptionsIncluding,
   TAX_REGIMES,
 } from "../../lib/compliance/countries"
 import { Button } from "../../components/ui/button"
@@ -771,7 +771,7 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.locale.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {LOCALE_OPTIONS.map((item) => (
+                    {localeOptionsIncluding(settings?.locale).map((item) => (
                       <SelectItem key={item} value={item}>
                         {`${item} — ${languageDisplayNames.of(item.split("-")[0] ?? item) ?? item}`}
                       </SelectItem>

@@ -27,6 +27,15 @@ describe("settingsUpdateSchema", () => {
     }
   })
 
+  it("accepts any formattable locale, so locales chosen at setup can be saved", () => {
+    expect(settingsUpdateSchema.parse({ locale: "pl-PL" }).locale).toBe("pl-PL")
+    expect(settingsUpdateSchema.parse({ locale: "en-us" }).locale).toBe("en-US")
+    expect(settingsUpdateSchema.parse({ locale: "es-419" }).locale).toBe("es-419")
+    for (const locale of ["foo", "xx-YY", ""]) {
+      expect(() => settingsUpdateSchema.parse({ locale })).toThrow()
+    }
+  })
+
   it("rejects unsupported tax regime", () => {
     expect(() =>
       settingsUpdateSchema.parse({
