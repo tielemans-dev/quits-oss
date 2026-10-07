@@ -5,7 +5,7 @@ import { deliver, EmailSendError } from "../../../lib/email"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import type { AnyCommandDefinition } from "../../command"
 import { executeCommand, type CommandOutcome } from "../../execute"
-import { issueDocument } from "../../../application/issuance"
+import { executeIssuanceCommand, issueDocument } from "../../../application/issuance"
 import { createAgreementDraft, updateDeliverable } from "../../commands/agreements"
 import { issueAgreement, recordAgreementAcceptance, revokeAgreementLinks } from "../../commands/agreement-lifecycle"
 import { markDeliverableDelivered } from "../../commands/deliverables"
@@ -45,7 +45,7 @@ async function setup(count = 1, recipient: string | null = "customer@example.tes
     title: "Work", contactId: contact.id, validUntil: "2099-01-01", billingTrigger: "on_delivery",
     deliverables: Array.from({ length: count }, (_, i) => ({ title: `Work ${i}`, description: "Agreed work", quantity: "1", unitPrice: "100" })),
   }, { actor, now }))
-  completed(await executeCommand(issueAgreement, { id: agreement.id, ...(recipient ? { recipient } : {}) }, { actor, now }))
+  completed(await executeIssuanceCommand(issueAgreement, { id: agreement.id, ...(recipient ? { recipient } : {}) }, { actor, now }))
   completed(await executeCommand(recordAgreementAcceptance, { id: agreement.id, acceptedByName: "Customer", evidenceNote: "Written confirmation" }, { actor, now }))
   const get = () => getAgreement(org.organizationId, agreement.id)
   const input = { agreementId: agreement.id, id: agreement.deliverables[0]!.id }
