@@ -93,6 +93,15 @@ export function PublicInvoicePaymentPage({
   const amountCredited = invoice.amountCredited ?? 0
   const balanceDue = paymentState === "paid" ? 0 : (invoice.balanceDue ?? total)
   const partiallySettled = paymentState === "unpaid" && (amountPaid > 0 || amountCredited > 0)
+  // Credited in full: nothing is owed, so the page says so instead of "Payment received".
+  const credited = invoice.status === "credited"
+  const statusLabel = credited
+    ? "Credited"
+    : paymentState === "paid"
+      ? "Paid"
+      : amountPaid > 0
+        ? "Partially paid"
+        : "Open"
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl items-center px-4 py-12">
@@ -104,10 +113,7 @@ export function PublicInvoicePaymentPage({
           </CardHeader>
           <CardContent className="grid gap-6">
             <div className="grid gap-4 sm:grid-cols-3">
-              <InfoBlock
-                label="Status"
-                value={paymentState === "paid" ? "Paid" : amountPaid > 0 ? "Partially paid" : "Open"}
-              />
+              <InfoBlock label="Status" value={statusLabel} />
               <InfoBlock label="Issued" value={formatDate(invoice.issueDate)} />
               <InfoBlock label="Due" value={formatDate(invoice.dueDate)} />
             </div>
@@ -143,12 +149,14 @@ export function PublicInvoicePaymentPage({
         <Card>
           <CardHeader>
             <CardTitle>
-              {paymentState === "paid" ? "Payment received" : "Pay this invoice"}
+              {credited ? "Invoice credited" : paymentState === "paid" ? "Payment received" : "Pay this invoice"}
             </CardTitle>
             <CardDescription>
-              {paymentState === "paid"
-                ? "This invoice has already been settled."
-                : "Review the balance due and continue to secure checkout."}
+              {credited
+                ? "This invoice has been credited in full. Nothing is due."
+                : paymentState === "paid"
+                  ? "This invoice has already been settled."
+                  : "Review the balance due and continue to secure checkout."}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
@@ -165,6 +173,9 @@ export function PublicInvoicePaymentPage({
                 value={invoice.contact.company ?? invoice.buyerSnapshot?.company ?? "Not provided"}
               />
               <InfoBlock label="Total" value={formatCurrency(total, invoice.currency)} />
+              {credited ? (
+                <InfoBlock label="Credited" value={formatCurrency(amountCredited, invoice.currency)} />
+              ) : null}
               {partiallySettled && amountPaid > 0 ? (
                 <InfoBlock label="Paid" value={formatCurrency(amountPaid, invoice.currency)} />
               ) : null}
@@ -191,7 +202,7 @@ export function PublicInvoicePaymentPage({
           <CardFooter className="justify-between text-sm text-muted-foreground">
             <span>{sellerName}</span>
             <span>
-              {formatCurrency(paymentState === "paid" ? total : balanceDue, invoice.currency)}
+              {formatCurrency(paymentState === "paid" && !credited ? total : balanceDue, invoice.currency)}
             </span>
           </CardFooter>
         </Card>

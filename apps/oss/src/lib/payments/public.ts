@@ -25,11 +25,15 @@ function signValue(value: string, secret: string) {
   return createHmac("sha256", secret).update(value).digest("base64url")
 }
 
+/**
+ * Whether the customer still has something to pay. An invoice credited in full is settled too:
+ * nothing is owed, so it reads as `paid` and no payment is offered.
+ */
 export function getInvoicePaymentState(snapshot: {
   status: string
   paymentStatus: string
 }): InvoicePaymentState {
-  if (snapshot.paymentStatus === "paid" || snapshot.status === "paid") {
+  if (snapshot.paymentStatus === "paid" || snapshot.status === "paid" || snapshot.status === "credited") {
     return "paid"
   }
 

@@ -105,6 +105,33 @@ describe("PublicInvoicePaymentPage", () => {
     expect(html).not.toContain("Pay now")
   })
 
+  it("shows an invoice credited in full as credited, with nothing to pay", () => {
+    const html = renderToStaticMarkup(
+      <PublicInvoicePaymentPage
+        token="signed-token"
+        state={{
+          kind: "ready",
+          paymentState: "paid",
+          invoice: {
+            ...baseInvoice,
+            status: "credited",
+            paymentStatus: "unpaid",
+            amountPaid: 0,
+            amountCredited: 1250,
+            balanceDue: 0,
+          },
+          stripeEnabled: true,
+        }}
+      />
+    )
+
+    expect(html).toContain("Invoice credited")
+    expect(html).toContain("Credited")
+    expect(html).toContain("$0.00")
+    expect(html).not.toContain("Payment received")
+    expect(html).not.toContain("Pay now")
+  })
+
   it("renders an invalid-link state", () => {
     const html = renderToStaticMarkup(
       <PublicInvoicePaymentPage
