@@ -367,17 +367,23 @@ export const recordStripeCheckoutFailure = defineCommand({
       }
 
       const invoice = yield* lockInvoice(input.invoiceId)
-      yield* expireReplacedCheckoutSession(invoice, input.checkoutSessionId)
-      const updated = yield* Effect.promise(() =>
-        db.invoice.update({
-          where: { id: invoice.id },
-          data: {
-            stripeCheckoutSessionId: input.checkoutSessionId,
-            stripePaymentIntentId: input.paymentIntentId,
-            paymentFailureReason: input.reason,
-          },
-        })
-      )
+      // A failure changes no balance. When the customer has since opened another checkout, the
+      // invoice keeps tracking that one: the failure of the older session is only recorded in the
+      // activity log, and the session in progress is neither replaced nor expired.
+      const current =
+        invoice.stripeCheckoutSessionId === null || invoice.stripeCheckoutSessionId === input.checkoutSessionId
+      const updated = current
+        ? yield* Effect.promise(() =>
+            db.invoice.update({
+              where: { id: invoice.id },
+              data: {
+                stripeCheckoutSessionId: input.checkoutSessionId,
+                stripePaymentIntentId: input.paymentIntentId,
+                paymentFailureReason: input.reason,
+              },
+            })
+          )
+        : yield* Effect.promise(() => db.invoice.findUniqueOrThrow({ where: { id: invoice.id } }))
 
       command.emit({
         aggregateType: "invoice",
@@ -388,12 +394,14 @@ export const recordStripeCheckoutFailure = defineCommand({
           method: "stripe",
           checkoutSessionId: input.checkoutSessionId,
           reason: input.reason,
+          ...(current ? {} : { supersededBy: invoice.stripeCheckoutSessionId }),
         },
       })
       paymentsLogger.warn("payment.stripe_failed", {
         organizationId: command.organizationId,
         invoiceId: invoice.id,
         checkoutSessionId: input.checkoutSessionId,
+        current,
       })
       return { invoice: updated }
     }),

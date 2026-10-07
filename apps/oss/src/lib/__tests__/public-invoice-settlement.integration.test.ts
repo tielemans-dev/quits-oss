@@ -5,6 +5,7 @@ import { issueCreditNote } from "../../domain/commands/credit-notes"
 import { createInvoiceDraft, sendInvoice } from "../../domain/commands/invoices"
 import { recordPayment, voidPayment } from "../../domain/commands/payments"
 import { EXPIRE_CHECKOUT_SESSION_JOB } from "../../domain/documents/checkout-sessions"
+import { readActivity } from "../../domain/events"
 import { runDueJobs } from "../../domain/jobs"
 import { executeCommand } from "../../domain/execute"
 import { processStripeWebhookEvent } from "../payments/webhooks"
@@ -217,6 +218,51 @@ describeIfDatabase("public invoice links after settlement changes", () => {
       })
       expect(expireCheckoutSession).toHaveBeenCalledWith({ secretKey: "sk_test_12345678901234567890", sessionId })
       expect((await prisma.job.findFirstOrThrow({ where })).status).toBe("done")
+    })
+
+    it("keeps the newer checkout open when an older session's async payment fails", async () => {
+      const context = await setup()
+      const older = await openCheckout(context)
+      const newer = await openCheckout(context)
+      expireCheckoutSession.mockClear()
+
+      const failed = await processStripeWebhookEvent(
+        {
+          type: "checkout.session.async_payment_failed",
+          created: Math.floor(Date.now() / 1000),
+          data: {
+            object: {
+              id: older,
+              payment_intent: `pi_${older}`,
+              client_reference_id: context.invoiceId,
+              amount_total: 10_000,
+              currency: "usd",
+              payment_status: "unpaid",
+              metadata: { invoiceId: context.invoiceId },
+            },
+          },
+        },
+        { organizationId: context.org.organizationId }
+      )
+      expect(failed).toEqual({ handled: true, alreadyApplied: false })
+      expect(expireCheckoutSession).not.toHaveBeenCalled()
+      const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: context.invoiceId } })
+      expect(invoice).toMatchObject({ stripeCheckoutSessionId: newer, paymentFailureReason: null })
+      expect(
+        await prisma.job.count({
+          where: { organizationId: context.org.organizationId, type: EXPIRE_CHECKOUT_SESSION_JOB },
+        })
+      ).toBe(0)
+      // The failure is still recorded for the activity log.
+      const activity = await readActivity({
+        organizationId: context.org.organizationId,
+        aggregateType: "invoice",
+        aggregateId: context.invoiceId,
+      })
+      expect(activity.events.at(-1)).toMatchObject({
+        type: "payment.failed",
+        payload: { checkoutSessionId: older, supersededBy: newer },
+      })
     })
 
     it("expires the previous session when the customer opens a new one", async () => {
