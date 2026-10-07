@@ -17,3 +17,5 @@ apps/oss/playwright-report/
 apps/oss/test-results/
 
 /generated/prisma
+
+apps/oss/data/artifacts/

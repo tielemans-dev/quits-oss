@@ -84,7 +84,9 @@ export const ModelName = {
   AgreementTemplate: 'AgreementTemplate',
   PublicLinkAttempt: 'PublicLinkAttempt',
   EventConsumerCursor: 'EventConsumerCursor',
-  EventConsumerDelivery: 'EventConsumerDelivery'
+  EventConsumerDelivery: 'EventConsumerDelivery',
+  ArtifactStaging: 'ArtifactStaging',
+  IssuanceCandidate: 'IssuanceCandidate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -378,6 +380,10 @@ export const InvoiceScalarFieldEnum = {
   quoteId: 'quoteId',
   recurringInvoiceId: 'recurringInvoiceId',
   recurringRunDate: 'recurringRunDate',
+  artifactPdfRef: 'artifactPdfRef',
+  artifactPdfHash: 'artifactPdfHash',
+  artifactUblRef: 'artifactUblRef',
+  artifactUblHash: 'artifactUblHash',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   calculationVersion: 'calculationVersion',
@@ -505,6 +511,10 @@ export const CreditNoteScalarFieldEnum = {
   lastEmailAttemptOutcome: 'lastEmailAttemptOutcome',
   lastEmailAttemptCode: 'lastEmailAttemptCode',
   lastEmailAttemptMessage: 'lastEmailAttemptMessage',
+  artifactPdfRef: 'artifactPdfRef',
+  artifactPdfHash: 'artifactPdfHash',
+  artifactUblRef: 'artifactUblRef',
+  artifactUblHash: 'artifactUblHash',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   calculationVersion: 'calculationVersion',
@@ -756,6 +766,10 @@ export const AgreementScalarFieldEnum = {
   closedAt: 'closedAt',
   closeReason: 'closeReason',
   notes: 'notes',
+  artifactPdfRef: 'artifactPdfRef',
+  artifactPdfHash: 'artifactPdfHash',
+  artifactUblRef: 'artifactUblRef',
+  artifactUblHash: 'artifactUblHash',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   calculationVersion: 'calculationVersion',
@@ -859,6 +873,49 @@ export const EventConsumerDeliveryScalarFieldEnum = {
 } as const
 
 export type EventConsumerDeliveryScalarFieldEnum = (typeof EventConsumerDeliveryScalarFieldEnum)[keyof typeof EventConsumerDeliveryScalarFieldEnum]
+
+
+export const ArtifactStagingScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  documentKind: 'documentKind',
+  documentId: 'documentId',
+  requestKey: 'requestKey',
+  requestKeys: 'requestKeys',
+  renderInputHash: 'renderInputHash',
+  renderInput: 'renderInput',
+  rendererVersion: 'rendererVersion',
+  status: 'status',
+  prepToken: 'prepToken',
+  leaseUntil: 'leaseUntil',
+  artifacts: 'artifacts',
+  missingReason: 'missingReason',
+  reservedNumber: 'reservedNumber',
+  numberWasAllocated: 'numberWasAllocated',
+  candidateRefs: 'candidateRefs',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ArtifactStagingScalarFieldEnum = (typeof ArtifactStagingScalarFieldEnum)[keyof typeof ArtifactStagingScalarFieldEnum]
+
+
+export const IssuanceCandidateScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  documentKind: 'documentKind',
+  documentId: 'documentId',
+  stagingId: 'stagingId',
+  renderInput: 'renderInput',
+  renderInputHash: 'renderInputHash',
+  recipient: 'recipient',
+  artifacts: 'artifacts',
+  attemptAt: 'attemptAt',
+  status: 'status',
+  createdAt: 'createdAt'
+} as const
+
+export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
 
 
 export const SortOrder = {

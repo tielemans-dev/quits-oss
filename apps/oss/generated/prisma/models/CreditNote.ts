@@ -61,6 +61,10 @@ export type CreditNoteMinAggregateOutputType = {
   lastEmailAttemptOutcome: string | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
+  artifactPdfRef: string | null
+  artifactPdfHash: string | null
+  artifactUblRef: string | null
+  artifactUblHash: string | null
   createdAt: Date | null
   updatedAt: Date | null
   calculationVersion: string | null
@@ -89,6 +93,10 @@ export type CreditNoteMaxAggregateOutputType = {
   lastEmailAttemptOutcome: string | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
+  artifactPdfRef: string | null
+  artifactPdfHash: string | null
+  artifactUblRef: string | null
+  artifactUblHash: string | null
   createdAt: Date | null
   updatedAt: Date | null
   calculationVersion: string | null
@@ -119,6 +127,10 @@ export type CreditNoteCountAggregateOutputType = {
   lastEmailAttemptOutcome: number
   lastEmailAttemptCode: number
   lastEmailAttemptMessage: number
+  artifactPdfRef: number
+  artifactPdfHash: number
+  artifactUblRef: number
+  artifactUblHash: number
   createdAt: number
   updatedAt: number
   calculationVersion: number
@@ -162,6 +174,10 @@ export type CreditNoteMinAggregateInputType = {
   lastEmailAttemptOutcome?: true
   lastEmailAttemptCode?: true
   lastEmailAttemptMessage?: true
+  artifactPdfRef?: true
+  artifactPdfHash?: true
+  artifactUblRef?: true
+  artifactUblHash?: true
   createdAt?: true
   updatedAt?: true
   calculationVersion?: true
@@ -190,6 +206,10 @@ export type CreditNoteMaxAggregateInputType = {
   lastEmailAttemptOutcome?: true
   lastEmailAttemptCode?: true
   lastEmailAttemptMessage?: true
+  artifactPdfRef?: true
+  artifactPdfHash?: true
+  artifactUblRef?: true
+  artifactUblHash?: true
   createdAt?: true
   updatedAt?: true
   calculationVersion?: true
@@ -220,6 +240,10 @@ export type CreditNoteCountAggregateInputType = {
   lastEmailAttemptOutcome?: true
   lastEmailAttemptCode?: true
   lastEmailAttemptMessage?: true
+  artifactPdfRef?: true
+  artifactPdfHash?: true
+  artifactUblRef?: true
+  artifactUblHash?: true
   createdAt?: true
   updatedAt?: true
   calculationVersion?: true
@@ -338,6 +362,10 @@ export type CreditNoteGroupByOutputType = {
   lastEmailAttemptOutcome: string | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
+  artifactPdfRef: string | null
+  artifactPdfHash: string | null
+  artifactUblRef: string | null
+  artifactUblHash: string | null
   createdAt: Date
   updatedAt: Date
   calculationVersion: string
@@ -392,6 +420,10 @@ export type CreditNoteWhereInput = {
   lastEmailAttemptOutcome?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   lastEmailAttemptCode?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   lastEmailAttemptMessage?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactPdfRef?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactPdfHash?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactUblRef?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactUblHash?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   createdAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   calculationVersion?: Prisma.StringFilter<"CreditNote"> | string
@@ -427,6 +459,10 @@ export type CreditNoteOrderByWithRelationInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrderInput | Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrderInput | Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -466,6 +502,10 @@ export type CreditNoteWhereUniqueInput = Prisma.AtLeast<{
   lastEmailAttemptOutcome?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   lastEmailAttemptCode?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   lastEmailAttemptMessage?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactPdfRef?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactPdfHash?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactUblRef?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactUblHash?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   createdAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   calculationVersion?: Prisma.StringFilter<"CreditNote"> | string
@@ -501,6 +541,10 @@ export type CreditNoteOrderByWithAggregationInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrderInput | Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrderInput | Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -540,6 +584,10 @@ export type CreditNoteScalarWhereWithAggregatesInput = {
   lastEmailAttemptOutcome?: Prisma.StringNullableWithAggregatesFilter<"CreditNote"> | string | null
   lastEmailAttemptCode?: Prisma.StringNullableWithAggregatesFilter<"CreditNote"> | string | null
   lastEmailAttemptMessage?: Prisma.StringNullableWithAggregatesFilter<"CreditNote"> | string | null
+  artifactPdfRef?: Prisma.StringNullableWithAggregatesFilter<"CreditNote"> | string | null
+  artifactPdfHash?: Prisma.StringNullableWithAggregatesFilter<"CreditNote"> | string | null
+  artifactUblRef?: Prisma.StringNullableWithAggregatesFilter<"CreditNote"> | string | null
+  artifactUblHash?: Prisma.StringNullableWithAggregatesFilter<"CreditNote"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"CreditNote"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"CreditNote"> | Date | string
   calculationVersion?: Prisma.StringWithAggregatesFilter<"CreditNote"> | string
@@ -568,6 +616,10 @@ export type CreditNoteCreateInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -603,6 +655,10 @@ export type CreditNoteUncheckedCreateInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -632,6 +688,10 @@ export type CreditNoteUpdateInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -667,6 +727,10 @@ export type CreditNoteUncheckedUpdateInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -699,6 +763,10 @@ export type CreditNoteCreateManyInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -727,6 +795,10 @@ export type CreditNoteUpdateManyMutationInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -758,6 +830,10 @@ export type CreditNoteUncheckedUpdateManyInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -804,6 +880,10 @@ export type CreditNoteCountOrderByAggregateInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -839,6 +919,10 @@ export type CreditNoteMaxOrderByAggregateInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -867,6 +951,10 @@ export type CreditNoteMinOrderByAggregateInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -1045,6 +1133,10 @@ export type CreditNoteCreateWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1078,6 +1170,10 @@ export type CreditNoteUncheckedCreateWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1139,6 +1235,10 @@ export type CreditNoteScalarWhereInput = {
   lastEmailAttemptOutcome?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   lastEmailAttemptCode?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   lastEmailAttemptMessage?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactPdfRef?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactPdfHash?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactUblRef?: Prisma.StringNullableFilter<"CreditNote"> | string | null
+  artifactUblHash?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   createdAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   calculationVersion?: Prisma.StringFilter<"CreditNote"> | string
@@ -1167,6 +1267,10 @@ export type CreditNoteCreateWithoutContactInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1200,6 +1304,10 @@ export type CreditNoteUncheckedCreateWithoutContactInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1255,6 +1363,10 @@ export type CreditNoteCreateWithoutInvoiceInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1288,6 +1400,10 @@ export type CreditNoteUncheckedCreateWithoutInvoiceInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1343,6 +1459,10 @@ export type CreditNoteCreateWithoutItemsInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1377,6 +1497,10 @@ export type CreditNoteUncheckedCreateWithoutItemsInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1421,6 +1545,10 @@ export type CreditNoteUpdateWithoutItemsInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1455,6 +1583,10 @@ export type CreditNoteUncheckedUpdateWithoutItemsInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1485,6 +1617,10 @@ export type CreditNoteCreateManyOrganizationInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1513,6 +1649,10 @@ export type CreditNoteUpdateWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1546,6 +1686,10 @@ export type CreditNoteUncheckedUpdateWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1577,6 +1721,10 @@ export type CreditNoteUncheckedUpdateManyWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1607,6 +1755,10 @@ export type CreditNoteCreateManyContactInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1635,6 +1787,10 @@ export type CreditNoteUpdateWithoutContactInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1668,6 +1824,10 @@ export type CreditNoteUncheckedUpdateWithoutContactInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1699,6 +1859,10 @@ export type CreditNoteUncheckedUpdateManyWithoutContactInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1729,6 +1893,10 @@ export type CreditNoteCreateManyInvoiceInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1757,6 +1925,10 @@ export type CreditNoteUpdateWithoutInvoiceInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1790,6 +1962,10 @@ export type CreditNoteUncheckedUpdateWithoutInvoiceInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1821,6 +1997,10 @@ export type CreditNoteUncheckedUpdateManyWithoutInvoiceInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1883,6 +2063,10 @@ export type CreditNoteSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   lastEmailAttemptOutcome?: boolean
   lastEmailAttemptCode?: boolean
   lastEmailAttemptMessage?: boolean
+  artifactPdfRef?: boolean
+  artifactPdfHash?: boolean
+  artifactUblRef?: boolean
+  artifactUblHash?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
@@ -1919,6 +2103,10 @@ export type CreditNoteSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   lastEmailAttemptOutcome?: boolean
   lastEmailAttemptCode?: boolean
   lastEmailAttemptMessage?: boolean
+  artifactPdfRef?: boolean
+  artifactPdfHash?: boolean
+  artifactUblRef?: boolean
+  artifactUblHash?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
@@ -1953,6 +2141,10 @@ export type CreditNoteSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   lastEmailAttemptOutcome?: boolean
   lastEmailAttemptCode?: boolean
   lastEmailAttemptMessage?: boolean
+  artifactPdfRef?: boolean
+  artifactPdfHash?: boolean
+  artifactUblRef?: boolean
+  artifactUblHash?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
@@ -1987,13 +2179,17 @@ export type CreditNoteSelectScalar = {
   lastEmailAttemptOutcome?: boolean
   lastEmailAttemptCode?: boolean
   lastEmailAttemptMessage?: boolean
+  artifactPdfRef?: boolean
+  artifactPdfHash?: boolean
+  artifactUblRef?: boolean
+  artifactUblHash?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
   vatEvidence?: boolean
 }
 
-export type CreditNoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "invoiceId" | "contactId" | "number" | "status" | "reason" | "issueDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "notes" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["creditNote"]>
+export type CreditNoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "invoiceId" | "contactId" | "number" | "status" | "reason" | "issueDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "notes" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["creditNote"]>
 export type CreditNoteInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
@@ -2045,6 +2241,10 @@ export type $CreditNotePayload<ExtArgs extends runtime.Types.Extensions.Internal
     lastEmailAttemptOutcome: string | null
     lastEmailAttemptCode: string | null
     lastEmailAttemptMessage: string | null
+    artifactPdfRef: string | null
+    artifactPdfHash: string | null
+    artifactUblRef: string | null
+    artifactUblHash: string | null
     createdAt: Date
     updatedAt: Date
     calculationVersion: string
@@ -2500,6 +2700,10 @@ export interface CreditNoteFieldRefs {
   readonly lastEmailAttemptOutcome: Prisma.FieldRef<"CreditNote", 'String'>
   readonly lastEmailAttemptCode: Prisma.FieldRef<"CreditNote", 'String'>
   readonly lastEmailAttemptMessage: Prisma.FieldRef<"CreditNote", 'String'>
+  readonly artifactPdfRef: Prisma.FieldRef<"CreditNote", 'String'>
+  readonly artifactPdfHash: Prisma.FieldRef<"CreditNote", 'String'>
+  readonly artifactUblRef: Prisma.FieldRef<"CreditNote", 'String'>
+  readonly artifactUblHash: Prisma.FieldRef<"CreditNote", 'String'>
   readonly createdAt: Prisma.FieldRef<"CreditNote", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"CreditNote", 'DateTime'>
   readonly calculationVersion: Prisma.FieldRef<"CreditNote", 'String'>

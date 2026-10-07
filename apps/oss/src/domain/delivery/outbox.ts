@@ -8,6 +8,7 @@ import type { Actor } from "../actor"
 import { appendEvents } from "../events"
 import { registerJobHandler, StaleJobClaimError, TerminalJobError } from "../jobs"
 import { registerTickTask, type TickOptions } from "../scheduler"
+import { lockArtifactOrganization } from "../documents/artifacts"
 import { Command, type PendingEvent } from "../services"
 
 /**
@@ -211,6 +212,7 @@ async function settle(
 ) {
   const now = new Date()
   await prisma.$transaction(async (tx) => {
+    await lockArtifactOrganization(tx, job.organizationId)
     const result: DeliveryResult = outcome.delivered
       ? { outcome: "delivered", message: null }
       : { outcome: outcome.failure.reason, message: outcome.failure.message }

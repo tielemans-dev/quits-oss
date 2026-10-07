@@ -1,3 +1,6 @@
+import type { RenderInput } from "../../domain/documents/render-input"
+export type { RenderInput } from "../../domain/documents/render-input"
+
 import type {
   OnboardingAiSuggestion,
   OnboardingMissingField,
@@ -34,7 +37,31 @@ export type ManagedDocumentDomainProvider = {
   deleteDomain: (input: { providerId: string; domain: string }) => Promise<void>
 }
 
+export type ArtifactRef = string
+export type ArtifactMeta = {
+  organizationId: string
+  documentKind: RenderInput["kind"]
+  documentId: string
+  format: "pdf" | "ubl"
+  hash: string
+  size: number
+  rendererVersion: string
+}
+export type DocumentRenderer = {
+  renderPdf(input: RenderInput): Promise<Uint8Array>
+  renderUbl?(input: RenderInput): Promise<Uint8Array>
+  version: string
+}
+export type DocumentArtifactStore = {
+  put(bytes: Uint8Array, meta: ArtifactMeta): Promise<ArtifactRef>
+  get(ref: ArtifactRef): Promise<Uint8Array | null>
+  head(ref: ArtifactRef): Promise<ArtifactMeta | null>
+  delete(ref: ArtifactRef): Promise<void>
+}
+
 export type RuntimeServices = {
+  documentRenderer?: DocumentRenderer
+  documentArtifactStore?: DocumentArtifactStore
   billingProvider: BillingProvider
   onboardingAiService: OnboardingAiService
   managedDocumentDomainProvider: ManagedDocumentDomainProvider
@@ -81,3 +108,6 @@ export function getOnboardingAiService(): OnboardingAiService {
 export function getManagedDocumentDomainProvider(): ManagedDocumentDomainProvider {
   return runtimeServices.managedDocumentDomainProvider
 }
+
+export function getDocumentRenderer() { return runtimeServices.documentRenderer }
+export function getDocumentArtifactStore() { return runtimeServices.documentArtifactStore }

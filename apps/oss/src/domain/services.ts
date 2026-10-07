@@ -27,6 +27,7 @@ export type CommandScope = {
   readonly now: Date
   readonly approvedByUserId: string | null
   readonly expectedApprovalVersion?: string
+  readonly issuance?: { candidateId: string; documentId: string; number: string; issuedAt: Date }
   /** Records a domain event; persisted with the command's transaction. */
   readonly emit: (event: PendingEvent) => void
   /** Queues background work; persisted with the transaction and run after commit. */

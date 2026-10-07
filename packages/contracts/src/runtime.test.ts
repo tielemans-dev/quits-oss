@@ -7,6 +7,7 @@ import {
 describe("runtime contracts", () => {
   it("parses runtime capabilities", () => {
     const parsed = runtimeCapabilitiesSchema.parse({
+      documents: { artifactsRequired: false },
       aiInvoiceDraft: {
         enabled: true,
         byok: true,

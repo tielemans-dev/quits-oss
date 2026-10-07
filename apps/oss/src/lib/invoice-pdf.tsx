@@ -5,7 +5,6 @@ import {
   View,
   Image,
   StyleSheet,
-  pdf,
 } from "@react-pdf/renderer"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
@@ -153,7 +152,7 @@ export type OrgSettingsForPdf = {
   timezone?: string | null
 }
 
-type InvoiceForPdf = {
+export type InvoiceForPdf = {
   number: string
   status: string
   issueDate: string
@@ -229,7 +228,7 @@ export function InvoicePdfDocument({
   const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null
 
   return (
-    <Document>
+    <Document creationDate={new Date(invoice.issueDate)} modificationDate={new Date(invoice.issueDate)}>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
@@ -349,28 +348,3 @@ export function InvoicePdfDocument({
  * Generate a PDF blob for a given invoice. Call this client-side
  * and trigger a download using a temporary anchor element.
  */
-export async function generateInvoicePdf(
-  invoice: InvoiceForPdf,
-  org: OrgSettingsForPdf = {}
-): Promise<Blob> {
-  const blob = await pdf(<InvoicePdfDocument invoice={invoice} org={org} />).toBlob()
-  return blob
-}
-
-/**
- * Helper to trigger a browser download of the invoice PDF.
- */
-export async function downloadInvoicePdf(
-  invoice: InvoiceForPdf,
-  org: OrgSettingsForPdf = {}
-) {
-  const blob = await generateInvoicePdf(invoice, org)
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `${invoice.number}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}

@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer"
+import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
 import sanitizeHtml from "sanitize-html"
 import type { PublicAgreementDto } from "./agreements/public"
@@ -35,7 +35,7 @@ export type AgreementPdfInput = {
 }
 export function AgreementPdf({ snapshot, number, issueDate, acceptance }: AgreementPdfInput) {
   return (
-    <Document title={snapshot.title}>
+    <Document title={snapshot.title} creationDate={new Date(issueDate ?? 0)} modificationDate={new Date(issueDate ?? 0)}>
       <Page size="A4" style={styles.page}>
         <Text style={styles.title}>Agreement {number ?? "preview"}</Text>
         <Text style={styles.heading}>{snapshot.title}</Text>
@@ -104,13 +104,18 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
     </Document>
   )
 }
+/** Rendering is supplied by the host; core never imports a server PDF implementation. */
 export async function agreementPdfResponse(input: AgreementPdfInput) {
-  const buffer = await renderToBuffer(<AgreementPdf {...input} />)
-  return new Response(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": 'inline; filename="agreement.pdf"',
-      "Cache-Control": "private, no-store",
-    },
+  const { getDocumentRenderer } = await import("./runtime/services")
+  const renderer = getDocumentRenderer()
+  if (!renderer) return new Response("Document renderer unavailable", { status: 503 })
+  const bytes = await renderer.renderPdf({
+    kind: "agreement", organizationId: "preview", documentId: "preview",
+    number: input.number ?? "preview", issuedAt: input.issueDate ?? new Date().toISOString(),
+    recipient: null, pdf: input, snapshot: input.snapshot,
   })
+  return new Response(new Uint8Array(bytes), { headers: {
+    "Content-Type": "application/pdf", "Content-Disposition": 'inline; filename="agreement.pdf"',
+    "Cache-Control": "private, no-store",
+  } })
 }

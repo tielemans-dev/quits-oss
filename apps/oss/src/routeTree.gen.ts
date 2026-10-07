@@ -31,6 +31,7 @@ import { Route as AppInvoicesIndexRouteImport } from './routes/_app/invoices/ind
 import { Route as AppCreditNotesIndexRouteImport } from './routes/_app/credit-notes/index'
 import { Route as AppContactsIndexRouteImport } from './routes/_app/contacts/index'
 import { Route as AppAgreementsIndexRouteImport } from './routes/_app/agreements/index'
+import { Route as PayTokenPdfRouteImport } from './routes/pay.$token_.pdf'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe-webhook'
 import { Route as ApiCronTickRouteImport } from './routes/api/cron/tick'
@@ -50,6 +51,7 @@ import { Route as AppAgreementsAgreementIdRouteImport } from './routes/_app/agre
 import { Route as AppApprovalsApprovalIdPreviewDotpdfRouteImport } from './routes/app.approvals.$approvalId.preview[.]pdf'
 import { Route as ApiAgreementsAgreementIdPdfRouteImport } from './routes/api/agreements/$agreementId.pdf'
 import { Route as AppAgreementsAgreementIdEditRouteImport } from './routes/_app/agreements/$agreementId_.edit'
+import { Route as ApiDocumentsKindDocumentIdPdfRouteImport } from './routes/api/documents/$kind/$documentId.pdf'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -161,6 +163,11 @@ const AppAgreementsIndexRoute = AppAgreementsIndexRouteImport.update({
   path: '/agreements/',
   getParentRoute: () => AppRoute,
 } as any)
+const PayTokenPdfRoute = PayTokenPdfRouteImport.update({
+  id: '/pay/$token_/pdf',
+  path: '/pay/$token/pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/api/trpc/$',
   path: '/api/trpc/$',
@@ -262,6 +269,12 @@ const AppAgreementsAgreementIdEditRoute =
     path: '/agreements/$agreementId/edit',
     getParentRoute: () => AppRoute,
   } as any)
+const ApiDocumentsKindDocumentIdPdfRoute =
+  ApiDocumentsKindDocumentIdPdfRouteImport.update({
+    id: '/api/documents/$kind/$documentId/pdf',
+    path: '/api/documents/$kind/$documentId/pdf',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -295,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/pay/$token/pdf': typeof PayTokenPdfRoute
   '/agreements/': typeof AppAgreementsIndexRoute
   '/contacts/': typeof AppContactsIndexRoute
   '/credit-notes/': typeof AppCreditNotesIndexRoute
@@ -304,6 +318,7 @@ export interface FileRoutesByFullPath {
   '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
+  '/api/documents/$kind/$documentId/pdf': typeof ApiDocumentsKindDocumentIdPdfRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -337,6 +352,7 @@ export interface FileRoutesByTo {
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/pay/$token/pdf': typeof PayTokenPdfRoute
   '/agreements': typeof AppAgreementsIndexRoute
   '/contacts': typeof AppContactsIndexRoute
   '/credit-notes': typeof AppCreditNotesIndexRoute
@@ -346,6 +362,7 @@ export interface FileRoutesByTo {
   '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
+  '/api/documents/$kind/$documentId/pdf': typeof ApiDocumentsKindDocumentIdPdfRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -381,6 +398,7 @@ export interface FileRoutesById {
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/pay/$token_/pdf': typeof PayTokenPdfRoute
   '/_app/agreements/': typeof AppAgreementsIndexRoute
   '/_app/contacts/': typeof AppContactsIndexRoute
   '/_app/credit-notes/': typeof AppCreditNotesIndexRoute
@@ -390,6 +408,7 @@ export interface FileRoutesById {
   '/_app/agreements/$agreementId_/edit': typeof AppAgreementsAgreementIdEditRoute
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
+  '/api/documents/$kind/$documentId/pdf': typeof ApiDocumentsKindDocumentIdPdfRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -425,6 +444,7 @@ export interface FileRouteTypes {
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/pay/$token/pdf'
     | '/agreements/'
     | '/contacts/'
     | '/credit-notes/'
@@ -434,6 +454,7 @@ export interface FileRouteTypes {
     | '/agreements/$agreementId/edit'
     | '/api/agreements/$agreementId/pdf'
     | '/app/approvals/$approvalId/preview.pdf'
+    | '/api/documents/$kind/$documentId/pdf'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -467,6 +488,7 @@ export interface FileRouteTypes {
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/pay/$token/pdf'
     | '/agreements'
     | '/contacts'
     | '/credit-notes'
@@ -476,6 +498,7 @@ export interface FileRouteTypes {
     | '/agreements/$agreementId/edit'
     | '/api/agreements/$agreementId/pdf'
     | '/app/approvals/$approvalId/preview.pdf'
+    | '/api/documents/$kind/$documentId/pdf'
   id:
     | '__root__'
     | '/_app'
@@ -510,6 +533,7 @@ export interface FileRouteTypes {
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/pay/$token_/pdf'
     | '/_app/agreements/'
     | '/_app/contacts/'
     | '/_app/credit-notes/'
@@ -519,6 +543,7 @@ export interface FileRouteTypes {
     | '/_app/agreements/$agreementId_/edit'
     | '/api/agreements/$agreementId/pdf'
     | '/app/approvals/$approvalId/preview.pdf'
+    | '/api/documents/$kind/$documentId/pdf'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -537,8 +562,10 @@ export interface RootRouteChildren {
   ApiCronTickRoute: typeof ApiCronTickRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
+  PayTokenPdfRoute: typeof PayTokenPdfRoute
   ApiAgreementsAgreementIdPdfRoute: typeof ApiAgreementsAgreementIdPdfRoute
   AppApprovalsApprovalIdPreviewDotpdfRoute: typeof AppApprovalsApprovalIdPreviewDotpdfRoute
+  ApiDocumentsKindDocumentIdPdfRoute: typeof ApiDocumentsKindDocumentIdPdfRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -697,6 +724,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgreementsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/pay/$token_/pdf': {
+      id: '/pay/$token_/pdf'
+      path: '/pay/$token/pdf'
+      fullPath: '/pay/$token/pdf'
+      preLoaderRoute: typeof PayTokenPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/trpc/$': {
       id: '/api/trpc/$'
       path: '/api/trpc/$'
@@ -830,6 +864,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgreementsAgreementIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/documents/$kind/$documentId/pdf': {
+      id: '/api/documents/$kind/$documentId/pdf'
+      path: '/api/documents/$kind/$documentId/pdf'
+      fullPath: '/api/documents/$kind/$documentId/pdf'
+      preLoaderRoute: typeof ApiDocumentsKindDocumentIdPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -905,9 +946,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronTickRoute: ApiCronTickRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
+  PayTokenPdfRoute: PayTokenPdfRoute,
   ApiAgreementsAgreementIdPdfRoute: ApiAgreementsAgreementIdPdfRoute,
   AppApprovalsApprovalIdPreviewDotpdfRoute:
     AppApprovalsApprovalIdPreviewDotpdfRoute,
+  ApiDocumentsKindDocumentIdPdfRoute: ApiDocumentsKindDocumentIdPdfRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

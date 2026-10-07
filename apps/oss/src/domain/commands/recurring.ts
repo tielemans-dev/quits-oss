@@ -1,3 +1,4 @@
+import { getIssuanceDispatcher } from "../issuance-dispatcher"
 import { Effect } from "effect"
 import { z } from "zod"
 import { commandErrorSchema } from "@quits/contracts/agent"
@@ -682,7 +683,9 @@ registerJobHandler(AUTO_SEND_JOB, async (job) => {
   }
   const payload = parsed.data
   const actor = recurringSystemActor(job.organizationId)
-  const outcome = await executeCommand(
+  const dispatch = getIssuanceDispatcher()
+  if (!dispatch) throw new Error("Issuance dispatcher is not configured; bootstrap the runtime before running jobs")
+  const outcome = await dispatch(
     sendInvoice,
     { id: payload.invoiceId },
     { actor, clientRequestId: `recurring-send:${payload.invoiceId}` }

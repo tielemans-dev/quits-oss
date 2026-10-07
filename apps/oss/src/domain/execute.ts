@@ -9,6 +9,7 @@ import type { ApprovalContext, CommandDefinition } from "./command"
 import {
   Forbidden,
   InvalidState,
+  NotFound,
   ValidationFailed,
   serializeDomainError,
   type DomainError,
@@ -16,6 +17,9 @@ import {
 import { appendEvents } from "./events"
 import { deserializeResult, serializeResult } from "./serialization"
 import { runJobsNow } from "./jobs"
+import { lockArtifactOrganization, bindIssuanceCandidate, publishCandidate } from "./documents/artifacts"
+import { prospectiveRenderInput, type ArtifactDocumentKind, type RenderInput } from "./documents/render-input"
+import { lockDocument } from "./documents/locks"
 import { Command, Db, type PendingEvent, type PendingJob } from "./services"
 
 const APPROVAL_TTL_MS = 7 * 24 * 60 * 60 * 1000
@@ -34,6 +38,9 @@ export type ExecuteOptions = {
   /** The approval context version a person reviewed; the command is refused if it changed. */
   expectedApprovalVersion?: string
   now?: Date
+  /** Application orchestration runs this after authorization, receipt lookup and approval gating. */
+  prepareIssuance?: (input: unknown, now: Date) => Promise<string>
+  issuanceStagingId?: string
 }
 
 export type CommandOutcome<Result> =
@@ -240,6 +247,17 @@ export async function executeCommand<Input, Result>(
     })
   }
 
+  let issuanceStagingId = options.issuanceStagingId
+  try {
+    if (options.prepareIssuance) issuanceStagingId = await options.prepareIssuance(input, now)
+  } catch (error) {
+    if (error instanceof InvalidState || error instanceof ValidationFailed || error instanceof Forbidden ||
+        error instanceof NotFound) {
+      return rejectEarly(error as DomainError)
+    }
+    throw error
+  }
+
   const events: PendingEvent[] = []
   const jobs: PendingJob[] = []
 
@@ -259,6 +277,36 @@ export async function executeCommand<Input, Result>(
         })
         if (existing) {
           throw new AlreadyRecorded()
+        }
+      }
+
+      // Issuance, completion and sweep acquire the organization lock before document locks.
+      await lockArtifactOrganization(tx, organizationId)
+      let issuance: import("./services").CommandScope["issuance"]
+      if (issuanceStagingId) {
+        const staged = await tx.artifactStaging.findUnique({ where: { id: issuanceStagingId } })
+        if (!staged) throw new HandlerFailed(new InvalidState({ code: "reservation_missing", message: "Document reservation missing" }))
+        const kind = staged.documentKind as ArtifactDocumentKind
+        const documentId = kind === "creditNote" ? (input as { invoiceId: string }).invoiceId : (input as { id: string }).id
+        await runRead(tx, lockDocument(kind === "creditNote" ? "invoice" : kind, documentId), { actor, organizationId, commandId: provisionalId, now })
+        const contactDocument = kind === "agreement" ? await tx.agreement.findFirst({ where: { id: documentId, organizationId }, select: { contactId: true } })
+          : await tx.invoice.findFirst({ where: { id: documentId, organizationId }, select: { contactId: true } })
+        if (contactDocument) await runRead(tx, lockDocument("contact", contactDocument.contactId, { strength: "no_key_update" }), { actor, organizationId, commandId: provisionalId, now })
+        const renderInput = staged.renderInput as unknown as RenderInput
+        const prospective = prospectiveRenderInput({ kind, commandInput: input,
+          documentId: staged.documentId, number: staged.reservedNumber!, issuedAt: new Date(renderInput.issuedAt),
+          method: definition.type === "agreement.issue" ? "manual" : "email" })
+        const read = await readInScope(prospective, { actor, organizationId, commandId: provisionalId, now }, tx)
+        if (read.kind === "failed") throw new HandlerFailed(read.error)
+        try {
+          const candidate = await bindIssuanceCandidate(tx, { staging: staged, renderInput: read.value,
+            now, leaseNow: options.now ?? new Date(), organizationId,
+            requestKey: `${organizationId}:${key}:${clientRequestId}` })
+          issuance = { candidateId: candidate.id, documentId: staged.documentId,
+            number: staged.reservedNumber!, issuedAt: new Date(renderInput.issuedAt) }
+        } catch (error) {
+          if (error instanceof InvalidState) throw new HandlerFailed(error)
+          throw error
         }
       }
 
@@ -290,6 +338,7 @@ export async function executeCommand<Input, Result>(
           now,
           approvedByUserId: options.approvedByUserId ?? null,
           expectedApprovalVersion: options.expectedApprovalVersion,
+          issuance,
           emit: (event) => events.push(event),
           enqueue: (job) => jobs.push(job),
         })
@@ -304,6 +353,10 @@ export async function executeCommand<Input, Result>(
         throw Cause.squash(exit.cause)
       }
 
+      if (issuance && !jobs.some(job => (job.payload as { completion?: { target?: { candidateId?: string } } }).completion?.target?.candidateId === issuance.candidateId)) {
+        events.push(...await publishCandidate(tx, { candidateId: issuance.candidateId,
+          documentId: issuance.documentId, attemptAt: options.now ?? now, organizationId }))
+      }
       await appendEvents(tx, {
         organizationId,
         actor,
@@ -491,10 +544,14 @@ async function runRead<Value>(
 /** Runs a read-only domain effect in its own transaction, returning a domain failure as a value. */
 async function readInScope<Value>(
   effect: Effect.Effect<Value, DomainError, Db | Command>,
-  scope: ReadScope
+  scope: ReadScope,
+  tx?: Prisma.TransactionClient
 ): Promise<{ kind: "ok"; value: Value } | { kind: "failed"; error: DomainError }> {
   try {
-    return { kind: "ok", value: await prisma.$transaction((tx) => runRead(tx, effect, scope)) }
+    return { kind: "ok", value: tx ? await runRead(tx, effect, scope) : await prisma.$transaction(async tx => {
+      await lockArtifactOrganization(tx, scope.organizationId)
+      return runRead(tx, effect, scope)
+    }) }
   } catch (error) {
     if (error instanceof HandlerFailed) {
       return { kind: "failed", error: error.domainError }
@@ -517,6 +574,7 @@ async function queueForApproval<Input, Result>(
 ): Promise<CommandOutcome<Result>> {
   try {
     const approval = await prisma.$transaction(async (tx) => {
+      await lockArtifactOrganization(tx, context.organizationId)
       let review: ApprovalContext | null = null
       if (definition.approvalContext) {
         review = await runRead(tx, definition.approvalContext(input), context)

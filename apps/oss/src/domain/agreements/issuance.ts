@@ -122,7 +122,7 @@ export const issueAgreementOffer = (
         message: "The document changed after approval review",
       })
     const unchanged = draft.offerSnapshotHash === hash && draft.issuedToEmail === recipient
-    const number = draft.number ?? (yield* allocateDocumentNumber("agreement"))
+    const number = command.issuance?.number ?? draft.number ?? (yield* allocateDocumentNumber("agreement"))
     const agreement = yield* Effect.promise(() =>
       db.agreement.update({
         where: { id: draft.id },
@@ -138,7 +138,7 @@ export const issueAgreementOffer = (
                 offerSnapshotHash: hash,
                 offerRevision: { increment: 1 },
                 issuedToEmail: recipient,
-                issueDate: command.now,
+                issueDate: command.issuance?.issuedAt ?? command.now,
                 expiresAt,
                 publicAccessKeyVersion: { increment: 1 },
                 publicAccessIssuedAt: command.now,

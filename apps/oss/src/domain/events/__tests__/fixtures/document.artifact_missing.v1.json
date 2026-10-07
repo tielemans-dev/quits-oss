@@ -1,0 +1,42 @@
+{
+  "type": "document.artifact_missing",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "\"document.artifact_missing\"",
+      "payloadExpression": "{ documentKind, documentId, candidateId, reason }",
+      "variant": "default",
+      "payload": {
+        "documentKind": "invoice",
+        "documentId": "document-1",
+        "candidateId": "candidate-1",
+        "reason": "paused_by_user"
+      }
+    },
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "\"document.artifact_missing\"",
+      "payloadExpression": "{ documentKind, documentId, candidateId, reason }",
+      "variant": "creditNote/send/delivered",
+      "payload": {
+        "documentKind": "creditNote",
+        "documentId": "document-1",
+        "candidateId": "candidate-1",
+        "reason": "paused_by_user"
+      }
+    },
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "\"document.artifact_missing\"",
+      "payloadExpression": "{ documentKind, documentId, candidateId, reason }",
+      "variant": "agreement/send/delivered",
+      "payload": {
+        "documentKind": "agreement",
+        "documentId": "document-1",
+        "candidateId": "candidate-1",
+        "reason": "paused_by_user"
+      }
+    }
+  ]
+}

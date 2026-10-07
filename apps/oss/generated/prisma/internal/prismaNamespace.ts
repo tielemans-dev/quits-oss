@@ -417,7 +417,9 @@ export const ModelName = {
   AgreementTemplate: 'AgreementTemplate',
   PublicLinkAttempt: 'PublicLinkAttempt',
   EventConsumerCursor: 'EventConsumerCursor',
-  EventConsumerDelivery: 'EventConsumerDelivery'
+  EventConsumerDelivery: 'EventConsumerDelivery',
+  ArtifactStaging: 'ArtifactStaging',
+  IssuanceCandidate: 'IssuanceCandidate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -433,7 +435,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery"
+    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2953,6 +2955,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ArtifactStaging: {
+      payload: Prisma.$ArtifactStagingPayload<ExtArgs>
+      fields: Prisma.ArtifactStagingFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ArtifactStagingFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ArtifactStagingFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload>
+        }
+        findFirst: {
+          args: Prisma.ArtifactStagingFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ArtifactStagingFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload>
+        }
+        findMany: {
+          args: Prisma.ArtifactStagingFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload>[]
+        }
+        create: {
+          args: Prisma.ArtifactStagingCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload>
+        }
+        createMany: {
+          args: Prisma.ArtifactStagingCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ArtifactStagingCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload>[]
+        }
+        delete: {
+          args: Prisma.ArtifactStagingDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload>
+        }
+        update: {
+          args: Prisma.ArtifactStagingUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload>
+        }
+        deleteMany: {
+          args: Prisma.ArtifactStagingDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ArtifactStagingUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ArtifactStagingUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload>[]
+        }
+        upsert: {
+          args: Prisma.ArtifactStagingUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ArtifactStagingPayload>
+        }
+        aggregate: {
+          args: Prisma.ArtifactStagingAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateArtifactStaging>
+        }
+        groupBy: {
+          args: Prisma.ArtifactStagingGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ArtifactStagingGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ArtifactStagingCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ArtifactStagingCountAggregateOutputType> | number
+        }
+      }
+    }
+    IssuanceCandidate: {
+      payload: Prisma.$IssuanceCandidatePayload<ExtArgs>
+      fields: Prisma.IssuanceCandidateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.IssuanceCandidateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.IssuanceCandidateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload>
+        }
+        findFirst: {
+          args: Prisma.IssuanceCandidateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.IssuanceCandidateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload>
+        }
+        findMany: {
+          args: Prisma.IssuanceCandidateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload>[]
+        }
+        create: {
+          args: Prisma.IssuanceCandidateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload>
+        }
+        createMany: {
+          args: Prisma.IssuanceCandidateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.IssuanceCandidateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload>[]
+        }
+        delete: {
+          args: Prisma.IssuanceCandidateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload>
+        }
+        update: {
+          args: Prisma.IssuanceCandidateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload>
+        }
+        deleteMany: {
+          args: Prisma.IssuanceCandidateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.IssuanceCandidateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.IssuanceCandidateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload>[]
+        }
+        upsert: {
+          args: Prisma.IssuanceCandidateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IssuanceCandidatePayload>
+        }
+        aggregate: {
+          args: Prisma.IssuanceCandidateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateIssuanceCandidate>
+        }
+        groupBy: {
+          args: Prisma.IssuanceCandidateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.IssuanceCandidateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.IssuanceCandidateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.IssuanceCandidateCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -3267,6 +3417,10 @@ export const InvoiceScalarFieldEnum = {
   quoteId: 'quoteId',
   recurringInvoiceId: 'recurringInvoiceId',
   recurringRunDate: 'recurringRunDate',
+  artifactPdfRef: 'artifactPdfRef',
+  artifactPdfHash: 'artifactPdfHash',
+  artifactUblRef: 'artifactUblRef',
+  artifactUblHash: 'artifactUblHash',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   calculationVersion: 'calculationVersion',
@@ -3394,6 +3548,10 @@ export const CreditNoteScalarFieldEnum = {
   lastEmailAttemptOutcome: 'lastEmailAttemptOutcome',
   lastEmailAttemptCode: 'lastEmailAttemptCode',
   lastEmailAttemptMessage: 'lastEmailAttemptMessage',
+  artifactPdfRef: 'artifactPdfRef',
+  artifactPdfHash: 'artifactPdfHash',
+  artifactUblRef: 'artifactUblRef',
+  artifactUblHash: 'artifactUblHash',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   calculationVersion: 'calculationVersion',
@@ -3645,6 +3803,10 @@ export const AgreementScalarFieldEnum = {
   closedAt: 'closedAt',
   closeReason: 'closeReason',
   notes: 'notes',
+  artifactPdfRef: 'artifactPdfRef',
+  artifactPdfHash: 'artifactPdfHash',
+  artifactUblRef: 'artifactUblRef',
+  artifactUblHash: 'artifactUblHash',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   calculationVersion: 'calculationVersion',
@@ -3748,6 +3910,49 @@ export const EventConsumerDeliveryScalarFieldEnum = {
 } as const
 
 export type EventConsumerDeliveryScalarFieldEnum = (typeof EventConsumerDeliveryScalarFieldEnum)[keyof typeof EventConsumerDeliveryScalarFieldEnum]
+
+
+export const ArtifactStagingScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  documentKind: 'documentKind',
+  documentId: 'documentId',
+  requestKey: 'requestKey',
+  requestKeys: 'requestKeys',
+  renderInputHash: 'renderInputHash',
+  renderInput: 'renderInput',
+  rendererVersion: 'rendererVersion',
+  status: 'status',
+  prepToken: 'prepToken',
+  leaseUntil: 'leaseUntil',
+  artifacts: 'artifacts',
+  missingReason: 'missingReason',
+  reservedNumber: 'reservedNumber',
+  numberWasAllocated: 'numberWasAllocated',
+  candidateRefs: 'candidateRefs',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ArtifactStagingScalarFieldEnum = (typeof ArtifactStagingScalarFieldEnum)[keyof typeof ArtifactStagingScalarFieldEnum]
+
+
+export const IssuanceCandidateScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  documentKind: 'documentKind',
+  documentId: 'documentId',
+  stagingId: 'stagingId',
+  renderInput: 'renderInput',
+  renderInputHash: 'renderInputHash',
+  recipient: 'recipient',
+  artifacts: 'artifacts',
+  attemptAt: 'attemptAt',
+  status: 'status',
+  createdAt: 'createdAt'
+} as const
+
+export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -4037,6 +4242,8 @@ export type GlobalOmitConfig = {
   publicLinkAttempt?: Prisma.PublicLinkAttemptOmit
   eventConsumerCursor?: Prisma.EventConsumerCursorOmit
   eventConsumerDelivery?: Prisma.EventConsumerDeliveryOmit
+  artifactStaging?: Prisma.ArtifactStagingOmit
+  issuanceCandidate?: Prisma.IssuanceCandidateOmit
 }
 
 /* Types for Logging */

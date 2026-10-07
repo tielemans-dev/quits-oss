@@ -7,6 +7,7 @@ import {
   registerDeliveryCompletion,
   type DeliveryFailure,
 } from "../delivery/outbox"
+import { pendingCandidate, publishCandidate, retireCandidate } from "./artifacts"
 import { InvalidState } from "../errors"
 import { Command } from "../services"
 
@@ -62,13 +63,14 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
   /** What sending a draft changes: it is issued at the attempt's time with its public link date. */
   const issuedFields = (target: Record<string, string>, attemptAt: Date) => ({
     status: "sent",
-    ...(kind === "agreement" ? {} : { issueDate: attemptAt }),
+    ...(kind === "agreement" ? {} : { issueDate: target.issuedAt ? new Date(target.issuedAt) : attemptAt }),
     ...(publicLinkField && target.publicLinkIssuedAt ? { [publicLinkField]: new Date(target.publicLinkIssuedAt) } : {}),
   })
   for (const mode of ["send", "email"] as const) {
     registerDeliveryCompletion(completionKind(kind, mode), {
-      pending: async (db, target) => (await delegate(db, kind).count({ where: awaiting(target, mode) })) > 0,
-      delivered: async ({ tx, target }) => {
+      pending: async (db, target) => (await pendingCandidate(db, target)) && (await delegate(db, kind).count({ where: awaiting(target, mode) })) > 0,
+      delivered: async ({ tx, target, organizationId }) => {
+        if (!await pendingCandidate(tx, target)) return []
         const attemptAt = new Date(target.attemptAt)
         const issued = mode === "send" ? issuedFields(target, attemptAt) : {}
         const { count } = await delegate(tx, kind).updateMany({
@@ -84,7 +86,11 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
           },
         })
         if (count === 0) return []
+        const artifactEvents = target.candidateId ? await publishCandidate(tx, {
+          candidateId: target.candidateId, documentId: target.documentId, attemptAt, organizationId,
+        }) : []
         return [
+          ...artifactEvents,
           {
             aggregateType,
             aggregateId: target.documentId,
@@ -97,7 +103,8 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
           },
         ]
       },
-      failed: async ({ tx, target }, failure: DeliveryFailure) => {
+      failed: async ({ tx, target, organizationId }, failure: DeliveryFailure) => {
+        if (!await pendingCandidate(tx, target)) return []
         const attemptAt = new Date(target.attemptAt)
         if (failure.reason === "unconfirmed") {
           // The customer may have the email, so the document is issued and never reopened.
@@ -114,7 +121,11 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
             },
           })
           if (count === 0) return []
+          const artifactEvents = target.candidateId ? await publishCandidate(tx, {
+            candidateId: target.candidateId, documentId: target.documentId, attemptAt, organizationId,
+          }) : []
           return [
+            ...artifactEvents,
             {
               aggregateType,
               aggregateId: target.documentId,
@@ -137,6 +148,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
           }),
         })
         if (count === 0) return []
+        await retireCandidate(tx, target, organizationId)
         return [
           {
             aggregateType,
@@ -185,7 +197,7 @@ export const queueDocumentEmail = <Row>(input: {
   markSending: (data: ReturnType<typeof createEmailDeliveryAttempt>) => Promise<Row>
 }) =>
   Effect.gen(function* () {
-    const { now } = yield* Command
+    const { now, issuance } = yield* Command
     const updated = yield* Effect.promise(() =>
       input.markSending(
         createEmailDeliveryAttempt({
@@ -202,6 +214,7 @@ export const queueDocumentEmail = <Row>(input: {
       completion: {
         kind: completionKind(input.kind, input.mode),
         target: {
+          ...(issuance ? { candidateId: issuance.candidateId, issuedAt: issuance.issuedAt.toISOString() } : {}),
           documentId: input.document.id,
           attemptAt: now.toISOString(),
           number: input.document.number ?? "",

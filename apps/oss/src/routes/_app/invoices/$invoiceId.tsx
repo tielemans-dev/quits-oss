@@ -170,21 +170,9 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
   )
 }
 
-async function downloadInvoicePdfFile(
-  invoice: Invoice,
-  orgSettings: {
-    companyName?: string | null
-    companyEmail?: string | null
-    companyPhone?: string | null
-    companyAddress?: string | null
-    companyLogo?: string | null
-    locale?: string | null
-    timezone?: string | null
-    stripeByokConfigured?: boolean
-  }
-) {
-  const { downloadInvoicePdf } = await import("../../../lib/invoice-pdf")
-  await downloadInvoicePdf(invoice, orgSettings)
+async function downloadInvoicePdfFile(invoice: Invoice, _orgSettings: unknown) {
+  const { downloadDocumentPdf } = await import("../../../lib/documents-download")
+  await downloadDocumentPdf("invoice", invoice.id, invoice.number)
 }
 
 function InvoiceDetailPage() {

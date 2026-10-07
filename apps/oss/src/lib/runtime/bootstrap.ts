@@ -1,3 +1,5 @@
+import { executeIssuanceCommand } from "../../application/issuance"
+import { setIssuanceDispatcher } from "../../domain/issuance-dispatcher"
 import {
   setRuntimeExtensions,
   type RuntimeExtension,
@@ -18,6 +20,7 @@ export function bootstrapQuitsRuntime(input: {
   extensions?: RuntimeExtension[]
   services?: Partial<RuntimeServices>
 }) {
+  setIssuanceDispatcher(executeIssuanceCommand)
   if (input.platform) {
     setRuntimePlatform(input.platform)
   }

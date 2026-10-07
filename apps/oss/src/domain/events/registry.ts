@@ -30,8 +30,17 @@ const acceptance = z.object({
 const agreementDecision = { revision: i, hash: nullableString, recipient: nullableString }
 const reminderFailure = z.object({ number: s, reminderId: s, reason: s, message: s.optional() }).strict()
 
+const artifactDocumentKind = z.enum(["invoice", "creditNote", "agreement"])
+const artifactIdentity = { documentKind: artifactDocumentKind, documentId: s, candidateId: s }
+const artifact = z.object({ ref: s.min(1), hash: s.regex(/^[a-f0-9]{64}$/), size: i.nonnegative() }).strict()
+
 /** Serialized v1 shapes, inventoried from the writers. Change a payload only with a version bump. */
 export const eventRegistry = {
+  "document.artifact_stored": { version: 1, schema: z.object({ ...artifactIdentity,
+    artifacts: z.object({ pdf: artifact, ubl: artifact.optional() }).strict(), rendererVersion: s }).strict() },
+  "document.artifact_missing": { version: 1, schema: z.object({ ...artifactIdentity, reason: s }).strict() },
+  "document.number_voided": { version: 1, schema: z.object({ organizationId: s, documentKind: artifactDocumentKind,
+    number: s, reservationId: s, reason: s }).strict() },
   "invoice.draft_created": { version: 1, schema: draft.extend({ quoteId: s.optional() }).strict() },
   "invoice.draft_updated": { version: 1, schema: fields },
   "invoice.draft_deleted": { version: 1, schema: number },

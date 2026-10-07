@@ -69,18 +69,19 @@ export const issueCreditNote = defineCommand({
       const built = yield* priceCreditNote(invoice, input)
 
       const { settings, sellerTaxIds } = yield* loadDocumentContext
-      const number = yield* allocateDocumentNumber("creditNote")
+      const number = command.issuance?.number ?? (yield* allocateDocumentNumber("creditNote"))
 
       const creditNote = yield* Effect.promise(() =>
         db.creditNote.create({
           data: {
+            ...(command.issuance ? { id: command.issuance.documentId } : {}),
             organizationId,
             invoiceId: invoice.id,
             contactId: invoice.contactId,
             number,
             status: "issued",
             reason: input.reason,
-            issueDate: now,
+            issueDate: command.issuance?.issuedAt ?? now,
             subtotalNet: built.subtotalNet,
             totalTax: built.totalTax,
             totalGross: built.totalGross,

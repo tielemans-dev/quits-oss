@@ -24,6 +24,7 @@ function mergeCapabilities(
   }
 
   return {
+    documents: { ...base.documents, ...patch.documents },
     aiInvoiceDraft: {
       ...base.aiInvoiceDraft,
       ...patch.aiInvoiceDraft,
@@ -60,6 +61,7 @@ function readDefaultCapabilities(
   )
 
   return {
+    documents: { artifactsRequired: false },
     aiInvoiceDraft: {
       enabled: byok || managed,
       byok,
