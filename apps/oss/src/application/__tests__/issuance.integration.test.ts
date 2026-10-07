@@ -115,6 +115,9 @@ const afterRetention = () => new Date(Date.now() + RETIRED_ARTIFACT_RETENTION_MS
     await issueDocument(args)
     const first = (await candidates(org.organizationId))[0]
     expect(first.status).toBe("retired")
+    // A scheduler tick between rejection and retry must preserve the live reservation.
+    expect(await sweepOrganizationArtifacts(org.organizationId)).toMatchObject({ abandoned: 0, deleted: 0 })
+    expect((await prisma.artifactStaging.findUniqueOrThrow({ where: { id: first.stagingId } })).status).toBe("candidate_bound")
     await issueDocument({ ...args, clientRequestId: "retry" })
     const second = (await candidates(org.organizationId))[1]
     expect(second.status).toBe("published")

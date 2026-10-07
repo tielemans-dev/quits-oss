@@ -20,7 +20,7 @@ export async function sweepOrganizationArtifacts(organizationId: string, now = n
     const rows = await tx.artifactStaging.findMany({ where: {
       organizationId, OR: [
         { status: { in: ["reserved", "stored", "missing"] }, leaseUntil: { lte: now } },
-        { status: "candidate_bound", candidates: { some: {}, every: { status: "retired" } } },
+        { status: "candidate_bound", leaseUntil: { lte: now }, candidates: { some: {}, every: { status: "retired" } } },
         { status: "abandoned", artifacts: { not: Prisma.DbNull },
           candidates: { none: { status: "retired", createdAt: { gt: new Date(now.getTime() - RETIRED_ARTIFACT_RETENTION_MS) } } } },
       ],
@@ -30,7 +30,8 @@ export async function sweepOrganizationArtifacts(organizationId: string, now = n
     for (const row of rows) {
       if (row.status !== "abandoned") {
         const noCandidateExpired = row.leaseUntil <= now && !row.candidates.length
-        const allRetired = row.candidates.length > 0 && row.candidates.every(candidate => candidate.status === "retired")
+        // Preserve the promised unchanged retry for the entire preparation lease.
+        const allRetired = row.leaseUntil <= now && row.candidates.length > 0 && row.candidates.every(candidate => candidate.status === "retired")
         if (!noCandidateExpired && !allRetired) continue
         // A failed runner may still have a provider decision waiting for settlement.
         const jobs = row.candidates.length ? await tx.job.findMany({ where: { organizationId, type: "email.deliver",
@@ -77,7 +78,8 @@ export async function runArtifactSweep(now = new Date(), options?: TickOptions) 
   const source = scannedOrganizationSource("document-artifacts", Prisma.sql`
     SELECT "organizationId" FROM "artifact_staging" WHERE (
       ("status" IN ('reserved', 'stored', 'missing') AND "leaseUntil" <= ${utcTimestamp(now)})
-      OR ("status" = 'candidate_bound' AND EXISTS (SELECT 1 FROM "issuance_candidate" c WHERE c."stagingId" = "artifact_staging".id)
+      OR ("status" = 'candidate_bound' AND "leaseUntil" <= ${utcTimestamp(now)}
+        AND EXISTS (SELECT 1 FROM "issuance_candidate" c WHERE c."stagingId" = "artifact_staging".id)
         AND NOT EXISTS (SELECT 1 FROM "issuance_candidate" c WHERE c."stagingId" = "artifact_staging".id AND c.status != 'retired'))
       OR ("status" = 'abandoned' AND artifacts IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM "issuance_candidate" c WHERE c."stagingId" = "artifact_staging".id
