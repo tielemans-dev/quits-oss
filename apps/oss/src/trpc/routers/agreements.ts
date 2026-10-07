@@ -1,3 +1,5 @@
+import { createAgreementTemplate, updateAgreementTemplate, deleteAgreementTemplate } from "../../domain/commands/agreement-templates"
+import { agreementTemplateCreateInputSchema, agreementTemplateUpdateInputSchema } from "@quits/contracts/agreements"
 import { executeIssuanceCommand } from "../../application/issuance"
 import {
   markDeliverableDelivered,
@@ -25,8 +27,8 @@ import {
 import { mintAgreementLink, mintDeliverableSignOffLink } from "../../lib/agreements/tokens"
 import { readEmailDelivery } from "../email-delivery-result"
 import {
-  agreementCreateDraftInputSchema,
-  agreementCreateDraftDecimalInputSchema,
+  agreementCreateDraftRequestSchema,
+  agreementCreateDraftDecimalRequestSchema,
   agreementUpdateDraftInputSchema,
   agreementUpdateDraftDecimalInputSchema,
   agreementIdInputSchema,
@@ -52,7 +54,14 @@ import { router, authorizedProcedure } from "../init"
 import { unwrapOutcome } from "../outcome"
 
 export const agreementsRouter = router({
+  createTemplate: authorizedProcedure("agreement:manageTemplates").input(agreementTemplateCreateInputSchema)
+    .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(createAgreementTemplate, input, { actor: ctx.actor }))),
+  updateTemplate: authorizedProcedure("agreement:manageTemplates").input(agreementTemplateUpdateInputSchema)
+    .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(updateAgreementTemplate, input, { actor: ctx.actor }))),
+  deleteTemplate: authorizedProcedure("agreement:manageTemplates").input(agreementIdInputSchema)
+    .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(deleteAgreementTemplate, input, { actor: ctx.actor }))),
   capabilities: authorizedProcedure("agreement:read").query(({ ctx }) => ({
+    manageTemplates: actorCan(ctx.actor, "agreement:manageTemplates"),
     invoice: actorCan(ctx.actor, "invoice:create"),
     send: actorCan(ctx.actor, "agreement:send"),
     update: actorCan(ctx.actor, "agreement:update"),
@@ -154,7 +163,7 @@ export const agreementsRouter = router({
       serializeAgreementDetail(await getAgreement(ctx.organizationId, input.id)),
     ),
   createDraft: authorizedProcedure("agreement:create")
-    .input(agreementCreateDraftInputSchema)
+    .input(agreementCreateDraftRequestSchema)
     .mutation(async ({ ctx, input }) =>
       serializeAgreementDetail(
         unwrapOutcome(
@@ -165,7 +174,7 @@ export const agreementsRouter = router({
       ),
     ),
   createDraftDecimal: authorizedProcedure("agreement:create")
-    .input(agreementCreateDraftDecimalInputSchema)
+    .input(agreementCreateDraftDecimalRequestSchema)
     .mutation(async ({ ctx, input }) =>
       serializeAgreementDetail(
         unwrapOutcome(

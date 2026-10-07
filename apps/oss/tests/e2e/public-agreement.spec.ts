@@ -2,7 +2,7 @@ import { createServer, type Server } from "node:http"
 import { mkdir, writeFile } from "node:fs/promises"
 import { expect, test, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
-import { resetDatabase, seedCompletedSetup, loginAsAdmin, waitForClientReady } from "./support"
+import { resetDatabase, seedPublicQuote, seedCompletedSetup, loginAsAdmin, waitForClientReady } from "./support"
 let provider: Server
 const messages: Array<{ to: string; html: string }> = []
 test.beforeAll(async () => {
@@ -179,7 +179,7 @@ test("accept, deliver, sign off, reserve and send an invoice from the agreement"
   await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).status).toBe("sent")
   await page.goto(`/agreements/${agreementId}`)
   await expect(page.getByRole("group", { name: "Website delivery", exact: true }).getByText("Invoiced", { exact: true })).toBeVisible()
-  const line = await prisma.deliverable.findFirstOrThrow({ where: { agreementId } })
+  const line = await prisma.deliverable.findFirstOrThrow({ where: { agreementId, isDeposit: false } })
   expect(line).toMatchObject({ status: "accepted", billingStatus: "invoiced" })
   await mkdir("/var/tmp/quits-agreements-phase2", { recursive: true })
   await page.screenshot({ path: "/var/tmp/quits-agreements-phase2/invoiced-agreement.png", fullPage: true })
@@ -262,4 +262,62 @@ for (const decision of ["accept", "changes"] as const) test(`Phase 3 deliver, cu
     await expect(customer.getByRole("heading", { name: "This link is no longer valid" })).toBeVisible()
   }
   await context.close()
+})
+
+
+test("accepted quote creates an agreement draft, blocks direct invoicing and sends the reviewed offer", async ({ page, browser }) => {
+  const quote = await seedPublicQuote()
+  await prisma.quote.update({ where: { id: quote.id }, data: { expiryDate: new Date("2099-12-01") } })
+  const context = await browser.newContext(), customer = await context.newPage()
+  await customer.goto(quote.url)
+  await waitForClientReady(customer)
+  await customer.getByRole("button", { name: "Accept quote", exact: true }).click()
+  await expect(customer.getByText("Quote accepted", { exact: true })).toBeVisible()
+  await loginAsAdmin(page)
+  await page.goto(`/quotes/${quote.id}`)
+  await waitForClientReady(page)
+  await expect(page.getByRole("button", { name: "Convert to Invoice", exact: true })).toBeEnabled()
+  await page.getByRole("button", { name: "Create agreement", exact: true }).click()
+  await page.getByLabel("Valid until", { exact: true }).click()
+  await page.getByRole("button", { name: "Go to the Next Month" }).click()
+  await page.getByRole("gridcell").filter({ has: page.getByRole("button", { name: /\b20(?:th)?\b/ }) }).first().getByRole("button").click()
+  await page.getByRole("button", { name: "Save draft", exact: true }).click()
+  await expect(page).toHaveURL(/\/agreements\/[^/]+\/edit$/)
+  const agreementId = new URL(page.url()).pathname.split("/").at(-2)!
+  await expect(page.getByLabel("Deliverable title", { exact: true })).toHaveValue("Strategy session")
+  await expect(page.getByLabel("Unit price", { exact: true })).toHaveValue("100")
+  await page.getByRole("button", { name: "Save draft", exact: true }).click()
+  await expect(page).toHaveURL(/\/agreements\/[^/]+$/)
+  await page.getByRole("button", { name: "Send", exact: true }).click()
+  await expect(page.getByRole("link", { name: "Open customer link" })).toBeVisible()
+  expect((await prisma.agreement.findUniqueOrThrow({ where: { id: agreementId } })).status).toBe("sent")
+  expect(messages.some(message => message.to === "quote-customer@example.com")).toBe(true)
+  await page.goto(`/quotes/${quote.id}`)
+  await expect(page.getByRole("button", { name: "Convert to Invoice", exact: true })).toBeDisabled()
+  await expect(page.getByRole("button", { name: "Create agreement", exact: true })).toBeDisabled()
+  await expect(page.getByText(/This quote already has an agreement/)).toBeVisible()
+  await context.close()
+})
+
+test("template editor creates, updates and deletes templates", async ({ page }) => {
+  await seedCompletedSetup()
+  await loginAsAdmin(page)
+  await page.goto("/agreements")
+  await waitForClientReady(page)
+  await page.locator("summary").filter({ hasText: "Manage templates" }).click()
+  await page.getByLabel("Template name", { exact: true }).fill("Browser template")
+  await page.getByLabel("Terms (Markdown)", { exact: true }).fill("Original {{buyer.name}} terms")
+  await page.getByRole("checkbox", { name: "Use as default template", exact: true }).check()
+  await page.getByRole("button", { name: "Save template", exact: true }).click()
+  await expect(page.getByRole("option", { name: "Browser template", exact: true })).toHaveCount(1)
+  const template = await prisma.agreementTemplate.findFirstOrThrow({ where: { name: "Browser template" } })
+  await page.getByLabel("Template", { exact: true }).selectOption(template.id)
+  await page.getByLabel("Terms (Markdown)", { exact: true }).fill("Revised {{buyer.name}} terms")
+  await page.getByRole("button", { name: "Save template", exact: true }).click()
+  await expect.poll(async () => (await prisma.agreementTemplate.findUniqueOrThrow({ where: { id: template.id } })).termsMarkdown).toBe("Revised {{buyer.name}} terms")
+  await expect(page.getByLabel("Template name", { exact: true })).toHaveValue("")
+  await page.getByLabel("Template", { exact: true }).selectOption(template.id)
+  await page.getByRole("button", { name: "Delete template", exact: true }).click()
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete template", exact: true }).click()
+  await expect.poll(() => prisma.agreementTemplate.count({ where: { id: template.id } })).toBe(0)
 })

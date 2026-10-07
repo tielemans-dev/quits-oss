@@ -95,6 +95,7 @@ export const quotesRouter = router({
           contact: true,
           items: { orderBy: { sortOrder: "asc" } },
           invoices: { select: { id: true, number: true } },
+          agreement: { select: { id: true, title: true } },
         },
       })
 

@@ -1,0 +1,16 @@
+{
+  "type": "agreement_template.created",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-templates.ts",
+      "typeExpression": "\"agreement_template.created\"",
+      "payloadExpression": "{ name: template.name, isDefault: template.isDefault }",
+      "variant": "default",
+      "payload": {
+        "name": "Acme",
+        "isDefault": false
+      }
+    }
+  ]
+}

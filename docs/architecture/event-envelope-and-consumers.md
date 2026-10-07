@@ -1,6 +1,9 @@
 # Event envelope and consumers
 
-Every persisted domain event has a positive `schemaVersion`. Existing events are v1. A payload
+Every persisted domain event has a positive `schemaVersion`. Events are v1 except
+`agreement.draft_created` v2, which records nullable `sourceQuoteId`. Its v1 upcast adds null
+without changing the archived v1 fixture payload. Template CRUD emits
+`agreement_template.created`, `agreement_template.updated` and `agreement_template.deleted` v1. A payload
 shape never changes without a version bump, including additions and removals of fields. The
 registry in `apps/oss/src/domain/events/registry.ts` describes the serialized payloads written
 by today's emitters. The writer validates after JSON serialization and preserves that value.

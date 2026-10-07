@@ -11,8 +11,8 @@ type Fixture = {
 const directory = new URL("./fixtures/", import.meta.url)
 const fixtures = readdirSync(directory).filter((name) => name.endsWith(".json")).map((name) => JSON.parse(readFileSync(new URL(name, directory), "utf8")) as Fixture)
 
-describe("v1 emitter inventory", () => {
-  it("has one fixture file for every registered production type and no extra types", () => {
+describe("versioned emitter inventory", () => {
+  it("has fixture coverage for every registered production type and no extra types", () => {
     expect([...new Set(fixtures.map((fixture) => fixture.type))].sort()).toEqual(Object.keys(eventRegistry).sort())
   })
   for (const fixture of fixtures) {
@@ -25,9 +25,10 @@ describe("v1 emitter inventory", () => {
           expect(eventDefinition(fixture.type)?.schema.safeParse(upcast.payload).success).toBe(true)
           continue
         }
-        expect(expressions).toContainEqual({ source: sample.source, typeExpression: sample.typeExpression, payloadExpression: sample.payloadExpression })
+        if (fixture.schemaVersion === eventDefinition(fixture.type)!.version) expect(expressions).toContainEqual({ source: sample.source, typeExpression: sample.typeExpression, payloadExpression: sample.payloadExpression })
         expect(reconstruct(sample, sample.variant)).toEqual({ type: fixture.type, payload: sample.payload })
-        expect(serializeEvent(fixture.type, sample.payload)).toEqual({ schemaVersion: fixture.schemaVersion, payload: sample.payload })
+        const current = upcastEvent({ type: fixture.type, schemaVersion: fixture.schemaVersion, payload: sample.payload })
+        expect(serializeEvent(fixture.type, current.payload)).toEqual({ schemaVersion: current.schemaVersion, payload: current.payload })
       }
     })
   }
@@ -59,11 +60,14 @@ describe("event envelope", () => {
     finally { process.env.NODE_ENV = previous }
     expect(() => registerTestEventTypes({ "contact.created": eventRegistry["contact.created"] })).toThrow()
   })
-  it("keeps every v1 envelope identical and refuses newer, invalid and unknown versions", () => {
+  it("upcasts historical creation events and refuses unsupported versions", () => {
     for (const fixture of fixtures) {
       const envelope = { type: fixture.type, schemaVersion: fixture.schemaVersion, payload: fixture.cases[0].payload }
       if (fixture.type === "credit_note.issued" && fixture.schemaVersion === 1) expect(upcastEvent(envelope)).toMatchObject({ schemaVersion: 2, payload: { postable: false } })
-      else expect(upcastEvent(envelope)).toBe(envelope)
+      else if (fixture.type === "agreement.draft_created" && fixture.schemaVersion === 1) {
+        expect(upcastEvent(envelope)).toMatchObject({ schemaVersion: 2, payload: { ...fixture.cases[0].payload as object, sourceQuoteId: null } })
+        expect(envelope.payload).not.toHaveProperty("sourceQuoteId")
+      } else expect(upcastEvent(envelope)).toBe(envelope)
       expect(() => upcastEvent({ ...envelope, schemaVersion: eventDefinition(fixture.type)!.version + 1 })).toThrow(UnsupportedEventVersion)
       expect(() => upcastEvent({ ...envelope, schemaVersion: 0 })).toThrow(UnsupportedEventVersion)
     }

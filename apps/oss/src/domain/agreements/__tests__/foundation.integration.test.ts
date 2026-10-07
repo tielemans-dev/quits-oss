@@ -126,6 +126,7 @@ describe("agreement role and agent scope matrix", () => {
         "deliverable_list",
         "agreement_template_list",
         "agreement_create_draft",
+        "agreement_create_draft_from_quote",
         "agreement_update_draft",
         "agreement_delete_draft",
         "deliverable_update",

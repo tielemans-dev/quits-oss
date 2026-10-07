@@ -17,7 +17,7 @@ import {
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { useI18n } from "../../../lib/i18n/react"
 import { renderAgreementMarkdown } from "../../../lib/agreements/markdown"
-import { calculateLegacyDocument, previewDraft } from "@quits/shared/pricing"
+import { calculateLegacyDocument, previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import { currencyFractionDigits } from "../../../lib/payments/stripe-amounts"
 import { formatCurrency } from "../../../lib/i18n/format"
 import { Plus, Trash2 } from "lucide-react"
@@ -100,11 +100,12 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
             templateId: agreement.templateId,
             validUntil: agreement.validUntil.toISOString().slice(0, 10),
             currency: agreement.currency,
-            taxRate: String(agreement.taxRate),
+            taxRate: agreement.taxRateInput ?? String(agreement.taxRate),
             dueInDays: agreement.dueInDays,
             billingTrigger: agreement.billingTrigger as Form["billingTrigger"],
             notes: agreement.notes ?? "",
             deliverables: agreement.deliverables.map((line) => ({
+              vat: { treatment: line.vatTreatment as NonNullable<DeliverableInput["vat"]>["treatment"], rate: line.vatRateInput ?? percentageToFraction(String(line.taxRate)), country: line.vatCountry, reasonCode: line.vatReasonCode as NonNullable<DeliverableInput["vat"]>["reasonCode"] },
               title: line.title,
               description: line.description,
               quantity: line.quantityInput ?? String(line.quantity),
@@ -135,7 +136,15 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
     }
   }, [agreementId, t])
   function change<Key extends keyof Form>(key: Key, value: Form[Key]) {
-    setForm((prev) => ({ ...prev, [key]: value }))
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+      // An explicit document-rate edit replaces the loaded per-line VAT convenience.
+      // Saving other fields keeps the quote's original VAT classifications intact.
+      ...(key === "taxRate" && value !== prev.taxRate
+        ? { deliverables: prev.deliverables.map((line) => ({ ...line, vat: undefined })) }
+        : {}),
+    }))
   }
   function changeLine(index: number, changes: Partial<EditorDeliverable>) {
     setForm((prev) => ({

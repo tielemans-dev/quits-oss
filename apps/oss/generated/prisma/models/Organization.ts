@@ -25,6 +25,7 @@ export type AggregateOrganization = {
 }
 
 export type OrganizationMinAggregateOutputType = {
+  agreementTemplatesSeeded: boolean | null
   id: string | null
   name: string | null
   slug: string | null
@@ -38,6 +39,7 @@ export type OrganizationMinAggregateOutputType = {
 }
 
 export type OrganizationMaxAggregateOutputType = {
+  agreementTemplatesSeeded: boolean | null
   id: string | null
   name: string | null
   slug: string | null
@@ -51,6 +53,7 @@ export type OrganizationMaxAggregateOutputType = {
 }
 
 export type OrganizationCountAggregateOutputType = {
+  agreementTemplatesSeeded: number
   id: number
   name: number
   slug: number
@@ -66,6 +69,7 @@ export type OrganizationCountAggregateOutputType = {
 
 
 export type OrganizationMinAggregateInputType = {
+  agreementTemplatesSeeded?: true
   id?: true
   name?: true
   slug?: true
@@ -79,6 +83,7 @@ export type OrganizationMinAggregateInputType = {
 }
 
 export type OrganizationMaxAggregateInputType = {
+  agreementTemplatesSeeded?: true
   id?: true
   name?: true
   slug?: true
@@ -92,6 +97,7 @@ export type OrganizationMaxAggregateInputType = {
 }
 
 export type OrganizationCountAggregateInputType = {
+  agreementTemplatesSeeded?: true
   id?: true
   name?: true
   slug?: true
@@ -178,6 +184,7 @@ export type OrganizationGroupByArgs<ExtArgs extends runtime.Types.Extensions.Int
 }
 
 export type OrganizationGroupByOutputType = {
+  agreementTemplatesSeeded: boolean
   id: string
   name: string
   slug: string
@@ -212,6 +219,7 @@ export type OrganizationWhereInput = {
   AND?: Prisma.OrganizationWhereInput | Prisma.OrganizationWhereInput[]
   OR?: Prisma.OrganizationWhereInput[]
   NOT?: Prisma.OrganizationWhereInput | Prisma.OrganizationWhereInput[]
+  agreementTemplatesSeeded?: Prisma.BoolFilter<"Organization"> | boolean
   id?: Prisma.StringFilter<"Organization"> | string
   name?: Prisma.StringFilter<"Organization"> | string
   slug?: Prisma.StringFilter<"Organization"> | string
@@ -246,6 +254,7 @@ export type OrganizationWhereInput = {
 }
 
 export type OrganizationOrderByWithRelationInput = {
+  agreementTemplatesSeeded?: Prisma.SortOrder
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   slug?: Prisma.SortOrder
@@ -286,6 +295,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.OrganizationWhereInput | Prisma.OrganizationWhereInput[]
   OR?: Prisma.OrganizationWhereInput[]
   NOT?: Prisma.OrganizationWhereInput | Prisma.OrganizationWhereInput[]
+  agreementTemplatesSeeded?: Prisma.BoolFilter<"Organization"> | boolean
   name?: Prisma.StringFilter<"Organization"> | string
   logo?: Prisma.StringNullableFilter<"Organization"> | string | null
   metadata?: Prisma.StringNullableFilter<"Organization"> | string | null
@@ -317,6 +327,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
 }, "id" | "slug" | "stripeCustomerId">
 
 export type OrganizationOrderByWithAggregationInput = {
+  agreementTemplatesSeeded?: Prisma.SortOrder
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   slug?: Prisma.SortOrder
@@ -336,6 +347,7 @@ export type OrganizationScalarWhereWithAggregatesInput = {
   AND?: Prisma.OrganizationScalarWhereWithAggregatesInput | Prisma.OrganizationScalarWhereWithAggregatesInput[]
   OR?: Prisma.OrganizationScalarWhereWithAggregatesInput[]
   NOT?: Prisma.OrganizationScalarWhereWithAggregatesInput | Prisma.OrganizationScalarWhereWithAggregatesInput[]
+  agreementTemplatesSeeded?: Prisma.BoolWithAggregatesFilter<"Organization"> | boolean
   id?: Prisma.StringWithAggregatesFilter<"Organization"> | string
   name?: Prisma.StringWithAggregatesFilter<"Organization"> | string
   slug?: Prisma.StringWithAggregatesFilter<"Organization"> | string
@@ -349,6 +361,7 @@ export type OrganizationScalarWhereWithAggregatesInput = {
 }
 
 export type OrganizationCreateInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -383,6 +396,7 @@ export type OrganizationCreateInput = {
 }
 
 export type OrganizationUncheckedCreateInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -417,6 +431,7 @@ export type OrganizationUncheckedCreateInput = {
 }
 
 export type OrganizationUpdateInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -451,6 +466,7 @@ export type OrganizationUpdateInput = {
 }
 
 export type OrganizationUncheckedUpdateInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -485,6 +501,7 @@ export type OrganizationUncheckedUpdateInput = {
 }
 
 export type OrganizationCreateManyInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -498,6 +515,7 @@ export type OrganizationCreateManyInput = {
 }
 
 export type OrganizationUpdateManyMutationInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -511,6 +529,7 @@ export type OrganizationUpdateManyMutationInput = {
 }
 
 export type OrganizationUncheckedUpdateManyInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -524,6 +543,7 @@ export type OrganizationUncheckedUpdateManyInput = {
 }
 
 export type OrganizationCountOrderByAggregateInput = {
+  agreementTemplatesSeeded?: Prisma.SortOrder
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   slug?: Prisma.SortOrder
@@ -537,6 +557,7 @@ export type OrganizationCountOrderByAggregateInput = {
 }
 
 export type OrganizationMaxOrderByAggregateInput = {
+  agreementTemplatesSeeded?: Prisma.SortOrder
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   slug?: Prisma.SortOrder
@@ -550,6 +571,7 @@ export type OrganizationMaxOrderByAggregateInput = {
 }
 
 export type OrganizationMinOrderByAggregateInput = {
+  agreementTemplatesSeeded?: Prisma.SortOrder
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   slug?: Prisma.SortOrder
@@ -862,6 +884,7 @@ export type OrganizationUpdateOneRequiredWithoutIssuanceCandidatesNestedInput = 
 }
 
 export type OrganizationCreateWithoutMembersInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -895,6 +918,7 @@ export type OrganizationCreateWithoutMembersInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutMembersInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -944,6 +968,7 @@ export type OrganizationUpdateToOneWithWhereWithoutMembersInput = {
 }
 
 export type OrganizationUpdateWithoutMembersInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -977,6 +1002,7 @@ export type OrganizationUpdateWithoutMembersInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutMembersInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1010,6 +1036,7 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
 }
 
 export type OrganizationCreateWithoutInvitationsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1043,6 +1070,7 @@ export type OrganizationCreateWithoutInvitationsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutInvitationsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1092,6 +1120,7 @@ export type OrganizationUpdateToOneWithWhereWithoutInvitationsInput = {
 }
 
 export type OrganizationUpdateWithoutInvitationsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1125,6 +1154,7 @@ export type OrganizationUpdateWithoutInvitationsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutInvitationsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1158,6 +1188,7 @@ export type OrganizationUncheckedUpdateWithoutInvitationsInput = {
 }
 
 export type OrganizationCreateWithoutSettingsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1191,6 +1222,7 @@ export type OrganizationCreateWithoutSettingsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutSettingsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1240,6 +1272,7 @@ export type OrganizationUpdateToOneWithWhereWithoutSettingsInput = {
 }
 
 export type OrganizationUpdateWithoutSettingsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1273,6 +1306,7 @@ export type OrganizationUpdateWithoutSettingsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutSettingsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1306,6 +1340,7 @@ export type OrganizationUncheckedUpdateWithoutSettingsInput = {
 }
 
 export type OrganizationCreateWithoutContactsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1339,6 +1374,7 @@ export type OrganizationCreateWithoutContactsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutContactsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1388,6 +1424,7 @@ export type OrganizationUpdateToOneWithWhereWithoutContactsInput = {
 }
 
 export type OrganizationUpdateWithoutContactsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1421,6 +1458,7 @@ export type OrganizationUpdateWithoutContactsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutContactsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1454,6 +1492,7 @@ export type OrganizationUncheckedUpdateWithoutContactsInput = {
 }
 
 export type OrganizationCreateWithoutCatalogItemsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1487,6 +1526,7 @@ export type OrganizationCreateWithoutCatalogItemsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutCatalogItemsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1536,6 +1576,7 @@ export type OrganizationUpdateToOneWithWhereWithoutCatalogItemsInput = {
 }
 
 export type OrganizationUpdateWithoutCatalogItemsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1569,6 +1610,7 @@ export type OrganizationUpdateWithoutCatalogItemsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutCatalogItemsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1602,6 +1644,7 @@ export type OrganizationUncheckedUpdateWithoutCatalogItemsInput = {
 }
 
 export type OrganizationCreateWithoutTaxIdsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1635,6 +1678,7 @@ export type OrganizationCreateWithoutTaxIdsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutTaxIdsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1684,6 +1728,7 @@ export type OrganizationUpdateToOneWithWhereWithoutTaxIdsInput = {
 }
 
 export type OrganizationUpdateWithoutTaxIdsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1717,6 +1762,7 @@ export type OrganizationUpdateWithoutTaxIdsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutTaxIdsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1750,6 +1796,7 @@ export type OrganizationUncheckedUpdateWithoutTaxIdsInput = {
 }
 
 export type OrganizationCreateWithoutInvoicesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1783,6 +1830,7 @@ export type OrganizationCreateWithoutInvoicesInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutInvoicesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1832,6 +1880,7 @@ export type OrganizationUpdateToOneWithWhereWithoutInvoicesInput = {
 }
 
 export type OrganizationUpdateWithoutInvoicesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1865,6 +1914,7 @@ export type OrganizationUpdateWithoutInvoicesInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutInvoicesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1898,6 +1948,7 @@ export type OrganizationUncheckedUpdateWithoutInvoicesInput = {
 }
 
 export type OrganizationCreateWithoutQuotesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1931,6 +1982,7 @@ export type OrganizationCreateWithoutQuotesInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutQuotesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -1980,6 +2032,7 @@ export type OrganizationUpdateToOneWithWhereWithoutQuotesInput = {
 }
 
 export type OrganizationUpdateWithoutQuotesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2013,6 +2066,7 @@ export type OrganizationUpdateWithoutQuotesInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutQuotesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2046,6 +2100,7 @@ export type OrganizationUncheckedUpdateWithoutQuotesInput = {
 }
 
 export type OrganizationCreateWithoutCreditNotesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2079,6 +2134,7 @@ export type OrganizationCreateWithoutCreditNotesInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutCreditNotesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2128,6 +2184,7 @@ export type OrganizationUpdateToOneWithWhereWithoutCreditNotesInput = {
 }
 
 export type OrganizationUpdateWithoutCreditNotesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2161,6 +2218,7 @@ export type OrganizationUpdateWithoutCreditNotesInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutCreditNotesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2194,6 +2252,7 @@ export type OrganizationUncheckedUpdateWithoutCreditNotesInput = {
 }
 
 export type OrganizationCreateWithoutPaymentsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2227,6 +2286,7 @@ export type OrganizationCreateWithoutPaymentsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutPaymentsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2276,6 +2336,7 @@ export type OrganizationUpdateToOneWithWhereWithoutPaymentsInput = {
 }
 
 export type OrganizationUpdateWithoutPaymentsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2309,6 +2370,7 @@ export type OrganizationUpdateWithoutPaymentsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutPaymentsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2342,6 +2404,7 @@ export type OrganizationUncheckedUpdateWithoutPaymentsInput = {
 }
 
 export type OrganizationCreateWithoutRecurringInvoicesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2375,6 +2438,7 @@ export type OrganizationCreateWithoutRecurringInvoicesInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutRecurringInvoicesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2424,6 +2488,7 @@ export type OrganizationUpdateToOneWithWhereWithoutRecurringInvoicesInput = {
 }
 
 export type OrganizationUpdateWithoutRecurringInvoicesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2457,6 +2522,7 @@ export type OrganizationUpdateWithoutRecurringInvoicesInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutRecurringInvoicesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2490,6 +2556,7 @@ export type OrganizationUncheckedUpdateWithoutRecurringInvoicesInput = {
 }
 
 export type OrganizationCreateWithoutDomainEventsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2523,6 +2590,7 @@ export type OrganizationCreateWithoutDomainEventsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutDomainEventsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2572,6 +2640,7 @@ export type OrganizationUpdateToOneWithWhereWithoutDomainEventsInput = {
 }
 
 export type OrganizationUpdateWithoutDomainEventsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2605,6 +2674,7 @@ export type OrganizationUpdateWithoutDomainEventsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutDomainEventsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2638,6 +2708,7 @@ export type OrganizationUncheckedUpdateWithoutDomainEventsInput = {
 }
 
 export type OrganizationCreateWithoutApprovalRequestsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2671,6 +2742,7 @@ export type OrganizationCreateWithoutApprovalRequestsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutApprovalRequestsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2720,6 +2792,7 @@ export type OrganizationUpdateToOneWithWhereWithoutApprovalRequestsInput = {
 }
 
 export type OrganizationUpdateWithoutApprovalRequestsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2753,6 +2826,7 @@ export type OrganizationUpdateWithoutApprovalRequestsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutApprovalRequestsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2786,6 +2860,7 @@ export type OrganizationUncheckedUpdateWithoutApprovalRequestsInput = {
 }
 
 export type OrganizationCreateWithoutAgentKeysInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2819,6 +2894,7 @@ export type OrganizationCreateWithoutAgentKeysInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutAgentKeysInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2868,6 +2944,7 @@ export type OrganizationUpdateToOneWithWhereWithoutAgentKeysInput = {
 }
 
 export type OrganizationUpdateWithoutAgentKeysInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2901,6 +2978,7 @@ export type OrganizationUpdateWithoutAgentKeysInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutAgentKeysInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2934,6 +3012,7 @@ export type OrganizationUncheckedUpdateWithoutAgentKeysInput = {
 }
 
 export type OrganizationCreateWithoutSchedulerScansInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -2967,6 +3046,7 @@ export type OrganizationCreateWithoutSchedulerScansInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutSchedulerScansInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3016,6 +3096,7 @@ export type OrganizationUpdateToOneWithWhereWithoutSchedulerScansInput = {
 }
 
 export type OrganizationUpdateWithoutSchedulerScansInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3049,6 +3130,7 @@ export type OrganizationUpdateWithoutSchedulerScansInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutSchedulerScansInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3082,6 +3164,7 @@ export type OrganizationUncheckedUpdateWithoutSchedulerScansInput = {
 }
 
 export type OrganizationCreateWithoutAgreementsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3115,6 +3198,7 @@ export type OrganizationCreateWithoutAgreementsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutAgreementsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3164,6 +3248,7 @@ export type OrganizationUpdateToOneWithWhereWithoutAgreementsInput = {
 }
 
 export type OrganizationUpdateWithoutAgreementsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3197,6 +3282,7 @@ export type OrganizationUpdateWithoutAgreementsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutAgreementsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3230,6 +3316,7 @@ export type OrganizationUncheckedUpdateWithoutAgreementsInput = {
 }
 
 export type OrganizationCreateWithoutAgreementTemplatesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3263,6 +3350,7 @@ export type OrganizationCreateWithoutAgreementTemplatesInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutAgreementTemplatesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3312,6 +3400,7 @@ export type OrganizationUpdateToOneWithWhereWithoutAgreementTemplatesInput = {
 }
 
 export type OrganizationUpdateWithoutAgreementTemplatesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3345,6 +3434,7 @@ export type OrganizationUpdateWithoutAgreementTemplatesInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutAgreementTemplatesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3378,6 +3468,7 @@ export type OrganizationUncheckedUpdateWithoutAgreementTemplatesInput = {
 }
 
 export type OrganizationCreateWithoutEventConsumerCursorsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3411,6 +3502,7 @@ export type OrganizationCreateWithoutEventConsumerCursorsInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutEventConsumerCursorsInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3460,6 +3552,7 @@ export type OrganizationUpdateToOneWithWhereWithoutEventConsumerCursorsInput = {
 }
 
 export type OrganizationUpdateWithoutEventConsumerCursorsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3493,6 +3586,7 @@ export type OrganizationUpdateWithoutEventConsumerCursorsInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutEventConsumerCursorsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3526,6 +3620,7 @@ export type OrganizationUncheckedUpdateWithoutEventConsumerCursorsInput = {
 }
 
 export type OrganizationCreateWithoutEventConsumerDeliveriesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3559,6 +3654,7 @@ export type OrganizationCreateWithoutEventConsumerDeliveriesInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutEventConsumerDeliveriesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3608,6 +3704,7 @@ export type OrganizationUpdateToOneWithWhereWithoutEventConsumerDeliveriesInput 
 }
 
 export type OrganizationUpdateWithoutEventConsumerDeliveriesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3641,6 +3738,7 @@ export type OrganizationUpdateWithoutEventConsumerDeliveriesInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutEventConsumerDeliveriesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3674,6 +3772,7 @@ export type OrganizationUncheckedUpdateWithoutEventConsumerDeliveriesInput = {
 }
 
 export type OrganizationCreateWithoutArtifactStagingInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3707,6 +3806,7 @@ export type OrganizationCreateWithoutArtifactStagingInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutArtifactStagingInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3756,6 +3856,7 @@ export type OrganizationUpdateToOneWithWhereWithoutArtifactStagingInput = {
 }
 
 export type OrganizationUpdateWithoutArtifactStagingInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3789,6 +3890,7 @@ export type OrganizationUpdateWithoutArtifactStagingInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutArtifactStagingInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3822,6 +3924,7 @@ export type OrganizationUncheckedUpdateWithoutArtifactStagingInput = {
 }
 
 export type OrganizationCreateWithoutIssuanceCandidatesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3855,6 +3958,7 @@ export type OrganizationCreateWithoutIssuanceCandidatesInput = {
 }
 
 export type OrganizationUncheckedCreateWithoutIssuanceCandidatesInput = {
+  agreementTemplatesSeeded?: boolean
   id: string
   name: string
   slug: string
@@ -3904,6 +4008,7 @@ export type OrganizationUpdateToOneWithWhereWithoutIssuanceCandidatesInput = {
 }
 
 export type OrganizationUpdateWithoutIssuanceCandidatesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3937,6 +4042,7 @@ export type OrganizationUpdateWithoutIssuanceCandidatesInput = {
 }
 
 export type OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
@@ -4172,6 +4278,7 @@ export type OrganizationCountOutputTypeCountIssuanceCandidatesArgs<ExtArgs exten
 
 
 export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  agreementTemplatesSeeded?: boolean
   id?: boolean
   name?: boolean
   slug?: boolean
@@ -4207,6 +4314,7 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
 }, ExtArgs["result"]["organization"]>
 
 export type OrganizationSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  agreementTemplatesSeeded?: boolean
   id?: boolean
   name?: boolean
   slug?: boolean
@@ -4220,6 +4328,7 @@ export type OrganizationSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
 }, ExtArgs["result"]["organization"]>
 
 export type OrganizationSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  agreementTemplatesSeeded?: boolean
   id?: boolean
   name?: boolean
   slug?: boolean
@@ -4233,6 +4342,7 @@ export type OrganizationSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
 }, ExtArgs["result"]["organization"]>
 
 export type OrganizationSelectScalar = {
+  agreementTemplatesSeeded?: boolean
   id?: boolean
   name?: boolean
   slug?: boolean
@@ -4245,7 +4355,7 @@ export type OrganizationSelectScalar = {
   subscriptionStatus?: boolean
 }
 
-export type OrganizationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "slug" | "logo" | "metadata" | "createdAt" | "stripeCustomerId" | "stripeSubscriptionId" | "stripePriceId" | "subscriptionStatus", ExtArgs["result"]["organization"]>
+export type OrganizationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"agreementTemplatesSeeded" | "id" | "name" | "slug" | "logo" | "metadata" | "createdAt" | "stripeCustomerId" | "stripeSubscriptionId" | "stripePriceId" | "subscriptionStatus", ExtArgs["result"]["organization"]>
 export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   members?: boolean | Prisma.Organization$membersArgs<ExtArgs>
   invitations?: boolean | Prisma.Organization$invitationsArgs<ExtArgs>
@@ -4299,6 +4409,7 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     settings: Prisma.$OrgSettingsPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
+    agreementTemplatesSeeded: boolean
     id: string
     name: string
     slug: string
@@ -4392,8 +4503,8 @@ export interface OrganizationDelegate<ExtArgs extends runtime.Types.Extensions.I
    * // Get first 10 Organizations
    * const organizations = await prisma.organization.findMany({ take: 10 })
    * 
-   * // Only select the `id`
-   * const organizationWithIdOnly = await prisma.organization.findMany({ select: { id: true } })
+   * // Only select the `agreementTemplatesSeeded`
+   * const organizationWithAgreementTemplatesSeededOnly = await prisma.organization.findMany({ select: { agreementTemplatesSeeded: true } })
    * 
    */
   findMany<T extends OrganizationFindManyArgs>(args?: Prisma.SelectSubset<T, OrganizationFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
@@ -4437,9 +4548,9 @@ export interface OrganizationDelegate<ExtArgs extends runtime.Types.Extensions.I
    *   ]
    * })
    * 
-   * // Create many Organizations and only return the `id`
-   * const organizationWithIdOnly = await prisma.organization.createManyAndReturn({
-   *   select: { id: true },
+   * // Create many Organizations and only return the `agreementTemplatesSeeded`
+   * const organizationWithAgreementTemplatesSeededOnly = await prisma.organization.createManyAndReturn({
+   *   select: { agreementTemplatesSeeded: true },
    *   data: [
    *     // ... provide data here
    *   ]
@@ -4528,9 +4639,9 @@ export interface OrganizationDelegate<ExtArgs extends runtime.Types.Extensions.I
    *   ]
    * })
    * 
-   * // Update zero or more Organizations and only return the `id`
-   * const organizationWithIdOnly = await prisma.organization.updateManyAndReturn({
-   *   select: { id: true },
+   * // Update zero or more Organizations and only return the `agreementTemplatesSeeded`
+   * const organizationWithAgreementTemplatesSeededOnly = await prisma.organization.updateManyAndReturn({
+   *   select: { agreementTemplatesSeeded: true },
    *   where: {
    *     // ... provide filter here
    *   },
@@ -4753,6 +4864,7 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
  * Fields of the Organization model
  */
 export interface OrganizationFieldRefs {
+  readonly agreementTemplatesSeeded: Prisma.FieldRef<"Organization", 'Boolean'>
   readonly id: Prisma.FieldRef<"Organization", 'String'>
   readonly name: Prisma.FieldRef<"Organization", 'String'>
   readonly slug: Prisma.FieldRef<"Organization", 'String'>

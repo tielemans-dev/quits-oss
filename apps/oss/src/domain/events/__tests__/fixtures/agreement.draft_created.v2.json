@@ -1,0 +1,30 @@
+{
+  "type": "agreement.draft_created",
+  "schemaVersion": 2,
+  "cases": [
+    {
+      "source": "commands/agreements.ts",
+      "typeExpression": "\"agreement.draft_created\"",
+      "payloadExpression": "{ title: agreement.title, contactId: contact.id, totalGross: Number(priced.totalGross), sourceQuoteId: agreement.sourceQuoteId }",
+      "variant": "default",
+      "payload": {
+        "title": "Website",
+        "contactId": "document-1",
+        "totalGross": 100,
+        "sourceQuoteId": null
+      }
+    },
+    {
+      "source": "commands/agreements.ts",
+      "typeExpression": "\"agreement.draft_created\"",
+      "payloadExpression": "{ title: agreement.title, contactId: contact.id, totalGross: Number(priced.totalGross), sourceQuoteId: agreement.sourceQuoteId }",
+      "variant": "from_quote",
+      "payload": {
+        "title": "Website",
+        "contactId": "document-1",
+        "totalGross": 100,
+        "sourceQuoteId": "quote-1"
+      }
+    }
+  ]
+}

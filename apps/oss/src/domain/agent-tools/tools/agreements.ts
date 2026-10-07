@@ -1,3 +1,4 @@
+import { agreementFromQuoteInputSchema, agreementTermsSchema } from "@quits/contracts/agreements"
 import { deliverableProgress } from "../../agreements/progress"
 import { markDeliverableDelivered } from "../../commands/deliverables"
 import { deliverableIdInputSchema } from "@quits/contracts/agreements"
@@ -32,6 +33,13 @@ const agreementListToolInputSchema = agreementListInputSchema.extend({
 })
 
 export const agreementTools: AgentTool[] = [
+  defineCommandTool({
+    name: "agreement_create_draft_from_quote",
+    title: "Create agreement draft from quote",
+    description: "Creates an agreement draft from an accepted quote under the quote lock. Refused if the quote has invoices or an agreement. Copies exact decimal inputs, customer and tax context, with every quote line becoming a service deliverable. Supply a fresh validUntil in YYYY-MM-DD. Optional templateId, termsMarkdown, title, dueInDays and billingTrigger. Nothing is sent.",
+    command: createAgreementDraft,
+    input: agreementFromQuoteInputSchema,
+  }),
   defineCommandTool({
     name: "deliverable_mark_delivered",
     title: "Mark deliverable delivered",
@@ -126,9 +134,9 @@ export const agreementTools: AgentTool[] = [
     name: "agreement_create_draft",
     title: "Create agreement draft",
     description:
-      "Creates a draft agreement. No number is allocated and nothing is sent. Dates are YYYY-MM-DD, taxRate is one percentage for every deliverable.",
+      "Creates a draft agreement. Dates are YYYY-MM-DD; quantity, unitPrice and taxRate are decimal strings. A template seeds terms when termsMarkdown is omitted. No number is allocated and nothing is sent. Use agreement_create_draft_from_quote to convert an accepted quote.",
     command: createAgreementDraft,
-    input: agreementCreateDraftDecimalInputSchema,
+    input: agreementCreateDraftDecimalInputSchema.extend({ termsMarkdown: agreementTermsSchema.optional() }),
   }),
   defineCommandTool({
     name: "agreement_update_draft",

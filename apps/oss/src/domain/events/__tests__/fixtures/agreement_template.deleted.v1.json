@@ -1,0 +1,15 @@
+{
+  "type": "agreement_template.deleted",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-templates.ts",
+      "typeExpression": "\"agreement_template.deleted\"",
+      "payloadExpression": "{ name }",
+      "variant": "default",
+      "payload": {
+        "name": "Customer"
+      }
+    }
+  ]
+}

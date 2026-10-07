@@ -518,6 +518,11 @@ export const convertQuoteToInvoice = defineCommand({
         })
       }
 
+      const agreement = yield* Effect.promise(() => db.agreement.findFirst({ where: { sourceQuoteId: quote.id, organizationId } }))
+      if (agreement) return yield* new InvalidState({
+        code: "quote_has_agreement", message: "This quote already has an agreement. Invoice its deliverables instead.",
+      })
+
       // Conversion creates an invoice, so it is subject to the same billing limits.
       yield* precondition(() => billingProvider.assertInvoiceCreationAllowed(organizationId))
 
