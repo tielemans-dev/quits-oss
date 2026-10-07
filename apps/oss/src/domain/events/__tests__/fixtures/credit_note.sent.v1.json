@@ -1,0 +1,27 @@
+{
+  "type": "credit_note.sent",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "documents/document-delivery.ts",
+      "typeExpression": "kind === \"creditNote\" ? \"credit_note.sent\" : `${kind}.${deliveredEvent(kind, mode)}`",
+      "payloadExpression": "{\n              number: target.number,\n              recipient: target.recipient,\n              ...(mode === \"send\" ? { emailSent: true } : {}),\n            }",
+      "variant": "creditNote/send/delivered",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": "customer@example.test",
+        "emailSent": true
+      }
+    },
+    {
+      "source": "documents/document-delivery.ts",
+      "typeExpression": "kind === \"creditNote\" ? \"credit_note.sent\" : `${kind}.${deliveredEvent(kind, mode)}`",
+      "payloadExpression": "{\n              number: target.number,\n              recipient: target.recipient,\n              ...(mode === \"send\" ? { emailSent: true } : {}),\n            }",
+      "variant": "creditNote/email/delivered",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": "customer@example.test"
+      }
+    }
+  ]
+}

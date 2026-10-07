@@ -1,0 +1,37 @@
+{
+  "type": "payment.recorded",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/payments.ts",
+      "typeExpression": "\"payment.recorded\"",
+      "payloadExpression": "{\n        paymentId: payment.id,\n        number: invoice.number,\n        amount: amount.toFixed(2),\n        currency: invoice.currency,\n        method: input.method,\n        balanceDue: refreshed.settlement.balanceDue.toFixed(2),\n        paymentStatus: refreshed.settlement.paymentStatus,\n        ...(overpaidBy.greaterThan(0) ? { overpaidBy: overpaidBy.toFixed(2) } : {}),\n      }",
+      "variant": "default",
+      "payload": {
+        "paymentId": "payment-1",
+        "number": "DOC-0001",
+        "amount": "100.00",
+        "currency": "USD",
+        "method": "bank_transfer",
+        "balanceDue": "100.00",
+        "paymentStatus": "paid",
+        "overpaidBy": "100.00"
+      }
+    },
+    {
+      "source": "commands/payments.ts",
+      "typeExpression": "\"payment.recorded\"",
+      "payloadExpression": "{\n        paymentId: payment.id,\n        number: invoice.number,\n        amount: amount.toFixed(2),\n        currency: invoice.currency,\n        method: input.method,\n        balanceDue: refreshed.settlement.balanceDue.toFixed(2),\n        paymentStatus: refreshed.settlement.paymentStatus,\n        ...(overpaidBy.greaterThan(0) ? { overpaidBy: overpaidBy.toFixed(2) } : {}),\n      }",
+      "variant": "no_optional",
+      "payload": {
+        "paymentId": "payment-1",
+        "number": "DOC-0001",
+        "amount": "100.00",
+        "currency": "USD",
+        "method": "bank_transfer",
+        "balanceDue": "100.00",
+        "paymentStatus": "paid"
+      }
+    }
+  ]
+}

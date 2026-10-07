@@ -1,0 +1,13 @@
+{
+  "type": "agreement.expired",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "features/agreement-expiry.ts",
+      "typeExpression": "\"agreement.expired\"",
+      "payloadExpression": "{}",
+      "variant": "default",
+      "payload": {}
+    }
+  ]
+}

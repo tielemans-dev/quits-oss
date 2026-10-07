@@ -1,0 +1,39 @@
+{
+  "type": "invoice.sent",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/invoices.ts",
+      "typeExpression": "\"invoice.sent\"",
+      "payloadExpression": "{ number: invoice.number, emailSent: false, recipient }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "emailSent": false,
+        "recipient": "customer@example.test"
+      }
+    },
+    {
+      "source": "commands/invoices.ts",
+      "typeExpression": "\"invoice.sent\"",
+      "payloadExpression": "{ number: invoice.number, emailSent: false, recipient }",
+      "variant": "manual_no_recipient",
+      "payload": {
+        "number": "DOC-0001",
+        "emailSent": false,
+        "recipient": null
+      }
+    },
+    {
+      "source": "documents/document-delivery.ts",
+      "typeExpression": "kind === \"creditNote\" ? \"credit_note.sent\" : `${kind}.${deliveredEvent(kind, mode)}`",
+      "payloadExpression": "{\n              number: target.number,\n              recipient: target.recipient,\n              ...(mode === \"send\" ? { emailSent: true } : {}),\n            }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": "customer@example.test",
+        "emailSent": true
+      }
+    }
+  ]
+}

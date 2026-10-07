@@ -16,6 +16,7 @@ type EventRow = {
   aggregateType: string
   aggregateId: string
   type: string
+  schemaVersion: number
   payload: unknown
   actor: { kind: string; id: string | null; label: string | null }
   approvedByUserId: string | null
@@ -28,6 +29,7 @@ export type ActivityEntry = {
   aggregateType: string
   aggregateId: string
   type: string
+  schemaVersion: number
   payload: Record<string, unknown>
   actor: { kind: string; id: string | null; label: string | null; name: string | null }
   approvedBy: { id: string; name: string | null } | null
@@ -40,6 +42,7 @@ function toRow(row: {
   aggregateType: string
   aggregateId: string
   type: string
+  schemaVersion: number
   payload: Prisma.JsonValue
   actorKind: string
   actorId: string | null
@@ -53,6 +56,7 @@ function toRow(row: {
     aggregateType: row.aggregateType,
     aggregateId: row.aggregateId,
     type: row.type,
+    schemaVersion: row.schemaVersion,
     payload: row.payload,
     actor: { kind: row.actorKind, id: row.actorId, label: row.actorLabel },
     approvedByUserId: row.approvedByUserId,
@@ -82,6 +86,7 @@ async function withActorNames(organizationId: string, events: EventRow[]): Promi
     aggregateType: event.aggregateType,
     aggregateId: event.aggregateId,
     type: event.type,
+    schemaVersion: event.schemaVersion,
     payload:
       event.payload && typeof event.payload === "object" && !Array.isArray(event.payload)
         ? (event.payload as Record<string, unknown>)

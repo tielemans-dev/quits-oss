@@ -1,0 +1,31 @@
+{
+  "type": "payment.failed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/payments.ts",
+      "typeExpression": "\"payment.failed\"",
+      "payloadExpression": "{\n          number: invoice.number,\n          method: \"stripe\",\n          checkoutSessionId: input.checkoutSessionId,\n          reason: input.reason,\n          ...(current ? {} : { supersededBy: invoice.stripeCheckoutSessionId }),\n        }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "method": "stripe",
+        "checkoutSessionId": "checkout-1",
+        "reason": "Correction"
+      }
+    },
+    {
+      "source": "commands/payments.ts",
+      "typeExpression": "\"payment.failed\"",
+      "payloadExpression": "{\n          number: invoice.number,\n          method: \"stripe\",\n          checkoutSessionId: input.checkoutSessionId,\n          reason: input.reason,\n          ...(current ? {} : { supersededBy: invoice.stripeCheckoutSessionId }),\n        }",
+      "variant": "no_optional",
+      "payload": {
+        "number": "DOC-0001",
+        "method": "stripe",
+        "checkoutSessionId": "checkout-1",
+        "reason": "Correction",
+        "supersededBy": null
+      }
+    }
+  ]
+}

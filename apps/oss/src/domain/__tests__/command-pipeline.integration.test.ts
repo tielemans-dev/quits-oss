@@ -7,11 +7,14 @@ import type { AgentActor } from "../actor"
 import { authenticateAgentSecret, createAgentKey, hashAgentSecret, revokeAgentKey } from "../agent-keys"
 import { defineCommand } from "../command"
 import { createContact, deleteContact } from "../commands/contacts"
+import { registerTestEventTypes } from "../events/registry"
 import { readActivity } from "../events"
 import { executeCommand } from "../execute"
 import { Command } from "../services"
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
+
+const testTypes = registerTestEventTypes({ "test.pinged": { version: 1, schema: z.object({ message: z.string() }).strict() } })
 
 /** A stand-in for commands that leave the system, e.g. sending an email. */
 const pingCustomer = defineCommand({
@@ -23,7 +26,7 @@ const pingCustomer = defineCommand({
   handle: (input) =>
     Effect.gen(function* () {
       const command = yield* Command
-      command.emit({ aggregateType: "test", aggregateId: "ping", type: "test.pinged", payload: input })
+      command.emit({ aggregateType: "test", aggregateId: "ping", type: testTypes["test.pinged"], payload: input })
       return { delivered: true }
     }),
 })

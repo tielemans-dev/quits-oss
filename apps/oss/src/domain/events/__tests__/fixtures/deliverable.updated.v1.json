@@ -1,0 +1,119 @@
+{
+  "type": "deliverable.updated",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreements.ts",
+      "typeExpression": "\"deliverable.updated\"",
+      "payloadExpression": "{\n          deliverableId: id,\n          fields: Object.keys(input).filter((key) => key !== \"id\" && key !== \"agreementId\"),\n          previousStatus: existing.status,\n          status: line.status,\n          deliveryRevision: line.deliveryRevision,\n          ...(status !== undefined ? { previousAcceptance: acceptanceRecord(existing) } : {}),\n        }",
+      "variant": "default",
+      "payload": {
+        "deliverableId": "deliverable-1",
+        "fields": [
+          "checkoutSessionId",
+          "method",
+          "mode",
+          "reason",
+          "acceptedByName",
+          "evidenceNote",
+          "decision",
+          "runDate",
+          "invoiceId",
+          "error",
+          "notes"
+        ],
+        "previousStatus": "delivered",
+        "status": "delivered",
+        "deliveryRevision": 1,
+        "previousAcceptance": {
+          "acceptedAt": "2026-01-15T12:00:00.000Z",
+          "acceptedRevision": 1,
+          "acceptedVia": "internal",
+          "acceptanceEvidenceNote": "Written confirmation"
+        }
+      }
+    },
+    {
+      "source": "commands/agreements.ts",
+      "typeExpression": "\"deliverable.updated\"",
+      "payloadExpression": "{\n          deliverableId: id,\n          fields: Object.keys(input).filter((key) => key !== \"id\" && key !== \"agreementId\"),\n          previousStatus: existing.status,\n          status: line.status,\n          deliveryRevision: line.deliveryRevision,\n          ...(status !== undefined ? { previousAcceptance: acceptanceRecord(existing) } : {}),\n        }",
+      "variant": "no_optional",
+      "payload": {
+        "deliverableId": "deliverable-1",
+        "fields": [
+          "checkoutSessionId",
+          "method",
+          "mode",
+          "reason",
+          "acceptedByName",
+          "evidenceNote",
+          "decision",
+          "runDate",
+          "invoiceId",
+          "error",
+          "notes"
+        ],
+        "previousStatus": "delivered",
+        "status": "delivered",
+        "deliveryRevision": 1
+      }
+    },
+    {
+      "source": "commands/agreements.ts",
+      "typeExpression": "\"deliverable.updated\"",
+      "payloadExpression": "{\n          deliverableId: id,\n          fields: Object.keys(input).filter((key) => key !== \"id\" && key !== \"agreementId\"),\n          previousStatus: existing.status,\n          status: line.status,\n          deliveryRevision: line.deliveryRevision,\n          ...(status !== undefined ? { previousAcceptance: acceptanceRecord(existing) } : {}),\n        }",
+      "variant": "no_previous_acceptance",
+      "payload": {
+        "deliverableId": "deliverable-1",
+        "fields": [
+          "checkoutSessionId",
+          "method",
+          "mode",
+          "reason",
+          "acceptedByName",
+          "evidenceNote",
+          "decision",
+          "runDate",
+          "invoiceId",
+          "error",
+          "notes"
+        ],
+        "previousStatus": "delivered",
+        "status": "delivered",
+        "deliveryRevision": 1,
+        "previousAcceptance": null
+      }
+    },
+    {
+      "source": "commands/agreements.ts",
+      "typeExpression": "\"deliverable.updated\"",
+      "payloadExpression": "{\n          deliverableId: id,\n          fields: Object.keys(input).filter((key) => key !== \"id\" && key !== \"agreementId\"),\n          previousStatus: existing.status,\n          status: line.status,\n          deliveryRevision: line.deliveryRevision,\n          ...(status !== undefined ? { previousAcceptance: acceptanceRecord(existing) } : {}),\n        }",
+      "variant": "in_progress",
+      "payload": {
+        "deliverableId": "deliverable-1",
+        "fields": [
+          "checkoutSessionId",
+          "method",
+          "mode",
+          "reason",
+          "acceptedByName",
+          "evidenceNote",
+          "decision",
+          "runDate",
+          "invoiceId",
+          "error",
+          "notes"
+        ],
+        "previousStatus": "delivered",
+        "status": "in_progress",
+        "deliveryRevision": 1,
+        "previousAcceptance": {
+          "acceptedAt": "2026-01-15T12:00:00.000Z",
+          "acceptedRevision": 1,
+          "acceptedVia": "internal",
+          "acceptanceEvidenceNote": "Written confirmation"
+        }
+      }
+    }
+  ]
+}

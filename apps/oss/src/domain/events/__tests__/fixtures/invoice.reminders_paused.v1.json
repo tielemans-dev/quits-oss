@@ -1,0 +1,15 @@
+{
+  "type": "invoice.reminders_paused",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/reminders.ts",
+      "typeExpression": "paused ? \"invoice.reminders_paused\" : \"invoice.reminders_resumed\"",
+      "payloadExpression": "{ number: invoice.number }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001"
+      }
+    }
+  ]
+}

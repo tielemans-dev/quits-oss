@@ -1,0 +1,52 @@
+{
+  "type": "deliverable.cancelled",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/deliverables.ts",
+      "typeExpression": "\"deliverable.cancelled\"",
+      "payloadExpression": "{\n          deliverableId: line.id,\n          previousStatus: line.status,\n          deliveryRevision: line.deliveryRevision,\n          acceptance: acceptanceRecord(line),\n        }",
+      "variant": "default",
+      "payload": {
+        "deliverableId": "document-1",
+        "previousStatus": "delivered",
+        "deliveryRevision": 1,
+        "acceptance": {
+          "acceptedAt": "2026-01-15T12:00:00.000Z",
+          "acceptedRevision": 1,
+          "acceptedVia": "internal",
+          "acceptanceEvidenceNote": "Written confirmation"
+        }
+      }
+    },
+    {
+      "source": "commands/deliverables.ts",
+      "typeExpression": "\"deliverable.cancelled\"",
+      "payloadExpression": "{\n          deliverableId: line.id,\n          previousStatus: line.status,\n          deliveryRevision: line.deliveryRevision,\n          acceptance: acceptanceRecord(line),\n        }",
+      "variant": "no_previous_acceptance",
+      "payload": {
+        "deliverableId": "document-1",
+        "previousStatus": "delivered",
+        "deliveryRevision": 1,
+        "acceptance": null
+      }
+    },
+    {
+      "source": "commands/deliverables.ts",
+      "typeExpression": "\"deliverable.cancelled\"",
+      "payloadExpression": "{\n          deliverableId: line.id,\n          previousStatus: line.status,\n          deliveryRevision: line.deliveryRevision,\n          acceptance: acceptanceRecord(line),\n        }",
+      "variant": "in_progress",
+      "payload": {
+        "deliverableId": "document-1",
+        "previousStatus": "in_progress",
+        "deliveryRevision": 1,
+        "acceptance": {
+          "acceptedAt": "2026-01-15T12:00:00.000Z",
+          "acceptedRevision": 1,
+          "acceptedVia": "internal",
+          "acceptanceEvidenceNote": "Written confirmation"
+        }
+      }
+    }
+  ]
+}

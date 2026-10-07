@@ -1,0 +1,34 @@
+{
+  "type": "invoice.reminder_sent",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/reminders.ts",
+      "typeExpression": "\"invoice.reminder_sent\"",
+      "payloadExpression": "{\n          number: target.number,\n          reminderId: target.reminderId,\n          offsetDays: Number(target.offsetDays),\n          recipient: target.recipient,\n          balanceDue: Number(target.balanceDue),\n          manual,\n        }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "reminderId": "reminder-1",
+        "offsetDays": 7,
+        "recipient": "customer@example.test",
+        "balanceDue": 100,
+        "manual": true
+      }
+    },
+    {
+      "source": "commands/reminders.ts",
+      "typeExpression": "\"invoice.reminder_sent\"",
+      "payloadExpression": "{\n          number: target.number,\n          reminderId: target.reminderId,\n          offsetDays: Number(target.offsetDays),\n          recipient: target.recipient,\n          balanceDue: Number(target.balanceDue),\n          manual,\n        }",
+      "variant": "no_optional",
+      "payload": {
+        "number": "DOC-0001",
+        "reminderId": "reminder-1",
+        "offsetDays": 7,
+        "recipient": "customer@example.test",
+        "balanceDue": 100,
+        "manual": false
+      }
+    }
+  ]
+}

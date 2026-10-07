@@ -1,0 +1,15 @@
+{
+  "type": "contact.created",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/contacts.ts",
+      "typeExpression": "\"contact.created\"",
+      "payloadExpression": "{ name: contact.name }",
+      "variant": "default",
+      "payload": {
+        "name": "Acme"
+      }
+    }
+  ]
+}

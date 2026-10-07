@@ -1,5 +1,6 @@
 import { Context } from "effect"
 import type { Prisma } from "../../generated/prisma/client"
+import type { EventType } from "./events/registry"
 import type { Actor } from "./actor"
 
 /** The Prisma transaction a command runs in. */
@@ -8,7 +9,7 @@ export class Db extends Context.Tag("quits/Db")<Db, Prisma.TransactionClient>() 
 export type PendingEvent = {
   aggregateType: string
   aggregateId: string
-  type: string
+  type: EventType
   payload: Record<string, unknown>
 }
 

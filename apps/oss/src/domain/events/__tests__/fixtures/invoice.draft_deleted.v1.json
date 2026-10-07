@@ -1,0 +1,15 @@
+{
+  "type": "invoice.draft_deleted",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/invoices.ts",
+      "typeExpression": "\"invoice.draft_deleted\"",
+      "payloadExpression": "{ number: invoice.number }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001"
+      }
+    }
+  ]
+}

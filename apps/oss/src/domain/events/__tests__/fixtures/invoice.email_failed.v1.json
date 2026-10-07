@@ -1,0 +1,30 @@
+{
+  "type": "invoice.email_failed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "documents/document-delivery.ts",
+      "typeExpression": "`${aggregateType}.email_failed`",
+      "payloadExpression": "{\n              number: target.number,\n              recipient: target.recipient,\n              reason: failure.reason,\n              message: failure.message,\n            }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": "customer@example.test",
+        "reason": "rejected",
+        "message": "Fixture failure"
+      }
+    },
+    {
+      "source": "documents/document-delivery.ts",
+      "typeExpression": "`${aggregateType}.email_failed`",
+      "payloadExpression": "{\n              number: target.number,\n              recipient: target.recipient,\n              reason: failure.reason,\n              message: failure.message,\n            }",
+      "variant": "invoice/send/withdrawn",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": "customer@example.test",
+        "reason": "withdrawn",
+        "message": "Fixture failure"
+      }
+    }
+  ]
+}

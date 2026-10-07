@@ -1,0 +1,32 @@
+{
+  "type": "agreement.offer_recalled",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-lifecycle.ts",
+      "typeExpression": "\"agreement.offer_recalled\"",
+      "payloadExpression": "{\n          snapshot: agreement.offerSnapshot,\n          hash: agreement.offerSnapshotHash,\n          recipient: agreement.issuedToEmail,\n          revision: agreement.offerRevision,\n          keyVersion: agreement.publicAccessKeyVersion,\n          decision: {\n            acceptedAt: agreement.acceptedAt,\n            acceptedOfferRevision: agreement.acceptedOfferRevision,\n            acceptedByName: agreement.acceptedByName,\n            acceptanceIp: agreement.acceptanceIp,\n            acceptanceUserAgent: agreement.acceptanceUserAgent,\n            acceptanceMethod: agreement.acceptanceMethod,\n            acceptanceEvidenceNote: agreement.acceptanceEvidenceNote,\n            declinedAt: agreement.declinedAt,\n            declineReason: agreement.declineReason,\n          },\n        }",
+      "variant": "default",
+      "payload": {
+        "snapshot": {
+          "title": "Frozen offer"
+        },
+        "hash": "hash-1",
+        "recipient": "customer@example.test",
+        "revision": 1,
+        "keyVersion": 1,
+        "decision": {
+          "acceptedAt": "2026-01-15T12:00:00.000Z",
+          "acceptedOfferRevision": 1,
+          "acceptedByName": "Customer",
+          "acceptanceIp": "192.0.2.1",
+          "acceptanceUserAgent": "Fixture",
+          "acceptanceMethod": "internal",
+          "acceptanceEvidenceNote": "Written confirmation",
+          "declinedAt": null,
+          "declineReason": null
+        }
+      }
+    }
+  ]
+}

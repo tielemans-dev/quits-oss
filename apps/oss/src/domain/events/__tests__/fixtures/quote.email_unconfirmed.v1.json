@@ -1,0 +1,28 @@
+{
+  "type": "quote.email_unconfirmed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "documents/document-delivery.ts",
+      "typeExpression": "`${aggregateType}.email_unconfirmed`",
+      "payloadExpression": "{ number: target.number, recipient: target.recipient, issued: mode === \"send\" }",
+      "variant": "quote/send/delivered",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": "customer@example.test",
+        "issued": true
+      }
+    },
+    {
+      "source": "documents/document-delivery.ts",
+      "typeExpression": "`${aggregateType}.email_unconfirmed`",
+      "payloadExpression": "{ number: target.number, recipient: target.recipient, issued: mode === \"send\" }",
+      "variant": "quote/email/delivered",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": "customer@example.test",
+        "issued": false
+      }
+    }
+  ]
+}

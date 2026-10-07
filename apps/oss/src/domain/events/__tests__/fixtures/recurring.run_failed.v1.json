@@ -1,0 +1,53 @@
+{
+  "type": "recurring.run_failed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/recurring.ts",
+      "typeExpression": "\"recurring.run_failed\"",
+      "payloadExpression": "{ runDate: input.runDate.slice(0, 10), error: input.error }",
+      "variant": "default",
+      "payload": {
+        "runDate": "2026-01-15",
+        "error": {
+          "tag": "InvalidState",
+          "message": "Fixture failure",
+          "code": "fixture_failure"
+        }
+      }
+    },
+    {
+      "source": "commands/recurring.ts",
+      "typeExpression": "\"recurring.run_failed\"",
+      "payloadExpression": "{ runDate: input.runDate.slice(0, 10), error: input.error }",
+      "variant": "no_optional",
+      "payload": {
+        "runDate": "2026-01-15",
+        "error": {
+          "tag": "InvalidState",
+          "message": "Fixture failure"
+        }
+      }
+    },
+    {
+      "source": "commands/recurring.ts",
+      "typeExpression": "\"recurring.run_failed\"",
+      "payloadExpression": "{ runDate: input.runDate.slice(0, 10), error: input.error }",
+      "variant": "validation_error",
+      "payload": {
+        "runDate": "2026-01-15",
+        "error": {
+          "tag": "InvalidState",
+          "message": "Fixture failure",
+          "code": "fixture_failure",
+          "issues": [
+            {
+              "path": "items",
+              "message": "Invalid items"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

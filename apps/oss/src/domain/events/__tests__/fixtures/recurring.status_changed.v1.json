@@ -1,0 +1,17 @@
+{
+  "type": "recurring.status_changed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/recurring.ts",
+      "typeExpression": "\"recurring.status_changed\"",
+      "payloadExpression": "{ from, to, reason }",
+      "variant": "default",
+      "payload": {
+        "from": "active",
+        "to": "paused",
+        "reason": "paused_by_user"
+      }
+    }
+  ]
+}

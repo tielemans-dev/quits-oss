@@ -1,0 +1,17 @@
+{
+  "type": "invoice.credited",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/credit-notes.ts",
+      "typeExpression": "\"invoice.credited\"",
+      "payloadExpression": "{ number: invoice.number, creditNoteId: creditNote.id, creditNoteNumber: number }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "creditNoteId": "document-1",
+        "creditNoteNumber": "DOC-0001"
+      }
+    }
+  ]
+}

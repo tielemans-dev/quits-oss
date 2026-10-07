@@ -1,0 +1,29 @@
+{
+  "type": "invoice.draft_created",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/invoices.ts",
+      "typeExpression": "\"invoice.draft_created\"",
+      "payloadExpression": "{ number: invoice.number, contactId: contact.id, totalGross: priced.totalGross }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "contactId": "document-1",
+        "totalGross": 100
+      }
+    },
+    {
+      "source": "commands/quotes.ts",
+      "typeExpression": "\"invoice.draft_created\"",
+      "payloadExpression": "{\n          number: invoice.number,\n          contactId: invoice.contactId,\n          totalGross: invoice.totalGross.toNumber(),\n          quoteId: quote.id,\n        }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "contactId": "contact-1",
+        "totalGross": 100,
+        "quoteId": "document-1"
+      }
+    }
+  ]
+}

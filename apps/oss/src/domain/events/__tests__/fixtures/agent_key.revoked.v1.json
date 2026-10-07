@@ -1,0 +1,13 @@
+{
+  "type": "agent_key.revoked",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "agent-keys.ts",
+      "typeExpression": "\"agent_key.revoked\"",
+      "payloadExpression": "{}",
+      "variant": "default",
+      "payload": {}
+    }
+  ]
+}

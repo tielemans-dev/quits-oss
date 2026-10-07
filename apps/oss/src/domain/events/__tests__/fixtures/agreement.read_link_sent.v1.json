@@ -1,0 +1,16 @@
+{
+  "type": "agreement.read_link_sent",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-lifecycle.ts",
+      "typeExpression": "\"agreement.read_link_sent\"",
+      "payloadExpression": "{ recipient, url }",
+      "variant": "default",
+      "payload": {
+        "recipient": "customer@example.test",
+        "url": "https://example.test/read"
+      }
+    }
+  ]
+}

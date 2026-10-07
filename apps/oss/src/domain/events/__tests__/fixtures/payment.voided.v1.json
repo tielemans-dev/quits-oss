@@ -1,0 +1,22 @@
+{
+  "type": "payment.voided",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/payments.ts",
+      "typeExpression": "\"payment.voided\"",
+      "payloadExpression": "{\n          paymentId: payment.id,\n          number: invoice.number,\n          amount: payment.amount.toFixed(2),\n          currency: payment.currency,\n          reason: input.reason,\n          balanceDue: refreshed.settlement.balanceDue.toFixed(2),\n          paymentStatus: refreshed.settlement.paymentStatus,\n          status: refreshed.invoice.status,\n        }",
+      "variant": "default",
+      "payload": {
+        "paymentId": "payment-1",
+        "number": "DOC-0001",
+        "amount": "100.00",
+        "currency": "USD",
+        "reason": "Correction",
+        "balanceDue": "100.00",
+        "paymentStatus": "paid",
+        "status": "sent"
+      }
+    }
+  ]
+}

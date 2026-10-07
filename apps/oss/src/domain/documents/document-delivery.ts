@@ -44,7 +44,7 @@ function delegate(db: Prisma.TransactionClient, kind: DocumentKind) {
 const completionKind = (kind: DocumentKind, mode: Mode) => `${kind}.${mode}`
 
 /** Events a delivery records when it settles; credit notes are "sent" whenever they are emailed. */
-const deliveredEvent = (kind: DocumentKind, mode: Mode) =>
+const deliveredEvent = (kind: DocumentKind, mode: Mode): "sent" | "email_resent" =>
   mode === "send" ? "sent" : kind === "creditNote" ? "sent" : "email_resent"
 
 /** The document still waits for this exact delivery. */
@@ -88,7 +88,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
           {
             aggregateType,
             aggregateId: target.documentId,
-            type: `${aggregateType}.${deliveredEvent(kind, mode)}`,
+            type: kind === "creditNote" ? "credit_note.sent" : `${kind}.${deliveredEvent(kind, mode)}`,
             payload: {
               number: target.number,
               recipient: target.recipient,
