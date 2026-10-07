@@ -1,3 +1,7 @@
+import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
+import type { DocumentLineInput } from "@quits/contracts/invoices"
+import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
+import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
@@ -84,6 +88,15 @@ type QuoteItem = {
   unitPrice: number
   total: number
   sortOrder: number
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  unitPriceNet?: number
+  unitPriceGross?: number
+  taxRate?: number
+  vatRateInput?: string | null
+  vatTreatment?: NonNullable<DocumentLineInput["vat"]>["treatment"]
+  vatCountry?: string | null
+  vatReasonCode?: NonNullable<DocumentLineInput["vat"]>["reasonCode"]
 }
 
 type Quote = {
@@ -107,13 +120,16 @@ type Quote = {
   contact: Contact
   items: QuoteItem[]
   invoices: { id: string; number: string }[]
+  pricesIncludeTax?: boolean
+  vatEvidence?: unknown
 }
 
 type EditItem = {
   description: string
-  quantity: number
-  unitPrice: number
+  quantity: string
+  unitPrice: string
   catalogItemId?: string
+  vat?: DocumentLineInput["vat"]
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -183,7 +199,8 @@ function QuoteDetailPage() {
   const [editContactId, setEditContactId] = useState("")
   const [editExpiryDate, setEditExpiryDate] = useState("")
   const [editNotes, setEditNotes] = useState("")
-  const [editTaxRate, setEditTaxRate] = useState(0)
+  const [editTaxRate, setEditTaxRate] = useState("0")
+  const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
   const [editItems, setEditItems] = useState<EditItem[]>([])
 
   // The page stays mounted when navigating to another quote; drop answers for the previous one.
@@ -231,16 +248,14 @@ function QuoteDetailPage() {
     setEditContactId(quote.contact.id)
     setEditExpiryDate(new Date(quote.expiryDate).toISOString().split("T")[0])
     setEditNotes(quote.notes ?? "")
-    setEditTaxRate(
-      quote.subtotal > 0
-        ? Math.round((quote.taxAmount / quote.subtotal) * 10000) / 100
-        : 0
-    )
+    setEditTaxRate(String(quote.items.find((item) => Number(item.taxRate) > 0)?.taxRate ?? 0))
+    setEditVatEvidence(draftVatEvidenceSchema.parse(quote.vatEvidence ?? {}))
     setEditItems(
       quote.items.map((item) => ({
         description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
+        quantity: item.quantityInput ?? String(item.quantity),
+        unitPrice: item.unitPriceInput ?? String(quote.pricesIncludeTax ? item.unitPriceGross ?? item.unitPrice : item.unitPriceNet ?? item.unitPrice),
+        vat: { treatment: item.vatTreatment ?? (Number(item.taxRate) > 0 ? "standard" : "unclassified_zero"), rate: item.vatRateInput ?? percentageToFraction(item.taxRate ?? 0), country: item.vatCountry, reasonCode: item.vatReasonCode },
         catalogItemId: undefined,
       }))
     )
@@ -253,14 +268,14 @@ function QuoteDetailPage() {
     setEditing(true)
   }
 
-  function updateEditItem(index: number, field: keyof EditItem, value: string | number) {
+  function updateEditItem(index: number, field: keyof EditItem, value: string) {
     setEditItems((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
     )
   }
 
   function addEditItem() {
-    setEditItems((prev) => [...prev, { description: "", quantity: 1, unitPrice: 0 }])
+    setEditItems((prev) => [...prev, { description: "", quantity: "1", unitPrice: "0" }])
   }
 
   function removeEditItem(index: number) {
@@ -283,16 +298,18 @@ function QuoteDetailPage() {
     setActing(true)
     const isCurrent = beginRequest(quote.id)
     try {
-      const updated = await trpc.quotes.update.mutate({
+      const updated = await trpc.quotes.updateV2.mutate({
         id: quote.id,
         contactId: editContactId,
         expiryDate: editExpiryDate,
         notes: editNotes,
         taxRate: editTaxRate,
+        vatEvidence: editVatEvidence,
         items: editItems.map((item) => ({
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          vat: item.vat,
         })),
       })
       if (!isCurrent()) return
@@ -435,12 +452,10 @@ function QuoteDetailPage() {
 
   // Edit mode
   if (editing) {
-    const editSubtotal = editItems.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    )
-    const editTaxAmount = editSubtotal * editTaxRate / 100
-    const editTotal = editSubtotal + editTaxAmount
+    const preview = previewDraft({ items: editItems, taxRate: editTaxRate || "0", pricesIncludeTax: quote.pricesIncludeTax ?? false, currency: quote.currency })
+    const editSubtotal = Number(preview.result?.net ?? "0")
+    const editTaxAmount = Number(preview.result?.tax ?? "0")
+    const editTotal = Number(preview.result?.gross ?? "0")
 
     return (
       <div className="p-6 max-w-3xl">
@@ -531,24 +546,24 @@ function QuoteDetailPage() {
                     />
                     <Input
                       type="number"
-                      min="0.01"
-                      step="0.01"
+                      min="0.000001"
+                      step="0.000001"
                       value={item.quantity || ""}
                       onChange={(e) =>
-                        updateEditItem(index, "quantity", parseFloat(e.target.value) || 0)
+                        updateEditItem(index, "quantity", e.target.value)
                       }
                     />
                     <Input
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="0.0001"
                       value={item.unitPrice || ""}
                       onChange={(e) =>
-                        updateEditItem(index, "unitPrice", parseFloat(e.target.value) || 0)
+                        updateEditItem(index, "unitPrice", e.target.value)
                       }
                     />
                     <span className="text-sm text-right pr-2">
-                      {formatCurrency(item.quantity * item.unitPrice, quote.currency, locale)}
+                      {preview.result ? formatCurrency(Number(preview.result?.lines[index]?.[quote.pricesIncludeTax ? "gross" : "net"] ?? "0"), quote.currency, locale) : "—"}
                     </span>
                     <Button
                       type="button"
@@ -575,11 +590,13 @@ function QuoteDetailPage() {
             </div>
 
             {/* Summary */}
+            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} />
+            <VatGroupPreview {...preview} />
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                  <span>{formatCurrency(editSubtotal, quote.currency, locale)}</span>
+                  <span>{preview.result ? formatCurrency(editSubtotal, quote.currency, locale) : "—"}</span>
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
@@ -590,16 +607,16 @@ function QuoteDetailPage() {
                       max="100"
                       step="0.01"
                       value={editTaxRate || ""}
-                      onChange={(e) => setEditTaxRate(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => { setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
                       className="w-16 h-7 text-xs"
                     />
                     <span className="text-muted-foreground text-xs">%</span>
-                    <span className="ml-auto">{formatCurrency(editTaxAmount, quote.currency, locale)}</span>
+                    <span className="ml-auto">{preview.result ? formatCurrency(editTaxAmount, quote.currency, locale) : "—"}</span>
                   </div>
                 </div>
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
-                  <span>{formatCurrency(editTotal, quote.currency, locale)}</span>
+                  <span>{preview.result ? formatCurrency(editTotal, quote.currency, locale) : "—"}</span>
                 </div>
               </div>
             </div>

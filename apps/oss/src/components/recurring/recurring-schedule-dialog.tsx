@@ -1,3 +1,8 @@
+import { previewDraft } from "@quits/shared/pricing"
+import type { DocumentLineInput } from "@quits/contracts/invoices"
+import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
+import { DocumentVatFields, VatGroupPreview } from "../document-vat-fields"
+import { useOrgPricingSettings } from "../../hooks/use-org-pricing-settings"
 import { useEffect, useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import type { RecurringEnd } from "@quits/contracts/recurring"
@@ -26,7 +31,7 @@ import {
 } from "./recurring-format"
 
 type Contact = { id: string; name: string }
-type LineItem = { description: string; quantity: number; unitPrice: number }
+type LineItem = { description: string; quantity: string; unitPrice: string; vat?: DocumentLineInput["vat"] }
 type EndType = RecurringEnd["type"]
 
 /** The fields of a schedule the dialog can edit. */
@@ -46,9 +51,9 @@ export type EditableSchedule = Pick<
   | "autoSend"
   | "endsAt"
   | "remainingRuns"
->
+> & { vatEvidence?: unknown }
 
-const emptyItem = (): LineItem => ({ description: "", quantity: 1, unitPrice: 0 })
+const emptyItem = (): LineItem => ({ description: "", quantity: "1", unitPrice: "0" })
 
 function initialEndType(schedule?: EditableSchedule): EndType {
   if (schedule?.endsAt) return "on_date"
@@ -77,7 +82,9 @@ export function RecurringScheduleDialog({
   const [name, setName] = useState("")
   const [contactId, setContactId] = useState("")
   const [items, setItems] = useState<LineItem[]>([emptyItem()])
-  const [taxRate, setTaxRate] = useState(0)
+  const [taxRate, setTaxRate] = useState("0")
+  const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>({})
+  const { pricesIncludeTax } = useOrgPricingSettings()
   const [notes, setNotes] = useState("")
   const [intervalCount, setIntervalCount] = useState(1)
   const [intervalUnit, setIntervalUnit] = useState<RecurringIntervalUnit>("month")
@@ -95,8 +102,9 @@ export function RecurringScheduleDialog({
     setError(null)
     setName(schedule?.name ?? "")
     setContactId(schedule?.contactId ?? "")
-    setItems(schedule?.items.length ? schedule.items.map((item) => ({ ...item })) : [emptyItem()])
-    setTaxRate(schedule?.taxRate ?? 0)
+    setItems(schedule?.items.length ? schedule.items.map((item) => ({ ...item, quantity: String(item.quantity), unitPrice: String(item.unitPrice) })) : [emptyItem()])
+    setTaxRate(String(schedule?.taxRate ?? 0))
+    setVatEvidence(draftVatEvidenceSchema.parse(schedule?.vatEvidence ?? {}))
     setNotes(schedule?.notes ?? "")
     setIntervalCount(schedule?.intervalCount ?? 1)
     setIntervalUnit(schedule?.intervalUnit ?? "month")
@@ -119,8 +127,10 @@ export function RecurringScheduleDialog({
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   }
 
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-  const taxAmount = (subtotal * taxRate) / 100
+  const preview = previewDraft({ items, taxRate: taxRate || "0", pricesIncludeTax, currency })
+  const subtotal = Number(preview.result?.net ?? "0")
+  const taxAmount = Number(preview.result?.tax ?? "0")
+  const total = Number(preview.result?.gross ?? "0")
 
   function buildEnd(): RecurringEnd {
     if (endType === "on_date") return { type: "on_date", endsAt }
@@ -143,6 +153,8 @@ export function RecurringScheduleDialog({
       contactId,
       items,
       taxRate,
+      vatEvidence,
+      currency,
       intervalCount,
       intervalUnit,
       startDate,
@@ -154,9 +166,9 @@ export function RecurringScheduleDialog({
     setSaving(true)
     try {
       if (schedule) {
-        await trpc.recurring.update.mutate({ id: schedule.id, ...fields, notes: notes.trim() || null })
+        await trpc.recurring.updateV2.mutate({ id: schedule.id, ...fields, notes: notes.trim() || null })
       } else {
-        await trpc.recurring.create.mutate({ ...fields, notes: notes.trim() || undefined })
+        await trpc.recurring.createV2.mutate({ ...fields, notes: notes.trim() || undefined })
       }
       onOpenChange(false)
       onSaved()
@@ -239,20 +251,20 @@ export function RecurringScheduleDialog({
                   />
                   <Input
                     type="number"
-                    min="0.01"
-                    step="0.01"
+                    min="0.000001"
+                    step="0.000001"
                     value={item.quantity || ""}
-                    onChange={(event) => updateItem(index, { quantity: parseFloat(event.target.value) || 0 })}
+                    onChange={(event) => updateItem(index, { quantity: event.target.value })}
                   />
                   <Input
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="0.0001"
                     value={item.unitPrice || ""}
-                    onChange={(event) => updateItem(index, { unitPrice: parseFloat(event.target.value) || 0 })}
+                    onChange={(event) => updateItem(index, { unitPrice: event.target.value })}
                   />
                   <span className="text-sm text-right pr-2">
-                    {formatCurrency(item.quantity * item.unitPrice, currency, locale)}
+                    {preview.result ? formatCurrency(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—"}
                   </span>
                   <Button
                     type="button"
@@ -266,6 +278,8 @@ export function RecurringScheduleDialog({
                 </div>
               ))}
             </div>
+            <DocumentVatFields items={items} onItemsChange={setItems} taxRate={taxRate} evidence={vatEvidence} onEvidenceChange={setVatEvidence} />
+            <VatGroupPreview {...preview} />
             <div className="flex items-start justify-between gap-4">
               <Button
                 type="button"
@@ -280,7 +294,7 @@ export function RecurringScheduleDialog({
               <div className="w-64 grid gap-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                  <span>{formatCurrency(subtotal, currency, locale)}</span>
+                  <span>{preview.result ? formatCurrency(subtotal, currency, locale) : "—"}</span>
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
@@ -291,16 +305,16 @@ export function RecurringScheduleDialog({
                       max="100"
                       step="0.01"
                       value={taxRate || ""}
-                      onChange={(event) => setTaxRate(parseFloat(event.target.value) || 0)}
-                      className="w-16 h-7 text-xs"
+                      onChange={(event) => { setTaxRate(event.target.value); setItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
+                      className="w-24 h-7 text-xs"
                     />
                     <span className="text-muted-foreground text-xs">%</span>
-                    <span className="ml-auto">{formatCurrency(taxAmount, currency, locale)}</span>
+                    <span className="ml-auto">{preview.result ? formatCurrency(taxAmount, currency, locale) : "—"}</span>
                   </div>
                 </div>
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
-                  <span>{formatCurrency(subtotal + taxAmount, currency, locale)}</span>
+                  <span>{preview.result ? formatCurrency(total, currency, locale) : "—"}</span>
                 </div>
               </div>
             </div>

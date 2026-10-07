@@ -173,7 +173,7 @@ function RecurringSchedulePage() {
                 <span>
                   {item.quantity} × {item.description}
                 </span>
-                <span>{formatCurrency(item.quantity * item.unitPrice, schedule.currency, locale)}</span>
+                <span>{formatCurrency(schedule.lineTotals[index] ?? 0, schedule.currency, locale)}</span>
               </div>
             ))}
             <div className="flex justify-between text-muted-foreground border-t pt-2">
