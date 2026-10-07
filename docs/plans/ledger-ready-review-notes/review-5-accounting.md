@@ -1,0 +1,3 @@
+# Review 5, accounting lens (Codex, 2026-10-07) on rev 5 Phase A arithmetic.
+Correct: inclusive line allocation (two and three 0.01 lines); group key; tax-point boundary; scope guards; open-issues coverage.
+Counterexamples fixed in rev 6: successive credits 0.02/0.02/0.03 over-reversed tax (now cumulative entitlement rule); two inclusive EUR 0.01 lines at 7.4567 double-counted payable rounding in base (now netBase = grossBase - taxBase - payableRoundingBase, debtorBase = sum of grossBase); AE at 25% accepted (now rate 0 required for every non-standard treatment); step 2 omitted reasonCode (now canonical key).
