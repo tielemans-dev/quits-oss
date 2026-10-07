@@ -1,0 +1,45 @@
+{
+  "type": "document.number_voided",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "features/artifact-sweep.ts",
+      "typeExpression": "\"document.number_voided\"",
+      "payloadExpression": "{ organizationId, documentKind, number, reservationId, reason }",
+      "variant": "default",
+      "payload": {
+        "organizationId": "organization-1",
+        "documentKind": "invoice",
+        "number": "DOC-0001",
+        "reservationId": "reservation-1",
+        "reason": "paused_by_user"
+      }
+    },
+    {
+      "source": "features/artifact-sweep.ts",
+      "typeExpression": "\"document.number_voided\"",
+      "payloadExpression": "{ organizationId, documentKind, number, reservationId, reason }",
+      "variant": "creditNote/send/delivered",
+      "payload": {
+        "organizationId": "organization-1",
+        "documentKind": "creditNote",
+        "number": "DOC-0001",
+        "reservationId": "reservation-1",
+        "reason": "paused_by_user"
+      }
+    },
+    {
+      "source": "features/artifact-sweep.ts",
+      "typeExpression": "\"document.number_voided\"",
+      "payloadExpression": "{ organizationId, documentKind, number, reservationId, reason }",
+      "variant": "agreement/send/delivered",
+      "payload": {
+        "organizationId": "organization-1",
+        "documentKind": "agreement",
+        "number": "DOC-0001",
+        "reservationId": "reservation-1",
+        "reason": "paused_by_user"
+      }
+    }
+  ]
+}

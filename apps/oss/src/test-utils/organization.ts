@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import type { UserActor } from "../domain/actor"
 import { resolveUserActor } from "../domain/user-actor"
 import { prisma } from "../lib/db"
+import { bootstrapQuitsRuntime } from "../lib/runtime/bootstrap"
 import { ensureTestMembership } from "./membership"
 
 export const hasTestDatabase = Boolean(process.env.DATABASE_URL)
@@ -24,6 +25,7 @@ export async function createTestOrganization(
     }>
   } = {}
 ) {
+  bootstrapQuitsRuntime({})
   const organizationId = randomUUID()
   const suffix = organizationId.slice(0, 8)
   await prisma.organization.create({

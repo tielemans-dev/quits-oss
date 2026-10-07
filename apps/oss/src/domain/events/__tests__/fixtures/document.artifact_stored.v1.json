@@ -1,0 +1,97 @@
+{
+  "type": "document.artifact_stored",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "\"document.artifact_stored\"",
+      "payloadExpression": "{ documentKind, documentId, candidateId, artifacts, rendererVersion }",
+      "variant": "default",
+      "payload": {
+        "documentKind": "invoice",
+        "documentId": "document-1",
+        "candidateId": "candidate-1",
+        "artifacts": {
+          "pdf": {
+            "ref": "organization-1/invoice/document-1/artifact.pdf",
+            "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "size": 100
+          },
+          "ubl": {
+            "ref": "organization-1/invoice/document-1/artifact.xml",
+            "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "size": 200
+          }
+        },
+        "rendererVersion": "fixture-v1"
+      }
+    },
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "\"document.artifact_stored\"",
+      "payloadExpression": "{ documentKind, documentId, candidateId, artifacts, rendererVersion }",
+      "variant": "no_optional",
+      "payload": {
+        "documentKind": "invoice",
+        "documentId": "document-1",
+        "candidateId": "candidate-1",
+        "artifacts": {
+          "pdf": {
+            "ref": "organization-1/invoice/document-1/artifact.pdf",
+            "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "size": 100
+          }
+        },
+        "rendererVersion": "fixture-v1"
+      }
+    },
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "\"document.artifact_stored\"",
+      "payloadExpression": "{ documentKind, documentId, candidateId, artifacts, rendererVersion }",
+      "variant": "creditNote/send/delivered",
+      "payload": {
+        "documentKind": "creditNote",
+        "documentId": "document-1",
+        "candidateId": "candidate-1",
+        "artifacts": {
+          "pdf": {
+            "ref": "organization-1/invoice/document-1/artifact.pdf",
+            "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "size": 100
+          },
+          "ubl": {
+            "ref": "organization-1/invoice/document-1/artifact.xml",
+            "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "size": 200
+          }
+        },
+        "rendererVersion": "fixture-v1"
+      }
+    },
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "\"document.artifact_stored\"",
+      "payloadExpression": "{ documentKind, documentId, candidateId, artifacts, rendererVersion }",
+      "variant": "agreement/send/delivered",
+      "payload": {
+        "documentKind": "agreement",
+        "documentId": "document-1",
+        "candidateId": "candidate-1",
+        "artifacts": {
+          "pdf": {
+            "ref": "organization-1/invoice/document-1/artifact.pdf",
+            "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "size": 100
+          },
+          "ubl": {
+            "ref": "organization-1/invoice/document-1/artifact.xml",
+            "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "size": 200
+          }
+        },
+        "rendererVersion": "fixture-v1"
+      }
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import {
   markDeliverableDelivered,
   acceptDeliverable,
@@ -62,7 +63,7 @@ export const agreementsRouter = router({
   send: authorizedProcedure("agreement:send")
     .input(agreementIdInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const result = unwrapOutcome(await executeCommand(sendAgreement, input, { actor: ctx.actor }))
+      const result = unwrapOutcome(await executeIssuanceCommand(sendAgreement, input, { actor: ctx.actor }))
       await readEmailDelivery(result.deliveryKey, "agreement")
       return serializeAgreementDetail(await getAgreement(ctx.organizationId, input.id))
     }),
@@ -70,7 +71,7 @@ export const agreementsRouter = router({
     .input(agreementIssueInputSchema)
     .mutation(async ({ ctx, input }) =>
       serializeAgreementDetail(
-        unwrapOutcome(await executeCommand(issueAgreement, input, { actor: ctx.actor })),
+        unwrapOutcome(await executeIssuanceCommand(issueAgreement, input, { actor: ctx.actor })),
       ),
     ),
   resend: authorizedProcedure("agreement:send")

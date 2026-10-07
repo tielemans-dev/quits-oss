@@ -8,3 +8,5 @@ import "./features/recurring"
 import "./features/approvals"
 
 import "./features/agreement-expiry"
+
+import "./features/artifact-sweep"

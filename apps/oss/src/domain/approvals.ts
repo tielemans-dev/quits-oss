@@ -1,10 +1,11 @@
+import { executeIssuanceCommand } from "../application/issuance"
 import { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { actorCan, type AgentActor, type UserActor } from "./actor"
 import { closeRevokedKeyApprovals, resolveAgentActorById } from "./agent-keys"
 import { Forbidden, InvalidState, NotFound, serializeDomainError } from "./errors"
 import { appendEvents } from "./events"
-import { executeCommand, receiptToOutcome, type CommandOutcome } from "./execute"
+import { receiptToOutcome, type CommandOutcome } from "./execute"
 import { getCommandDefinition } from "./registry"
 import { resolveUserActor } from "./user-actor"
 
@@ -251,8 +252,9 @@ export async function decideApproval(input: {
   })
 
   const reviewed = request.reviewContext as { version?: unknown } | null
-  return executeCommand(definition, request.command, {
+  return executeIssuanceCommand(definition, request.command, {
     actor: agent,
+    clientRequestId: receipt.clientRequestId,
     approvedByUserId: approvedBy,
     resumeReceiptId: request.commandReceiptId,
     expectedApprovalVersion: typeof reviewed?.version === "string" ? reviewed.version : undefined,

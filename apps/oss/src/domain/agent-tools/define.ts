@@ -1,8 +1,9 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { z } from "zod"
 import { clientRequestIdSchema, type CommandRecord } from "@quits/contracts/agent"
 import type { AgentActor } from "../actor"
 import type { CommandDefinition } from "../command"
-import { executeCommand, toCommandRecord } from "../execute"
+import { toCommandRecord } from "../execute"
 import type { Permission } from "../permissions"
 import { toJsonValue } from "./json"
 
@@ -110,7 +111,7 @@ export function defineCommandTool<Input extends AnyObjectSchema, Result>(tool: {
     commandType: tool.command.type,
     run: async (context, rawInput) => {
       const { clientRequestId, ...commandInput } = rawInput as { clientRequestId: string }
-      const outcome = await executeCommand(tool.command, commandInput, {
+      const outcome = await executeIssuanceCommand(tool.command, commandInput, {
         actor: context.actor,
         clientRequestId,
       })

@@ -362,7 +362,7 @@ export const sendInvoice = defineCommand({
             where: { id: invoice.id },
             data: {
               status: "sent",
-              issueDate: now,
+              issueDate: command.issuance?.issuedAt ?? now,
               publicPaymentIssuedAt: emailContext.stripeConfigured ? (invoice.publicPaymentIssuedAt ?? now) : null,
               ...createEmailDeliveryAttempt({
                 at: now,
@@ -395,7 +395,7 @@ export const sendInvoice = defineCommand({
           })
         : null
       const email = composeInvoiceEmail({
-        invoice: { ...invoice, issueDate: now },
+        invoice: { ...invoice, issueDate: command.issuance?.issuedAt ?? now },
         settings,
         to: recipient,
         publicPaymentUrl,

@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { TRPCError } from "@trpc/server"
 import {
   creditNoteIdInputSchema,
@@ -138,7 +139,7 @@ export const creditNotesRouter = router({
   issue: authorizedProcedure("creditNote:create")
     .input(creditNoteIssueInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const creditNote = unwrapOutcome(await executeCommand(issueCreditNote, input, { actor: ctx.actor }))
+      const creditNote = unwrapOutcome(await executeIssuanceCommand(issueCreditNote, input, { actor: ctx.actor }))
       return { id: creditNote.id, number: creditNote.number, total: num(creditNote.totalGross) }
     }),
 

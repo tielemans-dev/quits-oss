@@ -7,7 +7,7 @@ import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
   ...["invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-lifecycle", "deliverables"].map((name) => `commands/${name}.ts`),
-  "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
+  "documents/artifacts.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
 
@@ -59,6 +59,10 @@ export function reconstruct(expression: { source: string; typeExpression: string
   const optional = variant !== "no_optional"
   const line = { ...record, status: "delivered", ...(variant === "no_previous_acceptance" ? { acceptedAt: null } : {}) }
   const scope = {
+    documentKind: kind === "quote" ? "invoice" : kind, documentId: "document-1", candidateId: "candidate-1",
+    organizationId: "organization-1", reservationId: "reservation-1", rendererVersion: "fixture-v1",
+    artifacts: { pdf: { ref: "organization-1/invoice/document-1/artifact.pdf", hash: "a".repeat(64), size: 100 },
+      ...(optional ? { ubl: { ref: "organization-1/invoice/document-1/artifact.xml", hash: "b".repeat(64), size: 200 } } : {}) },
     invoice: record, quote: record, creditNote: record, agreement: record, contact: record, schedule: record,
     candidate: record, existing: line, line: { ...line, status: variant === "in_progress" ? "in_progress" : "delivered" },
     delivered: { deliveryRevision: 2 }, accepted: record, updated: record,
