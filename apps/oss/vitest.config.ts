@@ -12,6 +12,10 @@ export default defineConfig({
     environment: "node",
     watch: false,
     globals: false,
+    // Database-backed tests share one PostgreSQL across parallel workers and migrate schemas on
+    // first use; vitest's 5s default times out under load (locally and on CI).
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     exclude: [...configDefaults.exclude, "tests/e2e/**", globalStateTests],
   },
 })

@@ -8,6 +8,8 @@ export default defineConfig({
     watch: false,
     globals: false,
     fileParallelism: false,
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     include: [globalStateTests.replace("**/*", "src/**/*") + ".test.ts"],
     exclude: [...configDefaults.exclude, "tests/e2e/**"],
   },
