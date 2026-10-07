@@ -1,8 +1,8 @@
 import {
-  invoiceCreateDraftInputSchema,
+  invoiceCreateDraftV2InputSchema,
   invoiceIdInputSchema,
   invoiceSendInputSchema,
-  invoiceUpdateDraftInputSchema,
+  invoiceUpdateDraftV2InputSchema,
 } from "@quits/contracts/invoices"
 import { documentIdToolInputSchema, invoicesListToolInputSchema } from "@quits/contracts/agent"
 import { prisma } from "../../../lib/db"
@@ -84,7 +84,7 @@ export const invoiceTools: AgentTool[] = [
       "needed. unitPrice follows the organization's pricesIncludeTax setting (see organization_read); " +
       "taxRate is a percentage. dueDate is YYYY-MM-DD.",
     command: createInvoiceDraft,
-    input: invoiceCreateDraftInputSchema,
+    input: invoiceCreateDraftV2InputSchema,
     present: presentInvoice,
   }),
 
@@ -94,7 +94,7 @@ export const invoiceTools: AgentTool[] = [
     description:
       "Edits a draft invoice. Passing items replaces all line items. Only drafts can be edited.",
     command: updateInvoiceDraft,
-    input: invoiceUpdateDraftInputSchema,
+    input: invoiceUpdateDraftV2InputSchema,
     present: presentInvoice,
   }),
 

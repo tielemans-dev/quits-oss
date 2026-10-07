@@ -35,6 +35,14 @@ export const vatEvidenceSchema = z.strictObject({
   }).optional(),
 })
 
+export const draftVatEvidenceSchema = vatEvidenceSchema.extend({
+  buyerVatId: z.string().max(200).optional(),
+  statementText: z.string().max(5000).optional(),
+  viesCheck: z.strictObject({ at: z.string().max(100).optional(), result: z.enum(["valid", "invalid", "unavailable"]).optional() }).optional(),
+  exportEvidence: z.strictObject({ kind: z.enum(["customs_declaration", "carrier_document", "other"]).optional(), ref: z.string().max(500).optional() }).optional(),
+})
+export type DraftVatEvidence = z.infer<typeof draftVatEvidenceSchema>
+
 export const vatClassificationSchema = z.strictObject({
   treatment: vatTreatmentSchema,
   reasonCode: vatReasonCodeSchema.nullable().default(null),
@@ -48,6 +56,15 @@ export const vatClassificationSchema = z.strictObject({
   const reasons: readonly string[] = vatReasonCodes[value.treatment]
   if (reasons.length ? !reasons.includes(value.reasonCode ?? "") : value.reasonCode !== null)
     ctx.addIssue({ code: "custom", path: ["reasonCode"], message: "Reason code does not match VAT treatment" })
+})
+
+/** A draft can defer its reason code; all supplied classifications and rates remain valid. */
+export const draftVatClassificationSchema = z.strictObject(vatClassificationSchema.shape).superRefine((value, ctx) => {
+  const parsed = vatClassificationSchema.safeParse(value)
+  if (!parsed.success) for (const issue of parsed.error.issues) {
+    if (issue.path[0] === "reasonCode" && value.reasonCode === null) continue
+    ctx.addIssue({ code: "custom", path: issue.path, message: issue.message })
+  }
 })
 
 export const currencyExponentSchema = z.union([z.literal(0), z.literal(1), z.literal(2)])

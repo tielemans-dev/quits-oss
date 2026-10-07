@@ -9,8 +9,10 @@ import {
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import {
   invoiceCreateDraftInputSchema,
+  invoiceCreateDraftV2InputSchema,
   invoiceSendInputSchema,
   invoiceUpdateDraftInputSchema,
+  invoiceUpdateDraftV2InputSchema,
 } from "@quits/contracts/invoices"
 import {
   createInvoiceDraft,
@@ -32,11 +34,16 @@ const invoiceLogger = appLogger.child("invoices")
 function mapInvoiceItemForUi(item: {
   quantity: { toNumber: () => number }
   unitPriceGross: { toNumber: () => number }
+  unitPriceNet: { toNumber: () => number }
+  taxRate: { toNumber: () => number }
   lineGross: { toNumber: () => number }
 }) {
   return {
     quantity: item.quantity.toNumber(),
     unitPrice: item.unitPriceGross.toNumber(),
+    unitPriceGross: item.unitPriceGross.toNumber(),
+    unitPriceNet: item.unitPriceNet.toNumber(),
+    taxRate: item.taxRate.toNumber(),
     total: item.lineGross.toNumber(),
   }
 }
@@ -140,8 +147,24 @@ export const invoicesRouter = router({
       )
     ),
 
+  createV2: authorizedProcedure("invoice:create")
+    .input(invoiceCreateDraftV2InputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeInvoiceForUi(
+        unwrapOutcome(await executeCommand(createInvoiceDraft, input, { actor: ctx.actor }))
+      )
+    ),
+
   update: authorizedProcedure("invoice:update")
     .input(invoiceUpdateDraftInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeInvoiceForUi(
+        unwrapOutcome(await executeCommand(updateInvoiceDraft, input, { actor: ctx.actor }))
+      )
+    ),
+
+  updateV2: authorizedProcedure("invoice:update")
+    .input(invoiceUpdateDraftV2InputSchema)
     .mutation(async ({ ctx, input }) =>
       serializeInvoiceForUi(
         unwrapOutcome(await executeCommand(updateInvoiceDraft, input, { actor: ctx.actor }))

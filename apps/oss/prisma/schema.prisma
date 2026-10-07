@@ -380,6 +380,7 @@ model InvoiceItem {
   taxCode        String?
   sortOrder      Int     @default(0)
 
+  vatRateInput   String?
   vatTreatment   String  @default("standard")
   vatCountry     String?
   vatReasonCode  String?
@@ -459,6 +460,7 @@ model QuoteItem {
   taxCode        String?
   sortOrder      Int     @default(0)
 
+  vatRateInput   String?
   vatTreatment   String  @default("standard")
   vatCountry     String?
   vatReasonCode  String?
@@ -607,6 +609,7 @@ model RecurringInvoice {
   taxRate        Decimal      @db.Decimal(5, 2)
   notes          String?
   items          Json
+  vatEvidence    Json?
   lastRunAt      DateTime?
   invoices       Invoice[]
   createdAt      DateTime     @default(now())

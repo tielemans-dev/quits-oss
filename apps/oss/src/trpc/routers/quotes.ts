@@ -1,8 +1,10 @@
 import { z } from "zod"
 import {
   quoteCreateDraftInputSchema,
+  quoteCreateDraftV2InputSchema,
   quoteSendInputSchema,
   quoteUpdateDraftInputSchema,
+  quoteUpdateDraftV2InputSchema,
 } from "@quits/contracts/quotes"
 import {
   convertQuoteToInvoice,
@@ -23,11 +25,16 @@ import { unwrapOutcome } from "../outcome"
 function mapQuoteItemForUi(item: {
   quantity: { toNumber: () => number }
   unitPriceGross: { toNumber: () => number }
+  unitPriceNet: { toNumber: () => number }
+  taxRate: { toNumber: () => number }
   lineGross: { toNumber: () => number }
 }) {
   return {
     quantity: item.quantity.toNumber(),
     unitPrice: item.unitPriceGross.toNumber(),
+    unitPriceGross: item.unitPriceGross.toNumber(),
+    unitPriceNet: item.unitPriceNet.toNumber(),
+    taxRate: item.taxRate.toNumber(),
     total: item.lineGross.toNumber(),
   }
 }
@@ -112,8 +119,24 @@ export const quotesRouter = router({
       )
     ),
 
+  createV2: authorizedProcedure("quote:create")
+    .input(quoteCreateDraftV2InputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeDocumentForUi(
+        unwrapOutcome(await executeCommand(createQuoteDraft, input, { actor: ctx.actor }))
+      )
+    ),
+
   update: authorizedProcedure("quote:update")
     .input(quoteUpdateDraftInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeDocumentForUi(
+        unwrapOutcome(await executeCommand(updateQuoteDraft, input, { actor: ctx.actor }))
+      )
+    ),
+
+  updateV2: authorizedProcedure("quote:update")
+    .input(quoteUpdateDraftV2InputSchema)
     .mutation(async ({ ctx, input }) =>
       serializeDocumentForUi(
         unwrapOutcome(await executeCommand(updateQuoteDraft, input, { actor: ctx.actor }))

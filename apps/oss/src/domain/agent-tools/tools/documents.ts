@@ -1,3 +1,4 @@
+import { percentageToFraction } from "@quits/shared/pricing"
 import { Prisma } from "../../../../generated/prisma/client"
 import { getPublicInvoicePaymentUrl } from "../../../lib/payments/public"
 import { getPublicQuoteUrl } from "../../../lib/quotes/public-url"
@@ -14,6 +15,13 @@ type LineItem = {
   lineTax: Money
   lineGross: Money
   taxRate: Money
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
+  vatTreatment?: string
+  vatRateInput?: string | null
+  vatCountry?: string | null
+  vatReasonCode?: string | null
 }
 
 function presentLines(items: LineItem[]) {
@@ -26,6 +34,10 @@ function presentLines(items: LineItem[]) {
     lineTax: item.lineTax,
     lineGross: item.lineGross,
     taxRate: item.taxRate,
+    quantityInput: item.quantityInput ?? null,
+    unitPriceInput: item.unitPriceInput ?? null,
+    inputPrecision: item.inputPrecision ?? null,
+    vat: { treatment: item.vatTreatment ?? (item.taxRate.toNumber() > 0 ? "standard" : "unclassified_zero"), rate: item.vatRateInput ?? percentageToFraction(item.taxRate.toString()), country: item.vatCountry ?? null, reasonCode: item.vatReasonCode ?? null },
   }))
 }
 
@@ -47,6 +59,8 @@ export type InvoiceRow = {
   issueDate: Date
   dueDate: Date
   currency: string
+  calculationVersion?: string
+  vatEvidence?: unknown
   subtotalNet: Money
   totalTax: Money
   totalGross: Money
@@ -81,6 +95,8 @@ export function presentInvoice(invoice: InvoiceRow) {
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate,
     currency: invoice.currency,
+    calculationVersion: invoice.calculationVersion ?? "legacy_per_line",
+    vatEvidence: invoice.vatEvidence ?? null,
     subtotalNet: invoice.subtotalNet,
     totalTax: invoice.totalTax,
     totalGross: invoice.totalGross,
@@ -110,6 +126,8 @@ export type QuoteRow = {
   issueDate: Date
   expiryDate: Date
   currency: string
+  calculationVersion?: string
+  vatEvidence?: unknown
   subtotalNet: Money
   totalTax: Money
   totalGross: Money
@@ -136,6 +154,8 @@ export function presentQuote(quote: QuoteRow) {
     issueDate: quote.issueDate,
     expiryDate: quote.expiryDate,
     currency: quote.currency,
+    calculationVersion: quote.calculationVersion ?? "legacy_per_line",
+    vatEvidence: quote.vatEvidence ?? null,
     subtotalNet: quote.subtotalNet,
     totalTax: quote.totalTax,
     totalGross: quote.totalGross,

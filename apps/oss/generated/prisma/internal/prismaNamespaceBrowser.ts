@@ -407,6 +407,7 @@ export const InvoiceItemScalarFieldEnum = {
   taxCategory: 'taxCategory',
   taxCode: 'taxCode',
   sortOrder: 'sortOrder',
+  vatRateInput: 'vatRateInput',
   vatTreatment: 'vatTreatment',
   vatCountry: 'vatCountry',
   vatReasonCode: 'vatReasonCode',
@@ -475,6 +476,7 @@ export const QuoteItemScalarFieldEnum = {
   taxCategory: 'taxCategory',
   taxCode: 'taxCode',
   sortOrder: 'sortOrder',
+  vatRateInput: 'vatRateInput',
   vatTreatment: 'vatTreatment',
   vatCountry: 'vatCountry',
   vatReasonCode: 'vatReasonCode',
@@ -604,6 +606,7 @@ export const RecurringInvoiceScalarFieldEnum = {
   taxRate: 'taxRate',
   notes: 'notes',
   items: 'items',
+  vatEvidence: 'vatEvidence',
   lastRunAt: 'lastRunAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

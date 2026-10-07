@@ -7,16 +7,16 @@ export type CatalogItemOption = {
 
 export type CatalogLineItem = {
   description: string
-  quantity: number
-  unitPrice: number
+  quantity: number | string
+  unitPrice: number | string
   catalogItemId?: string
 }
 
-export function applyCatalogItemToLineItem(
-  lineItem: CatalogLineItem,
+export function applyCatalogItemToLineItem<Line extends CatalogLineItem>(
+  lineItem: Line,
   catalogItemId: string,
   catalogItems: CatalogItemOption[]
-): CatalogLineItem {
+): Line {
   const selected = catalogItems.find((item) => item.id === catalogItemId)
   if (!selected) return lineItem
 
@@ -24,6 +24,6 @@ export function applyCatalogItemToLineItem(
     ...lineItem,
     catalogItemId,
     description: selected.description?.trim() || selected.name,
-    unitPrice: selected.defaultUnitPrice,
+    unitPrice: typeof lineItem.unitPrice === "string" ? String(selected.defaultUnitPrice) : selected.defaultUnitPrice,
   }
 }

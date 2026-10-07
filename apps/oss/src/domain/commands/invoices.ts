@@ -7,6 +7,7 @@ import {
 } from "@quits/contracts/invoices"
 import type { z } from "zod"
 import { billingProvider } from "../../lib/billing"
+import { toNullableJsonInput } from "../../lib/prisma-json"
 import { prisma } from "../../lib/db"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { appLogger } from "../../lib/observability"
@@ -24,8 +25,10 @@ import { lockDocument } from "../documents/locks"
 import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { allocateDocumentNumber } from "../documents/numbering"
 import { requireDraftCurrency } from "../documents/currency"
-import { impliedTaxRate, priceDocument } from "../documents/pricing"
+import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
+import { requireVatIssuance } from "../documents/vat-issuance"
+import { draftVatEvidenceSchema } from "@quits/contracts/vat"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 
@@ -101,15 +104,15 @@ export const buildInvoiceDraft = (
     const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
     const number = yield* allocateDocumentNumber("invoice")
     const currency = input.currency ?? settings.defaultCurrency ?? settings.currency
-    if (!origin) yield* requireDraftCurrency(currency)
-    const priced = priceDocument({
-      profile,
+    yield* requireDraftCurrency(currency)
+    const calculated = yield* priceCurrentDraft({
       items: input.items,
+      vatEvidence: input.vatEvidence,
       taxRate: input.taxRate,
       pricesIncludeTax: settings.pricesIncludeTax,
       currency,
     })
-    const compliance = assessCompliance(profile, sellerTaxIds, input.taxRate)
+    const compliance = assessCompliance(profile, sellerTaxIds, Number(input.taxRate))
 
     const invoice = yield* Effect.promise(() =>
       db.invoice.create({
@@ -119,9 +122,11 @@ export const buildInvoiceDraft = (
           number,
           status: "draft",
           dueDate: new Date(input.dueDate),
-          subtotalNet: priced.subtotalNet,
-          totalTax: priced.totalTax,
-          totalGross: priced.totalGross,
+          subtotalNet: calculated.subtotalNet,
+          totalTax: calculated.totalTax,
+          totalGross: calculated.totalGross,
+          calculationVersion: calculated.calculationVersion,
+          vatEvidence: toNullableJsonInput(input.vatEvidence),
           currency,
           countryCode: settings.countryCode,
           locale: settings.locale,
@@ -139,12 +144,14 @@ export const buildInvoiceDraft = (
                 recurringRunDate: origin.recurringRunDate,
               }
             : {}),
-          items: { create: priced.itemRows },
+          items: { create: calculated.itemRows },
         },
         include: { items: { orderBy: { sortOrder: "asc" } } },
       })
     )
 
+    // Keep the pinned v1 event payload numeric while persisting decimal strings.
+    const priced = { totalGross: invoice.totalGross.toNumber() }
     command.emit({
       aggregateType: "invoice",
       aggregateId: invoice.id,
@@ -189,8 +196,6 @@ export const updateInvoiceDraft = defineCommand({
         })
       }
 
-      const { settings, profile } = yield* loadDocumentContext
-      const pricesIncludeTax = settings.pricesIncludeTax
       const data: Parameters<typeof db.invoice.update>[0]["data"] = {}
 
       if (input.contactId) {
@@ -202,29 +207,27 @@ export const updateInvoiceDraft = defineCommand({
       if (input.currency) data.currency = input.currency
       if (input.notes !== undefined) data.notes = input.notes
 
-      // A currency change can change rounding precision, so it reprices too.
-      if (input.items || input.taxRate !== undefined || input.currency !== undefined) {
-        const items =
-          input.items ??
-          existing.items.map((item) => ({
-            description: item.description,
-            quantity: item.quantity.toNumber(),
-            unitPrice: pricesIncludeTax ? item.unitPriceGross.toNumber() : item.unitPriceNet.toNumber(),
-          }))
-        const priced = priceDocument({
-          profile,
-          items,
-          taxRate: input.taxRate ?? impliedTaxRate(existing),
-          pricesIncludeTax,
-          currency: input.currency ?? existing.currency,
-        })
-
-        data.subtotalNet = priced.subtotalNet
-        data.totalTax = priced.totalTax
-        data.totalGross = priced.totalGross
-        yield* Effect.promise(() => db.invoiceItem.deleteMany({ where: { invoiceId: existing.id } }))
-        data.items = { create: priced.itemRows }
-      }
+      // Every draft edit upgrades to the current calculator, including notes-only edits.
+      const currency = input.currency ?? existing.currency
+      yield* requireDraftCurrency(currency)
+      const items = input.items ?? storedDraftItems(existing)
+      // An explicitly supplied document rate fills all lines. Omitted rate retains per-line VAT.
+      const pricedItems = input.taxRate === undefined ? items : items.map((item) => ({ ...item, vat: undefined }))
+      const evidence = input.vatEvidence ?? draftVatEvidenceSchema.parse(existing.vatEvidence ?? {})
+      const priced = yield* priceCurrentDraft({
+        items: input.items ?? pricedItems,
+        taxRate: input.taxRate ?? impliedTaxRate(existing),
+        pricesIncludeTax: existing.pricesIncludeTax,
+        currency,
+        vatEvidence: evidence,
+      })
+      data.subtotalNet = priced.subtotalNet
+      data.totalTax = priced.totalTax
+      data.totalGross = priced.totalGross
+      data.calculationVersion = priced.calculationVersion
+      data.vatEvidence = toNullableJsonInput(evidence)
+      yield* Effect.promise(() => db.invoiceItem.deleteMany({ where: { invoiceId: existing.id } }))
+      data.items = { create: priced.itemRows }
 
       const invoice = yield* Effect.promise(() =>
         db.invoice.update({
@@ -336,6 +339,7 @@ export const sendInvoice = defineCommand({
         return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
       }
       yield* refuseWhileSending("invoice", invoice)
+      yield* requireVatIssuance(invoice)
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       const emailContext = resolveInvoiceEmailContext(settings)

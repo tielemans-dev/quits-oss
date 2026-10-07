@@ -37,13 +37,13 @@ describe.runIf(hasTestDatabase)("currency precision creation boundaries", () => 
     expect(await prisma.quote.count({ where: { organizationId: org.organizationId } })).toBe(0)
     expect(await prisma.agreement.count({ where: { organizationId: org.organizationId } })).toBe(0)
   })
-  it("leaves new supported drafts on legacy pricing with nullable input metadata", async () => {
+  it("creates supported drafts on v2 with numeric compatibility input metadata", async () => {
     const { actor, contactId } = await setup()
     const outcome = await executeCommand(createInvoiceDraft, { contactId, dueDate: "2026-10-31", taxRate: 25, items }, { actor })
     if (outcome.status !== "completed") throw new Error(JSON.stringify(outcome))
-    expect(outcome.result.calculationVersion).toBe("legacy_per_line")
+    expect(outcome.result.calculationVersion).toBe("v2")
     expect(outcome.result.totalGross.toString()).toBe("62.5")
-    expect(outcome.result.items[0]).toMatchObject({ vatTreatment: "standard", quantityInput: null, unitPriceInput: null, inputPrecision: null })
+    expect(outcome.result.items[0]).toMatchObject({ vatTreatment: "standard", quantityInput: "0.5", unitPriceInput: "100", inputPrecision: "number" })
   })
   it("refuses both settings currency setters without changing an unsupported legacy currency or its existing documents", async () => {
     const { actor, contactId, caller, org } = await setup()
@@ -60,7 +60,7 @@ describe.runIf(hasTestDatabase)("currency precision creation boundaries", () => 
     }
     await caller.settings.update({ companyName: "Updated seller" })
     const updated = await executeCommand(updateInvoiceDraft, { id: outcome.result.id, notes: "Updated notes" }, { actor })
-    expect(updated).toMatchObject({ status: "completed", result: { currency: "KWD", calculationVersion: "legacy_per_line" } })
+    expect(updated).toMatchObject({ status: "failed", error: { code: "currency_precision_unsupported" } })
     const stored = await prisma.invoice.findUniqueOrThrow({ where: { id: outcome.result.id } })
     expect(stored.totalGross.toString()).toBe("62.5")
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).defaultCurrency).toBe("KWD")

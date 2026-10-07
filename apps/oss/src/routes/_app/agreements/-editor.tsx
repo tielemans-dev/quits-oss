@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useDeferredValue } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { agreementCreateDraftInputSchema, type DeliverableInput } from "@quits/contracts/agreements"
+import { agreementCreateDraftDecimalInputSchema, type DeliverableInput } from "@quits/contracts/agreements"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../../components/ui/card"
@@ -17,8 +17,8 @@ import {
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { useI18n } from "../../../lib/i18n/react"
 import { renderAgreementMarkdown } from "../../../lib/agreements/markdown"
-import { priceAgreement } from "../../../domain/agreements/pricing"
-import { resolveCountryProfile } from "../../../lib/compliance"
+import { calculateLegacyDocument } from "@quits/shared/pricing"
+import { currencyFractionDigits } from "../../../lib/payments/stripe-amounts"
 import { formatCurrency } from "../../../lib/i18n/format"
 import { Plus, Trash2 } from "lucide-react"
 
@@ -30,17 +30,18 @@ type Form = {
   templateId: string | null
   validUntil: string
   currency: string
-  taxRate: number
+  taxRate: string
   dueInDays: number
   billingTrigger: "on_acceptance" | "on_delivery"
   notes: string
-  deliverables: DeliverableInput[]
+  deliverables: EditorDeliverable[]
 }
-const emptyLine = (): DeliverableInput => ({
+type EditorDeliverable = Omit<DeliverableInput, "quantity" | "unitPrice"> & { quantity: string; unitPrice: string }
+const emptyLine = (): EditorDeliverable => ({
   title: "",
   description: "",
-  quantity: 1,
-  unitPrice: 0,
+  quantity: "1",
+  unitPrice: "0",
   agreedDate: null,
   expectedDate: null,
   isDeposit: false,
@@ -53,7 +54,7 @@ const initial: Form = {
   templateId: null,
   validUntil: "",
   currency: "USD",
-  taxRate: 0,
+  taxRate: "0",
   dueInDays: 30,
   billingTrigger: "on_acceptance",
   notes: "",
@@ -67,7 +68,6 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
   const [templates, setTemplates] = useState<
     Awaited<ReturnType<typeof trpc.agreements.listTemplates.query>>
   >([])
-  const [countryCode, setCountryCode] = useState("US")
   const [sellerName, setSellerName] = useState("")
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -88,7 +88,6 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
         const seller = agreement?.sellerSnapshot as { companyName?: string | null } | null
         setSellerName(agreement ? seller?.companyName ?? "" : settings.companyName ?? "")
         setPricesIncludeTax(agreement?.pricesIncludeTax ?? settings.pricesIncludeTax)
-        setCountryCode(agreement?.countryCode ?? settings.countryCode)
         if (agreement) {
           if (agreement.status !== "draft") throw new Error(t("agreements.draftOnly"))
           setForm({
@@ -99,15 +98,15 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
             templateId: agreement.templateId,
             validUntil: agreement.validUntil.toISOString().slice(0, 10),
             currency: agreement.currency,
-            taxRate: agreement.taxRate,
+            taxRate: String(agreement.taxRate),
             dueInDays: agreement.dueInDays,
             billingTrigger: agreement.billingTrigger as Form["billingTrigger"],
             notes: agreement.notes ?? "",
             deliverables: agreement.deliverables.map((line) => ({
               title: line.title,
               description: line.description,
-              quantity: line.quantity,
-              unitPrice: agreement.pricesIncludeTax ? line.unitPriceGross : line.unitPriceNet,
+              quantity: line.quantityInput ?? String(line.quantity),
+              unitPrice: line.unitPriceInput ?? String(agreement.pricesIncludeTax ? line.unitPriceGross : line.unitPriceNet),
               agreedDate: line.agreedDate?.toISOString().slice(0, 10) ?? null,
               expectedDate: line.expectedDate?.toISOString().slice(0, 10) ?? null,
               isDeposit: line.isDeposit,
@@ -136,7 +135,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
   function change<Key extends keyof Form>(key: Key, value: Form[Key]) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
-  function changeLine(index: number, changes: Partial<DeliverableInput>) {
+  function changeLine(index: number, changes: Partial<EditorDeliverable>) {
     setForm((prev) => ({
       ...prev,
       deliverables: prev.deliverables.map((line, i) =>
@@ -153,12 +152,11 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
           "buyer.name": contacts.find((item) => item.id === deferred.contactId)?.name ?? "",
           "agreement.title": deferred.title,
           "agreement.validUntil": deferred.validUntil,
-          "agreement.total": `${priceAgreement({
-            profile: resolveCountryProfile(countryCode),
-            deliverables: deferred.deliverables,
-            taxRate: deferred.taxRate,
+          "agreement.total": `${calculateLegacyDocument({
+            items: deferred.deliverables.map((line) => ({ description: line.description ?? "", quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })),
+            taxRate: Number(deferred.taxRate),
             pricesIncludeTax,
-            currency: deferred.currency.match(/^[A-Z]{3}$/) ? deferred.currency : "USD",
+            fractionDigits: Math.min(currencyFractionDigits(deferred.currency.match(/^[A-Z]{3}$/) ? deferred.currency : "USD"), 2),
           }).totalGross.toFixed(2)} ${deferred.currency}`,
           deliverables: deferred.deliverables
             .map((line) => `${line.title}: ${line.description ?? ""}`)
@@ -169,10 +167,10 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
     } catch (err) {
       return { html: "", error: err instanceof Error ? err.message : t("agreements.error") }
     }
-  }, [deferred, sellerName, contacts, t, countryCode, pricesIncludeTax])
+  }, [deferred, sellerName, contacts, t, pricesIncludeTax])
   async function save() {
     setError(null)
-    const parsed = agreementCreateDraftInputSchema.safeParse(form)
+    const parsed = agreementCreateDraftDecimalInputSchema.safeParse(form)
     if (!parsed.success) {
       setError(
         parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join(" "),
@@ -182,8 +180,8 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
     setSaving(true)
     try {
       const result = agreementId
-        ? await trpc.agreements.updateDraft.mutate({ ...parsed.data, id: agreementId })
-        : await trpc.agreements.createDraft.mutate(parsed.data)
+        ? await trpc.agreements.updateDraftDecimal.mutate({ ...parsed.data, id: agreementId })
+        : await trpc.agreements.createDraftDecimal.mutate(parsed.data)
       await navigate({ to: "/agreements/$agreementId", params: { agreementId: result.id } })
     } catch (err) {
       setError(err instanceof Error ? err.message : t("agreements.error"))
@@ -296,10 +294,10 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
                     <Input
                       id={`qty-${index}`}
                       type="number"
-                      min="0.01"
-                      step="0.01"
+                      min="0.000001"
+                      step="0.000001"
                       value={line.quantity}
-                      onChange={(e) => changeLine(index, { quantity: Number(e.target.value) })}
+                      onChange={(e) => changeLine(index, { quantity: e.target.value })}
                     />
                   </div>
                   <div className="grid gap-1">
@@ -308,9 +306,9 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
                       id={`price-${index}`}
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="0.0001"
                       value={line.unitPrice}
-                      onChange={(e) => changeLine(index, { unitPrice: Number(e.target.value) })}
+                      onChange={(e) => changeLine(index, { unitPrice: e.target.value })}
                     />
                   </div>
                   <div className="grid gap-1">
@@ -364,7 +362,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
                 max="100"
                 step="0.01"
                 value={form.taxRate}
-                onChange={(e) => change("taxRate", Number(e.target.value))}
+                onChange={(e) => change("taxRate", e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -396,7 +394,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
           <p className="text-sm text-muted-foreground">
             {pricesIncludeTax ? t("docForm.summary.total") : t("docForm.summary.subtotal")}:{" "}
             {formatCurrency(
-              form.deliverables.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0),
+              calculateLegacyDocument({ items: form.deliverables.map((line) => ({ description: line.description ?? "", quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })), taxRate: Number(form.taxRate), pricesIncludeTax, fractionDigits: Math.min(currencyFractionDigits(form.currency), 2) })[pricesIncludeTax ? "totalGross" : "subtotalNet"],
               form.currency.match(/^[A-Z]{3}$/) ? form.currency : "USD",
               locale,
             )}

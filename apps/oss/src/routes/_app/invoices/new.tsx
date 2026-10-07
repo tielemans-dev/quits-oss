@@ -1,3 +1,8 @@
+import { previewDraft } from "@quits/shared/pricing"
+import type { DocumentLineInput } from "@quits/contracts/invoices"
+import type { DraftVatEvidence } from "@quits/contracts/vat"
+import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
+import { useOrgPricingSettings } from "../../../hooks/use-org-pricing-settings"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { useState, useEffect } from "react"
@@ -36,22 +41,25 @@ type Contact = { id: string; name: string }
 
 type LineItem = {
   description: string
-  quantity: number
-  unitPrice: number
+  quantity: string
+  unitPrice: string
+  vat?: DocumentLineInput["vat"]
   catalogItemId?: string
 }
 
 function NewInvoicePage() {
   const { t, locale } = useI18n()
   const currency = useOrgCurrency()
+  const { pricesIncludeTax } = useOrgPricingSettings()
+  const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>({})
   const navigate = useNavigate()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactId, setContactId] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [notes, setNotes] = useState("")
-  const [taxRate, setTaxRate] = useState(0)
+  const [taxRate, setTaxRate] = useState("0")
   const [items, setItems] = useState<LineItem[]>([
-    { description: "", quantity: 1, unitPrice: 0, catalogItemId: undefined },
+    { description: "", quantity: "1", unitPrice: "0", catalogItemId: undefined },
   ])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -93,7 +101,7 @@ function NewInvoicePage() {
       .finally(() => setLoadingAiCapabilities(false))
   }, [])
 
-  function updateItem(index: number, field: keyof LineItem, value: string | number) {
+  function updateItem(index: number, field: keyof LineItem, value: string) {
     setItems((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
     )
@@ -102,7 +110,7 @@ function NewInvoicePage() {
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { description: "", quantity: 1, unitPrice: 0, catalogItemId: undefined },
+      { description: "", quantity: "1", unitPrice: "0", catalogItemId: undefined },
     ])
   }
 
@@ -120,9 +128,10 @@ function NewInvoicePage() {
     )
   }
 
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-  const taxAmount = subtotal * taxRate / 100
-  const total = subtotal + taxAmount
+  const preview = previewDraft({ items, taxRate: taxRate || "0", pricesIncludeTax, currency })
+  const subtotal = Number(preview.result?.net ?? "0")
+  const taxAmount = Number(preview.result?.tax ?? "0")
+  const total = Number(preview.result?.gross ?? "0")
 
   async function handleGenerateInvoiceDraftFromAi() {
     setAiError(null)
@@ -149,7 +158,7 @@ function NewInvoicePage() {
         setNotes(draft.notes)
       }
       if (typeof draft.taxRate === "number") {
-        setTaxRate(draft.taxRate)
+        setTaxRate(String(draft.taxRate))
       }
       if (draft.items.length > 0) {
         setItems(
@@ -157,16 +166,16 @@ function NewInvoicePage() {
             ...applyCatalogItemToLineItem(
               {
                 description: item.description ?? "",
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
+                quantity: String(item.quantity),
+                unitPrice: String(item.unitPrice),
                 catalogItemId: undefined,
               },
               item.catalogItemId || "",
               catalogItems
             ),
             description: item.description ?? "",
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            quantity: String(item.quantity),
+            unitPrice: String(item.unitPrice),
             catalogItemId: item.catalogItemId,
           }))
         )
@@ -221,15 +230,17 @@ function NewInvoicePage() {
       // the form, where submitting again would create a second invoice.
       const target = await createThenSend({
         create: () =>
-          trpc.invoices.create.mutate({
+          trpc.invoices.createV2.mutate({
             contactId,
             dueDate,
             taxRate,
+            vatEvidence,
             notes: notes || undefined,
             items: items.map((item) => ({
               description: item.description,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
+              quantity: String(item.quantity),
+              unitPrice: String(item.unitPrice),
+              vat: item.vat,
             })),
           }),
         send: (id) => trpc.invoices.send.mutate({ id }),
@@ -394,24 +405,24 @@ function NewInvoicePage() {
                   />
                   <Input
                     type="number"
-                    min="0.01"
-                    step="0.01"
+                    min="0.000001"
+                    step="0.000001"
                     value={item.quantity || ""}
                     onChange={(e) =>
-                      updateItem(index, "quantity", parseFloat(e.target.value) || 0)
+                      updateItem(index, "quantity", e.target.value)
                     }
                   />
                   <Input
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="0.0001"
                     value={item.unitPrice || ""}
                     onChange={(e) =>
-                      updateItem(index, "unitPrice", parseFloat(e.target.value) || 0)
+                      updateItem(index, "unitPrice", e.target.value)
                     }
                   />
                   <span className="text-sm text-right pr-2">
-                    {formatCurrencyIntl(item.quantity * item.unitPrice, currency, locale)}
+                    {preview.result ? formatCurrencyIntl(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—"}
                   </span>
                   <Button
                     type="button"
@@ -431,12 +442,14 @@ function NewInvoicePage() {
             </Button>
           </div>
 
+          <DocumentVatFields items={items} onItemsChange={setItems} taxRate={taxRate} evidence={vatEvidence} onEvidenceChange={setVatEvidence} />
+          <VatGroupPreview {...preview} />
           {/* Summary */}
           <div className="flex justify-end">
             <div className="w-64 grid gap-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                <span>{formatCurrencyIntl(subtotal, currency, locale)}</span>
+                <span>{preview.result ? formatCurrencyIntl(subtotal, currency, locale) : "—"}</span>
               </div>
               <div className="flex justify-between items-center gap-2">
                 <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
@@ -447,16 +460,16 @@ function NewInvoicePage() {
                     max="100"
                     step="0.01"
                     value={taxRate || ""}
-                    onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => { setTaxRate(e.target.value); setItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
                     className="w-16 h-7 text-xs"
                   />
                   <span className="text-muted-foreground text-xs">%</span>
-                  <span className="ml-auto">{formatCurrencyIntl(taxAmount, currency, locale)}</span>
+                  <span className="ml-auto">{preview.result ? formatCurrencyIntl(taxAmount, currency, locale) : "—"}</span>
                 </div>
               </div>
               <div className="flex justify-between font-semibold border-t pt-2">
                 <span>{t("docForm.summary.total")}</span>
-                <span>{formatCurrencyIntl(total, currency, locale)}</span>
+                <span>{preview.result ? formatCurrencyIntl(total, currency, locale) : "—"}</span>
               </div>
             </div>
           </div>

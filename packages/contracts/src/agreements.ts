@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { quantityDecimalSchema, unitPriceDecimalSchema, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
 import { buyerSnapshotSchema, sellerSnapshotSchema } from "./documents"
 
 export const agreementStatusSchema = z.enum([
@@ -32,8 +33,8 @@ export const deliverableInputSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
     description: z.string().trim().max(500).default(""),
-    quantity: z.number().positive().max(1_000_000),
-    unitPrice: z.number().min(0).max(1_000_000_000),
+    quantity: z.union([z.number().positive().max(1_000_000), quantityDecimalSchema]),
+    unitPrice: z.union([z.number().min(0).max(1_000_000_000), unitPriceDecimalSchema]),
     agreedDate: nullableDate,
     expectedDate: nullableDate,
     isDeposit: z.boolean().default(false),
@@ -48,7 +49,7 @@ export const agreementCreateDraftInputSchema = z
     templateId: z.string().min(1).nullable().optional(),
     validUntil: agreementDateSchema,
     currency: currencySchema.optional(),
-    taxRate: z.number().min(0).max(100).default(0),
+    taxRate: documentTaxRateSchema.default(0),
     dueInDays: z.number().int().min(0).max(3650).default(30),
     billingTrigger: agreementBillingTriggerSchema.default("on_acceptance"),
     notes: z.string().trim().max(5000).nullable().optional(),
@@ -60,12 +61,15 @@ export const agreementUpdateDraftInputSchema = agreementCreateDraftInputSchema
   .extend({
     id: z.string().min(1),
     termsMarkdown: agreementTermsSchema.optional(),
-    taxRate: z.number().min(0).max(100).optional(),
+    taxRate: documentTaxRateSchema.optional(),
     dueInDays: z.number().int().min(0).max(3650).optional(),
     billingTrigger: agreementBillingTriggerSchema.optional(),
     deliverables: z.array(deliverableInputSchema).max(100).optional(),
   })
   .strict()
+export const deliverableDecimalInputSchema = deliverableInputSchema.extend({ quantity: quantityDecimalSchema, unitPrice: unitPriceDecimalSchema })
+export const agreementCreateDraftDecimalInputSchema = agreementCreateDraftInputSchema.extend({ taxRate: documentTaxRateV2Schema.default("0"), deliverables: z.array(deliverableDecimalInputSchema).max(100).default([]) })
+export const agreementUpdateDraftDecimalInputSchema = agreementUpdateDraftInputSchema.extend({ taxRate: documentTaxRateV2Schema.optional(), deliverables: z.array(deliverableDecimalInputSchema).max(100).optional() })
 export const deliverableUpdateInputSchema = deliverableInputSchema
   .partial()
   .extend({
@@ -76,6 +80,8 @@ export const deliverableUpdateInputSchema = deliverableInputSchema
     status: z.literal("in_progress").optional(),
   })
   .strict()
+export const deliverableUpdateDecimalInputSchema = deliverableUpdateInputSchema.extend({ quantity: quantityDecimalSchema.optional(), unitPrice: unitPriceDecimalSchema.optional() })
+
 export const agreementTemplateDtoSchema = z
   .object({
     id: z.string(),

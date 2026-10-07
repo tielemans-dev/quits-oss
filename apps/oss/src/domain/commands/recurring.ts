@@ -1,4 +1,7 @@
 import { getIssuanceDispatcher } from "../issuance-dispatcher"
+import { documentVat, fractionToPercentage } from "@quits/shared/pricing"
+import { draftVatEvidenceSchema } from "@quits/contracts/vat"
+import { toNullableJsonInput } from "../../lib/prisma-json"
 import { Effect } from "effect"
 import { z } from "zod"
 import { commandErrorSchema } from "@quits/contracts/agent"
@@ -247,7 +250,8 @@ export const createRecurringInvoice = defineCommand({
             currency: input.currency ?? settings?.defaultCurrency ?? settings?.currency ?? "USD",
             taxRate: input.taxRate,
             notes: input.notes ?? null,
-            items: input.items,
+            items: input.items.map((line) => ({ ...line, vat: documentVat(line, input.taxRate) })),
+            vatEvidence: toNullableJsonInput(input.vatEvidence),
           },
         })
       )
@@ -317,6 +321,20 @@ export const updateRecurringInvoice = defineCommand({
         yield* clearFailedRunAttempts(existing.id)
       }
 
+      // JSON retains exact fractional VAT rates, independently of the rounded compatibility column.
+      const currentItems = recurringItemsSchema.safeParse(existing.items)
+      if (input.items === undefined && input.taxRate !== undefined && !currentItems.success) {
+        return yield* new InvalidState({
+          message: "The schedule's line items are invalid",
+          code: "invalid_schedule_items",
+        })
+      }
+      const originalRate = currentItems.success ? currentItems.data.find((line) => line.vat?.treatment === "standard")?.vat?.rate : undefined
+      const items = input.items ?? (currentItems.success ? currentItems.data : [])
+      const pricedItems = input.items === undefined && input.taxRate !== undefined ? items.map((line) => ({ ...line, vat: undefined })) : items
+      const itemTaxRate = input.taxRate ?? (originalRate ? fractionToPercentage(originalRate) : existing.taxRate.toString())
+      const updatedItems = pricedItems.map((line) => ({ ...line, vat: documentVat(line, itemTaxRate) }))
+
       // Only fields this edit changes are written, so scheduling progress (`nextRunAt`,
       // `remainingRuns`, `lastRunAt`) is never overwritten with values read earlier.
       const schedule = yield* Effect.promise(() =>
@@ -325,7 +343,8 @@ export const updateRecurringInvoice = defineCommand({
           data: {
             ...(input.name !== undefined ? { name: input.name } : {}),
             ...(input.contactId !== undefined ? { contactId: input.contactId } : {}),
-            ...(input.items !== undefined ? { items: input.items } : {}),
+            ...(input.items !== undefined || input.taxRate !== undefined ? { items: updatedItems } : {}),
+            ...(input.vatEvidence !== undefined ? { vatEvidence: toNullableJsonInput(input.vatEvidence) } : {}),
             ...(input.taxRate !== undefined ? { taxRate: input.taxRate } : {}),
             ...(input.currency !== undefined ? { currency: input.currency } : {}),
             ...(input.notes !== undefined ? { notes: input.notes } : {}),
@@ -495,6 +514,7 @@ const generateRun = (
         notes: schedule.notes ?? undefined,
         taxRate: schedule.taxRate.toNumber(),
         items: items.data,
+        vatEvidence: draftVatEvidenceSchema.parse(schedule.vatEvidence ?? {}),
       },
       { recurringInvoiceId: schedule.id, recurringRunDate: runDate }
     )

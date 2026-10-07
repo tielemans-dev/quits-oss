@@ -26,6 +26,14 @@ type Line = {
   unitPriceGross: { toString(): string }
   taxRate: { toString(): string }
   lineGross: { toString(): string }
+  lineNet?: { toString(): string }
+  lineTax?: { toString(): string }
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  vatTreatment?: string
+  vatRateInput?: string | null
+  vatCountry?: string | null
+  vatReasonCode?: string | null
 }
 
 /**
@@ -43,6 +51,10 @@ export function documentFingerprint(
     notes: string | null
     contactId: string
     buyerSnapshot: unknown
+    sellerSnapshot?: unknown
+    calculationVersion?: string
+    vatEvidence?: unknown
+    pricesIncludeTax?: boolean
     contact: { name: string; company?: string | null }
     items: Line[]
   },
@@ -64,11 +76,18 @@ export function documentFingerprint(
       item.unitPriceGross.toString(),
       item.taxRate.toString(),
       item.lineGross.toString(),
+      item.lineNet?.toString(), item.lineTax?.toString(),
+      item.quantityInput, item.unitPriceInput,
+      item.vatTreatment, item.vatRateInput, item.vatCountry, item.vatReasonCode,
     ]),
     document.contactId,
     document.contact.name,
     document.contact.company ?? null,
     document.buyerSnapshot ?? null,
+    document.sellerSnapshot ?? null,
+    document.calculationVersion ?? "legacy_per_line",
+    document.pricesIncludeTax ?? false,
+    document.vatEvidence ?? null,
     recipient,
     dates.map((date) => date?.toISOString() ?? null),
   ])
@@ -306,6 +325,7 @@ export const recurringApproval = (
         schedule.contact.name,
         schedule.contact.email,
         schedule.items,
+        schedule.vatEvidence,
         schedule.taxRate.toString(),
         schedule.currency,
         schedule.intervalCount,

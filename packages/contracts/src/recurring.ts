@@ -1,5 +1,7 @@
 import { z } from "zod"
-import { documentLineInputSchema } from "./invoices"
+import { documentLineInputSchema, documentLineV2InputSchema, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
+
+import { draftVatEvidenceSchema } from "./vat"
 
 /** A calendar date without time or timezone, e.g. `2026-01-31`. */
 export const recurringCalendarDateSchema = z
@@ -26,7 +28,7 @@ const scheduleFields = {
   name: z.string().trim().min(1).max(200),
   contactId: z.string().trim().min(1),
   items: z.array(documentLineInputSchema).min(1).max(100),
-  taxRate: z.number().min(0).max(100),
+  taxRate: documentTaxRateSchema,
   currency: currencySchema,
   notes: z.string().trim().max(5000),
   intervalCount: z.number().int().min(1).max(12),
@@ -42,6 +44,7 @@ export const recurringCreateInputSchema = z.object({
   contactId: scheduleFields.contactId,
   items: scheduleFields.items,
   taxRate: scheduleFields.taxRate.default(0),
+  vatEvidence: draftVatEvidenceSchema.optional(),
   currency: scheduleFields.currency.optional(),
   notes: scheduleFields.notes.optional(),
   intervalCount: scheduleFields.intervalCount.default(1),
@@ -59,6 +62,7 @@ export const recurringUpdateInputSchema = z.object({
   contactId: scheduleFields.contactId.optional(),
   items: scheduleFields.items.optional(),
   taxRate: scheduleFields.taxRate.optional(),
+  vatEvidence: draftVatEvidenceSchema.optional(),
   currency: scheduleFields.currency.optional(),
   notes: scheduleFields.notes.nullable().optional(),
   intervalCount: scheduleFields.intervalCount.optional(),
@@ -69,6 +73,15 @@ export const recurringUpdateInputSchema = z.object({
   end: scheduleFields.end.optional(),
 })
 
+export const recurringCreateV2InputSchema = recurringCreateInputSchema.extend({
+  taxRate: documentTaxRateV2Schema.default("0"),
+  items: z.array(documentLineV2InputSchema).min(1).max(100),
+})
+export const recurringUpdateV2InputSchema = recurringUpdateInputSchema.extend({
+  taxRate: documentTaxRateV2Schema.optional(),
+  items: z.array(documentLineV2InputSchema).min(1).max(100).optional(),
+})
+
 export const recurringIdInputSchema = z.object({ id: z.string().min(1) })
 
 /** Pausing and ending; resuming is a separate command because it can be outward-facing. */
@@ -77,7 +90,7 @@ export const recurringSetStatusInputSchema = z.object({
   status: z.enum(["paused", "ended"]),
 })
 
-export const recurringItemsSchema = z.array(documentLineInputSchema)
+export const recurringItemsSchema = scheduleFields.items
 
 export type RecurringIntervalUnit = z.infer<typeof recurringIntervalUnitSchema>
 export type RecurringStatus = z.infer<typeof recurringStatusSchema>

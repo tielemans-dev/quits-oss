@@ -32,7 +32,9 @@ async function setup() {
   const invoice = await prisma.invoice.create({ data: {
     organizationId: org.organizationId, contactId: contact.id, number: "INV-0001", dueDate: new Date("2099-01-01"),
     subtotalNet: 100, totalGross: 100, items: { create: { description: "Work", quantity: 1, unitPriceNet: 100,
-      unitPriceGross: 100, lineNet: 100, lineGross: 100, lineTax: 0, taxRate: 0, taxCategory: "S", sortOrder: 0 } },
+      // Direct Prisma fixtures must classify zero-rate lines explicitly; standard requires a positive rate.
+      unitPriceGross: 100, lineNet: 100, lineGross: 100, lineTax: 0, taxRate: 0,
+      taxCategory: "O", vatTreatment: "out_of_scope", sortOrder: 0 } },
   } })
   vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: org.actors.admin.userId }, session: { activeOrganizationId: org.organizationId } } as never)
   return { org, invoice }
@@ -60,8 +62,9 @@ const request = new Request("http://quits.test/download")
   })
   it("serves issued bytes unchanged and reports an unavailable archived object without rendering over it", async () => {
     const { org, invoice } = await setup()
-    expect(await issueDocument({ kind: "invoice", actor: org.actors.admin,
-      commandInput: { id: invoice.id, allowSendWithoutEmail: true }, clientRequestId: "archive" })).toMatchObject({ status: "completed" })
+    const sent = await issueDocument({ kind: "invoice", actor: org.actors.admin,
+      commandInput: { id: invoice.id, allowSendWithoutEmail: true }, clientRequestId: "archive" })
+    expect(sent, JSON.stringify(sent)).toMatchObject({ status: "completed" })
     const archived = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
     render.mockClear()
     await prisma.contact.update({ where: { id: invoice.contactId }, data: { name: "Changed later" } })
@@ -74,7 +77,8 @@ const request = new Request("http://quits.test/download")
   })
   it("uses the existing public invoice signature and refuses invalid or revoked links", async () => {
     const { org, invoice } = await setup()
-    await issueDocument({ kind: "invoice", actor: org.actors.admin, commandInput: { id: invoice.id, allowSendWithoutEmail: true }, clientRequestId: "public" })
+    const sent = await issueDocument({ kind: "invoice", actor: org.actors.admin, commandInput: { id: invoice.id, allowSendWithoutEmail: true }, clientRequestId: "public" })
+    expect(sent, JSON.stringify(sent)).toMatchObject({ status: "completed" })
     await prisma.invoice.update({ where: { id: invoice.id }, data: { publicPaymentIssuedAt: new Date() } })
     const token = signInvoicePaymentToken({ invoiceId: invoice.id, keyVersion: invoice.publicPaymentKeyVersion, scope: "invoice_payment" }, "synthetic-download-link-secret")
     expect((await publicInvoicePdf(token)).headers.get("X-Quits-Artifact")).toBe("stored")

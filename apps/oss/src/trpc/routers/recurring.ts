@@ -1,10 +1,13 @@
+import { previewDraft } from "@quits/shared/pricing"
 import { TRPCError } from "@trpc/server"
 import {
   recurringCreateInputSchema,
+  recurringCreateV2InputSchema,
   recurringIdInputSchema,
   recurringItemsSchema,
   recurringSetStatusInputSchema,
   recurringUpdateInputSchema,
+  recurringUpdateV2InputSchema,
 } from "@quits/contracts/recurring"
 import type { Prisma } from "../../../generated/prisma/client"
 import {
@@ -23,10 +26,11 @@ import { unwrapOutcome } from "../outcome"
 type ScheduleRow = Prisma.RecurringInvoiceGetPayload<object>
 
 /** Plain numbers and parsed line items for the UI. */
-function serializeSchedule(schedule: ScheduleRow) {
+function serializeSchedule(schedule: ScheduleRow, pricesIncludeTax = false) {
   const parsed = recurringItemsSchema.safeParse(schedule.items)
   const items = parsed.success ? parsed.data : []
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+  const preview = previewDraft({ items, currency: schedule.currency, taxRate: schedule.taxRate.toString(), pricesIncludeTax })
+  const subtotal = Number(preview.result?.net ?? "0")
   return {
     id: schedule.id,
     name: schedule.name,
@@ -45,6 +49,8 @@ function serializeSchedule(schedule: ScheduleRow) {
     taxRate: schedule.taxRate.toNumber(),
     notes: schedule.notes,
     items,
+    vatEvidence: schedule.vatEvidence,
+    lineTotals: preview.result?.lines.map((line) => Number(line.net)) ?? [],
     subtotal,
     createdAt: schedule.createdAt,
   }
@@ -85,8 +91,9 @@ export const recurringRouter = router({
       },
     })
 
+    const settings = await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId } })
     return schedules.map((schedule) => ({
-      ...serializeSchedule(schedule),
+      ...serializeSchedule(schedule, settings?.pricesIncludeTax),
       contact: schedule.contact,
       lastInvoice: schedule.invoices[0] ? serializeGeneratedInvoice(schedule.invoices[0]) : null,
       invoiceCount: schedule._count.invoices,
@@ -117,10 +124,11 @@ export const recurringRouter = router({
         orderBy: { sequence: "desc" },
         select: { type: true, payload: true, occurredAt: true },
       })
+      const settings = await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId } })
       const problemError = (lastProblem?.payload as { error?: { message?: string } } | null)?.error
 
       return {
-        ...serializeSchedule(schedule),
+        ...serializeSchedule(schedule, settings?.pricesIncludeTax),
         contact: schedule.contact,
         invoices: schedule.invoices.map(serializeGeneratedInvoice),
         lastProblem: lastProblem
@@ -141,8 +149,24 @@ export const recurringRouter = router({
       )
     ),
 
+  createV2: authorizedProcedure("recurring:create")
+    .input(recurringCreateV2InputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeSchedule(
+        unwrapOutcome(await executeCommand(createRecurringInvoice, input, { actor: ctx.actor }))
+      )
+    ),
+
   update: authorizedProcedure("recurring:update")
     .input(recurringUpdateInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeSchedule(
+        unwrapOutcome(await executeCommand(updateRecurringInvoice, input, { actor: ctx.actor }))
+      )
+    ),
+
+  updateV2: authorizedProcedure("recurring:update")
+    .input(recurringUpdateV2InputSchema)
     .mutation(async ({ ctx, input }) =>
       serializeSchedule(
         unwrapOutcome(await executeCommand(updateRecurringInvoice, input, { actor: ctx.actor }))

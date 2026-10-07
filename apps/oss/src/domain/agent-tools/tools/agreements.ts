@@ -9,11 +9,11 @@ import {
 } from "../../commands/agreement-lifecycle"
 import { agreementIssueInputSchema, agreementResendInputSchema } from "@quits/contracts/agreements"
 import {
-  agreementCreateDraftInputSchema,
-  agreementUpdateDraftInputSchema,
+  agreementCreateDraftDecimalInputSchema,
+  agreementUpdateDraftDecimalInputSchema,
   agreementIdInputSchema,
   agreementListInputSchema,
-  deliverableUpdateInputSchema,
+  deliverableUpdateDecimalInputSchema,
 } from "@quits/contracts/agreements"
 import {
   createAgreementDraft,
@@ -128,7 +128,7 @@ export const agreementTools: AgentTool[] = [
     description:
       "Creates a draft agreement. No number is allocated and nothing is sent. Dates are YYYY-MM-DD, taxRate is one percentage for every deliverable.",
     command: createAgreementDraft,
-    input: agreementCreateDraftInputSchema,
+    input: agreementCreateDraftDecimalInputSchema,
   }),
   defineCommandTool({
     name: "agreement_update_draft",
@@ -136,7 +136,7 @@ export const agreementTools: AgentTool[] = [
     description:
       "Edits a draft agreement. Passing deliverables replaces all lines. Omitted fields remain unchanged.",
     command: updateAgreementDraft,
-    input: agreementUpdateDraftInputSchema,
+    input: agreementUpdateDraftDecimalInputSchema,
   }),
   defineCommandTool({
     name: "agreement_delete_draft",
@@ -152,6 +152,6 @@ export const agreementTools: AgentTool[] = [
     description:
       "Edits offer fields only in drafts, or expectedDate in any agreement state. Set status to in_progress to start planned work or reopen delivered/accepted unbilled work on an accepted agreement. Deposits cannot enter fulfillment.",
     command: updateDeliverable,
-    input: deliverableUpdateInputSchema,
+    input: deliverableUpdateDecimalInputSchema,
   }),
 ]
