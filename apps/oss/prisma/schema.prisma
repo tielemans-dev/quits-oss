@@ -732,6 +732,17 @@ model Agreement {
   lastEmailAttemptOutcome String?
   lastEmailAttemptCode    String?
   lastEmailAttemptMessage String?
+  acceptedAt              DateTime?
+  acceptedOfferRevision   Int?
+  acceptedByName          String?
+  acceptanceIp            String?
+  acceptanceUserAgent     String?
+  acceptanceMethod        String?
+  acceptanceEvidenceNote  String?
+  declinedAt              DateTime?
+  declineReason           String?
+  closedAt                DateTime?
+  closeReason             String?
   notes                   String?
   deliverables            Deliverable[]
   createdAt               DateTime           @default(now())
@@ -782,4 +793,20 @@ model AgreementTemplate {
 
   @@unique([organizationId, name])
   @@map("agreement_template")
+}
+
+// Attempts have no document FK so deleted drafts do not erase abuse counters.
+model PublicLinkAttempt {
+  id           String   @id @default(cuid())
+  documentKind String
+  documentId   String
+  scope        String
+  keyVersion   Int
+  targetId     String?
+  revision     Int
+  createdAt    DateTime @default(now())
+
+  @@index([documentKind, documentId, scope, keyVersion, targetId, revision, createdAt])
+  @@index([createdAt])
+  @@map("public_link_attempt")
 }

@@ -137,3 +137,27 @@ export type AgreementCreateDraftInput = z.input<typeof agreementCreateDraftInput
 export type AgreementUpdateDraftInput = z.input<typeof agreementUpdateDraftInputSchema>
 export type DeliverableInput = z.input<typeof deliverableInputSchema>
 export type AgreementOfferSnapshot = z.infer<typeof agreementOfferSnapshotSchema>
+
+const recipient = z.string().trim().email().max(320)
+export const agreementIssueInputSchema = agreementIdInputSchema.extend({ recipient: recipient.optional() }).strict()
+export const agreementResendInputSchema = agreementIssueInputSchema
+export const agreementRecordAcceptanceInputSchema = agreementIdInputSchema.extend({
+  acceptedByName: z.string().trim().min(1).max(200),
+  evidenceNote: z.string().trim().min(1).max(5000),
+}).strict()
+export const agreementCloseInputSchema = agreementIdInputSchema.extend({
+  disposition: z.literal("cancelled"),
+  reason: z.string().trim().min(1).max(5000),
+}).strict()
+export const agreementPublicTokenPayloadSchema = z.discriminatedUnion("scope", [
+  z.object({ agreementId: z.string().min(1), scope: z.literal("decide"), keyVersion: z.number().int().positive(), exp: z.iso.datetime(), offerRevision: z.number().int().positive() }).strict(),
+  z.object({ agreementId: z.string().min(1), scope: z.literal("read"), keyVersion: z.number().int().positive(), exp: z.iso.datetime() }).strict(),
+])
+export const agreementPublicDecisionSchema = z.discriminatedUnion("decision", [
+  z.object({ decision: z.literal("accept"), acceptedByName: z.string().trim().min(1).max(200), confirmed: z.literal(true) }).strict(),
+  z.object({ decision: z.literal("decline"), reason: z.string().trim().max(5000).optional() }).strict(),
+])
+export const agreementPublicSubmissionSchema = z.object({
+  token: z.string().min(1).max(4096), decision: agreementPublicDecisionSchema,
+}).strict()
+export type AgreementPublicTokenPayload = z.infer<typeof agreementPublicTokenPayloadSchema>

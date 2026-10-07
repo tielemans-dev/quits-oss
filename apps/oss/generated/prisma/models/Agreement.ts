@@ -34,6 +34,7 @@ export type AgreementAvgAggregateOutputType = {
   totalGross: runtime.Decimal | null
   offerRevision: number | null
   publicAccessKeyVersion: number | null
+  acceptedOfferRevision: number | null
 }
 
 export type AgreementSumAggregateOutputType = {
@@ -44,6 +45,7 @@ export type AgreementSumAggregateOutputType = {
   totalGross: runtime.Decimal | null
   offerRevision: number | null
   publicAccessKeyVersion: number | null
+  acceptedOfferRevision: number | null
 }
 
 export type AgreementMinAggregateOutputType = {
@@ -81,6 +83,17 @@ export type AgreementMinAggregateOutputType = {
   lastEmailAttemptOutcome: string | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
+  acceptedAt: Date | null
+  acceptedOfferRevision: number | null
+  acceptedByName: string | null
+  acceptanceIp: string | null
+  acceptanceUserAgent: string | null
+  acceptanceMethod: string | null
+  acceptanceEvidenceNote: string | null
+  declinedAt: Date | null
+  declineReason: string | null
+  closedAt: Date | null
+  closeReason: string | null
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -121,6 +134,17 @@ export type AgreementMaxAggregateOutputType = {
   lastEmailAttemptOutcome: string | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
+  acceptedAt: Date | null
+  acceptedOfferRevision: number | null
+  acceptedByName: string | null
+  acceptanceIp: string | null
+  acceptanceUserAgent: string | null
+  acceptanceMethod: string | null
+  acceptanceEvidenceNote: string | null
+  declinedAt: Date | null
+  declineReason: string | null
+  closedAt: Date | null
+  closeReason: string | null
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -164,6 +188,17 @@ export type AgreementCountAggregateOutputType = {
   lastEmailAttemptOutcome: number
   lastEmailAttemptCode: number
   lastEmailAttemptMessage: number
+  acceptedAt: number
+  acceptedOfferRevision: number
+  acceptedByName: number
+  acceptanceIp: number
+  acceptanceUserAgent: number
+  acceptanceMethod: number
+  acceptanceEvidenceNote: number
+  declinedAt: number
+  declineReason: number
+  closedAt: number
+  closeReason: number
   notes: number
   createdAt: number
   updatedAt: number
@@ -179,6 +214,7 @@ export type AgreementAvgAggregateInputType = {
   totalGross?: true
   offerRevision?: true
   publicAccessKeyVersion?: true
+  acceptedOfferRevision?: true
 }
 
 export type AgreementSumAggregateInputType = {
@@ -189,6 +225,7 @@ export type AgreementSumAggregateInputType = {
   totalGross?: true
   offerRevision?: true
   publicAccessKeyVersion?: true
+  acceptedOfferRevision?: true
 }
 
 export type AgreementMinAggregateInputType = {
@@ -226,6 +263,17 @@ export type AgreementMinAggregateInputType = {
   lastEmailAttemptOutcome?: true
   lastEmailAttemptCode?: true
   lastEmailAttemptMessage?: true
+  acceptedAt?: true
+  acceptedOfferRevision?: true
+  acceptedByName?: true
+  acceptanceIp?: true
+  acceptanceUserAgent?: true
+  acceptanceMethod?: true
+  acceptanceEvidenceNote?: true
+  declinedAt?: true
+  declineReason?: true
+  closedAt?: true
+  closeReason?: true
   notes?: true
   createdAt?: true
   updatedAt?: true
@@ -266,6 +314,17 @@ export type AgreementMaxAggregateInputType = {
   lastEmailAttemptOutcome?: true
   lastEmailAttemptCode?: true
   lastEmailAttemptMessage?: true
+  acceptedAt?: true
+  acceptedOfferRevision?: true
+  acceptedByName?: true
+  acceptanceIp?: true
+  acceptanceUserAgent?: true
+  acceptanceMethod?: true
+  acceptanceEvidenceNote?: true
+  declinedAt?: true
+  declineReason?: true
+  closedAt?: true
+  closeReason?: true
   notes?: true
   createdAt?: true
   updatedAt?: true
@@ -309,6 +368,17 @@ export type AgreementCountAggregateInputType = {
   lastEmailAttemptOutcome?: true
   lastEmailAttemptCode?: true
   lastEmailAttemptMessage?: true
+  acceptedAt?: true
+  acceptedOfferRevision?: true
+  acceptedByName?: true
+  acceptanceIp?: true
+  acceptanceUserAgent?: true
+  acceptanceMethod?: true
+  acceptanceEvidenceNote?: true
+  declinedAt?: true
+  declineReason?: true
+  closedAt?: true
+  closeReason?: true
   notes?: true
   createdAt?: true
   updatedAt?: true
@@ -439,6 +509,17 @@ export type AgreementGroupByOutputType = {
   lastEmailAttemptOutcome: string | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
+  acceptedAt: Date | null
+  acceptedOfferRevision: number | null
+  acceptedByName: string | null
+  acceptanceIp: string | null
+  acceptanceUserAgent: string | null
+  acceptanceMethod: string | null
+  acceptanceEvidenceNote: string | null
+  declinedAt: Date | null
+  declineReason: string | null
+  closedAt: Date | null
+  closeReason: string | null
   notes: string | null
   createdAt: Date
   updatedAt: Date
@@ -505,6 +586,17 @@ export type AgreementWhereInput = {
   lastEmailAttemptOutcome?: Prisma.StringNullableFilter<"Agreement"> | string | null
   lastEmailAttemptCode?: Prisma.StringNullableFilter<"Agreement"> | string | null
   lastEmailAttemptMessage?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
+  acceptedOfferRevision?: Prisma.IntNullableFilter<"Agreement"> | number | null
+  acceptedByName?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceIp?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceUserAgent?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceMethod?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceEvidenceNote?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  declinedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
+  declineReason?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  closedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
+  closeReason?: Prisma.StringNullableFilter<"Agreement"> | string | null
   notes?: Prisma.StringNullableFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
@@ -552,6 +644,17 @@ export type AgreementOrderByWithRelationInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrderInput | Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrderInput | Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedOfferRevision?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedByName?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceIp?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceUserAgent?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceMethod?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrderInput | Prisma.SortOrder
+  declinedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  declineReason?: Prisma.SortOrderInput | Prisma.SortOrder
+  closedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  closeReason?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -603,6 +706,17 @@ export type AgreementWhereUniqueInput = Prisma.AtLeast<{
   lastEmailAttemptOutcome?: Prisma.StringNullableFilter<"Agreement"> | string | null
   lastEmailAttemptCode?: Prisma.StringNullableFilter<"Agreement"> | string | null
   lastEmailAttemptMessage?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
+  acceptedOfferRevision?: Prisma.IntNullableFilter<"Agreement"> | number | null
+  acceptedByName?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceIp?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceUserAgent?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceMethod?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceEvidenceNote?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  declinedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
+  declineReason?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  closedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
+  closeReason?: Prisma.StringNullableFilter<"Agreement"> | string | null
   notes?: Prisma.StringNullableFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
@@ -650,6 +764,17 @@ export type AgreementOrderByWithAggregationInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrderInput | Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrderInput | Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedOfferRevision?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedByName?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceIp?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceUserAgent?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceMethod?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrderInput | Prisma.SortOrder
+  declinedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  declineReason?: Prisma.SortOrderInput | Prisma.SortOrder
+  closedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  closeReason?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -701,6 +826,17 @@ export type AgreementScalarWhereWithAggregatesInput = {
   lastEmailAttemptOutcome?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
   lastEmailAttemptCode?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
   lastEmailAttemptMessage?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  acceptedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Agreement"> | Date | string | null
+  acceptedOfferRevision?: Prisma.IntNullableWithAggregatesFilter<"Agreement"> | number | null
+  acceptedByName?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  acceptanceIp?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  acceptanceUserAgent?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  acceptanceMethod?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  acceptanceEvidenceNote?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  declinedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Agreement"> | Date | string | null
+  declineReason?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  closedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Agreement"> | Date | string | null
+  closeReason?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
   notes?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Agreement"> | Date | string
@@ -741,6 +877,17 @@ export type AgreementCreateInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -788,6 +935,17 @@ export type AgreementUncheckedCreateInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -829,6 +987,17 @@ export type AgreementUpdateInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -876,6 +1045,17 @@ export type AgreementUncheckedUpdateInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -920,6 +1100,17 @@ export type AgreementCreateManyInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -960,6 +1151,17 @@ export type AgreementUpdateManyMutationInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1003,6 +1205,17 @@ export type AgreementUncheckedUpdateManyInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1061,6 +1274,17 @@ export type AgreementCountOrderByAggregateInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrder
+  acceptedOfferRevision?: Prisma.SortOrder
+  acceptedByName?: Prisma.SortOrder
+  acceptanceIp?: Prisma.SortOrder
+  acceptanceUserAgent?: Prisma.SortOrder
+  acceptanceMethod?: Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrder
+  declinedAt?: Prisma.SortOrder
+  declineReason?: Prisma.SortOrder
+  closedAt?: Prisma.SortOrder
+  closeReason?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -1074,6 +1298,7 @@ export type AgreementAvgOrderByAggregateInput = {
   totalGross?: Prisma.SortOrder
   offerRevision?: Prisma.SortOrder
   publicAccessKeyVersion?: Prisma.SortOrder
+  acceptedOfferRevision?: Prisma.SortOrder
 }
 
 export type AgreementMaxOrderByAggregateInput = {
@@ -1111,6 +1336,17 @@ export type AgreementMaxOrderByAggregateInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrder
+  acceptedOfferRevision?: Prisma.SortOrder
+  acceptedByName?: Prisma.SortOrder
+  acceptanceIp?: Prisma.SortOrder
+  acceptanceUserAgent?: Prisma.SortOrder
+  acceptanceMethod?: Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrder
+  declinedAt?: Prisma.SortOrder
+  declineReason?: Prisma.SortOrder
+  closedAt?: Prisma.SortOrder
+  closeReason?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -1151,6 +1387,17 @@ export type AgreementMinOrderByAggregateInput = {
   lastEmailAttemptOutcome?: Prisma.SortOrder
   lastEmailAttemptCode?: Prisma.SortOrder
   lastEmailAttemptMessage?: Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrder
+  acceptedOfferRevision?: Prisma.SortOrder
+  acceptedByName?: Prisma.SortOrder
+  acceptanceIp?: Prisma.SortOrder
+  acceptanceUserAgent?: Prisma.SortOrder
+  acceptanceMethod?: Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrder
+  declinedAt?: Prisma.SortOrder
+  declineReason?: Prisma.SortOrder
+  closedAt?: Prisma.SortOrder
+  closeReason?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -1164,6 +1411,7 @@ export type AgreementSumOrderByAggregateInput = {
   totalGross?: Prisma.SortOrder
   offerRevision?: Prisma.SortOrder
   publicAccessKeyVersion?: Prisma.SortOrder
+  acceptedOfferRevision?: Prisma.SortOrder
 }
 
 export type AgreementScalarRelationFilter = {
@@ -1346,6 +1594,17 @@ export type AgreementCreateWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1391,6 +1650,17 @@ export type AgreementUncheckedCreateWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1464,6 +1734,17 @@ export type AgreementScalarWhereInput = {
   lastEmailAttemptOutcome?: Prisma.StringNullableFilter<"Agreement"> | string | null
   lastEmailAttemptCode?: Prisma.StringNullableFilter<"Agreement"> | string | null
   lastEmailAttemptMessage?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
+  acceptedOfferRevision?: Prisma.IntNullableFilter<"Agreement"> | number | null
+  acceptedByName?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceIp?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceUserAgent?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceMethod?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  acceptanceEvidenceNote?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  declinedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
+  declineReason?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  closedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
+  closeReason?: Prisma.StringNullableFilter<"Agreement"> | string | null
   notes?: Prisma.StringNullableFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
@@ -1504,6 +1785,17 @@ export type AgreementCreateWithoutContactInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1549,6 +1841,17 @@ export type AgreementUncheckedCreateWithoutContactInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1616,6 +1919,17 @@ export type AgreementCreateWithoutDeliverablesInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1662,6 +1976,17 @@ export type AgreementUncheckedCreateWithoutDeliverablesInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1718,6 +2043,17 @@ export type AgreementUpdateWithoutDeliverablesInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1764,6 +2100,17 @@ export type AgreementUncheckedUpdateWithoutDeliverablesInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1804,6 +2151,17 @@ export type AgreementCreateWithoutTemplateInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1849,6 +2207,17 @@ export type AgreementUncheckedCreateWithoutTemplateInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1918,6 +2287,17 @@ export type AgreementCreateManyOrganizationInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1958,6 +2338,17 @@ export type AgreementUpdateWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2003,6 +2394,17 @@ export type AgreementUncheckedUpdateWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2046,6 +2448,17 @@ export type AgreementUncheckedUpdateManyWithoutOrganizationInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2088,6 +2501,17 @@ export type AgreementCreateManyContactInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2128,6 +2552,17 @@ export type AgreementUpdateWithoutContactInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2173,6 +2608,17 @@ export type AgreementUncheckedUpdateWithoutContactInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2216,6 +2662,17 @@ export type AgreementUncheckedUpdateManyWithoutContactInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2258,6 +2715,17 @@ export type AgreementCreateManyTemplateInput = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptCode?: string | null
   lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -2298,6 +2766,17 @@ export type AgreementUpdateWithoutTemplateInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2343,6 +2822,17 @@ export type AgreementUncheckedUpdateWithoutTemplateInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2386,6 +2876,17 @@ export type AgreementUncheckedUpdateManyWithoutTemplateInput = {
   lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2460,6 +2961,17 @@ export type AgreementSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   lastEmailAttemptOutcome?: boolean
   lastEmailAttemptCode?: boolean
   lastEmailAttemptMessage?: boolean
+  acceptedAt?: boolean
+  acceptedOfferRevision?: boolean
+  acceptedByName?: boolean
+  acceptanceIp?: boolean
+  acceptanceUserAgent?: boolean
+  acceptanceMethod?: boolean
+  acceptanceEvidenceNote?: boolean
+  declinedAt?: boolean
+  declineReason?: boolean
+  closedAt?: boolean
+  closeReason?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -2508,6 +3020,17 @@ export type AgreementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   lastEmailAttemptOutcome?: boolean
   lastEmailAttemptCode?: boolean
   lastEmailAttemptMessage?: boolean
+  acceptedAt?: boolean
+  acceptedOfferRevision?: boolean
+  acceptedByName?: boolean
+  acceptanceIp?: boolean
+  acceptanceUserAgent?: boolean
+  acceptanceMethod?: boolean
+  acceptanceEvidenceNote?: boolean
+  declinedAt?: boolean
+  declineReason?: boolean
+  closedAt?: boolean
+  closeReason?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -2554,6 +3077,17 @@ export type AgreementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   lastEmailAttemptOutcome?: boolean
   lastEmailAttemptCode?: boolean
   lastEmailAttemptMessage?: boolean
+  acceptedAt?: boolean
+  acceptedOfferRevision?: boolean
+  acceptedByName?: boolean
+  acceptanceIp?: boolean
+  acceptanceUserAgent?: boolean
+  acceptanceMethod?: boolean
+  acceptanceEvidenceNote?: boolean
+  declinedAt?: boolean
+  declineReason?: boolean
+  closedAt?: boolean
+  closeReason?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -2600,12 +3134,23 @@ export type AgreementSelectScalar = {
   lastEmailAttemptOutcome?: boolean
   lastEmailAttemptCode?: boolean
   lastEmailAttemptMessage?: boolean
+  acceptedAt?: boolean
+  acceptedOfferRevision?: boolean
+  acceptedByName?: boolean
+  acceptanceIp?: boolean
+  acceptanceUserAgent?: boolean
+  acceptanceMethod?: boolean
+  acceptanceEvidenceNote?: boolean
+  declinedAt?: boolean
+  declineReason?: boolean
+  closedAt?: boolean
+  closeReason?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AgreementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "title" | "summary" | "termsMarkdown" | "templateId" | "taxRate" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "dueInDays" | "billingTrigger" | "subtotalNet" | "totalTax" | "totalGross" | "sellerSnapshot" | "buyerSnapshot" | "validUntil" | "issueDate" | "expiresAt" | "offerRevision" | "offerSnapshot" | "offerSnapshotHash" | "issuedToEmail" | "issuedVia" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["agreement"]>
+export type AgreementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "title" | "summary" | "termsMarkdown" | "templateId" | "taxRate" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "dueInDays" | "billingTrigger" | "subtotalNet" | "totalTax" | "totalGross" | "sellerSnapshot" | "buyerSnapshot" | "validUntil" | "issueDate" | "expiresAt" | "offerRevision" | "offerSnapshot" | "offerSnapshotHash" | "issuedToEmail" | "issuedVia" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "acceptedAt" | "acceptedOfferRevision" | "acceptedByName" | "acceptanceIp" | "acceptanceUserAgent" | "acceptanceMethod" | "acceptanceEvidenceNote" | "declinedAt" | "declineReason" | "closedAt" | "closeReason" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["agreement"]>
 export type AgreementInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -2670,6 +3215,17 @@ export type $AgreementPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     lastEmailAttemptOutcome: string | null
     lastEmailAttemptCode: string | null
     lastEmailAttemptMessage: string | null
+    acceptedAt: Date | null
+    acceptedOfferRevision: number | null
+    acceptedByName: string | null
+    acceptanceIp: string | null
+    acceptanceUserAgent: string | null
+    acceptanceMethod: string | null
+    acceptanceEvidenceNote: string | null
+    declinedAt: Date | null
+    declineReason: string | null
+    closedAt: Date | null
+    closeReason: string | null
     notes: string | null
     createdAt: Date
     updatedAt: Date
@@ -3137,6 +3693,17 @@ export interface AgreementFieldRefs {
   readonly lastEmailAttemptOutcome: Prisma.FieldRef<"Agreement", 'String'>
   readonly lastEmailAttemptCode: Prisma.FieldRef<"Agreement", 'String'>
   readonly lastEmailAttemptMessage: Prisma.FieldRef<"Agreement", 'String'>
+  readonly acceptedAt: Prisma.FieldRef<"Agreement", 'DateTime'>
+  readonly acceptedOfferRevision: Prisma.FieldRef<"Agreement", 'Int'>
+  readonly acceptedByName: Prisma.FieldRef<"Agreement", 'String'>
+  readonly acceptanceIp: Prisma.FieldRef<"Agreement", 'String'>
+  readonly acceptanceUserAgent: Prisma.FieldRef<"Agreement", 'String'>
+  readonly acceptanceMethod: Prisma.FieldRef<"Agreement", 'String'>
+  readonly acceptanceEvidenceNote: Prisma.FieldRef<"Agreement", 'String'>
+  readonly declinedAt: Prisma.FieldRef<"Agreement", 'DateTime'>
+  readonly declineReason: Prisma.FieldRef<"Agreement", 'String'>
+  readonly closedAt: Prisma.FieldRef<"Agreement", 'DateTime'>
+  readonly closeReason: Prisma.FieldRef<"Agreement", 'String'>
   readonly notes: Prisma.FieldRef<"Agreement", 'String'>
   readonly createdAt: Prisma.FieldRef<"Agreement", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Agreement", 'DateTime'>
