@@ -170,7 +170,13 @@ This repository is Bun-native. Use `bun install` and `bun run ...` commands for 
 | `BETTER_AUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional) | No |
 | `BETTER_AUTH_GITHUB_CLIENT_ID` | GitHub OAuth client ID (optional) | No |
 | `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional) | No |
-| `RESEND_API_KEY` | Resend API key for sending invoice/quote/invite emails | No |
+| `EMAIL_PROVIDER` | `resend` (default) or `smtp`; SMTP requires Node/Bun | No |
+| `RESEND_API_KEY` | Resend API key, required when sending through Resend | No |
+| `SMTP_HOST` | SMTP relay hostname, required with `EMAIL_PROVIDER=smtp` | No |
+| `SMTP_PORT` | Relay port; defaults to 587, or 465 when `SMTP_SECURE=true` | No |
+| `SMTP_SECURE` | `true` for implicit TLS, `false` for STARTTLS (default) | No |
+| `SMTP_REQUIRE_TLS` | Require STARTTLS; defaults to `true` for non-implicit TLS | No |
+| `SMTP_USER`, `SMTP_PASSWORD` | Optional relay authentication; set both or neither | No |
 | `FROM_EMAIL` | Sender email address used for outgoing emails | No |
 | `CRON_SECRET` | Bearer token required by `/api/cron/tick` (and the legacy `/api/cron/mark-overdue`); the bundled `scheduler` service calls the tick every 5 minutes | Yes (prod) |
 | `QUITS_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
@@ -192,3 +198,29 @@ Quits is source available. You can self-host it for your own business, inspect t
 modify it and contribute. The license restricts competing commercial uses. Each version
 becomes available under Apache-2.0 two years after its publication under FSL.
 Previously published releases retain their original license.
+
+### SMTP email for self-hosting
+
+Set `EMAIL_PROVIDER=smtp`, `SMTP_HOST`, and `FROM_EMAIL` to use your own relay. For
+port 587, keep `SMTP_SECURE=false` and `SMTP_REQUIRE_TLS=true`. For port 465, set
+`SMTP_SECURE=true`. TLS certificates are always validated. `SMTP_USER` and
+`SMTP_PASSWORD` are optional for a trusted relay; configure both when authentication
+is required. Docker Compose forwards these settings to the app.
+
+For a development mail catcher or a trusted local plaintext relay, set its port and
+`SMTP_REQUIRE_TLS=false`. Do not use plaintext for a relay reached over the internet.
+Settings shows missing or invalid SMTP configuration using environment variable names;
+it never returns relay credentials. Configuration readiness does not test relay connectivity.
+
+SMTP is supported by the Node/Bun self-host runtime. Worker runtimes continue to use
+Resend. Nodemailer loads only when SMTP is selected, so Worker builds do not include
+its socket modules. All email helpers, including organization invitations, use the
+selected provider. SMTP supports rendered HTML or text and inline attachments.
+
+SMTP servers do not deduplicate email by an idempotency key or Message-ID. If a
+connection is lost after submission, the outbox records the delivery as unconfirmed
+and stops automatic retries. The customer may have received the message. Check your
+relay's logs before choosing to resend it. Explicit server refusals record a failed
+send; accepted messages settle without contacting the relay again. Resend keeps its
+existing idempotent retry behavior. A queued delivery keeps the provider recorded
+before its first submission even if deployment settings later change.

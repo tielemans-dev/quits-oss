@@ -3,6 +3,7 @@ import { z } from "zod"
 import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import { deliver, EmailSendError, ensureEmailProvider, type EmailMessage } from "../../lib/email"
+import { selectedEmailProvider } from "../../lib/email-provider-config"
 import { appLogger } from "../../lib/observability"
 import type { Actor } from "../actor"
 import { appendEvents } from "../events"
@@ -26,8 +27,8 @@ import { Command, type PendingEvent } from "../services"
  * - `withdrawn`: the email is no longer wanted (e.g. the invoice was paid before a reminder went
  *   out) and no request had been made yet.
  *
- * Uncertain failures are retried with the identical stored message under the same provider
- * idempotency key, so the provider drops a duplicate, but only while that key is still honored.
+ * Resend retries uncertain failures with the identical stored message and idempotency key while
+ * the key is still honored. SMTP cannot deduplicate, so an uncertain SMTP request is never retried.
  * A provider acceptance is recorded on the job before the document is settled, so a failed
  * settlement is retried without contacting the provider again; deliveries whose job died without
  * settling are settled by a scheduler sweep. Settlement is conditional on the document still
@@ -103,6 +104,8 @@ const payloadSchema = z.object({
   providerMessageId: z.string().optional(),
   /** Requests started with the provider, counted before each request is made. */
   requests: z.number().int().optional(),
+  /** Pinned before the first request. Legacy requests without this field used Resend. */
+  provider: z.enum(["resend", "smtp"]).optional(),
   /** A failure decided but not yet settled, kept so a retried settlement settles the same way. */
   decision: z
     .object({ reason: z.enum(["rejected", "unconfirmed", "withdrawn"]), message: z.string() })
@@ -318,6 +321,11 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   // This run's claim counts in job.attempts, so earlier runs are attempts - 1.
   const requests = requestsStarted(payload, job.attempts - 1)
   const possiblyDelivered = requests > 0
+  // A runner may have stopped after starting an SMTP request. Even a stable Message-ID cannot
+  // deduplicate SMTP, so another runner must settle it without making a second submission.
+  if (possiblyDelivered && payload.provider === "smtp") {
+    return settleDecision(job, payload, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
+  }
   if (possiblyDelivered && Date.now() - job.createdAt.getTime() >= IDEMPOTENCY_WINDOW_MS) {
     return settleDecision(job, payload, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
   }
@@ -334,8 +342,10 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   }
 
   // A process that cannot send at all makes no request; that is not an unknown outcome.
+  let provider: "resend" | "smtp"
   try {
-    ensureEmailProvider()
+    provider = payload.provider ?? (possiblyDelivered ? "resend" : selectedEmailProvider())
+    ensureEmailProvider(provider)
   } catch (error) {
     if (job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {
       return settleDecision(
@@ -351,7 +361,7 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   }
 
   // Counted before the request, so a request whose outcome is lost is never mistaken for none.
-  const requested = { ...payload, requests: requests + 1 }
+  const requested = { ...payload, requests: requests + 1, provider }
   await recordOnJob(job, requested)
   // Checked again after the writes above, which can stall: no request once the key may have lapsed.
   if (possiblyDelivered && Date.now() - job.createdAt.getTime() >= IDEMPOTENCY_WINDOW_MS) {
@@ -360,7 +370,7 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   let accepted: { id: string }
   try {
     accepted = await withTimeout(
-      deliver(payload.message, { idempotencyKey: payload.idempotencyKey }),
+      deliver(payload.message, { idempotencyKey: payload.idempotencyKey, provider }),
       PROVIDER_TIMEOUT_MS
     )
   } catch (error) {
@@ -376,7 +386,7 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
           : { reason: "rejected", message: error.message }
       )
     }
-    if (job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {
+    if (provider === "smtp" || job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {
       deliveryLogger.error("email.unconfirmed", { kind: payload.completion.kind, error })
       return settleDecision(job, requested, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
     }

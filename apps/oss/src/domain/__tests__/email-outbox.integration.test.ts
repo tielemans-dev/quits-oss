@@ -61,6 +61,7 @@ describeIfDatabase("email outbox", () => {
     while (cleanups.length) await cleanups.pop()?.()
     process.env.RESEND_API_KEY = previousEnv.RESEND_API_KEY
     process.env.FROM_EMAIL = previousEnv.FROM_EMAIL
+    vi.unstubAllEnvs()
   })
 
   async function setup() {
@@ -92,6 +93,76 @@ describeIfDatabase("email outbox", () => {
   /** Makes the queued delivery due again, as if its backoff had passed. */
   const makeDue = (jobId: string) =>
     prisma.job.update({ where: { id: jobId }, data: { runAfter: new Date(Date.now() - 1000) } })
+
+  function useSmtp() {
+    vi.stubEnv("EMAIL_PROVIDER", "smtp")
+    vi.stubEnv("SMTP_HOST", "relay.example.com")
+  }
+
+  it("never retries an ambiguous SMTP submission, even when configuration changes", async () => {
+    const { org, invoiceId } = await setup()
+    useSmtp()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("connection lost after DATA"))
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    expect(deliver).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(deliver).mock.calls[0]?.[1]).toMatchObject({ provider: "smtp" })
+    const job = await deliveryJob(org.organizationId)
+    expect(job).toMatchObject({ status: "failed", payload: { provider: "smtp", requests: 1 }, result: { outcome: "unconfirmed" } })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "unconfirmed" })
+    vi.stubEnv("EMAIL_PROVIDER", "resend")
+    await makeDue(job.id)
+    await runDueJobs({ organizationIds: [org.organizationId] })
+    expect(deliver).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not resubmit SMTP after a runner crashes before recording the acceptance", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("lost response"))
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const job = await deliveryJob(org.organizationId)
+    // Simulate a stopped SMTP runner with a recorded request but no acceptance or decision.
+    await prisma.job.update({ where: { id: job.id }, data: { payload: { ...(job.payload as object), provider: "smtp" } } })
+    await makeDue(job.id)
+    vi.mocked(deliver).mockClear()
+    await runDueJobs({ organizationIds: [org.organizationId] })
+    expect(deliver).not.toHaveBeenCalled()
+    expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "unconfirmed" })
+  })
+
+  it("preserves Resend deduplication after the configured provider changes to SMTP", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("lost response"))
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    useSmtp()
+    await makeDue((await deliveryJob(org.organizationId)).id)
+    await runDueJobs({ organizationIds: [org.organizationId] })
+    expect(deliver).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(deliver).mock.calls[1]?.[1]).toMatchObject({ provider: "resend" })
+    expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "delivered" })
+  })
+
+  it("leaves the draft editable when SMTP explicitly refuses the only request", async () => {
+    const { org, invoiceId } = await setup()
+    useSmtp()
+    vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("smtp_rejected", "SMTP server refused delivery (550)"))
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    expect(deliver).toHaveBeenCalledTimes(1)
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "failed" })
+    expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "rejected" })
+  })
+
+  it("settles a recorded SMTP acceptance without another submission", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("lost response"))
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const job = await deliveryJob(org.organizationId)
+    await prisma.job.update({ where: { id: job.id }, data: { payload: { ...(job.payload as object), provider: "smtp", providerMessageId: "<accepted@relay.test>" } } })
+    await makeDue(job.id)
+    vi.mocked(deliver).mockClear()
+    await runDueJobs({ organizationIds: [org.organizationId] })
+    expect(deliver).not.toHaveBeenCalled()
+    expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "delivered" })
+  })
 
   it("marks the invoice sent only after the provider accepts the email", async () => {
     const { org, invoiceId } = await setup()

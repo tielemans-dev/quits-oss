@@ -168,7 +168,7 @@ describeIfDatabase("invoice send email delivery", () => {
           from: "Acme via Quits <billing@example.com>",
           replyTo: "billing@acme.com",
         }),
-        { idempotencyKey: expect.stringMatching(new RegExp(`^invoice-send:${invoice.id}:`)) }
+        { provider: "resend", idempotencyKey: expect.stringMatching(new RegExp(`^invoice-send:${invoice.id}:`)) }
       )
     } finally {
       restoreEnv(previous)
@@ -203,7 +203,7 @@ describeIfDatabase("invoice send email delivery", () => {
           from: "Acme via Quits <billing@yaip.app>",
           replyTo: "billing@acme.com",
         }),
-        { idempotencyKey: expect.stringMatching(/^invoice-send:/) }
+        { provider: "resend", idempotencyKey: expect.stringMatching(/^invoice-send:/) }
       )
     } finally {
       restoreEnv(previous)
@@ -245,7 +245,7 @@ describeIfDatabase("invoice send email delivery", () => {
       const [message, options] = vi.mocked(deliver).mock.calls[0]!
       expect(message.to).toBe("buyer@example.com")
       expect(message.html).not.toContain("/pay/")
-      expect(options).toEqual({ idempotencyKey: expect.stringMatching(/^invoice-send:/) })
+      expect(options).toEqual({ provider: "resend", idempotencyKey: expect.stringMatching(/^invoice-send:/) })
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })
@@ -483,7 +483,7 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
       expect(paymentUrl(firstCall?.html)).toBeTruthy()
       expect(paymentUrl(secondCall?.[0].html)).toBe(paymentUrl(firstCall?.html))
-      expect(secondCall?.[1]).toEqual({ idempotencyKey: expect.stringMatching(/^invoice-resend:/) })
+      expect(secondCall?.[1]).toEqual({ provider: "resend", idempotencyKey: expect.stringMatching(/^invoice-resend:/) })
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })

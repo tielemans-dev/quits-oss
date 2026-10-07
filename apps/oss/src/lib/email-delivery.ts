@@ -4,6 +4,7 @@ import type {
   EmailDeliveryOutcome,
   EmailDeliveryRuntimeStatus,
 } from "@quits/contracts/email"
+import { readSmtpConfiguration, selectedEmailProvider, SmtpConfigurationError, type EmailEnvironment } from "./email-provider-config"
 
 export type { EmailDeliveryRuntimeStatus }
 
@@ -51,17 +52,36 @@ export function getEmailDeliveryRuntimeStatus(input: {
   managed: boolean
   resendApiKey?: string | null
   fromEmail?: string | null
+  emailProvider?: string
+  smtp?: EmailEnvironment
 }): EmailDeliveryRuntimeStatus {
   const hasResendApiKey = Boolean(input.resendApiKey?.trim())
   const hasFromEmail = Boolean(input.fromEmail?.trim())
-  const configured = hasResendApiKey && hasFromEmail
+  let providerMissing: string[]
+  try {
+    // Empty selects the historical default without consulting this process's environment.
+    const provider = selectedEmailProvider(input.emailProvider ?? "")
+    if (provider === "smtp") {
+      try {
+        readSmtpConfiguration(input.smtp ?? {})
+        providerMissing = []
+      } catch (error) {
+        providerMissing = error instanceof SmtpConfigurationError ? error.fields : ["SMTP_HOST"]
+      }
+    } else {
+      providerMissing = hasResendApiKey ? [] : ["RESEND_API_KEY"]
+    }
+  } catch {
+    providerMissing = ["EMAIL_PROVIDER"]
+  }
+  const configured = providerMissing.length === 0 && hasFromEmail
   const available = configured
   const sender = input.fromEmail?.trim() || "noreply@yaip.app"
   const missing = input.managed
     ? []
     : [
         ...(hasFromEmail ? [] : ["FROM_EMAIL"]),
-        ...(hasResendApiKey ? [] : ["RESEND_API_KEY"]),
+        ...providerMissing,
       ]
 
   return {

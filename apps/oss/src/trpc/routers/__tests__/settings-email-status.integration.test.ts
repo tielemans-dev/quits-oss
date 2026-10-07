@@ -13,6 +13,10 @@ function clearEmailEnv() {
   delete process.env.RESEND_API_KEY
   delete process.env.FROM_EMAIL
   delete process.env.QUITS_DISTRIBUTION
+  delete process.env.EMAIL_PROVIDER
+  delete process.env.SMTP_HOST
+  delete process.env.SMTP_USER
+  delete process.env.SMTP_PASSWORD
 }
 
 async function createOrgWithCaller(name: string) {
@@ -51,6 +55,23 @@ describeIfDatabase("settings email delivery status", () => {
   afterEach(() => {
     clearEmailEnv()
     setRuntimeExtensions([])
+  })
+
+  it("reports configured SMTP without a Resend key and never exposes relay credentials", async () => {
+    process.env.EMAIL_PROVIDER = "smtp"
+    process.env.SMTP_HOST = "relay.example.com"
+    process.env.SMTP_USER = "smtp-user"
+    process.env.SMTP_PASSWORD = "synthetic-smtp-password"
+    process.env.FROM_EMAIL = "billing@acme.example"
+    const { orgId, caller } = await createOrgWithCaller("Settings SMTP Org")
+    try {
+      const settings = await caller.settings.get()
+      expect(settings.emailDelivery).toMatchObject({ managed: false, configured: true, available: true, missing: [], status: "configured" })
+      expect(JSON.stringify(settings)).not.toContain("synthetic-smtp-password")
+      expect(JSON.stringify(settings.emailDelivery)).not.toContain("smtp-user")
+    } finally {
+      await prisma.organization.deleteMany({ where: { id: orgId } })
+    }
   })
 
   it("reports configured OSS email delivery when required env vars are present", async () => {

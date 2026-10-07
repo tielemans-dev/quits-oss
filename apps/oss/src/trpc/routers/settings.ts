@@ -124,6 +124,8 @@ export const settingsRouter = router({
       managed: runtimeCapabilities.emailDelivery.managed,
       resendApiKey: process.env.RESEND_API_KEY,
       fromEmail: process.env.FROM_EMAIL,
+      emailProvider: process.env.EMAIL_PROVIDER,
+      smtp: process.env,
     })
     const documentSending = buildDocumentSendingState({
       settings,

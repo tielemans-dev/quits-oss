@@ -2,6 +2,8 @@ import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import type { TranslationKey } from "./i18n/messages"
+import { selectedEmailProvider, readSmtpConfiguration, type EmailProvider } from "./email-provider-config"
+import { getRuntimePlatform } from "./runtime/platform"
 
 let _resend: Resend | null = null
 
@@ -44,8 +46,15 @@ function getResend(): Resend {
  * Throws if email cannot be sent from this process (e.g. no API key), before any request is made.
  * Lets callers tell a local configuration problem from a request whose outcome is unknown.
  */
-export function ensureEmailProvider() {
-  getResend()
+export function ensureEmailProvider(provider: EmailProvider = selectedEmailProvider()) {
+  if (provider === "resend") {
+    getResend()
+  } else {
+    if (getRuntimePlatform().getRuntimeKind() !== "node") {
+      throw new Error("SMTP email delivery requires the Node/Bun runtime")
+    }
+    readSmtpConfiguration()
+  }
 }
 
 export class EmailSendError extends Error {
@@ -80,9 +89,10 @@ export function composeMessage(to: string, content: EmailContent) {
 }
 
 export type DeliveryOptions = {
+  /** Persisted by the outbox before sending; a restart must keep the same provider. */
+  provider?: EmailProvider
   /**
-   * Sent as-is as the provider idempotency key: the provider drops a repeat of a message it
-   * already accepted under this key.
+   * Resend drops repeats of this key. SMTP does not support idempotency and ignores it.
    */
   idempotencyKey?: string
 }
@@ -95,6 +105,11 @@ export async function deliver(
   message: EmailMessage,
   options: DeliveryOptions = {}
 ): Promise<{ id: string }> {
+  if ((options.provider ?? selectedEmailProvider()) === "smtp") {
+    ensureEmailProvider("smtp")
+    const { deliverSmtp } = await import("./email-smtp-node")
+    return deliverSmtp(message)
+  }
   const result = await getResend().emails.send(
     message,
     options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined

@@ -157,7 +157,7 @@ describeIfDatabase("quote send email delivery", () => {
           from: "Acme via Quits <billing@example.com>",
           replyTo: "billing@acme.com",
         }),
-        { idempotencyKey: expect.stringMatching(new RegExp(`^quote-send:${quote.id}:`)) }
+        { provider: "resend", idempotencyKey: expect.stringMatching(new RegExp(`^quote-send:${quote.id}:`)) }
       )
     } finally {
       restoreEnv(previous)
@@ -191,7 +191,7 @@ describeIfDatabase("quote send email delivery", () => {
           from: "Acme <billing@billing.acme.com>",
           replyTo: "billing@acme.com",
         }),
-        { idempotencyKey: expect.stringMatching(/^quote-send:/) }
+        { provider: "resend", idempotencyKey: expect.stringMatching(/^quote-send:/) }
       )
     } finally {
       restoreEnv(previous)
@@ -384,7 +384,7 @@ describeIfDatabase("quote send email delivery", () => {
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
       expect(quoteUrl(firstCall?.html)).toBeTruthy()
       expect(quoteUrl(secondCall?.[0].html)).toBe(quoteUrl(firstCall?.html))
-      expect(secondCall?.[1]).toEqual({ idempotencyKey: expect.stringMatching(/^quote-resend:/) })
+      expect(secondCall?.[1]).toEqual({ provider: "resend", idempotencyKey: expect.stringMatching(/^quote-resend:/) })
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })
