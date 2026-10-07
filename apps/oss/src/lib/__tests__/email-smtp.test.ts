@@ -4,6 +4,9 @@ import { deliver, EmailSendError, ensureEmailProvider } from "../email"
 import { readSmtpConfiguration, selectedEmailProvider } from "../email-provider-config"
 import { getEmailDeliveryRuntimeStatus } from "../email-delivery"
 import { resetRuntimePlatform, setRuntimePlatform } from "../runtime/platform"
+import { buildQuitsAuthOptions } from "../runtime/auth-config"
+import { readFileSync } from "node:fs"
+import { parse as parseDotenv } from "dotenv"
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -23,6 +26,11 @@ describe("SMTP configuration", () => {
     expect(readSmtpConfiguration({ SMTP_HOST: "relay.example" })).toMatchObject({ port: 587, secure: false, requireTLS: true })
     expect(readSmtpConfiguration({ SMTP_HOST: "relay.example", SMTP_SECURE: "true" })).toMatchObject({ port: 465, secure: true, requireTLS: false })
     expect(readSmtpConfiguration({ SMTP_HOST: "relay.example", SMTP_REQUIRE_TLS: "false" })).toMatchObject({ requireTLS: false })
+  })
+
+  it("uses port 465 when an operator selects implicit TLS in the example environment", () => {
+    const example = parseDotenv(readFileSync(new URL("../../../../../.env.example", import.meta.url)))
+    expect(readSmtpConfiguration({ ...example, SMTP_HOST: "relay.example", SMTP_SECURE: "true" })).toMatchObject({ port: 465, secure: true })
   })
 
   it("validates configuration and never exposes credentials in status", () => {
@@ -49,6 +57,11 @@ describe("SMTP configuration", () => {
     vi.stubEnv("EMAIL_PROVIDER", "smtp")
     setRuntimePlatform({ id: "test-worker", getRuntimeKind: () => "worker", getEnv: (name) => process.env[name], getBinding: () => undefined, getPrisma: () => undefined, getAuthHooks: () => ({}) })
     expect(() => ensureEmailProvider()).toThrow("Node/Bun")
+  })
+
+  it("reports complete SMTP configuration unavailable on Workers and keeps managed Resend available", () => {
+    expect(getEmailDeliveryRuntimeStatus({ managed: false, runtimeKind: "worker", emailProvider: "smtp", fromEmail: "a@example.com", smtp: { SMTP_HOST: "relay" } })).toMatchObject({ configured: false, available: false, missing: ["EMAIL_PROVIDER"], status: "missing_configuration" })
+    expect(getEmailDeliveryRuntimeStatus({ managed: true, runtimeKind: "worker", emailProvider: "resend", resendApiKey: "test-key", fromEmail: "a@example.com" })).toMatchObject({ configured: true, available: true, missing: [], status: "managed" })
   })
 })
 
@@ -106,6 +119,34 @@ async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect", r
 }
 
 describe("real SMTP transport", () => {
+  it("uses the independent auth environment for the provider, relay, and invitation sender", async () => {
+    await withRelay("accept", async (bodies) => {
+      const authEnvironment: Record<string, string> = {
+        BETTER_AUTH_URL: "https://reader.example",
+        EMAIL_PROVIDER: "smtp",
+        SMTP_HOST: "127.0.0.1",
+        SMTP_PORT: process.env.SMTP_PORT!,
+        SMTP_SECURE: "false",
+        SMTP_REQUIRE_TLS: "false",
+        FROM_EMAIL: "reader@example.com",
+      }
+      // The auth reader is not registered as the runtime platform and differs from process.env.
+      vi.stubEnv("EMAIL_PROVIDER", "resend")
+      vi.stubEnv("RESEND_API_KEY", "")
+      vi.stubEnv("SMTP_HOST", "wrong-relay.invalid")
+      vi.stubEnv("FROM_EMAIL", "process@example.com")
+      const options = buildQuitsAuthOptions({
+        prisma: { orgSettings: { findUnique: vi.fn().mockResolvedValue({ locale: "en-US" }) } } as never,
+        env: { getEnv: (name) => authEnvironment[name] },
+      })
+      await options.plugins[0].options.sendInvitationEmail({ id: "invite-reader", email: "customer@example.com", inviter: { user: { name: "Ada" } }, organization: { id: "org-reader", name: "Acme" } } as never)
+      expect(bodies).toHaveLength(1)
+      expect(bodies[0]).toContain("From: Quits <reader@example.com>")
+      expect(bodies[0]).toContain("https://reader.example/accept-invitation/invite-reader")
+      expect(bodies[0]).not.toContain("process@example.com")
+    })
+  })
+
   it("sends a rendered message and returns its message id", async () => {
     await withRelay("accept", async (bodies) => {
       await expect(deliver(message, { idempotencyKey: "smtp-smoke-42" })).resolves.toMatchObject({ id: expect.stringContaining("@example.com>") })

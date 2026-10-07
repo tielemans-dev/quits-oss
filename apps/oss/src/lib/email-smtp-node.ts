@@ -1,14 +1,14 @@
 import type { SendMailOptions } from "nodemailer"
 import { EmailSendError, type EmailMessage } from "./email"
-import { readSmtpConfiguration } from "./email-provider-config"
-import { getRuntimePlatform } from "./runtime/platform"
+import { readSmtpConfiguration, type EmailEnvironment } from "./email-provider-config"
+import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
 
 /** Node/Bun only. The computed import keeps socket dependencies out of Worker bundles. */
-export async function deliverSmtp(message: EmailMessage): Promise<{ id: string }> {
+export async function deliverSmtp(message: EmailMessage, environment: EmailEnvironment = getRuntimeEnv()): Promise<{ id: string }> {
   if (getRuntimePlatform().getRuntimeKind() !== "node") {
     throw new Error("SMTP email delivery requires the Node/Bun runtime")
   }
-  const configuration = readSmtpConfiguration()
+  const configuration = readSmtpConfiguration(environment)
   const moduleName = "nodemailer"
   const { default: nodemailer } = await import(/* @vite-ignore */ moduleName) as { default: typeof import("nodemailer") }
   const transport = nodemailer.createTransport(configuration)

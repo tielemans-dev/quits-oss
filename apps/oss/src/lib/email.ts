@@ -2,8 +2,8 @@ import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import type { TranslationKey } from "./i18n/messages"
-import { selectedEmailProvider, readSmtpConfiguration, type EmailProvider } from "./email-provider-config"
-import { getRuntimePlatform } from "./runtime/platform"
+import { selectedEmailProvider, readSmtpConfiguration, type EmailProvider, type EmailEnvironment } from "./email-provider-config"
+import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
 
 let _resend: Resend | null = null
 
@@ -30,8 +30,8 @@ export function formatMultilineHtml(value: string): string {
 
 let _resendKey: string | undefined
 
-function getResend(): Resend {
-  const key = process.env.RESEND_API_KEY
+function getResend(environment: EmailEnvironment = getRuntimeEnv()): Resend {
+  const key = environment.RESEND_API_KEY
   if (!key) {
     throw new Error("RESEND_API_KEY is not configured")
   }
@@ -46,14 +46,14 @@ function getResend(): Resend {
  * Throws if email cannot be sent from this process (e.g. no API key), before any request is made.
  * Lets callers tell a local configuration problem from a request whose outcome is unknown.
  */
-export function ensureEmailProvider(provider: EmailProvider = selectedEmailProvider()) {
-  if (provider === "resend") {
-    getResend()
+export function ensureEmailProvider(provider?: EmailProvider, environment: EmailEnvironment = getRuntimeEnv()) {
+  if ((provider ?? selectedEmailProvider(environment.EMAIL_PROVIDER ?? "")) === "resend") {
+    getResend(environment)
   } else {
     if (getRuntimePlatform().getRuntimeKind() !== "node") {
       throw new Error("SMTP email delivery requires the Node/Bun runtime")
     }
-    readSmtpConfiguration()
+    readSmtpConfiguration(environment)
   }
 }
 
@@ -89,6 +89,8 @@ export function composeMessage(to: string, content: EmailContent) {
 }
 
 export type DeliveryOptions = {
+  /** Explicit server environment for auth adapters built with an independent env reader. */
+  environment?: EmailEnvironment
   /** Persisted by the outbox before sending; a restart must keep the same provider. */
   provider?: EmailProvider
   /**
@@ -105,12 +107,13 @@ export async function deliver(
   message: EmailMessage,
   options: DeliveryOptions = {}
 ): Promise<{ id: string }> {
-  if ((options.provider ?? selectedEmailProvider()) === "smtp") {
-    ensureEmailProvider("smtp")
+  const environment = options.environment ?? getRuntimeEnv()
+  if ((options.provider ?? selectedEmailProvider(environment.EMAIL_PROVIDER ?? "")) === "smtp") {
+    ensureEmailProvider("smtp", environment)
     const { deliverSmtp } = await import("./email-smtp-node")
-    return deliverSmtp(message)
+    return deliverSmtp(message, environment)
   }
-  const result = await getResend().emails.send(
+  const result = await getResend(environment).emails.send(
     message,
     options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined
   )
@@ -121,8 +124,8 @@ export async function deliver(
   return { id: result.data.id }
 }
 
-export function fromAddress(): string {
-  return sanitizeHeader(process.env.FROM_EMAIL ?? "noreply@yaip.app")
+export function fromAddress(environment: EmailEnvironment = getRuntimeEnv()): string {
+  return sanitizeHeader(environment.FROM_EMAIL ?? "noreply@yaip.app")
 }
 
 export function t(
@@ -419,7 +422,7 @@ export function buildInvitationEmailContent({
   orgName,
   invitationUrl,
   locale,
-}: Omit<SendInvitationEmailParams, "to">) {
+}: Omit<SendInvitationEmailParams, "to">, environment: EmailEnvironment = getRuntimeEnv()) {
   const safeInviterName = escapeHtml(inviterName)
   const safeOrgName = escapeHtml(orgName)
   const safeInvitationUrl = escapeAttribute(invitationUrl)
@@ -440,7 +443,7 @@ export function buildInvitationEmailContent({
       t("email.invitation.subject", locale, { inviterName, orgName })
     ),
     html,
-    fromAddress: `Quits <${fromAddress()}>`,
+    fromAddress: `Quits <${fromAddress(environment)}>`,
   }
 }
 
@@ -450,18 +453,18 @@ export async function sendInvitationEmail({
   orgName,
   invitationUrl,
   locale,
-}: SendInvitationEmailParams) {
+}: SendInvitationEmailParams, options: DeliveryOptions = {}) {
   const content = buildInvitationEmailContent({
     inviterName,
     orgName,
     invitationUrl,
     locale,
-  })
+  }, options.environment)
 
   return deliver({
     from: content.fromAddress,
     to,
     subject: content.subject,
     html: content.html,
-  })
+  }, options)
 }

@@ -5,6 +5,7 @@ import type {
   EmailDeliveryRuntimeStatus,
 } from "@quits/contracts/email"
 import { readSmtpConfiguration, selectedEmailProvider, SmtpConfigurationError, type EmailEnvironment } from "./email-provider-config"
+import { getRuntimePlatform, type RuntimeKind } from "./runtime/platform"
 
 export type { EmailDeliveryRuntimeStatus }
 
@@ -54,6 +55,7 @@ export function getEmailDeliveryRuntimeStatus(input: {
   fromEmail?: string | null
   emailProvider?: string
   smtp?: EmailEnvironment
+  runtimeKind?: RuntimeKind
 }): EmailDeliveryRuntimeStatus {
   const hasResendApiKey = Boolean(input.resendApiKey?.trim())
   const hasFromEmail = Boolean(input.fromEmail?.trim())
@@ -64,7 +66,7 @@ export function getEmailDeliveryRuntimeStatus(input: {
     if (provider === "smtp") {
       try {
         readSmtpConfiguration(input.smtp ?? {})
-        providerMissing = []
+        providerMissing = (input.runtimeKind ?? getRuntimePlatform().getRuntimeKind()) === "worker" ? ["EMAIL_PROVIDER"] : []
       } catch (error) {
         providerMissing = error instanceof SmtpConfigurationError ? error.fields : ["SMTP_HOST"]
       }

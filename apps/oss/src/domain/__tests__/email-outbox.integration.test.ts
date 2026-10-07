@@ -8,11 +8,14 @@ vi.mock("../../lib/email", async () => {
 
 import { prisma } from "../../lib/db"
 import { deliver, EmailSendError } from "../../lib/email"
+import { defaultNodePlatform } from "../../lib/runtime/node-platform"
+import { resetRuntimePlatform, setRuntimePlatform } from "../../lib/runtime/platform"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
 import { decideApproval } from "../approvals"
 import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice, updateInvoiceDraft } from "../commands/invoices"
+import { createQuoteDraft, sendQuote } from "../commands/quotes"
 import { recordPayment } from "../commands/payments"
 import {
   POLICY_DISABLED_MESSAGE,
@@ -59,6 +62,7 @@ describeIfDatabase("email outbox", () => {
   })
 
   afterEach(async () => {
+    resetRuntimePlatform()
     while (cleanups.length) await cleanups.pop()?.()
     process.env.RESEND_API_KEY = previousEnv.RESEND_API_KEY
     process.env.FROM_EMAIL = previousEnv.FROM_EMAIL
@@ -99,6 +103,22 @@ describeIfDatabase("email outbox", () => {
     vi.stubEnv("EMAIL_PROVIDER", "smtp")
     vi.stubEnv("SMTP_HOST", "relay.example.com")
   }
+
+  it("blocks invoice and quote email sends before queuing SMTP on a Worker", async () => {
+    const { org, invoiceId, contactId } = await setup()
+    const quote = await executeIssuanceCommand(createQuoteDraft, { contactId, expiryDate: "2099-12-01", taxRate: 0, items: [{ description: "Design", quantity: 1, unitPrice: 100 }] }, { actor: org.actors.admin })
+    if (quote.status !== "completed") throw new Error("quote setup failed")
+    const environment: Record<string, string> = { EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example", FROM_EMAIL: "worker-reader@example.com" }
+    setRuntimePlatform({ ...defaultNodePlatform, id: "test-worker-smtp", getRuntimeKind: () => "worker", getEnv: (name) => environment[name] })
+    const invoiceSend = await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const quoteSend = await executeIssuanceCommand(sendQuote, { id: quote.result.id }, { actor: org.actors.admin })
+    expect(invoiceSend).toMatchObject({ status: "failed", error: { code: "email_unavailable" } })
+    expect(quoteSend).toMatchObject({ status: "failed", error: { code: "email_unavailable" } })
+    expect(deliver).not.toHaveBeenCalled()
+    expect(await prisma.job.count({ where: { organizationId: org.organizationId, type: EMAIL_DELIVERY_JOB } })).toBe(0)
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: null })
+    expect(await prisma.quote.findUniqueOrThrow({ where: { id: quote.result.id } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: null })
+  })
 
   it("never retries an ambiguous SMTP submission, even when configuration changes", async () => {
     const { org, invoiceId } = await setup()

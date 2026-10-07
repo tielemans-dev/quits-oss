@@ -258,9 +258,11 @@ without both adapters can still issue documents and record `document.artifact_mi
 ### SMTP email for self-hosting
 
 Set `EMAIL_PROVIDER=smtp`, `SMTP_HOST`, and `FROM_EMAIL` to use your own relay. For
-port 587, keep `SMTP_SECURE=false` and `SMTP_REQUIRE_TLS=true`. For port 465, set
-`SMTP_SECURE=true`. TLS certificates are always validated. `SMTP_USER` and
-`SMTP_PASS` are optional for a trusted relay; configure both when authentication
+port 587, keep `SMTP_SECURE=false` and `SMTP_REQUIRE_TLS=true`. Leave `SMTP_PORT`
+empty for automatic port selection. For port 465, set `SMTP_SECURE=true`. If you
+override `SMTP_PORT`, pair `SMTP_PORT=587` with `SMTP_SECURE=false`, or
+`SMTP_PORT=465` with `SMTP_SECURE=true`. TLS certificates are always validated.
+`SMTP_USER` and `SMTP_PASS` are optional for a trusted relay; configure both when authentication
 is required. `SMTP_PASSWORD` remains a compatibility alias for `SMTP_PASS`. Docker
 Compose forwards these settings to the app.
 
@@ -270,9 +272,11 @@ Settings shows missing or invalid SMTP configuration using environment variable 
 it never returns relay credentials. Configuration readiness does not test relay connectivity.
 
 SMTP is supported by the Node/Bun self-host runtime. Worker runtimes continue to use
-Resend. Nodemailer loads only when SMTP is selected, so Worker builds do not include
-its socket modules. All email helpers, including organization invitations, use the
-selected provider. SMTP supports rendered HTML or text and inline attachments.
+Resend. Selecting SMTP on a Worker reports delivery unavailable and identifies
+`EMAIL_PROVIDER` as the setting to change before sending documents. Nodemailer loads
+only when SMTP is selected, so Worker builds do not include its socket modules.
+All email helpers, including organization invitations, use the selected provider.
+SMTP supports rendered HTML or text and inline attachments.
 
 SMTP servers do not deduplicate email by an idempotency key or Message-ID. If a
 connection is lost after submission, the outbox records the delivery as unconfirmed

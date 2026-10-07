@@ -18,7 +18,12 @@ describe("auth invitation email provider", () => {
   it("sends invitations with SMTP when there is no Resend key", async () => {
     const send = invitationHook({ BETTER_AUTH_URL: "https://app.example", EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example" })
     await send(invitation as never)
-    expect(sendInvitationEmail).toHaveBeenCalledWith({ to: "person@example.com", inviterName: "Ada", orgName: "Acme", invitationUrl: "https://app.example/accept-invitation/invite-42", locale: "en-US" })
+    expect(sendInvitationEmail).toHaveBeenCalledWith(
+      { to: "person@example.com", inviterName: "Ada", orgName: "Acme", invitationUrl: "https://app.example/accept-invitation/invite-42", locale: "en-US" },
+      { environment: expect.any(Object) }
+    )
+    expect(vi.mocked(sendInvitationEmail).mock.calls[0]?.[1]?.environment?.EMAIL_PROVIDER).toBe("smtp")
+    expect(vi.mocked(sendInvitationEmail).mock.calls[0]?.[1]?.environment?.SMTP_HOST).toBe("relay.example")
   })
 
   it("keeps the previous default behavior without a Resend key", async () => {

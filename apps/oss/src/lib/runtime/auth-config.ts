@@ -85,7 +85,7 @@ export function buildQuitsAuthOptions(input: {
         orgName: data.organization.name,
         invitationUrl,
         locale: orgSettings?.locale,
-      })
+      }, { environment: envRecord })
     },
   })
   const cookiesPlugin = tanstackStartCookies()

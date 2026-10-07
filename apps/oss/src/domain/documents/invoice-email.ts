@@ -8,6 +8,7 @@ import { buildInvoiceEmailContent, composeMessage } from "../../lib/email"
 import { getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { InvalidState } from "../errors"
 
 type Decimalish = { toNumber(): number }
@@ -43,19 +44,21 @@ export type InvoiceForEmail = {
 
 /** Sender identity, delivery availability, and whether pay links can be issued. */
 export function resolveInvoiceEmailContext(settings: OrgEmailSettings) {
+  const environment = getRuntimeEnv()
   return {
     envelope: resolveDocumentEmailEnvelope({
       orgName: settings.companyName,
       orgBillingEmail: settings.companyEmail,
-      sharedFromEmail: process.env.FROM_EMAIL ?? "noreply@yaip.app",
+      sharedFromEmail: environment.FROM_EMAIL ?? "noreply@yaip.app",
       branded: readDocumentSendingDomainState(settings),
     }),
     emailDelivery: getEmailDeliveryRuntimeStatus({
       managed: getRuntimeCapabilities().emailDelivery.managed,
-      resendApiKey: process.env.RESEND_API_KEY,
-      fromEmail: process.env.FROM_EMAIL,
-      emailProvider: process.env.EMAIL_PROVIDER,
-      smtp: process.env,
+      resendApiKey: environment.RESEND_API_KEY,
+      fromEmail: environment.FROM_EMAIL,
+      emailProvider: environment.EMAIL_PROVIDER,
+      smtp: environment,
+      runtimeKind: getRuntimePlatform().getRuntimeKind(),
     }),
     stripeConfigured: getStripePaymentConfigurationState({
       stripePublishableKey: settings.stripePublishableKey,

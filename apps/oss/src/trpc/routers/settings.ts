@@ -17,6 +17,7 @@ import { getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
 import { encryptSecret } from "../../lib/secrets"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
 import { COUNTRY_OPTIONS, LOCALE_OPTIONS } from "../../lib/compliance/countries"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
@@ -120,12 +121,14 @@ export const settingsRouter = router({
     })
     const runtimeCapabilities = getRuntimeCapabilities()
     const managedDocumentDomainProvider = getManagedDocumentDomainProvider()
+    const environment = getRuntimeEnv()
     const emailDelivery = getEmailDeliveryRuntimeStatus({
       managed: runtimeCapabilities.emailDelivery.managed,
-      resendApiKey: process.env.RESEND_API_KEY,
-      fromEmail: process.env.FROM_EMAIL,
-      emailProvider: process.env.EMAIL_PROVIDER,
-      smtp: process.env,
+      resendApiKey: environment.RESEND_API_KEY,
+      fromEmail: environment.FROM_EMAIL,
+      emailProvider: environment.EMAIL_PROVIDER,
+      smtp: environment,
+      runtimeKind: getRuntimePlatform().getRuntimeKind(),
     })
     const documentSending = buildDocumentSendingState({
       settings,

@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../../lib/db"
 import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
+import { resetRuntimePlatform, setRuntimePlatform } from "../../../lib/runtime/platform"
+import { defaultNodePlatform } from "../../../lib/runtime/node-platform"
 import { appRouter } from "../../router"
 import { ensureTestMembership } from "../../../test-utils/membership"
 
@@ -57,6 +59,7 @@ describeIfDatabase("settings email delivery status", () => {
   afterEach(() => {
     clearEmailEnv()
     setRuntimeExtensions([])
+    resetRuntimePlatform()
   })
 
   it("reports configured SMTP without a Resend key and never exposes relay credentials", async () => {
@@ -72,6 +75,19 @@ describeIfDatabase("settings email delivery status", () => {
       expect(JSON.stringify(settings)).not.toContain("synthetic-smtp-password")
       expect(JSON.stringify(settings.emailDelivery)).not.toContain("smtp-user")
     } finally {
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
+  it("reports SMTP unavailable on a Worker even when its environment is complete", async () => {
+    const { orgId, caller } = await createOrgWithCaller("Settings Worker SMTP Org")
+    const environment: Record<string, string> = { EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example", FROM_EMAIL: "worker-reader@example.com" }
+    setRuntimePlatform({ ...defaultNodePlatform, id: "test-worker-smtp", getRuntimeKind: () => "worker", getEnv: (name) => environment[name] })
+    try {
+      const settings = await caller.settings.get()
+      expect(settings.emailDelivery).toMatchObject({ managed: false, configured: false, available: false, sender: "worker-reader@example.com", missing: ["EMAIL_PROVIDER"], status: "missing_configuration" })
+    } finally {
+      resetRuntimePlatform()
       await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
