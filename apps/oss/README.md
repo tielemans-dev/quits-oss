@@ -186,4 +186,9 @@ Repository-local coding agent instructions live in `AGENTS.md` and `CLAUDE.md`.
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE)
+[Functional Source License 1.1, Apache-2.0 future license (FSL-1.1-ALv2)](LICENSE).
+
+Quits is source available. You can self-host it for your own business, inspect the code,
+modify it and contribute. The license restricts competing commercial uses. Each version
+becomes available under Apache-2.0 two years after its publication under FSL.
+Previously published releases retain their original license.
