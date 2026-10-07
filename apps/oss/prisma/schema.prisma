@@ -69,6 +69,7 @@ model Verification {
   createdAt  DateTime?
   updatedAt  DateTime?
 
+  @@index([expiresAt, id])
   @@map("verification")
 }
 

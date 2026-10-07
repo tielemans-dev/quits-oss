@@ -65,6 +65,42 @@ async function fixture(overrides: AuthHooks = {}) {
 }
 
 describe.skipIf(!localDatabase)("shared database password recovery guards", () => {
+  it("never starts delivery when PostgreSQL rejects issuance at commit", async () => {
+    const sendResetPassword = vi.fn().mockResolvedValue(undefined)
+    let deferredViolationInserted = false
+    const f = await fixture({
+      sendResetPassword,
+      createTransactionDatabaseAdapter: (tx) => (options: Parameters<ReturnType<typeof prismaAdapter>>[0]) => {
+        const adapter = prismaAdapter(tx, { provider: "postgresql" })(options)
+        return {
+          ...adapter,
+          create: async (input: Parameters<typeof adapter.create>[0]) => {
+            const result = await adapter.create(input)
+            if (input.model === "verification") {
+              // The native endpoint succeeds. This deferred FK fails only at COMMIT, after all
+              // callback work has returned, and the temporary table rolls back with the token.
+              await tx.$executeRaw`CREATE TEMP TABLE recovery_commit_parent (id TEXT PRIMARY KEY) ON COMMIT DROP`
+              await tx.$executeRaw`CREATE TEMP TABLE recovery_commit_failure ("userId" TEXT REFERENCES recovery_commit_parent(id) DEFERRABLE INITIALLY DEFERRED) ON COMMIT DROP`
+              await tx.$executeRaw`INSERT INTO recovery_commit_failure VALUES (${randomUUID()})`
+              deferredViolationInserted = true
+            }
+            return result
+          },
+        }
+      },
+    })
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      expect((await f.requestReset()).status).toBe(500)
+      expect(deferredViolationInserted).toBe(true)
+      await Promise.all(f.background)
+      expect(sendResetPassword).not.toHaveBeenCalled()
+      expect(f.background).toHaveLength(0)
+      expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(0)
+      expect(logged.mock.calls).toEqual([["Password reset transaction failed"]])
+    } finally { logged.mockRestore() }
+  })
+
   it.each(["body", "empty body with query fallback", "body takes precedence over query"])("allows exactly one simultaneous reset across instances using %s", async (tokenSource) => {
     const f = await fixture()
     expect((await f.requestReset()).status).toBe(200)

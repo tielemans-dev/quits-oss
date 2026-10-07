@@ -52,6 +52,13 @@ export function buildQuitsAuthOptions(input: {
   hooks?: AuthHooks
 }) {
   const hooks = input.hooks ?? {}
+  const runInBackground = (task: Promise<unknown>) => {
+    const safeTask = task.then(() => {}).catch(() => {
+      console.error("Auth background task failed")
+    })
+    if (hooks.runInBackground) hooks.runInBackground(safeTask)
+    else void safeTask
+  }
   const env = input.env
   const envRecord = createEnvRecord(env)
   const socialProviders = getConfiguredSocialProviders(envRecord)
@@ -129,13 +136,7 @@ export function buildQuitsAuthOptions(input: {
     ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
     advanced: {
       backgroundTasks: {
-        handler(task: Promise<unknown>) {
-          const safeTask = task.then(() => {}).catch(() => {
-            console.error("Auth background task failed")
-          })
-          if (hooks.runInBackground) hooks.runInBackground(safeTask)
-          else void safeTask
-        },
+        handler: runInBackground,
       },
       ...(crossSubDomainEnabled ? {
         crossSubDomainCookies: {
@@ -162,6 +163,7 @@ export function buildQuitsAuthOptions(input: {
         if (!requesting && typeof token !== "string") return
         // The native endpoint remains responsible for validation, hashing, token consumption and
         // session revocation. Lock its existing record until all those writes commit together.
+        const deliveries: (() => Promise<unknown>)[] = []
         const result = await input.prisma.$transaction(async (tx) => {
           const adapterFactory = hooks.createTransactionDatabaseAdapter?.(tx) ?? prismaAdapter(tx, { provider: "postgresql" })
           const adapter = (adapterFactory as (options: BetterAuthOptions) => DBAdapter)(ctx.context.options)
@@ -173,9 +175,34 @@ export function buildQuitsAuthOptions(input: {
           // and token issuance uses the same lock so it cannot race sibling invalidation.
           if (requesting) {
             await tx.$queryRaw`SELECT id FROM "user" WHERE email = ${ctx.body.email.toLowerCase()} FOR UPDATE`
+            const sendResetPassword = ctx.context.options.emailAndPassword?.sendResetPassword
             return runWithAdapter(adapter, () => requestPasswordReset({
               ...ctx, method: "POST", body: ctx.body as { email: string; redirectTo?: string },
-              context: { ...ctx.context, internalAdapter },
+              context: {
+                ...ctx.context,
+                internalAdapter,
+                options: {
+                  ...ctx.context.options,
+                  emailAndPassword: {
+                    ...ctx.context.options.emailAndPassword,
+                    // Buffer the call itself. A promise from the real sender already starts
+                    // delivery, even if native waitUntil retains it and COMMIT later fails.
+                    sendResetPassword: async (data: Parameters<NonNullable<AuthHooks["sendResetPassword"]>>[0], request?: Request) => {
+                      if (sendResetPassword) deliveries.push(() => sendResetPassword(data, request))
+                    },
+                  },
+                },
+                // Native scheduling must not register even the buffered callback with waitUntil.
+                runInBackgroundOrAwait: async (task: void | Promise<unknown>) => { await task },
+                logger: {
+                  ...ctx.context.logger,
+                  error: (...args: Parameters<typeof ctx.context.logger.error>) => {
+                    // Keep the native unknown-user timing work without recording account absence
+                    // or its submitted address. Other native diagnostics still use the logger.
+                    if (args[0] !== "Reset Password: User not found") ctx.context.logger.error(...args)
+                  },
+                },
+              },
               asResponse: false, returnHeaders: false, returnStatus: false,
             }))
           }
@@ -207,6 +234,9 @@ export function buildQuitsAuthOptions(input: {
           console.error("Password reset transaction failed")
           throw new APIError("INTERNAL_SERVER_ERROR", { message: "Could not reset password. Please try again." })
         })
+        // Only a resolved transaction releases this request's closures. Delivery remains async
+        // and uses the same safe runtime lifetime handler as other auth background tasks.
+        for (const deliver of deliveries) runInBackground(Promise.resolve().then(deliver))
         // Better Auth otherwise copies request headers onto an early hook response, including
         // Content-Length and cookies. Supply the completed response so it keeps response headers.
         return ctx.json(result, Response.json(result))

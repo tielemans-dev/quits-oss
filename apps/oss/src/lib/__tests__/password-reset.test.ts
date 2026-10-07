@@ -9,16 +9,19 @@ let clientNumber = 0
 function fixture(sendResetPassword = vi.fn().mockResolvedValue(undefined)) {
   const database: Record<string, Record<string, unknown>[]> = { user: [], session: [], account: [], verification: [] }
   const origin = "http://localhost:3102"
+  const background: Promise<void>[] = []
+  const logger = vi.fn()
+  const transaction = vi.fn(async (work: (tx: unknown) => Promise<unknown>) => work({ $queryRaw: vi.fn().mockResolvedValue([]) }))
   const options = buildQuitsAuthOptions({
     prisma: {
       $queryRaw: vi.fn().mockResolvedValue([{ count: 1 }]),
       $executeRaw: vi.fn().mockResolvedValue(0),
-      $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $queryRaw: vi.fn().mockResolvedValue([]) }),
+      $transaction: transaction,
     } as never,
     env: { getEnv: (name) => name === "BETTER_AUTH_URL" ? origin : undefined },
-    hooks: { createDatabaseAdapter: () => memoryAdapter(database), createTransactionDatabaseAdapter: () => memoryAdapter(database), sendResetPassword },
+    hooks: { createDatabaseAdapter: () => memoryAdapter(database), createTransactionDatabaseAdapter: () => memoryAdapter(database), sendResetPassword, runInBackground: (task) => { background.push(task) } },
   })
-  const auth = betterAuth({ ...options, secret: "password-reset-test-secret-at-least-32-characters", logger: { disabled: true }, advanced: { ...options.advanced, disableOriginCheck: false, disableCSRFCheck: false } })
+  const auth = betterAuth({ ...options, secret: "password-reset-test-secret-at-least-32-characters", logger: { log: logger }, advanced: { ...options.advanced, disableOriginCheck: false, disableCSRFCheck: false } })
   const ip = `192.0.2.${++clientNumber}`
   const post = (path: string, body: unknown) => auth.handler(new Request(`${origin}/api/auth${path}`, {
     method: "POST",
@@ -28,10 +31,73 @@ function fixture(sendResetPassword = vi.fn().mockResolvedValue(undefined)) {
   const signup = () => post("/sign-up/email", { name: "Recovery User", email: "recovery@example.com", password: "old-password123" })
   const requestReset = (email = "recovery@example.com", redirectTo = `${origin}/reset-password`) => post("/request-password-reset", { email, redirectTo })
   const resetToken = () => sendResetPassword.mock.calls[0]?.[0].token as string
-  return { auth, database, origin, post, signup, requestReset, resetToken, sendResetPassword }
+  return { auth, database, origin, post, signup, requestReset, resetToken, sendResetPassword, transaction, background, logger }
 }
 
 describe("Better Auth password recovery", () => {
+  it("does not start delivery or hand it to native waitUntil before a successful commit", async () => {
+    const f = fixture()
+    await f.signup()
+    const context = await f.auth.$context
+    const nativeWaitUntil = vi.fn(async (task: void | Promise<unknown>) => { f.background.push(Promise.resolve(task).then(() => {})) })
+    context.runInBackgroundOrAwait = nativeWaitUntil
+    f.transaction.mockImplementationOnce(async (work) => {
+      const result = await work({ $queryRaw: vi.fn().mockResolvedValue([]) })
+      expect(f.sendResetPassword).not.toHaveBeenCalled()
+      expect(nativeWaitUntil).not.toHaveBeenCalled()
+      expect(f.background).toHaveLength(0)
+      return result
+    })
+    expect((await f.requestReset()).status).toBe(200)
+    await Promise.all(f.background)
+    expect(f.sendResetPassword).toHaveBeenCalledOnce()
+    expect(f.background).toHaveLength(1)
+    expect(context.options.emailAndPassword?.sendResetPassword).toBe(f.auth.options.emailAndPassword?.sendResetPassword)
+  })
+
+  it("discards a rolled-back issuance queue while an independent request commits", async () => {
+    const f = fixture()
+    await f.signup()
+    let entered!: () => void
+    let release!: () => void
+    const buffered = new Promise<void>((resolve) => { entered = resolve })
+    const held = new Promise<void>((resolve) => { release = resolve })
+    f.transaction.mockImplementationOnce(async (work) => {
+      await work({ $queryRaw: vi.fn().mockResolvedValue([]) })
+      entered()
+      await held
+      throw new Error("commit failed")
+    })
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    const failing = f.requestReset()
+    try {
+      await buffered
+      expect(f.sendResetPassword).not.toHaveBeenCalled()
+      expect((await f.requestReset()).status).toBe(200)
+      await Promise.all(f.background)
+      expect(f.sendResetPassword).toHaveBeenCalledOnce()
+    } finally { release(); await failing; logged.mockRestore() }
+    expect((await failing).status).toBe(500)
+    await Promise.all(f.background)
+    expect(f.sendResetPassword).toHaveBeenCalledOnce()
+  })
+
+  it("keeps native unknown-account timing work and omits only its identifying log", async () => {
+    const f = fixture()
+    await f.signup()
+    const context = await f.auth.$context
+    const originalError = context.logger.error
+    const known = await f.requestReset()
+    const unknown = await f.requestReset("private-unknown@example.com")
+    expect(unknown.status).toBe(known.status)
+    expect(await unknown.json()).toEqual(await known.json())
+    expect(f.sendResetPassword).toHaveBeenCalledOnce()
+    expect(f.logger).not.toHaveBeenCalled()
+    expect(context.logger.error).toBe(originalError)
+    context.logger.error("An unrelated auth failure")
+    expect(f.logger).toHaveBeenCalledWith("error", "An unrelated auth failure")
+  })
+
   it("changes the password, consumes the token and revokes all existing sessions", async () => {
     const f = fixture()
     const signup = await f.signup()

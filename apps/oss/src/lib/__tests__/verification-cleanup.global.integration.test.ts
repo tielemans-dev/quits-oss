@@ -9,6 +9,38 @@ import { buildQuitsAuthOptions } from "../runtime/auth-config"
 const databaseUrl = process.env.DATABASE_URL
 const localDatabase = databaseUrl && ["localhost", "127.0.0.1"].includes(new URL(databaseUrl).hostname)
 
+it.skipIf(!localDatabase)("uses the valid expiry/id index for ordered bounded cleanup without sorting live records", async () => {
+  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) })
+  const value = randomUUID()
+  try {
+    const metadata = await prisma.$queryRaw<{ valid: boolean; ready: boolean; definition: string }[]>`
+      SELECT i.indisvalid AS valid, i.indisready AS ready, pg_get_indexdef(i.indexrelid) AS definition
+      FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+      WHERE i.indrelid = 'verification'::regclass AND c.relname = 'verification_expiresAt_id_idx'
+    `
+    expect(metadata).toEqual([{ valid: true, ready: true, definition: 'CREATE INDEX "verification_expiresAt_id_idx" ON public.verification USING btree ("expiresAt", id)' }])
+    await prisma.verification.createMany({ data: Array.from({ length: 10_200 }, (_, index) => ({
+      id: randomUUID(), identifier: randomUUID(), value,
+      expiresAt: new Date(Date.now() + (index < 200 ? -60_000 : 1_800_000)),
+    })) })
+    await prisma.$executeRaw`ANALYZE verification`
+    // Use the production selection, including row locks. Let the planner choose the index.
+    const plan = await prisma.$queryRaw`EXPLAIN (ANALYZE, FORMAT JSON)
+      SELECT id FROM verification WHERE "expiresAt" < (NOW() AT TIME ZONE 'UTC')
+      ORDER BY "expiresAt", id LIMIT 100 FOR UPDATE SKIP LOCKED
+    `
+    const json = JSON.stringify(plan)
+    expect(json).toContain('"Index Name":"verification_expiresAt_id_idx"')
+    expect(json).toContain('"Node Type":"Index Scan"')
+    expect(json).not.toContain('"Node Type":"Sort"')
+    expect(await cleanupExpiredVerifications(prisma)).toBeLessThanOrEqual(100)
+    expect(await prisma.verification.count({ where: { value, expiresAt: { gt: new Date() } } })).toBe(10_000)
+  } finally {
+    await prisma.verification.deleteMany({ where: { value } })
+    await prisma.$disconnect()
+  }
+})
+
 it.skipIf(!localDatabase).each(["UTC", "Europe/Copenhagen", "America/New_York"])("preserves fresh verifications and accepts the native reset GET with database timezone %s", async (timezone) => {
   // Apply to every pooled connection, including the root client's request-time cleanup.
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl, options: `-c timezone=${timezone}` }) })

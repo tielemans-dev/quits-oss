@@ -30,5 +30,6 @@ export function buildPasswordResetEmailContent({ name, resetUrl, fromEmail, loca
 }
 
 export async function sendPasswordResetEmail({ to, ...input }: PasswordResetEmailInput, options: DeliveryOptions = {}) {
-  return deliver(composeMessage(to, buildPasswordResetEmailContent(input)), options)
+  const fromEmail = input.fromEmail?.trim() || fromAddress(options.environment)
+  return deliver(composeMessage(to, buildPasswordResetEmailContent({ ...input, fromEmail })), options)
 }
