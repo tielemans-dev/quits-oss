@@ -1,0 +1,3 @@
+# Review 6, accounting lens (Codex, 2026-10-07) on rev 6 Phase A arithmetic.
+All round-5 counterexamples now correct: successive credits 0.02/0.02/0.03/0.01 reverse tax 0.01/0/0.01/0; inclusive EUR at 7.4567 balances (base gross 0.15, tax 0.07, rounding -0.07, net 0.15); AE at 25% refused; canonical key in step 2. New adversarial cases correct: tiny-tax five credits of 0.01 on 0.05; negative-rounding partial credits; awkward-rate sequence at 7.45.
+One counterexample: gross 0.05, tax 0.01 at rate 0.8 -> third of five 0.01 credits derives base net -0.01, requiring Cr revenue; A4 only defined signs for rounding. Resolution in rev 7: every component line is signed.
