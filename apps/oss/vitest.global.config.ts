@@ -5,6 +5,7 @@ import { globalStateTests } from "./vitest.config"
 export default defineConfig({
   test: {
     environment: "node",
+    setupFiles: ["./src/test-utils/artifact-runtime.ts"],
     watch: false,
     globals: false,
     fileParallelism: false,

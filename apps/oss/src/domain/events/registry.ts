@@ -1,3 +1,4 @@
+import { invoiceIssuedSchema, creditNoteIssuedSchema, baseValuationRecordedSchema } from "./money"
 import {
   agreementStatusSchema,
   deliverableStatusSchema,
@@ -41,6 +42,8 @@ export const eventRegistry = {
   "document.artifact_missing": { version: 1, schema: z.object({ ...artifactIdentity, reason: s }).strict() },
   "document.number_voided": { version: 1, schema: z.object({ organizationId: s, documentKind: artifactDocumentKind,
     number: s, reservationId: s, reason: s }).strict() },
+  "invoice.issued": { version: 1, schema: invoiceIssuedSchema },
+  "invoice.base_valuation_recorded": { version: 1, schema: baseValuationRecordedSchema },
   "invoice.draft_created": { version: 1, schema: draft.extend({ quoteId: s.optional() }).strict() },
   "invoice.draft_updated": { version: 1, schema: fields },
   "invoice.draft_deleted": { version: 1, schema: number },
@@ -67,7 +70,7 @@ export const eventRegistry = {
   "quote.accepted": { version: 1, schema: z.object({ number: s, source: z.literal("customer"), rejectionReason: s.optional() }).strict() },
   "quote.rejected": { version: 1, schema: z.object({ number: s, source: z.enum(["user", "customer"]), rejectionReason: s.optional() }).strict() },
   "quote.converted": { version: 1, schema: z.object({ number: s, invoiceId: s, invoiceNumber: s }).strict() },
-  "credit_note.issued": { version: 1, schema: z.object({ number: s, invoiceId: s, invoiceNumber: s, mode: z.enum(["full", "lines", "amount"]), reason: s, totalGross: n }).strict() },
+  "credit_note.issued": { version: 2, schema: creditNoteIssuedSchema },
   "credit_note.sent": { version: 1, schema: sent },
   "credit_note.email_unconfirmed": { version: 1, schema: unconfirmed },
   "credit_note.email_failed": { version: 1, schema: failed },

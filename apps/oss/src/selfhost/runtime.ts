@@ -1,3 +1,4 @@
+import { buildUblDocument, validateEinvoice } from "../lib/exports/ubl"
 import { mkdir, readFile, writeFile, rename, unlink } from "node:fs/promises"
 import { resolve, dirname, relative, isAbsolute } from "node:path"
 import { randomUUID } from "node:crypto"
@@ -11,7 +12,11 @@ import { hashBytes } from "../domain/documents/render-input"
 import type { ArtifactMeta, DocumentArtifactStore, DocumentRenderer, RuntimeServices } from "../lib/runtime/services"
 
 export const selfhostDocumentRenderer: DocumentRenderer = {
-  version: "quits-react-pdf-v1",
+  version: "quits-documents-v2",
+  async renderUbl(input) {
+    if (!input.ubl || validateEinvoice(input.ubl).length) return null
+    return new TextEncoder().encode(buildUblDocument(input.ubl))
+  },
   async renderPdf(input) {
     const document = input.kind === "invoice" ? createElement(InvoicePdfDocument, input.pdf)
       : input.kind === "creditNote" ? createElement(CreditNotePdfDocument, input.pdf)

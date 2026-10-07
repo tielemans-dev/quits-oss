@@ -1,4 +1,6 @@
 export const enDashboardMessages = {
+  "dashboard.baseTotal": "Issued invoice value in base currency",
+  "dashboard.baseTotalHint": "After credits. Excludes {count} invoices with unknown valuations. Payments retain their own currency above.",
   "dashboard.subtitle": "Financial overview and recent activity",
   "dashboard.loading": "Loading...",
   "dashboard.loadError": "Unable to load dashboard data. Please ensure you have an active organization.",

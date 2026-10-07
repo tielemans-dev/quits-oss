@@ -280,6 +280,9 @@ export async function executeCommand<Input, Result>(
         }
       }
 
+      if (["invoice.send", "credit_note.issue", "agreement.send", "agreement.issue"].includes(definition.type) && !issuanceStagingId) {
+        throw new HandlerFailed(new InvalidState({ code: "issuance_required", message: "Issue documents through issueDocument with a renderer and artifact store" }))
+      }
       // Issuance, completion and sweep acquire the organization lock before document locks.
       await lockArtifactOrganization(tx, organizationId)
       let issuance: import("./services").CommandScope["issuance"]
@@ -355,7 +358,7 @@ export async function executeCommand<Input, Result>(
 
       if (issuance && !jobs.some(job => (job.payload as { completion?: { target?: { candidateId?: string } } }).completion?.target?.candidateId === issuance.candidateId)) {
         events.push(...await publishCandidate(tx, { candidateId: issuance.candidateId,
-          documentId: issuance.documentId, attemptAt: options.now ?? now, organizationId }))
+          documentId: issuance.documentId, attemptAt: options.now ?? now, organizationId, commandId: provisionalId }))
       }
       await appendEvents(tx, {
         organizationId,

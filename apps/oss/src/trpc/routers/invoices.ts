@@ -1,3 +1,4 @@
+import { recordBaseValuation } from "../../domain/commands/base-valuation"
 import { randomUUID } from "node:crypto"
 import { createInvoiceFromDeliverables, addInvoiceDeliverables, invoiceScheduleAsSale } from "../../domain/commands/invoices-from-deliverables"
 import { invoiceCreateFromDeliverablesInputSchema, invoiceAddDeliverablesInputSchema } from "@quits/contracts/invoices"
@@ -87,6 +88,7 @@ function settlementForUi(invoice: {
 }
 
 export const invoicesRouter = router({
+  recordBaseValuation: authorizedProcedure("invoice:update").input(recordBaseValuation.input).mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(recordBaseValuation, input, { actor: ctx.actor }))),
   createFromDeliverables: authorizedProcedure("invoice:create").input(invoiceCreateFromDeliverablesInputSchema).mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(createInvoiceFromDeliverables, input, { actor: ctx.actor, clientRequestId: randomUUID() }))),
   addDeliverables: authorizedProcedure("invoice:update").input(invoiceAddDeliverablesInputSchema).mutation(async ({ ctx, input }) => serializeInvoiceForUi(unwrapOutcome(await executeCommand(addInvoiceDeliverables, input, { actor: ctx.actor })))),
   scheduleAsSale: authorizedProcedure("invoice:update").input(invoiceScheduleAsSale.input).mutation(async ({ ctx, input }) => serializeInvoiceForUi(unwrapOutcome(await executeCommand(invoiceScheduleAsSale, input, { actor: ctx.actor })))),

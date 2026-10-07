@@ -5,7 +5,6 @@ import {
   formatCurrency as formatCurrencyIntl,
   formatDate as formatDateIntl,
 } from "../../lib/i18n/format"
-import { useOrgCurrency } from "../../hooks/use-org-currency"
 import {
   Card,
   CardContent,
@@ -42,8 +41,8 @@ type RecentInvoice = {
 }
 
 type DashboardStats = {
-  totalRevenue: number
-  outstanding: number
+  currencyBuckets: Array<{ currency: string; totalRevenue: string; outstanding: string }>
+  baseTotal: { currency: string; amount: string; excludedUnknownValuations: number }
   overdueCount: number
   totalContacts: number
   recentInvoices: RecentInvoice[]
@@ -90,7 +89,6 @@ function StatusBadge({ status, t }: { status: string; t: (key: TranslationKey) =
 
 function DashboardPage() {
   const { t, locale } = useI18n()
-  const currency = useOrgCurrency()
   const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -147,7 +145,7 @@ function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.totalRevenue, currency, locale)}
+              {stats.currencyBuckets.map(bucket => <div key={bucket.currency}>{formatCurrency(Number(bucket.totalRevenue), bucket.currency, locale)}</div>)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {t("dashboard.totalRevenueHint")}
@@ -162,7 +160,7 @@ function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.outstanding, currency, locale)}
+              {stats.currencyBuckets.map(bucket => <div key={bucket.currency}>{formatCurrency(Number(bucket.outstanding), bucket.currency, locale)}</div>)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {t("dashboard.outstandingHint")}
@@ -202,6 +200,8 @@ function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card><CardHeader><CardTitle>{t("dashboard.baseTotal")}</CardTitle><CardDescription>{t("dashboard.baseTotalHint", { count: stats.baseTotal.excludedUnknownValuations })}</CardDescription></CardHeader><CardContent>{formatCurrency(Number(stats.baseTotal.amount), stats.baseTotal.currency, locale)}</CardContent></Card>
 
       {/* Recent Invoices */}
       <Card>

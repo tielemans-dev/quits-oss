@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/db"
 import { formatIsoDate } from "../../lib/exports/format"
@@ -9,7 +10,7 @@ import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
 import { recordPayment, recordStripeCheckoutPayment, voidPayment } from "../commands/payments"
 import { readActivity } from "../events"
-import { executeCommand } from "../execute"
+
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -25,16 +26,16 @@ describeIfDatabase("payment commands", () => {
   ) {
     const org = await createTestOrganization({
       roles: ["admin", "member"],
-      settings: options.timezone ? { timezone: options.timezone } : undefined,
+      settings: { timezone: options.timezone, currency: options.currency ?? "USD" },
     })
     cleanups.push(org.cleanup)
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "billing@acme.test" },
       { actor: org.actors.admin }
     )
     if (contact.status !== "completed") throw new Error("contact setup failed")
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: contact.result.id,
@@ -46,7 +47,7 @@ describeIfDatabase("payment commands", () => {
       { actor: org.actors.admin }
     )
     if (draft.status !== "completed") throw new Error(`draft failed: ${JSON.stringify(draft)}`)
-    const sent = await executeCommand(
+    const sent = await executeIssuanceCommand(
       sendInvoice,
       { id: draft.result.id, allowSendWithoutEmail: true },
       { actor: org.actors.admin }
@@ -64,7 +65,7 @@ describeIfDatabase("payment commands", () => {
   it("records partial and final payments and settles the invoice", async () => {
     const { org, invoiceId } = await setupSentInvoice()
 
-    const partial = await executeCommand(recordPayment, payment(invoiceId, 100, { reference: "TX-1" }), {
+    const partial = await executeIssuanceCommand(recordPayment, payment(invoiceId, 100, { reference: "TX-1" }), {
       actor: org.actors.member,
     })
     expect(partial.status).toBe("completed")
@@ -76,7 +77,7 @@ describeIfDatabase("payment commands", () => {
     expect(afterPartial).toMatchObject({ status: "sent", paymentStatus: "partially_paid", paidAt: null })
     expect(afterPartial.amountPaid.toNumber()).toBe(100)
 
-    const final = await executeCommand(recordPayment, payment(invoiceId, 150, { paidAt: "2026-01-20" }), {
+    const final = await executeIssuanceCommand(recordPayment, payment(invoiceId, 150, { paidAt: "2026-01-20" }), {
       actor: org.actors.member,
     })
     expect(final.status).toBe("completed")
@@ -94,6 +95,7 @@ describeIfDatabase("payment commands", () => {
     expect(activity.events.map((event) => event.type)).toEqual([
       "invoice.draft_created",
       "invoice.sent",
+      "invoice.issued",
       "payment.recorded",
       "payment.recorded",
       "invoice.paid",
@@ -104,44 +106,44 @@ describeIfDatabase("payment commands", () => {
     const { org, invoiceId } = await setupSentInvoice()
     const actor = org.actors.admin
 
-    const over = await executeCommand(recordPayment, payment(invoiceId, 250.01), { actor })
+    const over = await executeIssuanceCommand(recordPayment, payment(invoiceId, 250.01), { actor })
     expect(over).toMatchObject({ status: "failed", error: { tag: "InvalidState", code: "overpayment" } })
     if (over.status === "failed") {
       expect(over.error.message).toContain("exceeds the balance due of 250.00 USD")
     }
 
-    const future = await executeCommand(
+    const future = await executeIssuanceCommand(
       recordPayment,
       payment(invoiceId, 10, { paidAt: new Date(Date.now() + 3 * 86_400_000).toISOString() }),
       { actor }
     )
     expect(future).toMatchObject({ status: "failed", error: { tag: "ValidationFailed" } })
 
-    const invalid = await executeCommand(recordPayment, payment(invoiceId, -1), { actor })
+    const invalid = await executeIssuanceCommand(recordPayment, payment(invoiceId, -1), { actor })
     expect(invalid).toMatchObject({ status: "failed", error: { tag: "ValidationFailed" } })
 
-    await executeCommand(recordPayment, payment(invoiceId, 250), { actor })
-    const again = await executeCommand(recordPayment, payment(invoiceId, 1), { actor })
+    await executeIssuanceCommand(recordPayment, payment(invoiceId, 250), { actor })
+    const again = await executeIssuanceCommand(recordPayment, payment(invoiceId, 1), { actor })
     expect(again).toMatchObject({ status: "failed", error: { code: "invoice_already_paid" } })
 
     const contact = await prisma.contact.findFirstOrThrow({ where: { organizationId: org.organizationId } })
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       { contactId: contact.id, dueDate: "2099-12-01", items: [{ description: "X", quantity: 1, unitPrice: 10 }] },
       { actor }
     )
     if (draft.status !== "completed") throw new Error("draft failed")
-    const onDraft = await executeCommand(recordPayment, payment(draft.result.id, 5), { actor })
+    const onDraft = await executeIssuanceCommand(recordPayment, payment(draft.result.id, 5), { actor })
     expect(onDraft).toMatchObject({ status: "failed", error: { code: "invoice_not_issued" } })
 
-    const missing = await executeCommand(recordPayment, payment("missing-invoice", 5), { actor })
+    const missing = await executeIssuanceCommand(recordPayment, payment("missing-invoice", 5), { actor })
     expect(missing).toMatchObject({ status: "failed", error: { tag: "NotFound" } })
   })
 
   it("serializes concurrent payments so the balance can never be exceeded", async () => {
     const { org, invoiceId } = await setupSentInvoice()
     const outcomes = await Promise.all(
-      [1, 2, 3].map(() => executeCommand(recordPayment, payment(invoiceId, 100), { actor: org.actors.admin }))
+      [1, 2, 3].map(() => executeIssuanceCommand(recordPayment, payment(invoiceId, 100), { actor: org.actors.admin }))
     )
     expect(outcomes.filter((outcome) => outcome.status === "completed")).toHaveLength(2)
     expect((await loadInvoice(invoiceId)).amountPaid.toNumber()).toBe(200)
@@ -149,25 +151,25 @@ describeIfDatabase("payment commands", () => {
 
   it("voids a payment, reopening a paid invoice, and only admins may void", async () => {
     const { org, invoiceId } = await setupSentInvoice({ dueDate: "2020-01-01" })
-    const recorded = await executeCommand(recordPayment, payment(invoiceId, 250), { actor: org.actors.admin })
+    const recorded = await executeIssuanceCommand(recordPayment, payment(invoiceId, 250), { actor: org.actors.admin })
     if (recorded.status !== "completed") throw new Error("record failed")
     expect((await loadInvoice(invoiceId)).status).toBe("paid")
 
-    const byMember = await executeCommand(
+    const byMember = await executeIssuanceCommand(
       voidPayment,
       { paymentId: recorded.result.payment.id, reason: "Bounced" },
       { actor: org.actors.member }
     )
     expect(byMember).toMatchObject({ status: "failed", error: { tag: "Forbidden" } })
 
-    const noReason = await executeCommand(
+    const noReason = await executeIssuanceCommand(
       voidPayment,
       { paymentId: recorded.result.payment.id, reason: " " },
       { actor: org.actors.admin }
     )
     expect(noReason).toMatchObject({ status: "failed", error: { tag: "ValidationFailed" } })
 
-    const voided = await executeCommand(
+    const voided = await executeIssuanceCommand(
       voidPayment,
       { paymentId: recorded.result.payment.id, reason: "Bounced" },
       { actor: org.actors.admin }
@@ -181,7 +183,7 @@ describeIfDatabase("payment commands", () => {
     expect(reopened).toMatchObject({ status: "overdue", paymentStatus: "unpaid", paidAt: null })
     expect(reopened.amountPaid.toNumber()).toBe(0)
 
-    const twice = await executeCommand(
+    const twice = await executeIssuanceCommand(
       voidPayment,
       { paymentId: recorded.result.payment.id, reason: "Again" },
       { actor: org.actors.admin }
@@ -206,7 +208,7 @@ describeIfDatabase("payment commands", () => {
     const agent = await authenticateAgentSecret(secret)
     if (!agent) throw new Error("agent auth failed")
 
-    const queued = await executeCommand(recordPayment, payment(invoiceId, 50), {
+    const queued = await executeIssuanceCommand(recordPayment, payment(invoiceId, 50), {
       actor: agent,
       clientRequestId: "agent-pay-1",
     })
@@ -231,7 +233,7 @@ describeIfDatabase("payment commands", () => {
 
   it("only lets the Stripe webhook record Stripe checkout payments", async () => {
     const { org, invoiceId } = await setupSentInvoice()
-    const outcome = await executeCommand(
+    const outcome = await executeIssuanceCommand(
       recordStripeCheckoutPayment,
       {
         invoiceId,
@@ -250,13 +252,13 @@ describeIfDatabase("payment commands", () => {
     const { org, invoiceId } = await setupSentInvoice({ currency: "JPY" })
     const actor = org.actors.admin
 
-    const fractional = await executeCommand(recordPayment, payment(invoiceId, 100.5), { actor })
+    const fractional = await executeIssuanceCommand(recordPayment, payment(invoiceId, 100.5), { actor })
     expect(fractional).toMatchObject({ status: "failed", error: { tag: "ValidationFailed" } })
     if (fractional.status === "failed") {
       expect(fractional.error.message).toContain("JPY")
     }
 
-    const whole = await executeCommand(recordPayment, payment(invoiceId, 100), { actor })
+    const whole = await executeIssuanceCommand(recordPayment, payment(invoiceId, 100), { actor })
     expect(whole.status).toBe("completed")
   })
 
@@ -267,7 +269,7 @@ describeIfDatabase("payment commands", () => {
     const balance = (await loadInvoice(invoiceId)).totalGross.toNumber()
     expect(balance).toBe(125.5)
 
-    const exact = await executeCommand(recordPayment, payment(invoiceId, balance), { actor: org.actors.admin })
+    const exact = await executeIssuanceCommand(recordPayment, payment(invoiceId, balance), { actor: org.actors.admin })
     expect(exact.status).toBe("completed")
   })
 
@@ -275,7 +277,7 @@ describeIfDatabase("payment commands", () => {
     const timeZone = "America/New_York"
     const { org, invoiceId } = await setupSentInvoice({ timezone: timeZone })
 
-    const recorded = await executeCommand(
+    const recorded = await executeIssuanceCommand(
       recordPayment,
       payment(invoiceId, 100, { paidAt: "2026-10-01" }),
       { actor: org.actors.admin }
@@ -285,7 +287,7 @@ describeIfDatabase("payment commands", () => {
     expect(recorded.result.payment.paidAt.toISOString()).toBe("2026-10-01T04:00:00.000Z")
     expect(formatIsoDate(recorded.result.payment.paidAt, timeZone)).toBe("2026-10-01")
 
-    const winter = await executeCommand(
+    const winter = await executeIssuanceCommand(
       recordPayment,
       payment(invoiceId, 50, { paidAt: "2026-01-15" }),
       { actor: org.actors.admin }
@@ -293,7 +295,7 @@ describeIfDatabase("payment commands", () => {
     if (winter.status !== "completed") throw new Error("winter payment failed")
     expect(winter.result.payment.paidAt.toISOString()).toBe("2026-01-15T05:00:00.000Z")
 
-    const stamped = await executeCommand(
+    const stamped = await executeIssuanceCommand(
       recordPayment,
       payment(invoiceId, 10, { paidAt: "2026-03-02T18:30:00.000Z" }),
       { actor: org.actors.admin }
@@ -306,13 +308,13 @@ describeIfDatabase("payment commands", () => {
     const { org, invoiceId } = await setupSentInvoice({ timezone: "Pacific/Kiritimati" })
     const tomorrow = new Date(Date.now() + 2 * 86_400_000)
     const future = formatIsoDate(tomorrow, "Pacific/Kiritimati")
-    const outcome = await executeCommand(recordPayment, payment(invoiceId, 10, { paidAt: future }), {
+    const outcome = await executeIssuanceCommand(recordPayment, payment(invoiceId, 10, { paidAt: future }), {
       actor: org.actors.admin,
     })
     expect(outcome).toMatchObject({ status: "failed", error: { tag: "ValidationFailed" } })
 
     const today = formatIsoDate(new Date(), "Pacific/Kiritimati")
-    const ok = await executeCommand(recordPayment, payment(invoiceId, 10, { paidAt: today }), {
+    const ok = await executeIssuanceCommand(recordPayment, payment(invoiceId, 10, { paidAt: today }), {
       actor: org.actors.admin,
     })
     expect(ok.status).toBe("completed")

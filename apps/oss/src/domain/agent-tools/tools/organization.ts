@@ -8,7 +8,7 @@ export const organizationTools: AgentTool[] = [
     name: "organization_read",
     title: "Read organization",
     description:
-      "Start here. Returns the company profile, default currency, locale, tax regime, and whether " +
+      "Start here. Returns the company profile, default and base currencies, locale, tax regime, and whether " +
       "prices include tax, plus this agent key's own mode and scopes. Use the currency and tax regime " +
       "when drafting documents, and the mode to know whether sends will wait for human approval.",
     input: z.object({}),
@@ -30,6 +30,7 @@ export const organizationTools: AgentTool[] = [
           companyEmail: settings?.companyEmail ?? null,
           companyAddress: settings?.companyAddress ?? null,
           countryCode: settings?.countryCode ?? null,
+          baseCurrency: settings?.baseCurrency ?? null,
           currency: settings?.defaultCurrency ?? settings?.currency ?? null,
           locale: settings?.locale ?? null,
           timezone: settings?.timezone ?? null,

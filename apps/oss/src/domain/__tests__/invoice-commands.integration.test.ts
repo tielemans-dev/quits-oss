@@ -1,9 +1,10 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { afterEach, describe, expect, it } from "vitest"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
 import { readActivity } from "../events"
-import { executeCommand } from "../execute"
+
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -16,7 +17,7 @@ describeIfDatabase("invoice commands", () => {
   async function setupWithContact() {
     const org = await createTestOrganization()
     cleanups.push(org.cleanup)
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "billing@acme.test" },
       { actor: org.actors.admin }
@@ -36,7 +37,7 @@ describeIfDatabase("invoice commands", () => {
     const { org, contactId } = await setupWithContact()
     const outcomes = await Promise.all(
       Array.from({ length: 6 }, () =>
-        executeCommand(createInvoiceDraft, draft(contactId), { actor: org.actors.admin })
+        executeIssuanceCommand(createInvoiceDraft, draft(contactId), { actor: org.actors.admin })
       )
     )
 
@@ -57,11 +58,11 @@ describeIfDatabase("invoice commands", () => {
 
   it("prices drafts and records the lifecycle in the activity log", async () => {
     const { org, contactId } = await setupWithContact()
-    const created = await executeCommand(createInvoiceDraft, draft(contactId), { actor: org.actors.admin })
+    const created = await executeIssuanceCommand(createInvoiceDraft, draft(contactId), { actor: org.actors.admin })
     if (created.status !== "completed") throw new Error("create failed")
     expect(created.result.totalGross.toNumber()).toBe(250)
 
-    const sent = await executeCommand(
+    const sent = await executeIssuanceCommand(
       sendInvoice,
       { id: created.result.id, allowSendWithoutEmail: true },
       { actor: org.actors.admin }
@@ -73,6 +74,6 @@ describeIfDatabase("invoice commands", () => {
       aggregateType: "invoice",
       aggregateId: created.result.id,
     })
-    expect(activity.events.map((event) => event.type)).toEqual(["invoice.draft_created", "invoice.sent"])
+    expect(activity.events.map((event) => event.type)).toEqual(["invoice.draft_created", "invoice.sent", "invoice.issued"])
   })
 })

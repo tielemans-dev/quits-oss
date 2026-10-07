@@ -1,4 +1,9 @@
 export const daInvoicesMessages = {
+  "invoices.issuance.supplyDate": "Leveringsdato",
+  "invoices.issuance.confirmDates": "Bekræft leveringsdatoen før udstedelse. Levering før udstedelsesdatoen kræver revisorgennemgang før bogføring.",
+  "invoices.issuance.rate": "Basiskurs: {baseCurrency} pr. 1 {currency}",
+  "invoices.issuance.rateDate": "Kursdato",
+
   "invoices.title": "Fakturaer",
   "invoices.loading": "Indlæser...",
   "invoices.action.new": "Ny faktura",

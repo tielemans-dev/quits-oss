@@ -1,3 +1,4 @@
+import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
@@ -50,6 +51,9 @@ type LineItem = {
 function NewInvoicePage() {
   const { t, locale } = useI18n()
   const currency = useOrgCurrency()
+  const [issuance, setIssuance] = useState(initialIssuanceValues)
+  const [baseCurrency, setBaseCurrency] = useState<string>()
+  useEffect(() => { trpc.settings.get.query().then(settings => setBaseCurrency(settings.baseCurrency)).catch(() => {}) }, [])
   const { pricesIncludeTax } = useOrgPricingSettings()
   const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>({})
   const navigate = useNavigate()
@@ -233,6 +237,7 @@ function NewInvoicePage() {
           trpc.invoices.createV2.mutate({
             contactId,
             dueDate,
+            supplyDate: issuance.supplyDate,
             taxRate,
             vatEvidence,
             notes: notes || undefined,
@@ -243,7 +248,7 @@ function NewInvoicePage() {
               vat: item.vat,
             })),
           }),
-        send: (id) => trpc.invoices.send.mutate({ id }),
+        send: (id) => trpc.invoices.send.mutate({ id, ...issuanceInput(issuance, currency, baseCurrency) }),
         sendImmediately,
         sendFailedMessage: t("invoices.detail.error.sendFailed"),
       })
@@ -345,6 +350,7 @@ function NewInvoicePage() {
               )}
             </div>
             <div className="grid gap-2">
+              <IssuanceFields value={issuance} onChange={setIssuance} currency={currency} baseCurrency={baseCurrency} />
               <Label htmlFor="dueDate">{t("invoices.new.field.dueDate")} *</Label>
               <LocalizedDateField
                 id="dueDate"

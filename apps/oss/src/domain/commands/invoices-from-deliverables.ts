@@ -1,3 +1,4 @@
+import { formatIsoDate } from "../../lib/exports/format"
 import { Effect } from "effect"
 import { z } from "zod"
 import { invoiceCreateFromDeliverablesInputSchema, invoiceAddDeliverablesInputSchema } from "@quits/contracts/invoices"
@@ -40,7 +41,7 @@ export const createInvoiceFromDeliverables = defineCommand({
       const saleIds = selected.filter(line => line.isDeposit && input.scheduleAsSale).map(line => line.id)
       const invoice = yield* Effect.promise(() => db.invoice.create({ data: {
         organizationId: command.organizationId, agreementId: agreement.id, contactId: agreement.contactId,
-        number, purpose, status: "draft", issueDate, dueDate,
+        number, purpose, status: "draft", issueDate, dueDate, supplyDate: new Date(formatIsoDate(issueDate, agreement.timezone)),
         ...frozenTotals(rows), calculationVersion: agreement.calculationVersion,
         currency: agreement.currency, countryCode: agreement.countryCode, locale: agreement.locale,
         timezone: agreement.timezone, taxRegime: agreement.taxRegime, pricesIncludeTax: agreement.pricesIncludeTax,

@@ -1,3 +1,4 @@
+import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
@@ -118,6 +119,7 @@ type Invoice = {
   paidAt: string | null
   issueDate: string
   dueDate: string
+  supplyDate?: string | Date | null
   subtotal: number
   taxAmount: number
   total: number
@@ -221,6 +223,7 @@ function InvoiceDetailPage() {
         : null
   )
   const [acting, setActing] = useState(false)
+  const [issuance, setIssuance] = useState(initialIssuanceValues)
   const [editing, setEditing] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [acknowledgeDisputed, setAcknowledgeDisputed] = useState(false)
@@ -234,6 +237,7 @@ function InvoiceDetailPage() {
     companyLogo?: string | null
     locale?: string | null
     timezone?: string | null
+    baseCurrency?: string
     stripeByokConfigured?: boolean
   }>({})
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
@@ -260,6 +264,7 @@ function InvoiceDetailPage() {
       .then(([data, settings]) => {
         if (!isCurrent()) return
         setInvoice(data as unknown as Invoice)
+        setIssuance({ ...initialIssuanceValues(), ...(data.supplyDate ? { supplyDate: new Date(data.supplyDate).toISOString().slice(0, 10) } : {}) })
         setPaymentLinkUrl((data as unknown as Invoice).publicPaymentUrl ?? null)
         setOrgSettings({
           companyName: settings.companyName,
@@ -270,6 +275,7 @@ function InvoiceDetailPage() {
           locale: settings.locale,
           timezone: settings.timezone,
           stripeByokConfigured: settings.stripeByokConfigured,
+          baseCurrency: settings.baseCurrency,
         })
         setEmailDelivery(settings.emailDelivery)
       })
@@ -397,6 +403,7 @@ function InvoiceDetailPage() {
         id: invoice.id,
         allowSendWithoutEmail,
         acknowledgeDisputed,
+        ...issuanceInput(issuance, invoice.currency, orgSettings.baseCurrency),
       })
       await reloadInvoice()
       setSendWithoutEmailOpen(false)
@@ -858,6 +865,7 @@ function InvoiceDetailPage() {
             {downloading ? t("invoices.new.ai.action.generating") : "PDF"}
           </Button>
           {/* A draft whose email is still being delivered can no longer be edited or deleted. */}
+          {invoice.status === "draft" && !emailSending && <IssuanceFields value={issuance} onChange={setIssuance} currency={invoice.currency} baseCurrency={orgSettings.baseCurrency} />}
           {invoice.status === "draft" && !emailSending && (
             <>
               <Button variant="outline" size="sm" disabled={acting} onClick={startEditing}>

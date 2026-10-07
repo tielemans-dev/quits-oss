@@ -125,6 +125,7 @@ export type DeliveryContext = {
   tx: Prisma.TransactionClient
   organizationId: string
   target: Record<string, string>
+  commandId?: string
   now: Date
 }
 
@@ -223,7 +224,7 @@ async function settle(
     if (recorded.count === 0) {
       throw new StaleJobClaimError(`Delivery job ${job.id} is no longer held by this run`)
     }
-    const context = { tx, organizationId: job.organizationId, target: payload.completion.target, now }
+    const context = { tx, organizationId: job.organizationId, target: payload.completion.target, commandId: payload.commandId, now }
     const events = outcome.delivered
       ? await completion.delivered(context)
       : await completion.failed(context, outcome.failure)

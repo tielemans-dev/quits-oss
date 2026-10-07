@@ -7,7 +7,6 @@ import { runArtifactRead } from "../../application/issuance"
 import { prospectiveRenderInput, hashBytes, type RenderInput, type ArtifactDocumentKind } from "../../domain/documents/render-input"
 import type { Permission } from "../../domain/permissions"
 import { schedulerActor } from "../../domain/commands/reminders"
-import { buildBuyerSnapshot } from "../../domain/documents/snapshots"
 
 const headers = (artifact: string, number: string) => ({
   "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${number.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`,
@@ -34,27 +33,16 @@ export async function documentPdf(kind: ArtifactDocumentKind, id: string, organi
     if (!note) return new Response("Document not found", { status: 404 })
     const stored = await storedPdfResponse(note)
     if (stored) return stored
-    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId } })
-    const num = (value: { toNumber(): number }) => value.toNumber()
-    return renderPdfResponse({ kind, organizationId, documentId: id, number: note.number,
-      issuedAt: note.issueDate.toISOString(), recipient: null, snapshot: note,
-      pdf: { org: settings, creditNote: { number: note.number, issueDate: note.issueDate.toISOString(),
-        reason: note.reason, subtotal: num(note.subtotalNet), taxAmount: num(note.totalTax), total: num(note.totalGross),
-        currency: note.currency, locale: note.locale, timezone: note.timezone,
-        sellerSnapshot: note.sellerSnapshot, buyerSnapshot: note.buyerSnapshot,
-        contact: { ...buildBuyerSnapshot(note.contact), name: note.contact.name },
-        invoice: note.invoice, items: note.items.map(line => ({ description: line.description,
-          quantity: num(line.quantity), unitPrice: num(line.unitPriceGross), total: num(line.lineGross) })),
-      } } }, true)
+    return new Response("Stored artifact unavailable", { status: 503 })
   }
   const doc = kind === "invoice" ? await prisma.invoice.findFirst({ where: { id, organizationId } })
     : await prisma.agreement.findFirst({ where: { id, organizationId } })
   if (!doc) return new Response("Document not found", { status: 404 })
   // Agreements can have an issued offer while a definitely rejected email leaves them draft.
   const issued = doc.status !== "draft" || (kind === "agreement" && "offerSnapshot" in doc && !!doc.offerSnapshot)
-  if (issued) { const stored = await storedPdfResponse(doc); if (stored) return stored }
+  if (issued) return await storedPdfResponse(doc) ?? new Response("Stored artifact unavailable", { status: 503 })
   const renderInput = await runArtifactRead(prospectiveRenderInput({ kind, commandInput: { id }, documentId: id,
-    number: doc.number ?? "draft", issuedAt: doc.issueDate ?? new Date() }), prisma, schedulerActor(organizationId), new Date())
+    preview: true, number: doc.number ?? "draft", issuedAt: doc.issueDate ?? new Date() }), prisma, schedulerActor(organizationId), new Date())
   if (renderInput.kind === "invoice" && !issued) renderInput.pdf.invoice.status = "draft"
   return renderPdfResponse(renderInput, issued)
 }

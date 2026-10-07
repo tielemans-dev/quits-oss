@@ -49,7 +49,7 @@ export type ArtifactMeta = {
 }
 export type DocumentRenderer = {
   renderPdf(input: RenderInput): Promise<Uint8Array>
-  renderUbl?(input: RenderInput): Promise<Uint8Array>
+  renderUbl?(input: RenderInput): Promise<Uint8Array | null>
   version: string
 }
 export type DocumentArtifactStore = {

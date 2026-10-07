@@ -10,7 +10,9 @@ export class UnsupportedEventVersion extends Error {
 type Envelope = { type: string; schemaVersion: number; payload: unknown }
 type Transform = (payload: unknown) => unknown
 /** Key N transforms a payload from N to N+1. Transforms must be pure and total. */
-const transforms: Partial<Record<EventType, Record<number, Transform>>> = {}
+const transforms: Partial<Record<EventType, Record<number, Transform>>> = {
+  "credit_note.issued": { 1: payload => ({ ...(payload as Record<string, unknown>), postable: false, incompleteReason: "historical_payload_incomplete" }) },
+}
 
 /** Known v1 envelopes are unchanged. Unknown types, invalid versions and missing steps refuse. */
 export function upcastEvent<T extends Envelope>(event: T): Omit<T, "schemaVersion" | "payload"> & Envelope {

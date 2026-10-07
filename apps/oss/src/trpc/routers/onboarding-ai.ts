@@ -1,3 +1,4 @@
+import { resolveBaseCurrency } from "../../domain/documents/base-currency"
 import { assertSettingsCurrency } from "../currency"
 import { TRPCError } from "@trpc/server"
 import {
@@ -305,13 +306,16 @@ async function applyPatchToOrgSettings(
   if ("invoicePrefix" in patch) updateData.invoicePrefix = patch.invoicePrefix
   if ("quotePrefix" in patch) updateData.quotePrefix = patch.quotePrefix
 
-  await prisma.orgSettings.upsert({
+  await prisma.$transaction(async tx => {
+    updateData.baseCurrency = await resolveBaseCurrency(tx, organizationId, { countryCode: updateData.countryCode as string | undefined })
+    await tx.orgSettings.upsert({
     where: { organizationId },
     update: updateData,
     create: {
       organizationId,
       ...updateData,
     },
+  })
   })
 
   const primaryTaxId = patch.primaryTaxId

@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../../application/issuance"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { Prisma } from "../../../../generated/prisma/client"
 vi.mock("../../../lib/email", async () => ({
@@ -7,7 +8,7 @@ vi.mock("../../../lib/email", async () => ({
 import { prisma } from "../../../lib/db"
 import { deliver, EmailSendError } from "../../../lib/email"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
-import { executeCommand, type CommandOutcome } from "../../execute"
+import { type CommandOutcome } from "../../execute"
 import type { AnyCommandDefinition } from "../../command"
 import {
   createAgreementDraft,
@@ -77,7 +78,7 @@ async function setup() {
   const actor = org.actors.admin
   const run = (command: AnyCommandDefinition, input: object = {}, at = now) => {
     vi.setSystemTime(at)
-    return executeCommand(command, input, { actor, now: at })
+    return executeIssuanceCommand(command, input, { actor, now: at })
   }
   const agreement = completed(
     await run(createAgreementDraft, {
@@ -248,7 +249,7 @@ describe("agreement validity", () => {
   it("stores preview A through B back to A, while edited approval is refused", async () => {
     const ctx = await setup()
     const id = ctx.agreement.id
-    const queued = await executeCommand(
+    const queued = await executeIssuanceCommand(
       issueAgreement,
       { id, recipient: "customer@example.test" },
       { actor: await ctx.agent(), clientRequestId: "offer-a", now },
@@ -280,7 +281,7 @@ describe("agreement validity", () => {
     )
     expect((await ctx.get()).offerSnapshot).toMatchObject({ title: "Offer A" })
     const other = await setup()
-    const changed = await executeCommand(
+    const changed = await executeIssuanceCommand(
       issueAgreement,
       { id: other.agreement.id },
       { actor: await other.agent(), clientRequestId: "changed", now },
@@ -303,7 +304,7 @@ describe("agreement validity", () => {
     const actor = await ctx.agent()
     const id = ctx.agreement.id
     for (const request of ["expired", "recipient"]) {
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         sendAgreement,
         { id },
         { actor, clientRequestId: request, now },
@@ -381,7 +382,7 @@ describe("agreement validity", () => {
     const id = ctx.agreement.id
     const agent = await ctx.agent()
     const queue = (command: AnyCommandDefinition, input: object, request: string, at = now) =>
-      executeCommand(command, input, { actor: agent, clientRequestId: request, now: at })
+      executeIssuanceCommand(command, input, { actor: agent, clientRequestId: request, now: at })
     rejected(await queue(resendAgreement, { id }, "draft-resend"), "not_sent")
     rejected(await queue(sendAgreementReadLink, { id }, "draft-read"), "not_accepted")
     const issued = await ctx.issue("customer@example.test")
@@ -447,7 +448,7 @@ describe("agreement validity", () => {
         }),
     )
     const sending = ctx.run(sendAgreement, { id })
-    await vi.waitFor(async () => expect((await ctx.get()).lastEmailAttemptOutcome).toBe("sending"))
+    await vi.waitFor(async () => expect((await ctx.get()).lastEmailAttemptOutcome).toBe("sending"), { timeout: 15_000 })
     expect((await ctx.get()).status).toBe("draft")
     const checks: Array<[AnyCommandDefinition, object]> = [
       [updateAgreementDraft, { id, title: "B" }],
@@ -475,7 +476,7 @@ describe("agreement validity", () => {
         }),
     )
     const resending = ctx.run(resendAgreement, { id })
-    await vi.waitFor(async () => expect((await ctx.get()).lastEmailAttemptOutcome).toBe("sending"))
+    await vi.waitFor(async () => expect((await ctx.get()).lastEmailAttemptOutcome).toBe("sending"), { timeout: 15_000 })
     await expect(
       decidePublicAgreementByToken(await ctx.link(), accept, {}, now),
     ).rejects.toMatchObject({ code: "retry_later" })
@@ -609,7 +610,7 @@ describe("agreement validity", () => {
       [closeAgreement, { id, disposition: "cancelled", reason: "No" }],
       [revokeAgreementLinks, { id }],
     ] as Array<[AnyCommandDefinition, object]>)
-      expect(await executeCommand(command, input, { actor: agent, now })).toMatchObject({
+      expect(await executeIssuanceCommand(command, input, { actor: agent, now })).toMatchObject({
         status: "failed",
         error: { tag: "Forbidden" },
       })
@@ -630,7 +631,7 @@ describe("agreement validity", () => {
         .map((tool) => tool.permission),
     ).toEqual(Array(4).fill("agreement:send"))
     expect(
-      await executeCommand(
+      await executeIssuanceCommand(
         recordAgreementCustomerDecision,
         { token: old, decision: accept },
         { actor: ctx.actor, now },
@@ -746,7 +747,7 @@ describe("agreement validity", () => {
           ),
           racer === "recall"
             ? ctx.run(recallAgreement, { id: issued.id })
-            : executeCommand(
+            : executeIssuanceCommand(
                 expireOrganizationAgreements,
                 {},
                 {

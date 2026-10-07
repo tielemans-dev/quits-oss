@@ -38,6 +38,9 @@ export function requireVatIssuance(document: {
     sellerVatId: seller?.taxIds?.find((id) => ["VAT", "CVR", "DK_CVR"].includes(id.scheme?.toUpperCase() ?? ""))?.value,
     buyerCountry: buyer?.country,
   })
+  const evidence = document.vatEvidence as { buyerVatId?: string } | null
+  if (document.items.some(item => item.vatTreatment === "intra_community") &&
+      !buyer?.taxIds?.some(id => id.value === evidence?.buyerVatId)) issues.push("Buyer VAT evidence must match the buyer tax id refreshed at issuance")
   return issues.length
     ? Effect.fail(new InvalidState({ code: "evidence_incomplete", message: issues.join("; ") }))
     : Effect.try({

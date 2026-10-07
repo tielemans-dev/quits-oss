@@ -362,3 +362,26 @@ export function assertStoredDocumentEquation(input: {
   }
   return equation(new D(input.net).plus(input.tax).plus(sum(totals.map((group) => group.gross.minus(group.net).minus(group.tax)))), new D(input.gross), exponent)
 }
+
+/** Value frozen amounts without repricing their original inputs. Rule 7 owns the residual. */
+export function valueFrozenGroups(groups: import("@quits/contracts/pricing").FrozenVatGroup[], baseCurrency: string, rate: string) {
+  const baseExponent = requireCurrencyExponent(baseCurrency)
+  const exchangeRate = new D(rate)
+  if (exchangeRate.lte(0)) throw new Error("Exchange rate must be positive")
+  return groups.map(group => {
+    const grossBase = round(new D(group.gross).times(exchangeRate), baseExponent)
+    const taxBase = round(new D(group.tax).times(exchangeRate), baseExponent)
+    const payableRoundingBase = round(new D(group.payableRounding).times(exchangeRate), baseExponent)
+    return { ...group, baseExponent,
+      grossBase: money(grossBase, baseExponent), taxBase: money(taxBase, baseExponent),
+      payableRoundingBase: money(payableRoundingBase, baseExponent),
+      netBase: money(grossBase.minus(taxBase).minus(payableRoundingBase), baseExponent) }
+  })
+}
+
+/** Decimal money to integer minor units, refusing sub-minor inputs. */
+export function moneyMinor(amount: string, exponent: number) {
+  const value = new D(amount).times(new D(10).pow(exponent))
+  if (!value.isInteger()) throw new Error("Money has sub-minor precision")
+  return value.toFixed(0)
+}

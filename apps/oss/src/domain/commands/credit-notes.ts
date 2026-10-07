@@ -100,7 +100,7 @@ export const issueCreditNote = defineCommand({
             buyerSnapshot: (invoice.buyerSnapshot ??
               buildBuyerSnapshot(invoice.contact)) as Prisma.InputJsonValue,
             items: {
-              create: built.lines.map(({ groupKey: _groupKey, ...line }, index) => ({ ...line, sortOrder: index })),
+              create: built.lines.map(({ groupKey: _groupKey, ...line }, index) => ({ ...line, ...(command.issuance ? { id: `${command.issuance.documentId}:${index}` } : {}), sortOrder: index })),
             },
           },
           include: { items: { orderBy: { sortOrder: "asc" } } },
@@ -109,19 +109,6 @@ export const issueCreditNote = defineCommand({
 
       const { settlement, previousStatus } = yield* refreshInvoiceSettlement(invoice.id)
 
-      command.emit({
-        aggregateType: "credit_note",
-        aggregateId: creditNote.id,
-        type: "credit_note.issued",
-        payload: {
-          number,
-          invoiceId: invoice.id,
-          invoiceNumber: invoice.number,
-          mode: input.mode,
-          reason: input.reason,
-          totalGross: built.totalGross,
-        },
-      })
       if (settlement.fullyCredited && previousStatus !== "credited") {
         command.emit({
           aggregateType: "invoice",

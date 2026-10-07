@@ -1,8 +1,12 @@
+import { issueCreditNote } from "../../../domain/commands/credit-notes"
+import { setRuntimeServices } from "../../../lib/runtime/services"
+import { selfhostDocumentRenderer } from "../../../selfhost/runtime"
+import { executeIssuanceCommand } from "../../../application/issuance"
 import { ACCOUNTING_EXPORT_COLUMNS } from "@quits/contracts/exports"
 import { afterEach, describe, expect, it } from "vitest"
 import { createContact } from "../../../domain/commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../../../domain/commands/invoices"
-import { executeCommand } from "../../../domain/execute"
+
 import { prisma } from "../../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import { appRouter } from "../../router"
@@ -51,7 +55,7 @@ describeIfDatabase("exports and activity routers", () => {
       data: { organizationId: org.organizationId, scheme: "vat", value: "12345678", isPrimary: true },
     })
 
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       {
         name: "Hans Müller",
@@ -67,7 +71,7 @@ describeIfDatabase("exports and activity routers", () => {
     )
     if (contact.status !== "completed") throw new Error(JSON.stringify(contact))
 
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: contact.result.id,
@@ -82,7 +86,7 @@ describeIfDatabase("exports and activity routers", () => {
   }
 
   async function send(org: Awaited<ReturnType<typeof setup>>["org"], invoiceId: string) {
-    const sent = await executeCommand(
+    const sent = await executeIssuanceCommand(
       sendInvoice,
       { id: invoiceId, allowSendWithoutEmail: true },
       { actor: org.actors.admin }
@@ -91,7 +95,8 @@ describeIfDatabase("exports and activity routers", () => {
   }
 
   it("exports issued invoices and credit notes as Peppol UBL", async () => {
-    const { org, contactId, invoiceId } = await setup()
+    const { org, invoiceId } = await setup()
+    setRuntimeServices({ documentRenderer: selfhostDocumentRenderer })
     const accountant = callerFor(org.organizationId, org.actors.accountant.userId)
 
     await expect(accountant.exports.einvoice({ kind: "invoice", id: invoiceId })).resolves.toEqual({
@@ -109,40 +114,11 @@ describeIfDatabase("exports and activity routers", () => {
     expect(result.xml).toContain("<cbc:CityName>København V</cbc:CityName>")
     expect(result.xml).toContain('<cbc:PayableAmount currencyID="DKK">250.00</cbc:PayableAmount>')
 
-    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
-    const creditNote = await prisma.creditNote.create({
-      data: {
-        organizationId: org.organizationId,
-        invoiceId,
-        contactId,
-        number: "CN-0001",
-        reason: "Returned",
-        subtotalNet: 100,
-        totalTax: 25,
-        totalGross: 125,
-        currency: "DKK",
-        countryCode: "DK",
-        locale: "da-DK",
-        timezone: "Europe/Copenhagen",
-        taxRegime: "eu_vat",
-        sellerSnapshot: invoice.sellerSnapshot ?? undefined,
-        buyerSnapshot: invoice.buyerSnapshot ?? undefined,
-        items: {
-          create: [
-            {
-              description: "Design",
-              quantity: 1,
-              unitPriceNet: 100,
-              unitPriceGross: 125,
-              lineNet: 100,
-              lineTax: 25,
-              lineGross: 125,
-              taxRate: 25,
-            },
-          ],
-        },
-      },
-    })
+    await prisma.contact.updateMany({ where: { organizationId: org.organizationId }, data: { company: "Changed after issue" } })
+    expect(await accountant.exports.einvoice({ kind: "invoice", id: invoiceId })).toEqual(result)
+    const issuedCredit = await executeIssuanceCommand(issueCreditNote, { invoiceId, mode: "amount", amount: 125, reason: "Returned" }, { actor: org.actors.admin })
+    if (issuedCredit.status !== "completed") throw new Error(JSON.stringify(issuedCredit))
+    const creditNote = issuedCredit.result
     const credit = await accountant.exports.einvoice({ kind: "creditNote", id: creditNote.id })
     if (!credit.ok) throw new Error(JSON.stringify(credit))
     expect(credit.xml).toContain("<cbc:CreditNoteTypeCode>381</cbc:CreditNoteTypeCode>")
@@ -153,15 +129,12 @@ describeIfDatabase("exports and activity routers", () => {
     })
   })
 
-  it("explains missing buyer data instead of producing a file", async () => {
+  it("refuses a missing stored UBL instead of rendering issued rows", async () => {
     const { org, invoiceId } = await setup({ peppol: false })
     await send(org, invoiceId)
     const admin = callerFor(org.organizationId, org.actors.admin.userId)
 
-    await expect(admin.exports.einvoice({ kind: "invoice", id: invoiceId })).resolves.toEqual({
-      ok: false,
-      missing: ["buyer.electronicAddress"],
-    })
+    await expect(admin.exports.einvoice({ kind: "invoice", id: invoiceId })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })
   })
 
   it("exports accounting CSVs for a date range", async () => {
@@ -219,12 +192,12 @@ describeIfDatabase("exports and activity routers", () => {
     })
 
     const secondPage = await accountant.activity.list({ afterSequence: firstPage.nextSequence })
-    expect(secondPage.events.map((event) => event.type)).toEqual(["invoice.sent"])
+    expect(secondPage.events.map((event) => event.type)).toEqual(["invoice.sent", "invoice.issued", "document.artifact_stored"])
 
     const newest = await accountant.activity.list({ order: "desc", limit: 1 })
-    expect(newest.events.map((event) => event.type)).toEqual(["invoice.sent"])
+    expect(newest.events.map((event) => event.type)).toEqual(["document.artifact_stored"])
     const older = await accountant.activity.list({ beforeSequence: newest.nextSequence, limit: 5 })
-    expect(older.events.map((event) => event.type)).toEqual(["invoice.draft_created", "contact.created"])
+    expect(older.events.map((event) => event.type)).toEqual(["invoice.issued", "invoice.sent", "invoice.draft_created", "contact.created"])
     expect(older.hasMore).toBe(false)
 
     const contacts = await accountant.activity.list({ aggregateType: "contact" })
@@ -232,6 +205,6 @@ describeIfDatabase("exports and activity routers", () => {
 
     // Members can still see a document's own timeline.
     const timeline = await member.activity.forDocument({ aggregateType: "invoice", aggregateId: invoiceId })
-    expect(timeline.events.map((event) => event.type)).toEqual(["invoice.draft_created", "invoice.sent"])
+    expect(timeline.events.map((event) => event.type)).toEqual(["invoice.draft_created", "invoice.sent", "invoice.issued"])
   })
 })

@@ -61,7 +61,7 @@ function readDefaultCapabilities(
   )
 
   return {
-    documents: { artifactsRequired: false },
+    documents: { artifactsRequired: true },
     aiInvoiceDraft: {
       enabled: byok || managed,
       byok,
@@ -120,5 +120,7 @@ export function getRuntimeCapabilities(
     )
   }
 
+  // Issuance artifacts are a release invariant; runtime extensions cannot opt out.
+  capabilities.documents.artifactsRequired = true
   return capabilities
 }

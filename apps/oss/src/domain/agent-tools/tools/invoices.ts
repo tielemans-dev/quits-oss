@@ -1,3 +1,4 @@
+import { recordBaseValuation, recordBaseValuationInputSchema } from "../../commands/base-valuation"
 import { createInvoiceFromDeliverables, addInvoiceDeliverables } from "../../commands/invoices-from-deliverables"
 import { invoiceCreateFromDeliverablesInputSchema, invoiceAddDeliverablesInputSchema } from "@quits/contracts/invoices"
 import {
@@ -30,6 +31,8 @@ const presentSent = (
 })
 
 export const invoiceTools: AgentTool[] = [
+  defineCommandTool({ name: "invoice_record_base_valuation", title: "Record reviewed historical valuation", description: "Human review only. Records a historical base rate with an evidence note. Agents receive human_review_required.", command: recordBaseValuation, input: recordBaseValuationInputSchema, present: presentInvoice }),
+
   defineCommandTool({ name: "invoice_create_from_deliverables", title: "Invoice deliverables",
     description: "Reserves billable deliverables and creates drafts atomically. Returns { saleInvoiceId?, prepaymentInvoiceId? }. Schedule lines create prepayment drafts whose issuance is not supported yet. Set scheduleAsSale only on explicit instruction to invoice schedule lines as sales; that choice is recorded. Nothing is sent.",
     command: createInvoiceFromDeliverables, input: invoiceCreateFromDeliverablesInputSchema }),

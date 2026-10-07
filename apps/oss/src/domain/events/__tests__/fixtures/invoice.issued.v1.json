@@ -1,0 +1,249 @@
+{
+  "type": "invoice.issued",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "documentKind === \"invoice\" ? \"invoice.issued\" : \"credit_note.issued\"",
+      "payloadExpression": "payload",
+      "variant": "quote/email/withdrawn",
+      "payload": {
+        "documentId": "document-1",
+        "number": "DOC-0001",
+        "purpose": "sale",
+        "occurredAt": "2026-10-07T12:00:00.000Z",
+        "postingDate": "2026-10-07",
+        "issueDate": "2026-10-07",
+        "taxPointDate": "2026-10-07",
+        "taxPointReason": "invoice_issued",
+        "supplyDate": "2026-10-07",
+        "dueDate": "2026-11-07",
+        "currency": "EUR",
+        "exponent": 2,
+        "valuation": {
+          "base": {
+            "minor": "4",
+            "currency": "DKK",
+            "exponent": 2
+          },
+          "rate": "0.8",
+          "rateScale": 1,
+          "rateDate": "2026-10-07",
+          "rateSource": "user"
+        },
+        "lines": [
+          {
+            "lineId": "line-1",
+            "description": "Work",
+            "quantityInput": "1",
+            "unitPriceInput": "0.04",
+            "net": "0.04",
+            "tax": "0.01",
+            "gross": "0.05",
+            "vat": {
+              "treatment": "standard",
+              "rate": "0.25",
+              "country": "DK",
+              "reasonCode": null
+            },
+            "deliverableId": null
+          }
+        ],
+        "vatGroups": [
+          {
+            "treatment": "standard",
+            "reasonCode": null,
+            "rate": "0.25",
+            "country": "DK",
+            "key": "[\"standard\",null,\"0.25\",\"DK\"]",
+            "exponent": 2,
+            "baseExponent": 2,
+            "net": "0.04",
+            "tax": "0.01",
+            "gross": "0.05",
+            "payableRounding": "0.00",
+            "netBase": "0.03",
+            "taxBase": "0.01",
+            "grossBase": "0.04",
+            "payableRoundingBase": "0.00"
+          }
+        ],
+        "totals": {
+          "net": "0.04",
+          "tax": "0.01",
+          "gross": "0.05",
+          "payableRounding": "0.00",
+          "netBase": "0.03",
+          "taxBase": "0.01",
+          "grossBase": "0.04",
+          "payableRoundingBase": "0.00"
+        },
+        "calculation": {
+          "version": "v2",
+          "roundingMode": "half_up",
+          "pricesIncludeTax": false,
+          "exponent": 2,
+          "baseExponent": 2
+        },
+        "seller": {
+          "companyName": "Seller",
+          "taxIds": [
+            {
+              "scheme": "VAT",
+              "value": "DK12345678"
+            }
+          ]
+        },
+        "buyer": {
+          "name": "Buyer",
+          "taxIds": [
+            {
+              "scheme": "VAT",
+              "value": "DE123456789"
+            }
+          ]
+        },
+        "coveredByAdvances": [],
+        "depositApplications": [],
+        "provenance": {
+          "agreementId": null,
+          "quoteId": null,
+          "recurringInvoiceId": null,
+          "candidateId": "candidate-1",
+          "commandId": null
+        },
+        "artifacts": {
+          "pdf": {
+            "ref": "organization-1/invoice/document-1/artifact.pdf",
+            "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "size": 100
+          },
+          "ubl": {
+            "ref": "organization-1/invoice/document-1/artifact.xml",
+            "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "size": 200
+          }
+        }
+      }
+    },
+    {
+      "source": "documents/artifacts.ts",
+      "typeExpression": "documentKind === \"invoice\" ? \"invoice.issued\" : \"credit_note.issued\"",
+      "payloadExpression": "payload",
+      "variant": "no_optional",
+      "payload": {
+        "documentId": "document-1",
+        "number": "DOC-0001",
+        "purpose": "sale",
+        "occurredAt": "2026-10-07T12:00:00.000Z",
+        "postingDate": "2026-10-07",
+        "issueDate": "2026-10-07",
+        "taxPointDate": "2026-10-07",
+        "taxPointReason": "invoice_issued",
+        "supplyDate": "2026-10-07",
+        "dueDate": "2026-11-07",
+        "currency": "EUR",
+        "exponent": 2,
+        "valuation": {
+          "base": {
+            "minor": "4",
+            "currency": "DKK",
+            "exponent": 2
+          },
+          "rate": "0.8",
+          "rateScale": 1,
+          "rateDate": "2026-10-07",
+          "rateSource": "user"
+        },
+        "lines": [
+          {
+            "lineId": "line-1",
+            "description": "Work",
+            "quantityInput": "1",
+            "unitPriceInput": "0.04",
+            "net": "0.04",
+            "tax": "0.01",
+            "gross": "0.05",
+            "vat": {
+              "treatment": "standard",
+              "rate": "0.25",
+              "country": "DK",
+              "reasonCode": null
+            },
+            "deliverableId": null
+          }
+        ],
+        "vatGroups": [
+          {
+            "treatment": "standard",
+            "reasonCode": null,
+            "rate": "0.25",
+            "country": "DK",
+            "key": "[\"standard\",null,\"0.25\",\"DK\"]",
+            "exponent": 2,
+            "baseExponent": 2,
+            "net": "0.04",
+            "tax": "0.01",
+            "gross": "0.05",
+            "payableRounding": "0.00",
+            "netBase": "0.03",
+            "taxBase": "0.01",
+            "grossBase": "0.04",
+            "payableRoundingBase": "0.00"
+          }
+        ],
+        "totals": {
+          "net": "0.04",
+          "tax": "0.01",
+          "gross": "0.05",
+          "payableRounding": "0.00",
+          "netBase": "0.03",
+          "taxBase": "0.01",
+          "grossBase": "0.04",
+          "payableRoundingBase": "0.00"
+        },
+        "calculation": {
+          "version": "v2",
+          "roundingMode": "half_up",
+          "pricesIncludeTax": false,
+          "exponent": 2,
+          "baseExponent": 2
+        },
+        "seller": {
+          "companyName": "Seller",
+          "taxIds": [
+            {
+              "scheme": "VAT",
+              "value": "DK12345678"
+            }
+          ]
+        },
+        "buyer": {
+          "name": "Buyer",
+          "taxIds": [
+            {
+              "scheme": "VAT",
+              "value": "DE123456789"
+            }
+          ]
+        },
+        "coveredByAdvances": [],
+        "depositApplications": [],
+        "provenance": {
+          "agreementId": null,
+          "quoteId": null,
+          "recurringInvoiceId": null,
+          "candidateId": "candidate-1",
+          "commandId": null
+        },
+        "artifacts": {
+          "pdf": {
+            "ref": "organization-1/invoice/document-1/artifact.pdf",
+            "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "size": 100
+          }
+        }
+      }
+    }
+  ]
+}

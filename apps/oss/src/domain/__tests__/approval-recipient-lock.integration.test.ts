@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("../../lib/email", async () => {
@@ -13,7 +14,7 @@ import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
 import { decideApproval } from "../approvals"
 import { createContact, updateContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
-import { executeCommand } from "../execute"
+
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -30,13 +31,13 @@ describeIfDatabase("approved sends and recipient changes", () => {
     vi.stubEnv("FROM_EMAIL", "billing@example.com")
     const org = await createTestOrganization()
     cleanups.push(org.cleanup)
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "approved@example.test" },
       { actor: org.actors.admin }
     )
     if (contact.status !== "completed") throw new Error("contact setup failed")
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: contact.result.id,
@@ -54,14 +55,14 @@ describeIfDatabase("approved sends and recipient changes", () => {
       scopes: ["invoice:send", "invoice:read"],
     })
     const agent = await authenticateAgentSecret(secret)
-    const queued = await executeCommand(sendInvoice, { id: draft.result.id }, { actor: agent, clientRequestId: "s1" })
+    const queued = await executeIssuanceCommand(sendInvoice, { id: draft.result.id }, { actor: agent, clientRequestId: "s1" })
     if (queued.status !== "awaiting_approval") throw new Error("expected approval")
 
     // The contact's email changes after the approved send committed but before the provider
     // confirms delivery; the first attempt's outcome is unknown, so it is retried.
     let contactChange: { status: string } | null = null
     vi.mocked(deliver).mockImplementationOnce(async () => {
-      contactChange = await executeCommand(
+      contactChange = await executeIssuanceCommand(
         updateContact,
         { id: contact.result.id, email: "attacker@example.test" },
         { actor: org.actors.admin }

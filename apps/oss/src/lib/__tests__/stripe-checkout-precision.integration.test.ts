@@ -1,8 +1,9 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import "dotenv/config"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createContact } from "../../domain/commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../../domain/commands/invoices"
-import { executeCommand } from "../../domain/execute"
+
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { prisma } from "../db"
 import { signInvoicePaymentToken } from "../payments/public"
@@ -46,13 +47,13 @@ describeIfDatabase("public invoice checkout amount precision", () => {
         stripeWebhookSecretEnc: encryptSecret("whsec_test_12345678901234567890"),
       },
     })
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Tokyo Buyer", email: "buyer@example.jp" },
       { actor: org.actors.admin }
     )
     if (contact.status !== "completed") throw new Error("contact setup failed")
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: contact.result.id,
@@ -64,7 +65,7 @@ describeIfDatabase("public invoice checkout amount precision", () => {
       { actor: org.actors.admin }
     )
     if (draft.status !== "completed") throw new Error(`draft failed: ${JSON.stringify(draft)}`)
-    const sent = await executeCommand(
+    const sent = await executeIssuanceCommand(
       sendInvoice,
       { id: draft.result.id, allowSendWithoutEmail: true },
       { actor: org.actors.admin }

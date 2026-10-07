@@ -236,6 +236,7 @@ describeIfDatabase("MCP endpoint", () => {
       const draft = await call(client, "invoice_create_draft", {
         contactId: contact.value.result.id,
         dueDate: "2026-12-01",
+        supplyDate: "2026-12-01",
         taxRate: "25",
         items: [{ description: "Design", quantity: "2", unitPrice: "100" }],
         clientRequestId: "draft-1",
@@ -324,6 +325,7 @@ describeIfDatabase("MCP endpoint", () => {
       const draft = await call(client, "invoice_create_draft", {
         contactId,
         dueDate: "2099-12-01",
+        supplyDate: "2099-12-01",
         taxRate: "0",
         items: [{ description: "Design", quantity: "1", unitPrice: "100" }],
         clientRequestId: "lifecycle-draft",
@@ -354,7 +356,7 @@ describeIfDatabase("MCP endpoint", () => {
         invoiceId,
         reason: "Discount agreed",
         mode: "amount",
-        amount: 60,
+        amount: "60",
         clientRequestId: "credit-60",
       })
       expect(credited.value).toMatchObject({ status: "completed" })

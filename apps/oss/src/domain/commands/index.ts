@@ -1,3 +1,4 @@
+import { recordBaseValuation } from "./base-valuation"
 import { agreementCommands } from "./agreements"
 import type { AnyCommandDefinition } from "../command"
 import { contactCommands } from "./contacts"
@@ -12,6 +13,7 @@ import { recurringCommands } from "./recurring"
 export const allCommands: readonly AnyCommandDefinition[] = [
   ...contactCommands,
   ...invoiceCommands,
+  recordBaseValuation,
   ...quoteCommands,
   ...agreementCommands,
   ...paymentCommands,

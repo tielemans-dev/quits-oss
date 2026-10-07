@@ -1,3 +1,4 @@
+import { resolveCountryProfile } from "../compliance"
 import { requireCurrencyExponent } from "@quits/shared/currency"
 import { randomUUID } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
@@ -189,6 +190,7 @@ export async function applySetupInitialization(
         countryCode: input.locale.countryCode,
         timezone: input.locale.timezone,
         defaultCurrency: input.locale.currency,
+        baseCurrency: resolveCountryProfile(input.locale.countryCode).defaultCurrency,
         currency: input.locale.currency,
         companyName,
         companyEmail,
@@ -199,6 +201,7 @@ export async function applySetupInitialization(
         countryCode: input.locale.countryCode,
         timezone: input.locale.timezone,
         defaultCurrency: input.locale.currency,
+        baseCurrency: resolveCountryProfile(input.locale.countryCode).defaultCurrency,
         currency: input.locale.currency,
         companyName,
         companyEmail,

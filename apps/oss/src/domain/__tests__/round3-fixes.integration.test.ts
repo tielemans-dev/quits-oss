@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { Effect } from "effect"
 import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/db"
@@ -8,7 +9,7 @@ import { decideApproval, recoverInterruptedApprovals } from "../approvals"
 import { createContact, updateContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
 import { createRecurringInvoice, runRecurringInvoiceNow } from "../commands/recurring"
-import { executeCommand } from "../execute"
+
 import { Command, Db, type CommandScope } from "../services"
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
@@ -23,7 +24,7 @@ describeIfDatabase("round 3 review fixes", () => {
   async function setup() {
     const org = await createTestOrganization()
     cleanups.push(org.cleanup)
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "billing@acme.test" },
       { actor: org.actors.admin }
@@ -44,7 +45,7 @@ describeIfDatabase("round 3 review fixes", () => {
   describe("recurring run approvals", () => {
     async function queuedRunNow() {
       const { org, contactId } = await setup()
-      const schedule = await executeCommand(
+      const schedule = await executeIssuanceCommand(
         createRecurringInvoice,
         {
           name: "Retainer",
@@ -59,7 +60,7 @@ describeIfDatabase("round 3 review fixes", () => {
       )
       if (schedule.status !== "completed") throw new Error(JSON.stringify(schedule))
       const { agent } = await agentWith(org, ["recurring:update", "recurring:read"])
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         runRecurringInvoiceNow,
         { id: schedule.result.id },
         { actor: agent, clientRequestId: "run-1" }
@@ -98,7 +99,7 @@ describeIfDatabase("round 3 review fixes", () => {
     it("refuses to run after the customer was renamed since review", async () => {
       const { org, scheduleId, queued } = await queuedRunNow()
       const schedule = await prisma.recurringInvoice.findUniqueOrThrow({ where: { id: scheduleId } })
-      await executeCommand(updateContact, { id: schedule.contactId, name: "Acme Holdings" }, { actor: org.actors.admin })
+      await executeIssuanceCommand(updateContact, { id: schedule.contactId, name: "Acme Holdings" }, { actor: org.actors.admin })
 
       const decided = await decideApproval({
         approvalRequestId: queued.approvalRequestId,
@@ -112,14 +113,14 @@ describeIfDatabase("round 3 review fixes", () => {
   describe("invoice send approvals", () => {
     async function queuedSend() {
       const { org, contactId } = await setup()
-      const draft = await executeCommand(
+      const draft = await executeIssuanceCommand(
         createInvoiceDraft,
         { contactId, dueDate: "2099-12-01", taxRate: 0, items: [{ description: "X", quantity: 1, unitPrice: 100 }] },
         { actor: org.actors.admin }
       )
       if (draft.status !== "completed") throw new Error("draft failed")
       const { agent } = await agentWith(org, ["invoice:send", "invoice:read"])
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         sendInvoice,
         { id: draft.result.id, allowSendWithoutEmail: true },
         { actor: agent, clientRequestId: "send-1" }
@@ -130,7 +131,7 @@ describeIfDatabase("round 3 review fixes", () => {
 
     it("refuses to send after the invoice moved to another contact with the same address", async () => {
       const { org, invoiceId, queued } = await queuedSend()
-      const other = await executeCommand(
+      const other = await executeIssuanceCommand(
         createContact,
         { name: "Someone Else", email: "billing@acme.test" },
         { actor: org.actors.admin }
@@ -149,7 +150,7 @@ describeIfDatabase("round 3 review fixes", () => {
 
     it("refuses to send after the customer was renamed since review", async () => {
       const { org, contactId, invoiceId, queued } = await queuedSend()
-      await executeCommand(updateContact, { id: contactId, name: "Acme Holdings" }, { actor: org.actors.admin })
+      await executeIssuanceCommand(updateContact, { id: contactId, name: "Acme Holdings" }, { actor: org.actors.admin })
 
       const decided = await decideApproval({
         approvalRequestId: queued.approvalRequestId,
@@ -184,7 +185,7 @@ describeIfDatabase("round 3 review fixes", () => {
     await lockTaken
     try {
       const draft = await Promise.race([
-        executeCommand(
+        executeIssuanceCommand(
           createInvoiceDraft,
           { contactId, dueDate: "2099-12-01", taxRate: 0, items: [{ description: "X", quantity: 1, unitPrice: 1 }] },
           { actor: org.actors.admin }
@@ -200,14 +201,14 @@ describeIfDatabase("round 3 review fixes", () => {
 
   it("recovers a stuck approval even behind many older decided requests", async () => {
     const { org, contactId } = await setup()
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       { contactId, dueDate: "2099-12-01", taxRate: 0, items: [{ description: "X", quantity: 1, unitPrice: 100 }] },
       { actor: org.actors.admin }
     )
     if (draft.status !== "completed") throw new Error("draft failed")
     const { agent, keyId } = await agentWith(org, ["invoice:send", "invoice:read"])
-    const queued = await executeCommand(
+    const queued = await executeIssuanceCommand(
       sendInvoice,
       { id: draft.result.id, allowSendWithoutEmail: true },
       { actor: agent, clientRequestId: "send-stuck" }

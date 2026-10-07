@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("../../lib/email", async () => {
@@ -27,7 +28,7 @@ import {
   settleAbandonedDeliveries,
 } from "../delivery/outbox"
 import { readActivity } from "../events"
-import { executeCommand } from "../execute"
+
 import "../features/reminders"
 import { registerJobHandler, runDueJobs } from "../jobs"
 
@@ -65,13 +66,13 @@ describeIfDatabase("email outbox", () => {
   async function setup() {
     const org = await createTestOrganization({ roles: ["admin"] })
     cleanups.push(org.cleanup)
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "billing@acme.test" },
       { actor: org.actors.admin }
     )
     if (contact.status !== "completed") throw new Error("contact setup failed")
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: contact.result.id,
@@ -101,7 +102,7 @@ describeIfDatabase("email outbox", () => {
       return { id: "email_1" }
     })
 
-    const outcome = await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const outcome = await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
 
     expect(outcome).toMatchObject({ status: "completed", result: { emailPending: true } })
     expect(statusDuringDelivery).toBe("draft/sending")
@@ -119,7 +120,7 @@ describeIfDatabase("email outbox", () => {
     const { org, invoiceId } = await setup()
     vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "Domain is not verified"))
 
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
     expect(invoice).toMatchObject({
@@ -133,7 +134,7 @@ describeIfDatabase("email outbox", () => {
       status: "failed",
       result: { outcome: "rejected", message: "Domain is not verified" },
     })
-    const edited = await executeCommand(
+    const edited = await executeIssuanceCommand(
       updateInvoiceDraft,
       { id: invoiceId, notes: "Fixed the sender" },
       { actor: org.actors.admin }
@@ -145,11 +146,11 @@ describeIfDatabase("email outbox", () => {
     const { org, invoiceId, contactId } = await setup()
     vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("application_error", "fetch failed"))
 
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
 
     const frozen = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
     expect(frozen).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "sending" })
-    const blocked = await executeCommand(
+    const blocked = await executeIssuanceCommand(
       updateInvoiceDraft,
       { id: invoiceId, notes: "Changed while sending" },
       { actor: org.actors.admin }
@@ -177,7 +178,7 @@ describeIfDatabase("email outbox", () => {
     const { org, invoiceId } = await setup()
     vi.mocked(deliver).mockRejectedValue(new Error("socket hang up"))
 
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     const job = await deliveryJob(org.organizationId)
     await prisma.job.update({ where: { id: job.id }, data: { attempts: EMAIL_DELIVERY_ATTEMPTS - 1 } })
     await makeDue(job.id)
@@ -199,7 +200,7 @@ describeIfDatabase("email outbox", () => {
       .mockRejectedValueOnce(new Error("socket hang up"))
       .mockRejectedValueOnce(new EmailSendError("invalid_api_key", "API key is invalid"))
 
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     await makeDue((await deliveryJob(org.organizationId)).id)
     await runDueJobs({ organizationIds: [org.organizationId] })
 
@@ -211,7 +212,7 @@ describeIfDatabase("email outbox", () => {
     const { org, invoiceId } = await setup()
     vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
 
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     const job = await deliveryJob(org.organizationId)
     await prisma.$executeRaw`UPDATE "job" SET "createdAt" = NOW() - INTERVAL '25 hours' WHERE "id" = ${job.id}`
     await makeDue(job.id)
@@ -226,7 +227,7 @@ describeIfDatabase("email outbox", () => {
     const { org, invoiceId } = await setup()
     // The provider accepted the message and that was recorded, but settling the invoice failed.
     vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     const queued = await deliveryJob(org.organizationId)
     await prisma.job.update({
       where: { id: queued.id },
@@ -250,7 +251,7 @@ describeIfDatabase("email outbox", () => {
   it("settles deliveries whose job ended without settling", async () => {
     const { org, invoiceId } = await setup()
     vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     // A runner stopped during the job's last allowed attempt; the job runner gave it up.
     const job = await deliveryJob(org.organizationId)
     await prisma.job.update({ where: { id: job.id }, data: { status: "failed", lastError: "Runner stopped" } })
@@ -269,8 +270,8 @@ describeIfDatabase("email outbox", () => {
       .mockRejectedValueOnce(new EmailSendError("validation_error", "Domain is not verified"))
       .mockRejectedValueOnce(new Error("socket hang up"))
 
-    const first = await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
-    const second = await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const first = await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const second = await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     if (first.status !== "completed" || second.status !== "completed") throw new Error("expected sends")
 
     expect(await readDeliveryResult(first.result.deliveryKey!)).toMatchObject({ outcome: "rejected" })
@@ -282,7 +283,7 @@ describeIfDatabase("email outbox", () => {
     vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "Domain is not verified"))
     registerJobHandler("test.send_invoice", async (job) => {
       const { id } = job.payload as { id: string }
-      await executeCommand(sendInvoice, { id }, { actor: org.actors.admin })
+      await executeIssuanceCommand(sendInvoice, { id }, { actor: org.actors.admin })
     })
     await prisma.job.create({
       data: { organizationId: org.organizationId, type: "test.send_invoice", payload: { id: invoiceId } },
@@ -300,7 +301,7 @@ describeIfDatabase("email outbox", () => {
   it("never lets a delivery settle a document that is no longer waiting for it", async () => {
     const { org, invoiceId } = await setup()
     vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
 
     // Another attempt owns the marker now (e.g. an operator cleared and re-sent it).
     const newer = new Date(Date.now() + 60_000)
@@ -319,13 +320,13 @@ describeIfDatabase("email outbox", () => {
 
   it("stops retrying a reminder once the invoice is paid, keeping it as possibly delivered", async () => {
     const { org, invoiceId } = await setup()
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     vi.mocked(deliver).mockClear()
     vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
 
-    const reminder = await executeCommand(sendReminderNow, { invoiceId }, { actor: org.actors.admin })
+    const reminder = await executeIssuanceCommand(sendReminderNow, { invoiceId }, { actor: org.actors.admin })
     if (reminder.status !== "completed") throw new Error("expected the reminder to be queued")
-    await executeCommand(
+    await executeIssuanceCommand(
       recordPayment,
       { invoiceId, amount: 100, paidAt: "2026-01-15", method: "bank_transfer" },
       { actor: org.actors.admin }
@@ -344,7 +345,7 @@ describeIfDatabase("email outbox", () => {
   it("counts provider requests, not job claims, when deciding whether anything may have arrived", async () => {
     const { org, invoiceId } = await setup()
     vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     // Earlier claims that never reached the provider (e.g. a database error before the request).
     const job = await deliveryJob(org.organizationId)
     const payload = job.payload as Record<string, unknown>
@@ -362,7 +363,7 @@ describeIfDatabase("email outbox", () => {
   it("does not count a delivery that could not reach the provider as possibly delivered", async () => {
     const { org, invoiceId } = await setup()
     vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     const job = await deliveryJob(org.organizationId)
     // The first request's outcome was lost; then the process restarts without an API key.
     await prisma.job.update({ where: { id: job.id }, data: { payload: { ...(job.payload as object), requests: 0 } } })
@@ -383,7 +384,7 @@ describeIfDatabase("email outbox", () => {
   it("treats a delivery queued before requests were counted as possibly delivered", async () => {
     const { org, invoiceId } = await setup()
     vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
     const job = await deliveryJob(org.organizationId)
     const { requests: _requests, ...legacy } = job.payload as Record<string, unknown>
     await prisma.job.update({ where: { id: job.id }, data: { payload: legacy as object } })
@@ -412,7 +413,7 @@ describeIfDatabase("email outbox", () => {
       throw new EmailSendError("validation_error", "Late refusal")
     })
 
-    await executeCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
 
     const job = await deliveryJob(org.organizationId)
     expect(job.payload).toMatchObject({ providerMessageId: "accepted-by-newer-run" })
@@ -427,8 +428,8 @@ describeIfDatabase("email outbox", () => {
   /** A sent invoice with a due scheduled reminder whose email is queued but not yet attempted. */
   async function queuedScheduledReminder() {
     const ctx = await setup()
-    await executeCommand(sendInvoice, { id: ctx.invoiceId }, { actor: ctx.org.actors.admin })
-    await executeCommand(updateReminderPolicy, { enabled: true, offsetsDays: [0] }, { actor: ctx.org.actors.admin })
+    await executeIssuanceCommand(sendInvoice, { id: ctx.invoiceId }, { actor: ctx.org.actors.admin })
+    await executeIssuanceCommand(updateReminderPolicy, { enabled: true, offsetsDays: [0] }, { actor: ctx.org.actors.admin })
     const reminder = await prisma.invoiceReminder.create({
       data: { invoiceId: ctx.invoiceId, offsetDays: 0, scheduledFor: new Date(Date.now() - 1000) },
     })
@@ -451,7 +452,7 @@ describeIfDatabase("email outbox", () => {
 
   it("withdraws a queued scheduled reminder once automatic reminders are turned off", async () => {
     const { org, reminderId } = await queuedScheduledReminder()
-    await executeCommand(updateReminderPolicy, { enabled: false, offsetsDays: [0] }, { actor: org.actors.admin })
+    await executeIssuanceCommand(updateReminderPolicy, { enabled: false, offsetsDays: [0] }, { actor: org.actors.admin })
 
     await runDueJobs({ organizationIds: [org.organizationId] })
 
@@ -464,7 +465,7 @@ describeIfDatabase("email outbox", () => {
 
   it("re-queues a scheduled reminder with the current balance after a partial payment", async () => {
     const { org, invoiceId, reminderId } = await queuedScheduledReminder()
-    await executeCommand(
+    await executeIssuanceCommand(
       recordPayment,
       { invoiceId, amount: 40, paidAt: "2026-01-15", method: "bank_transfer" },
       { actor: org.actors.admin }
@@ -488,7 +489,7 @@ describeIfDatabase("email outbox", () => {
         scopes: ["invoice:send", "invoice:update", "invoice:read"],
       })
       const agent = await authenticateAgentSecret(secret)
-      const request = await executeCommand(sendInvoice, { id: ctx.invoiceId }, { actor: agent, clientRequestId: "s1" })
+      const request = await executeIssuanceCommand(sendInvoice, { id: ctx.invoiceId }, { actor: agent, clientRequestId: "s1" })
       if (request.status !== "awaiting_approval") throw new Error("expected approval")
       return { ...ctx, agent, request }
     }
@@ -516,7 +517,7 @@ describeIfDatabase("email outbox", () => {
 
     it("leaves the draft untouched when the document changed since review", async () => {
       const { org, invoiceId, request, agent } = await queued()
-      await executeCommand(updateInvoiceDraft, { id: invoiceId, notes: "Edited after queuing" }, { actor: agent })
+      await executeIssuanceCommand(updateInvoiceDraft, { id: invoiceId, notes: "Edited after queuing" }, { actor: agent })
 
       const decided = await decideApproval({
         approvalRequestId: request.approvalRequestId,

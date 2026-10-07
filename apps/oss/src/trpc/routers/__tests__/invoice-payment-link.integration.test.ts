@@ -51,6 +51,7 @@ describeIfDatabase("invoice payment links", () => {
           locale: "da-DK",
           timezone: "Europe/Copenhagen",
           defaultCurrency: "DKK",
+          baseCurrency: "DKK",
           currency: "DKK",
           taxRegime: "eu_vat",
           pricesIncludeTax: false,

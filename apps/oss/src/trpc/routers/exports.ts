@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { accountingExportInputSchema, einvoiceExportInputSchema } from "@quits/contracts/exports"
 import { actorCan } from "../../domain/actor"
 import { exportAccounting } from "../../lib/exports/accounting"
-import { EinvoiceSourceNotFound, exportEinvoice } from "../../lib/exports/einvoice"
+import { EinvoiceSourceNotFound, EinvoiceArtifactUnavailable, exportEinvoice } from "../../lib/exports/einvoice"
 import { authorizedProcedure, orgProcedure, router } from "../init"
 
 export const exportsRouter = router({
@@ -19,6 +19,7 @@ export const exportsRouter = router({
       if (error instanceof EinvoiceSourceNotFound) {
         throw new TRPCError({ code: "NOT_FOUND", message: error.message })
       }
+      if (error instanceof EinvoiceArtifactUnavailable) throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message })
       if (error instanceof EinvoiceVatError) {
         throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error })
       }

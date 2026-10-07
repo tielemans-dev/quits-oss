@@ -70,7 +70,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
   for (const mode of ["send", "email"] as const) {
     registerDeliveryCompletion(completionKind(kind, mode), {
       pending: async (db, target) => (await pendingCandidate(db, target)) && (await delegate(db, kind).count({ where: awaiting(target, mode) })) > 0,
-      delivered: async ({ tx, target, organizationId }) => {
+      delivered: async ({ tx, target, organizationId, commandId }) => {
         if (kind === "invoice") await lockInvoiceForCompletion(tx, target.documentId!, organizationId)
         if (!await pendingCandidate(tx, target)) return []
         const attemptAt = new Date(target.attemptAt)
@@ -89,7 +89,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
         })
         if (count === 0) return []
         const artifactEvents = target.candidateId ? await publishCandidate(tx, {
-          candidateId: target.candidateId, documentId: target.documentId, attemptAt, organizationId,
+          candidateId: target.candidateId, documentId: target.documentId, attemptAt, organizationId, commandId,
         }) : []
         return [
           ...artifactEvents,
@@ -105,7 +105,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
           },
         ]
       },
-      failed: async ({ tx, target, organizationId }, failure: DeliveryFailure) => {
+      failed: async ({ tx, target, organizationId, commandId }, failure: DeliveryFailure) => {
         if (kind === "invoice") await lockInvoiceForCompletion(tx, target.documentId!, organizationId)
         if (!await pendingCandidate(tx, target)) return []
         const attemptAt = new Date(target.attemptAt)
@@ -125,7 +125,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
           })
           if (count === 0) return []
           const artifactEvents = target.candidateId ? await publishCandidate(tx, {
-            candidateId: target.candidateId, documentId: target.documentId, attemptAt, organizationId,
+            candidateId: target.candidateId, documentId: target.documentId, attemptAt, organizationId, commandId,
           }) : []
           return [
             ...artifactEvents,

@@ -95,6 +95,7 @@ export async function runInvoiceQuoteSmokeFlow(
         locale: config.locale,
         timezone: config.timezone,
         defaultCurrency: config.currency,
+        baseCurrency: config.currency,
         currency: config.currency,
         taxRegime: config.taxRegime,
         pricesIncludeTax: config.pricesIncludeTax,
@@ -186,6 +187,7 @@ export async function runInvoiceQuoteSmokeFlow(
     })
 
     const convertedInvoiceSent = await caller.invoices.send({
+      supplyDate: new Date().toISOString().slice(0, 10),
       id: convertedInvoice.id,
       allowSendWithoutEmail: true,
     })
