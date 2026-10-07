@@ -101,10 +101,11 @@ describeIfDatabase("setup router integration", () => {
         mode: "local_only" as const,
       },
       locale: {
-        locale: "en-US",
-        countryCode: "US",
+        // No country module covers GB, so setup must not apply US defaults.
+        locale: "en-GB",
+        countryCode: "GB",
         timezone: "UTC",
-        currency: "USD",
+        currency: "GBP",
       },
       email: {
         fromName: "Setup Billing",
@@ -131,12 +132,16 @@ describeIfDatabase("setup router integration", () => {
         select: {
           companyName: true,
           companyEmail: true,
+          baseCurrency: true,
+          taxRegime: true,
         },
       })
 
       expect(settings).toEqual({
         companyName: "Setup Billing",
         companyEmail: "billing-setup@example.com",
+        baseCurrency: "GBP",
+        taxRegime: "custom",
       })
     } else {
       await expect(caller.setup.initialize(setupInput)).rejects.toThrow()

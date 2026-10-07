@@ -27,6 +27,8 @@ import {
 } from "../../lib/onboarding/ai-contract"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getOnboardingAiService } from "../../lib/runtime/services"
+import { canonicalLocale } from "../../lib/compliance/countries"
+import { isCountryCode } from "../../lib/compliance/registry"
 import { authorizedProcedure, router } from "../init"
 
 const onboardingLogger = appLogger.child("onboarding-ai")
@@ -44,7 +46,15 @@ const suggestOnboardingPatchInputSchema = z.object({
 })
 
 const applyOnboardingPatchInputSchema = z.object({
-  patch: onboardingPatchSchema,
+  patch: onboardingPatchSchema
+    .refine((patch) => patch.countryCode === undefined || isCountryCode(patch.countryCode), {
+      message: "Unknown country",
+      path: ["countryCode"],
+    })
+    .refine((patch) => patch.locale === undefined || canonicalLocale(patch.locale) !== null, {
+      message: "Unsupported locale",
+      path: ["locale"],
+    }),
   source: onboardingApplySourceSchema,
 })
 

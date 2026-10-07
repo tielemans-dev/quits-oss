@@ -20,6 +20,23 @@ describe("settingsUpdateSchema", () => {
     expect(parsed.aiOpenRouterModel).toBe("openai/gpt-4o-mini")
   })
 
+  it("accepts countries without a module so their organizations can still save settings", () => {
+    expect(settingsUpdateSchema.parse({ countryCode: "gb" }).countryCode).toBe("GB")
+    for (const countryCode of ["ZZ", "EU", "XX"]) {
+      expect(() => settingsUpdateSchema.parse({ countryCode })).toThrow()
+    }
+  })
+
+  it("accepts any formattable locale, so locales chosen at setup can be saved", () => {
+    expect(settingsUpdateSchema.parse({ locale: "pl-PL" }).locale).toBe("pl-PL")
+    expect(settingsUpdateSchema.parse({ locale: "en-us" }).locale).toBe("en-US")
+    expect(settingsUpdateSchema.parse({ locale: "es-419" }).locale).toBe("es-419")
+    expect(settingsUpdateSchema.parse({ locale: "en-208" }).locale).toBe("en-DK")
+    for (const locale of ["foo", "xx-YY", "en-000", "en-999", ""]) {
+      expect(() => settingsUpdateSchema.parse({ locale })).toThrow()
+    }
+  })
+
   it("rejects unsupported tax regime", () => {
     expect(() =>
       settingsUpdateSchema.parse({

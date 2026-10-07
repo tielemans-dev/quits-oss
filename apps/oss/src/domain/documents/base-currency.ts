@@ -22,7 +22,7 @@ export async function resolveBaseCurrency(tx: Prisma.TransactionClient, organiza
   const current = await tx.orgSettings.findUniqueOrThrow({ where: { organizationId } })
   const issued = await hasIssuedDocuments(tx, organizationId)
   const next = input.baseCurrency ?? (input.countryCode && input.countryCode !== current.countryCode && !issued
-    ? resolveCountryProfile(input.countryCode).defaultCurrency : current.baseCurrency)
+    ? resolveCountryProfile(input.countryCode).country?.defaults.currency ?? current.baseCurrency : current.baseCurrency)
   requireCurrencyExponent(next)
   if (issued && next !== current.baseCurrency) throw new InvalidState({ code: "base_currency_locked", message: "Base currency cannot change after an issued document" })
   return next

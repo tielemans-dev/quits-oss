@@ -5,6 +5,8 @@ import {
   listFollowupQuestions,
 } from "./ai-contract"
 import type { OnboardingMissingField } from "./readiness"
+import type { CountryModule } from "../compliance/country-module"
+import { findCountryInText } from "../compliance/registry"
 
 type HeuristicInput = {
   userMessage: string
@@ -25,16 +27,6 @@ function normalizeTaxRegime(text: string): OnboardingPatch["taxRegime"] | undefi
   return undefined
 }
 
-function normalizeCountryCode(text: string): string | undefined {
-  const lower = text.toLowerCase()
-  if (/\bdenmark\b|\bdanish\b|\bdk\b/.test(lower)) return "DK"
-  if (/\bunited states\b|\busa\b|\bus\b/.test(lower)) return "US"
-  if (/\bgermany\b|\bde\b/.test(lower)) return "DE"
-  if (/\bfrance\b|\bfr\b/.test(lower)) return "FR"
-  if (/\bnetherlands\b|\bnl\b/.test(lower)) return "NL"
-  return undefined
-}
-
 function normalizeCurrency(text: string): string | undefined {
   const upper = text.toUpperCase()
   if (upper.includes("DKK")) return "DKK"
@@ -44,34 +36,12 @@ function normalizeCurrency(text: string): string | undefined {
   return undefined
 }
 
-function applyCountryDefaults(
-  patch: OnboardingPatch,
-  countryCode: string | undefined
-) {
-  if (!countryCode) return
-  if (!patch.countryCode) patch.countryCode = countryCode
-
-  if (countryCode === "DK") {
-    patch.locale ??= "da-DK"
-    patch.defaultCurrency ??= "DKK"
-    patch.timezone ??= "Europe/Copenhagen"
-  } else if (countryCode === "US") {
-    patch.locale ??= "en-US"
-    patch.defaultCurrency ??= "USD"
-    patch.timezone ??= "America/New_York"
-  } else if (countryCode === "DE") {
-    patch.locale ??= "de-DE"
-    patch.defaultCurrency ??= "EUR"
-    patch.timezone ??= "Europe/Berlin"
-  } else if (countryCode === "FR") {
-    patch.locale ??= "fr-FR"
-    patch.defaultCurrency ??= "EUR"
-    patch.timezone ??= "Europe/Paris"
-  } else if (countryCode === "NL") {
-    patch.locale ??= "nl-NL"
-    patch.defaultCurrency ??= "EUR"
-    patch.timezone ??= "Europe/Amsterdam"
-  }
+function applyCountryDefaults(patch: OnboardingPatch, country: CountryModule | null) {
+  if (!country) return
+  if (!patch.countryCode) patch.countryCode = country.countryCode
+  patch.locale ??= country.defaults.locale
+  patch.defaultCurrency ??= country.defaults.currency
+  patch.timezone ??= country.defaults.timezone
 }
 
 export function suggestOnboardingPatchHeuristically(
@@ -83,8 +53,7 @@ export function suggestOnboardingPatchHeuristically(
   const email = maybeExtractEmail(input.userMessage)
   if (email) patch.companyEmail = email
 
-  const countryCode = normalizeCountryCode(input.userMessage)
-  applyCountryDefaults(patch, countryCode)
+  applyCountryDefaults(patch, findCountryInText(input.userMessage))
 
   const taxRegime = normalizeTaxRegime(input.userMessage)
   if (taxRegime) patch.taxRegime = taxRegime

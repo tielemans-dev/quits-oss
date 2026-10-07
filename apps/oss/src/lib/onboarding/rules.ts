@@ -1,4 +1,11 @@
 import type { OnboardingTaxRegime } from "@quits/contracts/onboarding"
+import {
+  findCountryModule,
+  findTaxRegime,
+  normalizeCountryCode,
+  taxIdSchemeOptions,
+} from "../compliance/registry"
+import type { TaxIdSchemeOption } from "../compliance/country-module"
 
 export type OnboardingInvoicingIdentity = "individual" | "registered_business"
 
@@ -24,20 +31,21 @@ export type OnboardingRules = {
   showPrimaryTaxId: boolean
   requirePrimaryTaxId: boolean
   primaryTaxIdCopy: OnboardingPrimaryTaxIdCopy
+  /** Schemes offered for the primary tax ID. */
+  primaryTaxIdSchemes: TaxIdSchemeOption[]
 }
 
 const DEFAULT_RULES: OnboardingRules["defaults"] = {
   locale: "en-US",
   timezone: "America/New_York",
   defaultCurrency: "USD",
-  taxRegime: "us_sales_tax",
+  taxRegime: "custom",
   pricesIncludeTax: false,
 }
 
-const EU_COUNTRIES = new Set(["DK", "DE", "FR", "NL"])
-
-function normalizeCountryCode(countryCode?: string | null) {
-  return countryCode?.trim().toUpperCase() || "US"
+const GENERIC_PRIMARY_TAX_ID_COPY: OnboardingPrimaryTaxIdCopy = {
+  label: "Tax ID",
+  help: "Only needed when your selected tax setup requires it.",
 }
 
 function normalizeInvoicingIdentity(
@@ -50,72 +58,33 @@ function getDefaults(
   countryCode: string,
   invoicingIdentity: OnboardingInvoicingIdentity
 ): OnboardingRules["defaults"] {
-  if (countryCode === "DK") {
-    return {
-      locale: "da-DK",
-      timezone: "Europe/Copenhagen",
-      defaultCurrency: "DKK",
-      taxRegime: invoicingIdentity === "registered_business" ? "eu_vat" : "custom",
-      pricesIncludeTax: true,
-    }
+  const regime = findTaxRegime(countryCode)
+  const taxRegime =
+    regime && (invoicingIdentity === "registered_business" || regime.appliesToIndividuals)
+      ? regime.id
+      : "custom"
+  const country = findCountryModule(countryCode)
+  if (!country) return { ...DEFAULT_RULES, taxRegime }
+  return {
+    locale: country.defaults.locale,
+    timezone: country.defaults.timezone,
+    defaultCurrency: country.defaults.currency,
+    taxRegime,
+    pricesIncludeTax: country.defaults.pricesIncludeTax,
   }
-
-  if (countryCode === "DE") {
-    return {
-      locale: "de-DE",
-      timezone: "Europe/Berlin",
-      defaultCurrency: "EUR",
-      taxRegime: invoicingIdentity === "registered_business" ? "eu_vat" : "custom",
-      pricesIncludeTax: true,
-    }
-  }
-
-  if (countryCode === "FR") {
-    return {
-      locale: "fr-FR",
-      timezone: "Europe/Paris",
-      defaultCurrency: "EUR",
-      taxRegime: invoicingIdentity === "registered_business" ? "eu_vat" : "custom",
-      pricesIncludeTax: true,
-    }
-  }
-
-  if (countryCode === "NL") {
-    return {
-      locale: "nl-NL",
-      timezone: "Europe/Amsterdam",
-      defaultCurrency: "EUR",
-      taxRegime: invoicingIdentity === "registered_business" ? "eu_vat" : "custom",
-      pricesIncludeTax: true,
-    }
-  }
-
-  return DEFAULT_RULES
 }
 
 function getPrimaryTaxIdCopy(countryCode: string): OnboardingPrimaryTaxIdCopy {
-  if (countryCode === "DK") {
-    return {
-      label: "VAT/CVR number",
-      help: "Required for Danish registered businesses using EU VAT.",
-    }
-  }
-
-  if (EU_COUNTRIES.has(countryCode)) {
-    return {
-      label: "VAT number",
-      help: "Required for registered businesses using EU VAT.",
-    }
-  }
-
-  return {
-    label: "Tax ID",
-    help: "Only needed when your selected tax setup requires it.",
-  }
+  return (
+    findCountryModule(countryCode)?.primaryTaxIdCopy ??
+    findTaxRegime(countryCode)?.primaryTaxIdCopy ??
+    GENERIC_PRIMARY_TAX_ID_COPY
+  )
 }
 
 export function getOnboardingRules(input: OnboardingRulesInput): OnboardingRules {
-  const countryCode = normalizeCountryCode(input.countryCode)
+  // No country chosen yet: suggest the US defaults the form starts with.
+  const countryCode = normalizeCountryCode(input.countryCode) ?? "US"
   const invoicingIdentity = normalizeInvoicingIdentity(input.invoicingIdentity)
   const defaults = getDefaults(countryCode, invoicingIdentity)
   const taxRegime = (input.taxRegime ?? defaults.taxRegime) as OnboardingTaxRegime
@@ -126,5 +95,6 @@ export function getOnboardingRules(input: OnboardingRulesInput): OnboardingRules
     showPrimaryTaxId,
     requirePrimaryTaxId: showPrimaryTaxId,
     primaryTaxIdCopy: getPrimaryTaxIdCopy(countryCode),
+    primaryTaxIdSchemes: taxIdSchemeOptions(countryCode, taxRegime),
   }
 }

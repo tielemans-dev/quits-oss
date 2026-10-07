@@ -12,6 +12,8 @@ import { isCloudDistribution } from "../../lib/distribution"
 import { prisma } from "../../lib/db"
 import { evaluateOnboardingReadiness } from "../../lib/onboarding/readiness"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
+import { localeSchema } from "../../lib/compliance/countries"
+import { isCountryCode } from "../../lib/compliance/registry"
 import { authorizedProcedure, router } from "../init"
 
 const onboardingInputSchema = z.object({
@@ -27,9 +29,10 @@ const onboardingDraftSchema = z.object({
     .trim()
     .length(2)
     .transform((value) => value.toUpperCase())
+    .refine(isCountryCode, "Unknown country")
     .optional(),
   invoicingIdentity: onboardingInvoicingIdentitySchema.optional(),
-  locale: z.string().trim().min(2).max(16).optional(),
+  locale: localeSchema.optional(),
   timezone: z.string().trim().min(1).max(120).optional(),
   defaultCurrency: z
     .string()

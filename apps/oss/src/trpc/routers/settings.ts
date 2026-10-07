@@ -18,10 +18,11 @@ import { encryptSecret } from "../../lib/secrets"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
-import { COUNTRY_OPTIONS, LOCALE_OPTIONS } from "../../lib/compliance/countries"
+import { localeSchema } from "../../lib/compliance/countries"
+import { isCountryCode } from "../../lib/compliance/registry"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import {
-  getCountryCodeOrFallback,
+  normalizeCountryCode,
   validateLocalizedFields,
 } from "../../lib/validation/localization"
 
@@ -37,8 +38,6 @@ const companyLogoSchema = z
     "Company logo must be an image URL or uploaded image data"
   )
 
-const supportedCountryCodes = new Set(COUNTRY_OPTIONS.map((country) => country.code))
-const supportedLocales = new Set(LOCALE_OPTIONS)
 const configureDocumentSendingDomainSchema = z.object({
   domain: z.string().trim().min(1).max(255),
 })
@@ -80,13 +79,9 @@ export const settingsUpdateSchema = z.object({
     .trim()
     .length(2)
     .transform((value) => value.toUpperCase())
-    .refine((value) => supportedCountryCodes.has(value), "Unsupported country")
+    .refine(isCountryCode, "Unknown country")
     .optional(),
-  locale: z
-    .string()
-    .trim()
-    .refine((value) => supportedLocales.has(value), "Unsupported locale")
-    .optional(),
+  locale: localeSchema.optional(),
   timezone: timezoneSchema.optional(),
   baseCurrency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   defaultCurrency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
@@ -193,7 +188,7 @@ export const settingsRouter = router({
           where: { organizationId: ctx.organizationId },
           select: { countryCode: true },
         })
-        const resolvedCountry = getCountryCodeOrFallback(
+        const resolvedCountry = normalizeCountryCode(
           settingsInput.countryCode ?? current?.countryCode
         )
         const localizedIssues = validateLocalizedFields(resolvedCountry, {

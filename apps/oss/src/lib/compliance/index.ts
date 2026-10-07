@@ -1,4 +1,4 @@
 export * from "./country-profile"
-export * from "./compute"
+export * from "./country-module"
 export * from "./validate"
-export * from "./resolve-profile"
+export * from "./registry"

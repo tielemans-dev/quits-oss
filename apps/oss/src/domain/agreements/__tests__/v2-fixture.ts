@@ -1,8 +1,7 @@
 import { Prisma, type Agreement, type Deliverable } from "../../../../generated/prisma/client"
 import { priceAgreementV2 } from "../pricing"
-import { resolveCountryProfile } from "../../../lib/compliance"
 export function v2Fixture() {
-  const input = { currency: "DKK", pricesIncludeTax: true, taxRate: "25", profile: resolveCountryProfile("DK"),
+  const input = { currency: "DKK", pricesIncludeTax: true, taxRate: "25",
     deliverables: [
       { title: "Service A", description: "Work A", quantity: "1.000001", unitPrice: "0.0100" },
       { title: "Service B", description: "Work B", quantity: "1", unitPrice: "0.01" },

@@ -8,7 +8,8 @@ import {
 } from "../../lib/validation/settings-form"
 import {
   COUNTRY_OPTIONS,
-  LOCALE_OPTIONS,
+  countryOptionsIncluding,
+  localeOptionsIncluding,
   TAX_REGIMES,
 } from "../../lib/compliance/countries"
 import { Button } from "../../components/ui/button"
@@ -755,7 +756,7 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.country.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {COUNTRY_OPTIONS.map((country) => (
+                    {countryOptionsIncluding(settings?.countryCode).map((country) => (
                       <SelectItem key={country.code} value={country.code}>
                         {countryDisplayNames.of(country.code) ?? country.label}
                       </SelectItem>
@@ -770,7 +771,7 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.locale.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {LOCALE_OPTIONS.map((item) => (
+                    {localeOptionsIncluding(settings?.locale).map((item) => (
                       <SelectItem key={item} value={item}>
                         {`${item} — ${languageDisplayNames.of(item.split("-")[0] ?? item) ?? item}`}
                       </SelectItem>
@@ -855,9 +856,13 @@ function SettingsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="vat">VAT</SelectItem>
-                      <SelectItem value="cvr">CVR</SelectItem>
-                      <SelectItem value="ein">EIN</SelectItem>
+                      {taxRules.primaryTaxIdSchemes.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                      {primaryTaxIdScheme !== "other" &&
+                      !taxRules.primaryTaxIdSchemes.some((option) => option.value === primaryTaxIdScheme) ? (
+                        <SelectItem value={primaryTaxIdScheme}>{primaryTaxIdScheme.toUpperCase()}</SelectItem>
+                      ) : null}
                       <SelectItem value="other">{t("settings.primaryTaxIdScheme.other")}</SelectItem>
                     </SelectContent>
                   </Select>
