@@ -219,6 +219,20 @@ export async function decideApproval(input: {
 
   const approvedBy = request.decidedByUserId ?? input.decider.userId
   await prisma.$transaction(async (tx) => {
+    // A recovery attempt resumes a request that was already approved; the approval itself is
+    // recorded once, by whichever attempt got there first.
+    const recorded = await tx.domainEvent.findFirst({
+      where: {
+        organizationId: request.organizationId,
+        aggregateType: "approval",
+        aggregateId: request.id,
+        type: "approval.approved",
+      },
+      select: { id: true },
+    })
+    if (recorded) {
+      return
+    }
     await appendEvents(tx, {
       organizationId: request.organizationId,
       actor: input.decider,

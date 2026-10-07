@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
-import { decideApproval } from "../approvals"
+import { decideApproval, recoverInterruptedApprovals } from "../approvals"
+import { appendEvents } from "../events"
 import { createContact, updateContact } from "../commands/contacts"
 import { issueCreditNote, sendCreditNote } from "../commands/credit-notes"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
@@ -198,6 +199,82 @@ describeIfDatabase("round 4 review fixes", () => {
         decision: "approve",
       })
       expect(decided).toMatchObject({ status: "failed", error: { code: "changed_since_review" } })
+    })
+  })
+
+  describe("approval recovery", () => {
+    async function interruptedApproval() {
+      const context = await setup()
+      const draft = await executeCommand(
+        createInvoiceDraft,
+        {
+          contactId: context.contactId,
+          dueDate: "2099-12-01",
+          taxRate: 0,
+          items: [{ description: "X", quantity: 1, unitPrice: 100 }],
+        },
+        { actor: context.org.actors.admin }
+      )
+      if (draft.status !== "completed") throw new Error("draft failed")
+      const agent = await agentWith(context, ["invoice:send", "invoice:read"])
+      const queued = await executeCommand(
+        sendInvoice,
+        { id: draft.result.id, allowSendWithoutEmail: true },
+        { actor: agent, clientRequestId: "send-1" }
+      )
+      if (queued.status !== "awaiting_approval") throw new Error("expected approval")
+      await prisma.approvalRequest.update({
+        where: { id: queued.approvalRequestId },
+        data: { status: "approved", decidedByUserId: context.org.actors.admin.userId, decidedAt: new Date() },
+      })
+      return { context, queued, invoiceId: draft.result.id }
+    }
+
+    const approvedEvents = (organizationId: string, approvalRequestId: string) =>
+      prisma.domainEvent.count({
+        where: { organizationId, aggregateType: "approval", aggregateId: approvalRequestId, type: "approval.approved" },
+      })
+
+    const backdateReceipt = (commandId: string) =>
+      prisma.commandReceipt.update({
+        where: { id: commandId },
+        data: { updatedAt: new Date(Date.now() - 10 * 60 * 1000) },
+      })
+
+    it("records the approval once when an attempt that already recorded it is resumed", async () => {
+      const { context, queued, invoiceId } = await interruptedApproval()
+      // The first attempt recorded the approval, then stopped before the command finished.
+      await prisma.$transaction((tx) =>
+        appendEvents(tx, {
+          organizationId: context.org.organizationId,
+          actor: context.org.actors.admin,
+          commandId: queued.commandId,
+          approvedByUserId: context.org.actors.admin.userId,
+          occurredAt: new Date(),
+          events: [
+            {
+              aggregateType: "approval",
+              aggregateId: queued.approvalRequestId,
+              type: "approval.approved",
+              payload: { commandType: "invoice.send", note: null },
+            },
+          ],
+        })
+      )
+      await backdateReceipt(queued.commandId)
+
+      const result = await recoverInterruptedApprovals({ organizationIds: [context.org.organizationId] })
+      expect(result).toMatchObject({ recovered: 1, failed: 0 })
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).status).toBe("sent")
+      expect(await approvedEvents(context.org.organizationId, queued.approvalRequestId)).toBe(1)
+    })
+
+    it("still records the approval when the interrupted attempt never did", async () => {
+      const { context, queued } = await interruptedApproval()
+      await backdateReceipt(queued.commandId)
+
+      await recoverInterruptedApprovals({ organizationIds: [context.org.organizationId] })
+      expect(await approvedEvents(context.org.organizationId, queued.approvalRequestId)).toBe(1)
     })
   })
 })
