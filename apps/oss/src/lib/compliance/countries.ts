@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { COUNTRY_MODULES, countryLabel, isCountryCode, normalizeCountryCode } from "./registry"
+import { COUNTRY_MODULES, countryLabel, isCountryCode, isUnRegionCode, normalizeCountryCode } from "./registry"
 
 export type CountryOption = {
   code: string
@@ -38,13 +38,13 @@ export const LOCALE_OPTIONS = [
 
 /**
  * The canonical form of a locale whose language Intl can format and whose region, if any, is a
- * country or a numeric UN region (es-419). Null otherwise; Intl alone would accept en-XX.
+ * country or a UN macro-region (es-419). Null otherwise; Intl alone would accept en-XX or en-000.
  */
 export function canonicalLocale(value: string | null | undefined): string | null {
   try {
     const locale = new Intl.Locale(value?.trim() ?? "")
     const region = locale.region
-    if (region && !isCountryCode(region) && !/^\d{3}$/.test(region)) return null
+    if (region && !isCountryCode(region) && !isUnRegionCode(region)) return null
     return Intl.DateTimeFormat.supportedLocalesOf(locale.language).length > 0 ? locale.toString() : null
   } catch {
     return null

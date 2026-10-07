@@ -32,6 +32,16 @@ export function countryLabel(value: string | null | undefined): string | null {
   return byCode.get(code)?.label ?? regionNames.of(code) ?? null
 }
 
+/**
+ * Whether the value is a UN M49 macro-region that locales use, such as 419 (Latin America). Intl
+ * names exactly these; country numbers normalize to letters (en-208 becomes en-DK).
+ */
+export function isUnRegionCode(value: string): boolean {
+  if (!/^\d{3}$/.test(value)) return false
+  regionNames ??= new Intl.DisplayNames(["en"], { type: "region", fallback: "none" })
+  return regionNames.of(value) !== undefined
+}
+
 /** Whether the value is an ISO 3166 country code. Unsupported countries count. */
 export function isCountryCode(value: string | null | undefined): boolean {
   return countryLabel(value) !== null

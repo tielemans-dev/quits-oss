@@ -31,7 +31,8 @@ describe("settingsUpdateSchema", () => {
     expect(settingsUpdateSchema.parse({ locale: "pl-PL" }).locale).toBe("pl-PL")
     expect(settingsUpdateSchema.parse({ locale: "en-us" }).locale).toBe("en-US")
     expect(settingsUpdateSchema.parse({ locale: "es-419" }).locale).toBe("es-419")
-    for (const locale of ["foo", "xx-YY", ""]) {
+    expect(settingsUpdateSchema.parse({ locale: "en-208" }).locale).toBe("en-DK")
+    for (const locale of ["foo", "xx-YY", "en-000", "en-999", ""]) {
       expect(() => settingsUpdateSchema.parse({ locale })).toThrow()
     }
   })
