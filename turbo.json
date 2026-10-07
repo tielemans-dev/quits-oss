@@ -22,6 +22,8 @@
         "BETTER_AUTH_URL",
         "CRON_SECRET",
         "RESEND_API_KEY",
+        "EMAIL_PROVIDER",
+        "SMTP_*",
         "FROM_EMAIL",
         "QUITS_*",
         "YAIP_*"

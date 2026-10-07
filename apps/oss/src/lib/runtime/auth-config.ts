@@ -7,6 +7,7 @@ import type { PrismaClient } from "../../../generated/prisma/client"
 
 import { getConfiguredSocialProviders } from "../auth/providers"
 import { sendInvitationEmail } from "../email"
+import { selectedEmailProvider, readSmtpConfiguration, requireSmtpFromEmail } from "../email-provider-config"
 import { ac, accountant, admin, member } from "../permissions"
 
 export type AuthHooks = {
@@ -67,8 +68,12 @@ export function buildQuitsAuthOptions(input: {
     creatorRole: "admin",
     membershipLimit: 50,
     async sendInvitationEmail(data) {
-      if (!env.getEnv("RESEND_API_KEY") || !betterAuthUrl) {
-        return
+      if (!betterAuthUrl) return
+      const provider = selectedEmailProvider(env.getEnv("EMAIL_PROVIDER") ?? "")
+      if (provider === "resend" && !env.getEnv("RESEND_API_KEY")) return
+      if (provider === "smtp") {
+        readSmtpConfiguration(envRecord)
+        requireSmtpFromEmail(envRecord)
       }
 
       const invitationUrl = `${betterAuthUrl}/accept-invitation/${data.id}`
@@ -83,7 +88,7 @@ export function buildQuitsAuthOptions(input: {
         orgName: data.organization.name,
         invitationUrl,
         locale: orgSettings?.locale,
-      })
+      }, { environment: envRecord })
     },
   })
   const cookiesPlugin = tanstackStartCookies()

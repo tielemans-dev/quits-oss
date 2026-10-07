@@ -1,9 +1,11 @@
 import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../../../lib/db"
 import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
+import { resetRuntimePlatform, setRuntimePlatform } from "../../../lib/runtime/platform"
+import { defaultNodePlatform } from "../../../lib/runtime/node-platform"
 import { appRouter } from "../../router"
 import { ensureTestMembership } from "../../../test-utils/membership"
 
@@ -14,6 +16,11 @@ function clearEmailEnv() {
   delete process.env.RESEND_API_KEY
   delete process.env.FROM_EMAIL
   delete process.env.QUITS_DISTRIBUTION
+  delete process.env.EMAIL_PROVIDER
+  delete process.env.SMTP_HOST
+  delete process.env.SMTP_USER
+  delete process.env.SMTP_PASS
+  delete process.env.SMTP_PASSWORD
 }
 
 async function createOrgWithCaller(name: string) {
@@ -52,6 +59,54 @@ describeIfDatabase("settings email delivery status", () => {
   afterEach(() => {
     clearEmailEnv()
     setRuntimeExtensions([])
+    resetRuntimePlatform()
+    vi.unstubAllEnvs()
+  })
+
+  it("reports configured SMTP without a Resend key and never exposes relay credentials", async () => {
+    process.env.EMAIL_PROVIDER = "smtp"
+    process.env.SMTP_HOST = "relay.example.com"
+    process.env.SMTP_USER = "smtp-user"
+    process.env.SMTP_PASS = "synthetic-smtp-password"
+    process.env.FROM_EMAIL = "billing@acme.example"
+    const { orgId, caller } = await createOrgWithCaller("Settings SMTP Org")
+    try {
+      const settings = await caller.settings.get()
+      expect(settings.emailDelivery).toMatchObject({ managed: false, configured: true, available: true, missing: [], status: "configured" })
+      expect(JSON.stringify(settings)).not.toContain("synthetic-smtp-password")
+      expect(JSON.stringify(settings.emailDelivery)).not.toContain("smtp-user")
+    } finally {
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
+  it("reports SMTP unavailable on a Worker even when its environment is complete", async () => {
+    const { orgId, caller } = await createOrgWithCaller("Settings Worker SMTP Org")
+    const environment: Record<string, string> = { EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example", FROM_EMAIL: "worker-reader@example.com" }
+    setRuntimePlatform({ ...defaultNodePlatform, id: "test-worker-smtp", getRuntimeKind: () => "worker", getEnv: (name) => environment[name] })
+    try {
+      const settings = await caller.settings.get()
+      expect(settings.emailDelivery).toMatchObject({ managed: false, configured: false, available: false, sender: "worker-reader@example.com", missing: ["EMAIL_PROVIDER"], status: "missing_configuration" })
+    } finally {
+      resetRuntimePlatform()
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
+  it("uses the same platform sender for delivery status and both document sender previews", async () => {
+    const { orgId, caller } = await createOrgWithCaller("Settings Platform Sender Org")
+    vi.stubEnv("FROM_EMAIL", "process@example.com")
+    const environment: Record<string, string> = { EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example", FROM_EMAIL: "platform@example.com" }
+    setRuntimePlatform({ ...defaultNodePlatform, id: "test-platform-sender", getEnv: (name) => environment[name] })
+    try {
+      const settings = await caller.settings.get()
+      expect(settings.emailDelivery.sender).toBe("platform@example.com")
+      expect(settings.documentSending.sharedSender.fromEmail).toBe("platform@example.com")
+      expect(settings.documentSending.effectiveSender.fromEmail).toBe("platform@example.com")
+    } finally {
+      resetRuntimePlatform()
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
   })
 
   it("reports configured OSS email delivery when required env vars are present", async () => {

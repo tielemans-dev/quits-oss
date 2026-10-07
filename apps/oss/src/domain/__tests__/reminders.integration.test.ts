@@ -539,6 +539,7 @@ describeIfDatabase("overdue and reminders", () => {
     const [reminder] = await prisma.invoiceReminder.findMany({ where: { invoiceId: invoice.id } })
     expect(reminder?.offsetDays).toBe(5)
     expect(callsTo(context.email)[0]?.[1]).toEqual({
+      provider: "resend",
       idempotencyKey: expect.stringMatching(new RegExp(`^${manualReminderIdempotencyKey(invoice.id, 5)}-\\d+$`)),
     })
   })
