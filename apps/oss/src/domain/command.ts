@@ -38,6 +38,12 @@ export type ApprovalContext = {
   version: string
   /** Key facts shown in the approvals inbox. */
   details: Record<string, string | number | null>
+  /** Frozen document preview, persisted in reviewContext. */
+  preview?: {
+    snapshot: import("@quits/contracts/agreements").AgreementOfferSnapshot
+    hash: string
+    recipient: string | null
+  }
 }
 
 export function defineCommand<Input, Result>(

@@ -23,7 +23,11 @@ export function renderAgreementMarkdown(source: string, placeholders: Record<str
   )
   if (expanded.length > 50_000)
     throw new Error("Expanded agreement terms must be at most 50,000 characters")
-  return sanitizeHtml(markdown.render(expanded), {
+  return sanitizeAgreementHtml(markdown.render(expanded))
+}
+
+export function sanitizeAgreementHtml(html: string) {
+  return sanitizeHtml(html, {
     allowedTags: [
       "p",
       "br",

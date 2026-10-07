@@ -289,6 +289,7 @@ export async function executeCommand<Input, Result>(
           commandId: provisionalId,
           now,
           approvedByUserId: options.approvedByUserId ?? null,
+          expectedApprovalVersion: options.expectedApprovalVersion,
           emit: (event) => events.push(event),
           enqueue: (job) => jobs.push(job),
         })
@@ -541,7 +542,13 @@ async function queueForApproval<Input, Result>(
           commandType: definition.type,
           command: toJson(input),
           summary,
-          reviewContext: review ? toJson({ version: review.version, details: review.details }) : Prisma.DbNull,
+          reviewContext: review
+            ? toJson({
+                version: review.version,
+                details: review.details,
+                ...(review.preview ? { preview: review.preview } : {}),
+              })
+            : Prisma.DbNull,
           expiresAt: new Date(context.now.getTime() + APPROVAL_TTL_MS),
         },
         select: { id: true },
