@@ -12,6 +12,7 @@ import { appLogger } from "../../lib/observability"
 import { currencyFractionDigits, isExactInCurrency } from "../../lib/payments/stripe-amounts"
 import type { Actor } from "../actor"
 import { defineCommand } from "../command"
+import { expireReplacedCheckoutSession } from "../documents/checkout-sessions"
 import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
 import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { Command, Db } from "../services"
@@ -61,6 +62,7 @@ const lockInvoice = (invoiceId: string) =>
           amountPaid: true,
           amountCredited: true,
           paymentStatus: true,
+          stripeCheckoutSessionId: true,
         },
       })
     )
@@ -171,6 +173,7 @@ const applyPayment = (input: ApplyPaymentInput) =>
     )
 
     if (input.stripe) {
+      yield* expireReplacedCheckoutSession(invoice, input.stripe.checkoutSessionId)
       yield* Effect.promise(() =>
         db.invoice.update({
           where: { id: invoice.id },
@@ -364,6 +367,7 @@ export const recordStripeCheckoutFailure = defineCommand({
       }
 
       const invoice = yield* lockInvoice(input.invoiceId)
+      yield* expireReplacedCheckoutSession(invoice, input.checkoutSessionId)
       const updated = yield* Effect.promise(() =>
         db.invoice.update({
           where: { id: invoice.id },

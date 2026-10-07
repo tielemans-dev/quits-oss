@@ -3,6 +3,7 @@ import type { InvoicePaymentProgress } from "@quits/contracts/invoices"
 import { Prisma } from "../../../generated/prisma/client"
 import { NotFound } from "../errors"
 import { Command, Db } from "../services"
+import { expireStaleCheckoutSession } from "./checkout-sessions"
 
 type Amount = Prisma.Decimal | number | string
 
@@ -73,7 +74,16 @@ export const refreshInvoiceSettlement = (invoiceId: string) =>
     const invoice = yield* Effect.promise(() =>
       db.invoice.findFirst({
         where: { id: invoiceId, organizationId },
-        select: { id: true, status: true, dueDate: true, totalGross: true, paidAt: true },
+        select: {
+          id: true,
+          status: true,
+          dueDate: true,
+          totalGross: true,
+          amountPaid: true,
+          amountCredited: true,
+          paidAt: true,
+          stripeCheckoutSessionId: true,
+        },
       })
     )
     if (!invoice) {
@@ -119,6 +129,12 @@ export const refreshInvoiceSettlement = (invoiceId: string) =>
         },
       })
     )
+
+    // An open Checkout session charges the balance due when it was opened; once that changes it
+    // would charge the wrong amount, so it is expired.
+    if (!computeSettlement(invoice).balanceDue.equals(settlement.balanceDue)) {
+      yield* expireStaleCheckoutSession(invoice)
+    }
 
     return { invoice: updated, settlement, previousStatus: invoice.status }
   })
