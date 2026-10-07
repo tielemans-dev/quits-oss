@@ -62,6 +62,8 @@ export function buildQuitsAuthOptions(input: {
   const organizationPlugin = organization({
     ac,
     roles: { admin, member, accountant },
+    // Organization deletion must not remove financial records or their evidence.
+    disableOrganizationDeletion: true,
     allowUserToCreateOrganization: true,
     creatorRole: "admin",
     membershipLimit: 50,

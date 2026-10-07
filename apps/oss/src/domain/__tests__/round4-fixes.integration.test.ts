@@ -21,11 +21,7 @@ describeIfDatabase("round 4 review fixes", () => {
 
   async function setup() {
     const org = await createTestOrganization()
-    cleanups.push(async () => {
-      // Credit notes restrict invoice deletion, so remove them before the organization cascade.
-      await prisma.creditNote.deleteMany({ where: { organizationId: org.organizationId } })
-      await org.cleanup()
-    })
+    cleanups.push(org.cleanup)
     const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "billing@acme.test" },

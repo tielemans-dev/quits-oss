@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it } from "vitest"
@@ -40,7 +41,7 @@ describe("stripe payment configuration state", () => {
 
 describeIfDatabase("stripe payment configuration persistence", () => {
   afterEach(async () => {
-    await prisma.organization.deleteMany({
+    await cleanupTestOrganizations({
       where: {
         name: "Stripe Config Org",
       },

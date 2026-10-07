@@ -1,3 +1,4 @@
+import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { describe, expect, it } from "vitest"
@@ -84,7 +85,7 @@ describeIfDatabase("settings/tax-id/localization integration", () => {
       expect(orgTaxIds).toHaveLength(1)
       expect(orgTaxIds[0]?.value).toBe("87654321")
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
@@ -145,7 +146,7 @@ describeIfDatabase("settings/tax-id/localization integration", () => {
       expect(remainingOrgTaxIds).toBe(0)
       expect(remainingContactTaxIds).toBe(0)
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
