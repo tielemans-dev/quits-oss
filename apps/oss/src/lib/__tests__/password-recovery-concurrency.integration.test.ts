@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { betterAuth } from "better-auth"
+import { hashPassword } from "better-auth/crypto"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../../../generated/prisma/client"
@@ -84,25 +85,63 @@ describe.skipIf(!localDatabase)("shared database password recovery guards", () =
     expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(0)
   })
 
-  it("rejects distinct expired links concurrently without acquiring each other's verification locks", async () => {
+  it("serializes different sibling tokens across instances and invalidates all siblings", async () => {
+    const f = await fixture()
+    await f.requestReset()
+    await f.requestReset(1)
+    await Promise.all(f.background)
+    const tokens = f.sendResetPassword.mock.calls.map(([data]) => data.token as string)
+    const responses = await Promise.all(tokens.map((token, index) => f.post(index, "/reset-password", { token, newPassword: `replacement-password${index}123` })))
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 400])
+    expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(0)
+  })
+
+  it("using the newest link invalidates older links but preserves other users and verification kinds", async () => {
+    const f = await fixture()
+    const other = await fixture()
+    await f.requestReset()
+    await f.requestReset(1)
+    await other.requestReset()
+    await Promise.all([...f.background, ...other.background])
+    await clients[0]!.verification.create({ data: { id: randomUUID(), identifier: "email-verification:other-purpose", value: f.userId, expiresAt: new Date(Date.now() + 60_000) } })
+    const newer = f.sendResetPassword.mock.calls[1]![0].token as string
+    expect((await f.post(0, "/reset-password", { token: newer, newPassword: "replacement-password123" })).status).toBe(200)
+    expect((await f.post(1, "/reset-password", { token: f.token(), newPassword: "older-replacement123" })).status).toBe(400)
+    expect(await clients[0]!.verification.count({ where: { value: other.userId } })).toBe(1)
+    expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(1)
+  })
+
+  it("serializes new token issuance behind an active reset transaction", async () => {
+    let entered!: () => void
     let release!: () => void
-    const bothLocked = new Promise<void>((resolve) => { release = resolve })
-    let lookups = 0
-    const f = await fixture({
-      createTransactionDatabaseAdapter: (tx) => (options: Parameters<ReturnType<typeof prismaAdapter>>[0]) => {
-        const adapter = prismaAdapter(tx, { provider: "postgresql" })(options)
-        return {
-          ...adapter,
-          async findMany(input: Parameters<typeof adapter.findMany>[0]) {
-            if (input.model === "verification") {
-              if (++lookups === 2) release()
-              await bothLocked
-            }
-            return adapter.findMany(input)
-          },
-        }
-      },
-    })
+    const hashing = new Promise<void>((resolve) => { entered = resolve })
+    const held = new Promise<void>((resolve) => { release = resolve })
+    const f = await fixture({ password: { hash: async (password) => {
+      if (password === "held-replacement123") { entered(); await held }
+      return hashPassword(password)
+    } } })
+    await f.requestReset()
+    await Promise.all(f.background)
+    const resetting = f.post(0, "/reset-password", { token: f.token(), newPassword: "held-replacement123" })
+    await hashing
+    const requesting = f.requestReset(1)
+    try {
+      // PostgreSQL exposes the actual blocked row-lock waiter, rather than relying on timing.
+      await vi.waitFor(async () => {
+        const waiting = await clients[0]!.$queryRaw<{ count: bigint }[]>`SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE 'SELECT id FROM "user" WHERE email%'`
+        expect(Number(waiting[0]!.count)).toBeGreaterThan(0)
+      })
+    } finally { release() }
+    expect((await resetting).status).toBe(200)
+    expect((await requesting).status).toBe(200)
+    await Promise.all(f.background)
+    expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(1)
+    const freshToken = f.sendResetPassword.mock.calls[1]![0].token as string
+    expect((await f.post(1, "/reset-password", { token: freshToken, newPassword: "fresh-replacement123" })).status).toBe(200)
+  })
+
+  it("rejects distinct expired links concurrently without acquiring each other's verification locks", async () => {
+    const f = await fixture()
     await f.requestReset()
     await f.requestReset(1)
     await Promise.all(f.background)
@@ -132,9 +171,10 @@ describe.skipIf(!localDatabase)("shared database password recovery guards", () =
       },
     })
     await f.requestReset()
+    await f.requestReset(1)
     await Promise.all(f.background)
     expect((await f.post(0, "/reset-password", { token: f.token(), newPassword: "replacement-password123" })).status).toBe(500)
-    expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(1)
+    expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(2)
     expect((await f.post(0, "/sign-in/email", { email: f.email, password: "original-password123" })).status).toBe(200)
     expect((await f.post(0, "/sign-in/email", { email: f.email, password: "replacement-password123" })).status).toBe(401)
   })

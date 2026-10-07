@@ -260,6 +260,7 @@ describeIfDatabase("recurring invoices", () => {
     const [invoice] = await generatedInvoices(schedule.id)
     expect(invoice).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "sent" })
     expect(deliver).toHaveBeenCalledWith(expect.objectContaining({ to: "billing@acme.test" }), {
+      provider: "resend",
       idempotencyKey: expect.stringMatching(new RegExp(`^invoice-send:${invoice?.id}:`)),
     })
   })

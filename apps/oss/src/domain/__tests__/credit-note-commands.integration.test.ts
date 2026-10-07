@@ -365,7 +365,7 @@ describeIfDatabase("credit note commands", () => {
       expect(message.to).toBe("billing@acme.test")
       expect(message.subject).toContain(creditNote.number)
       expect(message.html).toContain("INV-0001")
-      expect(options).toEqual({ idempotencyKey: expect.stringMatching(/^credit-note-send:cmd_/) })
+      expect(options).toEqual({ provider: "resend", idempotencyKey: expect.stringMatching(/^credit-note-send:cmd_/) })
       const stored = await prisma.creditNote.findUniqueOrThrow({ where: { id: creditNote.id } })
       expect(stored.lastEmailAttemptOutcome).toBe("sent")
       const activity = await readActivity({

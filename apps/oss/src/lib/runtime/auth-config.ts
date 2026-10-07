@@ -1,6 +1,6 @@
 import type { BetterAuthOptions, DBAdapter } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
-import { APIError, createAuthMiddleware, resetPassword } from "better-auth/api"
+import { APIError, createAuthMiddleware, requestPasswordReset, resetPassword } from "better-auth/api"
 import { createInternalAdapter } from "better-auth/db"
 import { runWithAdapter } from "@better-auth/core/context"
 import { organization } from "better-auth/plugins"
@@ -14,6 +14,7 @@ import { sendInvitationEmail } from "../email"
 import { sendPasswordResetEmail } from "../emails/password-reset-email"
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_RESET_EXPIRES_IN } from "../auth/password-policy"
 import { admitRecoveryRequest, recoveryClientKey } from "../auth/password-recovery"
+import { selectedEmailProvider, readSmtpConfiguration, requireSmtpFromEmail } from "../email-provider-config"
 import { ac, accountant, admin, member } from "../permissions"
 
 export type AuthHooks = {
@@ -82,8 +83,12 @@ export function buildQuitsAuthOptions(input: {
     creatorRole: "admin",
     membershipLimit: 50,
     async sendInvitationEmail(data) {
-      if (!env.getEnv("RESEND_API_KEY") || !betterAuthUrl) {
-        return
+      if (!betterAuthUrl) return
+      const provider = selectedEmailProvider(env.getEnv("EMAIL_PROVIDER") ?? "")
+      if (provider === "resend" && !env.getEnv("RESEND_API_KEY")) return
+      if (provider === "smtp") {
+        readSmtpConfiguration(envRecord)
+        requireSmtpFromEmail(envRecord)
       }
 
       const invitationUrl = `${betterAuthUrl}/accept-invitation/${data.id}`
@@ -98,7 +103,7 @@ export function buildQuitsAuthOptions(input: {
         orgName: data.organization.name,
         invitationUrl,
         locale: orgSettings?.locale,
-      })
+      }, { environment: envRecord })
     },
   })
   const cookiesPlugin = tanstackStartCookies()
@@ -106,7 +111,6 @@ export function buildQuitsAuthOptions(input: {
   return {
     ...(betterAuthUrl ? { baseURL: betterAuthUrl } : {}),
     rateLimit: {
-      enabled: true,
       customRules: {
         // Recovery uses atomic database admission below. Do not also use post-response memory
         // counters keyed by client-controlled forwarding headers.
@@ -142,18 +146,18 @@ export function buildQuitsAuthOptions(input: {
         if (ctx.path !== "/request-password-reset" && ctx.path !== "/reset-password") return
         const clientKey = hooks.getRecoveryClientKey
           ? await hooks.getRecoveryClientKey(ctx.request)
-          : recoveryClientKey()
+          : recoveryClientKey(ctx.request, env.getEnv("QUITS_AUTH_TRUSTED_PROXIES") ?? env.getEnv("YAIP_AUTH_TRUSTED_PROXIES"))
         await admitRecoveryRequest(input.prisma, ctx.path, clientKey, env.getEnv("BETTER_AUTH_SECRET"))
-        if (ctx.path !== "/reset-password") return
+        const requesting = ctx.path === "/request-password-reset"
+        if (requesting && typeof ctx.body?.email !== "string") return
         // Let native schema validation reject non-string body tokens before normalization.
-        if (ctx.body?.token !== undefined && typeof ctx.body.token !== "string") return
+        if (!requesting && ctx.body?.token !== undefined && typeof ctx.body.token !== "string") return
         // Match the native endpoint's truthy fallback, then give it the exact token we lock.
         const token = ctx.body?.token || ctx.query?.token
-        if (typeof token !== "string") return
+        if (!requesting && typeof token !== "string") return
         // The native endpoint remains responsible for validation, hashing, token consumption and
         // session revocation. Lock its existing record until all those writes commit together.
         const result = await input.prisma.$transaction(async (tx) => {
-          await tx.$queryRaw`SELECT id FROM verification WHERE identifier = ${`reset-password:${token}`} FOR UPDATE`
           const adapterFactory = hooks.createTransactionDatabaseAdapter?.(tx) ?? prismaAdapter(tx, { provider: "postgresql" })
           const adapter = (adapterFactory as (options: BetterAuthOptions) => DBAdapter)(ctx.context.options)
           const internalAdapter = createInternalAdapter(adapter, {
@@ -164,9 +168,22 @@ export function buildQuitsAuthOptions(input: {
             },
             hooks: [ctx.context.options.databaseHooks ?? {}],
           })
+          // Lock the user before any reset token. Different tokens for one user must serialize,
+          // and token issuance uses the same lock so it cannot race sibling invalidation.
+          if (requesting) {
+            await tx.$queryRaw`SELECT id FROM "user" WHERE email = ${ctx.body.email.toLowerCase()} FOR UPDATE`
+            return runWithAdapter(adapter, () => requestPasswordReset({
+              ...ctx, method: "POST", body: ctx.body as { email: string; redirectTo?: string },
+              context: { ...ctx.context, internalAdapter },
+              asResponse: false, returnHeaders: false, returnStatus: false,
+            }))
+          }
+          const verification = await internalAdapter.findVerificationValue(`reset-password:${token}`)
+          if (verification) await tx.$queryRaw`SELECT id FROM "user" WHERE id = ${verification.value} FOR UPDATE`
+          await tx.$queryRaw`SELECT id FROM verification WHERE identifier = ${`reset-password:${token}`} FOR UPDATE`
           // Native expiry validation still applies. Its broad expired-record cleanup must not
           // acquire other verification locks while this transaction holds a reset-record lock.
-          return runWithAdapter(adapter, () => resetPassword({
+          const resetResult = await runWithAdapter(adapter, () => resetPassword({
             ...ctx,
             method: "POST",
             body: { ...ctx.body, token } as { token: string; newPassword: string },
@@ -175,6 +192,14 @@ export function buildQuitsAuthOptions(input: {
             returnHeaders: false,
             returnStatus: false,
           }))
+          if (verification) await adapter.deleteMany({
+            model: "verification",
+            where: [
+              { field: "value", value: verification.value },
+              { field: "identifier", operator: "starts_with", value: "reset-password:" },
+            ],
+          })
+          return resetResult
         }, { maxWait: 10_000, timeout: 15_000 }).catch((error: unknown) => {
           // Native schema errors use Better Call's base APIError, which is not an instance of
           // Better Auth's exported subclass in newer versions. Match native error recognition.
@@ -198,13 +223,15 @@ export function buildQuitsAuthOptions(input: {
           if (hooks.sendResetPassword) {
             await hooks.sendResetPassword(data, request)
           } else {
+            const fromEmail = env.getEnv("FROM_EMAIL")?.trim()
+            if (selectedEmailProvider(envRecord.EMAIL_PROVIDER ?? "") === "smtp") requireSmtpFromEmail(envRecord)
             await sendPasswordResetEmail({
               to: data.user.email,
               name: data.user.name,
               resetUrl: data.url,
-              fromEmail: env.getEnv("FROM_EMAIL")?.trim() || "noreply@yaip.app",
+              fromEmail: fromEmail || "noreply@yaip.app",
               locale: request?.headers.get("accept-language")?.split(",")[0],
-            })
+            }, { environment: envRecord })
           }
         } catch {
           // Preserve the same response for existing and unknown accounts, even on delivery failure.
