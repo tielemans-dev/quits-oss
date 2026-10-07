@@ -17,7 +17,7 @@
       "version": "0.4.0",
       "dependencies": {
         "ipaddr.js": "^1.9.1",
-        "@better-auth/core": "^1.4.19",
+        "@better-auth/core": "1.5.4",
         "@hookform/resolvers": "^5.2.2",
         "@modelcontextprotocol/sdk": "^1.32.1",
         "@prisma/adapter-pg": "^7.4.1",
@@ -36,7 +36,7 @@
         "@trpc/client": "^11.10.0",
         "@trpc/react-query": "^11.10.0",
         "@trpc/server": "^11.10.0",
-        "better-auth": "^1.4.19",
+        "better-auth": "1.5.4",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
