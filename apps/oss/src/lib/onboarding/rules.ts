@@ -1,4 +1,4 @@
-import type { OnboardingTaxRegime } from "@yaip/contracts/onboarding"
+import type { OnboardingTaxRegime } from "@quits/contracts/onboarding"
 
 export type OnboardingInvoicingIdentity = "individual" | "registered_business"
 

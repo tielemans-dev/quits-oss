@@ -6,7 +6,7 @@ import {
   type OnboardingMissingField,
   type OnboardingPatch,
   type OnboardingTaxRegime,
-} from "@yaip/contracts/onboarding"
+} from "@quits/contracts/onboarding"
 import { getOnboardingRules } from "./rules"
 
 export {

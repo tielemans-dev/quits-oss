@@ -229,6 +229,13 @@ export type OrganizationWhereInput = {
   taxIds?: Prisma.OrganizationTaxIdListRelationFilter
   invoices?: Prisma.InvoiceListRelationFilter
   quotes?: Prisma.QuoteListRelationFilter
+  creditNotes?: Prisma.CreditNoteListRelationFilter
+  payments?: Prisma.PaymentListRelationFilter
+  recurringInvoices?: Prisma.RecurringInvoiceListRelationFilter
+  domainEvents?: Prisma.DomainEventListRelationFilter
+  agentKeys?: Prisma.AgentKeyListRelationFilter
+  approvalRequests?: Prisma.ApprovalRequestListRelationFilter
+  schedulerScans?: Prisma.SchedulerScanListRelationFilter
   settings?: Prisma.XOR<Prisma.OrgSettingsNullableScalarRelationFilter, Prisma.OrgSettingsWhereInput> | null
 }
 
@@ -250,6 +257,13 @@ export type OrganizationOrderByWithRelationInput = {
   taxIds?: Prisma.OrganizationTaxIdOrderByRelationAggregateInput
   invoices?: Prisma.InvoiceOrderByRelationAggregateInput
   quotes?: Prisma.QuoteOrderByRelationAggregateInput
+  creditNotes?: Prisma.CreditNoteOrderByRelationAggregateInput
+  payments?: Prisma.PaymentOrderByRelationAggregateInput
+  recurringInvoices?: Prisma.RecurringInvoiceOrderByRelationAggregateInput
+  domainEvents?: Prisma.DomainEventOrderByRelationAggregateInput
+  agentKeys?: Prisma.AgentKeyOrderByRelationAggregateInput
+  approvalRequests?: Prisma.ApprovalRequestOrderByRelationAggregateInput
+  schedulerScans?: Prisma.SchedulerScanOrderByRelationAggregateInput
   settings?: Prisma.OrgSettingsOrderByWithRelationInput
 }
 
@@ -274,6 +288,13 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   taxIds?: Prisma.OrganizationTaxIdListRelationFilter
   invoices?: Prisma.InvoiceListRelationFilter
   quotes?: Prisma.QuoteListRelationFilter
+  creditNotes?: Prisma.CreditNoteListRelationFilter
+  payments?: Prisma.PaymentListRelationFilter
+  recurringInvoices?: Prisma.RecurringInvoiceListRelationFilter
+  domainEvents?: Prisma.DomainEventListRelationFilter
+  agentKeys?: Prisma.AgentKeyListRelationFilter
+  approvalRequests?: Prisma.ApprovalRequestListRelationFilter
+  schedulerScans?: Prisma.SchedulerScanListRelationFilter
   settings?: Prisma.XOR<Prisma.OrgSettingsNullableScalarRelationFilter, Prisma.OrgSettingsWhereInput> | null
 }, "id" | "slug" | "stripeCustomerId">
 
@@ -327,6 +348,13 @@ export type OrganizationCreateInput = {
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -348,6 +376,13 @@ export type OrganizationUncheckedCreateInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -369,6 +404,13 @@ export type OrganizationUpdateInput = {
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -390,6 +432,13 @@ export type OrganizationUncheckedUpdateInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -588,6 +637,104 @@ export type OrganizationUpdateOneRequiredWithoutQuotesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutQuotesInput, Prisma.OrganizationUpdateWithoutQuotesInput>, Prisma.OrganizationUncheckedUpdateWithoutQuotesInput>
 }
 
+export type OrganizationCreateNestedOneWithoutCreditNotesInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutCreditNotesInput, Prisma.OrganizationUncheckedCreateWithoutCreditNotesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutCreditNotesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutCreditNotesInput, Prisma.OrganizationUncheckedCreateWithoutCreditNotesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutCreditNotesInput
+  upsert?: Prisma.OrganizationUpsertWithoutCreditNotesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutCreditNotesInput, Prisma.OrganizationUpdateWithoutCreditNotesInput>, Prisma.OrganizationUncheckedUpdateWithoutCreditNotesInput>
+}
+
+export type OrganizationCreateNestedOneWithoutPaymentsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutPaymentsInput, Prisma.OrganizationUncheckedCreateWithoutPaymentsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutPaymentsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutPaymentsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutPaymentsInput, Prisma.OrganizationUncheckedCreateWithoutPaymentsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutPaymentsInput
+  upsert?: Prisma.OrganizationUpsertWithoutPaymentsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutPaymentsInput, Prisma.OrganizationUpdateWithoutPaymentsInput>, Prisma.OrganizationUncheckedUpdateWithoutPaymentsInput>
+}
+
+export type OrganizationCreateNestedOneWithoutRecurringInvoicesInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutRecurringInvoicesInput, Prisma.OrganizationUncheckedCreateWithoutRecurringInvoicesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutRecurringInvoicesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutRecurringInvoicesNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutRecurringInvoicesInput, Prisma.OrganizationUncheckedCreateWithoutRecurringInvoicesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutRecurringInvoicesInput
+  upsert?: Prisma.OrganizationUpsertWithoutRecurringInvoicesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutRecurringInvoicesInput, Prisma.OrganizationUpdateWithoutRecurringInvoicesInput>, Prisma.OrganizationUncheckedUpdateWithoutRecurringInvoicesInput>
+}
+
+export type OrganizationCreateNestedOneWithoutDomainEventsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutDomainEventsInput, Prisma.OrganizationUncheckedCreateWithoutDomainEventsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutDomainEventsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutDomainEventsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutDomainEventsInput, Prisma.OrganizationUncheckedCreateWithoutDomainEventsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutDomainEventsInput
+  upsert?: Prisma.OrganizationUpsertWithoutDomainEventsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutDomainEventsInput, Prisma.OrganizationUpdateWithoutDomainEventsInput>, Prisma.OrganizationUncheckedUpdateWithoutDomainEventsInput>
+}
+
+export type OrganizationCreateNestedOneWithoutApprovalRequestsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutApprovalRequestsInput, Prisma.OrganizationUncheckedCreateWithoutApprovalRequestsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutApprovalRequestsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutApprovalRequestsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutApprovalRequestsInput, Prisma.OrganizationUncheckedCreateWithoutApprovalRequestsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutApprovalRequestsInput
+  upsert?: Prisma.OrganizationUpsertWithoutApprovalRequestsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutApprovalRequestsInput, Prisma.OrganizationUpdateWithoutApprovalRequestsInput>, Prisma.OrganizationUncheckedUpdateWithoutApprovalRequestsInput>
+}
+
+export type OrganizationCreateNestedOneWithoutAgentKeysInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutAgentKeysInput, Prisma.OrganizationUncheckedCreateWithoutAgentKeysInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutAgentKeysInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutAgentKeysNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutAgentKeysInput, Prisma.OrganizationUncheckedCreateWithoutAgentKeysInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutAgentKeysInput
+  upsert?: Prisma.OrganizationUpsertWithoutAgentKeysInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutAgentKeysInput, Prisma.OrganizationUpdateWithoutAgentKeysInput>, Prisma.OrganizationUncheckedUpdateWithoutAgentKeysInput>
+}
+
+export type OrganizationCreateNestedOneWithoutSchedulerScansInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedCreateWithoutSchedulerScansInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutSchedulerScansInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutSchedulerScansNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedCreateWithoutSchedulerScansInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutSchedulerScansInput
+  upsert?: Prisma.OrganizationUpsertWithoutSchedulerScansInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutSchedulerScansInput, Prisma.OrganizationUpdateWithoutSchedulerScansInput>, Prisma.OrganizationUncheckedUpdateWithoutSchedulerScansInput>
+}
+
 export type OrganizationCreateWithoutMembersInput = {
   id: string
   name: string
@@ -605,6 +752,13 @@ export type OrganizationCreateWithoutMembersInput = {
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -625,6 +779,13 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -661,6 +822,13 @@ export type OrganizationUpdateWithoutMembersInput = {
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -681,6 +849,13 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -701,6 +876,13 @@ export type OrganizationCreateWithoutInvitationsInput = {
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -721,6 +903,13 @@ export type OrganizationUncheckedCreateWithoutInvitationsInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -757,6 +946,13 @@ export type OrganizationUpdateWithoutInvitationsInput = {
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -777,6 +973,13 @@ export type OrganizationUncheckedUpdateWithoutInvitationsInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -798,6 +1001,13 @@ export type OrganizationCreateWithoutSettingsInput = {
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutSettingsInput = {
@@ -818,6 +1028,13 @@ export type OrganizationUncheckedCreateWithoutSettingsInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutSettingsInput = {
@@ -854,6 +1071,13 @@ export type OrganizationUpdateWithoutSettingsInput = {
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutSettingsInput = {
@@ -874,6 +1098,13 @@ export type OrganizationUncheckedUpdateWithoutSettingsInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutContactsInput = {
@@ -893,6 +1124,13 @@ export type OrganizationCreateWithoutContactsInput = {
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -913,6 +1151,13 @@ export type OrganizationUncheckedCreateWithoutContactsInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -949,6 +1194,13 @@ export type OrganizationUpdateWithoutContactsInput = {
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -969,6 +1221,13 @@ export type OrganizationUncheckedUpdateWithoutContactsInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -989,6 +1248,13 @@ export type OrganizationCreateWithoutCatalogItemsInput = {
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1009,6 +1275,13 @@ export type OrganizationUncheckedCreateWithoutCatalogItemsInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1045,6 +1318,13 @@ export type OrganizationUpdateWithoutCatalogItemsInput = {
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1065,6 +1345,13 @@ export type OrganizationUncheckedUpdateWithoutCatalogItemsInput = {
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1085,6 +1372,13 @@ export type OrganizationCreateWithoutTaxIdsInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1105,6 +1399,13 @@ export type OrganizationUncheckedCreateWithoutTaxIdsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1141,6 +1442,13 @@ export type OrganizationUpdateWithoutTaxIdsInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1161,6 +1469,13 @@ export type OrganizationUncheckedUpdateWithoutTaxIdsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1181,6 +1496,13 @@ export type OrganizationCreateWithoutInvoicesInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1201,6 +1523,13 @@ export type OrganizationUncheckedCreateWithoutInvoicesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1237,6 +1566,13 @@ export type OrganizationUpdateWithoutInvoicesInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1257,6 +1593,13 @@ export type OrganizationUncheckedUpdateWithoutInvoicesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1277,6 +1620,13 @@ export type OrganizationCreateWithoutQuotesInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1297,6 +1647,13 @@ export type OrganizationUncheckedCreateWithoutQuotesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1333,6 +1690,13 @@ export type OrganizationUpdateWithoutQuotesInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1353,6 +1717,881 @@ export type OrganizationUncheckedUpdateWithoutQuotesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutCreditNotesInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutCreditNotesInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutCreditNotesInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutCreditNotesInput, Prisma.OrganizationUncheckedCreateWithoutCreditNotesInput>
+}
+
+export type OrganizationUpsertWithoutCreditNotesInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutCreditNotesInput, Prisma.OrganizationUncheckedUpdateWithoutCreditNotesInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutCreditNotesInput, Prisma.OrganizationUncheckedCreateWithoutCreditNotesInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutCreditNotesInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutCreditNotesInput, Prisma.OrganizationUncheckedUpdateWithoutCreditNotesInput>
+}
+
+export type OrganizationUpdateWithoutCreditNotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutCreditNotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutPaymentsInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutPaymentsInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutPaymentsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutPaymentsInput, Prisma.OrganizationUncheckedCreateWithoutPaymentsInput>
+}
+
+export type OrganizationUpsertWithoutPaymentsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutPaymentsInput, Prisma.OrganizationUncheckedUpdateWithoutPaymentsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutPaymentsInput, Prisma.OrganizationUncheckedCreateWithoutPaymentsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutPaymentsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutPaymentsInput, Prisma.OrganizationUncheckedUpdateWithoutPaymentsInput>
+}
+
+export type OrganizationUpdateWithoutPaymentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutPaymentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutRecurringInvoicesInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutRecurringInvoicesInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutRecurringInvoicesInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutRecurringInvoicesInput, Prisma.OrganizationUncheckedCreateWithoutRecurringInvoicesInput>
+}
+
+export type OrganizationUpsertWithoutRecurringInvoicesInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutRecurringInvoicesInput, Prisma.OrganizationUncheckedUpdateWithoutRecurringInvoicesInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutRecurringInvoicesInput, Prisma.OrganizationUncheckedCreateWithoutRecurringInvoicesInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutRecurringInvoicesInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutRecurringInvoicesInput, Prisma.OrganizationUncheckedUpdateWithoutRecurringInvoicesInput>
+}
+
+export type OrganizationUpdateWithoutRecurringInvoicesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutRecurringInvoicesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutDomainEventsInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutDomainEventsInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutDomainEventsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutDomainEventsInput, Prisma.OrganizationUncheckedCreateWithoutDomainEventsInput>
+}
+
+export type OrganizationUpsertWithoutDomainEventsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutDomainEventsInput, Prisma.OrganizationUncheckedUpdateWithoutDomainEventsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutDomainEventsInput, Prisma.OrganizationUncheckedCreateWithoutDomainEventsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutDomainEventsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutDomainEventsInput, Prisma.OrganizationUncheckedUpdateWithoutDomainEventsInput>
+}
+
+export type OrganizationUpdateWithoutDomainEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutDomainEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutApprovalRequestsInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutApprovalRequestsInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutApprovalRequestsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutApprovalRequestsInput, Prisma.OrganizationUncheckedCreateWithoutApprovalRequestsInput>
+}
+
+export type OrganizationUpsertWithoutApprovalRequestsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutApprovalRequestsInput, Prisma.OrganizationUncheckedUpdateWithoutApprovalRequestsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutApprovalRequestsInput, Prisma.OrganizationUncheckedCreateWithoutApprovalRequestsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutApprovalRequestsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutApprovalRequestsInput, Prisma.OrganizationUncheckedUpdateWithoutApprovalRequestsInput>
+}
+
+export type OrganizationUpdateWithoutApprovalRequestsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutApprovalRequestsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutAgentKeysInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutAgentKeysInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutAgentKeysInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutAgentKeysInput, Prisma.OrganizationUncheckedCreateWithoutAgentKeysInput>
+}
+
+export type OrganizationUpsertWithoutAgentKeysInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutAgentKeysInput, Prisma.OrganizationUncheckedUpdateWithoutAgentKeysInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutAgentKeysInput, Prisma.OrganizationUncheckedCreateWithoutAgentKeysInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutAgentKeysInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutAgentKeysInput, Prisma.OrganizationUncheckedUpdateWithoutAgentKeysInput>
+}
+
+export type OrganizationUpdateWithoutAgentKeysInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutAgentKeysInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutSchedulerScansInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutSchedulerScansInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutSchedulerScansInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedCreateWithoutSchedulerScansInput>
+}
+
+export type OrganizationUpsertWithoutSchedulerScansInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedUpdateWithoutSchedulerScansInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedCreateWithoutSchedulerScansInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutSchedulerScansInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutSchedulerScansInput, Prisma.OrganizationUncheckedUpdateWithoutSchedulerScansInput>
+}
+
+export type OrganizationUpdateWithoutSchedulerScansInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutSchedulerScansInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1369,6 +2608,13 @@ export type OrganizationCountOutputType = {
   taxIds: number
   invoices: number
   quotes: number
+  creditNotes: number
+  payments: number
+  recurringInvoices: number
+  domainEvents: number
+  agentKeys: number
+  approvalRequests: number
+  schedulerScans: number
 }
 
 export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1379,6 +2625,13 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   taxIds?: boolean | OrganizationCountOutputTypeCountTaxIdsArgs
   invoices?: boolean | OrganizationCountOutputTypeCountInvoicesArgs
   quotes?: boolean | OrganizationCountOutputTypeCountQuotesArgs
+  creditNotes?: boolean | OrganizationCountOutputTypeCountCreditNotesArgs
+  payments?: boolean | OrganizationCountOutputTypeCountPaymentsArgs
+  recurringInvoices?: boolean | OrganizationCountOutputTypeCountRecurringInvoicesArgs
+  domainEvents?: boolean | OrganizationCountOutputTypeCountDomainEventsArgs
+  agentKeys?: boolean | OrganizationCountOutputTypeCountAgentKeysArgs
+  approvalRequests?: boolean | OrganizationCountOutputTypeCountApprovalRequestsArgs
+  schedulerScans?: boolean | OrganizationCountOutputTypeCountSchedulerScansArgs
 }
 
 /**
@@ -1440,6 +2693,55 @@ export type OrganizationCountOutputTypeCountQuotesArgs<ExtArgs extends runtime.T
   where?: Prisma.QuoteWhereInput
 }
 
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountCreditNotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CreditNoteWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountPaymentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PaymentWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountRecurringInvoicesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.RecurringInvoiceWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountDomainEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DomainEventWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountAgentKeysArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AgentKeyWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountApprovalRequestsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ApprovalRequestWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountSchedulerScansArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SchedulerScanWhereInput
+}
+
 
 export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1459,6 +2761,13 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   taxIds?: boolean | Prisma.Organization$taxIdsArgs<ExtArgs>
   invoices?: boolean | Prisma.Organization$invoicesArgs<ExtArgs>
   quotes?: boolean | Prisma.Organization$quotesArgs<ExtArgs>
+  creditNotes?: boolean | Prisma.Organization$creditNotesArgs<ExtArgs>
+  payments?: boolean | Prisma.Organization$paymentsArgs<ExtArgs>
+  recurringInvoices?: boolean | Prisma.Organization$recurringInvoicesArgs<ExtArgs>
+  domainEvents?: boolean | Prisma.Organization$domainEventsArgs<ExtArgs>
+  agentKeys?: boolean | Prisma.Organization$agentKeysArgs<ExtArgs>
+  approvalRequests?: boolean | Prisma.Organization$approvalRequestsArgs<ExtArgs>
+  schedulerScans?: boolean | Prisma.Organization$schedulerScansArgs<ExtArgs>
   settings?: boolean | Prisma.Organization$settingsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["organization"]>
@@ -1511,6 +2820,13 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   taxIds?: boolean | Prisma.Organization$taxIdsArgs<ExtArgs>
   invoices?: boolean | Prisma.Organization$invoicesArgs<ExtArgs>
   quotes?: boolean | Prisma.Organization$quotesArgs<ExtArgs>
+  creditNotes?: boolean | Prisma.Organization$creditNotesArgs<ExtArgs>
+  payments?: boolean | Prisma.Organization$paymentsArgs<ExtArgs>
+  recurringInvoices?: boolean | Prisma.Organization$recurringInvoicesArgs<ExtArgs>
+  domainEvents?: boolean | Prisma.Organization$domainEventsArgs<ExtArgs>
+  agentKeys?: boolean | Prisma.Organization$agentKeysArgs<ExtArgs>
+  approvalRequests?: boolean | Prisma.Organization$approvalRequestsArgs<ExtArgs>
+  schedulerScans?: boolean | Prisma.Organization$schedulerScansArgs<ExtArgs>
   settings?: boolean | Prisma.Organization$settingsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -1527,6 +2843,13 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     taxIds: Prisma.$OrganizationTaxIdPayload<ExtArgs>[]
     invoices: Prisma.$InvoicePayload<ExtArgs>[]
     quotes: Prisma.$QuotePayload<ExtArgs>[]
+    creditNotes: Prisma.$CreditNotePayload<ExtArgs>[]
+    payments: Prisma.$PaymentPayload<ExtArgs>[]
+    recurringInvoices: Prisma.$RecurringInvoicePayload<ExtArgs>[]
+    domainEvents: Prisma.$DomainEventPayload<ExtArgs>[]
+    agentKeys: Prisma.$AgentKeyPayload<ExtArgs>[]
+    approvalRequests: Prisma.$ApprovalRequestPayload<ExtArgs>[]
+    schedulerScans: Prisma.$SchedulerScanPayload<ExtArgs>[]
     settings: Prisma.$OrgSettingsPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -1941,6 +3264,13 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   taxIds<T extends Prisma.Organization$taxIdsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$taxIdsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrganizationTaxIdPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   invoices<T extends Prisma.Organization$invoicesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$invoicesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvoicePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   quotes<T extends Prisma.Organization$quotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$quotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  creditNotes<T extends Prisma.Organization$creditNotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$creditNotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreditNotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  payments<T extends Prisma.Organization$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  recurringInvoices<T extends Prisma.Organization$recurringInvoicesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$recurringInvoicesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RecurringInvoicePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  domainEvents<T extends Prisma.Organization$domainEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$domainEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DomainEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  agentKeys<T extends Prisma.Organization$agentKeysArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$agentKeysArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentKeyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  approvalRequests<T extends Prisma.Organization$approvalRequestsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$approvalRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ApprovalRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  schedulerScans<T extends Prisma.Organization$schedulerScansArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$schedulerScansArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SchedulerScanPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   settings<T extends Prisma.Organization$settingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$settingsArgs<ExtArgs>>): Prisma.Prisma__OrgSettingsClient<runtime.Types.Result.GetResult<Prisma.$OrgSettingsPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -2534,6 +3864,174 @@ export type Organization$quotesArgs<ExtArgs extends runtime.Types.Extensions.Int
   take?: number
   skip?: number
   distinct?: Prisma.QuoteScalarFieldEnum | Prisma.QuoteScalarFieldEnum[]
+}
+
+/**
+ * Organization.creditNotes
+ */
+export type Organization$creditNotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CreditNote
+   */
+  select?: Prisma.CreditNoteSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CreditNote
+   */
+  omit?: Prisma.CreditNoteOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CreditNoteInclude<ExtArgs> | null
+  where?: Prisma.CreditNoteWhereInput
+  orderBy?: Prisma.CreditNoteOrderByWithRelationInput | Prisma.CreditNoteOrderByWithRelationInput[]
+  cursor?: Prisma.CreditNoteWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CreditNoteScalarFieldEnum | Prisma.CreditNoteScalarFieldEnum[]
+}
+
+/**
+ * Organization.payments
+ */
+export type Organization$paymentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Payment
+   */
+  select?: Prisma.PaymentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Payment
+   */
+  omit?: Prisma.PaymentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PaymentInclude<ExtArgs> | null
+  where?: Prisma.PaymentWhereInput
+  orderBy?: Prisma.PaymentOrderByWithRelationInput | Prisma.PaymentOrderByWithRelationInput[]
+  cursor?: Prisma.PaymentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PaymentScalarFieldEnum | Prisma.PaymentScalarFieldEnum[]
+}
+
+/**
+ * Organization.recurringInvoices
+ */
+export type Organization$recurringInvoicesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the RecurringInvoice
+   */
+  select?: Prisma.RecurringInvoiceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the RecurringInvoice
+   */
+  omit?: Prisma.RecurringInvoiceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RecurringInvoiceInclude<ExtArgs> | null
+  where?: Prisma.RecurringInvoiceWhereInput
+  orderBy?: Prisma.RecurringInvoiceOrderByWithRelationInput | Prisma.RecurringInvoiceOrderByWithRelationInput[]
+  cursor?: Prisma.RecurringInvoiceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.RecurringInvoiceScalarFieldEnum | Prisma.RecurringInvoiceScalarFieldEnum[]
+}
+
+/**
+ * Organization.domainEvents
+ */
+export type Organization$domainEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DomainEvent
+   */
+  select?: Prisma.DomainEventSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DomainEvent
+   */
+  omit?: Prisma.DomainEventOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DomainEventInclude<ExtArgs> | null
+  where?: Prisma.DomainEventWhereInput
+  orderBy?: Prisma.DomainEventOrderByWithRelationInput | Prisma.DomainEventOrderByWithRelationInput[]
+  cursor?: Prisma.DomainEventWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DomainEventScalarFieldEnum | Prisma.DomainEventScalarFieldEnum[]
+}
+
+/**
+ * Organization.agentKeys
+ */
+export type Organization$agentKeysArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AgentKey
+   */
+  select?: Prisma.AgentKeySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AgentKey
+   */
+  omit?: Prisma.AgentKeyOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AgentKeyInclude<ExtArgs> | null
+  where?: Prisma.AgentKeyWhereInput
+  orderBy?: Prisma.AgentKeyOrderByWithRelationInput | Prisma.AgentKeyOrderByWithRelationInput[]
+  cursor?: Prisma.AgentKeyWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AgentKeyScalarFieldEnum | Prisma.AgentKeyScalarFieldEnum[]
+}
+
+/**
+ * Organization.approvalRequests
+ */
+export type Organization$approvalRequestsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ApprovalRequest
+   */
+  select?: Prisma.ApprovalRequestSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ApprovalRequest
+   */
+  omit?: Prisma.ApprovalRequestOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ApprovalRequestInclude<ExtArgs> | null
+  where?: Prisma.ApprovalRequestWhereInput
+  orderBy?: Prisma.ApprovalRequestOrderByWithRelationInput | Prisma.ApprovalRequestOrderByWithRelationInput[]
+  cursor?: Prisma.ApprovalRequestWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ApprovalRequestScalarFieldEnum | Prisma.ApprovalRequestScalarFieldEnum[]
+}
+
+/**
+ * Organization.schedulerScans
+ */
+export type Organization$schedulerScansArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SchedulerScan
+   */
+  select?: Prisma.SchedulerScanSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SchedulerScan
+   */
+  omit?: Prisma.SchedulerScanOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SchedulerScanInclude<ExtArgs> | null
+  where?: Prisma.SchedulerScanWhereInput
+  orderBy?: Prisma.SchedulerScanOrderByWithRelationInput | Prisma.SchedulerScanOrderByWithRelationInput[]
+  cursor?: Prisma.SchedulerScanWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SchedulerScanScalarFieldEnum | Prisma.SchedulerScanScalarFieldEnum[]
 }
 
 /**

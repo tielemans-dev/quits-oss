@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { normalizeHostedNext } from "../redirect-target"
+import { normalizeHostedNext, toInternalRedirectPath } from "../redirect-target"
 
 describe("normalizeHostedNext", () => {
   it("accepts app.yaip.com same-origin paths", () => {
@@ -17,5 +17,44 @@ describe("normalizeHostedNext", () => {
   it("falls back when next is missing or invalid", () => {
     expect(normalizeHostedNext(undefined, "https://app.yaip.com")).toBe("https://app.yaip.com/")
     expect(normalizeHostedNext("/invoices", "https://app.yaip.com")).toBe("https://app.yaip.com/")
+  })
+})
+
+describe("toInternalRedirectPath", () => {
+  it("keeps same-site paths", () => {
+    expect(toInternalRedirectPath("/invoices/1?tab=items")).toBe("/invoices/1?tab=items")
+  })
+
+  it("rejects external and protocol-relative targets", () => {
+    expect(toInternalRedirectPath(undefined)).toBeNull()
+    expect(toInternalRedirectPath("https://evil.example")).toBeNull()
+    expect(toInternalRedirectPath("//evil.example")).toBeNull()
+    expect(toInternalRedirectPath("/\\evil.example")).toBeNull()
+    expect(toInternalRedirectPath("invoices")).toBeNull()
+  })
+
+  it("rejects paths a browser would resolve to another site", () => {
+    for (const target of ["/\t/evil.example", "/\n/evil.example", "/\r/evil.example", "/\t\t/evil.example"]) {
+      expect(toInternalRedirectPath(target)).toBeNull()
+    }
+  })
+
+  it("returns the path as the browser resolves it", () => {
+    expect(toInternalRedirectPath("/invoices/../quotes#top")).toBe("/quotes#top")
+  })
+
+  it("rejects paths that normalize to a protocol-relative URL", () => {
+    for (const target of ["/x/..//internal.invalid//evil.example", "/.//evil.example", "/a/../..//evil.example"]) {
+      expect(toInternalRedirectPath(target)).toBeNull()
+    }
+  })
+
+  it("returns paths that pass the check again unchanged", () => {
+    for (const target of ["/invoices/1?tab=a#b", "/invoices/../quotes", "/x/./y", "/%2F%2Fevil.example"]) {
+      const once = toInternalRedirectPath(target)
+      expect(once).not.toBeNull()
+      expect(toInternalRedirectPath(once!)).toBe(once)
+      expect(new URL(once!, "https://app.example").origin).toBe("https://app.example")
+    }
   })
 })

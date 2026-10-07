@@ -1,6 +1,11 @@
-# YAIP — Yet Another Invoicing App
+# Quits
 
 Source-available invoicing for freelancers and small businesses.
+
+> **Upgrading from YAIP?** Quits was previously called YAIP. Nothing needs to change to upgrade:
+> `YAIP_*` environment variables are still read when the matching `QUITS_*` variable is not set,
+> and agent keys starting with `yaip_ak_` keep working (new keys start with `quits_ak_`). The
+> packages are now published as `@quits/*`. Database names and credentials are unchanged.
 
 ## Features
 
@@ -32,8 +37,8 @@ Source-available invoicing for freelancers and small businesses.
 1. Clone the repo:
 
    ```bash
-   git clone https://github.com/yourusername/yaip.git
-   cd yaip
+   git clone https://github.com/tielemans-dev/quits-oss.git
+   cd quits-oss
    ```
 
 2. Install dependencies:
@@ -95,8 +100,8 @@ Source-available invoicing for freelancers and small businesses.
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/yaip.git
-cd yaip
+git clone https://github.com/tielemans-dev/quits-oss.git
+cd quits-oss
 
 # Set your secrets
 echo 'BETTER_AUTH_SECRET=your-secret-here' > .env
@@ -111,8 +116,8 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 
 - This repository is the OSS runtime baseline.
 - This repository now also owns the versioned app artifact consumed by hosted cloud builds.
-- Stable consumer entrypoints are exposed through the versioned `@yaip/oss` release artifact export surface.
-- Hosted cloud-specific modules (managed billing/webhooks/infra) belong to a private `yaip-cloud` repository.
+- Stable consumer entrypoints are exposed through the versioned `@quits/oss` release artifact export surface.
+- Hosted cloud-specific modules (managed billing/webhooks/infra) belong to a private `quits-cloud` repository.
 - Ownership and constraints are documented in `docs/architecture/oss-cloud-boundary.md`.
 - Release and cutover checklist is documented in `docs/releases/oss-v1-cutover.md`.
 
@@ -167,10 +172,10 @@ This repository is Bun-native. Use `bun install` and `bun run ...` commands for 
 | `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional) | No |
 | `RESEND_API_KEY` | Resend API key for sending invoice/quote/invite emails | No |
 | `FROM_EMAIL` | Sender email address used for outgoing emails | No |
-| `CRON_SECRET` | Bearer token required by `/api/cron/mark-overdue` | Yes (prod) |
-| `YAIP_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
-| `YAIP_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
-| `YAIP_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
+| `CRON_SECRET` | Bearer token required by `/api/cron/tick` (and the legacy `/api/cron/mark-overdue`); the bundled `scheduler` service calls the tick every 5 minutes | Yes (prod) |
+| `QUITS_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
+| `QUITS_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
+| `QUITS_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
 
 ## Contributing
 

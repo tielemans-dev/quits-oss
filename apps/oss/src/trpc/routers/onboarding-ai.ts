@@ -10,7 +10,7 @@ import {
   onboardingValuesSchema,
   type OnboardingMissingField,
   type OnboardingPatch,
-} from "@yaip/contracts/onboarding"
+} from "@quits/contracts/onboarding"
 import { z } from "zod"
 import { getCloudOnboardingState } from "../../lib/cloud-onboarding"
 import { prisma } from "../../lib/db"
@@ -25,7 +25,7 @@ import {
 } from "../../lib/onboarding/ai-contract"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getOnboardingAiService } from "../../lib/runtime/services"
-import { orgProcedure, router } from "../init"
+import { authorizedProcedure, router } from "../init"
 
 const onboardingLogger = appLogger.child("onboarding-ai")
 
@@ -342,7 +342,7 @@ async function applyPatchToOrgSettings(
 }
 
 export const onboardingAiRouter = router({
-  getOnboardingState: orgProcedure.query(async ({ ctx }) => {
+  getOnboardingState: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     assertCloudOnboardingAiEnabled()
     const snapshot = await loadSnapshot(ctx.organizationId)
     const requiredNow = getRequirementRules({
@@ -359,14 +359,14 @@ export const onboardingAiRouter = router({
     }
   }),
 
-  getRequirementRules: orgProcedure
+  getRequirementRules: authorizedProcedure("settings:read")
     .input(getRequirementRulesInputSchema)
     .query(({ input }) => {
       assertCloudOnboardingAiEnabled()
       return getRequirementRules(input)
     }),
 
-  suggestOnboardingPatch: orgProcedure
+  suggestOnboardingPatch: authorizedProcedure("settings:update")
     .input(suggestOnboardingPatchInputSchema)
     .mutation(async ({ ctx, input }) => {
       assertCloudOnboardingAiEnabled()
@@ -401,7 +401,7 @@ export const onboardingAiRouter = router({
       }
     }),
 
-  applyOnboardingPatch: orgProcedure
+  applyOnboardingPatch: authorizedProcedure("settings:update")
     .input(applyOnboardingPatchInputSchema)
     .mutation(async ({ ctx, input }) => {
       assertCloudOnboardingAiEnabled()
@@ -433,7 +433,7 @@ export const onboardingAiRouter = router({
       }
     }),
 
-  validateOnboardingReadiness: orgProcedure
+  validateOnboardingReadiness: authorizedProcedure("settings:read")
     .input(validateReadinessInputSchema)
     .query(({ input }) => {
       assertCloudOnboardingAiEnabled()
@@ -464,7 +464,7 @@ export const onboardingAiRouter = router({
       }
     }),
 
-  listFollowupQuestions: orgProcedure
+  listFollowupQuestions: authorizedProcedure("settings:read")
     .input(listFollowupQuestionsInputSchema)
     .query(({ input }) => {
       assertCloudOnboardingAiEnabled()

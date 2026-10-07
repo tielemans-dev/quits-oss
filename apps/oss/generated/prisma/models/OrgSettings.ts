@@ -30,6 +30,8 @@ export type OrgSettingsAvgAggregateOutputType = {
   taxRate: runtime.Decimal | null
   invoiceNextNum: number | null
   quoteNextNum: number | null
+  creditNoteNextNum: number | null
+  eventSequence: number | null
   onboardingVersion: number | null
 }
 
@@ -37,6 +39,8 @@ export type OrgSettingsSumAggregateOutputType = {
   taxRate: runtime.Decimal | null
   invoiceNextNum: number | null
   quoteNextNum: number | null
+  creditNoteNextNum: number | null
+  eventSequence: number | null
   onboardingVersion: number | null
 }
 
@@ -60,6 +64,9 @@ export type OrgSettingsMinAggregateOutputType = {
   invoiceNextNum: number | null
   quotePrefix: string | null
   quoteNextNum: number | null
+  creditNotePrefix: string | null
+  creditNoteNextNum: number | null
+  eventSequence: number | null
   onboardingStatus: string | null
   onboardingMethod: string | null
   onboardingProfile: string | null
@@ -102,6 +109,9 @@ export type OrgSettingsMaxAggregateOutputType = {
   invoiceNextNum: number | null
   quotePrefix: string | null
   quoteNextNum: number | null
+  creditNotePrefix: string | null
+  creditNoteNextNum: number | null
+  eventSequence: number | null
   onboardingStatus: string | null
   onboardingMethod: string | null
   onboardingProfile: string | null
@@ -144,6 +154,10 @@ export type OrgSettingsCountAggregateOutputType = {
   invoiceNextNum: number
   quotePrefix: number
   quoteNextNum: number
+  creditNotePrefix: number
+  creditNoteNextNum: number
+  reminderPolicy: number
+  eventSequence: number
   onboardingStatus: number
   onboardingMethod: number
   onboardingProfile: number
@@ -173,6 +187,8 @@ export type OrgSettingsAvgAggregateInputType = {
   taxRate?: true
   invoiceNextNum?: true
   quoteNextNum?: true
+  creditNoteNextNum?: true
+  eventSequence?: true
   onboardingVersion?: true
 }
 
@@ -180,6 +196,8 @@ export type OrgSettingsSumAggregateInputType = {
   taxRate?: true
   invoiceNextNum?: true
   quoteNextNum?: true
+  creditNoteNextNum?: true
+  eventSequence?: true
   onboardingVersion?: true
 }
 
@@ -203,6 +221,9 @@ export type OrgSettingsMinAggregateInputType = {
   invoiceNextNum?: true
   quotePrefix?: true
   quoteNextNum?: true
+  creditNotePrefix?: true
+  creditNoteNextNum?: true
+  eventSequence?: true
   onboardingStatus?: true
   onboardingMethod?: true
   onboardingProfile?: true
@@ -245,6 +266,9 @@ export type OrgSettingsMaxAggregateInputType = {
   invoiceNextNum?: true
   quotePrefix?: true
   quoteNextNum?: true
+  creditNotePrefix?: true
+  creditNoteNextNum?: true
+  eventSequence?: true
   onboardingStatus?: true
   onboardingMethod?: true
   onboardingProfile?: true
@@ -287,6 +311,10 @@ export type OrgSettingsCountAggregateInputType = {
   invoiceNextNum?: true
   quotePrefix?: true
   quoteNextNum?: true
+  creditNotePrefix?: true
+  creditNoteNextNum?: true
+  reminderPolicy?: true
+  eventSequence?: true
   onboardingStatus?: true
   onboardingMethod?: true
   onboardingProfile?: true
@@ -417,6 +445,10 @@ export type OrgSettingsGroupByOutputType = {
   invoiceNextNum: number
   quotePrefix: string
   quoteNextNum: number
+  creditNotePrefix: string
+  creditNoteNextNum: number
+  reminderPolicy: runtime.JsonValue | null
+  eventSequence: number
   onboardingStatus: string
   onboardingMethod: string | null
   onboardingProfile: string | null
@@ -483,6 +515,10 @@ export type OrgSettingsWhereInput = {
   invoiceNextNum?: Prisma.IntFilter<"OrgSettings"> | number
   quotePrefix?: Prisma.StringFilter<"OrgSettings"> | string
   quoteNextNum?: Prisma.IntFilter<"OrgSettings"> | number
+  creditNotePrefix?: Prisma.StringFilter<"OrgSettings"> | string
+  creditNoteNextNum?: Prisma.IntFilter<"OrgSettings"> | number
+  reminderPolicy?: Prisma.JsonNullableFilter<"OrgSettings">
+  eventSequence?: Prisma.IntFilter<"OrgSettings"> | number
   onboardingStatus?: Prisma.StringFilter<"OrgSettings"> | string
   onboardingMethod?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   onboardingProfile?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
@@ -527,6 +563,10 @@ export type OrgSettingsOrderByWithRelationInput = {
   invoiceNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
+  creditNotePrefix?: Prisma.SortOrder
+  creditNoteNextNum?: Prisma.SortOrder
+  reminderPolicy?: Prisma.SortOrderInput | Prisma.SortOrder
+  eventSequence?: Prisma.SortOrder
   onboardingStatus?: Prisma.SortOrder
   onboardingMethod?: Prisma.SortOrderInput | Prisma.SortOrder
   onboardingProfile?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -574,6 +614,10 @@ export type OrgSettingsWhereUniqueInput = Prisma.AtLeast<{
   invoiceNextNum?: Prisma.IntFilter<"OrgSettings"> | number
   quotePrefix?: Prisma.StringFilter<"OrgSettings"> | string
   quoteNextNum?: Prisma.IntFilter<"OrgSettings"> | number
+  creditNotePrefix?: Prisma.StringFilter<"OrgSettings"> | string
+  creditNoteNextNum?: Prisma.IntFilter<"OrgSettings"> | number
+  reminderPolicy?: Prisma.JsonNullableFilter<"OrgSettings">
+  eventSequence?: Prisma.IntFilter<"OrgSettings"> | number
   onboardingStatus?: Prisma.StringFilter<"OrgSettings"> | string
   onboardingMethod?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   onboardingProfile?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
@@ -618,6 +662,10 @@ export type OrgSettingsOrderByWithAggregationInput = {
   invoiceNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
+  creditNotePrefix?: Prisma.SortOrder
+  creditNoteNextNum?: Prisma.SortOrder
+  reminderPolicy?: Prisma.SortOrderInput | Prisma.SortOrder
+  eventSequence?: Prisma.SortOrder
   onboardingStatus?: Prisma.SortOrder
   onboardingMethod?: Prisma.SortOrderInput | Prisma.SortOrder
   onboardingProfile?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -669,6 +717,10 @@ export type OrgSettingsScalarWhereWithAggregatesInput = {
   invoiceNextNum?: Prisma.IntWithAggregatesFilter<"OrgSettings"> | number
   quotePrefix?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   quoteNextNum?: Prisma.IntWithAggregatesFilter<"OrgSettings"> | number
+  creditNotePrefix?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
+  creditNoteNextNum?: Prisma.IntWithAggregatesFilter<"OrgSettings"> | number
+  reminderPolicy?: Prisma.JsonNullableWithAggregatesFilter<"OrgSettings">
+  eventSequence?: Prisma.IntWithAggregatesFilter<"OrgSettings"> | number
   onboardingStatus?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   onboardingMethod?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   onboardingProfile?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
@@ -711,6 +763,10 @@ export type OrgSettingsCreateInput = {
   invoiceNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
+  creditNotePrefix?: string
+  creditNoteNextNum?: number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: number
   onboardingStatus?: string
   onboardingMethod?: string | null
   onboardingProfile?: string | null
@@ -755,6 +811,10 @@ export type OrgSettingsUncheckedCreateInput = {
   invoiceNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
+  creditNotePrefix?: string
+  creditNoteNextNum?: number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: number
   onboardingStatus?: string
   onboardingMethod?: string | null
   onboardingProfile?: string | null
@@ -797,6 +857,10 @@ export type OrgSettingsUpdateInput = {
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: Prisma.IntFieldUpdateOperationsInput | number
   onboardingStatus?: Prisma.StringFieldUpdateOperationsInput | string
   onboardingMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingProfile?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -841,6 +905,10 @@ export type OrgSettingsUncheckedUpdateInput = {
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: Prisma.IntFieldUpdateOperationsInput | number
   onboardingStatus?: Prisma.StringFieldUpdateOperationsInput | string
   onboardingMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingProfile?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -884,6 +952,10 @@ export type OrgSettingsCreateManyInput = {
   invoiceNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
+  creditNotePrefix?: string
+  creditNoteNextNum?: number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: number
   onboardingStatus?: string
   onboardingMethod?: string | null
   onboardingProfile?: string | null
@@ -926,6 +998,10 @@ export type OrgSettingsUpdateManyMutationInput = {
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: Prisma.IntFieldUpdateOperationsInput | number
   onboardingStatus?: Prisma.StringFieldUpdateOperationsInput | string
   onboardingMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingProfile?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -969,6 +1045,10 @@ export type OrgSettingsUncheckedUpdateManyInput = {
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: Prisma.IntFieldUpdateOperationsInput | number
   onboardingStatus?: Prisma.StringFieldUpdateOperationsInput | string
   onboardingMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingProfile?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1017,6 +1097,10 @@ export type OrgSettingsCountOrderByAggregateInput = {
   invoiceNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
+  creditNotePrefix?: Prisma.SortOrder
+  creditNoteNextNum?: Prisma.SortOrder
+  reminderPolicy?: Prisma.SortOrder
+  eventSequence?: Prisma.SortOrder
   onboardingStatus?: Prisma.SortOrder
   onboardingMethod?: Prisma.SortOrder
   onboardingProfile?: Prisma.SortOrder
@@ -1044,6 +1128,8 @@ export type OrgSettingsAvgOrderByAggregateInput = {
   taxRate?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
+  creditNoteNextNum?: Prisma.SortOrder
+  eventSequence?: Prisma.SortOrder
   onboardingVersion?: Prisma.SortOrder
 }
 
@@ -1067,6 +1153,9 @@ export type OrgSettingsMaxOrderByAggregateInput = {
   invoiceNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
+  creditNotePrefix?: Prisma.SortOrder
+  creditNoteNextNum?: Prisma.SortOrder
+  eventSequence?: Prisma.SortOrder
   onboardingStatus?: Prisma.SortOrder
   onboardingMethod?: Prisma.SortOrder
   onboardingProfile?: Prisma.SortOrder
@@ -1109,6 +1198,9 @@ export type OrgSettingsMinOrderByAggregateInput = {
   invoiceNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
+  creditNotePrefix?: Prisma.SortOrder
+  creditNoteNextNum?: Prisma.SortOrder
+  eventSequence?: Prisma.SortOrder
   onboardingStatus?: Prisma.SortOrder
   onboardingMethod?: Prisma.SortOrder
   onboardingProfile?: Prisma.SortOrder
@@ -1135,6 +1227,8 @@ export type OrgSettingsSumOrderByAggregateInput = {
   taxRate?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
+  creditNoteNextNum?: Prisma.SortOrder
+  eventSequence?: Prisma.SortOrder
   onboardingVersion?: Prisma.SortOrder
 }
 
@@ -1205,6 +1299,10 @@ export type OrgSettingsCreateWithoutOrganizationInput = {
   invoiceNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
+  creditNotePrefix?: string
+  creditNoteNextNum?: number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: number
   onboardingStatus?: string
   onboardingMethod?: string | null
   onboardingProfile?: string | null
@@ -1247,6 +1345,10 @@ export type OrgSettingsUncheckedCreateWithoutOrganizationInput = {
   invoiceNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
+  creditNotePrefix?: string
+  creditNoteNextNum?: number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: number
   onboardingStatus?: string
   onboardingMethod?: string | null
   onboardingProfile?: string | null
@@ -1305,6 +1407,10 @@ export type OrgSettingsUpdateWithoutOrganizationInput = {
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: Prisma.IntFieldUpdateOperationsInput | number
   onboardingStatus?: Prisma.StringFieldUpdateOperationsInput | string
   onboardingMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingProfile?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1347,6 +1453,10 @@ export type OrgSettingsUncheckedUpdateWithoutOrganizationInput = {
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  reminderPolicy?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  eventSequence?: Prisma.IntFieldUpdateOperationsInput | number
   onboardingStatus?: Prisma.StringFieldUpdateOperationsInput | string
   onboardingMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingProfile?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1392,6 +1502,10 @@ export type OrgSettingsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   invoiceNextNum?: boolean
   quotePrefix?: boolean
   quoteNextNum?: boolean
+  creditNotePrefix?: boolean
+  creditNoteNextNum?: boolean
+  reminderPolicy?: boolean
+  eventSequence?: boolean
   onboardingStatus?: boolean
   onboardingMethod?: boolean
   onboardingProfile?: boolean
@@ -1436,6 +1550,10 @@ export type OrgSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   invoiceNextNum?: boolean
   quotePrefix?: boolean
   quoteNextNum?: boolean
+  creditNotePrefix?: boolean
+  creditNoteNextNum?: boolean
+  reminderPolicy?: boolean
+  eventSequence?: boolean
   onboardingStatus?: boolean
   onboardingMethod?: boolean
   onboardingProfile?: boolean
@@ -1480,6 +1598,10 @@ export type OrgSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   invoiceNextNum?: boolean
   quotePrefix?: boolean
   quoteNextNum?: boolean
+  creditNotePrefix?: boolean
+  creditNoteNextNum?: boolean
+  reminderPolicy?: boolean
+  eventSequence?: boolean
   onboardingStatus?: boolean
   onboardingMethod?: boolean
   onboardingProfile?: boolean
@@ -1524,6 +1646,10 @@ export type OrgSettingsSelectScalar = {
   invoiceNextNum?: boolean
   quotePrefix?: boolean
   quoteNextNum?: boolean
+  creditNotePrefix?: boolean
+  creditNoteNextNum?: boolean
+  reminderPolicy?: boolean
+  eventSequence?: boolean
   onboardingStatus?: boolean
   onboardingMethod?: boolean
   onboardingProfile?: boolean
@@ -1547,7 +1673,7 @@ export type OrgSettingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "invoicePrefix" | "invoiceNextNum" | "quotePrefix" | "quoteNextNum" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiOpenRouterApiKeyEnc" | "aiOpenRouterModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
+export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "invoicePrefix" | "invoiceNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiOpenRouterApiKeyEnc" | "aiOpenRouterModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
 export type OrgSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }
@@ -1583,6 +1709,10 @@ export type $OrgSettingsPayload<ExtArgs extends runtime.Types.Extensions.Interna
     invoiceNextNum: number
     quotePrefix: string
     quoteNextNum: number
+    creditNotePrefix: string
+    creditNoteNextNum: number
+    reminderPolicy: runtime.JsonValue | null
+    eventSequence: number
     onboardingStatus: string
     onboardingMethod: string | null
     onboardingProfile: string | null
@@ -2047,6 +2177,10 @@ export interface OrgSettingsFieldRefs {
   readonly invoiceNextNum: Prisma.FieldRef<"OrgSettings", 'Int'>
   readonly quotePrefix: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly quoteNextNum: Prisma.FieldRef<"OrgSettings", 'Int'>
+  readonly creditNotePrefix: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly creditNoteNextNum: Prisma.FieldRef<"OrgSettings", 'Int'>
+  readonly reminderPolicy: Prisma.FieldRef<"OrgSettings", 'Json'>
+  readonly eventSequence: Prisma.FieldRef<"OrgSettings", 'Int'>
   readonly onboardingStatus: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly onboardingMethod: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly onboardingProfile: Prisma.FieldRef<"OrgSettings", 'String'>

@@ -59,6 +59,31 @@ describe("PublicInvoicePaymentPage", () => {
     expect(html).toContain("INV-0001")
   })
 
+  it("shows the balance due after a partial payment", () => {
+    const html = renderToStaticMarkup(
+      <PublicInvoicePaymentPage
+        token="signed-token"
+        state={{
+          kind: "ready",
+          paymentState: "unpaid",
+          invoice: {
+            ...baseInvoice,
+            paymentStatus: "partially_paid",
+            amountPaid: 500,
+            amountCredited: 0,
+            balanceDue: 750,
+          },
+          stripeEnabled: true,
+        }}
+      />
+    )
+
+    expect(html).toContain("Partially paid")
+    expect(html).toContain("Balance due")
+    expect(html).toContain("$750.00")
+    expect(html).toContain("Pay now")
+  })
+
   it("renders a read-only confirmation once an invoice is paid", () => {
     const html = renderToStaticMarkup(
       <PublicInvoicePaymentPage
@@ -77,6 +102,33 @@ describe("PublicInvoicePaymentPage", () => {
     )
 
     expect(html).toContain("Payment received")
+    expect(html).not.toContain("Pay now")
+  })
+
+  it("shows an invoice credited in full as credited, with nothing to pay", () => {
+    const html = renderToStaticMarkup(
+      <PublicInvoicePaymentPage
+        token="signed-token"
+        state={{
+          kind: "ready",
+          paymentState: "paid",
+          invoice: {
+            ...baseInvoice,
+            status: "credited",
+            paymentStatus: "unpaid",
+            amountPaid: 0,
+            amountCredited: 1250,
+            balanceDue: 0,
+          },
+          stripeEnabled: true,
+        }}
+      />
+    )
+
+    expect(html).toContain("Invoice credited")
+    expect(html).toContain("Credited")
+    expect(html).toContain("$0.00")
+    expect(html).not.toContain("Payment received")
     expect(html).not.toContain("Pay now")
   })
 

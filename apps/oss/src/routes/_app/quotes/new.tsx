@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
+import { createThenSend } from "../../../lib/create-and-send"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import { formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
 import { useOrgCurrency } from "../../../hooks/use-org-currency"
@@ -122,28 +123,30 @@ function NewQuotePage() {
 
     setSaving(true)
     try {
-      const quote = await trpc.quotes.create.mutate({
-        contactId,
-        expiryDate,
-        taxRate,
-        notes: notes || undefined,
-        items: items.map((item) => ({
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-        })),
+      // The draft exists once created: whatever happens to the send, show it rather than keep
+      // the form, where submitting again would create a second quote.
+      const target = await createThenSend({
+        create: () =>
+          trpc.quotes.create.mutate({
+            contactId,
+            expiryDate,
+            taxRate,
+            notes: notes || undefined,
+            items: items.map((item) => ({
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+            })),
+          }),
+        send: (id) => trpc.quotes.send.mutate({ id }),
+        sendImmediately,
+        sendFailedMessage: t("quotes.detail.error.sendFailed"),
       })
-
-      let emailWarning: string | undefined
-      if (sendImmediately) {
-        const result = await trpc.quotes.send.mutate({ id: quote.id })
-        if (result.emailSkipReason) emailWarning = result.emailSkipReason
-      }
 
       navigate({
         to: "/quotes/$quoteId",
-        params: { quoteId: quote.id },
-        search: { emailWarning },
+        params: { quoteId: target.id },
+        search: { emailWarning: target.emailWarning, sendError: target.sendError },
       })
     } catch (err) {
       setError(

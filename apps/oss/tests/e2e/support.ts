@@ -14,9 +14,9 @@ process.env.DATABASE_URL ??=
 
 export const appOrigin = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000"
 export const publicPaymentSecret =
-  process.env.YAIP_PUBLIC_PAYMENT_SECRET ?? "payment-link-e2e-secret-123456"
+  process.env.QUITS_PUBLIC_PAYMENT_SECRET ?? process.env.YAIP_PUBLIC_PAYMENT_SECRET ?? "payment-link-e2e-secret-123456"
 export const publicQuoteSecret =
-  process.env.YAIP_PUBLIC_QUOTE_SECRET ?? "quote-link-e2e-secret-123456"
+  process.env.QUITS_PUBLIC_QUOTE_SECRET ?? process.env.YAIP_PUBLIC_QUOTE_SECRET ?? "quote-link-e2e-secret-123456"
 export const adminCredentials = {
   email: "admin@e2e.example",
   name: "E2E Admin",

@@ -223,7 +223,7 @@ export function InvoicePdfDocument({
 }) {
   const contact = invoice.contact
   const statusStyle = getStatusStyle(invoice.status)
-  const fromName = org.companyName ?? "YAIP"
+  const fromName = org.companyName ?? "Quits"
   const locale = org.locale
   const timezone = org.timezone
   const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null

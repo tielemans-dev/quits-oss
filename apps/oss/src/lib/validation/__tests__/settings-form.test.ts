@@ -69,5 +69,13 @@ describe("validateSettingsFormInput", () => {
         quotePrefix: "quote-too-long",
       })
     ).toBe("invalid_quote_prefix")
+
+    expect(
+      validateSettingsFormInput({
+        timezone: "UTC",
+        taxRateRaw: "",
+        creditNotePrefix: "cn",
+      })
+    ).toBe("invalid_credit_note_prefix")
   })
 })

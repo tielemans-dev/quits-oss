@@ -9,31 +9,65 @@ const statement = {
   ...defaultStatements,
   invoice: ["create", "read", "update", "delete", "send"],
   quote: ["create", "read", "update", "delete", "send"],
+  creditNote: ["create", "read", "send"],
+  payment: ["create", "read", "void"],
+  recurring: ["create", "read", "update"],
+  catalog: ["create", "read", "update"],
   contact: ["create", "read", "update", "delete"],
   settings: ["read", "update"],
+  agent: ["create", "read", "revoke"],
+  export: ["read"],
+  audit: ["read"],
 } as const
 
 export const ac = createAccessControl(statement)
 
-export const admin = ac.newRole({
-  ...adminAc.statements,
+export const adminGrants = {
   invoice: ["create", "read", "update", "delete", "send"],
   quote: ["create", "read", "update", "delete", "send"],
+  creditNote: ["create", "read", "send"],
+  payment: ["create", "read", "void"],
+  recurring: ["create", "read", "update"],
+  catalog: ["create", "read", "update"],
   contact: ["create", "read", "update", "delete"],
   settings: ["read", "update"],
+  agent: ["create", "read", "revoke"],
+  export: ["read"],
+  audit: ["read"],
+} as const
+
+export const memberGrants = {
+  invoice: ["create", "read", "update", "send"],
+  quote: ["create", "read", "update", "send"],
+  creditNote: ["create", "read", "send"],
+  payment: ["create", "read"],
+  recurring: ["create", "read", "update"],
+  catalog: ["create", "read", "update"],
+  contact: ["create", "read", "update"],
+  settings: ["read"],
+} as const
+
+export const accountantGrants = {
+  invoice: ["read"],
+  quote: ["read"],
+  creditNote: ["read"],
+  payment: ["read"],
+  recurring: ["read"],
+  catalog: ["read"],
+  contact: ["read"],
+  settings: ["read"],
+  export: ["read"],
+  audit: ["read"],
+} as const
+
+export const admin = ac.newRole({
+  ...adminAc.statements,
+  ...adminGrants,
 })
 
 export const member = ac.newRole({
   ...memberAc.statements,
-  invoice: ["create", "read", "update", "send"],
-  quote: ["create", "read", "update", "send"],
-  contact: ["create", "read", "update"],
-  settings: ["read"],
+  ...memberGrants,
 })
 
-export const accountant = ac.newRole({
-  invoice: ["read"],
-  quote: ["read"],
-  contact: ["read"],
-  settings: ["read"],
-})
+export const accountant = ac.newRole(accountantGrants)

@@ -2,6 +2,7 @@ import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../../../lib/db"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -21,7 +22,7 @@ type DocumentCaller = {
 
 async function createCloudCallerWithContact() {
   vi.resetModules()
-  process.env.YAIP_DISTRIBUTION = "cloud"
+  process.env.QUITS_DISTRIBUTION = "cloud"
 
   const { appRouter } = await import("../../router")
   const orgId = randomUUID()
@@ -37,6 +38,7 @@ async function createCloudCallerWithContact() {
       subscriptionStatus: "pro",
     },
   })
+  await ensureTestMembership(orgId, "guard-user")
 
   await prisma.contact.create({
     data: {
@@ -65,7 +67,7 @@ async function createCloudCallerWithContact() {
 
 describeIfDatabase("onboarding document guards", () => {
   afterEach(async () => {
-    process.env.YAIP_DISTRIBUTION = "selfhost"
+    process.env.QUITS_DISTRIBUTION = "selfhost"
   })
 
   it("blocks invoice and quote creation until onboarding is complete", async () => {

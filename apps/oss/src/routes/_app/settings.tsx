@@ -2,7 +2,10 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
-import { validateSettingsFormInput } from "../../lib/validation/settings-form"
+import {
+  type SettingsFormValidationError,
+  validateSettingsFormInput,
+} from "../../lib/validation/settings-form"
 import {
   COUNTRY_OPTIONS,
   LOCALE_OPTIONS,
@@ -44,9 +47,23 @@ import {
   AlertDialogTrigger,
 } from "../../components/ui/alert-dialog"
 import { Settings, UserPlus, X, Crown, User, Eye } from "lucide-react"
+import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
 import { shouldAutoLoadOpenRouterModels } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
+import { AgentKeysCard } from "../../components/settings/agent-keys-card"
+import { AuditLogCard } from "../../components/settings/audit-log-card"
+import { ReminderPolicyCard } from "../../components/settings/reminder-policy-card"
+
+const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
+  invalid_timezone: "settings.validation.invalidTimezone",
+  invalid_tax_rate: "settings.validation.invalidTaxRate",
+  invalid_company_email: "settings.validation.invalidCompanyEmail",
+  invalid_company_phone: "settings.validation.invalidCompanyPhone",
+  invalid_invoice_prefix: "settings.validation.invalidInvoicePrefix",
+  invalid_quote_prefix: "settings.validation.invalidQuotePrefix",
+  invalid_credit_note_prefix: "settings.validation.invalidCreditNotePrefix",
+}
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -109,6 +126,8 @@ type SettingsData = {
   invoiceNextNum: number
   quotePrefix: string
   quoteNextNum: number
+  creditNotePrefix: string
+  creditNoteNextNum: number
   aiByokConfigured: boolean
   aiOpenRouterModel: string
   stripeByokConfigured: boolean
@@ -339,6 +358,7 @@ function SettingsPage() {
     const companyPhoneInput = ((form.get("companyPhone") as string) || "").trim()
     const invoicePrefixInput = ((form.get("invoicePrefix") as string) || "").trim()
     const quotePrefixInput = ((form.get("quotePrefix") as string) || "").trim()
+    const creditNotePrefixInput = ((form.get("creditNotePrefix") as string) || "").trim()
     const aiOpenRouterModelInput = aiOpenRouterModel.trim()
     const aiOpenRouterApiKeyInput = ((form.get("aiOpenRouterApiKey") as string) || "").trim()
     const stripePublishableKeyInput = ((form.get("stripePublishableKey") as string) || "").trim()
@@ -363,23 +383,12 @@ function SettingsPage() {
       companyPhone: companyPhoneInput,
       invoicePrefix: invoicePrefixInput,
       quotePrefix: quotePrefixInput,
+      creditNotePrefix: creditNotePrefixInput,
     })
 
     if (formValidationError) {
       setSaving(false)
-      setError(
-        formValidationError === "invalid_timezone"
-          ? t("settings.validation.invalidTimezone")
-          : formValidationError === "invalid_tax_rate"
-            ? t("settings.validation.invalidTaxRate")
-            : formValidationError === "invalid_company_email"
-              ? t("settings.validation.invalidCompanyEmail")
-              : formValidationError === "invalid_company_phone"
-                ? t("settings.validation.invalidCompanyPhone")
-                : formValidationError === "invalid_invoice_prefix"
-                  ? t("settings.validation.invalidInvoicePrefix")
-                  : t("settings.validation.invalidQuotePrefix")
-      )
+      setError(t(settingsValidationMessages[formValidationError]))
       return
     }
 
@@ -402,6 +411,7 @@ function SettingsPage() {
         companyLogo: normalizedCompanyLogo || null,
         invoicePrefix: invoicePrefixInput || undefined,
         quotePrefix: quotePrefixInput || undefined,
+        creditNotePrefix: creditNotePrefixInput || undefined,
         onboardingInvoicingIdentity: invoicingIdentity,
         aiOpenRouterModel: aiOpenRouterModelInput || undefined,
         aiOpenRouterApiKey: aiOpenRouterApiKeyInput || undefined,
@@ -943,6 +953,27 @@ function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="creditNotePrefix">{t("creditNotes.settings.prefix.label")}</Label>
+                <Input
+                  id="creditNotePrefix"
+                  name="creditNotePrefix"
+                  maxLength={10}
+                  pattern="^[A-Z0-9-]{1,10}$"
+                  title={t("creditNotes.validation.invalidPrefix")}
+                  placeholder="CN"
+                  defaultValue={settings.creditNotePrefix}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>{t("creditNotes.settings.nextNumber.label")}</Label>
+                <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm text-muted-foreground">
+                  {settings.creditNotePrefix}-{String(settings.creditNoteNextNum).padStart(4, "0")}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -1300,6 +1331,12 @@ function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="mt-6 grid gap-6">
+        <ReminderPolicyCard />
+        <AgentKeysCard />
+        <AuditLogCard />
+      </div>
     </div>
   )
 }

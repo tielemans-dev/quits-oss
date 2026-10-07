@@ -13,6 +13,8 @@ import {
   CardTitle,
 } from "../../../components/ui/card"
 import { useI18n } from "../../../lib/i18n/react"
+import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
+import { readPeppolEndpoint } from "./-peppol-endpoint"
 
 export const Route = createFileRoute("/_app/contacts/$contactId")({
   component: EditContactPage,
@@ -30,6 +32,8 @@ type ContactData = {
   zip: string | null
   country: string | null
   taxId: string | null
+  peppolEndpointId: string | null
+  peppolEndpointScheme: string | null
   notes: string | null
 }
 
@@ -56,6 +60,12 @@ function EditContactPage() {
     setSaving(true)
 
     const form = new FormData(e.currentTarget)
+    const peppol = readPeppolEndpoint(form)
+    if (!peppol.ok) {
+      setError(t(peppol.error))
+      setSaving(false)
+      return
+    }
 
     try {
       await trpc.contacts.update.mutate({
@@ -70,6 +80,9 @@ function EditContactPage() {
         zip: (form.get("zip") as string) || undefined,
         country: (form.get("country") as string) || undefined,
         taxId: (form.get("taxId") as string) || undefined,
+        // Both fields empty sends null, which clears a saved endpoint.
+        peppolEndpointId: peppol.peppolEndpointId,
+        peppolEndpointScheme: peppol.peppolEndpointScheme,
         notes: (form.get("notes") as string) || undefined,
       })
       navigate({ to: "/contacts" })
@@ -224,6 +237,41 @@ function EditContactPage() {
                 maxLength={40}
                 defaultValue={contact.taxId ?? ""}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="peppolEndpointId">{t("exports.contact.peppolEndpointId")}</Label>
+                  <Input
+                    id="peppolEndpointId"
+                    name="peppolEndpointId"
+                    maxLength={80}
+                    placeholder={t("exports.contact.peppolEndpointId.placeholder")}
+                    defaultValue={contact.peppolEndpointId ?? ""}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="peppolEndpointScheme">{t("exports.contact.peppolEndpointScheme")}</Label>
+                  <Input
+                    id="peppolEndpointScheme"
+                    name="peppolEndpointScheme"
+                    inputMode="numeric"
+                    maxLength={4}
+                    pattern="^\d{4}$"
+                    list="peppol-eas-codes"
+                    title={t("exports.contact.peppolEndpointScheme.invalid")}
+                    placeholder={t("exports.contact.peppolEndpointScheme.placeholder")}
+                    defaultValue={contact.peppolEndpointScheme ?? ""}
+                  />
+                </div>
+              </div>
+              <datalist id="peppol-eas-codes">
+                {PEPPOL_EAS_CODES.map((code) => (
+                  <option key={code} value={code} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">{t("exports.contact.peppolHint")}</p>
             </div>
 
             <div className="grid gap-2">

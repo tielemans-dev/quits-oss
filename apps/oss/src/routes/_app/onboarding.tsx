@@ -1,8 +1,9 @@
-import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
-import type { OnboardingMissingField } from '@yaip/contracts/onboarding'
-import type { RuntimeCapabilities } from '@yaip/contracts/runtime'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import type { OnboardingMissingField } from '@quits/contracts/onboarding'
+import type { RuntimeCapabilities } from '@quits/contracts/runtime'
 import { useEffect, useState } from 'react'
 import { authClient, useSession } from '../../lib/auth-client'
+import { switchActiveOrganization } from '../../lib/active-organization'
 import { isCloudDistribution } from '../../lib/distribution'
 import {
   getOrganizationAccessState,
@@ -109,7 +110,6 @@ function parseCloudOnboardingValues(values?: Record<string, unknown> | null): Cl
 function OnboardingPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const router = useRouter()
   const { data: session } = useSession()
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
@@ -166,18 +166,15 @@ function OnboardingPage() {
         })
 
         if (accessState.kind === 'auto-select') {
-          await authClient.organization.setActive({
-            organizationId: accessState.organizationId,
+          // Loads a new page acting for the organization: onboarding continues there in cloud.
+          const switched = await switchActiveOrganization(accessState.organizationId, {
+            destination: isCloudDistribution ? '/onboarding' : '/',
+            isCancelled: () => cancelled,
           })
-
-          if (cancelled) {
+          if (!switched?.error || cancelled) {
             return
           }
-
-          await router.invalidate()
-          if (!isCloudDistribution) {
-            navigate({ to: '/', replace: true })
-          }
+          setOrgAccessState({ kind: 'choose', organizations: (result.data ?? []) as OrganizationSummary[] })
           return
         }
 
@@ -198,7 +195,7 @@ function OnboardingPage() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, navigate, router])
+  }, [hasActiveOrg])
 
   useEffect(() => {
     if (!isCloudDistribution || !hasActiveOrg) {
@@ -365,13 +362,12 @@ function OnboardingPage() {
       return
     }
 
-    await authClient.organization.setActive({
-      organizationId: result.data.id,
-    })
-
-    setSubmitting(false)
-    await router.invalidate()
-    navigate({ to: '/', replace: true })
+    // Loads a new page acting for the new organization.
+    const switched = await switchActiveOrganization(result.data.id)
+    if (switched?.error) {
+      setError(switched.error.message ?? t('auth.onboarding.error'))
+      setSubmitting(false)
+    }
   }
 
   async function handleSelectOrganization(organizationId: string) {
@@ -379,9 +375,12 @@ function OnboardingPage() {
     setSubmitting(true)
 
     try {
-      await authClient.organization.setActive({ organizationId })
-      await router.invalidate()
-      navigate({ to: '/', replace: true })
+      // Loads a new page acting for the selected organization.
+      const switched = await switchActiveOrganization(organizationId)
+      if (switched?.error) {
+        setError(switched.error.message ?? t('auth.onboarding.error'))
+        setSubmitting(false)
+      }
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : t('auth.onboarding.error')
       setError(message)

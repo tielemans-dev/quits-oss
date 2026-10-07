@@ -18,8 +18,10 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
       publicPaymentIssuedAt: {
         not: null,
       },
+      // A link already emailed keeps working once the invoice is paid or credited in full; the
+      // page then shows it as settled instead of offering a payment.
       status: {
-        in: ["sent", "overdue", "paid"],
+        in: ["sent", "overdue", "paid", "credited"],
       },
     },
     include: {

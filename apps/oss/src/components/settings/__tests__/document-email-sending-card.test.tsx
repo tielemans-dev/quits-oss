@@ -54,13 +54,13 @@ describe("DocumentEmailSendingCard", () => {
           lastSyncedAt: null,
           lastSyncSource: null,
           sharedSender: {
-            fromName: "Acme via YAIP",
+            fromName: "Acme via Quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,
           },
           effectiveSender: {
-            fromName: "Acme via YAIP",
+            fromName: "Acme via Quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,
@@ -105,13 +105,13 @@ describe("DocumentEmailSendingCard", () => {
           lastSyncedAt: new Date("2026-03-06T18:05:00.000Z"),
           lastSyncSource: "manual",
           sharedSender: {
-            fromName: "Acme via YAIP",
+            fromName: "Acme via Quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,
           },
           effectiveSender: {
-            fromName: "Acme via YAIP",
+            fromName: "Acme via Quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,
@@ -150,7 +150,7 @@ describe("DocumentEmailSendingCard", () => {
           lastSyncedAt: new Date("2026-03-06T18:01:00.000Z"),
           lastSyncSource: "webhook",
           sharedSender: {
-            fromName: "Acme via YAIP",
+            fromName: "Acme via Quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,

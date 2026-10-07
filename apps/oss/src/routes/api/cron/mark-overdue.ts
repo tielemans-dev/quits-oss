@@ -1,36 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { guardCronRequest } from "./-guard"
 
-async function markOverdueInvoices() {
-  const { prisma } = await import("../../../lib/db")
-  return prisma.invoice.updateMany({
-    where: {
-      status: { in: ["sent", "viewed"] },
-      dueDate: { lt: new Date() },
-    },
-    data: { status: "overdue" },
-  })
+/** Legacy alias kept for existing schedulers; `/api/cron/tick` runs this and everything else. */
+async function handleMarkOverdue(request: Request) {
+  const denied = guardCronRequest(request)
+  if (denied) {
+    return denied
+  }
+
+  const { runOverdueTask } = await import("../../../domain/features/overdue")
+  const result = await runOverdueTask()
+  const ok = result.failed === 0
+  return Response.json(
+    { ok, marked: result.marked, failed: result.failed, remaining: result.remaining },
+    { status: ok ? 200 : 500 }
+  )
 }
 
 export const Route = createFileRoute("/api/cron/mark-overdue")({
   server: {
     handlers: {
-      GET: async ({ request }: { request: Request }) => {
-        const secret = process.env.CRON_SECRET
-        if (!secret) {
-          return new Response("Server misconfigured: CRON_SECRET is required", {
-            status: 503,
-          })
-        }
-
-        const authHeader = request.headers.get("authorization")
-        if (authHeader !== `Bearer ${secret}`) {
-          return new Response("Unauthorized", { status: 401 })
-        }
-
-        const { count } = await markOverdueInvoices()
-
-        return Response.json({ ok: true, marked: count })
-      },
+      GET: ({ request }: { request: Request }) => handleMarkOverdue(request),
     },
   },
 })

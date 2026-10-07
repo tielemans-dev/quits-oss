@@ -16,22 +16,30 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as QTokenRouteImport } from './routes/q.$token'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
+import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AppCatalogRouteImport } from './routes/_app/catalog'
 import { Route as AppBillingRouteImport } from './routes/_app/billing'
+import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
+import { Route as AppActivityRouteImport } from './routes/_app/activity'
+import { Route as AppRecurringIndexRouteImport } from './routes/_app/recurring/index'
 import { Route as AppQuotesIndexRouteImport } from './routes/_app/quotes/index'
 import { Route as AppInvoicesIndexRouteImport } from './routes/_app/invoices/index'
+import { Route as AppCreditNotesIndexRouteImport } from './routes/_app/credit-notes/index'
 import { Route as AppContactsIndexRouteImport } from './routes/_app/contacts/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe-webhook'
+import { Route as ApiCronTickRouteImport } from './routes/api/cron/tick'
 import { Route as ApiCronMarkOverdueRouteImport } from './routes/api/cron/mark-overdue'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppRecurringScheduleIdRouteImport } from './routes/_app/recurring/$scheduleId'
 import { Route as AppQuotesNewRouteImport } from './routes/_app/quotes/new'
 import { Route as AppQuotesQuoteIdRouteImport } from './routes/_app/quotes/$quoteId'
 import { Route as AppInvoicesNewRouteImport } from './routes/_app/invoices/new'
 import { Route as AppInvoicesInvoiceIdRouteImport } from './routes/_app/invoices/$invoiceId'
+import { Route as AppCreditNotesCreditNoteIdRouteImport } from './routes/_app/credit-notes/$creditNoteId'
 import { Route as AppContactsNewRouteImport } from './routes/_app/contacts/new'
 import { Route as AppContactsContactIdRouteImport } from './routes/_app/contacts/$contactId'
 
@@ -69,6 +77,11 @@ const PayTokenRoute = PayTokenRouteImport.update({
   path: '/pay/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMcpRoute = ApiMcpRouteImport.update({
+  id: '/api/mcp',
+  path: '/api/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AcceptInvitationInvitationIdRoute =
   AcceptInvitationInvitationIdRouteImport.update({
     id: '/accept-invitation/$invitationId',
@@ -95,6 +108,21 @@ const AppBillingRoute = AppBillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => AppRoute,
 } as any)
+const AppApprovalsRoute = AppApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppActivityRoute = AppActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRecurringIndexRoute = AppRecurringIndexRouteImport.update({
+  id: '/recurring/',
+  path: '/recurring/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppQuotesIndexRoute = AppQuotesIndexRouteImport.update({
   id: '/quotes/',
   path: '/quotes/',
@@ -103,6 +131,11 @@ const AppQuotesIndexRoute = AppQuotesIndexRouteImport.update({
 const AppInvoicesIndexRoute = AppInvoicesIndexRouteImport.update({
   id: '/invoices/',
   path: '/invoices/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCreditNotesIndexRoute = AppCreditNotesIndexRouteImport.update({
+  id: '/credit-notes/',
+  path: '/credit-notes/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppContactsIndexRoute = AppContactsIndexRouteImport.update({
@@ -121,6 +154,11 @@ const ApiPaymentsStripeWebhookRoute =
     path: '/api/payments/stripe-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiCronTickRoute = ApiCronTickRouteImport.update({
+  id: '/api/cron/tick',
+  path: '/api/cron/tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronMarkOverdueRoute = ApiCronMarkOverdueRouteImport.update({
   id: '/api/cron/mark-overdue',
   path: '/api/cron/mark-overdue',
@@ -130,6 +168,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppRecurringScheduleIdRoute = AppRecurringScheduleIdRouteImport.update({
+  id: '/recurring/$scheduleId',
+  path: '/recurring/$scheduleId',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppQuotesNewRoute = AppQuotesNewRouteImport.update({
   id: '/quotes/new',
@@ -151,6 +194,12 @@ const AppInvoicesInvoiceIdRoute = AppInvoicesInvoiceIdRouteImport.update({
   path: '/invoices/$invoiceId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCreditNotesCreditNoteIdRoute =
+  AppCreditNotesCreditNoteIdRouteImport.update({
+    id: '/credit-notes/$creditNoteId',
+    path: '/credit-notes/$creditNoteId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppContactsNewRoute = AppContactsNewRouteImport.update({
   id: '/contacts/new',
   path: '/contacts/new',
@@ -167,52 +216,68 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
+  '/activity': typeof AppActivityRoute
+  '/approvals': typeof AppApprovalsRoute
   '/billing': typeof AppBillingRoute
   '/catalog': typeof AppCatalogRoute
   '/onboarding': typeof AppOnboardingRoute
   '/settings': typeof AppSettingsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/contacts/$contactId': typeof AppContactsContactIdRoute
   '/contacts/new': typeof AppContactsNewRoute
+  '/credit-notes/$creditNoteId': typeof AppCreditNotesCreditNoteIdRoute
   '/invoices/$invoiceId': typeof AppInvoicesInvoiceIdRoute
   '/invoices/new': typeof AppInvoicesNewRoute
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
+  '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
+  '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/contacts/': typeof AppContactsIndexRoute
+  '/credit-notes/': typeof AppCreditNotesIndexRoute
   '/invoices/': typeof AppInvoicesIndexRoute
   '/quotes/': typeof AppQuotesIndexRoute
+  '/recurring/': typeof AppRecurringIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
+  '/activity': typeof AppActivityRoute
+  '/approvals': typeof AppApprovalsRoute
   '/billing': typeof AppBillingRoute
   '/catalog': typeof AppCatalogRoute
   '/onboarding': typeof AppOnboardingRoute
   '/settings': typeof AppSettingsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/': typeof AppIndexRoute
   '/contacts/$contactId': typeof AppContactsContactIdRoute
   '/contacts/new': typeof AppContactsNewRoute
+  '/credit-notes/$creditNoteId': typeof AppCreditNotesCreditNoteIdRoute
   '/invoices/$invoiceId': typeof AppInvoicesInvoiceIdRoute
   '/invoices/new': typeof AppInvoicesNewRoute
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
+  '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
+  '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/contacts': typeof AppContactsIndexRoute
+  '/credit-notes': typeof AppCreditNotesIndexRoute
   '/invoices': typeof AppInvoicesIndexRoute
   '/quotes': typeof AppQuotesIndexRoute
+  '/recurring': typeof AppRecurringIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -220,27 +285,35 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
+  '/_app/activity': typeof AppActivityRoute
+  '/_app/approvals': typeof AppApprovalsRoute
   '/_app/billing': typeof AppBillingRoute
   '/_app/catalog': typeof AppCatalogRoute
   '/_app/onboarding': typeof AppOnboardingRoute
   '/_app/settings': typeof AppSettingsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/contacts/$contactId': typeof AppContactsContactIdRoute
   '/_app/contacts/new': typeof AppContactsNewRoute
+  '/_app/credit-notes/$creditNoteId': typeof AppCreditNotesCreditNoteIdRoute
   '/_app/invoices/$invoiceId': typeof AppInvoicesInvoiceIdRoute
   '/_app/invoices/new': typeof AppInvoicesNewRoute
   '/_app/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/_app/quotes/new': typeof AppQuotesNewRoute
+  '/_app/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
+  '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/_app/contacts/': typeof AppContactsIndexRoute
+  '/_app/credit-notes/': typeof AppCreditNotesIndexRoute
   '/_app/invoices/': typeof AppInvoicesIndexRoute
   '/_app/quotes/': typeof AppQuotesIndexRoute
+  '/_app/recurring/': typeof AppRecurringIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -249,79 +322,103 @@ export interface FileRouteTypes {
     | '/login'
     | '/setup'
     | '/signup'
+    | '/activity'
+    | '/approvals'
     | '/billing'
     | '/catalog'
     | '/onboarding'
     | '/settings'
     | '/accept-invitation/$invitationId'
+    | '/api/mcp'
     | '/pay/$token'
     | '/q/$token'
     | '/contacts/$contactId'
     | '/contacts/new'
+    | '/credit-notes/$creditNoteId'
     | '/invoices/$invoiceId'
     | '/invoices/new'
     | '/quotes/$quoteId'
     | '/quotes/new'
+    | '/recurring/$scheduleId'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
+    | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
     | '/contacts/'
+    | '/credit-notes/'
     | '/invoices/'
     | '/quotes/'
+    | '/recurring/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/setup'
     | '/signup'
+    | '/activity'
+    | '/approvals'
     | '/billing'
     | '/catalog'
     | '/onboarding'
     | '/settings'
     | '/accept-invitation/$invitationId'
+    | '/api/mcp'
     | '/pay/$token'
     | '/q/$token'
     | '/'
     | '/contacts/$contactId'
     | '/contacts/new'
+    | '/credit-notes/$creditNoteId'
     | '/invoices/$invoiceId'
     | '/invoices/new'
     | '/quotes/$quoteId'
     | '/quotes/new'
+    | '/recurring/$scheduleId'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
+    | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
     | '/contacts'
+    | '/credit-notes'
     | '/invoices'
     | '/quotes'
+    | '/recurring'
   id:
     | '__root__'
     | '/_app'
     | '/login'
     | '/setup'
     | '/signup'
+    | '/_app/activity'
+    | '/_app/approvals'
     | '/_app/billing'
     | '/_app/catalog'
     | '/_app/onboarding'
     | '/_app/settings'
     | '/accept-invitation/$invitationId'
+    | '/api/mcp'
     | '/pay/$token'
     | '/q/$token'
     | '/_app/'
     | '/_app/contacts/$contactId'
     | '/_app/contacts/new'
+    | '/_app/credit-notes/$creditNoteId'
     | '/_app/invoices/$invoiceId'
     | '/_app/invoices/new'
     | '/_app/quotes/$quoteId'
     | '/_app/quotes/new'
+    | '/_app/recurring/$scheduleId'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
+    | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
     | '/_app/contacts/'
+    | '/_app/credit-notes/'
     | '/_app/invoices/'
     | '/_app/quotes/'
+    | '/_app/recurring/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -330,10 +427,12 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   SignupRoute: typeof SignupRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
+  ApiMcpRoute: typeof ApiMcpRoute
   PayTokenRoute: typeof PayTokenRoute
   QTokenRoute: typeof QTokenRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCronMarkOverdueRoute: typeof ApiCronMarkOverdueRoute
+  ApiCronTickRoute: typeof ApiCronTickRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
 }
@@ -389,6 +488,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PayTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mcp': {
+      id: '/api/mcp'
+      path: '/api/mcp'
+      fullPath: '/api/mcp'
+      preLoaderRoute: typeof ApiMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/accept-invitation/$invitationId': {
       id: '/accept-invitation/$invitationId'
       path: '/accept-invitation/$invitationId'
@@ -424,6 +530,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBillingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/approvals': {
+      id: '/_app/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof AppApprovalsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/activity': {
+      id: '/_app/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recurring/': {
+      id: '/_app/recurring/'
+      path: '/recurring'
+      fullPath: '/recurring/'
+      preLoaderRoute: typeof AppRecurringIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/quotes/': {
       id: '/_app/quotes/'
       path: '/quotes'
@@ -436,6 +563,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices'
       fullPath: '/invoices/'
       preLoaderRoute: typeof AppInvoicesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/credit-notes/': {
+      id: '/_app/credit-notes/'
+      path: '/credit-notes'
+      fullPath: '/credit-notes/'
+      preLoaderRoute: typeof AppCreditNotesIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/contacts/': {
@@ -459,6 +593,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPaymentsStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/tick': {
+      id: '/api/cron/tick'
+      path: '/api/cron/tick'
+      fullPath: '/api/cron/tick'
+      preLoaderRoute: typeof ApiCronTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/mark-overdue': {
       id: '/api/cron/mark-overdue'
       path: '/api/cron/mark-overdue'
@@ -472,6 +613,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/recurring/$scheduleId': {
+      id: '/_app/recurring/$scheduleId'
+      path: '/recurring/$scheduleId'
+      fullPath: '/recurring/$scheduleId'
+      preLoaderRoute: typeof AppRecurringScheduleIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/quotes/new': {
       id: '/_app/quotes/new'
@@ -501,6 +649,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInvoicesInvoiceIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/credit-notes/$creditNoteId': {
+      id: '/_app/credit-notes/$creditNoteId'
+      path: '/credit-notes/$creditNoteId'
+      fullPath: '/credit-notes/$creditNoteId'
+      preLoaderRoute: typeof AppCreditNotesCreditNoteIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/contacts/new': {
       id: '/_app/contacts/new'
       path: '/contacts/new'
@@ -519,6 +674,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppActivityRoute: typeof AppActivityRoute
+  AppApprovalsRoute: typeof AppApprovalsRoute
   AppBillingRoute: typeof AppBillingRoute
   AppCatalogRoute: typeof AppCatalogRoute
   AppOnboardingRoute: typeof AppOnboardingRoute
@@ -526,16 +683,22 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppContactsContactIdRoute: typeof AppContactsContactIdRoute
   AppContactsNewRoute: typeof AppContactsNewRoute
+  AppCreditNotesCreditNoteIdRoute: typeof AppCreditNotesCreditNoteIdRoute
   AppInvoicesInvoiceIdRoute: typeof AppInvoicesInvoiceIdRoute
   AppInvoicesNewRoute: typeof AppInvoicesNewRoute
   AppQuotesQuoteIdRoute: typeof AppQuotesQuoteIdRoute
   AppQuotesNewRoute: typeof AppQuotesNewRoute
+  AppRecurringScheduleIdRoute: typeof AppRecurringScheduleIdRoute
   AppContactsIndexRoute: typeof AppContactsIndexRoute
+  AppCreditNotesIndexRoute: typeof AppCreditNotesIndexRoute
   AppInvoicesIndexRoute: typeof AppInvoicesIndexRoute
   AppQuotesIndexRoute: typeof AppQuotesIndexRoute
+  AppRecurringIndexRoute: typeof AppRecurringIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppActivityRoute: AppActivityRoute,
+  AppApprovalsRoute: AppApprovalsRoute,
   AppBillingRoute: AppBillingRoute,
   AppCatalogRoute: AppCatalogRoute,
   AppOnboardingRoute: AppOnboardingRoute,
@@ -543,13 +706,17 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppContactsContactIdRoute: AppContactsContactIdRoute,
   AppContactsNewRoute: AppContactsNewRoute,
+  AppCreditNotesCreditNoteIdRoute: AppCreditNotesCreditNoteIdRoute,
   AppInvoicesInvoiceIdRoute: AppInvoicesInvoiceIdRoute,
   AppInvoicesNewRoute: AppInvoicesNewRoute,
   AppQuotesQuoteIdRoute: AppQuotesQuoteIdRoute,
   AppQuotesNewRoute: AppQuotesNewRoute,
+  AppRecurringScheduleIdRoute: AppRecurringScheduleIdRoute,
   AppContactsIndexRoute: AppContactsIndexRoute,
+  AppCreditNotesIndexRoute: AppCreditNotesIndexRoute,
   AppInvoicesIndexRoute: AppInvoicesIndexRoute,
   AppQuotesIndexRoute: AppQuotesIndexRoute,
+  AppRecurringIndexRoute: AppRecurringIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -560,10 +727,12 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   SignupRoute: SignupRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
+  ApiMcpRoute: ApiMcpRoute,
   PayTokenRoute: PayTokenRoute,
   QTokenRoute: QTokenRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCronMarkOverdueRoute: ApiCronMarkOverdueRoute,
+  ApiCronTickRoute: ApiCronTickRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
 }

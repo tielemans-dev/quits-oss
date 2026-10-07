@@ -2,7 +2,7 @@ import type {
   OnboardingAiSuggestion,
   OnboardingMissingField,
   OnboardingPatch,
-} from "@yaip/contracts/onboarding"
+} from "@quits/contracts/onboarding"
 import { NoopBillingProvider } from "../billing/noop-provider"
 import type { BillingProvider } from "../billing/types"
 import type { DocumentSendingDomainRecord, DocumentSendingDomainStatus } from "../document-email-sending"

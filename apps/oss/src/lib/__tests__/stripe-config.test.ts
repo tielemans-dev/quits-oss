@@ -5,6 +5,7 @@ import { prisma } from "../db"
 import { decryptSecret } from "../secrets"
 import { getStripePaymentConfigurationState } from "../payments/stripe"
 import { appRouter } from "../../trpc/router"
+import { ensureTestMembership } from "../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -59,6 +60,7 @@ describeIfDatabase("stripe payment configuration persistence", () => {
         subscriptionStatus: "pro",
       },
     })
+    await ensureTestMembership(orgId, "stripe-config-user")
 
     const caller = appRouter.createCaller({
       session: {

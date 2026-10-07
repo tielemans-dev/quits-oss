@@ -24,6 +24,6 @@ describe("db runtime platform", () => {
     const mod = await import("../db")
 
     expect(mod.getPrisma()).toBe(fakePrisma)
-    expect((mod.prisma as { marker: string }).marker).toBe("worker-prisma")
+    expect((mod.prisma as unknown as { marker: string }).marker).toBe("worker-prisma")
   })
 })

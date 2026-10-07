@@ -12,7 +12,7 @@ test.beforeEach(async () => {
 })
 
 test("lets the initial admin sign in to the dashboard", async ({ page }) => {
-  test.skip(process.env.YAIP_DISTRIBUTION === "cloud", "Dashboard smoke is selfhost-only")
+  test.skip(process.env.QUITS_DISTRIBUTION === "cloud", "Dashboard smoke is selfhost-only")
 
   await seedCompletedSetup()
 
@@ -37,7 +37,7 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
 })
 
 test("shows adaptive cloud onboarding after organization creation", async ({ page }) => {
-  test.skip(process.env.YAIP_DISTRIBUTION !== "cloud", "Cloud-only onboarding coverage")
+  test.skip(process.env.QUITS_DISTRIBUTION !== "cloud", "Cloud-only onboarding coverage")
 
   await seedCompletedSetup()
 

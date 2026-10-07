@@ -1,14 +1,15 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
+import type { z } from "zod"
 import {
   invoicePaymentTokenPayloadSchema,
   type InvoicePaymentState,
   type InvoicePaymentTokenPayload,
-} from "@yaip/contracts/payments"
+} from "@quits/contracts/payments"
 import {
   buildAbsoluteUrl,
   resolveAppOrigin,
-} from "@yaip/shared/http"
-import { readFallbackSecret } from "@yaip/shared/runtimeEnv"
+} from "@quits/shared/http"
+import { readFallbackSecret, readProductEnv } from "@quits/shared/runtimeEnv"
 
 export type { InvoicePaymentState, InvoicePaymentTokenPayload }
 
@@ -24,11 +25,15 @@ function signValue(value: string, secret: string) {
   return createHmac("sha256", secret).update(value).digest("base64url")
 }
 
+/**
+ * Whether the customer still has something to pay. An invoice credited in full is settled too:
+ * nothing is owed, so it reads as `paid` and no payment is offered.
+ */
 export function getInvoicePaymentState(snapshot: {
   status: string
   paymentStatus: string
 }): InvoicePaymentState {
-  if (snapshot.paymentStatus === "paid" || snapshot.status === "paid") {
+  if (snapshot.paymentStatus === "paid" || snapshot.status === "paid" || snapshot.status === "credited") {
     return "paid"
   }
 
@@ -36,10 +41,12 @@ export function getInvoicePaymentState(snapshot: {
 }
 
 export function signInvoicePaymentToken(
-  payload: InvoicePaymentTokenPayload,
+  payload: z.input<typeof invoicePaymentTokenPayloadSchema>,
   secret: string
 ) {
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload))
+  const encodedPayload = base64UrlEncode(
+    JSON.stringify(invoicePaymentTokenPayloadSchema.parse(payload))
+  )
   const signature = signValue(encodedPayload, secret)
   return `${encodedPayload}.${signature}`
 }
@@ -73,14 +80,14 @@ export function verifyInvoicePaymentToken(
 
 export function getPublicInvoicePaymentSecret() {
   const secret = readFallbackSecret(
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+    readProductEnv(process.env, "PUBLIC_PAYMENT_SECRET"),
     process.env.BETTER_AUTH_SECRET
   )
   if (secret) {
     return secret
   }
 
-  throw new Error("YAIP_PUBLIC_PAYMENT_SECRET or BETTER_AUTH_SECRET must be configured")
+  throw new Error("QUITS_PUBLIC_PAYMENT_SECRET or BETTER_AUTH_SECRET must be configured")
 }
 
 export function getPublicInvoicePaymentUrl(invoice: {
@@ -99,7 +106,7 @@ export function getPublicInvoicePaymentUrl(invoice: {
   }
 
   const origin = resolveAppOrigin(
-    [process.env.YAIP_APP_ORIGIN, process.env.BETTER_AUTH_URL],
+    [readProductEnv(process.env, "APP_ORIGIN"), process.env.BETTER_AUTH_URL],
     ""
   )
 

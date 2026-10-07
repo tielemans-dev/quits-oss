@@ -1,5 +1,34 @@
 import { z } from "zod"
 import { keyVersionSchema, nonEmptyStringSchema, quoteIdSchema } from "./baseSchemas"
+import { calendarDateInputSchema, documentLineInputSchema } from "./invoices"
+
+const currencySchema = z.string().trim().regex(/^[A-Z]{3}$/)
+
+export const quoteCreateDraftInputSchema = z.object({
+  contactId: z.string().trim().min(1),
+  expiryDate: calendarDateInputSchema,
+  currency: currencySchema.optional(),
+  notes: z.string().trim().max(5000).optional(),
+  taxRate: z.number().min(0).max(100).default(0),
+  items: z.array(documentLineInputSchema).min(1).max(100),
+})
+
+export const quoteUpdateDraftInputSchema = z.object({
+  id: z.string().min(1),
+  contactId: z.string().trim().min(1).optional(),
+  expiryDate: calendarDateInputSchema.optional(),
+  currency: currencySchema.optional(),
+  notes: z.string().trim().max(5000).optional(),
+  taxRate: z.number().min(0).max(100).optional(),
+  items: z.array(documentLineInputSchema).min(1).max(100).optional(),
+})
+
+export const quoteIdInputSchema = z.object({ id: z.string().min(1) })
+
+export const quoteSendInputSchema = z.object({
+  id: z.string().min(1),
+  allowSendWithoutEmail: z.boolean().optional(),
+})
 
 export const quotePublicDecisionSchema = z.enum(["accepted", "rejected"])
 export const quotePublicDecisionStateSchema = z.enum([
@@ -38,6 +67,8 @@ export const quotePublicSnapshotSchema = z
   })
   .strict()
 
+export type QuoteCreateDraftInput = z.input<typeof quoteCreateDraftInputSchema>
+export type QuoteUpdateDraftInput = z.infer<typeof quoteUpdateDraftInputSchema>
 export type QuotePublicDecision = z.infer<typeof quotePublicDecisionSchema>
 export type QuotePublicDecisionState = z.infer<
   typeof quotePublicDecisionStateSchema

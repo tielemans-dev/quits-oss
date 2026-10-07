@@ -22,6 +22,7 @@ export const enSettingsMessages = {
     "Please enter a valid company phone number.",
   "settings.validation.invalidInvoicePrefix":
     "Invoice prefix must be 1-10 uppercase letters, numbers, or hyphens.",
+  "settings.validation.invalidCreditNotePrefix": "Credit note prefix must be 1-10 uppercase letters, numbers, or hyphens.",
   "settings.validation.invalidQuotePrefix":
     "Quote prefix must be 1-10 uppercase letters, numbers, or hyphens.",
   "settings.role.admin": "Admin",
@@ -68,7 +69,7 @@ export const enSettingsMessages = {
   "settings.currency.label": "Currency",
   "settings.currency.placeholder": "Select currency",
   "settings.taxRate.label": "Default Tax Rate (%)",
-  "settings.section.numbering.title": "Invoice & Quote Numbering",
+  "settings.section.numbering.title": "Document Numbering",
   "settings.section.numbering.description":
     "Prefixes and sequence numbers for generated documents.",
   "settings.invoicePrefix.label": "Invoice Prefix",

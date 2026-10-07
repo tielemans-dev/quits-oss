@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
     env:
-      DISPATCH_TOKEN: ${{ secrets.YAIP_CLOUD_DISPATCH_TOKEN }}
+      DISPATCH_TOKEN: ${{ secrets.QUITS_CLOUD_DISPATCH_TOKEN || secrets.YAIP_CLOUD_DISPATCH_TOKEN }}
 
     steps:
       - name: Checkout
@@ -86,14 +86,14 @@ jobs:
 
       - name: Skip cloud release sync when dispatch token is not configured
         if: env.DISPATCH_TOKEN == ''
-        run: echo "YAIP_CLOUD_DISPATCH_TOKEN is not configured; skipping cloud release sync notification."
+        run: echo "QUITS_CLOUD_DISPATCH_TOKEN is not configured; skipping cloud release sync notification."
 
       - name: Notify cloud release sync
         if: env.DISPATCH_TOKEN != ''
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ env.DISPATCH_TOKEN }}
-          repository: tielemans-dev/yaip-cloud
+          repository: tielemans-dev/quits-cloud
           event-type: oss-package-published
           client-payload: >-
             {"oss_tag":"${{ github.ref_name }}","oss_version":"${{ steps.package_version.outputs.value }}","oss_repository":"${{ github.repository }}"}

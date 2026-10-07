@@ -3,7 +3,7 @@ export const enDashboardMessages = {
   "dashboard.loading": "Loading...",
   "dashboard.loadError": "Unable to load dashboard data. Please ensure you have an active organization.",
   "dashboard.totalRevenue": "Total Revenue",
-  "dashboard.totalRevenueHint": "From paid invoices",
+  "dashboard.totalRevenueHint": "From payments received",
   "dashboard.outstanding": "Outstanding",
   "dashboard.outstandingHint": "Awaiting payment",
   "dashboard.overdue": "Overdue",

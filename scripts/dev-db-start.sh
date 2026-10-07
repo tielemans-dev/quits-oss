@@ -31,7 +31,10 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   exit 1
 fi
 
-mapfile -t db_parts < <(node <<'NODE'
+db_parts=()
+while IFS= read -r line; do
+  db_parts+=("$line")
+done < <(node <<'NODE'
 const raw = process.env.DATABASE_URL
 if (!raw) {
   console.error("DATABASE_URL is missing")
@@ -63,7 +66,7 @@ DB_PASSWORD="${db_parts[1]}"
 DB_HOST="${db_parts[2]}"
 DB_PORT="${db_parts[3]}"
 DB_NAME="${db_parts[4]}"
-CONTAINER_NAME="${YAIP_DB_CONTAINER_NAME:-yaip-postgres}"
+CONTAINER_NAME="${QUITS_DB_CONTAINER_NAME:-${YAIP_DB_CONTAINER_NAME:-yaip-postgres}}"
 
 if [[ "$DB_HOST" != "localhost" && "$DB_HOST" != "127.0.0.1" ]]; then
   echo "DATABASE_URL host is '$DB_HOST'. db:start only manages local Docker Postgres (localhost)."

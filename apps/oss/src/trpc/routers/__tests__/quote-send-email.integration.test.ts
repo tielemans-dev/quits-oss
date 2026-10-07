@@ -9,20 +9,21 @@ vi.mock("../../../lib/email", async () => {
 
   return {
     ...actual,
-    sendQuoteEmail: vi.fn().mockResolvedValue({ id: "email_123" }),
+    deliver: vi.fn().mockResolvedValue({ id: "email_123" }),
   }
 })
 
 import { prisma } from "../../../lib/db"
-import { sendQuoteEmail } from "../../../lib/email"
+import { deliver, EmailSendError } from "../../../lib/email"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 
 function restoreEnv(previous: Record<string, string | undefined>) {
-  process.env.YAIP_APP_ORIGIN = previous.YAIP_APP_ORIGIN
-  process.env.YAIP_PUBLIC_QUOTE_SECRET = previous.YAIP_PUBLIC_QUOTE_SECRET
+  process.env.QUITS_APP_ORIGIN = previous.QUITS_APP_ORIGIN
+  process.env.QUITS_PUBLIC_QUOTE_SECRET = previous.QUITS_PUBLIC_QUOTE_SECRET
   process.env.RESEND_API_KEY = previous.RESEND_API_KEY
   process.env.FROM_EMAIL = previous.FROM_EMAIL
 }
@@ -56,6 +57,7 @@ async function createQuoteFixture(options?: {
       subscriptionStatus: "pro",
     },
   })
+  await ensureTestMembership(orgId, "quote-send-user")
 
   await prisma.orgSettings.create({
     data: {
@@ -109,20 +111,20 @@ async function createQuoteFixture(options?: {
 
 describeIfDatabase("quote send email delivery", () => {
   afterEach(() => {
-    vi.mocked(sendQuoteEmail).mockReset()
-    vi.mocked(sendQuoteEmail).mockResolvedValue({ id: "email_123" })
+    vi.mocked(deliver).mockReset()
+    vi.mocked(deliver).mockResolvedValue({ id: "email_123" })
   })
 
   it("issues public quote access on send, records a sent attempt, and passes the link to the email layer", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 
@@ -148,14 +150,14 @@ describeIfDatabase("quote send email delivery", () => {
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
       expect(reloaded.lastEmailAttemptCode).toBe("sent")
 
-      expect(sendQuoteEmail).toHaveBeenCalledWith(
+      expect(deliver).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "buyer@example.com",
-          publicQuoteUrl: expect.stringContaining("https://app.example.test/q/"),
-          fromName: "Acme via YAIP",
-          fromEmail: "billing@example.com",
+          html: expect.stringContaining("https://app.example.test/q/"),
+          from: "Acme via Quits <billing@example.com>",
           replyTo: "billing@acme.com",
-        })
+        }),
+        { idempotencyKey: expect.stringMatching(new RegExp(`^quote-send:${quote.id}:`)) }
       )
     } finally {
       restoreEnv(previous)
@@ -165,14 +167,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("uses a verified branded sender for quote email delivery", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@yaip.app"
 
@@ -184,12 +186,12 @@ describeIfDatabase("quote send email delivery", () => {
     try {
       await caller.quotes.send({ id: quote.id })
 
-      expect(sendQuoteEmail).toHaveBeenCalledWith(
+      expect(deliver).toHaveBeenCalledWith(
         expect.objectContaining({
-          fromName: "Acme",
-          fromEmail: "billing@billing.acme.com",
+          from: "Acme <billing@billing.acme.com>",
           replyTo: "billing@acme.com",
-        })
+        }),
+        { idempotencyKey: expect.stringMatching(/^quote-send:/) }
       )
     } finally {
       restoreEnv(previous)
@@ -199,14 +201,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("rejects send when email delivery is not configured unless degraded send is explicitly allowed", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     delete process.env.RESEND_API_KEY
     delete process.env.FROM_EMAIL
 
@@ -252,7 +254,7 @@ describeIfDatabase("quote send email delivery", () => {
       expect(reloaded.publicAccessIssuedAt).toBeTruthy()
       expect(reloaded.lastEmailAttemptOutcome).toBe("skipped")
       expect(reloaded.lastEmailAttemptCode).toBe("provider_missing")
-      expect(sendQuoteEmail).not.toHaveBeenCalled()
+      expect(deliver).not.toHaveBeenCalled()
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })
@@ -261,23 +263,25 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("records a failed attempt and keeps the quote in draft when provider delivery throws", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
-    vi.mocked(sendQuoteEmail).mockRejectedValueOnce(new Error("send failed"))
+    vi.mocked(deliver).mockRejectedValueOnce(
+      new EmailSendError("validation_error", "Domain is not verified")
+    )
 
     const { orgId, caller, quote } = await createQuoteFixture()
 
     try {
       await expect(caller.quotes.send({ id: quote.id })).rejects.toThrow(
-        "Failed to send quote email. Quote was not marked as sent."
+        "The email provider refused the quote email: Domain is not verified"
       )
 
       const reloaded = await prisma.quote.findUniqueOrThrow({
@@ -302,14 +306,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("blocks email send when the contact has no email address", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 
@@ -332,7 +336,7 @@ describeIfDatabase("quote send email delivery", () => {
       expect(reloaded.status).toBe("draft")
       expect(reloaded.publicAccessIssuedAt).toBeNull()
       expect(reloaded.lastEmailAttemptAt).toBeNull()
-      expect(sendQuoteEmail).not.toHaveBeenCalled()
+      expect(deliver).not.toHaveBeenCalled()
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })
@@ -341,14 +345,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("resends email for a sent quote without rotating the public link", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 
@@ -356,9 +360,9 @@ describeIfDatabase("quote send email delivery", () => {
 
     try {
       await caller.quotes.send({ id: quote.id })
-      const firstCall = vi.mocked(sendQuoteEmail).mock.calls[0]?.[0]
+      const firstCall = vi.mocked(deliver).mock.calls[0]?.[0]
 
-      vi.mocked(sendQuoteEmail).mockClear()
+      vi.mocked(deliver).mockClear()
 
       const resend = await caller.quotes.resendEmail({ id: quote.id })
       expect(resend.emailSent).toBe(true)
@@ -372,12 +376,15 @@ describeIfDatabase("quote send email delivery", () => {
         },
       })
 
-      const secondCall = vi.mocked(sendQuoteEmail).mock.calls[0]?.[0]
+      const secondCall = vi.mocked(deliver).mock.calls[0]
+      const quoteUrl = (html: string | undefined) => html?.match(/https:\/\/app\.example\.test\/q\/[^"'<\s]+/)?.[0]
 
       expect(reloaded.status).toBe("sent")
       expect(reloaded.publicAccessIssuedAt).toBeTruthy()
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
-      expect(secondCall?.publicQuoteUrl).toBe(firstCall?.publicQuoteUrl)
+      expect(quoteUrl(firstCall?.html)).toBeTruthy()
+      expect(quoteUrl(secondCall?.[0].html)).toBe(quoteUrl(firstCall?.html))
+      expect(secondCall?.[1]).toEqual({ idempotencyKey: expect.stringMatching(/^quote-resend:/) })
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })

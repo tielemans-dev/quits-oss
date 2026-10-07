@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
-import { router, orgProcedure } from "../init"
+import { router, authorizedProcedure } from "../init"
+import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import {
   createDocumentSendingSyncUpdate,
@@ -15,7 +16,7 @@ import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
 import { COUNTRY_OPTIONS, LOCALE_OPTIONS } from "../../lib/compliance/countries"
-import { onboardingInvoicingIdentitySchema } from "@yaip/contracts/onboarding"
+import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import {
   getCountryCodeOrFallback,
   validateLocalizedFields,
@@ -62,6 +63,7 @@ export const settingsUpdateSchema = z.object({
   companyLogo: companyLogoSchema.nullable().optional(),
   invoicePrefix: z.string().trim().regex(/^[A-Z0-9-]{1,10}$/).optional(),
   quotePrefix: z.string().trim().regex(/^[A-Z0-9-]{1,10}$/).optional(),
+  creditNotePrefix: z.string().trim().regex(/^[A-Z0-9-]{1,10}$/).optional(),
   aiOpenRouterModel: z.string().trim().min(1).max(120).optional(),
   aiOpenRouterApiKey: z.string().trim().min(16).max(500).optional(),
   clearAiOpenRouterApiKey: z.boolean().optional(),
@@ -92,7 +94,7 @@ export const settingsUpdateSchema = z.object({
 })
 
 export const settingsRouter = router({
-  get: orgProcedure.query(async ({ ctx }) => {
+  get: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     const primaryTaxId = await prisma.organizationTaxId.findFirst({
       where: { organizationId: ctx.organizationId },
       orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
@@ -144,6 +146,8 @@ export const settingsRouter = router({
       invoiceNextNum: settings.invoiceNextNum,
       quotePrefix: settings.quotePrefix,
       quoteNextNum: settings.quoteNextNum,
+      creditNotePrefix: settings.creditNotePrefix,
+      creditNoteNextNum: settings.creditNoteNextNum,
       aiByokConfigured: Boolean(settings.aiOpenRouterApiKeyEnc),
       aiOpenRouterModel: settings.aiOpenRouterModel,
       stripeByokConfigured: stripeState.configured,
@@ -155,7 +159,7 @@ export const settingsRouter = router({
     }
   }),
 
-  update: orgProcedure
+  update: authorizedProcedure("settings:update")
     .input(settingsUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       const {
@@ -247,7 +251,7 @@ export const settingsRouter = router({
       })
     }),
 
-  configureDocumentSendingDomain: orgProcedure
+  configureDocumentSendingDomain: authorizedProcedure("settings:update")
     .input(configureDocumentSendingDomainSchema)
     .mutation(async ({ ctx, input }) => {
       const provider = getManagedDocumentDomainProvider()
@@ -307,7 +311,7 @@ export const settingsRouter = router({
       })
     }),
 
-  refreshDocumentSendingDomain: orgProcedure
+  refreshDocumentSendingDomain: authorizedProcedure("settings:update")
     .input(z.void())
     .mutation(async ({ ctx }) => {
       const provider = getManagedDocumentDomainProvider()
@@ -357,7 +361,7 @@ export const settingsRouter = router({
       })
     }),
 
-  disableDocumentSendingDomain: orgProcedure
+  disableDocumentSendingDomain: authorizedProcedure("settings:update")
     .input(z.void())
     .mutation(async ({ ctx }) => {
       const provider = getManagedDocumentDomainProvider()
@@ -381,7 +385,7 @@ export const settingsRouter = router({
           documentSendingDomain: null,
           documentSendingDomainProviderId: null,
           documentSendingDomainStatus: null,
-          documentSendingDomainRecords: null,
+          documentSendingDomainRecords: Prisma.DbNull,
           documentSendingDomainFailureReason: null,
           documentSendingDomainVerifiedAt: null,
         },

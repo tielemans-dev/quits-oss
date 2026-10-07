@@ -1,6 +1,11 @@
-# YAIP — Yet Another Invoicing App
+# Quits
 
 Source-available invoicing for freelancers and small businesses.
+
+> **Upgrading from YAIP?** Quits was previously called YAIP. Nothing needs to change to upgrade:
+> `YAIP_*` environment variables are still read when the matching `QUITS_*` variable is not set,
+> and agent keys starting with `yaip_ak_` keep working (new keys start with `quits_ak_`). The
+> packages are now published as `@quits/*`. Database names and credentials are unchanged.
 
 ## Features
 
@@ -32,8 +37,8 @@ Source-available invoicing for freelancers and small businesses.
 1. Clone the repo:
 
    ```bash
-   git clone https://github.com/yourusername/yaip.git
-   cd yaip
+   git clone https://github.com/tielemans-dev/quits-oss.git
+   cd quits-oss
    ```
 
 2. Install dependencies:
@@ -95,11 +100,12 @@ Source-available invoicing for freelancers and small businesses.
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/yaip.git
-cd yaip
+git clone https://github.com/tielemans-dev/quits-oss.git
+cd quits-oss
 
 # Set your secrets
-echo 'BETTER_AUTH_SECRET=your-secret-here' > .env
+echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" > .env
+echo "CRON_SECRET=$(openssl rand -base64 32)" >> .env
 
 # Start
 docker compose up -d
@@ -107,12 +113,45 @@ docker compose up -d
 
 The app will be available at [http://localhost:3000](http://localhost:3000).
 
+### Scheduled Work
+
+Quits runs its automation from one idempotent endpoint, `/api/cron/tick`, protected by
+`Authorization: Bearer $CRON_SECRET`. Each tick, in order:
+
+1. marks issued invoices with a balance due past their due date as overdue,
+2. schedules and sends due payment reminders (configure them in **Settings → Payment reminders**),
+3. generates due recurring invoices,
+4. finishes agent approvals interrupted by a restart,
+5. runs queued background jobs: reminder emails, auto-sent recurring invoices, and retries.
+
+`docker compose up` starts a small `scheduler` service that calls the tick every five minutes
+(`TICK_INTERVAL_SECONDS` overrides the interval, `TICK_TIMEOUT_SECONDS` the per-request timeout,
+240 seconds by default). `CRON_SECRET` is required: set it in `.env` to a random value, and the app
+and the scheduler read the same value. Compose refuses to start without it, and the cron endpoints
+answer `503` while it is unset or still the placeholder `change-me-in-production`. Without Docker,
+call the endpoint from any scheduler, for example cron:
+
+```bash
+*/5 * * * * curl -fsS --connect-timeout 10 --max-time 240 -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-quits-host/api/cron/tick
+```
+
+The tick answers `200` with `ok: true` when every task succeeded, and `500` with `ok: false`, the
+names of the failed tasks in `failedTasks`, and every task's result when any task failed, so a
+monitor or `curl -f` notices. Deliveries that failed but will be retried (for example a brief email
+provider outage) are listed in `retryingTasks` and still answer `200`; a delivery that runs out of
+retries counts as failed. Each tick does a bounded amount of work (a few hundred invoices per
+organization and task, within a time budget), so a large backlog drains over several ticks
+instead of making one tick time out. Ticks can overlap or be retried safely: each reminder is sent
+at most once, and a reminder policy enabled late sends only the most recent due reminder instead
+of the whole backlog. `/api/cron/mark-overdue` remains as a legacy alias that only marks overdue
+invoices.
+
 ## OSS and Cloud Split
 
 - This repository is the OSS runtime baseline.
 - This repository now also owns the versioned app artifact consumed by hosted cloud builds.
-- Stable consumer entrypoints are exposed through the versioned `@yaip/oss` release artifact export surface.
-- Hosted cloud-specific modules (managed billing/webhooks/infra) belong to a private `yaip-cloud` repository.
+- Stable consumer entrypoints are exposed through the versioned `@quits/oss` release artifact export surface.
+- Hosted cloud-specific modules (managed billing/webhooks/infra) belong to a private `quits-cloud` repository.
 - Ownership and constraints are documented in `docs/architecture/oss-cloud-boundary.md`.
 - Release and cutover checklist is documented in `docs/releases/oss-v1-cutover.md`.
 
@@ -173,10 +212,10 @@ This repository is Bun-native. Use `bun install` and `bun run ...` commands for 
 | `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional) | No |
 | `RESEND_API_KEY` | Resend API key for sending invoice/quote/invite emails | No |
 | `FROM_EMAIL` | Sender email address used for outgoing emails | No |
-| `CRON_SECRET` | Bearer token required by `/api/cron/mark-overdue` | Yes (prod) |
-| `YAIP_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
-| `YAIP_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
-| `YAIP_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
+| `CRON_SECRET` | Bearer token required by `/api/cron/tick` and `/api/cron/mark-overdue` | Yes (prod) |
+| `QUITS_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
+| `QUITS_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
+| `QUITS_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
 
 ## Contributing
 

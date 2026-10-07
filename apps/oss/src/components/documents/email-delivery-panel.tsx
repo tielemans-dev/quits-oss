@@ -23,7 +23,8 @@ import {
 import { cn } from "../../lib/utils"
 
 export type EmailDeliveryPanelStatus = {
-  tone: "sent" | "skipped" | "failed"
+  /** `unconfirmed`: the provider never confirmed delivery, shown as a warning. */
+  tone: "sent" | "skipped" | "failed" | "sending" | "unconfirmed"
   label: string
   detail: string
   message?: string | null
@@ -100,7 +101,9 @@ export function EmailDeliveryPanel({
                 "w-fit",
                 status.tone === "sent" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
                 status.tone === "skipped" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-                status.tone === "failed" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                status.tone === "failed" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+                status.tone === "sending" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+                status.tone === "unconfirmed" && "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
               )}
             >
               {status.label}

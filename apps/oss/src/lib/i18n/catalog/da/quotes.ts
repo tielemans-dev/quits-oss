@@ -87,4 +87,8 @@ export const daQuotesMessages = {
   "quotes.detail.convertedToInvoice": "Konverteret til faktura:",
   "quotes.detail.quoteTo": "Tilbud til",
   "quotes.detail.title": "Tilbud",
+  "quotes.detail.email.status.sending": "Sender",
+  "quotes.detail.email.reason.sending": "E-mailudbyderen har endnu ikke bekræftet leveringen. Der prøves automatisk igen, og kunden får ikke en dublet. Tilbuddet kan ikke redigeres, før leveringen er bekræftet eller opgivet.",
+  "quotes.detail.email.status.unconfirmed": "Levering ikke bekræftet",
+  "quotes.detail.email.reason.unconfirmed": "E-mailudbyderen bekræftede aldrig leveringen. Kunden har måske modtaget den, måske ikke; send e-mailen igen, hvis du er i tvivl.",
 } as const

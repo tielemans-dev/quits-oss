@@ -5,6 +5,7 @@ import { prisma } from "../../../lib/db"
 import { signQuotePublicToken } from "../../../lib/quotes/public"
 import { decidePublicQuoteByToken } from "../../../lib/quotes/public-access"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -14,9 +15,9 @@ describeIfDatabase("quote conversion after public acceptance", () => {
   it("requires acceptance before converting a sent quote into an invoice", async () => {
     const orgId = randomUUID()
     const slug = `quote-accept-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
-    const previousQuoteSecret = process.env.YAIP_PUBLIC_QUOTE_SECRET
+    const previousQuoteSecret = process.env.QUITS_PUBLIC_QUOTE_SECRET
 
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = PUBLIC_QUOTE_TEST_SECRET
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = PUBLIC_QUOTE_TEST_SECRET
 
     const caller = appRouter.createCaller({
       session: {
@@ -41,6 +42,7 @@ describeIfDatabase("quote conversion after public acceptance", () => {
           subscriptionStatus: "pro",
         },
       })
+      await ensureTestMembership(orgId, "quote-accept-user")
 
       await prisma.orgSettings.create({
         data: {
@@ -107,7 +109,7 @@ describeIfDatabase("quote conversion after public acceptance", () => {
 
       expect(invoice.quoteId).toBe(quote.id)
     } finally {
-      process.env.YAIP_PUBLIC_QUOTE_SECRET = previousQuoteSecret
+      process.env.QUITS_PUBLIC_QUOTE_SECRET = previousQuoteSecret
       await prisma.organization.deleteMany({ where: { id: orgId } })
     }
   })

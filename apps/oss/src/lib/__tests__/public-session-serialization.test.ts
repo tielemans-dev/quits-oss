@@ -12,8 +12,8 @@ const decimal = (value: number) => ({
 
 describe("public session serialization", () => {
   it("serializes invoice sessions without leaking internal organization settings", () => {
-    const session = serializePublicInvoiceSession({
-      invoice: {
+    // The loaded row carries organization secrets; the serializer must drop them.
+    const invoiceRow = {
         id: "invoice-1",
         number: "INV-0001",
         status: "sent",
@@ -21,6 +21,8 @@ describe("public session serialization", () => {
         issueDate: new Date("2026-03-09T00:00:00.000Z"),
         dueDate: new Date("2026-03-23T00:00:00.000Z"),
         totalGross: decimal(250),
+        amountPaid: decimal(100),
+        amountCredited: decimal(50),
         totalTax: decimal(0),
         subtotalNet: decimal(250),
         currency: "USD",
@@ -53,12 +55,15 @@ describe("public session serialization", () => {
             stripeWebhookSecretEnc: "webhook",
           },
         },
-      },
+      }
+    const session = serializePublicInvoiceSession({
+      invoice: invoiceRow,
       paymentState: "unpaid",
       stripeEnabled: true,
     })
 
     expect(session.invoice.totalGross).toBe(250)
+    expect(session.invoice.balanceDue).toBe(100)
     expect(session.invoice.items[0]?.quantity).toBe(1)
     expect("organization" in session.invoice).toBe(false)
   })

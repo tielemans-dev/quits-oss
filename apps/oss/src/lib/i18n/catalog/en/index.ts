@@ -1,3 +1,10 @@
+import { enPaymentsMessages } from "./payments"
+import { enCreditNotesMessages } from "./credit-notes"
+import { enRemindersMessages } from "./reminders"
+import { enRecurringMessages } from "./recurring"
+import { enExportsMessages } from "./exports"
+import { enAgentsMessages } from "./agents"
+import { enActivityMessages } from "./activity"
 import { enAuthMessages } from "./auth"
 import { enBillingMessages } from "./billing"
 import { enCatalogMessages } from "./catalog"
@@ -18,6 +25,13 @@ import { enUiMessages } from "./ui"
 import { enUserMessages } from "./user"
 
 export const enCatalog = {
+  ...enPaymentsMessages,
+  ...enCreditNotesMessages,
+  ...enRemindersMessages,
+  ...enRecurringMessages,
+  ...enExportsMessages,
+  ...enAgentsMessages,
+  ...enActivityMessages,
   ...enAuthMessages,
   ...enBillingMessages,
   ...enCatalogMessages,

@@ -1,6 +1,7 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { authClient } from '../lib/auth-client'
+import { loadPage } from '../lib/page-navigation'
 import { Button } from '../components/ui/button'
 import {
   Card,
@@ -20,7 +21,6 @@ export const Route = createFileRoute('/signup')({
 
 function SignupPage() {
   const { t } = useI18n()
-  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -44,7 +44,8 @@ function SignupPage() {
     setLoading(false)
 
     if (result.data) {
-      navigate({ to: '/onboarding' })
+      // A new session: load a new page so the app layout sets the organization from it.
+      loadPage('/onboarding')
     }
   }
 

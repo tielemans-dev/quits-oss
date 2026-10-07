@@ -15,18 +15,18 @@
 **Files:**
 - Modify: `src/lib/runtime/extensions.ts`
 - Modify: `src/lib/__tests__/runtime-extensions.test.ts`
-- Modify: `../yaip-cloud/src/lib/cloud/bootstrap.ts`
-- Modify: `../yaip-cloud/src/lib/cloud/__tests__/bootstrap.test.ts`
+- Modify: `../cloud/src/lib/cloud/bootstrap.ts`
+- Modify: `../cloud/src/lib/cloud/__tests__/bootstrap.test.ts`
 
 1. Add failing tests that expect runtime capabilities to include an `emailDelivery` group with unmanaged OSS defaults and managed cloud bootstrap behavior.
 2. Run:
    - `pnpm exec vitest run src/lib/__tests__/runtime-extensions.test.ts`
-   - `pnpm --dir ../yaip-cloud exec vitest run src/lib/cloud/__tests__/bootstrap.test.ts`
+   - `pnpm --dir ../cloud exec vitest run src/lib/cloud/__tests__/bootstrap.test.ts`
    Confirm both fail for missing `emailDelivery` capability expectations.
 3. Extend `RuntimeCapabilities`, `RuntimeCapabilityPatch`, default capability resolution, and cloud bootstrap capability patch to include `emailDelivery`.
 4. Re-run the same test commands and confirm green.
 5. Commit:
-   - `git add src/lib/runtime/extensions.ts src/lib/__tests__/runtime-extensions.test.ts ../yaip-cloud/src/lib/cloud/bootstrap.ts ../yaip-cloud/src/lib/cloud/__tests__/bootstrap.test.ts`
+   - `git add src/lib/runtime/extensions.ts src/lib/__tests__/runtime-extensions.test.ts ../cloud/src/lib/cloud/bootstrap.ts ../cloud/src/lib/cloud/__tests__/bootstrap.test.ts`
    - `git commit -m "feat: add runtime email delivery capability"`
 
 ### Task 2: Add lightweight delivery-status persistence to quotes and invoices
@@ -196,8 +196,8 @@
    - `pnpm exec vitest run src/lib/__tests__/document-email-links.test.ts src/trpc/routers/__tests__/quote-convert-after-acceptance.integration.test.ts src/trpc/routers/__tests__/invoice-payment-link.integration.test.ts src/trpc/routers/__tests__/invoice-payment-state.integration.test.ts`
 3. Run:
    - `pnpm build`
-   - `pnpm --dir ../yaip-cloud exec vitest run src/lib/cloud/__tests__/bootstrap.test.ts`
-   - `pnpm --dir ../yaip-cloud build`
+   - `pnpm --dir ../cloud exec vitest run src/lib/cloud/__tests__/bootstrap.test.ts`
+   - `pnpm --dir ../cloud build`
 4. If README wording changed, update the env-var section to mention that outbound mail status is visible in Settings but secrets still come from runtime env.
 5. Commit any final doc/test adjustments:
    - `git add README.md`

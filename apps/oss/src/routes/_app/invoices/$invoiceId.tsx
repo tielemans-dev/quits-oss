@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
+import { usePollWhile } from "../../../hooks/use-poll-while"
+import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import {
   readEmailDeliveryAttempt,
@@ -8,6 +10,7 @@ import {
 } from "../../../lib/email-delivery"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { EmailDeliveryPanel } from "../../../components/documents/email-delivery-panel"
+import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
 import {
   formatCurrency as formatCurrencyIntl,
   formatDate as formatDateIntl,
@@ -52,10 +55,14 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Printer, CheckCircle, Pencil, Trash2, Plus, ArrowLeft, Download } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
+import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
 
 export const Route = createFileRoute("/_app/invoices/$invoiceId")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { emailWarning?: string; sendError?: string } => ({
     emailWarning: typeof search.emailWarning === "string" ? search.emailWarning : undefined,
+    // Set when the invoice was created but sending it failed, e.g. the provider refused the email.
+    sendError: typeof search.sendError === "string" ? search.sendError : undefined,
   }),
   component: InvoiceDetailPage,
 })
@@ -92,11 +99,14 @@ type Invoice = {
   subtotal: number
   taxAmount: number
   total: number
+  amountPaid: number
+  amountCredited: number
+  balanceDue: number
   currency: string
   notes: string | null
   publicPaymentUrl: string | null
   lastEmailAttemptAt: string | Date | null
-  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | null
+  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | "sending" | "unconfirmed" | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
   contact: Contact
@@ -115,6 +125,14 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   sent: { label: "Sent", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
   paid: { label: "Paid", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
   overdue: { label: "Overdue", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+  partially_paid: {
+    label: "Partially paid",
+    className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  },
+  credited: {
+    label: "Credited",
+    className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  },
 }
 
 function formatCurrency(amount: number, currency: string, locale?: string | null) {
@@ -138,6 +156,8 @@ function getInvoiceStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"
   if (status === "sent") return t("invoices.status.sent")
   if (status === "paid") return t("invoices.status.paid")
   if (status === "overdue") return t("invoices.status.overdue")
+  if (status === "partially_paid") return t("status.partially_paid")
+  if (status === "credited") return t("status.credited")
   return t("invoices.status.draft")
 }
 
@@ -170,15 +190,17 @@ async function downloadInvoicePdfFile(
 function InvoiceDetailPage() {
   const { t, locale } = useI18n()
   const { invoiceId } = Route.useParams()
-  const { emailWarning } = Route.useSearch()
+  const { emailWarning, sendError } = Route.useSearch()
   const navigate = useNavigate()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [emailDelivery, setEmailDelivery] = useState<EmailDeliveryRuntimeStatus | null>(null)
   const [error, setError] = useState<string | null>(
-    emailWarning
-      ? t("invoices.detail.warning.emailSkipped", { reason: emailWarning })
-      : null
+    sendError
+      ? sendError
+      : emailWarning
+        ? t("invoices.detail.warning.emailSkipped", { reason: emailWarning })
+        : null
   )
   const [acting, setActing] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -205,12 +227,17 @@ function InvoiceDetailPage() {
   const [editTaxRate, setEditTaxRate] = useState(0)
   const [editItems, setEditItems] = useState<EditItem[]>([])
 
+  // The page stays mounted when navigating to another invoice; drop answers for the previous one.
+  const beginRequest = useDocumentResponseGuard(invoiceId)
+
   useEffect(() => {
+    const isCurrent = beginRequest(invoiceId)
     Promise.all([
       trpc.invoices.get.query({ id: invoiceId }),
       trpc.settings.get.query(),
     ])
       .then(([data, settings]) => {
+        if (!isCurrent()) return
         setInvoice(data as unknown as Invoice)
         setPaymentLinkUrl((data as unknown as Invoice).publicPaymentUrl ?? null)
         setOrgSettings({
@@ -225,17 +252,34 @@ function InvoiceDetailPage() {
         })
         setEmailDelivery(settings.emailDelivery)
       })
-      .catch(() =>
-        setError(t("invoices.detail.error.notFound"))
-      )
-      .finally(() => setLoading(false))
-  }, [invoiceId, t])
+      .catch(() => {
+        if (isCurrent()) setError(t("invoices.detail.error.notFound"))
+      })
+      .finally(() => {
+        if (isCurrent()) setLoading(false)
+      })
+  }, [beginRequest, invoiceId, t])
 
   async function reloadInvoice() {
+    const isCurrent = beginRequest(invoiceId)
     const updated = await trpc.invoices.get.query({ id: invoiceId })
+    if (!isCurrent()) return
     setInvoice(updated as unknown as Invoice)
     setPaymentLinkUrl((updated as unknown as Invoice).publicPaymentUrl ?? null)
   }
+
+  /** After a failed send: a refused email is recorded on the invoice, so show its new state. */
+  async function reloadInvoiceAfterFailure() {
+    try {
+      await reloadInvoice()
+    } catch {
+      // Keep the send error on screen; the invoice reloads on the next visit.
+    }
+  }
+
+  // While the outbox is still delivering the email the invoice is frozen; follow it until it settles.
+  const emailSending = invoice?.lastEmailAttemptOutcome === "sending"
+  const pollFailure = usePollWhile(emailSending, reloadInvoice)
 
   function startEditing() {
     if (!invoice) return
@@ -292,6 +336,7 @@ function InvoiceDetailPage() {
     if (!invoice) return
     setError(null)
     setActing(true)
+    const isCurrent = beginRequest(invoice.id)
     try {
       const updated = await trpc.invoices.update.mutate({
         id: invoice.id,
@@ -305,6 +350,7 @@ function InvoiceDetailPage() {
           unitPrice: item.unitPrice,
         })),
       })
+      if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
       setEditing(false)
     } catch (err) {
@@ -342,6 +388,7 @@ function InvoiceDetailPage() {
           ? err.message
           : t("invoices.detail.error.sendFailed")
       )
+      await reloadInvoiceAfterFailure()
     } finally {
       setActing(false)
     }
@@ -360,6 +407,7 @@ function InvoiceDetailPage() {
           ? err.message
           : t("invoices.detail.error.sendFailed")
       )
+      await reloadInvoiceAfterFailure()
     } finally {
       setActing(false)
     }
@@ -676,10 +724,14 @@ function InvoiceDetailPage() {
           ),
         }),
         message:
-          emailAttempt.lastEmailAttemptCode === "provider_missing"
+          emailAttempt.lastEmailAttemptOutcome === "unconfirmed"
+            ? t("invoices.detail.email.reason.unconfirmed")
+            : emailAttempt.lastEmailAttemptCode === "provider_missing"
             ? t("invoices.detail.email.reason.provider_missing")
             : emailAttempt.lastEmailAttemptCode === "send_failed"
               ? t("invoices.detail.email.reason.send_failed")
+              : emailAttempt.lastEmailAttemptOutcome === "sending"
+                ? t("invoices.detail.email.reason.sending")
               : emailAttempt.lastEmailAttemptCode === "sent"
                 ? t("invoices.detail.email.reason.sent")
                 : emailAttempt.lastEmailAttemptMessage,
@@ -760,9 +812,10 @@ function InvoiceDetailPage() {
             <Download className="size-4" />
             {downloading ? t("invoices.new.ai.action.generating") : "PDF"}
           </Button>
-          {invoice.status === "draft" && (
+          {/* A draft whose email is still being delivered can no longer be edited or deleted. */}
+          {invoice.status === "draft" && !emailSending && (
             <>
-              <Button variant="outline" size="sm" onClick={startEditing}>
+              <Button variant="outline" size="sm" disabled={acting} onClick={startEditing}>
                 <Pencil className="size-4" />
                 {t("invoices.detail.action.edit")}
               </Button>
@@ -818,6 +871,10 @@ function InvoiceDetailPage() {
         </p>
       )}
 
+      <div className="mb-4 no-print empty:hidden">
+        <ReloadRequiredNotice failure={pollFailure} />
+      </div>
+
       {/* Invoice content (printable) */}
       <div className="print-area">
         <Card>
@@ -833,7 +890,8 @@ function InvoiceDetailPage() {
                       label: t("invoices.detail.action.send"),
                       pendingLabel: t("invoices.detail.action.sending"),
                       pending: acting,
-                      disabled: acting,
+                      // A queued email settles on its own; sending again is refused meanwhile.
+                      disabled: acting || emailSending,
                       onClick: () => {
                         void handleSend()
                       },
@@ -843,7 +901,7 @@ function InvoiceDetailPage() {
                         label: t("invoices.detail.action.resendEmail"),
                         pendingLabel: t("invoices.detail.action.sending"),
                         pending: acting,
-                        disabled: acting,
+                        disabled: acting || emailSending,
                         onClick: () => {
                           void handleResendEmail()
                         },
@@ -851,7 +909,7 @@ function InvoiceDetailPage() {
                     : null
               }
               degradedAction={
-                canShowDegradedSend
+                canShowDegradedSend && !emailSending
                   ? {
                       open: sendWithoutEmailOpen,
                       triggerLabel: t("invoices.detail.email.degraded.trigger"),
@@ -891,8 +949,8 @@ function InvoiceDetailPage() {
                 </h1>
                 <div className="mt-1">
                   <StatusBadge
-                    status={invoice.status}
-                    label={getInvoiceStatusLabel(invoice.status, t)}
+                    status={invoiceDisplayStatus(invoice)}
+                    label={getInvoiceStatusLabel(invoiceDisplayStatus(invoice), t)}
                   />
                 </div>
               </div>
@@ -983,6 +1041,26 @@ function InvoiceDetailPage() {
                   <span>{t("pdf.total")}</span>
                   <span>{formatCurrency(invoice.total, invoice.currency, locale)}</span>
                 </div>
+                {invoice.status !== "draft" && (invoice.amountPaid > 0 || invoice.amountCredited > 0) && (
+                  <>
+                    {invoice.amountPaid > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t("payments.summary.paid")}</span>
+                        <span>-{formatCurrency(invoice.amountPaid, invoice.currency, locale)}</span>
+                      </div>
+                    )}
+                    {invoice.amountCredited > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t("payments.summary.credited")}</span>
+                        <span>-{formatCurrency(invoice.amountCredited, invoice.currency, locale)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold border-t pt-2">
+                      <span>{t("payments.summary.balanceDue")}</span>
+                      <span>{formatCurrency(invoice.balanceDue, invoice.currency, locale)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -998,6 +1076,12 @@ function InvoiceDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <InvoiceLifecyclePanels
+        invoice={invoice}
+        locale={orgSettings.locale}
+        onChanged={reloadInvoice}
+      />
     </div>
   )
 }

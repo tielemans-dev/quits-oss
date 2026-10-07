@@ -46,7 +46,7 @@ jobs:
         run: bun run typecheck
 
       - name: Generate Prisma client
-        run: bun --filter @yaip/oss prisma:generate
+        run: bun --filter @quits/oss prisma:generate
 
       - name: Apply migrations
         working-directory: apps/oss

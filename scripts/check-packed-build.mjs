@@ -41,7 +41,7 @@ function readManifest(tarballPath) {
   )
 }
 
-const appTarball = packPackage(appDir, "yaip-oss-pack-")
+const appTarball = packPackage(appDir, "quits-oss-pack-")
 const appEntries = listEntries(appTarball)
 
 for (const requiredEntry of [
@@ -59,7 +59,7 @@ for (const requiredEntry of [
   }
 }
 
-const contractsTarball = packPackage(contractsDir, "yaip-contracts-pack-")
+const contractsTarball = packPackage(contractsDir, "quits-contracts-pack-")
 const contractsEntries = listEntries(contractsTarball)
 
 for (const requiredEntry of [
@@ -79,7 +79,7 @@ for (const requiredEntry of [
 
 const appManifest = readManifest(appTarball)
 const contractsManifest = readManifest(contractsTarball)
-const sharedTarball = packPackage(sharedDir, "yaip-shared-pack-")
+const sharedTarball = packPackage(sharedDir, "quits-shared-pack-")
 const sharedEntries = listEntries(sharedTarball)
 
 for (const requiredEntry of [
@@ -96,14 +96,14 @@ for (const requiredEntry of [
 
 const sharedManifest = readManifest(sharedTarball)
 
-if (appManifest.dependencies?.["@yaip/contracts"] !== contractsManifest.version) {
+if (appManifest.dependencies?.["@quits/contracts"] !== contractsManifest.version) {
   throw new Error(
-    `expected packed @yaip/oss dependency on @yaip/contracts to be ${contractsManifest.version}`
+    `expected packed @quits/oss dependency on @quits/contracts to be ${contractsManifest.version}`
   )
 }
 
-if (appManifest.dependencies?.["@yaip/shared"] !== sharedManifest.version) {
+if (appManifest.dependencies?.["@quits/shared"] !== sharedManifest.version) {
   throw new Error(
-    `expected packed @yaip/oss dependency on @yaip/shared to be ${sharedManifest.version}`
+    `expected packed @quits/oss dependency on @quits/shared to be ${sharedManifest.version}`
   )
 }

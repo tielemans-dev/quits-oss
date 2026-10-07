@@ -5,12 +5,13 @@ import type {
   TaxComputationOutput,
 } from "./country-profile"
 
-function round2(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100
+function roundTo(value: number, digits: number): number {
+  const factor = 10 ** digits
+  return Math.round((value + Number.EPSILON) * factor) / factor
 }
 
-function lineGrossFromInput(quantity: number, unitPrice: number): number {
-  return round2(quantity * unitPrice)
+function round2(value: number): number {
+  return roundTo(value, 2)
 }
 
 export function computeDocumentTotals(
@@ -18,6 +19,10 @@ export function computeDocumentTotals(
   input: TaxComputationInput
 ): TaxComputationOutput {
   const rate = input.taxRate / 100
+  // Amounts follow the currency's precision so a document never owes a fraction the currency
+  // cannot be paid in; unit prices stay at two decimals because they are per-unit references.
+  const digits = input.fractionDigits ?? 2
+  const roundAmount = (value: number) => roundTo(value, digits)
 
   let subtotalNet = 0
   let totalTax = 0
@@ -25,11 +30,11 @@ export function computeDocumentTotals(
   const lines: ComputedLine[] = []
 
   for (const item of input.items) {
-    const lineGrossInput = lineGrossFromInput(item.quantity, item.unitPrice)
+    const lineGrossInput = roundAmount(item.quantity * item.unitPrice)
 
     if (input.pricesIncludeTax) {
-      const lineNet = round2(lineGrossInput / (1 + rate))
-      const lineTax = round2(lineGrossInput - lineNet)
+      const lineNet = roundAmount(lineGrossInput / (1 + rate))
+      const lineTax = roundAmount(lineGrossInput - lineNet)
       const unitPriceNet = round2(item.quantity > 0 ? lineNet / item.quantity : 0)
       const unitPriceGross = round2(item.quantity > 0 ? lineGrossInput / item.quantity : 0)
       subtotalNet += lineNet
@@ -49,8 +54,8 @@ export function computeDocumentTotals(
     }
 
     const lineNet = lineGrossInput
-    const lineTax = round2(lineNet * rate)
-    const lineGross = round2(lineNet + lineTax)
+    const lineTax = roundAmount(lineNet * rate)
+    const lineGross = roundAmount(lineNet + lineTax)
     const unitPriceNet = round2(item.quantity > 0 ? lineNet / item.quantity : 0)
     const unitPriceGross = round2(item.quantity > 0 ? lineGross / item.quantity : 0)
     subtotalNet += lineNet
@@ -69,9 +74,9 @@ export function computeDocumentTotals(
   }
 
   return {
-    subtotalNet: round2(subtotalNet),
-    totalTax: round2(totalTax),
-    totalGross: round2(totalGross),
+    subtotalNet: roundAmount(subtotalNet),
+    totalTax: roundAmount(totalTax),
+    totalGross: roundAmount(totalGross),
     lines,
   }
 }

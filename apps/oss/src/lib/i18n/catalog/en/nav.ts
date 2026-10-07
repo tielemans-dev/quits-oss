@@ -7,4 +7,8 @@ export const enNavMessages = {
   "nav.billing": "Billing",
   "nav.settings": "Settings",
   "nav.catalog": "Catalog",
+  "nav.creditNotes": "Credit notes",
+  "nav.recurring": "Recurring",
+  "nav.approvals": "Approvals",
+  "nav.activity": "Activity",
 } as const

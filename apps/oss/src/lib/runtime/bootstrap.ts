@@ -13,7 +13,7 @@ import {
   type RuntimePlatform,
 } from "./platform"
 
-export function bootstrapYaipRuntime(input: {
+export function bootstrapQuitsRuntime(input: {
   platform?: RuntimePlatform
   extensions?: RuntimeExtension[]
   services?: Partial<RuntimeServices>
@@ -31,8 +31,13 @@ export function bootstrapYaipRuntime(input: {
   }
 }
 
-export function resetYaipRuntimeForTests() {
+export function resetQuitsRuntimeForTests() {
   resetRuntimePlatform()
   setRuntimeExtensions([])
   resetRuntimeServices()
 }
+
+/** @deprecated Renamed to `bootstrapQuitsRuntime`. */
+export const bootstrapYaipRuntime = bootstrapQuitsRuntime
+/** @deprecated Renamed to `resetQuitsRuntimeForTests`. */
+export const resetYaipRuntimeForTests = resetQuitsRuntimeForTests

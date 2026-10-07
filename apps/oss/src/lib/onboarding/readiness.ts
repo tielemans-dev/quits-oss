@@ -1,7 +1,7 @@
 import type {
   OnboardingMissingField,
   OnboardingTaxRegime,
-} from "@yaip/contracts/onboarding"
+} from "@quits/contracts/onboarding"
 import { getOnboardingRules } from "./rules"
 
 export type SupportedTaxRegime = OnboardingTaxRegime

@@ -1,23 +1,22 @@
-import type { BillingProvider } from "./types"
+import type { BillingProvider, BillingSubscription } from "./types"
 
-export class NoopBillingProvider implements BillingProvider {
-  async getSubscription() {
+export class NoopBillingProvider implements Required<BillingProvider> {
+  async getSubscription(_organizationId: string): Promise<BillingSubscription> {
     return {
-      status: "free" as const,
+      status: "free",
       priceId: null,
     }
   }
 
-  async assertInvoiceCreationAllowed() {
+  async assertInvoiceCreationAllowed(_organizationId: string) {
     // Self-host distribution has no hosted billing limits.
   }
 
-  async createCheckoutSession() {
+  async createCheckoutSession(_organizationId: string) {
     return { url: null }
   }
 
-  async createPortalSession() {
+  async createPortalSession(_organizationId: string) {
     return { url: null }
   }
 }
-

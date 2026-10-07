@@ -1,8 +1,12 @@
 import { createServerFn } from "@tanstack/react-start"
 import {
+  parseBuyerSnapshot,
+  parseSellerSnapshot,
+} from "@quits/contracts/documents"
+import {
   publicQuoteDecisionInputSchema,
   publicQuoteTokenInputSchema,
-} from "@yaip/contracts/quotes"
+} from "@quits/contracts/quotes"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -30,16 +34,8 @@ export function serializePublicQuoteSession(session: {
     subtotalNet: Decimalish
     currency: string
     notes: string | null
-    sellerSnapshot: {
-      companyName?: string | null
-      companyEmail?: string | null
-      companyAddress?: string | null
-    } | null
-    buyerSnapshot: {
-      name?: string | null
-      email?: string | null
-      company?: string | null
-    } | null
+    sellerSnapshot: unknown
+    buyerSnapshot: unknown
     publicDecisionAt: Date | string | null
     publicRejectionReason: string | null
     contact: {
@@ -78,8 +74,8 @@ export function serializePublicQuoteSession(session: {
       subtotalNet: toNumber(quote.subtotalNet),
       currency: quote.currency,
       notes: quote.notes,
-      sellerSnapshot: quote.sellerSnapshot,
-      buyerSnapshot: quote.buyerSnapshot,
+      sellerSnapshot: parseSellerSnapshot(quote.sellerSnapshot),
+      buyerSnapshot: parseBuyerSnapshot(quote.buyerSnapshot),
       publicDecisionAt: toDateString(quote.publicDecisionAt),
       publicRejectionReason: quote.publicRejectionReason,
       contact: quote.contact,

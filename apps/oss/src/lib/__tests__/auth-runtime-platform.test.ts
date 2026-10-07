@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { buildYaipAuthOptions } from "../runtime/auth-config"
+import { buildQuitsAuthOptions } from "../runtime/auth-config"
 
 describe("auth runtime platform", () => {
   it("uses the provided env reader and auth hooks", () => {
     const fakeAdapter = { type: "custom-adapter" }
 
-    const options = buildYaipAuthOptions({
+    const options = buildQuitsAuthOptions({
       prisma: {
         orgSettings: {
           findUnique: vi.fn(),
@@ -16,10 +16,10 @@ describe("auth runtime platform", () => {
         getEnv(name) {
           return {
             BETTER_AUTH_URL: "https://app.yaip.example/login",
-            YAIP_SHELL_ORIGIN: "https://yaip.example",
-            YAIP_APP_ORIGIN: "https://app.yaip.example/dashboard",
-            YAIP_DISTRIBUTION: "cloud",
-            YAIP_AUTH_COOKIE_DOMAIN: "yaip.example",
+            QUITS_SHELL_ORIGIN: "https://yaip.example",
+            QUITS_APP_ORIGIN: "https://app.yaip.example/dashboard",
+            QUITS_DISTRIBUTION: "cloud",
+            QUITS_AUTH_COOKIE_DOMAIN: "yaip.example",
           }[name]
         },
       },

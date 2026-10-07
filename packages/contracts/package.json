@@ -1,5 +1,5 @@
 {
-  "name": "@yaip/contracts",
+  "name": "@quits/contracts",
   "version": "0.1.4",
   "private": false,
   "license": "PolyForm-Noncommercial-1.0.0",
@@ -8,18 +8,34 @@
     "src/index.ts",
     "src/baseSchemas.ts",
     "src/runtime.ts",
+    "src/documents.ts",
     "src/email.ts",
     "src/onboarding.ts",
     "src/payments.ts",
-    "src/quotes.ts"
+    "src/quotes.ts",
+    "src/agent.ts",
+    "src/contacts.ts",
+    "src/invoices.ts",
+    "src/credit-notes.ts",
+    "src/reminders.ts",
+    "src/recurring.ts",
+    "src/exports.ts"
   ],
   "exports": {
     ".": "./src/index.ts",
+    "./agent": "./src/agent.ts",
     "./baseSchemas": "./src/baseSchemas.ts",
+    "./contacts": "./src/contacts.ts",
+    "./credit-notes": "./src/credit-notes.ts",
+    "./documents": "./src/documents.ts",
     "./email": "./src/email.ts",
+    "./exports": "./src/exports.ts",
+    "./invoices": "./src/invoices.ts",
     "./onboarding": "./src/onboarding.ts",
     "./payments": "./src/payments.ts",
     "./quotes": "./src/quotes.ts",
+    "./recurring": "./src/recurring.ts",
+    "./reminders": "./src/reminders.ts",
     "./runtime": "./src/runtime.ts"
   },
   "scripts": {

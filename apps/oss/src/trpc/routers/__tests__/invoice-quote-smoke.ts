@@ -3,6 +3,7 @@ import { prisma } from "../../../lib/db"
 import { decidePublicQuoteByToken } from "../../../lib/quotes/public-access"
 import { signQuotePublicToken } from "../../../lib/quotes/public"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 export type InvoiceQuoteSmokeResult = {
   orgId: string
@@ -56,7 +57,7 @@ export async function runInvoiceQuoteSmokeFlow(
   const config = { ...defaultOptions, ...options }
   const orgId = randomUUID()
   const slug = `smoke-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
-  const previousQuoteSecret = process.env.YAIP_PUBLIC_QUOTE_SECRET
+  const previousQuoteSecret = process.env.QUITS_PUBLIC_QUOTE_SECRET
 
   const ctx = {
     session: {
@@ -74,7 +75,7 @@ export async function runInvoiceQuoteSmokeFlow(
   const caller = appRouter.createCaller(ctx as never)
 
   try {
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = PUBLIC_QUOTE_TEST_SECRET
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = PUBLIC_QUOTE_TEST_SECRET
 
     await prisma.organization.create({
       data: {
@@ -85,6 +86,7 @@ export async function runInvoiceQuoteSmokeFlow(
         subscriptionStatus: "pro",
       },
     })
+    await ensureTestMembership(orgId, "smoke-user")
 
     await prisma.orgSettings.create({
       data: {
@@ -233,7 +235,7 @@ export async function runInvoiceQuoteSmokeFlow(
       },
     }
   } finally {
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = previousQuoteSecret
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = previousQuoteSecret
     await prisma.organization.deleteMany({ where: { id: orgId } })
   }
 }

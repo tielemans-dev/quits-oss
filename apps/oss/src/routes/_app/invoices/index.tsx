@@ -28,6 +28,7 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Plus, Trash2, FileText } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { loadInvoicesListData } from "./-index.helpers"
 
 export const Route = createFileRoute("/_app/invoices/")({
@@ -38,9 +39,11 @@ type Invoice = {
   id: string
   number: string
   status: string
+  paymentStatus: string
   issueDate: string
   dueDate: string
   total: number
+  balanceDue: number
   currency: string
   contact: { name: string }
 }
@@ -50,6 +53,14 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   sent: { label: "Sent", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
   paid: { label: "Paid", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
   overdue: { label: "Overdue", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+  partially_paid: {
+    label: "Partially paid",
+    className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  },
+  credited: {
+    label: "Credited",
+    className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  },
 }
 
 function formatCurrency(amount: number, currency: string) {
@@ -64,6 +75,8 @@ function getInvoiceStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"
   if (status === "sent") return t("invoices.status.sent")
   if (status === "paid") return t("invoices.status.paid")
   if (status === "overdue") return t("invoices.status.overdue")
+  if (status === "partially_paid") return t("status.partially_paid")
+  if (status === "credited") return t("status.credited")
   return t("invoices.status.draft")
 }
 
@@ -183,11 +196,17 @@ function InvoicesListPage() {
                   <TableCell>{formatDate(invoice.dueDate, locale)}</TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(invoice.total, invoice.currency)}
+                    {invoice.balanceDue > 0 && invoice.balanceDue < invoice.total ? (
+                      <p className="text-xs text-muted-foreground">
+                        {t("payments.summary.balanceDue")}{" "}
+                        {formatCurrency(invoice.balanceDue, invoice.currency)}
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell>
                     <StatusBadge
-                      status={invoice.status}
-                      label={getInvoiceStatusLabel(invoice.status, t)}
+                      status={invoiceDisplayStatus(invoice)}
+                      label={getInvoiceStatusLabel(invoiceDisplayStatus(invoice), t)}
                     />
                   </TableCell>
                   <TableCell>

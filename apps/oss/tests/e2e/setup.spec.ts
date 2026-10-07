@@ -6,7 +6,7 @@ test.beforeEach(async () => {
 })
 
 test("completes the setup wizard and lands on login", async ({ page }) => {
-  test.skip(process.env.YAIP_DISTRIBUTION === "cloud", "Setup wizard is selfhost-only")
+  test.skip(process.env.QUITS_DISTRIBUTION === "cloud", "Setup wizard is selfhost-only")
 
   const adminEmail = "setup-admin@example.com"
   const adminPassword = "SetupSmoke123!"
@@ -14,7 +14,7 @@ test("completes the setup wizard and lands on login", async ({ page }) => {
   await page.goto("/setup")
   await waitForClientReady(page)
 
-  await expect(page.getByText("Set up your YAIP instance")).toBeVisible()
+  await expect(page.getByText("Set up your Quits instance")).toBeVisible()
 
   await page.getByRole("button", { name: "Next" }).click()
   await page.getByLabel("Organization name").fill("Setup Smoke Org")

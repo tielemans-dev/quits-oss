@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to YAIP OSS.
+Thanks for contributing to Quits OSS.
 
 ## Scope and Boundary Rules
 

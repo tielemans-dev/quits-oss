@@ -102,3 +102,60 @@ export type Quote = Prisma.QuoteModel
  * 
  */
 export type QuoteItem = Prisma.QuoteItemModel
+/**
+ * Model CreditNote
+ * 
+ */
+export type CreditNote = Prisma.CreditNoteModel
+/**
+ * Model CreditNoteItem
+ * 
+ */
+export type CreditNoteItem = Prisma.CreditNoteItemModel
+/**
+ * Model Payment
+ * 
+ */
+export type Payment = Prisma.PaymentModel
+/**
+ * Model InvoiceReminder
+ * 
+ */
+export type InvoiceReminder = Prisma.InvoiceReminderModel
+/**
+ * Model RecurringInvoice
+ * 
+ */
+export type RecurringInvoice = Prisma.RecurringInvoiceModel
+/**
+ * Model DomainEvent
+ * 
+ */
+export type DomainEvent = Prisma.DomainEventModel
+/**
+ * Model CommandReceipt
+ * 
+ */
+export type CommandReceipt = Prisma.CommandReceiptModel
+/**
+ * Model ApprovalRequest
+ * 
+ */
+export type ApprovalRequest = Prisma.ApprovalRequestModel
+/**
+ * Model AgentKey
+ * 
+ */
+export type AgentKey = Prisma.AgentKeyModel
+/**
+ * Model Job
+ * 
+ */
+export type Job = Prisma.JobModel
+/**
+ * Model SchedulerScan
+ * When a scheduler task last claimed an organization; ticks claim the least recently scanned.
+ * A tick holding an organization stamps `claimToken` and `claimedUntil`; other ticks skip it
+ * until the claim is finished, released or expires.
+ */
+export type SchedulerScan = Prisma.SchedulerScanModel

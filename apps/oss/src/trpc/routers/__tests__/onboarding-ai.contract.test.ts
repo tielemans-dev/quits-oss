@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto"
 import { TRPCError } from "@trpc/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../../../lib/db"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -63,7 +64,7 @@ type CallerLike = {
 
 async function createCaller(distribution: "cloud" | "selfhost", orgId: string) {
   vi.resetModules()
-  process.env.YAIP_DISTRIBUTION = distribution
+  process.env.QUITS_DISTRIBUTION = distribution
   const { appRouter } = await import("../../router")
 
   return appRouter.createCaller({
@@ -82,7 +83,7 @@ async function createCaller(distribution: "cloud" | "selfhost", orgId: string) {
 
 describeIfDatabase("onboarding ai contract", () => {
   afterEach(async () => {
-    process.env.YAIP_DISTRIBUTION = "selfhost"
+    process.env.QUITS_DISTRIBUTION = "selfhost"
     const runtimeServices = await import("../../../lib/runtime/services")
     runtimeServices.resetRuntimeServices()
     vi.resetModules()
@@ -109,6 +110,7 @@ describeIfDatabase("onboarding ai contract", () => {
         subscriptionStatus: "pro",
       },
     })
+    await ensureTestMembership(orgId, "onboarding-ai-user")
 
     try {
       const caller = await createCaller("cloud", orgId)

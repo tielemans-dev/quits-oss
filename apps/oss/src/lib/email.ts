@@ -5,11 +5,11 @@ import type { TranslationKey } from "./i18n/messages"
 
 let _resend: Resend | null = null
 
-function sanitizeHeader(value: string): string {
+export function sanitizeHeader(value: string): string {
   return value.replace(/[\r\n]+/g, " ").trim()
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -18,29 +18,99 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;")
 }
 
-function escapeAttribute(value: string): string {
+export function escapeAttribute(value: string): string {
   return escapeHtml(value)
 }
 
-function formatMultilineHtml(value: string): string {
+export function formatMultilineHtml(value: string): string {
   return escapeHtml(value).replaceAll("\n", "<br />")
 }
 
+let _resendKey: string | undefined
+
 function getResend(): Resend {
-  if (!_resend) {
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not configured")
-    }
-    _resend = new Resend(process.env.RESEND_API_KEY)
+  const key = process.env.RESEND_API_KEY
+  if (!key) {
+    throw new Error("RESEND_API_KEY is not configured")
+  }
+  if (!_resend || _resendKey !== key) {
+    _resend = new Resend(key)
+    _resendKey = key
   }
   return _resend
 }
 
-function fromAddress(): string {
+/**
+ * Throws if email cannot be sent from this process (e.g. no API key), before any request is made.
+ * Lets callers tell a local configuration problem from a request whose outcome is unknown.
+ */
+export function ensureEmailProvider() {
+  getResend()
+}
+
+export class EmailSendError extends Error {
+  readonly providerCode: string
+
+  constructor(providerCode: string, message: string) {
+    super(message)
+    this.name = "EmailSendError"
+    this.providerCode = providerCode
+  }
+}
+
+export type EmailMessage = Parameters<Resend["emails"]["send"]>[0]
+
+/** Rendered email content, as returned by the `build*EmailContent` helpers. */
+export type EmailContent = {
+  subject: string
+  html: string
+  fromAddress: string
+  replyTo: string | null
+}
+
+/** The provider message for rendered content. */
+export function composeMessage(to: string, content: EmailContent) {
+  return {
+    from: content.fromAddress,
+    to,
+    subject: content.subject,
+    html: content.html,
+    ...(content.replyTo ? { replyTo: content.replyTo } : {}),
+  }
+}
+
+export type DeliveryOptions = {
+  /**
+   * Sent as-is as the provider idempotency key: the provider drops a repeat of a message it
+   * already accepted under this key.
+   */
+  idempotencyKey?: string
+}
+
+/**
+ * Resend reports API failures in the result instead of throwing; they are thrown here as
+ * `EmailSendError` so callers can tell a provider answer from a lost request.
+ */
+export async function deliver(
+  message: EmailMessage,
+  options: DeliveryOptions = {}
+): Promise<{ id: string }> {
+  const result = await getResend().emails.send(
+    message,
+    options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined
+  )
+  if (result.error) {
+    throw new EmailSendError(result.error.name, result.error.message)
+  }
+
+  return { id: result.data.id }
+}
+
+export function fromAddress(): string {
   return sanitizeHeader(process.env.FROM_EMAIL ?? "noreply@yaip.app")
 }
 
-function t(
+export function t(
   key: TranslationKey,
   locale?: string | null,
   vars?: Record<string, string | number>
@@ -48,7 +118,7 @@ function t(
   return translate(key, locale, vars)
 }
 
-function itemsTable(
+export function itemsTable(
   items: { description: string; quantity: number; unitPrice: number; total: number }[],
   currency: string,
   locale?: string | null
@@ -75,7 +145,7 @@ function itemsTable(
     </table>`
 }
 
-function totalsBlock(
+export function totalsBlock(
   subtotal: number,
   taxAmount: number,
   total: number,
@@ -100,14 +170,14 @@ function totalsBlock(
     </table>`
 }
 
-function layout(content: string, locale?: string | null) {
+export function layout(content: string, locale?: string | null) {
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;">
   <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
     <div style="background:#111827;padding:24px 32px;">
-      <span style="color:#fff;font-size:20px;font-weight:bold;">YAIP</span>
+      <span style="color:#fff;font-size:20px;font-weight:bold;">Quits</span>
     </div>
     <div style="padding:32px;">
       ${content}
@@ -120,7 +190,7 @@ function layout(content: string, locale?: string | null) {
 </html>`
 }
 
-function actionBlock(input: {
+export function actionBlock(input: {
   href: string
   label: string
   fallbackLabel: string
@@ -176,7 +246,7 @@ export function buildInvoiceEmailContent({
   contactName,
   publicPaymentUrl,
 }: Omit<SendInvoiceEmailParams, "to">) {
-  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "YAIP")
+  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeInvoiceNumber = escapeHtml(invoice.number)
   const safeContactName = escapeHtml(contactName)
@@ -229,35 +299,6 @@ export function buildInvoiceEmailContent({
   }
 }
 
-export async function sendInvoiceEmail({
-  to,
-  fromName,
-  fromEmail,
-  replyTo,
-  invoice,
-  org,
-  contactName,
-  publicPaymentUrl,
-}: SendInvoiceEmailParams) {
-  const content = buildInvoiceEmailContent({
-    fromName,
-    fromEmail,
-    replyTo,
-    invoice,
-    org,
-    contactName,
-    publicPaymentUrl,
-  })
-
-  return getResend().emails.send({
-    from: content.fromAddress,
-    to,
-    subject: content.subject,
-    html: content.html,
-    ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-  })
-}
-
 // ── Quote email ────────────────────────────────────────────────────
 
 export type SendQuoteEmailParams = {
@@ -295,7 +336,7 @@ export function buildQuoteEmailContent({
   contactName,
   publicQuoteUrl,
 }: Omit<SendQuoteEmailParams, "to">) {
-  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "YAIP")
+  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeQuoteNumber = escapeHtml(quote.number)
   const safeContactName = escapeHtml(contactName)
@@ -348,35 +389,6 @@ export function buildQuoteEmailContent({
   }
 }
 
-export async function sendQuoteEmail({
-  to,
-  fromName,
-  fromEmail,
-  replyTo,
-  quote,
-  org,
-  contactName,
-  publicQuoteUrl,
-}: SendQuoteEmailParams) {
-  const content = buildQuoteEmailContent({
-    fromName,
-    fromEmail,
-    replyTo,
-    quote,
-    org,
-    contactName,
-    publicQuoteUrl,
-  })
-
-  return getResend().emails.send({
-    from: content.fromAddress,
-    to,
-    subject: content.subject,
-    html: content.html,
-    ...(content.replyTo ? { replyTo: content.replyTo } : {}),
-  })
-}
-
 // ── Invitation email ───────────────────────────────────────────────
 
 type SendInvitationEmailParams = {
@@ -413,7 +425,7 @@ export function buildInvitationEmailContent({
       t("email.invitation.subject", locale, { inviterName, orgName })
     ),
     html,
-    fromAddress: `YAIP <${fromAddress()}>`,
+    fromAddress: `Quits <${fromAddress()}>`,
   }
 }
 
@@ -431,7 +443,7 @@ export async function sendInvitationEmail({
     locale,
   })
 
-  return getResend().emails.send({
+  return deliver({
     from: content.fromAddress,
     to,
     subject: content.subject,

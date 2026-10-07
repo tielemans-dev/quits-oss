@@ -15,6 +15,17 @@
     },
     "test": {
       "dependsOn": ["^test"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/.env"],
+      "env": [
+        "DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "CRON_SECRET",
+        "RESEND_API_KEY",
+        "FROM_EMAIL",
+        "QUITS_*",
+        "YAIP_*"
+      ],
       "outputs": []
     }
   }

@@ -1,17 +1,17 @@
-import { buildAbsoluteUrl, resolveAppOrigin } from "@yaip/shared/http"
-import { readFallbackSecret } from "@yaip/shared/runtimeEnv"
+import { buildAbsoluteUrl, resolveAppOrigin } from "@quits/shared/http"
+import { readFallbackSecret, readProductEnv } from "@quits/shared/runtimeEnv"
 import { signQuotePublicToken } from "./public"
 
 export function getPublicQuoteSecret() {
   const secret = readFallbackSecret(
-    process.env.YAIP_PUBLIC_QUOTE_SECRET,
+    readProductEnv(process.env, "PUBLIC_QUOTE_SECRET"),
     process.env.BETTER_AUTH_SECRET
   )
   if (secret) {
     return secret
   }
 
-  throw new Error("YAIP_PUBLIC_QUOTE_SECRET or BETTER_AUTH_SECRET must be configured")
+  throw new Error("QUITS_PUBLIC_QUOTE_SECRET or BETTER_AUTH_SECRET must be configured")
 }
 
 export function getPublicQuoteUrl(quote: {
@@ -28,7 +28,7 @@ export function getPublicQuoteUrl(quote: {
   }
 
   const origin = resolveAppOrigin(
-    [process.env.YAIP_APP_ORIGIN, process.env.BETTER_AUTH_URL],
+    [readProductEnv(process.env, "APP_ORIGIN"), process.env.BETTER_AUTH_URL],
     ""
   )
 

@@ -1,10 +1,10 @@
-import { router, orgProcedure } from "../init"
+import { router, authorizedProcedure } from "../init"
 import { TRPCError } from "@trpc/server"
 import { billingEnabled } from "../../lib/distribution"
 import { billingProvider } from "../../lib/billing"
 
 export const billingRouter = router({
-  getSubscription: orgProcedure.query(async ({ ctx }) => {
+  getSubscription: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     if (!billingEnabled) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Billing is disabled" })
     }
@@ -12,7 +12,7 @@ export const billingRouter = router({
     return billingProvider.getSubscription(ctx.organizationId)
   }),
 
-  createCheckoutSession: orgProcedure.mutation(async ({ ctx }) => {
+  createCheckoutSession: authorizedProcedure("settings:update").mutation(async ({ ctx }) => {
     if (!billingEnabled) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Billing is disabled" })
     }
@@ -27,7 +27,7 @@ export const billingRouter = router({
     return billingProvider.createCheckoutSession(ctx.organizationId)
   }),
 
-  createPortalSession: orgProcedure.mutation(async ({ ctx }) => {
+  createPortalSession: authorizedProcedure("settings:update").mutation(async ({ ctx }) => {
     if (!billingEnabled) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Billing is disabled" })
     }

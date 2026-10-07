@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import { prisma } from "../../../lib/db"
 import { loadPublicInvoiceByToken } from "../../../lib/payments/public-access"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -12,11 +13,11 @@ describeIfDatabase("invoice payment links", () => {
   it("creates public invoice payment links only when Stripe BYOK is configured", async () => {
     const orgId = randomUUID()
     const slug = `invoice-link-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
-    const previousOrigin = process.env.YAIP_APP_ORIGIN
-    const previousSecret = process.env.YAIP_PUBLIC_PAYMENT_SECRET
+    const previousOrigin = process.env.QUITS_APP_ORIGIN
+    const previousSecret = process.env.QUITS_PUBLIC_PAYMENT_SECRET
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "payment-link-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "payment-link-secret-123456"
 
     const caller = appRouter.createCaller({
       session: {
@@ -41,6 +42,7 @@ describeIfDatabase("invoice payment links", () => {
           subscriptionStatus: "pro",
         },
       })
+      await ensureTestMembership(orgId, "invoice-link-user")
 
       await prisma.orgSettings.create({
         data: {
@@ -121,8 +123,8 @@ describeIfDatabase("invoice payment links", () => {
         "Paid invoices do not need payment links"
       )
     } finally {
-      process.env.YAIP_APP_ORIGIN = previousOrigin
-      process.env.YAIP_PUBLIC_PAYMENT_SECRET = previousSecret
+      process.env.QUITS_APP_ORIGIN = previousOrigin
+      process.env.QUITS_PUBLIC_PAYMENT_SECRET = previousSecret
       await prisma.organization.deleteMany({ where: { id: orgId } })
     }
   })

@@ -21,7 +21,7 @@ function run(command, args) {
   }
 }
 
-if (process.env.YAIP_SKIP_PREDEV_BOOTSTRAP === "1") {
+if ((process.env.QUITS_SKIP_PREDEV_BOOTSTRAP ?? process.env.YAIP_SKIP_PREDEV_BOOTSTRAP) === "1") {
   process.exit(0)
 }
 

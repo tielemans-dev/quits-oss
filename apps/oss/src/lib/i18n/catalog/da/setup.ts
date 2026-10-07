@@ -1,5 +1,5 @@
 export const daSetupMessages = {
-  "setup.title": "Opsæt din YAIP-instans",
+  "setup.title": "Opsæt din Quits-instans",
   "setup.subtitle": "Konfigurer dit workspace, før du inviterer dit team og opretter fakturaer.",
   "setup.loadingStatus": "Indlæser opsætningsstatus…",
   "setup.status.initialized": "Der findes allerede grunddata. Gennemgå dine præferencer og afslut opsætningen.",

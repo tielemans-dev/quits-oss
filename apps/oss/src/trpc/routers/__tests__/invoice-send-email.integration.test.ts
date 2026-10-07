@@ -9,20 +9,22 @@ vi.mock("../../../lib/email", async () => {
 
   return {
     ...actual,
-    sendInvoiceEmail: vi.fn().mockResolvedValue({ id: "email_123" }),
+    deliver: vi.fn().mockResolvedValue({ id: "email_123" }),
   }
 })
 
 import { prisma } from "../../../lib/db"
-import { sendInvoiceEmail } from "../../../lib/email"
+import { deliver, EmailSendError } from "../../../lib/email"
 import { appRouter } from "../../router"
+import { findEmailDeliveryJobs, retryEmailDeliveries } from "../../../test-utils/email-outbox"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 
 function restoreEnv(previous: Record<string, string | undefined>) {
-  process.env.YAIP_APP_ORIGIN = previous.YAIP_APP_ORIGIN
-  process.env.YAIP_PUBLIC_PAYMENT_SECRET = previous.YAIP_PUBLIC_PAYMENT_SECRET
+  process.env.QUITS_APP_ORIGIN = previous.QUITS_APP_ORIGIN
+  process.env.QUITS_PUBLIC_PAYMENT_SECRET = previous.QUITS_PUBLIC_PAYMENT_SECRET
   process.env.RESEND_API_KEY = previous.RESEND_API_KEY
   process.env.FROM_EMAIL = previous.FROM_EMAIL
 }
@@ -57,6 +59,7 @@ async function createInvoiceFixture(options?: {
       subscriptionStatus: "pro",
     },
   })
+  await ensureTestMembership(orgId, "invoice-send-user")
 
   await prisma.orgSettings.create({
     data: {
@@ -118,20 +121,20 @@ async function createInvoiceFixture(options?: {
 
 describeIfDatabase("invoice send email delivery", () => {
   afterEach(() => {
-    vi.mocked(sendInvoiceEmail).mockReset()
-    vi.mocked(sendInvoiceEmail).mockResolvedValue({ id: "email_123" })
+    vi.mocked(deliver).mockReset()
+    vi.mocked(deliver).mockResolvedValue({ id: "email_123" })
   })
 
   it("includes a public payment link in invoice email when Stripe is configured and records a sent attempt", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 
@@ -157,14 +160,14 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
       expect(reloaded.lastEmailAttemptCode).toBe("sent")
 
-      expect(sendInvoiceEmail).toHaveBeenCalledWith(
+      expect(deliver).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "buyer@example.com",
-          publicPaymentUrl: expect.stringContaining("https://app.example.test/pay/"),
-          fromName: "Acme via YAIP",
-          fromEmail: "billing@example.com",
+          html: expect.stringContaining("https://app.example.test/pay/"),
+          from: "Acme via Quits <billing@example.com>",
           replyTo: "billing@acme.com",
-        })
+        }),
+        { idempotencyKey: expect.stringMatching(new RegExp(`^invoice-send:${invoice.id}:`)) }
       )
     } finally {
       restoreEnv(previous)
@@ -174,14 +177,14 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("falls back to the shared sender when branded sending is not verified", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@yaip.app"
 
@@ -194,12 +197,12 @@ describeIfDatabase("invoice send email delivery", () => {
     try {
       await caller.invoices.send({ id: invoice.id })
 
-      expect(sendInvoiceEmail).toHaveBeenCalledWith(
+      expect(deliver).toHaveBeenCalledWith(
         expect.objectContaining({
-          fromName: "Acme via YAIP",
-          fromEmail: "billing@yaip.app",
+          from: "Acme via Quits <billing@yaip.app>",
           replyTo: "billing@acme.com",
-        })
+        }),
+        { idempotencyKey: expect.stringMatching(/^invoice-send:/) }
       )
     } finally {
       restoreEnv(previous)
@@ -209,8 +212,8 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("sends invoice email without payment CTA when Stripe is not configured and still records a sent attempt", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
@@ -237,12 +240,11 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(reloaded.status).toBe("sent")
       expect(reloaded.publicPaymentIssuedAt).toBeNull()
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
-      expect(sendInvoiceEmail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: "buyer@example.com",
-          publicPaymentUrl: null,
-        })
-      )
+      expect(deliver).toHaveBeenCalledTimes(1)
+      const [message, options] = vi.mocked(deliver).mock.calls[0]!
+      expect(message.to).toBe("buyer@example.com")
+      expect(message.html).not.toContain("/pay/")
+      expect(options).toEqual({ idempotencyKey: expect.stringMatching(/^invoice-send:/) })
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })
@@ -251,14 +253,14 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("rejects send when email delivery is not configured unless degraded send is explicitly allowed", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     delete process.env.RESEND_API_KEY
     delete process.env.FROM_EMAIL
 
@@ -304,7 +306,55 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(reloaded.publicPaymentIssuedAt).toBeTruthy()
       expect(reloaded.lastEmailAttemptOutcome).toBe("skipped")
       expect(reloaded.lastEmailAttemptCode).toBe("provider_missing")
-      expect(sendInvoiceEmail).not.toHaveBeenCalled()
+      expect(deliver).not.toHaveBeenCalled()
+    } finally {
+      restoreEnv(previous)
+      await prisma.organization.deleteMany({ where: { id: orgId } })
+    }
+  })
+
+  it("keeps the invoice sending after an uncertain failure, then delivers the same message on retry", async () => {
+    const previous = {
+      RESEND_API_KEY: process.env.RESEND_API_KEY,
+      FROM_EMAIL: process.env.FROM_EMAIL,
+    }
+    process.env.RESEND_API_KEY = "resend_test_key"
+    process.env.FROM_EMAIL = "billing@example.com"
+    // A network error: the provider may or may not have accepted the email.
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("socket hang up"))
+
+    const { orgId, caller, invoice } = await createInvoiceFixture()
+
+    try {
+      const result = await caller.invoices.send({ id: invoice.id })
+      expect(result.emailSent).toBe(false)
+      expect(result.emailPending).toBe(true)
+
+      const frozen = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
+      expect(frozen.status).toBe("draft")
+      expect(frozen.lastEmailAttemptOutcome).toBe("sending")
+      const [job] = await findEmailDeliveryJobs(orgId)
+      expect(job?.status).toBe("pending")
+      expect(job?.attempts).toBe(1)
+
+      // While delivery may have happened, the invoice cannot change or be sent again.
+      await expect(
+        caller.invoices.update({ id: invoice.id, notes: "changed after delivery" })
+      ).rejects.toThrow(/being emailed/)
+      await expect(caller.invoices.send({ id: invoice.id })).rejects.toThrow(/being emailed/)
+
+      await retryEmailDeliveries(orgId)
+      const sent = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
+      expect(sent.status).toBe("sent")
+      expect(sent.lastEmailAttemptOutcome).toBe("sent")
+      expect(sent.issueDate.getTime()).toBe(frozen.lastEmailAttemptAt?.getTime())
+
+      // The retry replays the stored message under the same key, so the provider sends one email.
+      const calls = vi.mocked(deliver).mock.calls
+      expect(calls).toHaveLength(2)
+      expect(calls[1]![0]).toEqual(calls[0]![0])
+      expect(calls[1]![1]).toEqual(calls[0]![1])
+      expect(calls[0]![1]?.idempotencyKey).toMatch(new RegExp(`^invoice-send:${invoice.id}:`))
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })
@@ -313,23 +363,25 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("records a failed attempt and keeps the invoice in draft when provider delivery throws", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
-    vi.mocked(sendInvoiceEmail).mockRejectedValueOnce(new Error("send failed"))
+    vi.mocked(deliver).mockRejectedValueOnce(
+      new EmailSendError("validation_error", "Domain is not verified")
+    )
 
     const { orgId, caller, invoice } = await createInvoiceFixture({ configureStripe: true })
 
     try {
       await expect(caller.invoices.send({ id: invoice.id })).rejects.toThrow(
-        "Failed to send invoice email. Invoice was not marked as sent."
+        "The email provider refused the invoice email: Domain is not verified"
       )
 
       const reloaded = await prisma.invoice.findUniqueOrThrow({
@@ -354,8 +406,8 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("blocks email send when the contact has no email address", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
@@ -382,7 +434,7 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(reloaded.status).toBe("draft")
       expect(reloaded.publicPaymentIssuedAt).toBeNull()
       expect(reloaded.lastEmailAttemptAt).toBeNull()
-      expect(sendInvoiceEmail).not.toHaveBeenCalled()
+      expect(deliver).not.toHaveBeenCalled()
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })
@@ -391,14 +443,14 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("resends email for a sent invoice without rotating the public payment link", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 
@@ -406,9 +458,9 @@ describeIfDatabase("invoice send email delivery", () => {
 
     try {
       await caller.invoices.send({ id: invoice.id })
-      const firstCall = vi.mocked(sendInvoiceEmail).mock.calls[0]?.[0]
+      const firstCall = vi.mocked(deliver).mock.calls[0]?.[0]
 
-      vi.mocked(sendInvoiceEmail).mockClear()
+      vi.mocked(deliver).mockClear()
 
       const resend = await caller.invoices.resendEmail({ id: invoice.id })
       expect(resend.emailSent).toBe(true)
@@ -422,12 +474,15 @@ describeIfDatabase("invoice send email delivery", () => {
         },
       })
 
-      const secondCall = vi.mocked(sendInvoiceEmail).mock.calls[0]?.[0]
+      const secondCall = vi.mocked(deliver).mock.calls[0]
+      const paymentUrl = (html: string | undefined) => html?.match(/https:\/\/app\.example\.test\/pay\/[^"'<\s]+/)?.[0]
 
       expect(reloaded.status).toBe("sent")
       expect(reloaded.publicPaymentIssuedAt).toBeTruthy()
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
-      expect(secondCall?.publicPaymentUrl).toBe(firstCall?.publicPaymentUrl)
+      expect(paymentUrl(firstCall?.html)).toBeTruthy()
+      expect(paymentUrl(secondCall?.[0].html)).toBe(paymentUrl(firstCall?.html))
+      expect(secondCall?.[1]).toEqual({ idempotencyKey: expect.stringMatching(/^invoice-resend:/) })
     } finally {
       restoreEnv(previous)
       await prisma.organization.deleteMany({ where: { id: orgId } })

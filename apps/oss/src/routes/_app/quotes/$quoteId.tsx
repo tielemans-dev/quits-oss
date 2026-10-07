@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
+import { usePollWhile } from "../../../hooks/use-poll-while"
+import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import {
   readEmailDeliveryAttempt,
@@ -8,6 +10,7 @@ import {
 } from "../../../lib/email-delivery"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { EmailDeliveryPanel } from "../../../components/documents/email-delivery-panel"
+import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
 import {
   formatCurrency as formatCurrencyIntl,
   formatDate as formatDateIntl,
@@ -54,8 +57,10 @@ import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle } from "lucide-rea
 import { useI18n } from "../../../lib/i18n/react"
 
 export const Route = createFileRoute("/_app/quotes/$quoteId")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { emailWarning?: string; sendError?: string } => ({
     emailWarning: typeof search.emailWarning === "string" ? search.emailWarning : undefined,
+    // Set when the quote was created but sending it failed, e.g. the provider refused the email.
+    sendError: typeof search.sendError === "string" ? search.sendError : undefined,
   }),
   component: QuoteDetailPage,
 })
@@ -96,7 +101,7 @@ type Quote = {
   publicDecisionAt: string | null
   publicRejectionReason: string | null
   lastEmailAttemptAt: string | Date | null
-  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | null
+  lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | "sending" | "unconfirmed" | null
   lastEmailAttemptCode: string | null
   lastEmailAttemptMessage: string | null
   contact: Contact
@@ -156,15 +161,17 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
 function QuoteDetailPage() {
   const { t, locale } = useI18n()
   const { quoteId } = Route.useParams()
-  const { emailWarning } = Route.useSearch()
+  const { emailWarning, sendError } = Route.useSearch()
   const navigate = useNavigate()
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loading, setLoading] = useState(true)
   const [emailDelivery, setEmailDelivery] = useState<EmailDeliveryRuntimeStatus | null>(null)
   const [error, setError] = useState<string | null>(
-    emailWarning
-      ? t("quotes.detail.warning.emailSkipped", { reason: emailWarning })
-      : null
+    sendError
+      ? sendError
+      : emailWarning
+        ? t("quotes.detail.warning.emailSkipped", { reason: emailWarning })
+        : null
   )
   const [acting, setActing] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -179,21 +186,45 @@ function QuoteDetailPage() {
   const [editTaxRate, setEditTaxRate] = useState(0)
   const [editItems, setEditItems] = useState<EditItem[]>([])
 
+  // The page stays mounted when navigating to another quote; drop answers for the previous one.
+  const beginRequest = useDocumentResponseGuard(quoteId)
+
   useEffect(() => {
+    const isCurrent = beginRequest(quoteId)
     Promise.all([trpc.quotes.get.query({ id: quoteId }), trpc.settings.get.query()])
       .then(([quoteData, settings]) => {
+        if (!isCurrent()) return
         const q = quoteData as unknown as Quote
         setQuote(q)
         setEmailDelivery(settings.emailDelivery)
       })
-      .catch(() => setError(t("quotes.detail.error.notFound")))
-      .finally(() => setLoading(false))
-  }, [quoteId, t])
+      .catch(() => {
+        if (isCurrent()) setError(t("quotes.detail.error.notFound"))
+      })
+      .finally(() => {
+        if (isCurrent()) setLoading(false)
+      })
+  }, [beginRequest, quoteId, t])
 
   async function reloadQuote() {
+    const isCurrent = beginRequest(quoteId)
     const updated = await trpc.quotes.get.query({ id: quoteId })
+    if (!isCurrent()) return
     setQuote(updated as unknown as Quote)
   }
+
+  /** After a failed send: a refused email is recorded on the quote, so show its new state. */
+  async function reloadQuoteAfterFailure() {
+    try {
+      await reloadQuote()
+    } catch {
+      // Keep the send error on screen; the quote reloads on the next visit.
+    }
+  }
+
+  // While the outbox is still delivering the email the quote is frozen; follow it until it settles.
+  const emailSending = quote?.lastEmailAttemptOutcome === "sending"
+  const pollFailure = usePollWhile(emailSending, reloadQuote)
 
   function startEditing() {
     if (!quote) return
@@ -250,6 +281,7 @@ function QuoteDetailPage() {
     if (!quote) return
     setError(null)
     setActing(true)
+    const isCurrent = beginRequest(quote.id)
     try {
       const updated = await trpc.quotes.update.mutate({
         id: quote.id,
@@ -263,6 +295,7 @@ function QuoteDetailPage() {
           unitPrice: item.unitPrice,
         })),
       })
+      if (!isCurrent()) return
       setQuote(updated as unknown as Quote)
       setEditing(false)
     } catch (err) {
@@ -300,6 +333,7 @@ function QuoteDetailPage() {
           ? err.message
           : t("quotes.detail.error.sendFailed")
       )
+      await reloadQuoteAfterFailure()
     } finally {
       setActing(false)
     }
@@ -318,6 +352,7 @@ function QuoteDetailPage() {
           ? err.message
           : t("quotes.detail.error.sendFailed")
       )
+      await reloadQuoteAfterFailure()
     } finally {
       setActing(false)
     }
@@ -625,10 +660,14 @@ function QuoteDetailPage() {
           at: formatDate(toDateString(emailAttempt.lastEmailAttemptAt), locale),
         }),
         message:
-          emailAttempt.lastEmailAttemptCode === "provider_missing"
+          emailAttempt.lastEmailAttemptOutcome === "unconfirmed"
+            ? t("quotes.detail.email.reason.unconfirmed")
+            : emailAttempt.lastEmailAttemptCode === "provider_missing"
             ? t("quotes.detail.email.reason.provider_missing")
             : emailAttempt.lastEmailAttemptCode === "send_failed"
               ? t("quotes.detail.email.reason.send_failed")
+              : emailAttempt.lastEmailAttemptOutcome === "sending"
+                ? t("quotes.detail.email.reason.sending")
               : emailAttempt.lastEmailAttemptCode === "sent"
                 ? t("quotes.detail.email.reason.sent")
                 : emailAttempt.lastEmailAttemptMessage,
@@ -681,9 +720,10 @@ function QuoteDetailPage() {
           {t("quotes.detail.action.back")}
         </Button>
         <div className="flex items-center gap-2">
-          {quote.status === "draft" && (
+          {/* A draft whose email is still being delivered can no longer be edited or deleted. */}
+          {quote.status === "draft" && !emailSending && (
             <>
-              <Button variant="outline" size="sm" onClick={startEditing}>
+              <Button variant="outline" size="sm" disabled={acting} onClick={startEditing}>
                 <Pencil className="size-4" />
                 {t("quotes.detail.action.edit")}
               </Button>
@@ -737,6 +777,10 @@ function QuoteDetailPage() {
           {error}
         </p>
       )}
+
+      <div className="mb-4 empty:hidden">
+        <ReloadRequiredNotice failure={pollFailure} />
+      </div>
 
       {/* Quote content */}
       <Card>
@@ -800,7 +844,7 @@ function QuoteDetailPage() {
                     label: t("quotes.detail.action.send"),
                     pendingLabel: t("quotes.detail.action.sending"),
                     pending: acting,
-                    disabled: acting,
+                    disabled: acting || emailSending,
                     onClick: () => {
                       void handleSend()
                     },
@@ -810,7 +854,7 @@ function QuoteDetailPage() {
                       label: t("quotes.detail.action.resendEmail"),
                       pendingLabel: t("quotes.detail.action.sending"),
                       pending: acting,
-                      disabled: acting,
+                      disabled: acting || emailSending,
                       onClick: () => {
                         void handleResendEmail()
                       },
@@ -818,7 +862,7 @@ function QuoteDetailPage() {
                   : null
             }
             degradedAction={
-              canShowDegradedSend
+              canShowDegradedSend && !emailSending
                 ? {
                     open: sendWithoutEmailOpen,
                     triggerLabel: t("quotes.detail.email.degraded.trigger"),

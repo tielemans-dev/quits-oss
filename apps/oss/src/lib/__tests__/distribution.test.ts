@@ -29,7 +29,7 @@ describe("distribution flags", () => {
     const { setRuntimePlatform } = await import("../runtime/platform")
     setRuntimePlatform(
       createPlatformEnv({
-        YAIP_DISTRIBUTION: "cloud",
+        QUITS_DISTRIBUTION: "cloud",
       })
     )
     const mod = await import("../distribution")
@@ -41,8 +41,8 @@ describe("distribution flags", () => {
     const { setRuntimePlatform } = await import("../runtime/platform")
     setRuntimePlatform(
       createPlatformEnv({
-        YAIP_DISTRIBUTION: "cloud",
-        YAIP_BILLING_ENABLED: "false",
+        QUITS_DISTRIBUTION: "cloud",
+        QUITS_BILLING_ENABLED: "false",
       })
     )
     const mod = await import("../distribution")

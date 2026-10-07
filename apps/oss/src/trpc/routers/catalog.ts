@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import { prisma } from "../../lib/db"
-import { orgProcedure, router } from "../init"
+import { authorizedProcedure, router } from "../init"
 
 const catalogItemCreateSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -37,7 +37,7 @@ function mapCatalogItemForUi(item: {
 }
 
 export const catalogRouter = router({
-  list: orgProcedure.query(async ({ ctx }) => {
+  list: authorizedProcedure("catalog:read").query(async ({ ctx }) => {
     const items = await prisma.catalogItem.findMany({
       where: { organizationId: ctx.organizationId, isActive: true },
       orderBy: [{ name: "asc" }, { createdAt: "asc" }],
@@ -46,7 +46,7 @@ export const catalogRouter = router({
     return items.map((item) => mapCatalogItemForUi(item))
   }),
 
-  create: orgProcedure
+  create: authorizedProcedure("catalog:create")
     .input(catalogItemCreateSchema)
     .mutation(async ({ ctx, input }) => {
       const created = await prisma.catalogItem.create({
@@ -61,7 +61,7 @@ export const catalogRouter = router({
       return mapCatalogItemForUi(created)
     }),
 
-  update: orgProcedure
+  update: authorizedProcedure("catalog:update")
     .input(catalogItemUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       const existing = await prisma.catalogItem.findFirst({
@@ -87,7 +87,7 @@ export const catalogRouter = router({
       return mapCatalogItemForUi(updated)
     }),
 
-  archive: orgProcedure
+  archive: authorizedProcedure("catalog:update")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await prisma.catalogItem.findFirst({

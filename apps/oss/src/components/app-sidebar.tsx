@@ -7,6 +7,9 @@ import {
   CreditCard,
   Settings,
   Package,
+  FileMinus,
+  Repeat,
+  ShieldCheck,
 } from 'lucide-react'
 
 import {
@@ -32,8 +35,11 @@ const navItems: Array<{
 }> = [
   { key: 'nav.dashboard', icon: LayoutDashboard, path: '/' },
   { key: 'nav.invoices', icon: FileText, path: '/invoices' },
+  { key: 'nav.creditNotes', icon: FileMinus, path: '/credit-notes' },
+  { key: 'nav.recurring', icon: Repeat, path: '/recurring' },
   { key: 'nav.quotes', icon: ClipboardList, path: '/quotes' },
   { key: 'nav.contacts', icon: Users, path: '/contacts' },
+  { key: 'nav.approvals', icon: ShieldCheck, path: '/approvals' },
   { key: 'nav.billing', icon: CreditCard, path: '/billing' },
   { key: 'nav.settings', icon: Settings, path: '/settings' },
   { key: 'nav.catalog', icon: Package, path: '/catalog' },
@@ -51,7 +57,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1">
-          <span className="text-lg font-bold tracking-tight">YAIP</span>
+          <span className="text-lg font-bold tracking-tight">Quits</span>
         </div>
       </SidebarHeader>
       <SidebarContent>

@@ -1,7 +1,7 @@
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { organization } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
-import { readBooleanEnv, resolveUrlOrigin } from "@yaip/shared/runtimeEnv"
+import { readBooleanEnv, resolveUrlOrigin } from "@quits/shared/runtimeEnv"
 
 import type { PrismaClient } from "../../../generated/prisma/client"
 
@@ -29,7 +29,7 @@ function createEnvRecord(reader: AuthEnvReader) {
   })
 }
 
-export function buildYaipAuthOptions(input: {
+export function buildQuitsAuthOptions(input: {
   prisma: PrismaClient
   env: AuthEnvReader
   hooks?: AuthHooks
@@ -38,25 +38,53 @@ export function buildYaipAuthOptions(input: {
   const env = input.env
   const envRecord = createEnvRecord(env)
   const socialProviders = getConfiguredSocialProviders(envRecord)
-  const distribution = (env.getEnv("YAIP_DISTRIBUTION") ?? "selfhost").trim().toLowerCase()
+  const distribution = ((env.getEnv("QUITS_DISTRIBUTION") ?? env.getEnv("YAIP_DISTRIBUTION")) ?? "selfhost").trim().toLowerCase()
   const cloudDistribution = distribution === "cloud"
   const betterAuthUrl = env.getEnv("BETTER_AUTH_URL")
   const trustedOrigins = Array.from(
     new Set(
       [
         resolveUrlOrigin(betterAuthUrl),
-        resolveUrlOrigin(env.getEnv("YAIP_SHELL_ORIGIN")),
-        resolveUrlOrigin(env.getEnv("YAIP_APP_ORIGIN")),
+        resolveUrlOrigin((env.getEnv("QUITS_SHELL_ORIGIN") ?? env.getEnv("YAIP_SHELL_ORIGIN"))),
+        resolveUrlOrigin((env.getEnv("QUITS_APP_ORIGIN") ?? env.getEnv("YAIP_APP_ORIGIN"))),
       ].filter((origin): origin is string => Boolean(origin))
     )
   )
 
   const crossSubDomainEnabled = readBooleanEnv(
-    env.getEnv("YAIP_AUTH_CROSS_SUBDOMAIN"),
+    (env.getEnv("QUITS_AUTH_CROSS_SUBDOMAIN") ?? env.getEnv("YAIP_AUTH_CROSS_SUBDOMAIN")),
     cloudDistribution
   )
-  const crossSubDomainDomain = env.getEnv("YAIP_AUTH_COOKIE_DOMAIN")?.trim()
+  const crossSubDomainDomain = (env.getEnv("QUITS_AUTH_COOKIE_DOMAIN") ?? env.getEnv("YAIP_AUTH_COOKIE_DOMAIN"))?.trim()
   const password = hooks.password
+  // A tuple (not an array) keeps plugin-specific session fields in Better Auth's inferred types.
+  const organizationPlugin = organization({
+    ac,
+    roles: { admin, member, accountant },
+    allowUserToCreateOrganization: true,
+    creatorRole: "admin",
+    membershipLimit: 50,
+    async sendInvitationEmail(data) {
+      if (!env.getEnv("RESEND_API_KEY") || !betterAuthUrl) {
+        return
+      }
+
+      const invitationUrl = `${betterAuthUrl}/accept-invitation/${data.id}`
+      const orgSettings = await input.prisma.orgSettings.findUnique({
+        where: { organizationId: data.organization.id },
+        select: { locale: true },
+      })
+
+      await sendInvitationEmail({
+        to: data.email,
+        inviterName: data.inviter.user.name,
+        orgName: data.organization.name,
+        invitationUrl,
+        locale: orgSettings?.locale,
+      })
+    },
+  })
+  const cookiesPlugin = tanstackStartCookies()
 
   return {
     database:
@@ -89,34 +117,12 @@ export function buildYaipAuthOptions(input: {
     socialProviders: Object.keys(socialProviders).length
       ? socialProviders
       : undefined,
-    plugins: [
-      organization({
-        ac,
-        roles: { admin, member, accountant },
-        allowUserToCreateOrganization: true,
-        creatorRole: "admin",
-        membershipLimit: 50,
-        async sendInvitationEmail(data) {
-          if (!env.getEnv("RESEND_API_KEY") || !betterAuthUrl) {
-            return
-          }
-
-          const invitationUrl = `${betterAuthUrl}/accept-invitation/${data.id}`
-          const orgSettings = await input.prisma.orgSettings.findUnique({
-            where: { organizationId: data.organization.id },
-            select: { locale: true },
-          })
-
-          await sendInvitationEmail({
-            to: data.email,
-            inviterName: data.inviter.user.name,
-            orgName: data.organization.name,
-            invitationUrl,
-            locale: orgSettings?.locale,
-          })
-        },
-      }),
-      tanstackStartCookies(),
+    plugins: [organizationPlugin, cookiesPlugin] as [
+      typeof organizationPlugin,
+      typeof cookiesPlugin,
     ],
   }
 }
+
+/** @deprecated Renamed to `buildQuitsAuthOptions`. */
+export const buildYaipAuthOptions = buildQuitsAuthOptions

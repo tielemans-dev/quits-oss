@@ -48,6 +48,10 @@ vi.mock("../../components/setup/setup-wizard", () => ({
 }))
 
 import { Route } from "../setup"
+import { asMockedRoute } from "../../test-utils/mocked-route"
+
+const route = asMockedRoute(Route)
+const RoutePage = route.component
 
 afterEach(() => {
   cleanup()
@@ -59,7 +63,7 @@ describe("SetupPage", () => {
   it("shows a load error when the setup status response is missing", async () => {
     getStatusQuery.mockResolvedValue(undefined)
 
-    render(<Route.component />)
+    render(<RoutePage />)
 
     await waitFor(() => {
       expect(

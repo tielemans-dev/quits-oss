@@ -4,13 +4,15 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 const {
-  navigate,
+  search,
+  loadPage,
   signInEmail,
   listOrganizations,
   setActiveOrganization,
   isCloudDistributionMock,
 } = vi.hoisted(() => ({
-  navigate: vi.fn(),
+  search: { value: {} as Record<string, string> },
+  loadPage: vi.fn(),
   signInEmail: vi.fn(),
   listOrganizations: vi.fn(),
   setActiveOrganization: vi.fn(),
@@ -20,11 +22,12 @@ const {
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
-    useSearch: () => ({}),
+    useSearch: () => search.value,
   }),
   Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  useNavigate: () => navigate,
 }))
+
+vi.mock("../../lib/page-navigation", () => ({ loadPage, reloadPage: vi.fn() }))
 
 vi.mock("../../lib/i18n/react", () => ({
   useI18n: () => ({
@@ -65,10 +68,15 @@ vi.mock("../../lib/auth-client", () => ({
 }))
 
 import { Route } from "../login"
+import { asMockedRoute } from "../../test-utils/mocked-route"
+
+const route = asMockedRoute(Route)
+const RoutePage = route.component
 
 afterEach(() => {
   cleanup()
-  navigate.mockReset()
+  loadPage.mockReset()
+  search.value = {}
   signInEmail.mockReset()
   listOrganizations.mockReset()
   setActiveOrganization.mockReset()
@@ -92,7 +100,7 @@ describe("LoginPage", () => {
     })
     setActiveOrganization.mockResolvedValue({ data: { session: { activeOrganizationId: "org_1" } } })
 
-    render(<Route.component />)
+    render(<RoutePage />)
 
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "test@example.com" },
@@ -106,7 +114,30 @@ describe("LoginPage", () => {
       expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_1" })
     })
 
-    expect(navigate).toHaveBeenCalledWith({ to: "/onboarding" })
+    await waitFor(() => {
+      expect(loadPage).toHaveBeenCalledWith("/onboarding")
+    })
+    expect(loadPage).toHaveBeenCalledTimes(1)
+  })
+
+  it("loads the requested page acting for the only organization", async () => {
+    search.value = { redirect: "/invoices/inv_1" }
+    signInEmail.mockResolvedValue({ data: { user: { id: "user_1" } } })
+    listOrganizations.mockResolvedValue({
+      data: [{ id: "org_1", name: "Org 1", slug: "org-1", createdAt: new Date("2026-03-09T00:00:00.000Z") }],
+    })
+    setActiveOrganization.mockResolvedValue({ data: { session: { activeOrganizationId: "org_1" } } })
+
+    render(<RoutePage />)
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } })
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } })
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }))
+
+    await waitFor(() => {
+      expect(loadPage).toHaveBeenCalledWith("/invoices/inv_1")
+    })
+    expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_1" })
+    expect(loadPage).toHaveBeenCalledTimes(1)
   })
 
   it("routes users with multiple orgs to onboarding so they can choose", async () => {
@@ -128,7 +159,7 @@ describe("LoginPage", () => {
       ],
     })
 
-    render(<Route.component />)
+    render(<RoutePage />)
 
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "test@example.com" },
@@ -143,6 +174,8 @@ describe("LoginPage", () => {
     })
 
     expect(setActiveOrganization).not.toHaveBeenCalled()
-    expect(navigate).toHaveBeenCalledWith({ to: "/onboarding" })
+    await waitFor(() => {
+      expect(loadPage).toHaveBeenCalledWith("/onboarding")
+    })
   })
 })

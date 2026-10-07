@@ -9,8 +9,8 @@ import {
 import { isCloudDistribution } from "../../lib/distribution"
 import { prisma } from "../../lib/db"
 import { evaluateOnboardingReadiness } from "../../lib/onboarding/readiness"
-import { onboardingInvoicingIdentitySchema } from "@yaip/contracts/onboarding"
-import { orgProcedure, router } from "../init"
+import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
+import { authorizedProcedure, router } from "../init"
 
 const onboardingInputSchema = z.object({
   profile: cloudOnboardingProfileSchema,
@@ -177,7 +177,7 @@ function toOnboardingResponse(snapshot: OnboardingSnapshot) {
 }
 
 export const onboardingRouter = router({
-  getStatus: orgProcedure.query(async ({ ctx }) => {
+  getStatus: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     if (!isCloudDistribution) {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -189,7 +189,7 @@ export const onboardingRouter = router({
     return toOnboardingResponse(snapshot)
   }),
 
-  saveDraft: orgProcedure
+  saveDraft: authorizedProcedure("settings:update")
     .input(onboardingDraftSchema)
     .mutation(async ({ ctx, input }) => {
       if (!isCloudDistribution) {
@@ -273,7 +273,7 @@ export const onboardingRouter = router({
       return toOnboardingResponse(snapshot)
     }),
 
-  completeManual: orgProcedure
+  completeManual: authorizedProcedure("settings:update")
     .input(completeManualInputSchema)
     .mutation(async ({ ctx, input }) => {
       if (!isCloudDistribution) {
@@ -305,7 +305,7 @@ export const onboardingRouter = router({
       return toOnboardingResponse(await loadOnboardingSnapshot(ctx.organizationId))
     }),
 
-  complete: orgProcedure.input(onboardingInputSchema).mutation(async ({ ctx, input }) => {
+  complete: authorizedProcedure("settings:update").input(onboardingInputSchema).mutation(async ({ ctx, input }) => {
     if (!isCloudDistribution) {
       throw new TRPCError({
         code: "FORBIDDEN",

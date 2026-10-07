@@ -1,8 +1,12 @@
 import { createServerFn } from "@tanstack/react-start"
 import {
+  parseBuyerSnapshot,
+  parseSellerSnapshot,
+} from "@quits/contracts/documents"
+import {
   publicInvoiceCheckoutResultSchema,
   publicInvoiceTokenInputSchema,
-} from "@yaip/contracts/payments"
+} from "@quits/contracts/payments"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -23,20 +27,14 @@ export function serializePublicInvoiceSession(session: {
     issueDate: Date | string
     dueDate: Date | string
     totalGross: Decimalish
+    amountPaid: Decimalish
+    amountCredited: Decimalish
     totalTax: Decimalish
     subtotalNet: Decimalish
     currency: string
     notes: string | null
-    sellerSnapshot: {
-      companyName?: string | null
-      companyEmail?: string | null
-      companyAddress?: string | null
-    } | null
-    buyerSnapshot: {
-      name?: string | null
-      email?: string | null
-      company?: string | null
-    } | null
+    sellerSnapshot: unknown
+    buyerSnapshot: unknown
     contact: {
       name: string
       email: string | null
@@ -55,6 +53,13 @@ export function serializePublicInvoiceSession(session: {
   stripeEnabled: boolean
 }) {
   const { invoice } = session
+  const totalGross = toNumber(invoice.totalGross)
+  const amountPaid = toNumber(invoice.amountPaid)
+  const amountCredited = toNumber(invoice.amountCredited)
+  const balanceDue =
+    session.paymentState === "paid"
+      ? 0
+      : Math.max(Math.round((totalGross - amountCredited - amountPaid) * 100) / 100, 0)
 
   return {
     paymentState: session.paymentState,
@@ -66,13 +71,16 @@ export function serializePublicInvoiceSession(session: {
       paymentStatus: invoice.paymentStatus,
       issueDate: toDateString(invoice.issueDate),
       dueDate: toDateString(invoice.dueDate),
-      totalGross: toNumber(invoice.totalGross),
+      totalGross,
+      amountPaid,
+      amountCredited,
+      balanceDue,
       totalTax: toNumber(invoice.totalTax),
       subtotalNet: toNumber(invoice.subtotalNet),
       currency: invoice.currency,
       notes: invoice.notes,
-      sellerSnapshot: invoice.sellerSnapshot,
-      buyerSnapshot: invoice.buyerSnapshot,
+      sellerSnapshot: parseSellerSnapshot(invoice.sellerSnapshot),
+      buyerSnapshot: parseBuyerSnapshot(invoice.buyerSnapshot),
       contact: invoice.contact,
       items: invoice.items.map((item) => ({
         id: item.id,

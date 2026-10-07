@@ -98,4 +98,8 @@ export const daInvoicesMessages = {
   "invoices.detail.paymentLink.description":
     "Del dette hostede link med kunden for at modtage betaling via Stripe.",
   "invoices.detail.paymentLink.copy": "Kopiér link",
+  "invoices.detail.email.status.sending": "Sender",
+  "invoices.detail.email.reason.sending": "E-mailudbyderen har endnu ikke bekræftet leveringen. Der prøves automatisk igen, og kunden får ikke en dublet. Fakturaen kan ikke redigeres, før leveringen er bekræftet eller opgivet.",
+  "invoices.detail.email.status.unconfirmed": "Levering ikke bekræftet",
+  "invoices.detail.email.reason.unconfirmed": "E-mailudbyderen bekræftede aldrig leveringen. Kunden har måske modtaget den, måske ikke; send e-mailen igen, hvis du er i tvivl.",
 } as const

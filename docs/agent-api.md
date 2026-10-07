@@ -1,0 +1,188 @@
+# Agent API (MCP)
+
+Quits exposes an [MCP](https://modelcontextprotocol.io) server so AI agents such as Claude can read
+your invoicing data, draft documents, and send them with a human in the loop. Every agent call goes
+through the same domain core as the UI, so role checks, idempotency, approvals, and the audit log
+behave the same for people and agents.
+
+- Endpoint: `POST https://<your-quits-host>/api/mcp`
+- Transport: Streamable HTTP, stateless, JSON responses (no sessions, no server-sent events)
+- Authentication: `Authorization: Bearer quits_ak_...`
+
+## Create an agent key
+
+1. Open **Settings** and find **Agent keys** (visible to roles with `agent:read`; admins by default).
+2. Choose **New agent key**, give it a name, and start from a preset:
+   - **Read-only bookkeeper**: `read_only` mode, read scopes only.
+   - **Drafting assistant**: `approval_required` mode, can create contacts and drafts; sends,
+     credit notes, and payments wait for approval.
+   - **Full access**: `full_access` mode with every scope you hold.
+3. Optionally adjust the mode, pick individual scopes, and set an expiry.
+4. Copy the secret. It is shown once; Quits stores only a SHA-256 hash. If you lose it, revoke the
+   key and create a new one.
+
+A key never exceeds the person who created it: its effective permissions are its scopes intersected
+with the creator's current role. If the creator leaves the organization the key stops working.
+Revoking a key takes effect immediately and expires its pending approval requests.
+
+## Connect a client
+
+### Claude Code
+
+```sh
+claude mcp add --transport http quits https://<your-quits-host>/api/mcp \
+  --header "Authorization: Bearer quits_ak_..."
+```
+
+### Claude Desktop and other MCP clients
+
+Clients that support remote Streamable HTTP servers with custom headers take a config like:
+
+```json
+{
+  "mcpServers": {
+    "quits": {
+      "type": "http",
+      "url": "https://<your-quits-host>/api/mcp",
+      "headers": { "Authorization": "Bearer quits_ak_..." }
+    }
+  }
+}
+```
+
+Clients that only speak stdio can use a bridge such as
+`npx mcp-remote https://<your-quits-host>/api/mcp --header "Authorization: Bearer quits_ak_..."`.
+
+The server is stateless: `GET` and `DELETE` return `405`, which MCP clients treat as "no
+server-initiated stream". Requests without a valid key get `401` with a JSON-RPC error explaining why
+(missing, invalid, revoked, or expired key).
+
+## Modes
+
+| Mode | Reads | Drafts and edits | Outward-facing commands |
+| --- | --- | --- | --- |
+| `read_only` | yes | no (command tools are hidden) | no |
+| `approval_required` (default) | yes | yes | queued for a person |
+| `full_access` | yes | yes | yes |
+
+Outward-facing commands are the ones that leave Quits or move money: sending and emailing documents,
+issuing credit notes, recording or voiding payments, and activating recurring schedules. Every
+command tool's description says whether it is outward-facing.
+
+## Commands, idempotency, and approvals
+
+Every command tool requires a `clientRequestId` that the agent chooses (a UUID works). Quits stores a
+receipt per `(agent key, clientRequestId)`: calling again with the same id returns the first outcome
+instead of running the command twice, so agents can retry safely after timeouts.
+
+Command tools return a command record:
+
+```json
+{
+  "commandId": "cmd_...",
+  "commandType": "invoice.send",
+  "status": "completed | awaiting_approval | rejected | expired | failed",
+  "result": {},
+  "error": { "tag": "InvalidState", "message": "Only draft invoices can be sent", "code": "not_draft" },
+  "approvalRequestId": "..."
+}
+```
+
+With an `approval_required` key, an outward-facing command returns `awaiting_approval`. It appears in
+the **Approvals** page with the agent, a readable summary (for example "Send invoice INV-0042
+(1,250.00 DKK) to billing@acme.dk"), the key facts of the document, and the stored input. Anyone
+holding the command's permission (for example `invoice:send`) can approve or reject it with an
+optional note. Approving runs the stored command as the agent and records the approver on the
+resulting events. Requests expire after 7 days.
+
+Approval is bound to what the person reviewed. If the document changes after the request was queued
+(for example the agent edits the draft or the customer's email address changes), approving fails with
+`code: "changed_since_review"` instead of sending the changed document. Request approval again after
+editing.
+
+The agent follows the outcome with `command_wait` (blocks up to 30 seconds and returns
+`{ command, timedOut }`) or `command_status`. Agents can only see their own commands. Do not resend
+the command while it is awaiting approval; with the same `clientRequestId` a resend just returns the
+same pending record.
+
+Tool failures are returned as MCP tool errors with `{ "error": { "tag", "message", "code?",
+"issues?" } }`. Tags: `Forbidden`, `NotFound`, `InvalidState`, `ValidationFailed`,
+`ExternalFailure`, `InternalError`. Stack traces are never returned.
+
+## Tools
+
+Tools are listed per key: an agent only sees tools whose scope it holds, and read-only keys never see
+command tools. Money is returned as numbers in the document currency; dates are ISO 8601 strings.
+
+| Tool | Kind | Scope | Notes |
+| --- | --- | --- | --- |
+| `organization_read` | query | `settings:read` | Company, currency, locale, tax regime, `pricesIncludeTax`, and the key's mode and scopes. Call first. |
+| `contacts_list` | query | `contact:read` | `search` (name, email, company), `limit`, `cursor` |
+| `contact_get` | query | `contact:read` | `id` |
+| `contact_create` | command | `contact:create` | Contact fields + `clientRequestId` |
+| `contact_update` | command | `contact:update` | `id`, changed fields + `clientRequestId` |
+| `invoices_list` | query | `invoice:read` | `status`, `paymentStatus`, `contactId`, `limit`, `cursor`; includes `amountPaid`, `amountCredited`, `balanceDue` |
+| `invoice_get` | query | `invoice:read` | `id`; includes line items and public payment link |
+| `invoice_create_draft` | command | `invoice:create` | `contactId`, `dueDate`, `items`, `taxRate`, `currency?`, `notes?` |
+| `invoice_update_draft` | command | `invoice:update` | `id` + changed fields; `items` replaces all lines |
+| `invoice_send` | command, outward-facing | `invoice:send` | `id`, `allowSendWithoutEmail?` |
+| `invoice_resend_email` | command, outward-facing | `invoice:send` | `id` |
+| `quotes_list` | query | `quote:read` | `status`, `contactId`, `limit`, `cursor` |
+| `quote_get` | query | `quote:read` | `id`; includes line items and linked invoices |
+| `quote_create_draft` | command | `quote:create` | `contactId`, `expiryDate`, `items`, `taxRate`, `currency?`, `notes?` |
+| `quote_update_draft` | command | `quote:update` | `id` + changed fields; `items` replaces all lines |
+| `quote_send` | command, outward-facing | `quote:send` | `id`, `allowSendWithoutEmail?` |
+| `quote_resend_email` | command, outward-facing | `quote:send` | `id` |
+| `quote_convert_to_invoice` | command | `invoice:create` | `id` of an accepted quote; creates a draft invoice |
+| `payments_list` | query | `payment:read` | `invoiceId`; payments (incl. voided) and `balanceDue` |
+| `payment_record` | command, outward-facing | `payment:create` | `invoiceId`, `amount`, `paidAt` (YYYY-MM-DD), `method`, `reference?`, `note?` |
+| `payment_void` | command, outward-facing | `payment:void` | `paymentId`, `reason` |
+| `credit_notes_list` | query | `creditNote:read` | `invoiceId?`, `limit`, `cursor` |
+| `credit_note_get` | query | `creditNote:read` | `id` |
+| `credit_note_issue` | command, outward-facing | `creditNote:create` | `invoiceId`, `reason`, `mode` (`full`, `lines` + `lines`, `amount` + `amount`) |
+| `credit_note_send` | command, outward-facing | `creditNote:send` | `id` |
+| `reminder_send_now` | command, outward-facing | `invoice:send` | `invoiceId` |
+| `invoice_pause_reminders` | command | `invoice:update` | `invoiceId` |
+| `invoice_resume_reminders` | command, outward-facing | `invoice:send` | `invoiceId`; the approval names the recipient and the next reminder |
+| `recurring_list` | query | `recurring:read` | `status?`, `limit`, `cursor` |
+| `recurring_create` | command | `recurring:create` | schedule fields; auto-sending schedules from approval-mode keys start paused |
+| `recurring_update` | command | `recurring:update` | `id` + changed fields |
+| `recurring_set_status` | command | `recurring:update` | `id`, `status` (`paused`, `ended`) |
+| `recurring_resume` | command, outward-facing when the schedule auto-sends | `recurring:update` | `id` |
+| `recurring_run_now` | command, outward-facing when the schedule auto-sends | `recurring:update` | `id` |
+| `export_einvoice` | query | `invoice:read` (+ `creditNote:read` for credit notes) | `kind` (`invoice`, `creditNote`), `id`; Peppol UBL XML or the missing fields |
+| `export_accounting` | query | `export:read` | `from`, `to` (YYYY-MM-DD), `dataset` (`invoices`, `creditNotes`, `payments`) |
+| `activity_read` | query | `audit:read` | `afterSequence`, `aggregateType`, `aggregateId`, `limit`; page with `nextSequence` while `hasMore` |
+| `command_status` | query | any write-mode key | `commandId` |
+| `command_wait` | query | any write-mode key | `commandId`, `timeoutMs` (0-30000, default 15000) |
+
+Tool input schemas are generated from the zod contracts in `@quits/contracts` (`agent`, `contacts`,
+`invoices`), so the MCP schema always matches what the UI accepts.
+
+List tools return `{ items, nextCursor }`. Pass `nextCursor` back as `cursor` to read the next page;
+it is `null` on the last page.
+
+## Security notes
+
+- Keys are stored as SHA-256 hashes; the secret is shown once when the key is created.
+- An agent never has more permissions than the person who created its key, now or later.
+- Browsers are refused unless the request `Origin` is the app's own origin or listed in
+  `QUITS_MCP_ALLOWED_ORIGINS` (comma-separated). CLI and desktop clients send no `Origin` and are not
+  affected.
+
+## A typical session
+
+1. `organization_read` to learn the currency, tax regime, and mode.
+2. `contacts_list { search: "Acme" }`, then `contact_create` if the customer does not exist.
+3. `invoice_create_draft { contactId, dueDate, items, clientRequestId: "draft-acme-oct" }`.
+4. `invoice_send { id, clientRequestId: "send-acme-oct" }` returns `awaiting_approval`.
+5. A person approves it in **Approvals**.
+6. `command_wait { commandId }` returns `status: "completed"` with the sent invoice.
+
+## For developers: adding tools
+
+Tools live in `apps/oss/src/domain/agent-tools/`. The registry (`registry.ts`) documents the steps:
+write the domain command, then add one `defineCommandTool` or `defineQueryTool` entry in
+`tools/<feature>.ts`. Command tools inherit the command's permission, `clientRequestId` handling,
+and approval behaviour. End-to-end tests drive the endpoint with the MCP SDK client in
+`domain/agent-tools/__tests__/mcp-endpoint.integration.test.ts`.

@@ -5,6 +5,7 @@ import { prisma } from "../../../lib/db"
 import { resetRuntimeServices, setRuntimeServices } from "../../../lib/runtime/services"
 import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
 import { appRouter } from "../../router"
+import { ensureTestMembership } from "../../../test-utils/membership"
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
@@ -12,7 +13,7 @@ const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 function restoreEnv(previous: Record<string, string | undefined>) {
   process.env.RESEND_API_KEY = previous.RESEND_API_KEY
   process.env.FROM_EMAIL = previous.FROM_EMAIL
-  process.env.YAIP_DISTRIBUTION = previous.YAIP_DISTRIBUTION
+  process.env.QUITS_DISTRIBUTION = previous.QUITS_DISTRIBUTION
 }
 
 async function createOrgWithCaller(name: string) {
@@ -28,6 +29,7 @@ async function createOrgWithCaller(name: string) {
       subscriptionStatus: "pro",
     },
   })
+  await ensureTestMembership(orgId, `${name}-user`)
 
   await prisma.orgSettings.create({
     data: {
@@ -60,14 +62,14 @@ describeIfDatabase("settings branded document sending", () => {
     setRuntimeExtensions([])
     delete process.env.RESEND_API_KEY
     delete process.env.FROM_EMAIL
-    delete process.env.YAIP_DISTRIBUTION
+    delete process.env.QUITS_DISTRIBUTION
   })
 
   it("returns shared-sender-only state in OSS mode", async () => {
     const previous = {
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
-      YAIP_DISTRIBUTION: process.env.YAIP_DISTRIBUTION,
+      QUITS_DISTRIBUTION: process.env.QUITS_DISTRIBUTION,
     }
 
     process.env.RESEND_API_KEY = "re_test_123456789"
@@ -89,13 +91,13 @@ describeIfDatabase("settings branded document sending", () => {
         lastSyncedAt: null,
         lastSyncSource: null,
         sharedSender: {
-          fromName: "Acme via YAIP",
+          fromName: "Acme via Quits",
           fromEmail: "billing@yaip.example",
           replyTo: "billing@acme.com",
           usingBrandedDomain: false,
         },
         effectiveSender: {
-          fromName: "Acme via YAIP",
+          fromName: "Acme via Quits",
           fromEmail: "billing@yaip.example",
           replyTo: "billing@acme.com",
           usingBrandedDomain: false,
@@ -111,12 +113,12 @@ describeIfDatabase("settings branded document sending", () => {
     const previous = {
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
-      YAIP_DISTRIBUTION: process.env.YAIP_DISTRIBUTION,
+      QUITS_DISTRIBUTION: process.env.QUITS_DISTRIBUTION,
     }
 
     process.env.RESEND_API_KEY = "re_test_123456789"
     process.env.FROM_EMAIL = "billing@yaip.example"
-    process.env.YAIP_DISTRIBUTION = "cloud"
+    process.env.QUITS_DISTRIBUTION = "cloud"
     setRuntimeExtensions([
       {
         id: "test-cloud-email",

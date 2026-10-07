@@ -85,4 +85,8 @@ export const enQuotesMessages = {
   "quotes.detail.convertedToInvoice": "Converted to invoice:",
   "quotes.detail.quoteTo": "Quote To",
   "quotes.detail.title": "Quote",
+  "quotes.detail.email.status.sending": "Sending",
+  "quotes.detail.email.reason.sending": "The email provider has not confirmed delivery yet. It is retried automatically, and the customer will not get a duplicate. The quote cannot be edited until delivery is confirmed or given up.",
+  "quotes.detail.email.status.unconfirmed": "Delivery unconfirmed",
+  "quotes.detail.email.reason.unconfirmed": "The email provider never confirmed delivery. The customer may or may not have received it; resend the email if in doubt.",
 } as const
