@@ -1,4 +1,4 @@
-import { activityReadToolInputSchema } from "@yaip/contracts/agent"
+import { activityReadToolInputSchema } from "@quits/contracts/agent"
 import { readActivity } from "../../events"
 import { defineQueryTool, type AgentTool } from "../define"
 

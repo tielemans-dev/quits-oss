@@ -17,7 +17,7 @@ function callerFor(org: Org, role: Role) {
   const userId = org.actors[role].userId
   return appRouter.createCaller({
     session: {
-      user: { id: userId, email: `${userId}@test.yaip.invalid`, name: userId },
+      user: { id: userId, email: `${userId}@test.quits.invalid`, name: userId },
       session: { activeOrganizationId: org.organizationId },
     },
   } as never)
@@ -80,7 +80,7 @@ describeIfDatabase("agents router", () => {
         scopes: ["invoice:read", "contact:read"],
         expiresInDays: 30,
       })
-      expect(created.secret).toMatch(/^yaip_ak_/)
+      expect(created.secret).toMatch(/^quits_ak_/)
       expect(created.key.displayPrefix).toBe(created.secret.slice(0, created.key.displayPrefix.length))
       expect(created.key.expiresAt).toBeInstanceOf(Date)
 

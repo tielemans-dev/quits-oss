@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import type { CreditNoteIssueInput } from "@yaip/contracts/credit-notes"
+import type { CreditNoteIssueInput } from "@quits/contracts/credit-notes"
 import { trpc } from "../../trpc/client"
 import { buildCreditLines, type CreditBuildErrorCode } from "../../lib/credit-notes/calculation"
 import { formatCurrency } from "../../lib/i18n/format"

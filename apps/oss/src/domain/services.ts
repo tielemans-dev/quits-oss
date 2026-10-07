@@ -3,7 +3,7 @@ import type { Prisma } from "../../generated/prisma/client"
 import type { Actor } from "./actor"
 
 /** The Prisma transaction a command runs in. */
-export class Db extends Context.Tag("yaip/Db")<Db, Prisma.TransactionClient>() {}
+export class Db extends Context.Tag("quits/Db")<Db, Prisma.TransactionClient>() {}
 
 export type PendingEvent = {
   aggregateType: string
@@ -31,4 +31,4 @@ export type CommandScope = {
   readonly enqueue: (job: PendingJob) => void
 }
 
-export class Command extends Context.Tag("yaip/Command")<Command, CommandScope>() {}
+export class Command extends Context.Tag("quits/Command")<Command, CommandScope>() {}

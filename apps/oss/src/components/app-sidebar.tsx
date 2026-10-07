@@ -57,7 +57,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1">
-          <span className="text-lg font-bold tracking-tight">YAIP</span>
+          <span className="text-lg font-bold tracking-tight">Quits</span>
         </div>
       </SidebarHeader>
       <SidebarContent>

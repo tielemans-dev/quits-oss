@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowLeft, Download, Mail } from "lucide-react"
-import { parseBuyerSnapshot } from "@yaip/contracts/documents"
+import { parseBuyerSnapshot } from "@quits/contracts/documents"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
 import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"

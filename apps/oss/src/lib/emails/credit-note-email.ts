@@ -44,7 +44,7 @@ export function buildCreditNoteEmailContent({
   org,
   contactName,
 }: Omit<SendCreditNoteEmailParams, "to">) {
-  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "YAIP")
+  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale

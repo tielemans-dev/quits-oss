@@ -12,7 +12,7 @@ const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 function clearEmailEnv() {
   delete process.env.RESEND_API_KEY
   delete process.env.FROM_EMAIL
-  delete process.env.YAIP_DISTRIBUTION
+  delete process.env.QUITS_DISTRIBUTION
 }
 
 async function createOrgWithCaller(name: string) {
@@ -97,7 +97,7 @@ describeIfDatabase("settings email delivery status", () => {
   it("reports managed cloud email delivery without exposing env diagnostics", async () => {
     process.env.RESEND_API_KEY = "re_test_123456789"
     process.env.FROM_EMAIL = "cloud@yaip.example"
-    process.env.YAIP_DISTRIBUTION = "cloud"
+    process.env.QUITS_DISTRIBUTION = "cloud"
     setRuntimeExtensions([
       {
         id: "test-cloud-email",

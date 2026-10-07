@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
-import type { RecurringEnd } from "@yaip/contracts/recurring"
+import type { RecurringEnd } from "@quits/contracts/recurring"
 import { trpc } from "../../trpc/client"
 import { formatCurrency } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"

@@ -8,7 +8,7 @@ export type CommandDefinition<Input = unknown, Result = unknown> = {
   readonly type: string
   readonly permission: Permission
   /**
-   * Outward-facing commands send something outside YAIP or move money. Agents in
+   * Outward-facing commands send something outside Quits or move money. Agents in
    * `approval_required` mode queue them for a human instead of running them.
    */
   readonly outwardFacing: boolean

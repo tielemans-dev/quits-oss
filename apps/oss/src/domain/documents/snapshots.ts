@@ -1,4 +1,4 @@
-import type { BuyerSnapshot, SellerSnapshot } from "@yaip/contracts/documents"
+import type { BuyerSnapshot, SellerSnapshot } from "@quits/contracts/documents"
 import type { TaxId } from "../../lib/compliance"
 
 export function buildSellerSnapshot(

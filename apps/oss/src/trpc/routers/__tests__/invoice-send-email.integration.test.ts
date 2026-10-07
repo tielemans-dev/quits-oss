@@ -23,8 +23,8 @@ const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 
 function restoreEnv(previous: Record<string, string | undefined>) {
-  process.env.YAIP_APP_ORIGIN = previous.YAIP_APP_ORIGIN
-  process.env.YAIP_PUBLIC_PAYMENT_SECRET = previous.YAIP_PUBLIC_PAYMENT_SECRET
+  process.env.QUITS_APP_ORIGIN = previous.QUITS_APP_ORIGIN
+  process.env.QUITS_PUBLIC_PAYMENT_SECRET = previous.QUITS_PUBLIC_PAYMENT_SECRET
   process.env.RESEND_API_KEY = previous.RESEND_API_KEY
   process.env.FROM_EMAIL = previous.FROM_EMAIL
 }
@@ -127,14 +127,14 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("includes a public payment link in invoice email when Stripe is configured and records a sent attempt", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 
@@ -164,7 +164,7 @@ describeIfDatabase("invoice send email delivery", () => {
         expect.objectContaining({
           to: "buyer@example.com",
           html: expect.stringContaining("https://app.example.test/pay/"),
-          from: "Acme via YAIP <billing@example.com>",
+          from: "Acme via Quits <billing@example.com>",
           replyTo: "billing@acme.com",
         }),
         { idempotencyKey: expect.stringMatching(new RegExp(`^invoice-send:${invoice.id}:`)) }
@@ -177,14 +177,14 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("falls back to the shared sender when branded sending is not verified", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@yaip.app"
 
@@ -199,7 +199,7 @@ describeIfDatabase("invoice send email delivery", () => {
 
       expect(deliver).toHaveBeenCalledWith(
         expect.objectContaining({
-          from: "Acme via YAIP <billing@yaip.app>",
+          from: "Acme via Quits <billing@yaip.app>",
           replyTo: "billing@acme.com",
         }),
         { idempotencyKey: expect.stringMatching(/^invoice-send:/) }
@@ -212,8 +212,8 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("sends invoice email without payment CTA when Stripe is not configured and still records a sent attempt", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
@@ -253,14 +253,14 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("rejects send when email delivery is not configured unless degraded send is explicitly allowed", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     delete process.env.RESEND_API_KEY
     delete process.env.FROM_EMAIL
 
@@ -363,14 +363,14 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("records a failed attempt and keeps the invoice in draft when provider delivery throws", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
     vi.mocked(deliver).mockRejectedValueOnce(
@@ -406,8 +406,8 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("blocks email send when the contact has no email address", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
@@ -443,14 +443,14 @@ describeIfDatabase("invoice send email delivery", () => {
 
   it("resends email for a sent invoice without rotating the public payment link", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_PAYMENT_SECRET: process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 

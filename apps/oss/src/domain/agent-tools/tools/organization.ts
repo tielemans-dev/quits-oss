@@ -45,7 +45,7 @@ export const organizationTools: AgentTool[] = [
           scopes: actor.scopes,
           approvalRequiredFor:
             actor.mode === "approval_required"
-              ? "Commands that leave YAIP or move money, such as invoice_send, wait for a person to approve."
+              ? "Commands that leave Quits or move money, such as invoice_send, wait for a person to approve."
               : null,
         },
       }

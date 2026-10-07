@@ -1,6 +1,11 @@
-# YAIP — Yet Another Invoicing App
+# Quits
 
 Source-available invoicing for freelancers and small businesses.
+
+> **Upgrading from YAIP?** Quits was previously called YAIP. Nothing needs to change to upgrade:
+> `YAIP_*` environment variables are still read when the matching `QUITS_*` variable is not set,
+> and agent keys starting with `yaip_ak_` keep working (new keys start with `quits_ak_`). The
+> packages are now published as `@quits/*`. Database names and credentials are unchanged.
 
 ## Features
 
@@ -110,7 +115,7 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 
 ### Scheduled Work
 
-YAIP runs its automation from one idempotent endpoint, `/api/cron/tick`, protected by
+Quits runs its automation from one idempotent endpoint, `/api/cron/tick`, protected by
 `Authorization: Bearer $CRON_SECRET`. Each tick, in order:
 
 1. marks issued invoices with a balance due past their due date as overdue,
@@ -127,7 +132,7 @@ answer `503` while it is unset or still the placeholder `change-me-in-production
 call the endpoint from any scheduler, for example cron:
 
 ```bash
-*/5 * * * * curl -fsS --connect-timeout 10 --max-time 240 -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-yaip-host/api/cron/tick
+*/5 * * * * curl -fsS --connect-timeout 10 --max-time 240 -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-quits-host/api/cron/tick
 ```
 
 The tick answers `200` with `ok: true` when every task succeeded, and `500` with `ok: false`, the
@@ -145,7 +150,7 @@ invoices.
 
 - This repository is the OSS runtime baseline.
 - This repository now also owns the versioned app artifact consumed by hosted cloud builds.
-- Stable consumer entrypoints are exposed through the versioned `@yaip/oss` release artifact export surface.
+- Stable consumer entrypoints are exposed through the versioned `@quits/oss` release artifact export surface.
 - Hosted cloud-specific modules (managed billing/webhooks/infra) belong to a private `yaip-cloud` repository.
 - Ownership and constraints are documented in `docs/architecture/oss-cloud-boundary.md`.
 - Release and cutover checklist is documented in `docs/releases/oss-v1-cutover.md`.
@@ -208,9 +213,9 @@ This repository is Bun-native. Use `bun install` and `bun run ...` commands for 
 | `RESEND_API_KEY` | Resend API key for sending invoice/quote/invite emails | No |
 | `FROM_EMAIL` | Sender email address used for outgoing emails | No |
 | `CRON_SECRET` | Bearer token required by `/api/cron/tick` and `/api/cron/mark-overdue` | Yes (prod) |
-| `YAIP_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
-| `YAIP_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
-| `YAIP_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
+| `QUITS_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
+| `QUITS_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
+| `QUITS_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
 
 ## Contributing
 

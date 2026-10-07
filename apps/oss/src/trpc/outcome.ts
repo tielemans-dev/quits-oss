@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server"
-import type { CommandError } from "@yaip/contracts/agent"
+import type { CommandError } from "@quits/contracts/agent"
 import type { CommandOutcome } from "../domain/execute"
 
 const codeByTag: Record<string, TRPCError["code"]> = {

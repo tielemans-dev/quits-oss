@@ -5,7 +5,7 @@ import {
   paymentVoidInputSchema,
   type PaymentMethod,
   type PaymentSource,
-} from "@yaip/contracts/payments"
+} from "@quits/contracts/payments"
 import { Prisma } from "../../../generated/prisma/client"
 import { formatIsoDate, startOfDayInTimeZone } from "../../lib/exports/format"
 import { appLogger } from "../../lib/observability"

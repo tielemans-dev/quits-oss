@@ -3,8 +3,8 @@ import {
   invoiceIdInputSchema,
   invoiceSendInputSchema,
   invoiceUpdateDraftInputSchema,
-} from "@yaip/contracts/invoices"
-import { documentIdToolInputSchema, invoicesListToolInputSchema } from "@yaip/contracts/agent"
+} from "@quits/contracts/invoices"
+import { documentIdToolInputSchema, invoicesListToolInputSchema } from "@quits/contracts/agent"
 import { prisma } from "../../../lib/db"
 import {
   createInvoiceDraft,

@@ -13,13 +13,13 @@ describeIfDatabase("public invoice checkout session", () => {
   it("distinguishes invalid, unavailable, and already-paid payment link states", async () => {
     const orgId = randomUUID()
     const slug = `invoice-session-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
-    const previousOrigin = process.env.YAIP_APP_ORIGIN
-    const previousSecret = process.env.YAIP_PUBLIC_PAYMENT_SECRET
+    const previousOrigin = process.env.QUITS_APP_ORIGIN
+    const previousSecret = process.env.QUITS_PUBLIC_PAYMENT_SECRET
     const previousResendApiKey = process.env.RESEND_API_KEY
     const previousFromEmail = process.env.FROM_EMAIL
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = "payment-link-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "payment-link-secret-123456"
     delete process.env.RESEND_API_KEY
     delete process.env.FROM_EMAIL
 
@@ -158,8 +158,8 @@ describeIfDatabase("public invoice checkout session", () => {
         url: null,
       })
     } finally {
-      process.env.YAIP_APP_ORIGIN = previousOrigin
-      process.env.YAIP_PUBLIC_PAYMENT_SECRET = previousSecret
+      process.env.QUITS_APP_ORIGIN = previousOrigin
+      process.env.QUITS_PUBLIC_PAYMENT_SECRET = previousSecret
       process.env.RESEND_API_KEY = previousResendApiKey
       process.env.FROM_EMAIL = previousFromEmail
       await prisma.organization.deleteMany({ where: { id: orgId } })

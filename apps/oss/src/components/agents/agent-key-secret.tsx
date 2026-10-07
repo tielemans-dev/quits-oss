@@ -21,11 +21,11 @@ function CopyableBlock({ label, value }: { label: string; value: string }) {
 export function AgentKeySecret({ secret }: { secret: string }) {
   const { t } = useI18n()
   const endpoint = mcpEndpointUrl()
-  const claudeCode = `claude mcp add --transport http yaip ${endpoint} --header "Authorization: Bearer ${secret}"`
+  const claudeCode = `claude mcp add --transport http quits ${endpoint} --header "Authorization: Bearer ${secret}"`
   const config = JSON.stringify(
     {
       mcpServers: {
-        yaip: { type: "http", url: endpoint, headers: { Authorization: `Bearer ${secret}` } },
+        quits: { type: "http", url: endpoint, headers: { Authorization: `Bearer ${secret}` } },
       },
     },
     null,

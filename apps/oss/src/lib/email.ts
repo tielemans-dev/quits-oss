@@ -177,7 +177,7 @@ export function layout(content: string, locale?: string | null) {
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;">
   <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
     <div style="background:#111827;padding:24px 32px;">
-      <span style="color:#fff;font-size:20px;font-weight:bold;">YAIP</span>
+      <span style="color:#fff;font-size:20px;font-weight:bold;">Quits</span>
     </div>
     <div style="padding:32px;">
       ${content}
@@ -246,7 +246,7 @@ export function buildInvoiceEmailContent({
   contactName,
   publicPaymentUrl,
 }: Omit<SendInvoiceEmailParams, "to">) {
-  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "YAIP")
+  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeInvoiceNumber = escapeHtml(invoice.number)
   const safeContactName = escapeHtml(contactName)
@@ -336,7 +336,7 @@ export function buildQuoteEmailContent({
   contactName,
   publicQuoteUrl,
 }: Omit<SendQuoteEmailParams, "to">) {
-  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "YAIP")
+  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeQuoteNumber = escapeHtml(quote.number)
   const safeContactName = escapeHtml(contactName)
@@ -425,7 +425,7 @@ export function buildInvitationEmailContent({
       t("email.invitation.subject", locale, { inviterName, orgName })
     ),
     html,
-    fromAddress: `YAIP <${fromAddress()}>`,
+    fromAddress: `Quits <${fromAddress()}>`,
   }
 }
 

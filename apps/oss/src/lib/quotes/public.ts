@@ -6,7 +6,7 @@ import {
   type QuotePublicDecisionState,
   type QuotePublicSnapshot,
   type QuotePublicTokenPayload,
-} from "@yaip/contracts/quotes"
+} from "@quits/contracts/quotes"
 
 export type {
   QuotePublicDecision,

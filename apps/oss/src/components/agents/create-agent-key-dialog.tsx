@@ -3,7 +3,7 @@ import {
   agentScopePresets,
   type AgentMode,
   type AgentScopePresetId,
-} from "@yaip/contracts/agent"
+} from "@quits/contracts/agent"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
 import { Button } from "../ui/button"

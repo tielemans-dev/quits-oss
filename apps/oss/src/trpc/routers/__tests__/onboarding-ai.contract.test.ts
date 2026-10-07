@@ -64,7 +64,7 @@ type CallerLike = {
 
 async function createCaller(distribution: "cloud" | "selfhost", orgId: string) {
   vi.resetModules()
-  process.env.YAIP_DISTRIBUTION = distribution
+  process.env.QUITS_DISTRIBUTION = distribution
   const { appRouter } = await import("../../router")
 
   return appRouter.createCaller({
@@ -83,7 +83,7 @@ async function createCaller(distribution: "cloud" | "selfhost", orgId: string) {
 
 describeIfDatabase("onboarding ai contract", () => {
   afterEach(async () => {
-    process.env.YAIP_DISTRIBUTION = "selfhost"
+    process.env.QUITS_DISTRIBUTION = "selfhost"
     const runtimeServices = await import("../../../lib/runtime/services")
     runtimeServices.resetRuntimeServices()
     vi.resetModules()

@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { creditNoteLineSelectionSchema, creditNoteSendInputSchema } from "@yaip/contracts/credit-notes"
+import { creditNoteLineSelectionSchema, creditNoteSendInputSchema } from "@quits/contracts/credit-notes"
 import { prisma } from "../../../lib/db"
 import type { CommandDefinition } from "../../command"
 import { issueCreditNote, sendCreditNote } from "../../commands/credit-notes"

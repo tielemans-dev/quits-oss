@@ -1,4 +1,4 @@
-import { paymentListInputSchema, paymentRecordInputSchema, paymentVoidInputSchema } from "@yaip/contracts/payments"
+import { paymentListInputSchema, paymentRecordInputSchema, paymentVoidInputSchema } from "@quits/contracts/payments"
 import { prisma } from "../../../lib/db"
 import { recordPayment, voidPayment } from "../../commands/payments"
 import { computeSettlement } from "../../documents/settlement"

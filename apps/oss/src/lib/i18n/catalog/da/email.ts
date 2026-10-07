@@ -1,5 +1,5 @@
 export const daEmailMessages = {
-  "email.footer.sentVia": "Sendt via YAIP — Yet Another Invoicing App",
+  "email.footer.sentVia": "Sendt via Quits",
   "email.invoice.greeting": "Hej {name}, her er din faktura.",
   "email.invoice.subject": "Faktura {number} — {total} forfalder {dueDate}",
   "email.invoice.payCta": "Betal denne faktura",
@@ -11,8 +11,8 @@ export const daEmailMessages = {
   "email.quote.reviewCta": "Gennemgå og svar på dette tilbud",
   "email.quote.reviewFallback": "Hvis knappen ikke virker, kan du bruge dette tilbudslink:",
   "email.invitation.title": "Du er inviteret til at blive en del af {orgName}",
-  "email.invitation.body": "{inviterName} har inviteret dig til at blive en del af deres organisation på YAIP.",
+  "email.invitation.body": "{inviterName} har inviteret dig til at blive en del af deres organisation på Quits.",
   "email.invitation.accept": "Accepter invitation",
   "email.invitation.expiry": "Denne invitation udløber om 48 timer. Hvis du ikke forventede den, kan du ignorere denne e-mail.",
-  "email.invitation.subject": "{inviterName} inviterede dig til at blive en del af {orgName} på YAIP",
+  "email.invitation.subject": "{inviterName} inviterede dig til at blive en del af {orgName} på Quits",
 } as const

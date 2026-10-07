@@ -5,7 +5,7 @@ import {
   reminderPolicyUpdateInputSchema,
   reminderSendNowInputSchema,
   type ReminderPolicy,
-} from "@yaip/contracts/reminders"
+} from "@quits/contracts/reminders"
 import { Prisma } from "../../../generated/prisma/client"
 import type { SystemActor } from "../actor"
 import { composeMessage } from "../../lib/email"

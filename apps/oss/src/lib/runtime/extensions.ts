@@ -1,8 +1,8 @@
 import type {
   RuntimeCapabilities,
   RuntimeCapabilityPatch,
-} from "@yaip/contracts/runtime"
-import { readBooleanEnv } from "@yaip/shared/runtimeEnv"
+} from "@quits/contracts/runtime"
+import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
 import { getRuntimeEnv } from "./platform"
 
 export type RuntimeExtension = {
@@ -46,16 +46,16 @@ function mergeCapabilities(
 function readDefaultCapabilities(
   env: Record<string, string | undefined>
 ): RuntimeCapabilities {
-  const distribution = env.YAIP_DISTRIBUTION?.trim().toLowerCase()
+  const distribution = readProductEnv(env, "DISTRIBUTION")?.trim().toLowerCase()
   const isCloud = distribution === "cloud"
-  const byok = readBooleanEnv(env.YAIP_AI_BYOK_ENABLED, true)
-  const managed = readBooleanEnv(env.YAIP_AI_MANAGED_ENABLED, false)
+  const byok = readBooleanEnv(readProductEnv(env, "AI_BYOK_ENABLED"), true)
+  const managed = readBooleanEnv(readProductEnv(env, "AI_MANAGED_ENABLED"), false)
   const onboardingAiManaged = readBooleanEnv(
-    env.YAIP_ONBOARDING_AI_MANAGED_ENABLED,
+    readProductEnv(env, "ONBOARDING_AI_MANAGED_ENABLED"),
     isCloud
   )
   const onboardingAiEnabled = readBooleanEnv(
-    env.YAIP_ONBOARDING_AI_ENABLED,
+    readProductEnv(env, "ONBOARDING_AI_ENABLED"),
     onboardingAiManaged
   )
 

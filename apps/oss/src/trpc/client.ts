@@ -12,7 +12,7 @@ function getBaseUrl() {
 }
 
 /** Operation context key holding the organization an operation was made for. */
-const ORGANIZATION_CONTEXT_KEY = "yaipOrganizationId"
+const ORGANIZATION_CONTEXT_KEY = "quitsOrganizationId"
 
 function operationOrganizationId(context: Record<string, unknown>): string | null {
   const value = context[ORGANIZATION_CONTEXT_KEY]

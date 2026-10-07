@@ -4,7 +4,7 @@ import {
   recurringIdInputSchema,
   recurringSetStatusInputSchema,
   recurringUpdateInputSchema,
-} from "@yaip/contracts/recurring"
+} from "@quits/contracts/recurring"
 import { prisma } from "../../../lib/db"
 import {
   createRecurringInvoice,

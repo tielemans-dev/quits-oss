@@ -1,13 +1,13 @@
 # Agent API (MCP)
 
-YAIP exposes an [MCP](https://modelcontextprotocol.io) server so AI agents such as Claude can read
+Quits exposes an [MCP](https://modelcontextprotocol.io) server so AI agents such as Claude can read
 your invoicing data, draft documents, and send them with a human in the loop. Every agent call goes
 through the same domain core as the UI, so role checks, idempotency, approvals, and the audit log
 behave the same for people and agents.
 
-- Endpoint: `POST https://<your-yaip-host>/api/mcp`
+- Endpoint: `POST https://<your-quits-host>/api/mcp`
 - Transport: Streamable HTTP, stateless, JSON responses (no sessions, no server-sent events)
-- Authentication: `Authorization: Bearer yaip_ak_...`
+- Authentication: `Authorization: Bearer quits_ak_...`
 
 ## Create an agent key
 
@@ -18,7 +18,7 @@ behave the same for people and agents.
      credit notes, and payments wait for approval.
    - **Full access**: `full_access` mode with every scope you hold.
 3. Optionally adjust the mode, pick individual scopes, and set an expiry.
-4. Copy the secret. It is shown once; YAIP stores only a SHA-256 hash. If you lose it, revoke the
+4. Copy the secret. It is shown once; Quits stores only a SHA-256 hash. If you lose it, revoke the
    key and create a new one.
 
 A key never exceeds the person who created it: its effective permissions are its scopes intersected
@@ -30,8 +30,8 @@ Revoking a key takes effect immediately and expires its pending approval request
 ### Claude Code
 
 ```sh
-claude mcp add --transport http yaip https://<your-yaip-host>/api/mcp \
-  --header "Authorization: Bearer yaip_ak_..."
+claude mcp add --transport http quits https://<your-quits-host>/api/mcp \
+  --header "Authorization: Bearer quits_ak_..."
 ```
 
 ### Claude Desktop and other MCP clients
@@ -41,17 +41,17 @@ Clients that support remote Streamable HTTP servers with custom headers take a c
 ```json
 {
   "mcpServers": {
-    "yaip": {
+    "quits": {
       "type": "http",
-      "url": "https://<your-yaip-host>/api/mcp",
-      "headers": { "Authorization": "Bearer yaip_ak_..." }
+      "url": "https://<your-quits-host>/api/mcp",
+      "headers": { "Authorization": "Bearer quits_ak_..." }
     }
   }
 }
 ```
 
 Clients that only speak stdio can use a bridge such as
-`npx mcp-remote https://<your-yaip-host>/api/mcp --header "Authorization: Bearer yaip_ak_..."`.
+`npx mcp-remote https://<your-quits-host>/api/mcp --header "Authorization: Bearer quits_ak_..."`.
 
 The server is stateless: `GET` and `DELETE` return `405`, which MCP clients treat as "no
 server-initiated stream". Requests without a valid key get `401` with a JSON-RPC error explaining why
@@ -65,13 +65,13 @@ server-initiated stream". Requests without a valid key get `401` with a JSON-RPC
 | `approval_required` (default) | yes | yes | queued for a person |
 | `full_access` | yes | yes | yes |
 
-Outward-facing commands are the ones that leave YAIP or move money: sending and emailing documents,
+Outward-facing commands are the ones that leave Quits or move money: sending and emailing documents,
 issuing credit notes, recording or voiding payments, and activating recurring schedules. Every
 command tool's description says whether it is outward-facing.
 
 ## Commands, idempotency, and approvals
 
-Every command tool requires a `clientRequestId` that the agent chooses (a UUID works). YAIP stores a
+Every command tool requires a `clientRequestId` that the agent chooses (a UUID works). Quits stores a
 receipt per `(agent key, clientRequestId)`: calling again with the same id returns the first outcome
 instead of running the command twice, so agents can retry safely after timeouts.
 
@@ -156,7 +156,7 @@ command tools. Money is returned as numbers in the document currency; dates are 
 | `command_status` | query | any write-mode key | `commandId` |
 | `command_wait` | query | any write-mode key | `commandId`, `timeoutMs` (0-30000, default 15000) |
 
-Tool input schemas are generated from the zod contracts in `@yaip/contracts` (`agent`, `contacts`,
+Tool input schemas are generated from the zod contracts in `@quits/contracts` (`agent`, `contacts`,
 `invoices`), so the MCP schema always matches what the UI accepts.
 
 List tools return `{ items, nextCursor }`. Pass `nextCursor` back as `cursor` to read the next page;
@@ -167,7 +167,7 @@ it is `null` on the last page.
 - Keys are stored as SHA-256 hashes; the secret is shown once when the key is created.
 - An agent never has more permissions than the person who created its key, now or later.
 - Browsers are refused unless the request `Origin` is the app's own origin or listed in
-  `YAIP_MCP_ALLOWED_ORIGINS` (comma-separated). CLI and desktop clients send no `Origin` and are not
+  `QUITS_MCP_ALLOWED_ORIGINS` (comma-separated). CLI and desktop clients send no `Origin` and are not
   affected.
 
 ## A typical session

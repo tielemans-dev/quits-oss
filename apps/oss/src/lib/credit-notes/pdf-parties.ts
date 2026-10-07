@@ -9,7 +9,7 @@ import {
   parseBuyerSnapshot,
   parseSellerSnapshot,
   type DocumentTaxId,
-} from "@yaip/contracts/documents"
+} from "@quits/contracts/documents"
 import { translate } from "../i18n/translate"
 import type { OrgSettingsForPdf } from "../invoice-pdf"
 
@@ -85,7 +85,7 @@ export function creditNotePdfParties(
 
   const seller: CreditNotePdfSeller = sellerSnapshot
     ? {
-        name: sellerSnapshot.companyName || org.companyName || "YAIP",
+        name: sellerSnapshot.companyName || org.companyName || "Quits",
         email: sellerSnapshot.companyEmail ?? null,
         address: sellerSnapshot.companyAddress ?? null,
         taxIds: formatTaxIds(sellerSnapshot.taxIds, locale),
@@ -93,7 +93,7 @@ export function creditNotePdfParties(
         logo: canRenderLogo(org.companyLogo) ? org.companyLogo : null,
       }
     : {
-        name: org.companyName || "YAIP",
+        name: org.companyName || "Quits",
         email: org.companyEmail ?? null,
         address: org.companyAddress ?? null,
         taxIds: [],

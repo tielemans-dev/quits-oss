@@ -9,7 +9,7 @@ import { EmailFinishStep } from "./steps/step-email-finish"
 import { InstanceProfileStep } from "./steps/step-instance-profile"
 import type { SetupStatus, SetupStage, SetupWizardState } from "./types"
 
-const WIZARD_STORAGE_KEY = "yaip.setup.wizard.v1"
+const WIZARD_STORAGE_KEY = "quits.setup.wizard.v1"
 
 const DEFAULT_SETUP_STATE: SetupWizardState = {
   instanceProfile: "smb",

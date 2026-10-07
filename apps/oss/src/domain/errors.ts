@@ -1,5 +1,5 @@
 import { Data } from "effect"
-import type { CommandError } from "@yaip/contracts/agent"
+import type { CommandError } from "@quits/contracts/agent"
 
 export class Forbidden extends Data.TaggedError("Forbidden")<{
   readonly message: string

@@ -10,18 +10,18 @@
 
 ## Project Snapshot
 
-YAIP OSS is the self-deployable runtime baseline for YAIP. This repository also produces the versioned app artifact consumed by hosted cloud builds.
+Quits OSS is the self-deployable runtime baseline for Quits. This repository also produces the versioned app artifact consumed by hosted cloud builds.
 
 ## Core Priorities
 
 1. Preserve OSS/cloud boundaries.
 2. Prefer correctness over convenience.
-3. Keep the published `@yaip/oss` surface stable while refactoring internals.
+3. Keep the published `@quits/oss` surface stable while refactoring internals.
 4. Make maintainability improvements explicit instead of hiding them in local shortcuts.
 
 ## Package Roles
 
-- `apps/oss`: The TanStack Start application package and published `@yaip/oss` artifact.
+- `apps/oss`: The TanStack Start application package and published `@quits/oss` artifact.
 - `packages/contracts`: Shared schemas, branded identifiers, and DTO contracts only. No runtime side effects.
 - `packages/shared`: Shared helpers with explicit subpath exports.
 - `scripts`: Shared repository automation and verification scripts.

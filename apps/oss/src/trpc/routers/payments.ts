@@ -3,7 +3,7 @@ import {
   paymentListInputSchema,
   paymentRecordInputSchema,
   paymentVoidInputSchema,
-} from "@yaip/contracts/payments"
+} from "@quits/contracts/payments"
 import { actorCan } from "../../domain/actor"
 import { recordPayment, voidPayment } from "../../domain/commands/payments"
 import { computeSettlement } from "../../domain/documents/settlement"

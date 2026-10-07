@@ -4,7 +4,7 @@ import { isAllowedMcpOrigin } from "../mcp"
 describe("MCP origin validation", () => {
   const env = {
     BETTER_AUTH_URL: "https://app.example.test/",
-    YAIP_MCP_ALLOWED_ORIGINS: "https://agents.example.test, https://other.example.test",
+    QUITS_MCP_ALLOWED_ORIGINS: "https://agents.example.test, https://other.example.test",
   }
 
   it("allows clients that send no Origin, like CLI and desktop MCP clients", () => {

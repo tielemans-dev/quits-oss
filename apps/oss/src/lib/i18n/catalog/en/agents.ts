@@ -2,7 +2,7 @@
 export const enAgentsMessages = {
   "agents.keys.title": "Agent keys",
   "agents.keys.description":
-    "Let AI agents such as Claude work in YAIP through the MCP API. A key never does more than the person who created it.",
+    "Let AI agents such as Claude work in Quits through the MCP API. A key never does more than the person who created it.",
   "agents.keys.loading": "Loading agent keys...",
   "agents.keys.empty": "No agent keys yet. Create one to connect an AI agent.",
   "agents.keys.error.load": "Could not load agent keys.",
@@ -84,7 +84,7 @@ export const enAgentsMessages = {
 
   "agents.approvals.title": "Approvals",
   "agents.approvals.description":
-    "Agents with approval-required keys queue actions that leave YAIP or move money. Nothing happens until someone approves.",
+    "Agents with approval-required keys queue actions that leave Quits or move money. Nothing happens until someone approves.",
   "agents.approvals.tab.pending": "Pending",
   "agents.approvals.tab.history": "History",
   "agents.approvals.loading": "Loading approvals...",

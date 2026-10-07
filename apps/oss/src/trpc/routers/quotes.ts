@@ -3,7 +3,7 @@ import {
   quoteCreateDraftInputSchema,
   quoteSendInputSchema,
   quoteUpdateDraftInputSchema,
-} from "@yaip/contracts/quotes"
+} from "@quits/contracts/quotes"
 import {
   convertQuoteToInvoice,
   createQuoteDraft,

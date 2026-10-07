@@ -1,12 +1,12 @@
 import { betterAuth } from "better-auth"
 import { getPrisma } from "./db"
-import { buildYaipAuthOptions } from "./runtime/auth-config"
+import { buildQuitsAuthOptions } from "./runtime/auth-config"
 import { createLiveBindingProxy } from "./runtime/live-binding"
 import { defaultNodePlatform } from "./runtime/node-platform"
 import { getRuntimePlatformOverride } from "./runtime/platform"
 
 type AuthInstance = ReturnType<
-  typeof betterAuth<ReturnType<typeof buildYaipAuthOptions>>
+  typeof betterAuth<ReturnType<typeof buildQuitsAuthOptions>>
 >
 
 let authInstance: AuthInstance | undefined
@@ -17,7 +17,7 @@ export function getAuth() {
 
   if (!authInstance || authPlatformId !== platform.id) {
     authInstance = betterAuth(
-      buildYaipAuthOptions({
+      buildQuitsAuthOptions({
         prisma: getPrisma(),
         env: {
           getEnv: platform.getEnv,

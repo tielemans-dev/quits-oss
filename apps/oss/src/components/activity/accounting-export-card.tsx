@@ -1,4 +1,4 @@
-import type { AccountingDataset } from "@yaip/contracts/exports"
+import type { AccountingDataset } from "@quits/contracts/exports"
 import { Download } from "lucide-react"
 import { useState } from "react"
 import { downloadTextFile } from "../../lib/exports/download"

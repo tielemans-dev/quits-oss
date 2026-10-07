@@ -2,11 +2,11 @@ import { createServerFn } from "@tanstack/react-start"
 import {
   parseBuyerSnapshot,
   parseSellerSnapshot,
-} from "@yaip/contracts/documents"
+} from "@quits/contracts/documents"
 import {
   publicInvoiceCheckoutResultSchema,
   publicInvoiceTokenInputSchema,
-} from "@yaip/contracts/payments"
+} from "@quits/contracts/payments"
 
 type Decimalish = number | { toNumber(): number }
 

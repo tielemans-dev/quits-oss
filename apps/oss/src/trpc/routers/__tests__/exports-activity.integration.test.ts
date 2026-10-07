@@ -1,4 +1,4 @@
-import { ACCOUNTING_EXPORT_COLUMNS } from "@yaip/contracts/exports"
+import { ACCOUNTING_EXPORT_COLUMNS } from "@quits/contracts/exports"
 import { afterEach, describe, expect, it } from "vitest"
 import { createContact } from "../../../domain/commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../../../domain/commands/invoices"
@@ -12,7 +12,7 @@ const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 function callerFor(organizationId: string, userId: string) {
   return appRouter.createCaller({
     session: {
-      user: { id: userId, email: `${userId}@test.yaip.invalid`, name: userId },
+      user: { id: userId, email: `${userId}@test.quits.invalid`, name: userId },
       session: { activeOrganizationId: organizationId },
     },
   } as never)

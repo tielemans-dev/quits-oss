@@ -1,4 +1,4 @@
-import { ACCOUNTING_EXPORT_COLUMNS } from "@yaip/contracts/exports"
+import { ACCOUNTING_EXPORT_COLUMNS } from "@quits/contracts/exports"
 import { describe, expect, it } from "vitest"
 import { creditNotesCsv, invoicesCsv, paymentsCsv } from "../accounting-csv"
 import { buildCsv, csvNumber, formatCsvCell } from "../csv"

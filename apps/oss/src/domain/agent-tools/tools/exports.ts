@@ -1,4 +1,4 @@
-import { accountingExportInputSchema, einvoiceExportInputSchema } from "@yaip/contracts/exports"
+import { accountingExportInputSchema, einvoiceExportInputSchema } from "@quits/contracts/exports"
 import { exportAccounting } from "../../../lib/exports/accounting"
 import { exportEinvoice } from "../../../lib/exports/einvoice"
 import { actorCan } from "../../actor"

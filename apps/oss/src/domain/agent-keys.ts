@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto"
 import type { Prisma } from "../../generated/prisma/client"
-import { agentKeyCreateInputSchema, type AgentKeyCreateInput, type AgentMode } from "@yaip/contracts/agent"
+import { agentKeyCreateInputSchema, type AgentKeyCreateInput, type AgentMode } from "@quits/contracts/agent"
 import { prisma } from "../lib/db"
 import { actorCan, type AgentActor, type UserActor } from "./actor"
 import { closePendingApprovals } from "./approvals"
@@ -8,7 +8,9 @@ import { Forbidden, NotFound, ValidationFailed } from "./errors"
 import { appendEvents } from "./events"
 import { isPermission, parseOrganizationRoles, type Permission } from "./permissions"
 
-const SECRET_PREFIX = "yaip_ak_"
+const SECRET_PREFIX = "quits_ak_"
+/** Keys issued before the product was renamed; they keep working. */
+const LEGACY_SECRET_PREFIX = "yaip_ak_"
 const LAST_USED_WRITE_INTERVAL_MS = 60_000
 
 export function hashAgentSecret(secret: string) {
@@ -215,7 +217,7 @@ async function toAgentActor(
 
 /** Authenticates a bearer secret from the agent API. */
 export async function authenticateAgentSecret(secret: string, now = new Date()): Promise<AgentActor> {
-  if (!secret.startsWith(SECRET_PREFIX)) {
+  if (!secret.startsWith(SECRET_PREFIX) && !secret.startsWith(LEGACY_SECRET_PREFIX)) {
     throw new Forbidden({ message: "Invalid agent key" })
   }
 

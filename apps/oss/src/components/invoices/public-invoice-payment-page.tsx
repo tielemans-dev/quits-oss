@@ -87,7 +87,7 @@ export function PublicInvoicePaymentPage({
   }
 
   const { invoice, paymentState } = state
-  const sellerName = invoice.sellerSnapshot?.companyName ?? "YAIP"
+  const sellerName = invoice.sellerSnapshot?.companyName ?? "Quits"
   const total = toNumber(invoice.totalGross)
   const amountPaid = invoice.amountPaid ?? 0
   const amountCredited = invoice.amountCredited ?? 0

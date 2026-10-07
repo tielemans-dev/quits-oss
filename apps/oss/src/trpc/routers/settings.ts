@@ -16,7 +16,7 @@ import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
 import { COUNTRY_OPTIONS, LOCALE_OPTIONS } from "../../lib/compliance/countries"
-import { onboardingInvoicingIdentitySchema } from "@yaip/contracts/onboarding"
+import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import {
   getCountryCodeOrFallback,
   validateLocalizedFields,

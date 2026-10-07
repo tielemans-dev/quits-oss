@@ -1,4 +1,4 @@
-import { stripeCheckoutSessionSchema, type StripeCheckoutSession } from "@yaip/contracts/payments"
+import { stripeCheckoutSessionSchema, type StripeCheckoutSession } from "@quits/contracts/payments"
 import {
   recordStripeCheckoutFailure,
   recordStripeCheckoutPayment,

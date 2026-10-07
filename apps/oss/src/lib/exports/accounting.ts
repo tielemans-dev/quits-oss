@@ -1,5 +1,5 @@
-import { parseBuyerSnapshot } from "@yaip/contracts/documents"
-import type { AccountingExportInput, AccountingExportResult } from "@yaip/contracts/exports"
+import { parseBuyerSnapshot } from "@quits/contracts/documents"
+import type { AccountingExportInput, AccountingExportResult } from "@quits/contracts/exports"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { creditNotesCsv, invoicesCsv, paymentsCsv } from "./accounting-csv"

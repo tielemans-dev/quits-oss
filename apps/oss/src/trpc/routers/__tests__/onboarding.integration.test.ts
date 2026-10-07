@@ -32,7 +32,7 @@ type CallerLike = {
 
 async function createCloudCaller() {
   vi.resetModules()
-  process.env.YAIP_DISTRIBUTION = "cloud"
+  process.env.QUITS_DISTRIBUTION = "cloud"
 
   const { appRouter } = await import("../../router")
 
@@ -71,7 +71,7 @@ async function createCloudCaller() {
 
 describeIfDatabase("onboarding router integration", () => {
   afterEach(async () => {
-    process.env.YAIP_DISTRIBUTION = "selfhost"
+    process.env.QUITS_DISTRIBUTION = "selfhost"
   })
 
   it("returns status/missing/values and supports draft+complete flow", async () => {

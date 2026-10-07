@@ -3,7 +3,7 @@ import type {
   EmailDeliveryAttemptSnapshot,
   EmailDeliveryOutcome,
   EmailDeliveryRuntimeStatus,
-} from "@yaip/contracts/email"
+} from "@quits/contracts/email"
 
 export type { EmailDeliveryRuntimeStatus }
 

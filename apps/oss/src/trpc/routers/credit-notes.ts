@@ -4,7 +4,7 @@ import {
   creditNoteIssueInputSchema,
   creditNoteListInputSchema,
   creditNoteSendInputSchema,
-} from "@yaip/contracts/credit-notes"
+} from "@quits/contracts/credit-notes"
 import { z } from "zod"
 import {
   creditAvailabilityFor,

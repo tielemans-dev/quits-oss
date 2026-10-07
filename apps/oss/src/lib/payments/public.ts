@@ -4,12 +4,12 @@ import {
   invoicePaymentTokenPayloadSchema,
   type InvoicePaymentState,
   type InvoicePaymentTokenPayload,
-} from "@yaip/contracts/payments"
+} from "@quits/contracts/payments"
 import {
   buildAbsoluteUrl,
   resolveAppOrigin,
-} from "@yaip/shared/http"
-import { readFallbackSecret } from "@yaip/shared/runtimeEnv"
+} from "@quits/shared/http"
+import { readFallbackSecret, readProductEnv } from "@quits/shared/runtimeEnv"
 
 export type { InvoicePaymentState, InvoicePaymentTokenPayload }
 
@@ -76,14 +76,14 @@ export function verifyInvoicePaymentToken(
 
 export function getPublicInvoicePaymentSecret() {
   const secret = readFallbackSecret(
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET,
+    readProductEnv(process.env, "PUBLIC_PAYMENT_SECRET"),
     process.env.BETTER_AUTH_SECRET
   )
   if (secret) {
     return secret
   }
 
-  throw new Error("YAIP_PUBLIC_PAYMENT_SECRET or BETTER_AUTH_SECRET must be configured")
+  throw new Error("QUITS_PUBLIC_PAYMENT_SECRET or BETTER_AUTH_SECRET must be configured")
 }
 
 export function getPublicInvoicePaymentUrl(invoice: {
@@ -102,7 +102,7 @@ export function getPublicInvoicePaymentUrl(invoice: {
   }
 
   const origin = resolveAppOrigin(
-    [process.env.YAIP_APP_ORIGIN, process.env.BETTER_AUTH_URL],
+    [readProductEnv(process.env, "APP_ORIGIN"), process.env.BETTER_AUTH_URL],
     ""
   )
 

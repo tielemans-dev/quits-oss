@@ -10,7 +10,7 @@ import {
   invoiceCreateDraftInputSchema,
   invoiceSendInputSchema,
   invoiceUpdateDraftInputSchema,
-} from "@yaip/contracts/invoices"
+} from "@quits/contracts/invoices"
 import {
   createInvoiceDraft,
   deleteInvoiceDraft,

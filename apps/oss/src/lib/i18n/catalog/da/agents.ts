@@ -2,7 +2,7 @@
 export const daAgentsMessages = {
   "agents.keys.title": "Agentnøgler",
   "agents.keys.description":
-    "Lad AI-agenter som Claude arbejde i YAIP via MCP-API'et. En nøgle kan aldrig mere end den person, der oprettede den.",
+    "Lad AI-agenter som Claude arbejde i Quits via MCP-API'et. En nøgle kan aldrig mere end den person, der oprettede den.",
   "agents.keys.loading": "Indlæser agentnøgler...",
   "agents.keys.empty": "Ingen agentnøgler endnu. Opret en for at forbinde en AI-agent.",
   "agents.keys.error.load": "Agentnøglerne kunne ikke indlæses.",
@@ -85,7 +85,7 @@ export const daAgentsMessages = {
 
   "agents.approvals.title": "Godkendelser",
   "agents.approvals.description":
-    "Agenter med nøgler, der kræver godkendelse, sætter handlinger i kø, når de forlader YAIP eller flytter penge. Intet sker, før nogen godkender.",
+    "Agenter med nøgler, der kræver godkendelse, sætter handlinger i kø, når de forlader Quits eller flytter penge. Intet sker, før nogen godkender.",
   "agents.approvals.tab.pending": "Venter",
   "agents.approvals.tab.history": "Historik",
   "agents.approvals.loading": "Indlæser godkendelser...",

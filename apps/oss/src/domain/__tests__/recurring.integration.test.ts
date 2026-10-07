@@ -5,7 +5,7 @@ vi.mock("../../lib/email", async () => {
   return { ...actual, deliver: vi.fn().mockResolvedValue({ id: "email_123" }) }
 })
 
-import type { RecurringCreateInput } from "@yaip/contracts/recurring"
+import type { RecurringCreateInput } from "@quits/contracts/recurring"
 import { prisma } from "../../lib/db"
 import { deliver, EmailSendError } from "../../lib/email"
 import { findEmailDeliveryJobs, retryEmailDeliveries } from "../../test-utils/email-outbox"
@@ -37,7 +37,7 @@ import "../scheduler-tasks"
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
-const EMAIL_ENV = ["RESEND_API_KEY", "FROM_EMAIL", "YAIP_APP_ORIGIN"] as const
+const EMAIL_ENV = ["RESEND_API_KEY", "FROM_EMAIL", "QUITS_APP_ORIGIN"] as const
 
 describeIfDatabase("recurring invoices", () => {
   const cleanups: Array<() => Promise<void>> = []

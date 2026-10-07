@@ -3,7 +3,7 @@ import {
   commandStatusToolInputSchema,
   commandWaitToolInputSchema,
   type CommandRecord,
-} from "@yaip/contracts/agent"
+} from "@quits/contracts/agent"
 import { prisma } from "../../../lib/db"
 import { actorKey, type AgentActor } from "../../actor"
 import { expireStaleApprovals } from "../../approvals"

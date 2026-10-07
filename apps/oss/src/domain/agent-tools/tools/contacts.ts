@@ -1,5 +1,5 @@
-import { contactCreateInputSchema, contactUpdateInputSchema } from "@yaip/contracts/contacts"
-import { contactsListToolInputSchema, documentIdToolInputSchema } from "@yaip/contracts/agent"
+import { contactCreateInputSchema, contactUpdateInputSchema } from "@quits/contracts/contacts"
+import { contactsListToolInputSchema, documentIdToolInputSchema } from "@quits/contracts/agent"
 import { prisma } from "../../../lib/db"
 import { createContact, updateContact } from "../../commands/contacts"
 import { NotFound } from "../../errors"

@@ -10,7 +10,7 @@ import {
   onboardingValuesSchema,
   type OnboardingMissingField,
   type OnboardingPatch,
-} from "@yaip/contracts/onboarding"
+} from "@quits/contracts/onboarding"
 import { z } from "zod"
 import { getCloudOnboardingState } from "../../lib/cloud-onboarding"
 import { prisma } from "../../lib/db"

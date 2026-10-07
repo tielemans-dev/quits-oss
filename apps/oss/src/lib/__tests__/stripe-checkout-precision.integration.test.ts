@@ -21,16 +21,16 @@ const paymentSecret = "payment-link-secret-precision-123456"
 
 describeIfDatabase("public invoice checkout amount precision", () => {
   const cleanups: Array<() => Promise<void>> = []
-  const previousSecret = process.env.YAIP_PUBLIC_PAYMENT_SECRET
+  const previousSecret = process.env.QUITS_PUBLIC_PAYMENT_SECRET
 
   beforeEach(() => {
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = paymentSecret
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = paymentSecret
     createCheckoutSession.mockReset()
     createCheckoutSession.mockResolvedValue({ id: "cs_precision", url: "https://checkout.stripe.test/cs" })
   })
 
   afterEach(async () => {
-    process.env.YAIP_PUBLIC_PAYMENT_SECRET = previousSecret
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = previousSecret
     while (cleanups.length) await cleanups.pop()?.()
   })
 

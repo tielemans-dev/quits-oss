@@ -3,8 +3,8 @@ import {
   parseSellerSnapshot,
   type BuyerSnapshot,
   type SellerSnapshot,
-} from "@yaip/contracts/documents"
-import type { EinvoiceDocumentKind, EinvoiceExportResult } from "@yaip/contracts/exports"
+} from "@quits/contracts/documents"
+import type { EinvoiceDocumentKind, EinvoiceExportResult } from "@quits/contracts/exports"
 import { prisma } from "../db"
 import { formatIsoDate, safeFileName } from "./format"
 import {

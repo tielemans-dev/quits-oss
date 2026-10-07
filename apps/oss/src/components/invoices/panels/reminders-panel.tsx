@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { BellRing } from "lucide-react"
-import type { InvoiceReminderRecord, ReminderStatus } from "@yaip/contracts/reminders"
+import type { InvoiceReminderRecord, ReminderStatus } from "@quits/contracts/reminders"
 import { useActiveOrganizationId } from "../../../lib/active-organization"
 import { formatDate } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"

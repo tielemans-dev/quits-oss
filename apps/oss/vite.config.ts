@@ -15,7 +15,7 @@ import { resolveDevtoolsEventBusPort } from "./src/build/devtools-port"
 const appDir = fileURLToPath(new URL(".", import.meta.url))
 const workspaceEnvDir = discoverWorkspaceEnvDir({ cwd: appDir }) ?? resolve(appDir, "../..")
 const devtoolsEventBusPort = resolveDevtoolsEventBusPort({
-  configuredPort: process.env.YAIP_DEVTOOLS_EVENT_BUS_PORT,
+  configuredPort: process.env.QUITS_DEVTOOLS_EVENT_BUS_PORT ?? process.env.YAIP_DEVTOOLS_EVENT_BUS_PORT,
   projectRoot: appDir,
 })
 

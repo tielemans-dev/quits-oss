@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "../../../components/ui/card"
 import { useI18n } from "../../../lib/i18n/react"
-import { PEPPOL_EAS_CODES } from "@yaip/contracts/exports"
+import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
 import { readPeppolEndpoint } from "./-peppol-endpoint"
 
 export const Route = createFileRoute("/_app/contacts/$contactId")({

@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import type { InvoicePaymentProgress } from "@yaip/contracts/invoices"
+import type { InvoicePaymentProgress } from "@quits/contracts/invoices"
 import { Prisma } from "../../../generated/prisma/client"
 import { NotFound } from "../errors"
 import { Command, Db } from "../services"

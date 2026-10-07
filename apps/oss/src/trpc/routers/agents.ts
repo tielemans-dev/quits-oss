@@ -5,7 +5,7 @@ import {
   approvalDecideInputSchema,
   approvalListInputSchema,
   type CommandStatus,
-} from "@yaip/contracts/agent"
+} from "@quits/contracts/agent"
 import { actorCan } from "../../domain/actor"
 import { createAgentKey, listAgentKeys, revokeAgentKey } from "../../domain/agent-keys"
 import { decideApproval, expireStaleApprovals } from "../../domain/approvals"

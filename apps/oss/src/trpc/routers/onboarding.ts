@@ -9,7 +9,7 @@ import {
 import { isCloudDistribution } from "../../lib/distribution"
 import { prisma } from "../../lib/db"
 import { evaluateOnboardingReadiness } from "../../lib/onboarding/readiness"
-import { onboardingInvoicingIdentitySchema } from "@yaip/contracts/onboarding"
+import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { authorizedProcedure, router } from "../init"
 
 const onboardingInputSchema = z.object({

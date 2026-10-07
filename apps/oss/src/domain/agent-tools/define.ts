@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { clientRequestIdSchema, type CommandRecord } from "@yaip/contracts/agent"
+import { clientRequestIdSchema, type CommandRecord } from "@quits/contracts/agent"
 import type { AgentActor } from "../actor"
 import type { CommandDefinition } from "../command"
 import { executeCommand, toCommandRecord } from "../execute"
@@ -67,7 +67,7 @@ const commandFooter =
   "rejected, expired, or failed."
 
 const approvalNote =
-  "Leaves YAIP or moves money: with an approval_required key it is queued for a person " +
+  "Leaves Quits or moves money: with an approval_required key it is queued for a person " +
   "(status awaiting_approval) and runs only after they approve; call command_wait with the commandId."
 
 /**

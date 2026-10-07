@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { creditNoteIssueInputSchema, creditNoteSendInputSchema } from "@yaip/contracts/credit-notes"
+import { creditNoteIssueInputSchema, creditNoteSendInputSchema } from "@quits/contracts/credit-notes"
 import type { Prisma } from "../../../generated/prisma/client"
 import {
   buildCreditLines,

@@ -3,8 +3,8 @@ import {
   quoteIdInputSchema,
   quoteSendInputSchema,
   quoteUpdateDraftInputSchema,
-} from "@yaip/contracts/quotes"
-import { documentIdToolInputSchema, quotesListToolInputSchema } from "@yaip/contracts/agent"
+} from "@quits/contracts/quotes"
+import { documentIdToolInputSchema, quotesListToolInputSchema } from "@quits/contracts/agent"
 import { prisma } from "../../../lib/db"
 import {
   convertQuoteToInvoice,

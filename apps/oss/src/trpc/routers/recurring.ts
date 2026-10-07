@@ -5,7 +5,7 @@ import {
   recurringItemsSchema,
   recurringSetStatusInputSchema,
   recurringUpdateInputSchema,
-} from "@yaip/contracts/recurring"
+} from "@quits/contracts/recurring"
 import type { Prisma } from "../../../generated/prisma/client"
 import {
   createRecurringInvoice,

@@ -4,7 +4,7 @@
  * Adding a tool for a feature
  * ---------------------------
  * 1. Write the domain command first (`domain/commands/<feature>.ts`) with its zod input from
- *    `@yaip/contracts/<feature>`. Agents and the UI then share authorization, idempotency,
+ *    `@quits/contracts/<feature>`. Agents and the UI then share authorization, idempotency,
  *    approval gating, and the audit log.
  * 2. Add one entry to the feature's tool file in `./tools/` (create `./tools/<feature>.ts` and
  *    spread it into `agentTools` below for a new feature):

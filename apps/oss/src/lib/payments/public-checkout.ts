@@ -1,4 +1,4 @@
-import { buildAbsoluteUrl, resolveAppOrigin } from "@yaip/shared/http"
+import { buildAbsoluteUrl, resolveAppOrigin } from "@quits/shared/http"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { appLogger } from "../observability"
@@ -6,6 +6,7 @@ import { loadPublicInvoiceByToken } from "./public-access"
 import { getPublicInvoicePaymentSecret } from "./public"
 import { createStripeInvoiceCheckoutSession, getStripePaymentCredentials } from "./stripe"
 import { currencyFractionDigits, isExactInCurrency } from "./stripe-amounts"
+import { readProductEnv } from "@quits/shared/runtimeEnv"
 
 const paymentsLogger = appLogger.child("payments")
 
@@ -71,7 +72,7 @@ export async function resolvePublicInvoiceCheckout(token: string) {
   const publicUrl = buildAbsoluteUrl(
     resolveAppOrigin(
       [
-        process.env.YAIP_APP_ORIGIN,
+        readProductEnv(process.env, "APP_ORIGIN"),
         process.env.BETTER_AUTH_URL,
         "http://localhost:3000",
       ],

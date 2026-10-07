@@ -4,7 +4,7 @@ import { z } from "zod"
 import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import type { AgentActor } from "../actor"
-import { authenticateAgentSecret, createAgentKey, revokeAgentKey } from "../agent-keys"
+import { authenticateAgentSecret, createAgentKey, hashAgentSecret, revokeAgentKey } from "../agent-keys"
 import { defineCommand } from "../command"
 import { createContact, deleteContact } from "../commands/contacts"
 import { readActivity } from "../events"
@@ -170,6 +170,16 @@ describeIfDatabase("command pipeline", () => {
       await expect(
         createAgentKey(org.actors.member, { name: "Too much", scopes: ["settings:update"] })
       ).rejects.toMatchObject({ _tag: "Forbidden" })
+    })
+
+    it("still accepts keys issued with the pre-rename yaip_ak_ prefix", async () => {
+      const org = await setup()
+      const { secret, keyId } = await agentFor(org, "full_access")
+      expect(secret).toMatch(/^quits_ak_/)
+      const legacy = `yaip_ak_${secret.slice("quits_ak_".length)}`
+      await prisma.agentKey.update({ where: { id: keyId }, data: { secretHash: hashAgentSecret(legacy) } })
+
+      await expect(authenticateAgentSecret(legacy)).resolves.toMatchObject({ agentKeyId: keyId })
     })
 
     it("rejects revoked keys", async () => {

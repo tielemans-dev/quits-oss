@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { Plus } from "lucide-react"
-import type { PaymentMethod } from "@yaip/contracts/payments"
+import type { PaymentMethod } from "@quits/contracts/payments"
 import { trpc } from "../../../trpc/client"
 import { useI18n } from "../../../lib/i18n/react"
 import type { TranslationKey } from "../../../lib/i18n/messages"

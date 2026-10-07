@@ -3,7 +3,7 @@ import {
   PEPPOL_BIS_PROFILE_ID,
   type EinvoiceDocumentKind,
   type EinvoiceMissingField,
-} from "@yaip/contracts/exports"
+} from "@quits/contracts/exports"
 import { formatAmount, formatPlainNumber, toDecimal, type DecimalLike } from "./format"
 import {
   DANISH_CVR_SCHEME,
@@ -32,7 +32,7 @@ export type EinvoiceLine = {
   unitPriceNet: DecimalLike
   lineNet: DecimalLike
   taxRate: DecimalLike
-  /** YAIP's line tax category, e.g. "standard", "zero", "exempt". */
+  /** Quits's line tax category, e.g. "standard", "zero", "exempt". */
   taxCategory: string
 }
 

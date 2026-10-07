@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server"
-import { accountingExportInputSchema, einvoiceExportInputSchema } from "@yaip/contracts/exports"
+import { accountingExportInputSchema, einvoiceExportInputSchema } from "@quits/contracts/exports"
 import { actorCan } from "../../domain/actor"
 import { exportAccounting } from "../../lib/exports/accounting"
 import { EinvoiceSourceNotFound, exportEinvoice } from "../../lib/exports/einvoice"

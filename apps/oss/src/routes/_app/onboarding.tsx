@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import type { OnboardingMissingField } from '@yaip/contracts/onboarding'
-import type { RuntimeCapabilities } from '@yaip/contracts/runtime'
+import type { OnboardingMissingField } from '@quits/contracts/onboarding'
+import type { RuntimeCapabilities } from '@quits/contracts/runtime'
 import { useEffect, useState } from 'react'
 import { authClient, useSession } from '../../lib/auth-client'
 import { switchActiveOrganization } from '../../lib/active-organization'

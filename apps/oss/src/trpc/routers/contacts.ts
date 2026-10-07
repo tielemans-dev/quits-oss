@@ -2,7 +2,7 @@ import { z } from "zod"
 import {
   contactCreateInputSchema,
   contactUpdateInputSchema,
-} from "@yaip/contracts/contacts"
+} from "@quits/contracts/contacts"
 import { createContact, deleteContact, updateContact } from "../../domain/commands/contacts"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"

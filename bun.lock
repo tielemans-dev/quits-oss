@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@yaip/workspace",
+      "name": "@quits/workspace",
       "devDependencies": {
         "@types/node": "^22.10.2",
         "nitro": "npm:nitro-nightly@latest",
@@ -13,7 +13,7 @@
       },
     },
     "apps/oss": {
-      "name": "@yaip/oss",
+      "name": "@quits/oss",
       "version": "0.1.4",
       "dependencies": {
         "@hookform/resolvers": "^5.2.2",
@@ -32,8 +32,8 @@
         "@trpc/client": "^11.10.0",
         "@trpc/react-query": "^11.10.0",
         "@trpc/server": "^11.10.0",
-        "@yaip/contracts": "workspace:*",
-        "@yaip/shared": "workspace:*",
+        "@quits/contracts": "workspace:*",
+        "@quits/shared": "workspace:*",
         "better-auth": "^1.4.19",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -78,7 +78,7 @@
       },
     },
     "packages/contracts": {
-      "name": "@yaip/contracts",
+      "name": "@quits/contracts",
       "version": "0.1.4",
       "dependencies": {
         "zod": "^4.3.6",
@@ -90,7 +90,7 @@
       },
     },
     "packages/shared": {
-      "name": "@yaip/shared",
+      "name": "@quits/shared",
       "version": "0.1.4",
       "devDependencies": {
         "@types/node": "^22.10.2",
@@ -100,7 +100,7 @@
       },
     },
     "scripts": {
-      "name": "@yaip/scripts",
+      "name": "@quits/scripts",
       "devDependencies": {
         "@types/node": "^22.10.2",
         "dotenv": "^17.3.1",
@@ -827,13 +827,13 @@
 
     "@vitest/utils": ["@vitest/utils@3.2.4", "", { "dependencies": { "@vitest/pretty-format": "3.2.4", "loupe": "^3.1.4", "tinyrainbow": "^2.0.0" } }, "sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA=="],
 
-    "@yaip/contracts": ["@yaip/contracts@workspace:packages/contracts"],
+    "@quits/contracts": ["@quits/contracts@workspace:packages/contracts"],
 
-    "@yaip/oss": ["@yaip/oss@workspace:apps/oss"],
+    "@quits/oss": ["@quits/oss@workspace:apps/oss"],
 
-    "@yaip/scripts": ["@yaip/scripts@workspace:scripts"],
+    "@quits/scripts": ["@quits/scripts@workspace:scripts"],
 
-    "@yaip/shared": ["@yaip/shared@workspace:packages/shared"],
+    "@quits/shared": ["@quits/shared@workspace:packages/shared"],
 
     "abs-svg-path": ["abs-svg-path@0.1.1", "", {}, "sha512-d8XPSGjfyzlXC3Xx891DJRyZfqk5JU0BJrDQcsWomFIV1/BIzPW5HDH5iDdWpqWaav0YVIEzT1RHTwWr0FFshA=="],
 

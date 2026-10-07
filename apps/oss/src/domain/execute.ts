@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import { Cause, Effect, Exit, Option } from "effect"
-import type { CommandError, CommandRecord } from "@yaip/contracts/agent"
+import type { CommandError, CommandRecord } from "@quits/contracts/agent"
 import { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { appLogger } from "../lib/observability"

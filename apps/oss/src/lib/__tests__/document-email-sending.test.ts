@@ -37,7 +37,7 @@ describe("document email sending", () => {
       })
     ).toEqual({
       fromEmail: "billing@yaip.app",
-      fromName: "Acme via YAIP",
+      fromName: "Acme via Quits",
       replyTo: "billing@acme.com",
       usingBrandedDomain: false,
     })

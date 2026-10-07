@@ -22,8 +22,8 @@ const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 
 function restoreEnv(previous: Record<string, string | undefined>) {
-  process.env.YAIP_APP_ORIGIN = previous.YAIP_APP_ORIGIN
-  process.env.YAIP_PUBLIC_QUOTE_SECRET = previous.YAIP_PUBLIC_QUOTE_SECRET
+  process.env.QUITS_APP_ORIGIN = previous.QUITS_APP_ORIGIN
+  process.env.QUITS_PUBLIC_QUOTE_SECRET = previous.QUITS_PUBLIC_QUOTE_SECRET
   process.env.RESEND_API_KEY = previous.RESEND_API_KEY
   process.env.FROM_EMAIL = previous.FROM_EMAIL
 }
@@ -117,14 +117,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("issues public quote access on send, records a sent attempt, and passes the link to the email layer", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 
@@ -154,7 +154,7 @@ describeIfDatabase("quote send email delivery", () => {
         expect.objectContaining({
           to: "buyer@example.com",
           html: expect.stringContaining("https://app.example.test/q/"),
-          from: "Acme via YAIP <billing@example.com>",
+          from: "Acme via Quits <billing@example.com>",
           replyTo: "billing@acme.com",
         }),
         { idempotencyKey: expect.stringMatching(new RegExp(`^quote-send:${quote.id}:`)) }
@@ -167,14 +167,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("uses a verified branded sender for quote email delivery", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@yaip.app"
 
@@ -201,14 +201,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("rejects send when email delivery is not configured unless degraded send is explicitly allowed", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     delete process.env.RESEND_API_KEY
     delete process.env.FROM_EMAIL
 
@@ -263,14 +263,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("records a failed attempt and keeps the quote in draft when provider delivery throws", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
     vi.mocked(deliver).mockRejectedValueOnce(
@@ -306,14 +306,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("blocks email send when the contact has no email address", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 
@@ -345,14 +345,14 @@ describeIfDatabase("quote send email delivery", () => {
 
   it("resends email for a sent quote without rotating the public link", async () => {
     const previous = {
-      YAIP_APP_ORIGIN: process.env.YAIP_APP_ORIGIN,
-      YAIP_PUBLIC_QUOTE_SECRET: process.env.YAIP_PUBLIC_QUOTE_SECRET,
+      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
+      QUITS_PUBLIC_QUOTE_SECRET: process.env.QUITS_PUBLIC_QUOTE_SECRET,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       FROM_EMAIL: process.env.FROM_EMAIL,
     }
 
-    process.env.YAIP_APP_ORIGIN = "https://app.example.test"
-    process.env.YAIP_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_QUOTE_SECRET = "public-quote-secret-123456"
     process.env.RESEND_API_KEY = "resend_test_key"
     process.env.FROM_EMAIL = "billing@example.com"
 

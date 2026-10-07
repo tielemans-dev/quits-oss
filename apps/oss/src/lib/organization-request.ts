@@ -8,7 +8,9 @@
  * it with the session's active organization to reject requests made for another organization than
  * the one now active; it is never used for authorization.
  */
-export const ORGANIZATION_HEADER = "x-yaip-organization-id"
+export const ORGANIZATION_HEADER = "x-quits-organization-id"
+/** Sent by pages loaded before the product was renamed; read the same way. */
+export const LEGACY_ORGANIZATION_HEADER = "x-yaip-organization-id"
 
 /**
  * Header value for a batch of requests made for different organizations. The server always

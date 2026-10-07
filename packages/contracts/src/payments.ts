@@ -72,7 +72,7 @@ export const publicInvoiceCheckoutResultSchema = z
   })
   .strict()
 
-/** The subset of a Stripe Checkout Session that YAIP reads from webhooks. */
+/** The subset of a Stripe Checkout Session that Quits reads from webhooks. */
 export const stripeCheckoutSessionSchema = z.object({
   id: z.string().optional(),
   payment_intent: z

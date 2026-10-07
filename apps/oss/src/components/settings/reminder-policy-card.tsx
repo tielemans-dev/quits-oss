@@ -4,7 +4,7 @@ import {
   REMINDER_MAX_OFFSETS,
   REMINDER_OFFSET_MAX_DAYS,
   REMINDER_OFFSET_MIN_DAYS,
-} from "@yaip/contracts/reminders"
+} from "@quits/contracts/reminders"
 import { useActiveOrganizationId } from "../../lib/active-organization"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"

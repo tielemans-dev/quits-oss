@@ -1,4 +1,4 @@
-import { normalizePeppolIdentifier, peppolEndpointIssue } from "@yaip/contracts/exports"
+import { normalizePeppolIdentifier, peppolEndpointIssue } from "@quits/contracts/exports"
 
 export type PeppolEndpointFormError =
   | "exports.contact.peppolEndpoint.incomplete"

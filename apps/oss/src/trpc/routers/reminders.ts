@@ -7,7 +7,7 @@ import {
   reminderSendNowInputSchema,
   type InvoiceReminderRecord,
   type ReminderStatus,
-} from "@yaip/contracts/reminders"
+} from "@quits/contracts/reminders"
 import {
   addDays,
   isManualReminder,

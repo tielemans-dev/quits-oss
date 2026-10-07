@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { z } from "zod"
-import { commandErrorSchema } from "@yaip/contracts/agent"
+import { commandErrorSchema } from "@quits/contracts/agent"
 import {
   recurringCreateInputSchema,
   recurringIdInputSchema,
@@ -8,7 +8,7 @@ import {
   recurringSetStatusInputSchema,
   recurringUpdateInputSchema,
   type RecurringEnd,
-} from "@yaip/contracts/recurring"
+} from "@quits/contracts/recurring"
 import type { Prisma } from "../../../generated/prisma/client"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { actorKey, type SystemActor } from "../actor"

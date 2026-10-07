@@ -1,4 +1,4 @@
-import { PEPPOL_BIS_CUSTOMIZATION_ID, PEPPOL_BIS_PROFILE_ID } from "@yaip/contracts/exports"
+import { PEPPOL_BIS_CUSTOMIZATION_ID, PEPPOL_BIS_PROFILE_ID } from "@quits/contracts/exports"
 import { describe, expect, it } from "vitest"
 import {
   buildUblDocument,

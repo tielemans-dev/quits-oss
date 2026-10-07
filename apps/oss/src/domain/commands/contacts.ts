@@ -5,8 +5,8 @@ import {
   contactUpdateInputSchema,
   PEPPOL_ENDPOINT_ID_MESSAGE,
   PEPPOL_ENDPOINT_PAIR_MESSAGE,
-} from "@yaip/contracts/contacts"
-import { peppolEndpointIssue } from "@yaip/contracts/exports"
+} from "@quits/contracts/contacts"
+import { peppolEndpointIssue } from "@quits/contracts/exports"
 import {
   getCountryCodeOrFallback,
   validateLocalizedFields,

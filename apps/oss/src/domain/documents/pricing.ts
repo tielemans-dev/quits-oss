@@ -1,4 +1,4 @@
-import type { DocumentLineInput } from "@yaip/contracts/invoices"
+import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { computeDocumentTotals, type CountryProfile } from "../../lib/compliance"
 import { currencyFractionDigits } from "../../lib/payments/stripe-amounts"
 

@@ -90,7 +90,7 @@ export function PublicQuotePage({
   }
 
   const { quote, decisionState } = state
-  const sellerName = quote.sellerSnapshot?.companyName ?? "YAIP"
+  const sellerName = quote.sellerSnapshot?.companyName ?? "Quits"
   const decisionAt = quote.publicDecisionAt ? formatDate(quote.publicDecisionAt) : null
 
   return (

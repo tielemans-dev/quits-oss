@@ -23,7 +23,7 @@
         "CRON_SECRET",
         "RESEND_API_KEY",
         "FROM_EMAIL",
-        "YAIP_*"
+        "QUITS_*"
       ],
       "outputs": []
     }

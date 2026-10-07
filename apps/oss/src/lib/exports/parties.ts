@@ -2,10 +2,10 @@ import {
   isPeppolEasCode,
   isValidPeppolIdentifier,
   normalizePeppolIdentifier,
-} from "@yaip/contracts/exports"
+} from "@quits/contracts/exports"
 
 /**
- * Normalizes the loosely typed party data YAIP stores (free-text countries, addresses and tax
+ * Normalizes the loosely typed party data Quits stores (free-text countries, addresses and tax
  * IDs) into what an EN 16931 / Peppol document needs.
  */
 
@@ -159,7 +159,7 @@ export function vatIdentifier(taxIds: readonly TaxIdLike[], countryCode: string 
 }
 
 /**
- * Tax-ID schemes YAIP stores that map to an ISO 6523 ICD, with how to bring a value into the
+ * Tax-ID schemes Quits stores that map to an ISO 6523 ICD, with how to bring a value into the
  * identifier's canonical form. Whether that form is valid is checked by the Peppol rules.
  */
 const LEGAL_SCHEMES: Record<string, { scheme: string; normalize: (value: string) => string }> = {

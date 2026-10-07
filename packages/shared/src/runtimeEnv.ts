@@ -46,3 +46,11 @@ export function readFallbackSecret(
 
   return null
 }
+
+/**
+ * Reads a product setting, `QUITS_<name>`, falling back to `YAIP_<name>` from before the product
+ * was renamed, so existing deployments keep working without changing their environment.
+ */
+export function readProductEnv(env: Record<string, string | undefined>, name: string) {
+  return env[`QUITS_${name}`] ?? env[`YAIP_${name}`]
+}

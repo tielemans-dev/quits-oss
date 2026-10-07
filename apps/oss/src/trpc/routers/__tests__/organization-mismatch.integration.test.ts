@@ -12,7 +12,7 @@ const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 function callerFor(organizationId: string, userId: string, requestedOrganizationId?: string | null) {
   return appRouter.createCaller({
     session: {
-      user: { id: userId, email: `${userId}@test.yaip.invalid`, name: userId },
+      user: { id: userId, email: `${userId}@test.quits.invalid`, name: userId },
       session: { activeOrganizationId: organizationId },
     },
     requestedOrganizationId,

@@ -4,7 +4,7 @@ import {
   invoiceIdInputSchema,
   invoiceSendInputSchema,
   invoiceUpdateDraftInputSchema,
-} from "@yaip/contracts/invoices"
+} from "@quits/contracts/invoices"
 import type { z } from "zod"
 import { billingProvider } from "../../lib/billing"
 import { prisma } from "../../lib/db"

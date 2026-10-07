@@ -21,7 +21,7 @@ const approval: ApprovalRow = {
   summary: "Send invoice INV-0001 (100.00 USD) to billing@acme.test",
   reviewDetails: { number: "INV-0001", recipient: "billing@acme.test", total: "100.00", currency: "USD" },
   status: "pending",
-  agent: { id: "key_1", name: "Bookkeeper", displayPrefix: "yaip_ak_abc123", revokedAt: null },
+  agent: { id: "key_1", name: "Bookkeeper", displayPrefix: "quits_ak_abc123", revokedAt: null },
   createdAt: new Date("2026-10-06T10:00:00Z"),
   expiresAt: new Date("2026-10-13T10:00:00Z"),
   decidedAt: null,
@@ -35,10 +35,10 @@ const approval: ApprovalRow = {
 
 describe("agent components", () => {
   it("shows the secret with Claude Code and JSON client configuration", () => {
-    const html = renderToStaticMarkup(<AgentKeySecret secret="yaip_ak_secret" />)
-    expect(html).toContain("yaip_ak_secret")
-    expect(html).toContain("claude mcp add --transport http yaip /api/mcp")
-    expect(html).toContain("Authorization: Bearer yaip_ak_secret")
+    const html = renderToStaticMarkup(<AgentKeySecret secret="quits_ak_secret" />)
+    expect(html).toContain("quits_ak_secret")
+    expect(html).toContain("claude mcp add --transport http quits /api/mcp")
+    expect(html).toContain("Authorization: Bearer quits_ak_secret")
     expect(html).toContain("&quot;mcpServers&quot;")
   })
 

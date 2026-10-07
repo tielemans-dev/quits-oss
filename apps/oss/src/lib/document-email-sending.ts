@@ -100,7 +100,7 @@ export function resolveDocumentEmailEnvelope(input: {
     domain?: string | null
   } | null
 }): DocumentEmailEnvelope {
-  const orgName = input.orgName?.trim() || "YAIP"
+  const orgName = input.orgName?.trim() || "Quits"
   const sharedFromEmail = normalizeEmailAddress(input.sharedFromEmail) ?? "noreply@yaip.app"
   const replyTo = normalizeEmailAddress(input.orgBillingEmail)
   const brandedDomain = normalizeDomain(input.branded?.domain)
@@ -117,7 +117,7 @@ export function resolveDocumentEmailEnvelope(input: {
 
   return {
     fromEmail: sharedFromEmail,
-    fromName: `${orgName} via YAIP`,
+    fromName: `${orgName} via Quits`,
     replyTo,
     usingBrandedDomain: false,
   }

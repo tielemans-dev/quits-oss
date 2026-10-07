@@ -22,7 +22,7 @@ type DocumentCaller = {
 
 async function createCloudCallerWithContact() {
   vi.resetModules()
-  process.env.YAIP_DISTRIBUTION = "cloud"
+  process.env.QUITS_DISTRIBUTION = "cloud"
 
   const { appRouter } = await import("../../router")
   const orgId = randomUUID()
@@ -67,7 +67,7 @@ async function createCloudCallerWithContact() {
 
 describeIfDatabase("onboarding document guards", () => {
   afterEach(async () => {
-    process.env.YAIP_DISTRIBUTION = "selfhost"
+    process.env.QUITS_DISTRIBUTION = "selfhost"
   })
 
   it("blocks invoice and quote creation until onboarding is complete", async () => {

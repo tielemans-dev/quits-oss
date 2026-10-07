@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest"
 
 import {
-  bootstrapYaipRuntime,
-  resetYaipRuntimeForTests,
+  bootstrapQuitsRuntime,
+  resetQuitsRuntimeForTests,
 } from "../runtime/bootstrap"
 import { getRuntimeCapabilities, getRuntimeExtensions } from "../runtime/extensions"
 import {
@@ -26,13 +26,13 @@ function createFakePlatform(id: string): RuntimePlatform {
 
 describe("runtime bootstrap", () => {
   afterEach(() => {
-    resetYaipRuntimeForTests()
+    resetQuitsRuntimeForTests()
   })
 
   it("installs platform, extensions, and services together", async () => {
     const platform = createFakePlatform("cloud-bootstrap")
 
-    bootstrapYaipRuntime({
+    bootstrapQuitsRuntime({
       platform,
       extensions: [
         {

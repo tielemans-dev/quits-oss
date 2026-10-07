@@ -6,7 +6,7 @@ import {
   quotePublicDecisionSchema,
   quoteSendInputSchema,
   quoteUpdateDraftInputSchema,
-} from "@yaip/contracts/quotes"
+} from "@quits/contracts/quotes"
 import { billingProvider } from "../../lib/billing"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { appLogger } from "../../lib/observability"

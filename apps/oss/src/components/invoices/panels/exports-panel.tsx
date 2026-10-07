@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import type { EinvoiceMissingField } from "@yaip/contracts/exports"
+import type { EinvoiceMissingField } from "@quits/contracts/exports"
 import { Download } from "lucide-react"
 import { useState } from "react"
 import { downloadTextFile } from "../../../lib/exports/download"

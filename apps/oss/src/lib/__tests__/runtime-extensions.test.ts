@@ -74,9 +74,9 @@ describe("runtime extension capabilities", () => {
     const { setRuntimePlatform } = await import("../runtime/platform")
     setRuntimePlatform(
       createPlatformEnv({
-        YAIP_DISTRIBUTION: "cloud",
-        YAIP_AI_BYOK_ENABLED: "false",
-        YAIP_AI_MANAGED_ENABLED: "true",
+        QUITS_DISTRIBUTION: "cloud",
+        QUITS_AI_BYOK_ENABLED: "false",
+        QUITS_AI_MANAGED_ENABLED: "true",
       })
     )
 

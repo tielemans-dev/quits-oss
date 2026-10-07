@@ -36,7 +36,7 @@ export function buildReminderEmailContent({
   publicPaymentUrl,
 }: Omit<ReminderEmailParams, "to">) {
   const locale = org.locale
-  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "YAIP")
+  const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   // Due dates are calendar dates stored as UTC midnight; formatting them in the organization's
   // timezone would show the previous day west of UTC.

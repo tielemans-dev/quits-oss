@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import type { RuntimeCapabilities } from "@yaip/contracts/runtime"
+import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
 import { createThenSend } from "../../../lib/create-and-send"

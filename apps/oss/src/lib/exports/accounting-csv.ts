@@ -2,7 +2,7 @@ import {
   ACCOUNTING_EXPORT_COLUMNS,
   type AccountingColumn,
   type AccountingDataset,
-} from "@yaip/contracts/exports"
+} from "@quits/contracts/exports"
 import { buildCsv, csvNumber, type CsvCell } from "./csv"
 import { formatAmount, formatIsoDate, type DecimalLike } from "./format"
 

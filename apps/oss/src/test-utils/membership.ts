@@ -13,7 +13,7 @@ export async function ensureTestMembership(
     where: { id: userId },
     create: {
       id: userId,
-      email: `${userId}@test.yaip.invalid`,
+      email: `${userId}@test.quits.invalid`,
       name: userId,
       emailVerified: true,
       createdAt: new Date(),

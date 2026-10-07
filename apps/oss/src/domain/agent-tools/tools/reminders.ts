@@ -1,4 +1,4 @@
-import { reminderSendNowInputSchema } from "@yaip/contracts/reminders"
+import { reminderSendNowInputSchema } from "@quits/contracts/reminders"
 import {
   invoiceReminderTargetSchema,
   pauseInvoiceReminders,

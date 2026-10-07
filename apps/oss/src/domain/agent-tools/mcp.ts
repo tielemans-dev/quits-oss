@@ -1,22 +1,22 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js"
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js"
-import type { CommandError } from "@yaip/contracts/agent"
+import type { CommandError } from "@quits/contracts/agent"
 import { appLogger } from "../../lib/observability"
 import type { AgentActor } from "../actor"
 import { authenticateAgentSecret } from "../agent-keys"
 import type { AgentTool } from "./define"
 import { getAgentTool, visibleAgentTools } from "./registry"
-import { resolveUrlOrigin } from "@yaip/shared/runtimeEnv"
+import { resolveUrlOrigin, readProductEnv } from "@quits/shared/runtimeEnv"
 
 const logger = appLogger.child("agent-api")
 
 const SERVER_INSTRUCTIONS = [
-  "YAIP is an invoicing system. Call organization_read first to learn the currency, tax regime,",
+  "Quits is an invoicing system. Call organization_read first to learn the currency, tax regime,",
   "and your key's mode and scopes.",
   "Reads are free. Drafts (contact_create, invoice_create_draft, invoice_update_draft) are free and",
-  "never leave YAIP. Commands that leave YAIP or move money, such as invoice_send, may return",
-  "status awaiting_approval; a person approves them in YAIP, then call command_wait with the",
+  "never leave Quits. Commands that leave Quits or move money, such as invoice_send, may return",
+  "status awaiting_approval; a person approves them in Quits, then call command_wait with the",
   "commandId instead of sending again.",
   "Every command takes a clientRequestId you choose; reuse it when retrying so nothing runs twice.",
 ].join(" ")
@@ -114,7 +114,7 @@ function toCallToolResult(result: ToolRunResult): CallToolResult {
 /** Builds an MCP server exposing only the tools this agent key may use. */
 export function createAgentMcpServer(actor: AgentActor) {
   const server = new McpServer(
-    { name: "yaip", title: "YAIP invoicing", version: "1.0.0" },
+    { name: "quits", title: "Quits invoicing", version: "1.0.0" },
     { capabilities: { tools: {} }, instructions: SERVER_INSTRUCTIONS }
   )
 
@@ -148,7 +148,7 @@ export function createAgentMcpServer(actor: AgentActor) {
 /**
  * The MCP Streamable HTTP spec requires servers to validate `Origin` to stop DNS-rebinding
  * attacks from browsers. Non-browser clients send no Origin and are allowed; browser requests
- * must come from the app itself or an origin listed in `YAIP_MCP_ALLOWED_ORIGINS`.
+ * must come from the app itself or an origin listed in `QUITS_MCP_ALLOWED_ORIGINS`.
  */
 export function isAllowedMcpOrigin(origin: string | null, env: Record<string, string | undefined> = process.env) {
   if (!origin) {
@@ -158,8 +158,8 @@ export function isAllowedMcpOrigin(origin: string | null, env: Record<string, st
   const allowed = new Set(
     [
       resolveUrlOrigin(env.BETTER_AUTH_URL),
-      resolveUrlOrigin(env.YAIP_APP_ORIGIN),
-      ...(env.YAIP_MCP_ALLOWED_ORIGINS ?? "").split(",").map((value) => resolveUrlOrigin(value.trim())),
+      resolveUrlOrigin(readProductEnv(env, "APP_ORIGIN")),
+      ...(readProductEnv(env, "MCP_ALLOWED_ORIGINS") ?? "").split(",").map((value) => resolveUrlOrigin(value.trim())),
     ].filter((value): value is string => Boolean(value))
   )
   return allowed.has(resolveUrlOrigin(origin) ?? "")
@@ -177,8 +177,8 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
 
   const secret = readBearer(request)
   if (!secret) {
-    return jsonRpcError(401, "Missing agent key. Send Authorization: Bearer yaip_ak_...", {
-      "WWW-Authenticate": 'Bearer realm="yaip"',
+    return jsonRpcError(401, "Missing agent key. Send Authorization: Bearer quits_ak_...", {
+      "WWW-Authenticate": 'Bearer realm="quits"',
     })
   }
 
@@ -188,7 +188,7 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
   } catch (error) {
     if (isDomainError(error) && error._tag === "Forbidden") {
       return jsonRpcError(401, error.message, {
-        "WWW-Authenticate": 'Bearer realm="yaip", error="invalid_token"',
+        "WWW-Authenticate": 'Bearer realm="quits", error="invalid_token"',
       })
     }
     throw error

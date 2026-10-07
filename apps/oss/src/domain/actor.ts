@@ -1,4 +1,4 @@
-import type { AgentMode } from "@yaip/contracts/agent"
+import type { AgentMode } from "@quits/contracts/agent"
 import {
   roleHasPermission,
   type OrganizationRole,

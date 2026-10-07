@@ -75,7 +75,7 @@ function callerFor(org: Org, role: "admin" | "member" | "accountant") {
   const userId = org.actors[role].userId
   return appRouter.createCaller({
     session: {
-      user: { id: userId, email: `${userId}@test.yaip.invalid`, name: userId },
+      user: { id: userId, email: `${userId}@test.quits.invalid`, name: userId },
       session: { activeOrganizationId: org.organizationId },
     },
   } as never)
