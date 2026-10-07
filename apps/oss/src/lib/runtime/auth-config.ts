@@ -56,8 +56,14 @@ export function buildQuitsAuthOptions(input: {
     const safeTask = task.then(() => {}).catch(() => {
       console.error("Auth background task failed")
     })
-    if (hooks.runInBackground) hooks.runInBackground(safeTask)
-    else void safeTask
+    try {
+      if (hooks.runInBackground) hooks.runInBackground(safeTask)
+      else void safeTask
+    } catch {
+      // Registration can fail after token commit. Keep confirmation generic and leave
+      // the already-observed promise running without logging runtime error details.
+      console.error("Auth background task registration failed")
+    }
   }
   const env = input.env
   const envRecord = createEnvRecord(env)

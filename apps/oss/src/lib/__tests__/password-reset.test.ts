@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest"
 import { betterAuth } from "better-auth"
 import { memoryAdapter } from "better-auth/adapters/memory"
-import { buildQuitsAuthOptions } from "../runtime/auth-config"
+import { buildQuitsAuthOptions, type AuthHooks } from "../runtime/auth-config"
 import { PASSWORD_RESET_EXPIRES_IN } from "../auth/password-policy"
 
 let clientNumber = 0
 
-function fixture(sendResetPassword = vi.fn().mockResolvedValue(undefined)) {
+function fixture(sendResetPassword = vi.fn().mockResolvedValue(undefined), runInBackground?: AuthHooks["runInBackground"]) {
   const database: Record<string, Record<string, unknown>[]> = { user: [], session: [], account: [], verification: [] }
   const origin = "http://localhost:3102"
   const background: Promise<void>[] = []
@@ -19,7 +19,7 @@ function fixture(sendResetPassword = vi.fn().mockResolvedValue(undefined)) {
       $transaction: transaction,
     } as never,
     env: { getEnv: (name) => name === "BETTER_AUTH_URL" ? origin : undefined },
-    hooks: { createDatabaseAdapter: () => memoryAdapter(database), createTransactionDatabaseAdapter: () => memoryAdapter(database), sendResetPassword, runInBackground: (task) => { background.push(task) } },
+    hooks: { createDatabaseAdapter: () => memoryAdapter(database), createTransactionDatabaseAdapter: () => memoryAdapter(database), sendResetPassword, runInBackground: runInBackground ?? ((task) => { background.push(task) }) },
   })
   const auth = betterAuth({ ...options, secret: "password-reset-test-secret-at-least-32-characters", logger: { log: logger }, advanced: { ...options.advanced, disableOriginCheck: false, disableCSRFCheck: false } })
   const ip = `192.0.2.${++clientNumber}`
@@ -35,6 +35,56 @@ function fixture(sendResetPassword = vi.fn().mockResolvedValue(undefined)) {
 }
 
 describe("Better Auth password recovery", () => {
+  it.each([false, true])("preserves generic confirmation when background registration throws, delivery rejects: %s", async (rejectDelivery) => {
+    let finish!: () => void
+    const delivery = new Promise<void>((resolve, reject) => {
+      finish = () => rejectDelivery ? reject(new Error("private provider details")) : resolve()
+    })
+    const tasks: Promise<void>[] = []
+    const register = vi.fn((task: Promise<void>) => {
+      tasks.push(task)
+      throw new Error("private registration details")
+    })
+    const sender = vi.fn(() => delivery)
+    const f = fixture(sender, register)
+    await f.signup()
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const known = await f.requestReset()
+      const unknown = await f.requestReset("private-unknown@example.com")
+      expect([known.status, unknown.status]).toEqual([200, 200])
+      expect(await known.json()).toEqual(await unknown.json())
+      expect(f.database.verification).toHaveLength(1)
+      expect(sender).toHaveBeenCalledOnce()
+      expect(register).toHaveBeenCalledOnce()
+      expect(f.logger).not.toHaveBeenCalled()
+      expect(logged.mock.calls).toEqual([["Auth background task registration failed"]])
+      finish()
+      await Promise.all(tasks)
+      expect(logged.mock.calls).toEqual([
+        ["Auth background task registration failed"],
+        ...(rejectDelivery ? [["Password reset email delivery failed"]] : []),
+      ])
+    } finally { finish(); await Promise.all(tasks); logged.mockRestore() }
+  })
+
+  it("observes background promise rejection even when registration throws", async () => {
+    const tasks: Promise<void>[] = []
+    const f = fixture(undefined, (task) => {
+      tasks.push(task)
+      throw new Error("private registration details")
+    })
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const handler = f.auth.options.advanced!.backgroundTasks!.handler!
+      expect(() => handler(Promise.reject(new Error("private task details")))).not.toThrow()
+      await Promise.all(tasks)
+      expect(logged.mock.calls).toEqual([
+        ["Auth background task registration failed"], ["Auth background task failed"],
+      ])
+    } finally { logged.mockRestore() }
+  })
+
   it("does not start delivery or hand it to native waitUntil before a successful commit", async () => {
     const f = fixture()
     await f.signup()
