@@ -83,14 +83,15 @@ function approvalNoteFor(command: { outwardFacing: boolean; requiresApproval?: u
 
 /**
  * Exposes a domain command to agents. The tool input is the command input plus
- * `clientRequestId`, so the agent contract stays identical to the UI contract.
+ * `clientRequestId`. A tool may require decimal strings while the command also accepts
+ * transitional numeric UI inputs; its parsed input must remain assignable to the command.
  */
-export function defineCommandTool<Input extends AnyObjectSchema, Result>(tool: {
+export function defineCommandTool<Input extends AnyObjectSchema, CommandInput, Result>(tool: {
   name: string
   title: string
   description: string
-  command: CommandDefinition<z.output<Input>, Result>
-  input: Input
+  command: CommandDefinition<CommandInput, Result>
+  input: Input & (z.output<Input> extends CommandInput ? unknown : never)
   present?: (result: Result) => unknown
 }): AgentTool {
   const present = (result: unknown) => toJsonValue(tool.present ? tool.present(result as Result) : result)

@@ -26,7 +26,9 @@ import { mintAgreementLink } from "../../lib/agreements/tokens"
 import { readEmailDelivery } from "../email-delivery-result"
 import {
   agreementCreateDraftInputSchema,
+  agreementCreateDraftDecimalInputSchema,
   agreementUpdateDraftInputSchema,
+  agreementUpdateDraftDecimalInputSchema,
   agreementIdInputSchema,
   agreementListInputSchema,
   deliverableUpdateInputSchema,
@@ -161,8 +163,30 @@ export const agreementsRouter = router({
         ),
       ),
     ),
+  createDraftDecimal: authorizedProcedure("agreement:create")
+    .input(agreementCreateDraftDecimalInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeAgreementDetail(
+        unwrapOutcome(
+          await executeCommand(createAgreementDraft, input, {
+            actor: ctx.actor,
+          }),
+        ),
+      ),
+    ),
   updateDraft: authorizedProcedure("agreement:update")
     .input(agreementUpdateDraftInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeAgreementDetail(
+        unwrapOutcome(
+          await executeCommand(updateAgreementDraft, input, {
+            actor: ctx.actor,
+          }),
+        ),
+      ),
+    ),
+  updateDraftDecimal: authorizedProcedure("agreement:update")
+    .input(agreementUpdateDraftDecimalInputSchema)
     .mutation(async ({ ctx, input }) =>
       serializeAgreementDetail(
         unwrapOutcome(

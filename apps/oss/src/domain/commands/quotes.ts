@@ -21,13 +21,15 @@ import { queueDocumentEmail, refuseWhileSending } from "../documents/document-de
 import { lockDocument } from "../documents/locks"
 import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { allocateDocumentNumber } from "../documents/numbering"
-import { impliedTaxRate, priceDocument } from "../documents/pricing"
+import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
 import {
   composeQuoteEmail,
   requireRecipientEmail,
   resolveQuoteEmailContext,
 } from "../documents/quote-email"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
+import { requireVatIssuance } from "../documents/vat-issuance"
+import { draftVatEvidenceSchema } from "@quits/contracts/vat"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { prisma } from "../../lib/db"
@@ -97,14 +99,14 @@ export const createQuoteDraft = defineCommand({
       const number = yield* allocateDocumentNumber("quote")
       const currency = input.currency ?? settings.defaultCurrency ?? settings.currency
       yield* requireDraftCurrency(currency)
-      const priced = priceDocument({
-        profile,
+      const calculated = yield* priceCurrentDraft({
         items: input.items,
+        vatEvidence: input.vatEvidence,
         taxRate: input.taxRate,
         pricesIncludeTax: settings.pricesIncludeTax,
         currency,
       })
-      const compliance = assessCompliance(profile, sellerTaxIds, input.taxRate)
+      const compliance = assessCompliance(profile, sellerTaxIds, Number(input.taxRate))
 
       const quote = yield* Effect.promise(() =>
         db.quote.create({
@@ -114,9 +116,11 @@ export const createQuoteDraft = defineCommand({
             number,
             status: "draft",
             expiryDate: new Date(input.expiryDate),
-            subtotalNet: priced.subtotalNet,
-            totalTax: priced.totalTax,
-            totalGross: priced.totalGross,
+            subtotalNet: calculated.subtotalNet,
+            totalTax: calculated.totalTax,
+            totalGross: calculated.totalGross,
+            calculationVersion: calculated.calculationVersion,
+            vatEvidence: toNullableJsonInput(input.vatEvidence),
             currency,
             countryCode: settings.countryCode,
             locale: settings.locale,
@@ -128,12 +132,14 @@ export const createQuoteDraft = defineCommand({
             complianceStatus: compliance.status,
             complianceErrors: compliance.issues,
             notes: input.notes,
-            items: { create: priced.itemRows },
+            items: { create: calculated.itemRows },
           },
           include: { items: { orderBy: { sortOrder: "asc" } } },
         })
       )
 
+      // Keep the pinned v1 event payload numeric while persisting decimal strings.
+      const priced = { totalGross: quote.totalGross.toNumber() }
       command.emit({
         aggregateType: "quote",
         aggregateId: quote.id,
@@ -170,8 +176,6 @@ export const updateQuoteDraft = defineCommand({
         })
       }
 
-      const { settings, profile } = yield* loadDocumentContext
-      const pricesIncludeTax = settings.pricesIncludeTax
       const data: Parameters<typeof db.quote.update>[0]["data"] = {}
 
       if (input.contactId) {
@@ -183,29 +187,27 @@ export const updateQuoteDraft = defineCommand({
       if (input.currency) data.currency = input.currency
       if (input.notes !== undefined) data.notes = input.notes
 
-      // A currency change can change rounding precision, so it reprices too.
-      if (input.items || input.taxRate !== undefined || input.currency !== undefined) {
-        const items =
-          input.items ??
-          existing.items.map((item) => ({
-            description: item.description,
-            quantity: item.quantity.toNumber(),
-            unitPrice: pricesIncludeTax ? item.unitPriceGross.toNumber() : item.unitPriceNet.toNumber(),
-          }))
-        const priced = priceDocument({
-          profile,
-          items,
-          taxRate: input.taxRate ?? impliedTaxRate(existing),
-          pricesIncludeTax,
-          currency: input.currency ?? existing.currency,
-        })
-
-        data.subtotalNet = priced.subtotalNet
-        data.totalTax = priced.totalTax
-        data.totalGross = priced.totalGross
-        yield* Effect.promise(() => db.quoteItem.deleteMany({ where: { quoteId: existing.id } }))
-        data.items = { create: priced.itemRows }
-      }
+      // Every draft edit upgrades to the current calculator, including notes-only edits.
+      const currency = input.currency ?? existing.currency
+      yield* requireDraftCurrency(currency)
+      const items = input.items ?? storedDraftItems(existing)
+      // An explicitly supplied document rate fills all lines. Omitted rate retains per-line VAT.
+      const pricedItems = input.taxRate === undefined ? items : items.map((item) => ({ ...item, vat: undefined }))
+      const evidence = input.vatEvidence ?? draftVatEvidenceSchema.parse(existing.vatEvidence ?? {})
+      const priced = yield* priceCurrentDraft({
+        items: input.items ?? pricedItems,
+        taxRate: input.taxRate ?? impliedTaxRate(existing),
+        pricesIncludeTax: existing.pricesIncludeTax,
+        currency,
+        vatEvidence: evidence,
+      })
+      data.subtotalNet = priced.subtotalNet
+      data.totalTax = priced.totalTax
+      data.totalGross = priced.totalGross
+      data.calculationVersion = priced.calculationVersion
+      data.vatEvidence = toNullableJsonInput(evidence)
+      yield* Effect.promise(() => db.quoteItem.deleteMany({ where: { quoteId: existing.id } }))
+      data.items = { create: priced.itemRows }
 
       const quote = yield* Effect.promise(() =>
         db.quote.update({
@@ -316,6 +318,7 @@ export const sendQuote = defineCommand({
         return yield* new InvalidState({ message: "Only draft quotes can be sent", code: "not_draft" })
       }
       yield* refuseWhileSending("quote", quote)
+      yield* requireVatIssuance(quote)
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(quote))
@@ -537,6 +540,8 @@ export const convertQuoteToInvoice = defineCommand({
             timezone: quote.timezone,
             taxRegime: quote.taxRegime,
             pricesIncludeTax: quote.pricesIncludeTax,
+            calculationVersion: quote.calculationVersion,
+            vatEvidence: toNullableJsonInput(quote.vatEvidence),
             sellerSnapshot: toNullableJsonInput(quote.sellerSnapshot),
             buyerSnapshot: toNullableJsonInput(quote.buyerSnapshot),
             complianceStatus: quote.complianceStatus,
@@ -550,6 +555,13 @@ export const convertQuoteToInvoice = defineCommand({
               create: quote.items.map((item) => ({
                 description: item.description,
                 quantity: item.quantity,
+                quantityInput: item.quantityInput,
+                unitPriceInput: item.unitPriceInput,
+                inputPrecision: item.inputPrecision,
+                vatTreatment: item.vatTreatment,
+                vatRateInput: item.vatRateInput,
+                vatCountry: item.vatCountry,
+                vatReasonCode: item.vatReasonCode,
                 unitPriceNet: item.unitPriceNet,
                 unitPriceGross: item.unitPriceGross,
                 lineNet: item.lineNet,

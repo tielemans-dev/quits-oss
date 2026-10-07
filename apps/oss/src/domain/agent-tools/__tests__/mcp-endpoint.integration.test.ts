@@ -236,8 +236,8 @@ describeIfDatabase("MCP endpoint", () => {
       const draft = await call(client, "invoice_create_draft", {
         contactId: contact.value.result.id,
         dueDate: "2026-12-01",
-        taxRate: 25,
-        items: [{ description: "Design", quantity: 2, unitPrice: 100 }],
+        taxRate: "25",
+        items: [{ description: "Design", quantity: "2", unitPrice: "100" }],
         clientRequestId: "draft-1",
       })
       expect(draft.value).toMatchObject({
@@ -324,8 +324,8 @@ describeIfDatabase("MCP endpoint", () => {
       const draft = await call(client, "invoice_create_draft", {
         contactId,
         dueDate: "2099-12-01",
-        taxRate: 0,
-        items: [{ description: "Design", quantity: 1, unitPrice: 100 }],
+        taxRate: "0",
+        items: [{ description: "Design", quantity: "1", unitPrice: "100" }],
         clientRequestId: "lifecycle-draft",
       })
       const invoiceId = (draft.value as { result: { id: string } }).result.id

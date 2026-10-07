@@ -1,9 +1,9 @@
 import { z } from "zod"
 import {
-  recurringCreateInputSchema,
+  recurringCreateV2InputSchema,
   recurringIdInputSchema,
   recurringSetStatusInputSchema,
-  recurringUpdateInputSchema,
+  recurringUpdateV2InputSchema,
 } from "@quits/contracts/recurring"
 import { prisma } from "../../../lib/db"
 import {
@@ -51,7 +51,7 @@ export const recurringTools: AgentTool[] = [
       "Creates a schedule that generates an invoice every interval. With an approval_required key an " +
       "auto-sending schedule is saved paused; turn it on with recurring_resume, which needs approval.",
     command: createRecurringInvoice,
-    input: recurringCreateInputSchema,
+    input: recurringCreateV2InputSchema,
   }),
 
   defineCommandTool({
@@ -61,7 +61,7 @@ export const recurringTools: AgentTool[] = [
       "Changes a schedule. With an approval_required key, editing an active auto-sending schedule " +
       "pauses it until a person resumes it.",
     command: updateRecurringInvoice,
-    input: recurringUpdateInputSchema,
+    input: recurringUpdateV2InputSchema,
   }),
 
   defineCommandTool({

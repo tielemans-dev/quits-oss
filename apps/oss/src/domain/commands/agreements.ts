@@ -78,8 +78,8 @@ function lineInput(line: Deliverable, pricesIncludeTax: boolean) {
   return {
     title: line.title,
     description: line.description,
-    quantity: line.quantity.toNumber(),
-    unitPrice: (pricesIncludeTax ? line.unitPriceGross : line.unitPriceNet).toNumber(),
+    quantity: line.quantityInput ?? line.quantity.toString(),
+    unitPrice: line.unitPriceInput ?? (pricesIncludeTax ? line.unitPriceGross : line.unitPriceNet).toString(),
     agreedDate: line.agreedDate?.toISOString().slice(0, 10) ?? null,
     expectedDate: line.expectedDate?.toISOString().slice(0, 10) ?? null,
     isDeposit: line.isDeposit,
@@ -304,7 +304,7 @@ export const updateDeliverable = defineCommand({
         const lines = agreement.deliverables.map((line) =>
           lineInput(line, agreement.pricesIncludeTax),
         )
-        lines[index] = { ...lines[index]!, ...changes }
+        lines[index] = { ...lines[index]!, ...changes, quantity: String(changes.quantity ?? lines[index]!.quantity), unitPrice: String(changes.unitPrice ?? lines[index]!.unitPrice) }
         const priced = priceAgreement({
           profile: resolveCountryProfile(agreement.countryCode),
           deliverables: lines,

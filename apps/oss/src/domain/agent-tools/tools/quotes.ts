@@ -1,8 +1,8 @@
 import {
-  quoteCreateDraftInputSchema,
+  quoteCreateDraftV2InputSchema,
   quoteIdInputSchema,
   quoteSendInputSchema,
-  quoteUpdateDraftInputSchema,
+  quoteUpdateDraftV2InputSchema,
 } from "@quits/contracts/quotes"
 import { documentIdToolInputSchema, quotesListToolInputSchema } from "@quits/contracts/agent"
 import { prisma } from "../../../lib/db"
@@ -73,7 +73,7 @@ export const quoteTools: AgentTool[] = [
       "Creates a draft quote (estimate) for a contact. Drafts are free: nothing is sent and no " +
       "approval is needed. expiryDate is YYYY-MM-DD; taxRate is a percentage.",
     command: createQuoteDraft,
-    input: quoteCreateDraftInputSchema,
+    input: quoteCreateDraftV2InputSchema,
     present: presentQuote,
   }),
 
@@ -82,7 +82,7 @@ export const quoteTools: AgentTool[] = [
     title: "Update draft quote",
     description: "Edits a draft quote. Passing items replaces all line items. Only drafts can be edited.",
     command: updateQuoteDraft,
-    input: quoteUpdateDraftInputSchema,
+    input: quoteUpdateDraftV2InputSchema,
     present: presentQuote,
   }),
 
