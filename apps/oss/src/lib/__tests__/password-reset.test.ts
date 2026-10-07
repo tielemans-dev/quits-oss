@@ -93,4 +93,16 @@ describe("Better Auth password recovery", () => {
     expect((await f.requestReset("recovery@example.com", "https://attacker.example/reset")).status).toBe(403)
     expect(f.sendResetPassword).not.toHaveBeenCalled()
   })
+
+  it("preserves native body-token validation even with a valid query token", async () => {
+    const f = fixture()
+    await f.signup()
+    await f.requestReset()
+    const path = `/reset-password?token=${encodeURIComponent(f.resetToken())}`
+    for (const token of [null, false, 0, [], {}]) {
+      expect((await f.post(path, { token, newPassword: "new-password456" })).status).toBe(400)
+    }
+    expect(f.database.verification).toHaveLength(1)
+    expect((await f.post(path, { token: "", newPassword: "new-password456" })).status).toBe(200)
+  })
 })

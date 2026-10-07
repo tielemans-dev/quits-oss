@@ -143,7 +143,10 @@ export function buildQuitsAuthOptions(input: {
           : recoveryClientKey()
         await admitRecoveryRequest(input.prisma, ctx.path, clientKey, env.getEnv("BETTER_AUTH_SECRET"))
         if (ctx.path !== "/reset-password") return
-        const token = ctx.body?.token ?? ctx.query?.token
+        // Let native schema validation reject non-string body tokens before normalization.
+        if (ctx.body?.token !== undefined && typeof ctx.body.token !== "string") return
+        // Match the native endpoint's truthy fallback, then give it the exact token we lock.
+        const token = ctx.body?.token || ctx.query?.token
         if (typeof token !== "string") return
         // The native endpoint remains responsible for validation, hashing, token consumption and
         // session revocation. Lock its existing record until all those writes commit together.
@@ -153,12 +156,18 @@ export function buildQuitsAuthOptions(input: {
           const adapter = (adapterFactory as (options: BetterAuthOptions) => DBAdapter)(ctx.context.options)
           const internalAdapter = createInternalAdapter(adapter, {
             ...ctx.context,
+            options: {
+              ...ctx.context.options,
+              verification: { ...ctx.context.options.verification, disableCleanup: true },
+            },
             hooks: [ctx.context.options.databaseHooks ?? {}],
           })
+          // Native expiry validation still applies. Its broad expired-record cleanup must not
+          // acquire other verification locks while this transaction holds a reset-record lock.
           return runWithAdapter(adapter, () => resetPassword({
             ...ctx,
             method: "POST",
-            body: ctx.body as { token?: string; newPassword: string },
+            body: { ...ctx.body, token } as { token: string; newPassword: string },
             context: { ...ctx.context, internalAdapter },
             asResponse: false,
             returnHeaders: false,
@@ -189,7 +198,7 @@ export function buildQuitsAuthOptions(input: {
               to: data.user.email,
               name: data.user.name,
               resetUrl: data.url,
-              fromEmail: env.getEnv("FROM_EMAIL"),
+              fromEmail: env.getEnv("FROM_EMAIL")?.trim() || "noreply@yaip.app",
               locale: request?.headers.get("accept-language")?.split(",")[0],
             })
           }

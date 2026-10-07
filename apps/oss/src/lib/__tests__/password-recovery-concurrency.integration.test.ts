@@ -64,12 +64,16 @@ async function fixture(overrides: AuthHooks = {}) {
 }
 
 describe.skipIf(!localDatabase)("shared database password recovery guards", () => {
-  it("allows exactly one of two simultaneous resets across independent auth instances", async () => {
+  it.each(["body", "empty body with query fallback", "body takes precedence over query"])("allows exactly one simultaneous reset across instances using %s", async (tokenSource) => {
     const f = await fixture()
     expect((await f.requestReset()).status).toBe(200)
     await Promise.all(f.background)
     const passwords = ["first-replacement123", "second-replacement456"]
-    const results = await Promise.all(passwords.map((newPassword, index) => f.post(index, "/reset-password", { token: f.token(), newPassword })))
+    const path = tokenSource === "empty body with query fallback"
+      ? `/reset-password?token=${encodeURIComponent(f.token())}`
+      : tokenSource === "body takes precedence over query" ? "/reset-password?token=unrelated-token" : "/reset-password"
+    const token = tokenSource === "empty body with query fallback" ? "" : f.token()
+    const results = await Promise.all(passwords.map((newPassword, index) => f.post(index, path, { token, newPassword })))
     expect(results.map((response) => response.status).sort()).toEqual([200, 400])
     const winner = results.findIndex((response) => response.status === 200)
     expect(await results[winner]!.json()).toEqual({ status: true })
@@ -78,6 +82,40 @@ describe.skipIf(!localDatabase)("shared database password recovery guards", () =
     expect((await f.post(0, "/sign-in/email", { email: f.email, password: passwords[winner] })).status).toBe(200)
     expect((await f.post(1, "/sign-in/email", { email: f.email, password: passwords[1 - winner] })).status).toBe(401)
     expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(0)
+  })
+
+  it("rejects distinct expired links concurrently without acquiring each other's verification locks", async () => {
+    let release!: () => void
+    const bothLocked = new Promise<void>((resolve) => { release = resolve })
+    let lookups = 0
+    const f = await fixture({
+      createTransactionDatabaseAdapter: (tx) => (options: Parameters<ReturnType<typeof prismaAdapter>>[0]) => {
+        const adapter = prismaAdapter(tx, { provider: "postgresql" })(options)
+        return {
+          ...adapter,
+          async findMany(input: Parameters<typeof adapter.findMany>[0]) {
+            if (input.model === "verification") {
+              if (++lookups === 2) release()
+              await bothLocked
+            }
+            return adapter.findMany(input)
+          },
+        }
+      },
+    })
+    await f.requestReset()
+    await f.requestReset(1)
+    await Promise.all(f.background)
+    await clients[0]!.verification.updateMany({ where: { value: f.userId }, data: { expiresAt: new Date(Date.now() - 60_000) } })
+    const tokens = f.sendResetPassword.mock.calls.map(([data]) => data.token as string)
+    const responses = await Promise.all(tokens.map((token, index) => f.post(index, "/reset-password", { token, newPassword: `replacement-password${index}123` })))
+    expect(responses.map((response) => response.status)).toEqual([400, 400])
+    expect(await Promise.all(responses.map((response) => response.json()))).toEqual([
+      expect.objectContaining({ code: "INVALID_TOKEN" }), expect.objectContaining({ code: "INVALID_TOKEN" }),
+    ])
+    expect(await clients[0]!.verification.count({ where: { value: f.userId } })).toBe(2)
+    expect(await clients[0]!.session.count({ where: { userId: f.userId } })).toBe(1)
+    expect((await f.post(0, "/sign-in/email", { email: f.email, password: "original-password123" })).status).toBe(200)
   })
 
   it("rolls back password and token writes if native session revocation fails", async () => {

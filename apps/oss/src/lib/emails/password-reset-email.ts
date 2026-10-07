@@ -1,4 +1,5 @@
 import { actionBlock, composeMessage, deliver, escapeHtml, fromAddress, layout, sanitizeHeader, t } from "../email"
+import type { DeliveryOptions } from "../email"
 import { PASSWORD_RESET_EXPIRES_IN } from "../auth/password-policy"
 
 export type PasswordResetEmailInput = {
@@ -28,6 +29,6 @@ export function buildPasswordResetEmailContent({ name, resetUrl, fromEmail, loca
   }
 }
 
-export async function sendPasswordResetEmail({ to, ...input }: PasswordResetEmailInput) {
-  return deliver(composeMessage(to, buildPasswordResetEmailContent(input)))
+export async function sendPasswordResetEmail({ to, ...input }: PasswordResetEmailInput, options: DeliveryOptions = {}) {
+  return deliver(composeMessage(to, buildPasswordResetEmailContent(input)), options)
 }
