@@ -118,7 +118,10 @@ export async function prepareDocument(stagingId: string): Promise<ArtifactStagin
           return { ref, hash, size: bytes.byteLength }
         }
         const artifacts: StoredArtifacts = { pdf: await storeBytes("pdf", await renderer.renderPdf(renderInput)) }
-        if (renderer.renderUbl) artifacts.ubl = await storeBytes("ubl", await renderer.renderUbl(renderInput))
+        if (renderer.renderUbl) {
+          const ubl = await renderer.renderUbl(renderInput)
+          if (ubl) artifacts.ubl = await storeBytes("ubl", ubl)
+        }
         await prisma.artifactStaging.updateMany({ where: { id: stagingId, status: "reserved", prepToken },
           data: { status: "stored", artifacts: artifactsJson(artifacts), prepToken: null } })
       }
@@ -143,6 +146,7 @@ export function issueDocument(input: IssuanceArgs & { kind: ArtifactDocumentKind
   return executeCommand(definition as CommandDefinition<any, any>, input.commandInput, {
     ...input.options, actor: input.actor, clientRequestId,
     prepareIssuance: async (parsedInput, now) => {
+      if (!getDocumentRenderer() || !getDocumentArtifactStore()) throw new InvalidState({ code: "renderer_unavailable", message: "Document renderer and artifact store required" })
       const staging = await reserveDocument({ ...input, commandInput: parsedInput, clientRequestId,
         now, method: input.options?.method })
       await prepareDocument(staging.id)

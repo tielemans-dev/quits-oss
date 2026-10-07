@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import "dotenv/config"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createContact } from "../../domain/commands/contacts"
@@ -7,7 +8,7 @@ import { recordPayment, voidPayment } from "../../domain/commands/payments"
 import { EXPIRE_CHECKOUT_SESSION_JOB } from "../../domain/documents/checkout-sessions"
 import { readActivity } from "../../domain/events"
 import { runDueJobs } from "../../domain/jobs"
-import { executeCommand } from "../../domain/execute"
+
 import { processStripeWebhookEvent } from "../payments/webhooks"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { prisma } from "../db"
@@ -65,13 +66,13 @@ describeIfDatabase("public invoice links after settlement changes", () => {
         stripeWebhookSecretEnc: encryptSecret("whsec_test_12345678901234567890"),
       },
     })
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Buyer", email: "buyer@example.test" },
       { actor: org.actors.admin }
     )
     if (contact.status !== "completed") throw new Error("contact setup failed")
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: contact.result.id,
@@ -83,7 +84,7 @@ describeIfDatabase("public invoice links after settlement changes", () => {
       { actor: org.actors.admin }
     )
     if (draft.status !== "completed") throw new Error(`draft failed: ${JSON.stringify(draft)}`)
-    const sent = await executeCommand(
+    const sent = await executeIssuanceCommand(
       sendInvoice,
       { id: draft.result.id, allowSendWithoutEmail: true },
       { actor: org.actors.admin }
@@ -112,7 +113,7 @@ describeIfDatabase("public invoice links after settlement changes", () => {
   }
 
   function bankTransfer(context: Context, amount: number) {
-    return executeCommand(
+    return executeIssuanceCommand(
       recordPayment,
       { invoiceId: context.invoiceId, amount, paidAt: "2026-01-02", method: "bank_transfer" },
       { actor: context.org.actors.admin }
@@ -143,7 +144,7 @@ describeIfDatabase("public invoice links after settlement changes", () => {
       if (paid.status !== "completed") throw new Error(JSON.stringify(paid))
 
       const first = await openCheckout(context)
-      const credited = await executeCommand(
+      const credited = await executeIssuanceCommand(
         issueCreditNote,
         { invoiceId: context.invoiceId, reason: "Discount", mode: "amount", amount: 30 },
         { actor: context.org.actors.admin }
@@ -153,7 +154,7 @@ describeIfDatabase("public invoice links after settlement changes", () => {
 
       const second = await openCheckout(context)
       expect(createCheckoutSession).toHaveBeenLastCalledWith(expect.objectContaining({ amountDue: 50 }))
-      const voided = await executeCommand(
+      const voided = await executeIssuanceCommand(
         voidPayment,
         { paymentId: paid.result.payment.id, reason: "Bounced" },
         { actor: context.org.actors.admin }
@@ -331,7 +332,7 @@ describeIfDatabase("public invoice links after settlement changes", () => {
   describe("an invoice credited in full", () => {
     it("keeps its emailed payment link working and shows it as settled", async () => {
       const { org, invoiceId, token } = await setup()
-      const credited = await executeCommand(
+      const credited = await executeIssuanceCommand(
         issueCreditNote,
         { invoiceId, reason: "Cancelled", mode: "full" },
         { actor: org.actors.admin }

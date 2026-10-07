@@ -33,6 +33,7 @@ export function creditAvailabilityFor(invoice: {
   currency: string
   calculationVersion?: string
   vatEvidence?: unknown
+  issuanceSnapshot?: unknown
   subtotalNet: Decimalish
   totalTax: Decimalish
   totalGross: Decimalish
@@ -101,7 +102,8 @@ export function creditAvailabilityFor(invoice: {
     creditedGross: credited((creditNote) => creditNote.totalGross),
   })
   if (invoice.calculationVersion === "v2") {
-    const groups = frozenVatGroups({ currency: invoice.currency, vatEvidence: invoice.vatEvidence,
+    const recorded = (invoice.issuanceSnapshot as { vatGroups?: import("@quits/contracts/pricing").FrozenVatGroup[] } | null)?.vatGroups
+    const groups = recorded ?? frozenVatGroups({ currency: invoice.currency, vatEvidence: invoice.vatEvidence,
       items: invoice.items.map((item) => ({ ...item, vatTreatment: item.vatTreatment!, vatReasonCode: item.vatReasonCode ?? null, vatCountry: item.vatCountry ?? null })) })
     const prior = invoice.creditNotes.flatMap((credit) => creditedGroupsSchema.parse(credit.creditedGroups))
     availability.groups = groups.map((original) => {

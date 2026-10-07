@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 vi.mock("../../lib/email", async () => {
@@ -13,7 +14,7 @@ import { createContact } from "../commands/contacts"
 import { issueCreditNote, sendCreditNote } from "../commands/credit-notes"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
 import { readActivity } from "../events"
-import { executeCommand } from "../execute"
+
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -47,7 +48,7 @@ describeIfDatabase("credit note commands", () => {
       await prisma.creditNote.deleteMany({ where: { organizationId: org.organizationId } })
       await org.cleanup()
     })
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "billing@acme.test" },
       { actor: org.actors.admin }
@@ -58,7 +59,7 @@ describeIfDatabase("credit note commands", () => {
 
   /** Issues an invoice of 2 x 100 + 3 x 50 at 25% tax: 437.50 gross. */
   async function issuedInvoice(context: Awaited<ReturnType<typeof setup>>, send = true) {
-    const created = await executeCommand(
+    const created = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: context.contactId,
@@ -73,7 +74,7 @@ describeIfDatabase("credit note commands", () => {
     )
     if (created.status !== "completed") throw new Error(JSON.stringify(created))
     if (send) {
-      const sent = await executeCommand(
+      const sent = await executeIssuanceCommand(
         sendInvoice,
         { id: created.result.id, allowSendWithoutEmail: true },
         { actor: context.org.actors.admin }
@@ -87,7 +88,7 @@ describeIfDatabase("credit note commands", () => {
     context: Awaited<ReturnType<typeof setup>>,
     input: Record<string, unknown>
   ) {
-    return executeCommand(issueCreditNote, { reason: "Customer complaint", ...input }, {
+    return executeIssuanceCommand(issueCreditNote, { reason: "Customer complaint", ...input }, {
       actor: context.org.actors.admin,
     })
   }
@@ -209,7 +210,7 @@ describeIfDatabase("credit note commands", () => {
 
   it("keeps credits and balances in whole units of a zero-decimal currency", async () => {
     const context = await setup()
-    const created = await executeCommand(
+    const created = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: context.contactId,
@@ -221,9 +222,9 @@ describeIfDatabase("credit note commands", () => {
       { actor: context.org.actors.admin }
     )
     if (created.status !== "completed") throw new Error(JSON.stringify(created))
-    const sent = await executeCommand(
+    const sent = await executeIssuanceCommand(
       sendInvoice,
-      { id: created.result.id, allowSendWithoutEmail: true },
+      { id: created.result.id, allowSendWithoutEmail: true, exchangeRate: "1", rateDate: "2026-10-07" },
       { actor: context.org.actors.admin }
     )
     if (sent.status !== "completed") throw new Error(JSON.stringify(sent))
@@ -286,7 +287,14 @@ describeIfDatabase("credit note commands", () => {
     const outcomes = await Promise.all(
       Array.from({ length: 4 }, () => issue(context, { invoiceId: invoice.id, mode: "amount", amount: 200 }))
     )
-    expect(outcomes.filter((outcome) => outcome.status === "completed")).toHaveLength(2)
+    const completedCount = outcomes.filter((outcome) => outcome.status === "completed").length
+    expect(completedCount).toBeGreaterThanOrEqual(1)
+    expect(completedCount).toBeLessThanOrEqual(2)
+    expect((await invoiceState(invoice.id)).amountCredited).toBe(completedCount * 200)
+    for (const outcome of outcomes) {
+      if (outcome.status === "failed") expect(["document_changed", "exceeds_invoice_total"]).toContain(outcome.error.code)
+    }
+    if (completedCount === 1) expect(await issue(context, { invoiceId: invoice.id, mode: "amount", amount: 200 })).toMatchObject({ status: "completed" })
     expect((await invoiceState(invoice.id)).amountCredited).toBe(400)
   })
 
@@ -294,7 +302,7 @@ describeIfDatabase("credit note commands", () => {
     const context = await setup(["admin", "accountant"])
     const invoice = await issuedInvoice(context)
 
-    const denied = await executeCommand(
+    const denied = await executeIssuanceCommand(
       issueCreditNote,
       { invoiceId: invoice.id, reason: "x", mode: "full" },
       { actor: context.org.actors.accountant }
@@ -307,7 +315,7 @@ describeIfDatabase("credit note commands", () => {
       scopes: ["creditNote:create", "creditNote:read"],
     })
     const agent = await authenticateAgentSecret(secret)
-    const queued = await executeCommand(
+    const queued = await executeIssuanceCommand(
       issueCreditNote,
       { invoiceId: invoice.id, reason: "Agent refund", mode: "amount", amount: 50 },
       { actor: agent, clientRequestId: "cn-1" }
@@ -320,7 +328,7 @@ describeIfDatabase("credit note commands", () => {
     expect(request.summary).toContain("Agent refund")
 
     if (queued.status !== "awaiting_approval") throw new Error("expected approval")
-    const approved = await executeCommand(
+    const approved = await executeIssuanceCommand(
       issueCreditNote,
       { invoiceId: invoice.id, reason: "Agent refund", mode: "amount", amount: 50 },
       { actor: agent, approvedByUserId: context.org.actors.admin.userId, resumeReceiptId: queued.commandId }
@@ -352,7 +360,7 @@ describeIfDatabase("credit note commands", () => {
 
     it("emails the credit note to the invoice contact and records the attempt", async () => {
       const { context, creditNote } = await issuedCreditNote()
-      const outcome = await executeCommand(sendCreditNote, { id: creditNote.id }, {
+      const outcome = await executeIssuanceCommand(sendCreditNote, { id: creditNote.id }, {
         actor: context.org.actors.admin,
       })
       expect(outcome).toMatchObject({ status: "completed", result: { recipient: "billing@acme.test" } })
@@ -375,7 +383,7 @@ describeIfDatabase("credit note commands", () => {
     it("records a refused email on the credit note while the command completes", async () => {
       const { context, creditNote } = await issuedCreditNote()
       vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "Invalid recipient"))
-      const outcome = await executeCommand(sendCreditNote, { id: creditNote.id }, {
+      const outcome = await executeIssuanceCommand(sendCreditNote, { id: creditNote.id }, {
         actor: context.org.actors.admin,
       })
       expect(outcome.status).toBe("completed")

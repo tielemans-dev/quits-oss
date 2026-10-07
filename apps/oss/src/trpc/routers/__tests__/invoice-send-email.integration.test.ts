@@ -23,10 +23,10 @@ const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 
 function restoreEnv(previous: Record<string, string | undefined>) {
-  process.env.QUITS_APP_ORIGIN = previous.QUITS_APP_ORIGIN
-  process.env.QUITS_PUBLIC_PAYMENT_SECRET = previous.QUITS_PUBLIC_PAYMENT_SECRET
-  process.env.RESEND_API_KEY = previous.RESEND_API_KEY
-  process.env.FROM_EMAIL = previous.FROM_EMAIL
+  for (const [key, value] of Object.entries(previous)) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
 }
 
 async function createInvoiceFixture(options?: {
@@ -68,6 +68,7 @@ async function createInvoiceFixture(options?: {
       locale: "da-DK",
       timezone: "Europe/Copenhagen",
       defaultCurrency: "DKK",
+      baseCurrency: "DKK",
       currency: "DKK",
       taxRegime: "eu_vat",
       pricesIncludeTax: false,

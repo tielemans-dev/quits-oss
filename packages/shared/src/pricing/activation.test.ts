@@ -48,7 +48,7 @@ describe("VAT issuance validation", () => {
 })
 
 describe("decimal draft contracts and preview", () => {
-  const invoice = { contactId: "c", dueDate: "2026-12-01", taxRate: "25", items: [{ description: "Precise", quantity: "0.123456", unitPrice: "123.4567" }] }
+  const invoice = { contactId: "c", supplyDate: "2026-12-01", dueDate: "2026-12-01", taxRate: "25", items: [{ description: "Precise", quantity: "0.123456", unitPrice: "123.4567" }] }
   it("requires strings in editor and agent schemas while compatibility accepts numbers", () => {
     expect(invoiceCreateDraftV2InputSchema.safeParse(invoice).success).toBe(true)
     expect(invoiceCreateDraftV2InputSchema.safeParse({ ...invoice, items: [{ description: "Numeric", quantity: 0.5, unitPrice: 100 }] }).success).toBe(false)

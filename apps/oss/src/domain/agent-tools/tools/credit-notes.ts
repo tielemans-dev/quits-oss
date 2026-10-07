@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { creditNoteLineSelectionSchema, creditNoteSendInputSchema } from "@quits/contracts/credit-notes"
+import { creditDecimalStringSchema, creditNoteSendInputSchema } from "@quits/contracts/credit-notes"
 import { prisma } from "../../../lib/db"
 import type { CommandDefinition } from "../../command"
 import { issueCreditNote, sendCreditNote } from "../../commands/credit-notes"
@@ -17,8 +17,8 @@ const creditNoteIssueToolInputSchema = z.object({
   mode: z
     .enum(["full", "lines", "amount"])
     .describe("full: everything still uncredited; lines: chosen lines and quantities; amount: a gross amount"),
-  lines: z.array(creditNoteLineSelectionSchema).min(1).max(100).optional().describe("Required when mode is lines"),
-  amount: z.number().positive().optional().describe("Gross amount; required when mode is amount"),
+  lines: z.array(z.object({ invoiceItemId: z.string().min(1), quantity: creditDecimalStringSchema })).min(1).max(100).optional().describe("Required when mode is lines"),
+  amount: creditDecimalStringSchema.optional().describe("Gross amount; required when mode is amount"),
 })
 
 const creditNoteSummary = {

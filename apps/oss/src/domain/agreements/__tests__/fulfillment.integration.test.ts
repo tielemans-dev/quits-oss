@@ -1,7 +1,8 @@
+import { executeIssuanceCommand } from "../../../application/issuance"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
-import { executeCommand, type CommandOutcome } from "../../execute"
+import { type CommandOutcome } from "../../execute"
 import type { AnyCommandDefinition } from "../../command"
 import type { Actor } from "../../actor"
 import { createAgreementDraft, updateDeliverable } from "../../commands/agreements"
@@ -64,7 +65,7 @@ async function setup(accepted = true) {
     input: object,
     as: Actor = actor,
     clientRequestId?: string,
-  ) => executeCommand(command, input, { actor: as, now, clientRequestId })
+  ) => executeIssuanceCommand(command, input, { actor: as, now, clientRequestId })
   const contact = await prisma.contact.create({
     data: { organizationId: org.organizationId, name: "Customer" },
   })

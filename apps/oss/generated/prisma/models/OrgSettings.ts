@@ -53,6 +53,7 @@ export type OrgSettingsMinAggregateOutputType = {
   locale: string | null
   timezone: string | null
   defaultCurrency: string | null
+  baseCurrency: string | null
   taxRegime: string | null
   pricesIncludeTax: boolean | null
   currency: string | null
@@ -100,6 +101,7 @@ export type OrgSettingsMaxAggregateOutputType = {
   locale: string | null
   timezone: string | null
   defaultCurrency: string | null
+  baseCurrency: string | null
   taxRegime: string | null
   pricesIncludeTax: boolean | null
   currency: string | null
@@ -147,6 +149,7 @@ export type OrgSettingsCountAggregateOutputType = {
   locale: number
   timezone: number
   defaultCurrency: number
+  baseCurrency: number
   taxRegime: number
   pricesIncludeTax: number
   currency: number
@@ -218,6 +221,7 @@ export type OrgSettingsMinAggregateInputType = {
   locale?: true
   timezone?: true
   defaultCurrency?: true
+  baseCurrency?: true
   taxRegime?: true
   pricesIncludeTax?: true
   currency?: true
@@ -265,6 +269,7 @@ export type OrgSettingsMaxAggregateInputType = {
   locale?: true
   timezone?: true
   defaultCurrency?: true
+  baseCurrency?: true
   taxRegime?: true
   pricesIncludeTax?: true
   currency?: true
@@ -312,6 +317,7 @@ export type OrgSettingsCountAggregateInputType = {
   locale?: true
   timezone?: true
   defaultCurrency?: true
+  baseCurrency?: true
   taxRegime?: true
   pricesIncludeTax?: true
   currency?: true
@@ -448,6 +454,7 @@ export type OrgSettingsGroupByOutputType = {
   locale: string
   timezone: string
   defaultCurrency: string
+  baseCurrency: string
   taxRegime: string
   pricesIncludeTax: boolean
   currency: string
@@ -520,6 +527,7 @@ export type OrgSettingsWhereInput = {
   locale?: Prisma.StringFilter<"OrgSettings"> | string
   timezone?: Prisma.StringFilter<"OrgSettings"> | string
   defaultCurrency?: Prisma.StringFilter<"OrgSettings"> | string
+  baseCurrency?: Prisma.StringFilter<"OrgSettings"> | string
   taxRegime?: Prisma.StringFilter<"OrgSettings"> | string
   pricesIncludeTax?: Prisma.BoolFilter<"OrgSettings"> | boolean
   currency?: Prisma.StringFilter<"OrgSettings"> | string
@@ -570,6 +578,7 @@ export type OrgSettingsOrderByWithRelationInput = {
   locale?: Prisma.SortOrder
   timezone?: Prisma.SortOrder
   defaultCurrency?: Prisma.SortOrder
+  baseCurrency?: Prisma.SortOrder
   taxRegime?: Prisma.SortOrder
   pricesIncludeTax?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -623,6 +632,7 @@ export type OrgSettingsWhereUniqueInput = Prisma.AtLeast<{
   locale?: Prisma.StringFilter<"OrgSettings"> | string
   timezone?: Prisma.StringFilter<"OrgSettings"> | string
   defaultCurrency?: Prisma.StringFilter<"OrgSettings"> | string
+  baseCurrency?: Prisma.StringFilter<"OrgSettings"> | string
   taxRegime?: Prisma.StringFilter<"OrgSettings"> | string
   pricesIncludeTax?: Prisma.BoolFilter<"OrgSettings"> | boolean
   currency?: Prisma.StringFilter<"OrgSettings"> | string
@@ -673,6 +683,7 @@ export type OrgSettingsOrderByWithAggregationInput = {
   locale?: Prisma.SortOrder
   timezone?: Prisma.SortOrder
   defaultCurrency?: Prisma.SortOrder
+  baseCurrency?: Prisma.SortOrder
   taxRegime?: Prisma.SortOrder
   pricesIncludeTax?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -730,6 +741,7 @@ export type OrgSettingsScalarWhereWithAggregatesInput = {
   locale?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   timezone?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   defaultCurrency?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
+  baseCurrency?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   taxRegime?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   pricesIncludeTax?: Prisma.BoolWithAggregatesFilter<"OrgSettings"> | boolean
   currency?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
@@ -778,6 +790,7 @@ export type OrgSettingsCreateInput = {
   locale?: string
   timezone?: string
   defaultCurrency?: string
+  baseCurrency?: string
   taxRegime?: string
   pricesIncludeTax?: boolean
   currency?: string
@@ -828,6 +841,7 @@ export type OrgSettingsUncheckedCreateInput = {
   locale?: string
   timezone?: string
   defaultCurrency?: string
+  baseCurrency?: string
   taxRegime?: string
   pricesIncludeTax?: boolean
   currency?: string
@@ -876,6 +890,7 @@ export type OrgSettingsUpdateInput = {
   locale?: Prisma.StringFieldUpdateOperationsInput | string
   timezone?: Prisma.StringFieldUpdateOperationsInput | string
   defaultCurrency?: Prisma.StringFieldUpdateOperationsInput | string
+  baseCurrency?: Prisma.StringFieldUpdateOperationsInput | string
   taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
   pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -926,6 +941,7 @@ export type OrgSettingsUncheckedUpdateInput = {
   locale?: Prisma.StringFieldUpdateOperationsInput | string
   timezone?: Prisma.StringFieldUpdateOperationsInput | string
   defaultCurrency?: Prisma.StringFieldUpdateOperationsInput | string
+  baseCurrency?: Prisma.StringFieldUpdateOperationsInput | string
   taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
   pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -975,6 +991,7 @@ export type OrgSettingsCreateManyInput = {
   locale?: string
   timezone?: string
   defaultCurrency?: string
+  baseCurrency?: string
   taxRegime?: string
   pricesIncludeTax?: boolean
   currency?: string
@@ -1023,6 +1040,7 @@ export type OrgSettingsUpdateManyMutationInput = {
   locale?: Prisma.StringFieldUpdateOperationsInput | string
   timezone?: Prisma.StringFieldUpdateOperationsInput | string
   defaultCurrency?: Prisma.StringFieldUpdateOperationsInput | string
+  baseCurrency?: Prisma.StringFieldUpdateOperationsInput | string
   taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
   pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1072,6 +1090,7 @@ export type OrgSettingsUncheckedUpdateManyInput = {
   locale?: Prisma.StringFieldUpdateOperationsInput | string
   timezone?: Prisma.StringFieldUpdateOperationsInput | string
   defaultCurrency?: Prisma.StringFieldUpdateOperationsInput | string
+  baseCurrency?: Prisma.StringFieldUpdateOperationsInput | string
   taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
   pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1126,6 +1145,7 @@ export type OrgSettingsCountOrderByAggregateInput = {
   locale?: Prisma.SortOrder
   timezone?: Prisma.SortOrder
   defaultCurrency?: Prisma.SortOrder
+  baseCurrency?: Prisma.SortOrder
   taxRegime?: Prisma.SortOrder
   pricesIncludeTax?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -1185,6 +1205,7 @@ export type OrgSettingsMaxOrderByAggregateInput = {
   locale?: Prisma.SortOrder
   timezone?: Prisma.SortOrder
   defaultCurrency?: Prisma.SortOrder
+  baseCurrency?: Prisma.SortOrder
   taxRegime?: Prisma.SortOrder
   pricesIncludeTax?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -1232,6 +1253,7 @@ export type OrgSettingsMinOrderByAggregateInput = {
   locale?: Prisma.SortOrder
   timezone?: Prisma.SortOrder
   defaultCurrency?: Prisma.SortOrder
+  baseCurrency?: Prisma.SortOrder
   taxRegime?: Prisma.SortOrder
   pricesIncludeTax?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -1336,6 +1358,7 @@ export type OrgSettingsCreateWithoutOrganizationInput = {
   locale?: string
   timezone?: string
   defaultCurrency?: string
+  baseCurrency?: string
   taxRegime?: string
   pricesIncludeTax?: boolean
   currency?: string
@@ -1384,6 +1407,7 @@ export type OrgSettingsUncheckedCreateWithoutOrganizationInput = {
   locale?: string
   timezone?: string
   defaultCurrency?: string
+  baseCurrency?: string
   taxRegime?: string
   pricesIncludeTax?: boolean
   currency?: string
@@ -1448,6 +1472,7 @@ export type OrgSettingsUpdateWithoutOrganizationInput = {
   locale?: Prisma.StringFieldUpdateOperationsInput | string
   timezone?: Prisma.StringFieldUpdateOperationsInput | string
   defaultCurrency?: Prisma.StringFieldUpdateOperationsInput | string
+  baseCurrency?: Prisma.StringFieldUpdateOperationsInput | string
   taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
   pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1496,6 +1521,7 @@ export type OrgSettingsUncheckedUpdateWithoutOrganizationInput = {
   locale?: Prisma.StringFieldUpdateOperationsInput | string
   timezone?: Prisma.StringFieldUpdateOperationsInput | string
   defaultCurrency?: Prisma.StringFieldUpdateOperationsInput | string
+  baseCurrency?: Prisma.StringFieldUpdateOperationsInput | string
   taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
   pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1547,6 +1573,7 @@ export type OrgSettingsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   locale?: boolean
   timezone?: boolean
   defaultCurrency?: boolean
+  baseCurrency?: boolean
   taxRegime?: boolean
   pricesIncludeTax?: boolean
   currency?: boolean
@@ -1597,6 +1624,7 @@ export type OrgSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   locale?: boolean
   timezone?: boolean
   defaultCurrency?: boolean
+  baseCurrency?: boolean
   taxRegime?: boolean
   pricesIncludeTax?: boolean
   currency?: boolean
@@ -1647,6 +1675,7 @@ export type OrgSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   locale?: boolean
   timezone?: boolean
   defaultCurrency?: boolean
+  baseCurrency?: boolean
   taxRegime?: boolean
   pricesIncludeTax?: boolean
   currency?: boolean
@@ -1697,6 +1726,7 @@ export type OrgSettingsSelectScalar = {
   locale?: boolean
   timezone?: boolean
   defaultCurrency?: boolean
+  baseCurrency?: boolean
   taxRegime?: boolean
   pricesIncludeTax?: boolean
   currency?: boolean
@@ -1739,7 +1769,7 @@ export type OrgSettingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiOpenRouterApiKeyEnc" | "aiOpenRouterModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
+export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "baseCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiOpenRouterApiKeyEnc" | "aiOpenRouterModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
 export type OrgSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }
@@ -1762,6 +1792,7 @@ export type $OrgSettingsPayload<ExtArgs extends runtime.Types.Extensions.Interna
     locale: string
     timezone: string
     defaultCurrency: string
+    baseCurrency: string
     taxRegime: string
     pricesIncludeTax: boolean
     currency: string
@@ -2232,6 +2263,7 @@ export interface OrgSettingsFieldRefs {
   readonly locale: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly timezone: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly defaultCurrency: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly baseCurrency: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly taxRegime: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly pricesIncludeTax: Prisma.FieldRef<"OrgSettings", 'Boolean'>
   readonly currency: Prisma.FieldRef<"OrgSettings", 'String'>

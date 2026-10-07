@@ -1,0 +1,8 @@
+ALTER TABLE "org_settings" ADD COLUMN "baseCurrency" TEXT;
+UPDATE "org_settings" SET "baseCurrency" = CASE "countryCode" WHEN 'DK' THEN 'DKK' WHEN 'AT' THEN 'EUR' WHEN 'BE' THEN 'EUR' WHEN 'BG' THEN 'EUR' WHEN 'HR' THEN 'EUR' WHEN 'CY' THEN 'EUR' WHEN 'CZ' THEN 'EUR' WHEN 'EE' THEN 'EUR' WHEN 'FI' THEN 'EUR' WHEN 'FR' THEN 'EUR' WHEN 'DE' THEN 'EUR' WHEN 'GR' THEN 'EUR' WHEN 'HU' THEN 'EUR' WHEN 'IE' THEN 'EUR' WHEN 'IT' THEN 'EUR' WHEN 'LV' THEN 'EUR' WHEN 'LT' THEN 'EUR' WHEN 'LU' THEN 'EUR' WHEN 'MT' THEN 'EUR' WHEN 'NL' THEN 'EUR' WHEN 'PL' THEN 'EUR' WHEN 'PT' THEN 'EUR' WHEN 'RO' THEN 'EUR' WHEN 'SK' THEN 'EUR' WHEN 'SI' THEN 'EUR' WHEN 'ES' THEN 'EUR' WHEN 'SE' THEN 'EUR' ELSE 'USD' END;
+ALTER TABLE "org_settings" ALTER COLUMN "baseCurrency" SET NOT NULL, ALTER COLUMN "baseCurrency" SET DEFAULT 'USD';
+ALTER TABLE "invoice" ADD COLUMN "valuation" JSONB, ADD COLUMN "issuanceSnapshot" JSONB;
+ALTER TABLE "credit_note" ADD COLUMN "valuation" JSONB, ADD COLUMN "issuanceSnapshot" JSONB;
+-- Unknown historical valuation is explicit, including same-currency documents.
+UPDATE "invoice" SET "valuation" = jsonb_build_object('base', jsonb_build_object('minor', NULL, 'currency', s."baseCurrency", 'exponent', 2), 'rate', NULL, 'rateScale', NULL, 'rateDate', NULL, 'rateSource', 'unknown') FROM "org_settings" s WHERE s."organizationId" = "invoice"."organizationId" AND "invoice"."status" <> 'draft';
+UPDATE "credit_note" SET "valuation" = jsonb_build_object('base', jsonb_build_object('minor', NULL, 'currency', s."baseCurrency", 'exponent', 2), 'rate', NULL, 'rateScale', NULL, 'rateDate', NULL, 'rateSource', 'unknown') FROM "org_settings" s WHERE s."organizationId" = "credit_note"."organizationId";

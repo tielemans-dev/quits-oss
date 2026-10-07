@@ -1,3 +1,6 @@
+import { requireCurrencyExponent } from "@quits/shared/currency"
+import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import type { InvoiceMoneySnapshot } from "./money-snapshot"
 import { Prisma, type ArtifactStaging } from "../../../generated/prisma/client"
 import { InvalidState } from "../errors"
 import type { PendingEvent } from "../services"
@@ -30,6 +33,7 @@ export async function bindIssuanceCandidate(tx: Prisma.TransactionClient, input:
   if (hashRenderInput(renderInput) !== staging.renderInputHash) {
     throw new InvalidState({ code: "document_changed", message: "Document changed during preparation" })
   }
+  if (getRuntimeCapabilities().documents.artifactsRequired && !staging.artifacts) throw new InvalidState({ code: "renderer_unavailable", message: "Document renderer and artifact store required" })
   const candidate = await tx.issuanceCandidate.create({ data: {
     organizationId: input.organizationId, documentKind: staging.documentKind, documentId: staging.documentId,
     stagingId: staging.id, renderInput: artifactsJson(renderInput), renderInputHash: staging.renderInputHash,
@@ -51,7 +55,7 @@ export async function pendingCandidate(tx: Prisma.TransactionClient, target: Rec
 
 /** Publication uses only the candidate. A delivery can settle even after its preparation lease. */
 export async function publishCandidate(tx: Prisma.TransactionClient, input: {
-  candidateId: string; documentId: string; attemptAt: Date; organizationId: string
+  candidateId: string; documentId: string; attemptAt: Date; organizationId: string; commandId?: string
 }): Promise<PendingEvent[]> {
   const candidate = await tx.issuanceCandidate.findFirst({ where: {
     id: input.candidateId, organizationId: input.organizationId, documentId: input.documentId,
@@ -63,8 +67,11 @@ export async function publishCandidate(tx: Prisma.TransactionClient, input: {
     artifactPdfRef: artifacts?.pdf.ref ?? null, artifactPdfHash: artifacts?.pdf.hash ?? null,
     artifactUblRef: artifacts?.ubl?.ref ?? null, artifactUblHash: artifacts?.ubl?.hash ?? null,
   }
-  if (candidate.documentKind === "invoice") await tx.invoice.update({ where: { id: candidate.documentId }, data })
-  else if (candidate.documentKind === "creditNote") await tx.creditNote.update({ where: { id: candidate.documentId }, data })
+  const money = ((candidate.renderInput as unknown as RenderInput).snapshot as { money?: InvoiceMoneySnapshot }).money
+  const settings = !money && candidate.documentKind !== "agreement" ? await tx.orgSettings.findUniqueOrThrow({ where: { organizationId: input.organizationId } }) : null
+  const financialData = money ? { valuation: artifactsJson(money.valuation), issuanceSnapshot: artifactsJson(money), sellerSnapshot: artifactsJson(money.seller), buyerSnapshot: artifactsJson(money.buyer) } : settings ? { valuation: artifactsJson({ base: { minor: null, currency: settings.baseCurrency, exponent: requireCurrencyExponent(settings.baseCurrency) }, rate: null, rateScale: null, rateDate: null, rateSource: "unknown" }) } : {}
+  if (candidate.documentKind === "invoice") await tx.invoice.update({ where: { id: candidate.documentId }, data: { ...data, ...financialData, ...(money ? { supplyDate: money.supplyDate ? new Date(money.supplyDate) : null } : {}) } })
+  else if (candidate.documentKind === "creditNote") await tx.creditNote.update({ where: { id: candidate.documentId }, data: { ...data, ...financialData } })
   else await tx.agreement.update({ where: { id: candidate.documentId }, data })
   await tx.issuanceCandidate.update({ where: { id: candidate.id }, data: { status: "published" } })
   await tx.artifactStaging.update({ where: { id: candidate.stagingId }, data: { status: "published" } })
@@ -93,6 +100,10 @@ export async function publishCandidate(tx: Prisma.TransactionClient, input: {
     aggregateType: "document", aggregateId: documentId, type: "document.artifact_missing",
     payload: { documentKind, documentId, candidateId, reason },
   }]
+  if (money) {
+    const payload = { ...money, artifacts, provenance: { ...money.provenance, candidateId, commandId: input.commandId ?? null } }
+    billingEvents.push({ aggregateType: documentKind === "invoice" ? "invoice" : "credit_note", aggregateId: documentId, type: documentKind === "invoice" ? "invoice.issued" : "credit_note.issued", payload })
+  }
   return [...billingEvents, ...artifactEvents]
 }
 export async function retireCandidate(tx: Prisma.TransactionClient, target: Record<string, string>, organizationId: string) {

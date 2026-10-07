@@ -50,3 +50,29 @@ payloads can omit `emailSent`; credit note re-email uses `credit_note.sent`; agr
 has internal and customer-link variants; manual offer issuance can have a null recipient; reminder skips have command and delivery variants; and
 `deliverable.updated` can include prior acceptance. Money fields retain their current numeric or
 string representation. Recurring failure events carry structured command errors. No document payload or user-visible behavior changes in this phase.
+
+## A3b money facts
+
+`invoice.issued` v1 freezes the issuance candidate's dates, inputs, parties, valued VAT groups,
+reporting-only VAT data, artifact identities and origin references. `Money.minor` is an integer
+string. Group and total components reuse the pricing contracts' decimal strings in major units;
+`currency`, `exponent` and `baseExponent` identify their units. Consumers must convert those
+components at the declared exponent. Signed components, including negative derived base net,
+are preserved. No positions or posting function are introduced here.
+
+`credit_note.issued` v2 records the credited portion and cumulative entitlement against frozen
+invoice groups. Its Phase A discharge is known only for an unpaid sale with sufficient open
+balance after prior credits and no advance or deposit application. Payment-linked credits have
+`allocationsReleased: null` and `postable: false`; an empty array would claim reconciliation that
+has not happened. v1 upcasts add only `postable: false` and
+`incompleteReason: historical_payload_incomplete`. The original v1 fixtures remain unchanged.
+
+`invoice.base_valuation_recorded` v1 adds a human-reviewed historical rate and groups. It does
+not rewrite historical events, amounts, artifacts or supply dates, and it does not manufacture an
+`invoice.issued` event. Issued documents without reviewed valuation remain `unknown` even when
+invoice and base currency coincide.
+
+All new issuance requires `RuntimeServices.documentRenderer` and
+`RuntimeServices.documentArtifactStore`. The self-host entry supplies both. Cloud consumers must
+supply both adapters before upgrading. Issued PDF and UBL downloads verify stored bytes against
+the frozen hash; missing bytes or missing artifacts refuse. Draft PDF previews render live.

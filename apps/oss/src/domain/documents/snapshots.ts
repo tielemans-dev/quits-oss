@@ -22,6 +22,8 @@ export function buildBuyerSnapshot(contact: {
   state: string | null
   zip: string | null
   country: string | null
+  taxIds?: TaxId[]
+  taxId?: string | null
 }): BuyerSnapshot {
   return {
     name: contact.name,
@@ -32,6 +34,7 @@ export function buildBuyerSnapshot(contact: {
     state: contact.state ?? null,
     zip: contact.zip ?? null,
     country: contact.country ?? null,
+    taxIds: contact.taxIds?.map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) ?? (contact.taxId ? [{ scheme: "VAT", value: contact.taxId, countryCode: contact.country }] : []),
   }
 }
 
@@ -45,4 +48,6 @@ export const buyerContactSelect = {
   state: true,
   zip: true,
   country: true,
+  taxId: true,
+  taxIds: { select: { scheme: true, value: true, countryCode: true } },
 } as const

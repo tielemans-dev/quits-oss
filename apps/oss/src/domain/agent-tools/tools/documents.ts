@@ -67,6 +67,9 @@ export type InvoiceRow = {
   contactId: string
   issueDate: Date
   dueDate: Date
+  supplyDate?: Date | null
+  valuation?: unknown
+  issuanceSnapshot?: unknown
   currency: string
   calculationVersion?: string
   vatEvidence?: unknown
@@ -102,6 +105,9 @@ export function presentInvoice(invoice: InvoiceRow) {
     disputedRevision: invoice.disputedRevision ?? 0,
     purpose: invoice.purpose ?? "sale",
     agreementId: invoice.agreementId ?? null,
+    supplyDate: invoice.supplyDate ?? null,
+    valuation: invoice.valuation ?? { rateSource: "unknown" },
+    issuanceSnapshot: invoice.issuanceSnapshot ?? null,
     scheduleSaleChoice: invoice.scheduleSaleChoice ?? null,
     contact: invoice.contact
       ? { id: invoice.contact.id ?? invoice.contactId, name: invoice.contact.name, email: invoice.contact.email }

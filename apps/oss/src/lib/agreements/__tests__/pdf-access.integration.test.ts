@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../../application/issuance"
 import { afterEach, describe, expect, it, vi } from "vitest"
 vi.mock("../../auth", () => ({ auth: { api: { getSession: vi.fn() } } }))
 vi.mock("../../agreement-pdf", () => ({
@@ -6,7 +7,7 @@ vi.mock("../../agreement-pdf", () => ({
 import { auth } from "../../auth"
 import { prisma } from "../../db"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
-import { executeCommand } from "../../../domain/execute"
+
 import { createAgreementDraft, updateAgreementDraft } from "../../../domain/commands/agreements"
 import { issueAgreement } from "../../../domain/commands/agreement-lifecycle"
 import { createAgentKey, authenticateAgentSecret } from "../../../domain/agent-keys"
@@ -28,7 +29,7 @@ afterEach(async () => {
       const contact = await prisma.contact.create({
         data: { organizationId: org.organizationId, name: "Customer" },
       })
-      const draft = await executeCommand(
+      const draft = await executeIssuanceCommand(
         createAgreementDraft,
         {
           contactId: contact.id,
@@ -49,7 +50,7 @@ afterEach(async () => {
           })
         ).secret,
       )
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         issueAgreement,
         { id: draft.result.id },
         { actor, clientRequestId: "preview" },
@@ -62,7 +63,7 @@ afterEach(async () => {
         user: { id: org.actors.admin.userId },
         session: { activeOrganizationId: org.organizationId },
       } as never)
-      await executeCommand(
+      await executeIssuanceCommand(
         updateAgreementDraft,
         { id: draft.result.id, title: "Preview B", termsMarkdown: "Terms B" },
         { actor: org.actors.admin },
@@ -73,7 +74,7 @@ afterEach(async () => {
         snapshot: { title: "Preview A", termsHtml: "<p>Terms A</p>\n" },
       })
       expect((await privateAgreementPdf(request, draft.result.id)).status).toBe(404)
-      const issued = await executeCommand(
+      const issued = await executeIssuanceCommand(
         issueAgreement,
         { id: draft.result.id },
         { actor: org.actors.admin },

@@ -1,5 +1,8 @@
 import { z } from "zod"
 
+export const creditDecimalStringSchema = z.string().max(40).regex(/^\d+(?:\.\d{1,2})?$/).refine(value => Number(value) > 0 && Number(value) <= 1_000_000_000)
+const creditNumberInput = (schema: z.ZodNumber) => z.union([schema, creditDecimalStringSchema.transform(Number)])
+
 /** Money and quantities are stored with two decimals. */
 function hasAtMostTwoDecimals(value: number) {
   return Math.abs(value * 100 - Math.round(value * 100)) < 1e-6
@@ -9,10 +12,8 @@ export const creditNoteReasonSchema = z.string().trim().min(1).max(500)
 
 export const creditNoteLineSelectionSchema = z.object({
   invoiceItemId: z.string().min(1),
-  quantity: z
-    .number()
-    .positive()
-    .max(1_000_000)
+  quantity: creditNumberInput(z.number().positive().max(1_000_000))
+    .refine(value => value <= 1_000_000)
     .refine(hasAtMostTwoDecimals, "Quantity can have at most two decimals"),
 })
 
@@ -35,10 +36,7 @@ export const creditNoteIssueInputSchema = z.discriminatedUnion("mode", [
   z.object({
     ...creditNoteIssueBase,
     mode: z.literal("amount"),
-    amount: z
-      .number()
-      .positive()
-      .max(1_000_000_000)
+    amount: creditNumberInput(z.number().positive().max(1_000_000_000))
       .refine(hasAtMostTwoDecimals, "Amount can have at most two decimals"),
   }),
 ])

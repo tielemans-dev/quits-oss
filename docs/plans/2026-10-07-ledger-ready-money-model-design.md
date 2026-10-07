@@ -487,3 +487,30 @@ Kept verbatim in spirit from review round 3 so a human can decide:
   round-5 counterexamples (cumulative entitlement for partial credits, rounding in base net,
   zero rate on non-standard treatments, canonical key in step 2); revision 7 the round-6 signed
   component rule. Round 6 confirmed every other Phase A arithmetic rule with fresh counterexamples.
+
+## Known open issues and conservative choices in A3b implementation
+
+- Payment valuation belongs to Phase B. Dashboard receipts and outstanding balances are grouped
+  by document currency. Its labelled base total is issued invoice value after credits, excluding
+  any invoice whose valuation or a credit valuation is unknown. It does not convert received cash
+  at the invoice's historical rate.
+- Base currency also stays locked while an issuance candidate is awaiting delivery settlement.
+  Otherwise an immutable candidate could publish an obsolete base currency after a settings edit.
+  Historical issuance events keep the lock after recall or a later lifecycle change.
+- Optional UBL is stored only when the renderer has complete Peppol data. Issued documents with
+  no stored PDF or UBL refuse downloads; C4 still owns legacy reconstruction. A later workflow
+  for completing missing Peppol data must produce an explicit new artifact, not silently rerender.
+- A credit does not copy the invoice's whole reporting-only `vatReporting` amounts. A per-credit
+  VAT-return allocation policy has not been specified; those optional fields remain absent until
+  that policy is approved. Accounting reversal always uses frozen base components.
+- Credit selection retains the existing two-decimal quantity limit. MCP requires decimal strings;
+  six-decimal partial credit quantities need a separate residual-ownership and storage change.
+
+- A bound candidate queued before A3b keeps its frozen A3a input when delivery settles. It is
+  published with explicit unknown valuation and no invented money event. A3a candidates that
+  lack artifacts may finish their already queued delivery with `document.artifact_missing`;
+  newly requested issuance requires both adapters. C4 must reconcile that historical gap.
+- Agreement prepayment drafts retain Phase 2's `purpose_issuance_not_supported` refusal.
+  Explicitly converted sale drafts receive the same valuation and date snapshot as other sales.
+- Historical valuation recording requires a human actor and balancing stored components. It
+  refuses incomplete historical rows rather than inferring their missing amounts or tax treatment.

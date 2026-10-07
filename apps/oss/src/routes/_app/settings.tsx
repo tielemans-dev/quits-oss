@@ -111,6 +111,8 @@ type SettingsData = {
   countryCode: string
   locale: string
   timezone: string
+  baseCurrency: string
+  baseCurrencyLocked: boolean
   defaultCurrency: string
   onboardingInvoicingIdentity?: OnboardingInvoicingIdentity | null
   taxRegime: "us_sales_tax" | "eu_vat" | "custom"
@@ -184,6 +186,7 @@ function SettingsPage() {
   const [countryCode, setCountryCode] = useState("US")
   const [locale, setLocale] = useState("en-US")
   const [timezone, setTimezone] = useState("UTC")
+  const [baseCurrency, setBaseCurrency] = useState("USD")
   const [defaultCurrency, setDefaultCurrency] = useState("USD")
   const [invoicingIdentity, setInvoicingIdentity] = useState<OnboardingInvoicingIdentity>("registered_business")
   const [taxRegime, setTaxRegime] = useState<"us_sales_tax" | "eu_vat" | "custom">("us_sales_tax")
@@ -241,6 +244,7 @@ function SettingsPage() {
         setCountryCode(nextSettings.countryCode)
         setLocale(nextSettings.locale)
         setTimezone(nextSettings.timezone)
+        setBaseCurrency(nextSettings.baseCurrency)
         setDefaultCurrency(nextSettings.defaultCurrency || nextSettings.currency)
         setInvoicingIdentity(
           nextSettings.onboardingInvoicingIdentity ?? "registered_business"
@@ -398,6 +402,7 @@ function SettingsPage() {
         locale,
         timezone: timezoneInput,
         defaultCurrency,
+        baseCurrency,
         taxRegime,
         pricesIncludeTax,
         primaryTaxId: primaryTaxId || undefined,
@@ -742,6 +747,7 @@ function SettingsPage() {
                     if (preset) {
                       setLocale(preset.defaultLocale)
                       setDefaultCurrency(preset.defaultCurrency)
+                      if (!settings.baseCurrencyLocked) setBaseCurrency(preset.defaultCurrency)
                     }
                   }}
                 >
@@ -872,6 +878,9 @@ function SettingsPage() {
           <CardContent className="grid gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
+                <Label htmlFor="baseCurrency">{t("settings.baseCurrency.label")}</Label>
+                <Select value={baseCurrency} onValueChange={setBaseCurrency} disabled={settings.baseCurrencyLocked}><SelectTrigger id="baseCurrency"><SelectValue /></SelectTrigger><SelectContent>{CURRENCIES.map(c => <SelectItem key={c.value} value={c.value}>{c.value}</SelectItem>)}</SelectContent></Select>
+                <p className="text-sm text-muted-foreground">{t("settings.baseCurrency.hint")}</p>
                 <Label htmlFor="defaultCurrency">{t("settings.currency.label")}</Label>
                 <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
                   <SelectTrigger id="defaultCurrency">

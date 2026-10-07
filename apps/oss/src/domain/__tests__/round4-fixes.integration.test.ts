@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
@@ -7,7 +8,7 @@ import { appendEvents } from "../events"
 import { createContact, updateContact } from "../commands/contacts"
 import { issueCreditNote, sendCreditNote } from "../commands/credit-notes"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
-import { executeCommand } from "../execute"
+
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -25,7 +26,7 @@ describeIfDatabase("round 4 review fixes", () => {
       await prisma.creditNote.deleteMany({ where: { organizationId: org.organizationId } })
       await org.cleanup()
     })
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "billing@acme.test" },
       { actor: org.actors.admin }
@@ -47,7 +48,7 @@ describeIfDatabase("round 4 review fixes", () => {
 
   /** A sent invoice of 2 x 100 Design + 3 x 50 Hosting, without tax: 350.00. */
   async function sentInvoice(context: Context) {
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: context.contactId,
@@ -61,7 +62,7 @@ describeIfDatabase("round 4 review fixes", () => {
       { actor: context.org.actors.admin }
     )
     if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
-    const sent = await executeCommand(
+    const sent = await executeIssuanceCommand(
       sendInvoice,
       { id: draft.result.id, allowSendWithoutEmail: true },
       { actor: context.org.actors.admin }
@@ -82,7 +83,7 @@ describeIfDatabase("round 4 review fixes", () => {
       const [design, hosting] = invoice.items
       if (!design || !hosting) throw new Error("invoice lines missing")
 
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         issueCreditNote,
         {
           invoiceId: invoice.invoiceId,
@@ -122,7 +123,7 @@ describeIfDatabase("round 4 review fixes", () => {
       const [design] = invoice.items
       if (!design) throw new Error("invoice lines missing")
 
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         issueCreditNote,
         {
           invoiceId: invoice.invoiceId,
@@ -155,7 +156,7 @@ describeIfDatabase("round 4 review fixes", () => {
       const [design] = invoice.items
       if (!design) throw new Error("invoice lines missing")
 
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         issueCreditNote,
         {
           invoiceId: invoice.invoiceId,
@@ -174,14 +175,14 @@ describeIfDatabase("round 4 review fixes", () => {
     it("refuses to send after the customer was renamed since review", async () => {
       const context = await setup()
       const invoice = await sentInvoice(context)
-      const issued = await executeCommand(
+      const issued = await executeIssuanceCommand(
         issueCreditNote,
         { invoiceId: invoice.invoiceId, reason: "Refund", mode: "amount", amount: 50 },
         { actor: context.org.actors.admin }
       )
       if (issued.status !== "completed") throw new Error(JSON.stringify(issued))
       const agent = await agentWith(context, ["creditNote:send", "creditNote:read"])
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         sendCreditNote,
         { id: issued.result.id },
         { actor: agent, clientRequestId: "credit-send-1" }
@@ -189,7 +190,7 @@ describeIfDatabase("round 4 review fixes", () => {
       if (queued.status !== "awaiting_approval") throw new Error(JSON.stringify(queued))
 
       // Same address, different addressee: the reviewer approved sending to "Acme".
-      await executeCommand(updateContact, { id: context.contactId, name: "Acme Holdings" }, {
+      await executeIssuanceCommand(updateContact, { id: context.contactId, name: "Acme Holdings" }, {
         actor: context.org.actors.admin,
       })
 
@@ -205,7 +206,7 @@ describeIfDatabase("round 4 review fixes", () => {
   describe("approval recovery", () => {
     async function interruptedApproval() {
       const context = await setup()
-      const draft = await executeCommand(
+      const draft = await executeIssuanceCommand(
         createInvoiceDraft,
         {
           contactId: context.contactId,
@@ -217,7 +218,7 @@ describeIfDatabase("round 4 review fixes", () => {
       )
       if (draft.status !== "completed") throw new Error("draft failed")
       const agent = await agentWith(context, ["invoice:send", "invoice:read"])
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         sendInvoice,
         { id: draft.result.id, allowSendWithoutEmail: true },
         { actor: agent, clientRequestId: "send-1" }

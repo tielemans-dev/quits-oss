@@ -55,6 +55,7 @@ describeIfDatabase("public invoice checkout session", () => {
           locale: "da-DK",
           timezone: "Europe/Copenhagen",
           defaultCurrency: "DKK",
+      baseCurrency: "DKK",
           currency: "DKK",
           taxRegime: "eu_vat",
           pricesIncludeTax: false,

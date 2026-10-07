@@ -1,0 +1,49 @@
+{
+  "type": "invoice.base_valuation_recorded",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/base-valuation.ts",
+      "typeExpression": "\"invoice.base_valuation_recorded\"",
+      "payloadExpression": "payload",
+      "variant": "agreement/email/withdrawn",
+      "payload": {
+        "documentId": "document-1",
+        "number": "DOC-0001",
+        "valuation": {
+          "base": {
+            "minor": "4",
+            "currency": "DKK",
+            "exponent": 2
+          },
+          "rate": "0.8",
+          "rateScale": 1,
+          "rateDate": "2026-10-07",
+          "rateSource": "user"
+        },
+        "vatGroups": [
+          {
+            "treatment": "standard",
+            "reasonCode": null,
+            "rate": "0.25",
+            "country": "DK",
+            "key": "[\"standard\",null,\"0.25\",\"DK\"]",
+            "exponent": 2,
+            "baseExponent": 2,
+            "net": "0.04",
+            "tax": "0.01",
+            "gross": "0.05",
+            "payableRounding": "0.00",
+            "netBase": "0.03",
+            "taxBase": "0.01",
+            "grossBase": "0.04",
+            "payableRoundingBase": "0.00"
+          }
+        ],
+        "reviewedByUserId": "user-1",
+        "evidenceNote": "Reviewed source",
+        "occurredAt": "2026-10-07T12:00:00.000Z"
+      }
+    }
+  ]
+}

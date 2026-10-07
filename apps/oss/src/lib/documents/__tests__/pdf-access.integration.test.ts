@@ -50,15 +50,15 @@ const request = new Request("http://quits.test/download")
     expect((await privateDocumentPdf(request, "invoice", invoice.id)).status).toBe(404)
     expect(get).not.toHaveBeenCalled(); expect(render).not.toHaveBeenCalled()
   })
-  it("renders drafts live and labels pre-change issued documents reconstructed", async () => {
+  it("renders drafts live and refuses reconstruction of pre-change issued documents", async () => {
     const { invoice } = await setup()
     const draft = await privateDocumentPdf(request, "invoice", invoice.id)
     expect(draft.headers.get("X-Quits-Artifact")).toBe("live")
     expect(await draft.json()).toMatchObject({ pdf: { invoice: { status: "draft" } } })
     await prisma.invoice.update({ where: { id: invoice.id }, data: { status: "sent" } })
     const legacy = await privateDocumentPdf(request, "invoice", invoice.id)
-    expect(legacy.headers.get("X-Quits-Artifact")).toBe("reconstructed")
-    expect(render).toHaveBeenCalledTimes(2)
+    expect(legacy.status).toBe(503)
+    expect(render).toHaveBeenCalledTimes(1)
   })
   it("serves issued bytes unchanged and reports an unavailable archived object without rendering over it", async () => {
     const { org, invoice } = await setup()

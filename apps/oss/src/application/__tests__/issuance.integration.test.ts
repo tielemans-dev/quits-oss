@@ -212,13 +212,15 @@ const afterRetention = () => new Date(Date.now() + RETIRED_ARTIFACT_RETENTION_MS
     expect(a.renderInput).toEqual(b.renderInput)
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).creditNoteNextNum).toBe(2)
   })
-  it("publishes artifact_missing without adapters and advertises optional artifacts", async () => {
+  it("refuses missing adapters and advertises required artifacts", async () => {
     const { args, org } = await setup()
     resetRuntimeServices()
-    expect(await issueDocument(args)).toMatchObject({ status: "completed" })
-    const event = await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: org.organizationId, type: "document.artifact_missing" } })
-    expect(event).toMatchObject({ schemaVersion: 1, payload: { reason: "renderer_unavailable" } })
+    expect(await issueDocument(args)).toMatchObject({ status: "failed", error: { code: "renderer_unavailable" } })
+    expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, type: "document.artifact_missing" } })).toBe(0)
+    const { getRuntimeCapabilities } = await import("../../lib/runtime/extensions")
+    expect(getRuntimeCapabilities().documents.artifactsRequired).toBe(true)
   })
+
   it("approval recovery uses the receipt request identity, approver and reviewed version", async () => {
     const { org, args } = await setup()
     const key = await createAgentKey(org.actors.admin, { name: "Recovery", mode: "approval_required", scopes: ["invoice:send"] })

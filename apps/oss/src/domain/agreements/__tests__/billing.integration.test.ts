@@ -1,9 +1,10 @@
+import { executeIssuanceCommand } from "../../../application/issuance"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("../../../lib/email", async () => ({ ...await vi.importActual<typeof import("../../../lib/email")>("../../../lib/email"), deliver: vi.fn() }))
 import { prisma } from "../../../lib/db"
 import { deliver, EmailSendError } from "../../../lib/email"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
-import { executeCommand, type CommandOutcome } from "../../execute"
+import { type CommandOutcome } from "../../execute"
 import { issueDocument, runArtifactRead } from "../../../application/issuance"
 import { prospectiveRenderInput } from "../../documents/render-input"
 import { createAgreementDraft, updateDeliverable } from "../../commands/agreements"
@@ -38,22 +39,22 @@ async function setup(trigger = "on_acceptance", deposit = false, taxRate = "25")
   const org = await createTestOrganization(); cleanups.push(org.cleanup)
   const actor = org.actors.admin
   const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Customer", email: "customer@example.test" } })
-  const agreement = completed(await executeCommand(createAgreementDraft, {
+  const agreement = completed(await executeIssuanceCommand(createAgreementDraft, {
     contactId: contact.id, title: "Project", validUntil: "2099-01-01", taxRate, billingTrigger: trigger,
     deliverables: [{ title: "Design", description: "Design service", quantity: "1", unitPrice: "100" },
       { title: "Build", description: "Build service", quantity: "1", unitPrice: "200" },
       ...(deposit ? [{ title: "Deposit", quantity: "1", unitPrice: "30", isDeposit: true }] : [])],
   }, { actor }))
-  completed(await executeCommand(issueAgreement, { id: agreement.id }, { actor }))
-  completed(await executeCommand(recordAgreementAcceptance, { id: agreement.id, acceptedByName: "Customer", evidenceNote: "Written approval" }, { actor }))
+  completed(await executeIssuanceCommand(issueAgreement, { id: agreement.id }, { actor }))
+  completed(await executeIssuanceCommand(recordAgreementAcceptance, { id: agreement.id, acceptedByName: "Customer", evidenceNote: "Written approval" }, { actor }))
   const item = (index = 0) => ({ agreementId: agreement.id, id: agreement.deliverables[index]!.id })
   const ready = async (index = 0, accept = true) => {
-    completed(await executeCommand(markDeliverableDelivered, item(index), { actor }))
-    if (accept) completed(await executeCommand(acceptDeliverable, { ...item(index), evidenceNote: "Signed off" }, { actor }))
+    completed(await executeIssuanceCommand(markDeliverableDelivered, item(index), { actor }))
+    if (accept) completed(await executeIssuanceCommand(acceptDeliverable, { ...item(index), evidenceNote: "Signed off" }, { actor }))
     return item(index)
   }
   const selection = (ids = [item().id], extras = {}) => ({ agreementId: agreement.id, deliverableIds: ids, ...extras })
-  const reserve = async (ids = [item().id], extras = {}) => completed(await executeCommand(createInvoiceFromDeliverables, selection(ids, extras), { actor, clientRequestId: `reserve-${ids.join("-")}` }))
+  const reserve = async (ids = [item().id], extras = {}) => completed(await executeIssuanceCommand(createInvoiceFromDeliverables, selection(ids, extras), { actor, clientRequestId: `reserve-${ids.join("-")}` }))
   const line = (index = 0) => prisma.deliverable.findUniqueOrThrow({ where: { id: item(index).id } })
   return { org, actor, agreement, contact, item, ready, selection, reserve, line }
 }
@@ -65,22 +66,22 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
     const ctx = await setup("on_acceptance", true)
     expect(isBillable({ ...ctx.agreement, status: "accepted" }, await ctx.line())).toBe(false)
     await ctx.ready(0, false)
-    refused(await executeCommand(createInvoiceFromDeliverables, ctx.selection(), { actor: ctx.actor }), "deliverable_not_billable")
-    completed(await executeCommand(acceptDeliverable, { ...ctx.item(), evidenceNote: "Accepted" }, { actor: ctx.actor }))
-    refused(await executeCommand(createInvoiceFromDeliverables, ctx.selection([ctx.item().id, ctx.item().id]), { actor: ctx.actor }), "duplicate_deliverables")
-    refused(await executeCommand(createInvoiceFromDeliverables, ctx.selection(["foreign"]), { actor: ctx.actor }), "deliverable_not_billable")
-    completed(await executeCommand(cancelDeliverable, ctx.item(2), { actor: ctx.actor }))
-    refused(await executeCommand(createInvoiceFromDeliverables, ctx.selection([ctx.item(2).id]), { actor: ctx.actor }), "deliverable_not_billable")
+    refused(await executeIssuanceCommand(createInvoiceFromDeliverables, ctx.selection(), { actor: ctx.actor }), "deliverable_not_billable")
+    completed(await executeIssuanceCommand(acceptDeliverable, { ...ctx.item(), evidenceNote: "Accepted" }, { actor: ctx.actor }))
+    refused(await executeIssuanceCommand(createInvoiceFromDeliverables, ctx.selection([ctx.item().id, ctx.item().id]), { actor: ctx.actor }), "duplicate_deliverables")
+    refused(await executeIssuanceCommand(createInvoiceFromDeliverables, ctx.selection(["foreign"]), { actor: ctx.actor }), "deliverable_not_billable")
+    completed(await executeIssuanceCommand(cancelDeliverable, ctx.item(2), { actor: ctx.actor }))
+    refused(await executeIssuanceCommand(createInvoiceFromDeliverables, ctx.selection([ctx.item(2).id]), { actor: ctx.actor }), "deliverable_not_billable")
   })
   it("reserves once under concurrency with two client ids and replays one receipt", async () => {
     const ctx = await setup(); await ctx.ready()
-    const results = await Promise.all(["client-a", "client-b"].map(clientRequestId => executeCommand(createInvoiceFromDeliverables, ctx.selection(), { actor: ctx.actor, clientRequestId })))
+    const results = await Promise.all(["client-a", "client-b"].map(clientRequestId => executeIssuanceCommand(createInvoiceFromDeliverables, ctx.selection(), { actor: ctx.actor, clientRequestId })))
     expect(results.filter(result => result.status === "completed")).toHaveLength(1)
     refused(results.find(result => result.status !== "completed")!, "deliverable_not_billable")
     expect(await prisma.invoice.count({ where: { agreementId: ctx.agreement.id } })).toBe(1)
     expect((await ctx.line()).billingStatus).toBe("reserved")
     const winner = results.findIndex(result => result.status === "completed")
-    expect(await executeCommand(createInvoiceFromDeliverables, ctx.selection(), { actor: ctx.actor, clientRequestId: winner ? "client-b" : "client-a" })).toEqual(results[winner])
+    expect(await executeIssuanceCommand(createInvoiceFromDeliverables, ctx.selection(), { actor: ctx.actor, clientRequestId: winner ? "client-b" : "client-a" })).toEqual(results[winner])
   })
   it("creates two drafts with one receipt, refuses prepayment issuance and records explicit sale conversion", async () => {
     const ctx = await setup("on_delivery", true); await ctx.ready(0, false)
@@ -92,14 +93,14 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
     refused(await issueDocument({ kind: "invoice", actor: ctx.actor, commandInput: { id: result.prepaymentInvoiceId! } }), "purpose_issuance_not_supported")
     expect((await ctx.line(2)).billingStatus).toBe("reserved")
     expect(await prisma.artifactStaging.count({ where: { documentId: result.prepaymentInvoiceId } })).toBe(0)
-    completed(await executeCommand(invoiceScheduleAsSale, { id: result.prepaymentInvoiceId!, confirmed: true }, { actor: ctx.actor }))
+    completed(await executeIssuanceCommand(invoiceScheduleAsSale, { id: result.prepaymentInvoiceId!, confirmed: true }, { actor: ctx.actor }))
     expect(await invoice(result.prepaymentInvoiceId!)).toMatchObject({ purpose: "sale", scheduleSaleChoice: { deliverableIds: [ctx.item(2).id], actor: `user:${ctx.actor.userId}`, commandId: expect.any(String) } })
   })
   it("rolls back both drafts, reservations, events and numbering if the second creation fails", async () => {
     const ctx = await setup("on_delivery", true); await ctx.ready(0, false)
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })
     vi.spyOn(billingProvider, "assertInvoiceCreationAllowed").mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("second draft failed"))
-    refused(await executeCommand(createInvoiceFromDeliverables, ctx.selection([ctx.item().id, ctx.item(2).id]), { actor: ctx.actor }), "precondition_failed")
+    refused(await executeIssuanceCommand(createInvoiceFromDeliverables, ctx.selection([ctx.item().id, ctx.item(2).id]), { actor: ctx.actor }), "precondition_failed")
     expect(await prisma.invoice.count({ where: { agreementId: ctx.agreement.id } })).toBe(0)
     expect((await ctx.line()).billingStatus).toBe("unbilled"); expect((await ctx.line(2)).billingStatus).toBe("unbilled")
     expect(await prisma.domainEvent.count({ where: { organizationId: ctx.org.organizationId, type: "deliverable.reserved" } })).toBe(0)
@@ -110,12 +111,12 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
     const result = await ctx.reserve([ctx.item().id, ctx.item(1).id])
     const id = result.saleInvoiceId!, original = await invoice(id)
     const other = await prisma.contact.create({ data: { organizationId: ctx.org.organizationId, name: "Other" } })
-    for (const change of [{ contactId: other.id }, { currency: "EUR" }, { taxRate: "5" }]) refused(await executeCommand(updateInvoiceDraft, { id, ...change }, { actor: ctx.actor }), "linked_invoice_context_immutable")
-    refused(await executeCommand(updateInvoiceDraft, { id, items: [{ ...editLine(original.items[0]!), unitPrice: "999" }] }, { actor: ctx.actor }), "linked_item_immutable")
+    for (const change of [{ contactId: other.id }, { currency: "EUR" }, { taxRate: "5" }]) refused(await executeIssuanceCommand(updateInvoiceDraft, { id, ...change }, { actor: ctx.actor }), "linked_invoice_context_immutable")
+    refused(await executeIssuanceCommand(updateInvoiceDraft, { id, items: [{ ...editLine(original.items[0]!), unitPrice: "999" }] }, { actor: ctx.actor }), "linked_item_immutable")
     await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { pricesIncludeTax: true, countryCode: "DK" } })
-    completed(await executeCommand(updateInvoiceDraft, { id, notes: "Only notes" }, { actor: ctx.actor }))
+    completed(await executeIssuanceCommand(updateInvoiceDraft, { id, notes: "Only notes" }, { actor: ctx.actor }))
     expect((await invoice(id)).items).toEqual(original.items)
-    completed(await executeCommand(updateInvoiceDraft, { id, vatEvidence: { statementText: "Frozen classification evidence" } }, { actor: ctx.actor }))
+    completed(await executeIssuanceCommand(updateInvoiceDraft, { id, vatEvidence: { statementText: "Frozen classification evidence" } }, { actor: ctx.actor }))
     expect((await invoice(id)).items).toEqual(original.items)
     expect((await invoice(id)).vatEvidence).toMatchObject({ statementText: "Frozen classification evidence" })
     await prisma.contact.update({ where: { id: ctx.contact.id }, data: { name: "Changed buyer" } })
@@ -125,29 +126,29 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
     expect(render.pdf.invoice.contact.name).toBe("Customer")
     expect(render.pdf.org.companyName).toBe((ctx.agreement.sellerSnapshot as { companyName: string }).companyName)
     expect(render.pdf.org.companyAddress).toBe((ctx.agreement.sellerSnapshot as { companyAddress: string }).companyAddress)
-    const updated = completed(await executeCommand(updateInvoiceDraft, { id, items: [editLine(original.items[0]!), { description: "Expense", quantity: "1", unitPrice: "40", vat: { treatment: "standard", rate: "0.05" } }] }, { actor: ctx.actor }))
+    const updated = completed(await executeIssuanceCommand(updateInvoiceDraft, { id, items: [editLine(original.items[0]!), { description: "Expense", quantity: "1", unitPrice: "40", vat: { treatment: "standard", rate: "0.05" } }] }, { actor: ctx.actor }))
     expect(updated.items[0]!.id).toBe(original.items[0]!.id)
     expect(updated.totalGross.toString()).toBe("175"); expect(updated.items[1]!.lineTax.toString()).toBe("10")
     expect((await ctx.line(1)).billingStatus).toBe("unbilled")
-    completed(await executeCommand(deleteInvoiceDraft, { id }, { actor: ctx.actor }))
+    completed(await executeIssuanceCommand(deleteInvoiceDraft, { id }, { actor: ctx.actor }))
     expect((await ctx.line()).billingStatus).toBe("unbilled")
   })
   it("retains the accepted decimal VAT rate for unlinked expenses", async () => {
     const ctx = await setup("on_acceptance", false, "25.1234"); await ctx.ready()
     const { saleInvoiceId: id } = await ctx.reserve()
     const original = await invoice(id!)
-    const updated = completed(await executeCommand(updateInvoiceDraft, { id, items: [editLine(original.items[0]!), { description: "Expense", quantity: "1", unitPrice: "10000" }] }, { actor: ctx.actor }))
+    const updated = completed(await executeIssuanceCommand(updateInvoiceDraft, { id, items: [editLine(original.items[0]!), { description: "Expense", quantity: "1", unitPrice: "10000" }] }, { actor: ctx.actor }))
     expect(updated.items[1]!.lineTax.toString()).toBe("2512.34")
     expect(updated.totalGross.toString()).toBe("12637.46")
   })
   it("adds billable deliverables only to a matching agreement and purpose", async () => {
     const ctx = await setup("on_acceptance", true); await ctx.ready(); await ctx.ready(1)
     const { saleInvoiceId: id } = await ctx.reserve()
-    refused(await executeCommand(addInvoiceDeliverables, { id, ...ctx.selection([ctx.item(1).id]), agreementId: "different-agreement" }, { actor: ctx.actor }), "agreement_mismatch")
-    completed(await executeCommand(addInvoiceDeliverables, { id, ...ctx.selection([ctx.item(1).id]) }, { actor: ctx.actor }))
+    refused(await executeIssuanceCommand(addInvoiceDeliverables, { id, ...ctx.selection([ctx.item(1).id]), agreementId: "different-agreement" }, { actor: ctx.actor }), "agreement_mismatch")
+    completed(await executeIssuanceCommand(addInvoiceDeliverables, { id, ...ctx.selection([ctx.item(1).id]) }, { actor: ctx.actor }))
     expect((await invoice(id!)).items).toHaveLength(2)
-    refused(await executeCommand(addInvoiceDeliverables, { id, ...ctx.selection([ctx.item(2).id]) }, { actor: ctx.actor }), "purpose_mismatch")
-    completed(await executeCommand(addInvoiceDeliverables, { id, ...ctx.selection([ctx.item(2).id]), scheduleAsSale: true }, { actor: ctx.actor }))
+    refused(await executeIssuanceCommand(addInvoiceDeliverables, { id, ...ctx.selection([ctx.item(2).id]) }, { actor: ctx.actor }), "purpose_mismatch")
+    completed(await executeIssuanceCommand(addInvoiceDeliverables, { id, ...ctx.selection([ctx.item(2).id]), scheduleAsSale: true }, { actor: ctx.actor }))
     expect(await invoice(id!)).toMatchObject({ scheduleSaleChoice: { deliverableIds: [ctx.item(2).id] } })
   })
   it.each(["delivered", "unconfirmed", "no-email", "rejected"])("publishes candidate-bound billing through %s issuance", async mode => {
@@ -170,23 +171,23 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
   it("refuses reserved reopen/cancel/close, lists drafts and completes a delivery-billed project with a deposit", async () => {
     const ctx = await setup("on_delivery", true); const work = await ctx.ready(0, false); await ctx.ready(1)
     const result = await ctx.reserve(ctx.agreement.deliverables.map(line => line.id), { scheduleAsSale: true })
-    refused(await executeCommand(updateDeliverable, { ...work, status: "in_progress" }, { actor: ctx.actor }), "not_unbilled")
-    refused(await executeCommand(cancelDeliverable, work, { actor: ctx.actor }), "not_unbilled")
+    refused(await executeIssuanceCommand(updateDeliverable, { ...work, status: "in_progress" }, { actor: ctx.actor }), "not_unbilled")
+    refused(await executeIssuanceCommand(cancelDeliverable, work, { actor: ctx.actor }), "not_unbilled")
     for (const disposition of ["completed", "cancelled"]) {
-      const failed = await executeCommand(closeAgreement, { id: ctx.agreement.id, disposition, reason: "Close" }, { actor: ctx.actor })
+      const failed = await executeIssuanceCommand(closeAgreement, { id: ctx.agreement.id, disposition, reason: "Close" }, { actor: ctx.actor })
       refused(failed, "reserved_deliverables")
       if (failed.status === "failed") expect(failed.error.message).toContain(result.saleInvoiceId!)
     }
     completed(await issueDocument({ kind: "invoice", actor: ctx.actor, commandInput: { id: result.saleInvoiceId! } }))
-    refused(await executeCommand(closeAgreement, { id: ctx.agreement.id, disposition: "completed", reason: "Done" }, { actor: ctx.actor }), "open_deliverables")
-    completed(await executeCommand(acceptDeliverable, { ...work, evidenceNote: "Accepted after invoicing" }, { actor: ctx.actor }))
-    expect(completed(await executeCommand(closeAgreement, { id: ctx.agreement.id, disposition: "completed", reason: "Done" }, { actor: ctx.actor })).status).toBe("completed")
+    refused(await executeIssuanceCommand(closeAgreement, { id: ctx.agreement.id, disposition: "completed", reason: "Done" }, { actor: ctx.actor }), "open_deliverables")
+    completed(await executeIssuanceCommand(acceptDeliverable, { ...work, evidenceNote: "Accepted after invoicing" }, { actor: ctx.actor }))
+    expect(completed(await executeIssuanceCommand(closeAgreement, { id: ctx.agreement.id, disposition: "completed", reason: "Done" }, { actor: ctx.actor })).status).toBe("completed")
   })
   it("completes a service-only project and cancelRemaining cancels only unbilled, unaccepted work", async () => {
     const ctx = await setup("on_delivery"); await ctx.ready()
     const { saleInvoiceId } = await ctx.reserve()
     completed(await issueDocument({ kind: "invoice", actor: ctx.actor, commandInput: { id: saleInvoiceId } }))
-    expect(completed(await executeCommand(closeAgreement, { id: ctx.agreement.id, disposition: "completed", cancelRemaining: true, reason: "Unused work removed" }, { actor: ctx.actor })).status).toBe("completed")
+    expect(completed(await executeIssuanceCommand(closeAgreement, { id: ctx.agreement.id, disposition: "completed", cancelRemaining: true, reason: "Unused work removed" }, { actor: ctx.actor })).status).toBe("completed")
     expect((await ctx.line(1)).status).toBe("cancelled")
   })
   it("credit notes leave billing alone; approved send races edits and close without deadlock", async () => {
@@ -197,18 +198,23 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
     const agent = await authenticateAgentSecret(key.secret)
     expect(getAgentTool(agent, "invoice_create_from_deliverables").commandType).toBe("invoice.create_from_deliverables")
     expect(getAgentTool(agent, "invoice_add_deliverables").commandType).toBe("invoice.add_deliverables")
-    const approval = await executeCommand(sendInvoice, { id }, { actor: agent, clientRequestId: "send-review" })
+    const approval = await executeIssuanceCommand(sendInvoice, { id }, { actor: agent, clientRequestId: "send-review" })
     expect(approval.status).toBe("awaiting_approval")
     if (approval.status !== "awaiting_approval") throw new Error("Approval missing")
     const outcomes = await Promise.all([
       decideApproval({ decider: ctx.actor, approvalRequestId: approval.approvalRequestId, decision: "approve" }),
-      executeCommand(updateInvoiceDraft, { id, items: [editLine(original.items[0]!), { description: "Expense", quantity: "1", unitPrice: "20" }] }, { actor: ctx.actor }),
-      executeCommand(closeAgreement, { id: ctx.agreement.id, disposition: "completed", reason: "Done" }, { actor: ctx.actor }),
+      executeIssuanceCommand(updateInvoiceDraft, { id, items: [editLine(original.items[0]!), { description: "Expense", quantity: "1", unitPrice: "20" }] }, { actor: ctx.actor }),
+      executeIssuanceCommand(closeAgreement, { id: ctx.agreement.id, disposition: "completed", reason: "Done" }, { actor: ctx.actor }),
     ])
     expect(outcomes).toHaveLength(3)
     expect(outcomes[2]).toMatchObject({ status: "failed" })
     if ((await invoice(id!)).status === "draft") completed(await issueDocument({ kind: "invoice", actor: ctx.actor, commandInput: { id } }))
-    completed(await executeCommand(issueCreditNote, { invoiceId: id, mode: "full", reason: "Financial correction" }, { actor: ctx.actor }))
+    completed(await executeIssuanceCommand(issueCreditNote, { invoiceId: id, mode: "full", reason: "Financial correction" }, { actor: ctx.actor }))
+    const moneyEvent = await prisma.domainEvent.findFirstOrThrow({ where: { aggregateId: id!, type: "invoice.issued" } })
+    expect(moneyEvent.payload).toMatchObject({ purpose: "sale", valuation: { rateSource: "same_currency", rate: "1" }, provenance: { agreementId: ctx.agreement.id, commandId: expect.any(String) }, calculation: { version: "v2" }, lines: expect.arrayContaining([expect.objectContaining({ deliverableId: ctx.item().id })]) })
+    const money = moneyEvent.payload as { issueDate: string; postingDate: string; supplyDate: string }
+    expect(money.postingDate).toBe(money.issueDate)
+    expect(money.supplyDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect((await ctx.line()).billingStatus).toBe("invoiced")
   })
 })

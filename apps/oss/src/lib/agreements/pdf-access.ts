@@ -5,7 +5,6 @@ import { prisma } from "../db"
 import { actorCan } from "../../domain/actor"
 import { resolveUserActor } from "../../domain/user-actor"
 import { agreementPdfResponse } from "../agreement-pdf"
-import { publicAgreementDto } from "./public"
 import { loadPublicAgreementByToken } from "./public-access"
 
 export async function agreementPdfActor(request: Request) {
@@ -18,12 +17,7 @@ export async function agreementPdfActor(request: Request) {
 export async function publicAgreementPdf(token: string) {
   const session = await loadPublicAgreementByToken(token)
   if (!session || session.payload.scope === "sign_off") return new Response("This link is no longer valid", { status: 404 })
-  const dto = publicAgreementDto(session.agreement)
-  const stored = await storedPdfResponse(session.agreement)
-  if (stored) return stored
-  const response = await agreementPdfResponse({ ...dto, snapshot: dto.snapshot })
-  response.headers.set("X-Quits-Artifact", "reconstructed")
-  return response
+  return await storedPdfResponse(session.agreement) ?? new Response("Stored artifact unavailable", { status: 503 })
 }
 export async function privateAgreementPdf(request: Request, id: string) {
   const actor = await agreementPdfActor(request)
@@ -32,11 +26,7 @@ export async function privateAgreementPdf(request: Request, id: string) {
     where: { id, organizationId: actor.organizationId },
   })
   if (!agreement?.offerSnapshot) return new Response("Agreement not found", { status: 404 })
-  const stored = await storedPdfResponse(agreement)
-  if (stored) return stored
-  const response = await agreementPdfResponse(publicAgreementDto(agreement))
-  response.headers.set("X-Quits-Artifact", "reconstructed")
-  return response
+  return await storedPdfResponse(agreement) ?? new Response("Stored artifact unavailable", { status: 503 })
 }
 export async function approvalAgreementPdf(request: Request, id: string) {
   const actor = await agreementPdfActor(request)

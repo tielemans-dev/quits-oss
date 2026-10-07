@@ -1,3 +1,5 @@
+import { getDocumentArtifactStore } from "../runtime/services"
+import { hashBytes } from "../../domain/documents/hash"
 import { creditedGroupsSchema } from "@quits/contracts/pricing"
 import { vatGroupKey, percentageToFraction } from "@quits/shared/pricing"
 import { frozenVatGroups } from "../../domain/documents/frozen-vat-groups"
@@ -20,6 +22,11 @@ import {
   type TaxIdLike,
 } from "./parties"
 import { buildUblDocument, validateEinvoice, type EinvoiceDocument, type EinvoiceParty } from "./ubl"
+
+export class EinvoiceArtifactUnavailable extends Error {
+  readonly code = "stored_artifact_unavailable"
+  constructor() { super("Stored UBL artifact unavailable. Issued documents cannot be rendered again.") }
+}
 
 export class EinvoiceSourceNotFound extends Error {
   constructor(readonly kind: EinvoiceDocumentKind, readonly id: string) {
@@ -237,6 +244,14 @@ export async function exportEinvoice(
   kind: EinvoiceDocumentKind,
   id: string
 ): Promise<EinvoiceExportResult> {
+  const row = kind === "invoice" ? await prisma.invoice.findFirst({ where: { id, organizationId }, select: { status: true, number: true, artifactUblRef: true, artifactUblHash: true } }) : await prisma.creditNote.findFirst({ where: { id, organizationId }, select: { status: true, number: true, artifactUblRef: true, artifactUblHash: true } })
+  if (!row) throw new EinvoiceSourceNotFound(kind, id)
+  if (row.status !== "draft") {
+    if (!row.artifactUblRef) throw new EinvoiceArtifactUnavailable()
+    const bytes = await getDocumentArtifactStore()?.get(row.artifactUblRef)
+    if (!bytes || hashBytes(bytes) !== row.artifactUblHash) throw new EinvoiceArtifactUnavailable()
+    return { ok: true, filename: `${safeFileName(row.number, kind)}.xml`, xml: new TextDecoder().decode(bytes) }
+  }
   const document = await loadEinvoiceDocument(organizationId, kind, id)
   const missing = validateEinvoice(document)
   if (missing.length > 0) {

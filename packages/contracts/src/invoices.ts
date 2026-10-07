@@ -45,6 +45,7 @@ const currencySchema = z.string().trim().regex(/^[A-Z]{3}$/)
 export const invoiceCreateDraftInputSchema = z.object({
   contactId: z.string().trim().min(1),
   dueDate: calendarDateInputSchema,
+  supplyDate: z.iso.date().optional(),
   currency: currencySchema.optional(),
   notes: z.string().trim().max(5000).optional(),
   taxRate: documentTaxRateSchema.default(0),
@@ -56,6 +57,7 @@ export const invoiceUpdateDraftInputSchema = z.object({
   id: z.string().min(1),
   contactId: z.string().trim().min(1).optional(),
   dueDate: calendarDateInputSchema.optional(),
+  supplyDate: z.iso.date().optional(),
   currency: currencySchema.optional(),
   notes: z.string().trim().max(5000).optional(),
   taxRate: documentTaxRateSchema.optional(),
@@ -64,6 +66,7 @@ export const invoiceUpdateDraftInputSchema = z.object({
 })
 
 export const invoiceCreateDraftV2InputSchema = invoiceCreateDraftInputSchema.extend({
+  supplyDate: z.iso.date(),
   taxRate: documentTaxRateV2Schema.default("0"),
   items: z.array(documentLineV2InputSchema).min(1).max(100),
 })
@@ -78,6 +81,10 @@ export const invoiceSendInputSchema = z.object({
   id: z.string().min(1),
   allowSendWithoutEmail: z.boolean().optional(),
   acknowledgeDisputed: z.boolean().optional(),
+  supplyDate: z.iso.date().optional(),
+  exchangeRate: z.string().max(40).regex(/^\d+(?:\.\d{1,12})?$/).refine(value => /[1-9]/.test(value)).optional(),
+  rateDate: z.iso.date().optional(),
+  vatReporting: z.strictObject({ rate: nonnegativeDecimalStringSchema, rateSource: z.string().min(1), taxBaseForReturn: nonnegativeDecimalStringSchema, taxForReturn: nonnegativeDecimalStringSchema }).optional(),
 })
 
 export const invoiceStatusSchema = z.enum(["draft", "sent", "viewed", "overdue", "paid", "credited"])

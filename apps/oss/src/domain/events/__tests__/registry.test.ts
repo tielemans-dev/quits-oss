@@ -13,12 +13,18 @@ const fixtures = readdirSync(directory).filter((name) => name.endsWith(".json"))
 
 describe("v1 emitter inventory", () => {
   it("has one fixture file for every registered production type and no extra types", () => {
-    expect(fixtures.map((fixture) => fixture.type).sort()).toEqual(Object.keys(eventRegistry).sort())
+    expect([...new Set(fixtures.map((fixture) => fixture.type))].sort()).toEqual(Object.keys(eventRegistry).sort())
   })
   for (const fixture of fixtures) {
     it(`${fixture.type} validates serialized payloads reconstructed from its actual writer expressions`, () => {
       const expressions = emitterExpressions()
       for (const sample of fixture.cases) {
+        if (fixture.type === "credit_note.issued" && fixture.schemaVersion === 1) {
+          const upcast = upcastEvent({ type: fixture.type, schemaVersion: 1, payload: sample.payload })
+          expect(upcast).toMatchObject({ schemaVersion: 2, payload: { postable: false, incompleteReason: "historical_payload_incomplete" } })
+          expect(eventDefinition(fixture.type)?.schema.safeParse(upcast.payload).success).toBe(true)
+          continue
+        }
         expect(expressions).toContainEqual({ source: sample.source, typeExpression: sample.typeExpression, payloadExpression: sample.payloadExpression })
         expect(reconstruct(sample, sample.variant)).toEqual({ type: fixture.type, payload: sample.payload })
         expect(serializeEvent(fixture.type, sample.payload)).toEqual({ schemaVersion: fixture.schemaVersion, payload: sample.payload })
@@ -55,9 +61,10 @@ describe("event envelope", () => {
   })
   it("keeps every v1 envelope identical and refuses newer, invalid and unknown versions", () => {
     for (const fixture of fixtures) {
-      const envelope = { type: fixture.type, schemaVersion: 1, payload: fixture.cases[0].payload }
-      expect(upcastEvent(envelope)).toBe(envelope)
-      expect(() => upcastEvent({ ...envelope, schemaVersion: 2 })).toThrow(UnsupportedEventVersion)
+      const envelope = { type: fixture.type, schemaVersion: fixture.schemaVersion, payload: fixture.cases[0].payload }
+      if (fixture.type === "credit_note.issued" && fixture.schemaVersion === 1) expect(upcastEvent(envelope)).toMatchObject({ schemaVersion: 2, payload: { postable: false } })
+      else expect(upcastEvent(envelope)).toBe(envelope)
+      expect(() => upcastEvent({ ...envelope, schemaVersion: eventDefinition(fixture.type)!.version + 1 })).toThrow(UnsupportedEventVersion)
       expect(() => upcastEvent({ ...envelope, schemaVersion: 0 })).toThrow(UnsupportedEventVersion)
     }
     expect(() => upcastEvent({ type: "unknown", schemaVersion: 1, payload: {} })).toThrow(UnsupportedEventVersion)

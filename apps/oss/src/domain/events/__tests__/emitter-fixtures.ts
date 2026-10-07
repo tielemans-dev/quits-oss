@@ -3,10 +3,11 @@ import { readFileSync } from "node:fs"
 import { runInNewContext } from "node:vm"
 import { commandErrorSchema } from "@quits/contracts/agent"
 import ts from "typescript"
+import { moneyEmitterState } from "./money-emitter-state"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
-  ...["invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables"].map((name) => `commands/${name}.ts`),
+  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables"].map((name) => `commands/${name}.ts`),
   "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
@@ -84,12 +85,29 @@ export function reconstruct(expression: { source: string; typeExpression: string
     // The email_failed return is reached only after the unconfirmed early return.
     failure: { reason: reason === "delivered" || (reason === "unconfirmed" && expression.typeExpression.includes("email_failed")) ? "rejected" : reason, message: "Fixture failure" },
     target: { documentId: "document-1", invoiceId: "invoice-1", number: "DOC-0001", recipient: manual && ["agreements/issuance.ts", "commands/invoices.ts", "commands/quotes.ts"].includes(expression.source) ? null : "customer@example.test", reminderId: "reminder-1", offsetDays: "7", balanceDue: "100.00" },
-    payload: { offerRevision: 1, deliveryRevision: 1 }, command: { now: instant },
+    payload: { offerRevision: 1, deliveryRevision: 1 } as Record<string, unknown>, command: { now: instant },
     definition: { type: "invoice.send" }, summary: "Send invoice", request: { commandType: "invoice.send", decisionNote: optional ? "Reviewed" : null },
     note: optional ? "Reviewed" : undefined, created: { name: "Bookkeeper", mode: "approval_required" }, scopes: ["invoice:read"],
     acceptanceRecord: (value: unknown) => acceptanceRecord(value as Parameters<typeof acceptanceRecord>[0]),
     kind, mode, aggregateType: kind === "creditNote" ? "credit_note" : kind,
     deliveredEvent: (documentKind: string, deliveryMode: string) => deliveryMode === "send" || documentKind === "creditNote" ? "sent" : "email_resent",
+  }
+  if (expression.payloadExpression === "payload" && ["documents/artifacts.ts", "commands/base-valuation.ts"].includes(expression.source)) {
+    // Evaluate the actual payload initializer against independent synthetic money state.
+    const ast = ts.createSourceFile(expression.source, readFileSync(new URL(expression.source, root), "utf8"), ts.ScriptTarget.Latest, true)
+    let initializer = ""
+    function findPayload(node: ts.Node) {
+      if (ts.isVariableDeclaration(node) && node.name.getText(ast) === "payload" && node.initializer) initializer = node.initializer.getText(ast)
+      ts.forEachChild(node, findPayload)
+    }
+    findPayload(ast)
+    const moneyState = moneyEmitterState(scope.documentKind === "invoice" ? "invoice" : "creditNote")
+    scope.payload = runInNewContext(`(${initializer})`, { ...scope, money: moneyState, snapshot: moneyState,
+      command: { now: new Date("2026-10-07T12:00:00.000Z"), actor: { userId: "user-1" } },
+      input: { ...scope.input, evidenceNote: "Reviewed source" },
+      candidate: { ...scope.candidate, id: "candidate-1" },
+    })
+
   }
   return {
     type: runInNewContext(`(${expression.typeExpression})`, scope) as string,

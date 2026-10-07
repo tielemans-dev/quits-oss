@@ -1,3 +1,4 @@
+import { formatIsoDate } from "../../lib/exports/format"
 import { invoiceDeliverableCommands } from "./invoices-from-deliverables"
 import { updateLinkedInvoice } from "../agreements/linked-invoice"
 import { releaseLines } from "../agreements/billing"
@@ -72,7 +73,7 @@ const findInvoice = (id: string) =>
     const invoice = yield* Effect.promise(() =>
       db.invoice.findFirst({
         where: { id, organizationId },
-        include: { contact: true, items: { orderBy: { sortOrder: "asc" } } },
+        include: { contact: { include: { taxIds: true } }, items: { orderBy: { sortOrder: "asc" } } },
       })
     )
     if (!invoice) {
@@ -125,6 +126,7 @@ export const buildInvoiceDraft = (
           number,
           status: "draft",
           dueDate: new Date(input.dueDate),
+          supplyDate: new Date(input.supplyDate ?? formatIsoDate(command.now, settings.timezone)),
           subtotalNet: calculated.subtotalNet,
           totalTax: calculated.totalTax,
           totalGross: calculated.totalGross,
@@ -210,6 +212,7 @@ export const updateInvoiceDraft = defineCommand({
         data.buyerSnapshot = buildBuyerSnapshot(contact)
       }
       if (input.dueDate) data.dueDate = new Date(input.dueDate)
+      if (input.supplyDate) data.supplyDate = new Date(input.supplyDate)
       if (input.currency) data.currency = input.currency
       if (input.notes !== undefined) data.notes = input.notes
 
@@ -239,7 +242,7 @@ export const updateInvoiceDraft = defineCommand({
         db.invoice.update({
           where: { id: existing.id },
           data,
-          include: { contact: true, items: { orderBy: { sortOrder: "asc" } } },
+          include: { contact: { include: { taxIds: true } }, items: { orderBy: { sortOrder: "asc" } } },
         })
       )
 
@@ -291,7 +294,7 @@ export const deleteInvoiceDraft = defineCommand({
 })
 
 /** What a person approving an agent's invoice email sees, versioned by the invoice's last change. */
-const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", acknowledgeDisputed = false) =>
+const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", acknowledgeDisputed = false, valuationInput?: z.infer<typeof invoiceSendInputSchema>) =>
   Effect.gen(function* () {
     yield* lockDocument("invoice", id)
     const found = yield* findInvoice(id)
@@ -299,13 +302,14 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
     // Lock the contact before reading the address, so the approved recipient cannot change.
     const invoice = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
     const recipient = invoice.contact.email?.trim() || null
+    const { settings, sellerTaxIds } = yield* loadDocumentContext
     const total = `${invoice.totalGross.toFixed(2)} ${invoice.currency}`
     return {
       summary:
         action === "send"
           ? `Send invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name}`
           : `Email invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name} again`,
-      version: `${documentFingerprint(invoice, recipient, [invoice.dueDate])}:${invoice.disputedRevision}`,
+      version: `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}`,
       details: {
         disputed: String(invoice.disputed),
         acknowledgeDisputed: String(acknowledgeDisputed),
@@ -315,6 +319,10 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
         total: invoice.totalGross.toFixed(2),
         currency: invoice.currency,
         dueDate: invoice.dueDate.toISOString().slice(0, 10),
+        supplyDate: valuationInput?.supplyDate ?? invoice.supplyDate?.toISOString().slice(0, 10) ?? null,
+        baseCurrency: settings.baseCurrency,
+        exchangeRate: valuationInput?.exchangeRate ?? (invoice.currency === settings.baseCurrency ? "1" : null),
+        rateDate: valuationInput?.rateDate ?? null,
       },
     }
   })
@@ -334,7 +342,7 @@ export const sendInvoice = defineCommand({
   outwardFacing: true,
   input: invoiceSendInputSchema,
   summarize: (input) => `Send invoice ${input.id} to the customer`,
-  approvalContext: (input) => invoiceEmailApprovalContext(input.id, "send", input.acknowledgeDisputed),
+  approvalContext: (input) => invoiceEmailApprovalContext(input.id, "send", input.acknowledgeDisputed, input),
   // The invoice is marked as being sent and the rendered email is queued in the outbox; the
   // invoice becomes sent only once the provider accepts the email. See `delivery/outbox.ts`.
   handle: (input) =>
@@ -357,7 +365,7 @@ export const sendInvoice = defineCommand({
       })
       if (invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet. You can explicitly invoice the schedule as a sale instead." })
       if (invoice.agreementId && !command.issuance) return yield* new InvalidState({ code: "issuance_required", message: "Linked invoices must issue through issueDocument" })
-      yield* requireVatIssuance(invoice)
+      yield* requireVatIssuance({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact) })
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       const emailContext = resolveInvoiceEmailContext(settings)

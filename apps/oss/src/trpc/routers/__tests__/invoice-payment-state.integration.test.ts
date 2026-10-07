@@ -45,6 +45,7 @@ describeIfDatabase("invoice payment state", () => {
           locale: "da-DK",
           timezone: "Europe/Copenhagen",
           defaultCurrency: "DKK",
+          baseCurrency: "DKK",
           currency: "DKK",
           taxRegime: "eu_vat",
           pricesIncludeTax: false,

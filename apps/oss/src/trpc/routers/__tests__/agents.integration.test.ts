@@ -1,9 +1,10 @@
+import { executeIssuanceCommand } from "../../../application/issuance"
 import { afterEach, describe, expect, it } from "vitest"
 import { authenticateAgentSecret, createAgentKey } from "../../../domain/agent-keys"
 import { runAgentTool } from "../../../domain/agent-tools/mcp"
 import { createContact } from "../../../domain/commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../../../domain/commands/invoices"
-import { executeCommand } from "../../../domain/execute"
+
 import { prisma } from "../../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import { appRouter } from "../../router"
@@ -37,13 +38,13 @@ describeIfDatabase("agents router", () => {
 
   /** Queues an invoice send from an approval_required agent. */
   async function queueSend(org: Org) {
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "billing@acme.test" },
       { actor: org.actors.admin }
     )
     if (contact.status !== "completed") throw new Error("contact setup failed")
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId: contact.result.id,
@@ -60,7 +61,7 @@ describeIfDatabase("agents router", () => {
       scopes: ["invoice:read", "invoice:send"],
     })
     const agent = await authenticateAgentSecret(secret)
-    const queued = await executeCommand(
+    const queued = await executeIssuanceCommand(
       sendInvoice,
       { id: draft.result.id, allowSendWithoutEmail: true },
       { actor: agent, clientRequestId: "send-1" }

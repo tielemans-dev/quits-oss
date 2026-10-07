@@ -1,3 +1,5 @@
+import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
+import { InvalidState } from "../../domain/errors"
 import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
@@ -86,6 +88,7 @@ export const settingsUpdateSchema = z.object({
     .refine((value) => supportedLocales.has(value), "Unsupported locale")
     .optional(),
   timezone: timezoneSchema.optional(),
+  baseCurrency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   defaultCurrency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   onboardingInvoicingIdentity: onboardingInvoicingIdentitySchema.optional(),
   taxRegime: taxRegimeSchema.optional(),
@@ -133,6 +136,8 @@ export const settingsRouter = router({
       locale: settings.locale,
       timezone: settings.timezone,
       defaultCurrency: settings.defaultCurrency,
+      baseCurrency: settings.baseCurrency,
+      baseCurrencyLocked: await hasIssuedDocuments(prisma, ctx.organizationId),
       onboardingInvoicingIdentity: settings.onboardingInvoicingIdentity,
       taxRegime: settings.taxRegime,
       pricesIncludeTax: settings.pricesIncludeTax,
@@ -178,8 +183,12 @@ export const settingsRouter = router({
 
       assertSettingsCurrency(settingsInput.currency)
       assertSettingsCurrency(settingsInput.defaultCurrency)
+      assertSettingsCurrency(settingsInput.baseCurrency)
 
       return prisma.$transaction(async (tx) => {
+        let baseCurrency: string
+        try { baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, settingsInput) }
+        catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
           select: { countryCode: true },
@@ -200,6 +209,7 @@ export const settingsRouter = router({
 
         const settingsUpdateData = {
           ...settingsInput,
+          baseCurrency,
           ...(aiOpenRouterApiKey
             ? { aiOpenRouterApiKeyEnc: encryptSecret(aiOpenRouterApiKey) }
             : {}),

@@ -2,60 +2,45 @@ import { router, authorizedProcedure } from "../init"
 import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import { computeSettlement } from "../../domain/documents/settlement"
+import { requireCurrencyExponent } from "@quits/shared/currency"
 
 export const dashboardRouter = router({
   stats: authorizedProcedure("invoice:read").query(async ({ ctx }) => {
-    const [totalRevenue, outstanding, overdueCount, totalContacts, recentInvoices] =
-      await Promise.all([
-        // Money actually received, including partial payments on open invoices.
-        prisma.payment.aggregate({
-          where: { organizationId: ctx.organizationId, voidedAt: null },
-          _sum: { amount: true },
-        }),
-        // What customers still owe on open invoices, after payments and credit notes.
-        prisma.invoice.findMany({
-          where: {
-            organizationId: ctx.organizationId,
-            status: { in: ["sent", "viewed"] },
-          },
-          select: { totalGross: true, amountPaid: true, amountCredited: true },
-        }),
-        prisma.invoice.count({
-          where: { organizationId: ctx.organizationId, status: "overdue" },
-        }),
-        prisma.contact.count({
-          where: { organizationId: ctx.organizationId },
-        }),
-        prisma.invoice.findMany({
-          where: { organizationId: ctx.organizationId },
-          include: { contact: { select: { name: true } } },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        }),
-      ])
-
+    const [payments, invoices, totalContacts, recentInvoices, settings] = await Promise.all([
+      prisma.payment.groupBy({ by: ["currency"], where: { organizationId: ctx.organizationId, voidedAt: null }, _sum: { amount: true } }),
+      prisma.invoice.findMany({ where: { organizationId: ctx.organizationId, status: { not: "draft" } }, include: { creditNotes: { where: { status: "issued" }, select: { valuation: true } } } }),
+      prisma.contact.count({ where: { organizationId: ctx.organizationId } }),
+      prisma.invoice.findMany({ where: { organizationId: ctx.organizationId }, include: { contact: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 10 }),
+      prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId } }),
+    ])
+    const buckets = new Map<string, { revenue: Prisma.Decimal; outstanding: Prisma.Decimal }>()
+    const bucket = (currency: string) => {
+      if (!buckets.has(currency)) buckets.set(currency, { revenue: new Prisma.Decimal(0), outstanding: new Prisma.Decimal(0) })
+      return buckets.get(currency)!
+    }
+    for (const payment of payments) bucket(payment.currency).revenue = payment._sum.amount ?? new Prisma.Decimal(0)
+    const baseCurrency = settings?.baseCurrency ?? "USD"
+    let baseMinor = new Prisma.Decimal(0), excludedUnknownValuations = 0
+    type Valuation = { base: { minor: string | null; currency: string }; rateSource: string }
+    for (const invoice of invoices) {
+      const b = bucket(invoice.currency)
+      if (["sent", "viewed", "overdue"].includes(invoice.status)) {
+        b.outstanding = b.outstanding.plus(computeSettlement(invoice).balanceDue)
+      }
+      const valuations = [invoice.valuation, ...invoice.creditNotes.map(note => note.valuation)] as Array<Valuation | null>
+      if (valuations.some(value => !value || value.rateSource === "unknown" || value.base.minor === null || value.base.currency !== baseCurrency)) { excludedUnknownValuations++; continue }
+      baseMinor = baseMinor.plus(valuations[0]!.base.minor!).minus(valuations.slice(1).reduce((sum, value) => sum.plus(value!.base.minor!), new Prisma.Decimal(0)))
+    }
+    const currencyBuckets = [...buckets].sort(([a], [b]) => a.localeCompare(b)).map(([currency, value]) => ({ currency, totalRevenue: value.revenue.toFixed(), outstanding: value.outstanding.toFixed() }))
     return {
-      totalRevenue: totalRevenue._sum.amount?.toNumber() ?? 0,
-      outstanding: outstanding
-        .reduce(
-          (sum, invoice) => sum.plus(computeSettlement(invoice).balanceDue),
-          new Prisma.Decimal(0)
-        )
-        .toNumber(),
-      overdueCount,
+      currencyBuckets,
+      // Transitional single-currency clients can still read these without ever summing currencies.
+      totalRevenue: currencyBuckets.length <= 1 ? Number(currencyBuckets[0]?.totalRevenue ?? 0) : null,
+      outstanding: currencyBuckets.length <= 1 ? Number(currencyBuckets[0]?.outstanding ?? 0) : null,
+      baseTotal: { currency: baseCurrency, amount: baseMinor.div(new Prisma.Decimal(10).pow(requireCurrencyExponent(baseCurrency))).toFixed(requireCurrencyExponent(baseCurrency)), excludedUnknownValuations },
+      overdueCount: invoices.filter(invoice => invoice.status === "overdue").length,
       totalContacts,
-      recentInvoices: recentInvoices.map((inv) => ({
-        id: inv.id,
-        number: inv.number,
-        contactName: inv.contact.name,
-        total: inv.totalGross.toNumber(),
-        currency: inv.currency,
-        status: inv.status,
-        paymentStatus: inv.paymentStatus,
-        balanceDue: computeSettlement(inv).balanceDue.toNumber(),
-        issueDate: inv.issueDate.toISOString(),
-        dueDate: inv.dueDate.toISOString(),
-      })),
+      recentInvoices: recentInvoices.map(inv => ({ id: inv.id, number: inv.number, contactName: inv.contact.name, total: inv.totalGross.toNumber(), currency: inv.currency, status: inv.status, paymentStatus: inv.paymentStatus, balanceDue: computeSettlement(inv).balanceDue.toNumber(), issueDate: inv.issueDate.toISOString(), dueDate: inv.dueDate.toISOString() })),
     }
   }),
 })

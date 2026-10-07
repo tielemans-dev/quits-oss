@@ -1,4 +1,6 @@
 export const enSettingsMessages = {
+  "settings.baseCurrency.label": "Base currency",
+  "settings.baseCurrency.hint": "Books use this currency. It locks after any document is issued. Draft currency remains independent.",
   "settings.title": "Settings",
   "settings.loading": "Loading...",
   "settings.success.saved": "Settings saved successfully.",

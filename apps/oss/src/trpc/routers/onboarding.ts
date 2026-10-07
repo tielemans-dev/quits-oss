@@ -1,3 +1,4 @@
+import { resolveBaseCurrency } from "../../domain/documents/base-currency"
 import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
@@ -228,13 +229,16 @@ export const onboardingRouter = router({
       if ("quotePrefix" in input) settingsUpdateData.quotePrefix = input.quotePrefix
       if ("quoteNextNum" in input) settingsUpdateData.quoteNextNum = input.quoteNextNum
 
-      await prisma.orgSettings.upsert({
+      await prisma.$transaction(async tx => {
+        settingsUpdateData.baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, { countryCode: settingsUpdateData.countryCode as string | undefined })
+        await tx.orgSettings.upsert({
         where: { organizationId: ctx.organizationId },
         update: settingsUpdateData,
         create: {
           organizationId: ctx.organizationId,
           ...settingsUpdateData,
         },
+      })
       })
 
       if ("primaryTaxId" in input) {

@@ -1,3 +1,4 @@
+import { executeIssuanceCommand } from "../../application/issuance"
 import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
@@ -6,7 +7,7 @@ import { recoverInterruptedApprovals } from "../approvals"
 import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice, updateInvoiceDraft } from "../commands/invoices"
 import { recordPayment, voidPayment } from "../commands/payments"
-import { executeCommand } from "../execute"
+
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -20,7 +21,7 @@ describeIfDatabase("round 2 review fixes", () => {
   async function setup(settings: { currency?: string; timezone?: string } = {}) {
     const org = await createTestOrganization({ settings })
     cleanups.push(org.cleanup)
-    const contact = await executeCommand(
+    const contact = await executeIssuanceCommand(
       createContact,
       { name: "Acme", email: "billing@acme.test" },
       { actor: org.actors.admin }
@@ -31,7 +32,7 @@ describeIfDatabase("round 2 review fixes", () => {
 
   it("keeps the nominal VAT rate when only the currency changes", async () => {
     const { org, contactId } = await setup()
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       {
         contactId,
@@ -45,7 +46,7 @@ describeIfDatabase("round 2 review fixes", () => {
     if (draft.status !== "completed") throw new Error("draft failed")
     expect(draft.result.totalTax.toNumber()).toBe(26)
 
-    const changed = await executeCommand(
+    const changed = await executeIssuanceCommand(
       updateInvoiceDraft,
       { id: draft.result.id, currency: "DKK" },
       { actor: org.actors.admin }
@@ -57,14 +58,14 @@ describeIfDatabase("round 2 review fixes", () => {
 
   it("shows the payment's calendar day in void approvals", async () => {
     const { org, contactId } = await setup({ timezone: "Europe/Copenhagen" })
-    const draft = await executeCommand(
+    const draft = await executeIssuanceCommand(
       createInvoiceDraft,
       { contactId, dueDate: "2099-12-01", taxRate: 0, items: [{ description: "X", quantity: 1, unitPrice: 100 }] },
       { actor: org.actors.admin }
     )
     if (draft.status !== "completed") throw new Error("draft failed")
-    await executeCommand(sendInvoice, { id: draft.result.id, allowSendWithoutEmail: true }, { actor: org.actors.admin })
-    const paid = await executeCommand(
+    await executeIssuanceCommand(sendInvoice, { id: draft.result.id, allowSendWithoutEmail: true }, { actor: org.actors.admin })
+    const paid = await executeIssuanceCommand(
       recordPayment,
       { invoiceId: draft.result.id, amount: 100, paidAt: "2026-01-15", method: "bank_transfer" },
       { actor: org.actors.admin }
@@ -77,7 +78,7 @@ describeIfDatabase("round 2 review fixes", () => {
       scopes: ["payment:void", "payment:read"],
     })
     const agent = await authenticateAgentSecret(secret)
-    const queued = await executeCommand(
+    const queued = await executeIssuanceCommand(
       voidPayment,
       { paymentId: paid.result.payment.id, reason: "Duplicate" },
       { actor: agent, clientRequestId: "void-1" }
@@ -91,7 +92,7 @@ describeIfDatabase("round 2 review fixes", () => {
   describe("interrupted approvals", () => {
     async function queuedSend() {
       const { org, contactId } = await setup()
-      const draft = await executeCommand(
+      const draft = await executeIssuanceCommand(
         createInvoiceDraft,
         { contactId, dueDate: "2099-12-01", taxRate: 0, items: [{ description: "X", quantity: 1, unitPrice: 100 }] },
         { actor: org.actors.admin }
@@ -103,7 +104,7 @@ describeIfDatabase("round 2 review fixes", () => {
         scopes: ["invoice:send", "invoice:read"],
       })
       const agent = await authenticateAgentSecret(secret)
-      const queued = await executeCommand(
+      const queued = await executeIssuanceCommand(
         sendInvoice,
         { id: draft.result.id, allowSendWithoutEmail: true },
         { actor: agent, clientRequestId: "send-1" }

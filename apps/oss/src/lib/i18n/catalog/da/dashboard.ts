@@ -1,4 +1,6 @@
 export const daDashboardMessages = {
+  "dashboard.baseTotal": "Udstedt fakturaværdi i basisvaluta",
+  "dashboard.baseTotalHint": "Efter krediteringer. Udelader {count} fakturaer med ukendt værdiansættelse. Betalinger vises i deres egen valuta ovenfor.",
   "dashboard.subtitle": "Økonomisk overblik og seneste aktivitet",
   "dashboard.loading": "Indlæser...",
   "dashboard.loadError": "Kunne ikke indlæse oversigtsdata. Sørg for, at du har en aktiv organisation.",

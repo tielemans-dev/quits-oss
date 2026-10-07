@@ -45,6 +45,7 @@ export async function createTestOrganization(
       locale: settings.locale ?? "en-US",
       timezone: settings.timezone ?? "UTC",
       defaultCurrency: settings.currency ?? "USD",
+      baseCurrency: settings.currency ?? "USD",
       currency: settings.currency ?? "USD",
       taxRegime: settings.taxRegime ?? "us_sales_tax",
       pricesIncludeTax: settings.pricesIncludeTax ?? false,
