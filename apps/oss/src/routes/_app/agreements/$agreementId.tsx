@@ -315,11 +315,13 @@ function AgreementDetail() {
                     {t("agreements.method")}:{" "}
                     {line.acceptedVia === "internal"
                       ? t("agreements.internalMethod")
-                      : line.acceptedVia}
+                      : line.acceptedVia === "customer_link"
+                        ? t("agreements.customerLinkMethod")
+                        : t("agreements.unspecified")}
                   </p>
-                  <p>
+                  {line.acceptanceEvidenceNote && <p>
                     {t("agreements.evidenceNote")}: {line.acceptanceEvidenceNote}
-                  </p>
+                  </p>}
                 </div>
               )}
               {capabilities && (

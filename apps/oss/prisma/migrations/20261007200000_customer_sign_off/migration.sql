@@ -1,0 +1,2 @@
+ALTER TABLE "invoice" ADD COLUMN "disputed" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "disputedRevision" INTEGER NOT NULL DEFAULT 0;

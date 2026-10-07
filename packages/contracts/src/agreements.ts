@@ -185,7 +185,12 @@ export const agreementCloseInputSchema = agreementIdInputSchema.extend({
   cancelRemaining: z.boolean().optional(),
   reason: z.string().trim().min(1).max(5000),
 }).strict()
+export const deliverablePublicDecisionSchema = z.discriminatedUnion("decision", [
+  z.object({ decision: z.literal("accept"), confirmed: z.literal(true) }).strict(),
+  z.object({ decision: z.literal("request_changes"), note: z.string().trim().min(1).max(5000) }).strict(),
+])
 export const agreementPublicTokenPayloadSchema = z.discriminatedUnion("scope", [
+  z.object({ agreementId: z.string().min(1), scope: z.literal("sign_off"), keyVersion: z.number().int().positive(), exp: z.iso.datetime(), deliverableId: z.string().min(1), deliveryRevision: z.number().int().positive() }).strict(),
   z.object({ agreementId: z.string().min(1), scope: z.literal("decide"), keyVersion: z.number().int().positive(), exp: z.iso.datetime(), offerRevision: z.number().int().positive() }).strict(),
   z.object({ agreementId: z.string().min(1), scope: z.literal("read"), keyVersion: z.number().int().positive(), exp: z.iso.datetime() }).strict(),
 ])

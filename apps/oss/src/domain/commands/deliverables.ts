@@ -1,3 +1,4 @@
+import { notifyDeliverable } from "../agreements/sign-off-notifications"
 import { Effect } from "effect"
 import { deliverableIdInputSchema, deliverableAcceptInputSchema } from "@quits/contracts/agreements"
 import { defineCommand } from "../command"
@@ -28,8 +29,9 @@ export const markDeliverableDelivered = defineCommand({
       if (!command.expectedApprovalVersion) yield* requireDelivery(agreement, line)
       return {
         summary: `Mark ${line.title} delivered for agreement ${agreement.number ?? agreement.title}`,
-        version: `${line.id}:${line.status}:${line.deliveryRevision}`,
+        version: `${line.id}:${line.status}:${line.deliveryRevision}:${agreement.issuedToEmail ?? ""}:${agreement.publicAccessKeyVersion}`,
         details: {
+          recipient: agreement.issuedToEmail,
           agreementNumber: agreement.number,
           deliverableTitle: line.title,
           status: line.status,
@@ -67,7 +69,8 @@ export const markDeliverableDelivered = defineCommand({
           previousAcceptance: acceptanceRecord(line),
         },
       })
-      return delivered
+      const notification = yield* notifyDeliverable(agreement, delivered, "delivered")
+      return { ...delivered, signOffLink: notification.link, notificationDeliveryKey: notification.deliveryKey }
     }),
 })
 

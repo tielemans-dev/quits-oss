@@ -112,7 +112,7 @@ export const invoiceTools: AgentTool[] = [
     title: "Send invoice",
     description:
       "Issues a draft invoice and emails it to the contact's email address. The invoice gets an " +
-      "issue date and can no longer be edited. Set allowSendWithoutEmail only when the person asked " +
+      "issue date and can no longer be edited. A disputed draft requires acknowledgeDisputed: true, recorded in activity. Set allowSendWithoutEmail only when the person asked " +
       "to mark it sent even though email delivery is not configured. The invoice becomes sent once the " +
       "email provider accepts the email; if the result has emailPending: true, check invoices_get " +
       "(lastEmailAttempt) for the outcome instead of sending again.",

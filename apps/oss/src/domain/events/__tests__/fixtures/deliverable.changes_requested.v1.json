@@ -1,0 +1,20 @@
+{
+  "type": "deliverable.changes_requested",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/public-deliverables.ts",
+      "typeExpression": "\"deliverable.changes_requested\"",
+      "payloadExpression": "{ deliverableId: line.id, deliveryRevision: line.deliveryRevision, note: input.note ?? \"\", disputedInvoiceIds }",
+      "variant": "default",
+      "payload": {
+        "deliverableId": "document-1",
+        "deliveryRevision": 1,
+        "note": "Please revise",
+        "disputedInvoiceIds": [
+          "invoice-1"
+        ]
+      }
+    }
+  ]
+}

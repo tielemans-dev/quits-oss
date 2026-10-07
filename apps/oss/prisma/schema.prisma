@@ -343,6 +343,8 @@ model Invoice {
   creditNotes             CreditNote[]
   reminders               InvoiceReminder[]
   purpose                 InvoicePurpose    @default(sale)
+  disputed                Boolean           @default(false)
+  disputedRevision        Int               @default(0)
   scheduleSaleChoice      Json?
   agreementId             String?
   agreement               Agreement?        @relation(fields: [agreementId], references: [id], onDelete: Restrict)

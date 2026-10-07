@@ -17,7 +17,7 @@ export async function agreementPdfActor(request: Request) {
 }
 export async function publicAgreementPdf(token: string) {
   const session = await loadPublicAgreementByToken(token)
-  if (!session) return new Response("This link is no longer valid", { status: 404 })
+  if (!session || session.payload.scope === "sign_off") return new Response("This link is no longer valid", { status: 404 })
   const dto = publicAgreementDto(session.agreement)
   const stored = await storedPdfResponse(session.agreement)
   if (stored) return stored

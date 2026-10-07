@@ -6,7 +6,7 @@ import ts from "typescript"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
-  ...["invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-lifecycle", "deliverables", "invoices-from-deliverables"].map((name) => `commands/${name}.ts`),
+  ...["invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables"].map((name) => `commands/${name}.ts`),
   "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
@@ -43,6 +43,7 @@ const record = {
   acceptanceUserAgent: "Fixture", acceptanceMethod: "internal", acceptanceEvidenceNote: "Written confirmation",
   declinedAt: null, declineReason: null, stripeCheckoutSessionId: null,
   publicRejectionReason: "Not needed", deliveryRevision: 1, acceptedRevision: 1, acceptedVia: "internal",
+  disputedRevision: 1,
   dueDate: instant,
 }
 
@@ -59,6 +60,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
   const optional = variant !== "no_optional"
   const line = { ...record, status: "delivered", ...(variant === "no_previous_acceptance" ? { acceptedAt: null } : {}) }
   const scope = {
+    disputedInvoiceIds: ["invoice-1"],
     invoiceId: "invoice-1",
     documentKind: kind === "quote" ? "invoice" : kind, documentId: "document-1", candidateId: "candidate-1",
     organizationId: "organization-1", reservationId: "reservation-1", rendererVersion: "fixture-v1",
@@ -66,8 +68,8 @@ export function reconstruct(expression: { source: string; typeExpression: string
       ...(optional ? { ubl: { ref: "organization-1/invoice/document-1/artifact.xml", hash: "b".repeat(64), size: 200 } } : {}) },
     invoice: record, quote: record, creditNote: record, agreement: record, contact: record, schedule: record,
     candidate: record, existing: line, line: { ...line, status: variant === "in_progress" ? "in_progress" : "delivered" },
-    delivered: { deliveryRevision: 2 }, accepted: record, updated: record,
-    input: { ...(expression.typeExpression.includes("agreement.completed") ? { disposition: variant === "completed" ? "completed" : "cancelled" } : {}), checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },
+    delivered: { deliveryRevision: 2 }, accepted: record, updated: expression.source === "commands/public-deliverables.ts" ? { ...record, acceptedVia: "customer_link", acceptanceEvidenceNote: null } : record,
+    input: { ...(expression.typeExpression.includes("agreement.completed") ? { disposition: variant === "completed" ? "completed" : "cancelled" } : {}), checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", ...(expression.source === "commands/public-deliverables.ts" ? { note: "Please revise" } : {}), decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },
     decision: { decision: variant === "decline" ? "decline" : "accept", acceptedByName: "Customer", reason: optional ? "Not needed" : undefined },
     next: { publicRejectionReason: optional ? "Not needed" : null },
     current: optional, overpaidBy: { ...money, greaterThan: () => optional },
@@ -82,7 +84,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     // The email_failed return is reached only after the unconfirmed early return.
     failure: { reason: reason === "delivered" || (reason === "unconfirmed" && expression.typeExpression.includes("email_failed")) ? "rejected" : reason, message: "Fixture failure" },
     target: { documentId: "document-1", invoiceId: "invoice-1", number: "DOC-0001", recipient: manual && ["agreements/issuance.ts", "commands/invoices.ts", "commands/quotes.ts"].includes(expression.source) ? null : "customer@example.test", reminderId: "reminder-1", offsetDays: "7", balanceDue: "100.00" },
-    payload: { offerRevision: 1 }, command: { now: instant },
+    payload: { offerRevision: 1, deliveryRevision: 1 }, command: { now: instant },
     definition: { type: "invoice.send" }, summary: "Send invoice", request: { commandType: "invoice.send", decisionNote: optional ? "Reviewed" : null },
     note: optional ? "Reviewed" : undefined, created: { name: "Bookkeeper", mode: "approval_required" }, scopes: ["invoice:read"],
     acceptanceRecord: (value: unknown) => acceptanceRecord(value as Parameters<typeof acceptanceRecord>[0]),

@@ -291,7 +291,7 @@ export const deleteInvoiceDraft = defineCommand({
 })
 
 /** What a person approving an agent's invoice email sees, versioned by the invoice's last change. */
-const invoiceEmailApprovalContext = (id: string, action: "send" | "resend") =>
+const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", acknowledgeDisputed = false) =>
   Effect.gen(function* () {
     yield* lockDocument("invoice", id)
     const found = yield* findInvoice(id)
@@ -305,8 +305,10 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend") =>
         action === "send"
           ? `Send invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name}`
           : `Email invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name} again`,
-      version: documentFingerprint(invoice, recipient, [invoice.dueDate]),
+      version: `${documentFingerprint(invoice, recipient, [invoice.dueDate])}:${invoice.disputedRevision}`,
       details: {
+        disputed: String(invoice.disputed),
+        acknowledgeDisputed: String(acknowledgeDisputed),
         number: invoice.number,
         customer: invoice.contact.name,
         recipient,
@@ -332,7 +334,7 @@ export const sendInvoice = defineCommand({
   outwardFacing: true,
   input: invoiceSendInputSchema,
   summarize: (input) => `Send invoice ${input.id} to the customer`,
-  approvalContext: (input) => invoiceEmailApprovalContext(input.id, "send"),
+  approvalContext: (input) => invoiceEmailApprovalContext(input.id, "send", input.acknowledgeDisputed),
   // The invoice is marked as being sent and the rendered email is queued in the outbox; the
   // invoice becomes sent only once the provider accepts the email. See `delivery/outbox.ts`.
   handle: (input) =>
@@ -347,6 +349,12 @@ export const sendInvoice = defineCommand({
         return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
       }
       yield* refuseWhileSending("invoice", invoice)
+      if (invoice.disputed && !input.acknowledgeDisputed)
+        return yield* new InvalidState({ code: "disputed_deliverables", message: "The customer requested changes. Explicitly acknowledge the disputed draft before sending." })
+      if (invoice.disputed) command.emit({
+        aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.dispute_acknowledged",
+        payload: { number: invoice.number, disputedRevision: invoice.disputedRevision, acknowledgeDisputed: true },
+      })
       if (invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet. You can explicitly invoice the schedule as a sale instead." })
       if (invoice.agreementId && !command.issuance) return yield* new InvalidState({ code: "issuance_required", message: "Linked invoices must issue through issueDocument" })
       yield* requireVatIssuance(invoice)

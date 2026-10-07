@@ -62,4 +62,8 @@ export const enActivityMessages = {
   "activity.event.approval.rejected": "Request rejected",
   "activity.event.agent_key.created": "Agent key created",
   "activity.event.agent_key.revoked": "Agent key revoked",
+  "activity.event.deliverable.changes_requested": "Customer requested changes to delivery {deliveryRevision}: {note}",
+  "activity.event.invoice.dispute_acknowledged": "Acknowledged requested changes before sending invoice {number}",
+  "activity.event.deliverable.accepted": "Delivery {deliveryRevision} accepted",
+  "activity.event.deliverable.delivered": "Work delivered for sign-off, revision {deliveryRevision}",
 } as const

@@ -22,7 +22,7 @@ import {
   agreementRecordAcceptanceInputSchema,
   agreementCloseInputSchema,
 } from "@quits/contracts/agreements"
-import { mintAgreementLink } from "../../lib/agreements/tokens"
+import { mintAgreementLink, mintDeliverableSignOffLink } from "../../lib/agreements/tokens"
 import { readEmailDelivery } from "../email-delivery-result"
 import {
   agreementCreateDraftInputSchema,
@@ -209,6 +209,14 @@ export const agreementsRouter = router({
         unwrapOutcome(await executeCommand(updateDeliverable, input, { actor: ctx.actor })),
       ),
     ),
+  deliverablePublicLink: authorizedProcedure("deliverable:read")
+    .input(deliverableIdInputSchema)
+    .query(async ({ ctx, input }) => {
+      const agreement = await getAgreement(ctx.organizationId, input.agreementId)
+      const line = agreement.deliverables.find(line => line.id === input.id)
+      if (agreement.status !== "accepted" || !line || line.status !== "delivered" || !line.deliveredAt || new Date().getTime() >= line.deliveredAt.getTime() + 90 * 86400_000) return null
+      return mintDeliverableSignOffLink(agreement, line)
+    }),
   markDeliverableDelivered: authorizedProcedure("deliverable:deliver")
     .input(deliverableIdInputSchema)
     .mutation(async ({ ctx, input }) =>

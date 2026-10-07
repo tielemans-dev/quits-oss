@@ -106,6 +106,8 @@ type InvoiceItem = {
 }
 
 type Invoice = {
+  disputed?: boolean
+  disputedRevision?: number
   purpose?: "sale" | "prepayment"
   agreementId?: string | null
   agreementTaxRate?: string | null
@@ -221,6 +223,8 @@ function InvoiceDetailPage() {
   const [acting, setActing] = useState(false)
   const [editing, setEditing] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [acknowledgeDisputed, setAcknowledgeDisputed] = useState(false)
+  useEffect(() => { setAcknowledgeDisputed(false) }, [invoice?.disputedRevision])
   const [sendWithoutEmailOpen, setSendWithoutEmailOpen] = useState(false)
   const [orgSettings, setOrgSettings] = useState<{
     companyName?: string | null
@@ -392,6 +396,7 @@ function InvoiceDetailPage() {
       const result = await trpc.invoices.send.mutate({
         id: invoice.id,
         allowSendWithoutEmail,
+        acknowledgeDisputed,
       })
       await reloadInvoice()
       setSendWithoutEmailOpen(false)
@@ -404,7 +409,9 @@ function InvoiceDetailPage() {
       }
     } catch (err) {
       setError(
-        err instanceof Error
+        invoice.disputed && !acknowledgeDisputed
+          ? t("agreements.disputedSendRefused")
+          : err instanceof Error
           ? err.message
           : t("invoices.detail.error.sendFailed")
       )
@@ -917,6 +924,10 @@ function InvoiceDetailPage() {
       <div className="print-area">
         <Card>
           <CardContent className="p-6 grid gap-6">
+            {invoice.disputed && invoice.status === "draft" && <section className="grid gap-2 no-print">
+              <p role="status">{t("agreements.disputedDraft")}</p>
+              <label className="flex items-start gap-2"><input type="checkbox" checked={acknowledgeDisputed} disabled={acting || emailSending} onChange={event => setAcknowledgeDisputed(event.target.checked)} />{t("agreements.acknowledgeDisputed")}</label>
+            </section>}
             <EmailDeliveryPanel
               className="no-print"
               title={t("invoices.detail.email.title")}

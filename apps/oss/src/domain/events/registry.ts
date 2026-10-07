@@ -114,6 +114,8 @@ export const eventRegistry = {
   "deliverable.updated": { version: 1, schema: z.object({ deliverableId: s, fields: z.array(s), previousStatus: deliverableStatusSchema, status: deliverableStatusSchema, deliveryRevision: i, previousAcceptance: acceptance.nullable().optional() }).strict() },
   "deliverable.delivered": { version: 1, schema: z.object({ deliverableId: s, previousStatus: deliverableStatusSchema, deliveryRevision: i, deliveredAt: date, previousAcceptance: acceptance.nullable() }).strict() },
   "deliverable.accepted": { version: 1, schema: z.object({ deliverableId: s, deliveryRevision: i, ...acceptance.shape }).strict() },
+  "deliverable.changes_requested": { version: 1, schema: z.object({ deliverableId: s, deliveryRevision: i, note: s, disputedInvoiceIds: z.array(s) }).strict() },
+  "invoice.dispute_acknowledged": { version: 1, schema: z.object({ number: s, disputedRevision: i, acknowledgeDisputed: z.literal(true) }).strict() },
   "deliverable.cancelled": { version: 1, schema: z.object({ deliverableId: s, previousStatus: deliverableStatusSchema, deliveryRevision: i, acceptance: acceptance.nullable() }).strict() },
   "approval.requested": { version: 1, schema: z.object({ commandType: s, summary: s }).strict() },
   "approval.rejected": { version: 1, schema: z.object({ commandType: s, note: nullableString }).strict() },
