@@ -74,6 +74,7 @@ describe("agreement page, PDF and email share the restricted terms", () => {
       <I18nProvider>
         <PublicAgreementPage
           document={{
+            expectedDates: [],
             number: "AGR-1",
             status: "sent",
             offerRevision: 1,

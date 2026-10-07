@@ -73,6 +73,7 @@ export const deliverableUpdateInputSchema = deliverableInputSchema
     isDeposit: z.boolean().optional(),
     id: z.string().min(1),
     agreementId: z.string().min(1),
+    status: z.literal("in_progress").optional(),
   })
   .strict()
 export const agreementTemplateDtoSchema = z
@@ -161,3 +162,16 @@ export const agreementPublicSubmissionSchema = z.object({
   token: z.string().min(1).max(4096), decision: agreementPublicDecisionSchema,
 }).strict()
 export type AgreementPublicTokenPayload = z.infer<typeof agreementPublicTokenPayloadSchema>
+
+/** Fulfillment is separate from draft commercial edits. */
+export const deliverableIdInputSchema = z
+  .object({
+    agreementId: z.string().min(1),
+    id: z.string().min(1),
+  })
+  .strict()
+export const deliverableAcceptInputSchema = deliverableIdInputSchema
+  .extend({
+    evidenceNote: z.string().trim().min(1).max(5000),
+  })
+  .strict()

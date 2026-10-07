@@ -945,7 +945,7 @@ describe("agreement validity", () => {
       "acceptanceIp",
       "acceptanceUserAgent",
       "acceptanceEvidenceNote",
-      "expectedDate",
+      "expectedDateHistory",
       "lastEmailAttempt",
       "organizationId",
       "contactId",

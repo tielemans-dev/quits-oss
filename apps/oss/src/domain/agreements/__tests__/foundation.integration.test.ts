@@ -129,6 +129,7 @@ describe("agreement role and agent scope matrix", () => {
         "agreement_update_draft",
         "agreement_delete_draft",
         "deliverable_update",
+        "deliverable_mark_delivered",
       ].sort(),
     )
   })
@@ -421,7 +422,7 @@ describe.runIf(hasTestDatabase)("agreement foundation database behavior", () => 
           api.agreements.updateDeliverable({
             id: draft.deliverables[0]!.id,
             agreementId: draft.id,
-            expectedDate: "2099-11-02",
+            title: "Changed offer field",
           }),
       ])
         await expect(run()).rejects.toThrow()

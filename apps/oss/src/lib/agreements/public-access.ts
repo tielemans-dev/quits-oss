@@ -14,7 +14,12 @@ export async function loadPublicAgreementByToken(
 ) {
   const payload = verifyAgreementPublicToken(token, secret)
   if (!payload || now >= new Date(payload.exp)) return null
-  const agreement = await prisma.agreement.findUnique({ where: { id: payload.agreementId } })
+  const agreement = await prisma.agreement.findUnique({
+    where: { id: payload.agreementId },
+    include: {
+      deliverables: { select: { sortOrder: true, expectedDate: true } },
+    },
+  })
   if (
     !agreement ||
     !agreement.offerSnapshot ||
@@ -44,7 +49,10 @@ export async function decidePublicAgreementByToken(
 ) {
   const payload = verifyAgreementPublicToken(token, getAgreementPublicSecret())
   if (!payload || payload.scope !== "decide")
-    throw new InvalidState({ code: "invalid", message: "This link is no longer valid" })
+    throw new InvalidState({
+      code: "invalid",
+      message: "This link is no longer valid",
+    })
   await recordPublicLinkAttempt(
     {
       documentKind: "agreement",
@@ -61,7 +69,11 @@ export async function decidePublicAgreementByToken(
     where: { id: payload.agreementId },
     select: { organizationId: true },
   })
-  if (!target) throw new InvalidState({ code: "invalid", message: "This link is no longer valid" })
+  if (!target)
+    throw new InvalidState({
+      code: "invalid",
+      message: "This link is no longer valid",
+    })
   const outcome = await executeCommand(
     recordAgreementCustomerDecision,
     { token, decision: parsed, ...evidence },

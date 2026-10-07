@@ -1,3 +1,11 @@
+import { deliverableCommands } from "./deliverables"
+import {
+  lockedDeliverable,
+  requireFulfillment,
+  requireUnbilled,
+  clearedAcceptance,
+  acceptanceRecord,
+} from "../agreements/fulfillment"
 import { agreementLifecycleCommands } from "./agreement-lifecycle"
 import { refuseWhileSending } from "../documents/document-delivery"
 import { Effect } from "effect"
@@ -266,49 +274,70 @@ export const updateDeliverable = defineCommand({
   permission: "deliverable:update",
   outwardFacing: false,
   input: deliverableUpdateInputSchema,
-  summarize: (input) => `Update draft deliverable ${input.id}`,
+  summarize: (input) => `Update deliverable ${input.id}`,
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
-      const agreement = yield* lockedDraft(input.agreementId)
-      const index = agreement.deliverables.findIndex((line) => line.id === input.id)
-      if (index < 0)
-        return yield* new NotFound({
-          message: "Deliverable not found",
-          entity: "deliverable",
-          id: input.id,
+      const { agreement, line: existing } = yield* lockedDeliverable(input)
+      const { id, agreementId: _agreementId, status, expectedDate, ...changes } = input
+      const snapshotChanged = Object.values(changes).some((value) => value !== undefined)
+      if (snapshotChanged && agreement.status !== "draft")
+        return yield* new InvalidState({
+          code: "not_draft",
+          message: "Offer fields can only be edited while the agreement is a draft",
         })
-      const lines = agreement.deliverables.map((line) =>
-        lineInput(line, agreement.pricesIncludeTax),
-      )
-      const { id, agreementId: _agreementId, ...changes } = input
-      lines[index] = { ...lines[index]!, ...changes }
-      const priced = priceAgreement({
-        profile: resolveCountryProfile(agreement.countryCode),
-        deliverables: lines,
-        taxRate: agreement.taxRate.toNumber(),
-        pricesIncludeTax: agreement.pricesIncludeTax,
-        currency: agreement.currency,
-      })
-      const line = yield* Effect.promise(() =>
-        db.deliverable.update({ where: { id }, data: priced.deliverableRows[index]! }),
-      )
-      yield* Effect.promise(() =>
-        db.agreement.update({
-          where: { id: agreement.id },
-          data: {
-            subtotalNet: priced.subtotalNet,
-            totalTax: priced.totalTax,
-            totalGross: priced.totalGross,
-          },
-        }),
-      )
+      if (status !== undefined) {
+        yield* requireFulfillment(agreement, existing)
+        if (!["planned", "delivered", "accepted"].includes(existing.status))
+          return yield* new InvalidState({
+            code: "invalid_transition",
+            message: "Only planned, delivered or accepted work can move to in progress",
+          })
+        if (existing.status !== "planned") yield* requireUnbilled(existing)
+      }
+      const data: Parameters<typeof db.deliverable.update>[0]["data"] = {}
+      if (snapshotChanged) {
+        const index = agreement.deliverables.findIndex((line) => line.id === id)
+        const lines = agreement.deliverables.map((line) =>
+          lineInput(line, agreement.pricesIncludeTax),
+        )
+        lines[index] = { ...lines[index]!, ...changes }
+        const priced = priceAgreement({
+          profile: resolveCountryProfile(agreement.countryCode),
+          deliverables: lines,
+          taxRate: agreement.taxRate.toNumber(),
+          pricesIncludeTax: agreement.pricesIncludeTax,
+          currency: agreement.currency,
+        })
+        Object.assign(data, priced.deliverableRows[index]!)
+        yield* Effect.promise(() =>
+          db.agreement.update({
+            where: { id: agreement.id },
+            data: {
+              subtotalNet: priced.subtotalNet,
+              totalTax: priced.totalTax,
+              totalGross: priced.totalGross,
+            },
+          }),
+        )
+      }
+      if (expectedDate !== undefined)
+        data.expectedDate = expectedDate ? new Date(expectedDate) : null
+      if (status !== undefined) Object.assign(data, { status, ...clearedAcceptance })
+      const line = yield* Effect.promise(() => db.deliverable.update({ where: { id }, data }))
       command.emit({
         aggregateType: "agreement",
         aggregateId: agreement.id,
         type: "deliverable.updated",
-        payload: { deliverableId: id, fields: Object.keys(changes) },
+        payload: {
+          deliverableId: id,
+          fields: Object.keys(input).filter((key) => key !== "id" && key !== "agreementId"),
+          previousStatus: existing.status,
+          status: line.status,
+          deliveryRevision: line.deliveryRevision,
+          ...(status !== undefined ? { previousAcceptance: acceptanceRecord(existing) } : {}),
+        },
       })
       return line
     }),
@@ -316,6 +345,7 @@ export const updateDeliverable = defineCommand({
 
 export const agreementCommands = [
   ...agreementLifecycleCommands,
+  ...deliverableCommands,
   createAgreementDraft,
   updateAgreementDraft,
   deleteAgreementDraft,
