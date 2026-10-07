@@ -189,3 +189,13 @@ export type EventConsumerCursor = Prisma.EventConsumerCursorModel
  * 
  */
 export type EventConsumerDelivery = Prisma.EventConsumerDeliveryModel
+/**
+ * Model ArtifactStaging
+ * 
+ */
+export type ArtifactStaging = Prisma.ArtifactStagingModel
+/**
+ * Model IssuanceCandidate
+ * 
+ */
+export type IssuanceCandidate = Prisma.IssuanceCandidateModel

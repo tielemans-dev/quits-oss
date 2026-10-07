@@ -240,6 +240,8 @@ export type OrganizationWhereInput = {
   agentKeys?: Prisma.AgentKeyListRelationFilter
   approvalRequests?: Prisma.ApprovalRequestListRelationFilter
   schedulerScans?: Prisma.SchedulerScanListRelationFilter
+  artifactStaging?: Prisma.ArtifactStagingListRelationFilter
+  issuanceCandidates?: Prisma.IssuanceCandidateListRelationFilter
   settings?: Prisma.XOR<Prisma.OrgSettingsNullableScalarRelationFilter, Prisma.OrgSettingsWhereInput> | null
 }
 
@@ -272,6 +274,8 @@ export type OrganizationOrderByWithRelationInput = {
   agentKeys?: Prisma.AgentKeyOrderByRelationAggregateInput
   approvalRequests?: Prisma.ApprovalRequestOrderByRelationAggregateInput
   schedulerScans?: Prisma.SchedulerScanOrderByRelationAggregateInput
+  artifactStaging?: Prisma.ArtifactStagingOrderByRelationAggregateInput
+  issuanceCandidates?: Prisma.IssuanceCandidateOrderByRelationAggregateInput
   settings?: Prisma.OrgSettingsOrderByWithRelationInput
 }
 
@@ -307,6 +311,8 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   agentKeys?: Prisma.AgentKeyListRelationFilter
   approvalRequests?: Prisma.ApprovalRequestListRelationFilter
   schedulerScans?: Prisma.SchedulerScanListRelationFilter
+  artifactStaging?: Prisma.ArtifactStagingListRelationFilter
+  issuanceCandidates?: Prisma.IssuanceCandidateListRelationFilter
   settings?: Prisma.XOR<Prisma.OrgSettingsNullableScalarRelationFilter, Prisma.OrgSettingsWhereInput> | null
 }, "id" | "slug" | "stripeCustomerId">
 
@@ -371,6 +377,8 @@ export type OrganizationCreateInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -403,6 +411,8 @@ export type OrganizationUncheckedCreateInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -435,6 +445,8 @@ export type OrganizationUpdateInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -467,6 +479,8 @@ export type OrganizationUncheckedUpdateInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -819,6 +833,34 @@ export type OrganizationUpdateOneRequiredWithoutEventConsumerDeliveriesNestedInp
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutEventConsumerDeliveriesInput, Prisma.OrganizationUpdateWithoutEventConsumerDeliveriesInput>, Prisma.OrganizationUncheckedUpdateWithoutEventConsumerDeliveriesInput>
 }
 
+export type OrganizationCreateNestedOneWithoutArtifactStagingInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutArtifactStagingInput, Prisma.OrganizationUncheckedCreateWithoutArtifactStagingInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutArtifactStagingInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutArtifactStagingNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutArtifactStagingInput, Prisma.OrganizationUncheckedCreateWithoutArtifactStagingInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutArtifactStagingInput
+  upsert?: Prisma.OrganizationUpsertWithoutArtifactStagingInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutArtifactStagingInput, Prisma.OrganizationUpdateWithoutArtifactStagingInput>, Prisma.OrganizationUncheckedUpdateWithoutArtifactStagingInput>
+}
+
+export type OrganizationCreateNestedOneWithoutIssuanceCandidatesInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutIssuanceCandidatesInput, Prisma.OrganizationUncheckedCreateWithoutIssuanceCandidatesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutIssuanceCandidatesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutIssuanceCandidatesNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutIssuanceCandidatesInput, Prisma.OrganizationUncheckedCreateWithoutIssuanceCandidatesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutIssuanceCandidatesInput
+  upsert?: Prisma.OrganizationUpsertWithoutIssuanceCandidatesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutIssuanceCandidatesInput, Prisma.OrganizationUpdateWithoutIssuanceCandidatesInput>, Prisma.OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput>
+}
+
 export type OrganizationCreateWithoutMembersInput = {
   id: string
   name: string
@@ -847,6 +889,8 @@ export type OrganizationCreateWithoutMembersInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -878,6 +922,8 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -925,6 +971,8 @@ export type OrganizationUpdateWithoutMembersInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -956,6 +1004,8 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -987,6 +1037,8 @@ export type OrganizationCreateWithoutInvitationsInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1018,6 +1070,8 @@ export type OrganizationUncheckedCreateWithoutInvitationsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1065,6 +1119,8 @@ export type OrganizationUpdateWithoutInvitationsInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1096,6 +1152,8 @@ export type OrganizationUncheckedUpdateWithoutInvitationsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1128,6 +1186,8 @@ export type OrganizationCreateWithoutSettingsInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationUncheckedCreateWithoutSettingsInput = {
@@ -1159,6 +1219,8 @@ export type OrganizationUncheckedCreateWithoutSettingsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
 }
 
 export type OrganizationCreateOrConnectWithoutSettingsInput = {
@@ -1206,6 +1268,8 @@ export type OrganizationUpdateWithoutSettingsInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationUncheckedUpdateWithoutSettingsInput = {
@@ -1237,6 +1301,8 @@ export type OrganizationUncheckedUpdateWithoutSettingsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
 }
 
 export type OrganizationCreateWithoutContactsInput = {
@@ -1267,6 +1333,8 @@ export type OrganizationCreateWithoutContactsInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1298,6 +1366,8 @@ export type OrganizationUncheckedCreateWithoutContactsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1345,6 +1415,8 @@ export type OrganizationUpdateWithoutContactsInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1376,6 +1448,8 @@ export type OrganizationUncheckedUpdateWithoutContactsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1407,6 +1481,8 @@ export type OrganizationCreateWithoutCatalogItemsInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1438,6 +1514,8 @@ export type OrganizationUncheckedCreateWithoutCatalogItemsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1485,6 +1563,8 @@ export type OrganizationUpdateWithoutCatalogItemsInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1516,6 +1596,8 @@ export type OrganizationUncheckedUpdateWithoutCatalogItemsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1547,6 +1629,8 @@ export type OrganizationCreateWithoutTaxIdsInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1578,6 +1662,8 @@ export type OrganizationUncheckedCreateWithoutTaxIdsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1625,6 +1711,8 @@ export type OrganizationUpdateWithoutTaxIdsInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1656,6 +1744,8 @@ export type OrganizationUncheckedUpdateWithoutTaxIdsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1687,6 +1777,8 @@ export type OrganizationCreateWithoutInvoicesInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1718,6 +1810,8 @@ export type OrganizationUncheckedCreateWithoutInvoicesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1765,6 +1859,8 @@ export type OrganizationUpdateWithoutInvoicesInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1796,6 +1892,8 @@ export type OrganizationUncheckedUpdateWithoutInvoicesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1827,6 +1925,8 @@ export type OrganizationCreateWithoutQuotesInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1858,6 +1958,8 @@ export type OrganizationUncheckedCreateWithoutQuotesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1905,6 +2007,8 @@ export type OrganizationUpdateWithoutQuotesInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1936,6 +2040,8 @@ export type OrganizationUncheckedUpdateWithoutQuotesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -1967,6 +2073,8 @@ export type OrganizationCreateWithoutCreditNotesInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -1998,6 +2106,8 @@ export type OrganizationUncheckedCreateWithoutCreditNotesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2045,6 +2155,8 @@ export type OrganizationUpdateWithoutCreditNotesInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2076,6 +2188,8 @@ export type OrganizationUncheckedUpdateWithoutCreditNotesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2107,6 +2221,8 @@ export type OrganizationCreateWithoutPaymentsInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2138,6 +2254,8 @@ export type OrganizationUncheckedCreateWithoutPaymentsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2185,6 +2303,8 @@ export type OrganizationUpdateWithoutPaymentsInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2216,6 +2336,8 @@ export type OrganizationUncheckedUpdateWithoutPaymentsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2247,6 +2369,8 @@ export type OrganizationCreateWithoutRecurringInvoicesInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2278,6 +2402,8 @@ export type OrganizationUncheckedCreateWithoutRecurringInvoicesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2325,6 +2451,8 @@ export type OrganizationUpdateWithoutRecurringInvoicesInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2356,6 +2484,8 @@ export type OrganizationUncheckedUpdateWithoutRecurringInvoicesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2387,6 +2517,8 @@ export type OrganizationCreateWithoutDomainEventsInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2418,6 +2550,8 @@ export type OrganizationUncheckedCreateWithoutDomainEventsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2465,6 +2599,8 @@ export type OrganizationUpdateWithoutDomainEventsInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2496,6 +2632,8 @@ export type OrganizationUncheckedUpdateWithoutDomainEventsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2527,6 +2665,8 @@ export type OrganizationCreateWithoutApprovalRequestsInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2558,6 +2698,8 @@ export type OrganizationUncheckedCreateWithoutApprovalRequestsInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2605,6 +2747,8 @@ export type OrganizationUpdateWithoutApprovalRequestsInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2636,6 +2780,8 @@ export type OrganizationUncheckedUpdateWithoutApprovalRequestsInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2667,6 +2813,8 @@ export type OrganizationCreateWithoutAgentKeysInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2698,6 +2846,8 @@ export type OrganizationUncheckedCreateWithoutAgentKeysInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2745,6 +2895,8 @@ export type OrganizationUpdateWithoutAgentKeysInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2776,6 +2928,8 @@ export type OrganizationUncheckedUpdateWithoutAgentKeysInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2807,6 +2961,8 @@ export type OrganizationCreateWithoutSchedulerScansInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2838,6 +2994,8 @@ export type OrganizationUncheckedCreateWithoutSchedulerScansInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedCreateNestedManyWithoutOrganizationInput
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2885,6 +3043,8 @@ export type OrganizationUpdateWithoutSchedulerScansInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2916,6 +3076,8 @@ export type OrganizationUncheckedUpdateWithoutSchedulerScansInput = {
   eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2947,6 +3109,8 @@ export type OrganizationCreateWithoutAgreementsInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -2978,6 +3142,8 @@ export type OrganizationUncheckedCreateWithoutAgreementsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -3025,6 +3191,8 @@ export type OrganizationUpdateWithoutAgreementsInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -3056,6 +3224,8 @@ export type OrganizationUncheckedUpdateWithoutAgreementsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -3087,6 +3257,8 @@ export type OrganizationCreateWithoutAgreementTemplatesInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -3118,6 +3290,8 @@ export type OrganizationUncheckedCreateWithoutAgreementTemplatesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -3165,6 +3339,8 @@ export type OrganizationUpdateWithoutAgreementTemplatesInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -3196,6 +3372,8 @@ export type OrganizationUncheckedUpdateWithoutAgreementTemplatesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -3227,6 +3405,8 @@ export type OrganizationCreateWithoutEventConsumerCursorsInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -3258,6 +3438,8 @@ export type OrganizationUncheckedCreateWithoutEventConsumerCursorsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -3305,6 +3487,8 @@ export type OrganizationUpdateWithoutEventConsumerCursorsInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -3336,6 +3520,8 @@ export type OrganizationUncheckedUpdateWithoutEventConsumerCursorsInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -3367,6 +3553,8 @@ export type OrganizationCreateWithoutEventConsumerDeliveriesInput = {
   agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
 }
 
@@ -3398,6 +3586,8 @@ export type OrganizationUncheckedCreateWithoutEventConsumerDeliveriesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
   schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
   settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
 }
 
@@ -3445,6 +3635,8 @@ export type OrganizationUpdateWithoutEventConsumerDeliveriesInput = {
   agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -3476,6 +3668,304 @@ export type OrganizationUncheckedUpdateWithoutEventConsumerDeliveriesInput = {
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutArtifactStagingInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorCreateNestedManyWithoutOrganizationInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutArtifactStagingInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorUncheckedCreateNestedManyWithoutOrganizationInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutArtifactStagingInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutArtifactStagingInput, Prisma.OrganizationUncheckedCreateWithoutArtifactStagingInput>
+}
+
+export type OrganizationUpsertWithoutArtifactStagingInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutArtifactStagingInput, Prisma.OrganizationUncheckedUpdateWithoutArtifactStagingInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutArtifactStagingInput, Prisma.OrganizationUncheckedCreateWithoutArtifactStagingInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutArtifactStagingInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutArtifactStagingInput, Prisma.OrganizationUncheckedUpdateWithoutArtifactStagingInput>
+}
+
+export type OrganizationUpdateWithoutArtifactStagingInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorUpdateManyWithoutOrganizationNestedInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutArtifactStagingInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorUncheckedUpdateManyWithoutOrganizationNestedInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutIssuanceCandidatesInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorCreateNestedManyWithoutOrganizationInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutIssuanceCandidatesInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorUncheckedCreateNestedManyWithoutOrganizationInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutIssuanceCandidatesInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutIssuanceCandidatesInput, Prisma.OrganizationUncheckedCreateWithoutIssuanceCandidatesInput>
+}
+
+export type OrganizationUpsertWithoutIssuanceCandidatesInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutIssuanceCandidatesInput, Prisma.OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutIssuanceCandidatesInput, Prisma.OrganizationUncheckedCreateWithoutIssuanceCandidatesInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutIssuanceCandidatesInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutIssuanceCandidatesInput, Prisma.OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput>
+}
+
+export type OrganizationUpdateWithoutIssuanceCandidatesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorUpdateManyWithoutOrganizationNestedInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorUncheckedUpdateManyWithoutOrganizationNestedInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -3503,6 +3993,8 @@ export type OrganizationCountOutputType = {
   agentKeys: number
   approvalRequests: number
   schedulerScans: number
+  artifactStaging: number
+  issuanceCandidates: number
 }
 
 export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3524,6 +4016,8 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   agentKeys?: boolean | OrganizationCountOutputTypeCountAgentKeysArgs
   approvalRequests?: boolean | OrganizationCountOutputTypeCountApprovalRequestsArgs
   schedulerScans?: boolean | OrganizationCountOutputTypeCountSchedulerScansArgs
+  artifactStaging?: boolean | OrganizationCountOutputTypeCountArtifactStagingArgs
+  issuanceCandidates?: boolean | OrganizationCountOutputTypeCountIssuanceCandidatesArgs
 }
 
 /**
@@ -3662,6 +4156,20 @@ export type OrganizationCountOutputTypeCountSchedulerScansArgs<ExtArgs extends r
   where?: Prisma.SchedulerScanWhereInput
 }
 
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountArtifactStagingArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ArtifactStagingWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountIssuanceCandidatesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.IssuanceCandidateWhereInput
+}
+
 
 export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -3692,6 +4200,8 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   agentKeys?: boolean | Prisma.Organization$agentKeysArgs<ExtArgs>
   approvalRequests?: boolean | Prisma.Organization$approvalRequestsArgs<ExtArgs>
   schedulerScans?: boolean | Prisma.Organization$schedulerScansArgs<ExtArgs>
+  artifactStaging?: boolean | Prisma.Organization$artifactStagingArgs<ExtArgs>
+  issuanceCandidates?: boolean | Prisma.Organization$issuanceCandidatesArgs<ExtArgs>
   settings?: boolean | Prisma.Organization$settingsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["organization"]>
@@ -3755,6 +4265,8 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   agentKeys?: boolean | Prisma.Organization$agentKeysArgs<ExtArgs>
   approvalRequests?: boolean | Prisma.Organization$approvalRequestsArgs<ExtArgs>
   schedulerScans?: boolean | Prisma.Organization$schedulerScansArgs<ExtArgs>
+  artifactStaging?: boolean | Prisma.Organization$artifactStagingArgs<ExtArgs>
+  issuanceCandidates?: boolean | Prisma.Organization$issuanceCandidatesArgs<ExtArgs>
   settings?: boolean | Prisma.Organization$settingsArgs<ExtArgs>
   _count?: boolean | Prisma.OrganizationCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -3782,6 +4294,8 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     agentKeys: Prisma.$AgentKeyPayload<ExtArgs>[]
     approvalRequests: Prisma.$ApprovalRequestPayload<ExtArgs>[]
     schedulerScans: Prisma.$SchedulerScanPayload<ExtArgs>[]
+    artifactStaging: Prisma.$ArtifactStagingPayload<ExtArgs>[]
+    issuanceCandidates: Prisma.$IssuanceCandidatePayload<ExtArgs>[]
     settings: Prisma.$OrgSettingsPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -4207,6 +4721,8 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   agentKeys<T extends Prisma.Organization$agentKeysArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$agentKeysArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentKeyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   approvalRequests<T extends Prisma.Organization$approvalRequestsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$approvalRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ApprovalRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   schedulerScans<T extends Prisma.Organization$schedulerScansArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$schedulerScansArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SchedulerScanPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  artifactStaging<T extends Prisma.Organization$artifactStagingArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$artifactStagingArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ArtifactStagingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  issuanceCandidates<T extends Prisma.Organization$issuanceCandidatesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$issuanceCandidatesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$IssuanceCandidatePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   settings<T extends Prisma.Organization$settingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$settingsArgs<ExtArgs>>): Prisma.Prisma__OrgSettingsClient<runtime.Types.Result.GetResult<Prisma.$OrgSettingsPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -5064,6 +5580,54 @@ export type Organization$schedulerScansArgs<ExtArgs extends runtime.Types.Extens
   take?: number
   skip?: number
   distinct?: Prisma.SchedulerScanScalarFieldEnum | Prisma.SchedulerScanScalarFieldEnum[]
+}
+
+/**
+ * Organization.artifactStaging
+ */
+export type Organization$artifactStagingArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ArtifactStaging
+   */
+  select?: Prisma.ArtifactStagingSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ArtifactStaging
+   */
+  omit?: Prisma.ArtifactStagingOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ArtifactStagingInclude<ExtArgs> | null
+  where?: Prisma.ArtifactStagingWhereInput
+  orderBy?: Prisma.ArtifactStagingOrderByWithRelationInput | Prisma.ArtifactStagingOrderByWithRelationInput[]
+  cursor?: Prisma.ArtifactStagingWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ArtifactStagingScalarFieldEnum | Prisma.ArtifactStagingScalarFieldEnum[]
+}
+
+/**
+ * Organization.issuanceCandidates
+ */
+export type Organization$issuanceCandidatesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the IssuanceCandidate
+   */
+  select?: Prisma.IssuanceCandidateSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the IssuanceCandidate
+   */
+  omit?: Prisma.IssuanceCandidateOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.IssuanceCandidateInclude<ExtArgs> | null
+  where?: Prisma.IssuanceCandidateWhereInput
+  orderBy?: Prisma.IssuanceCandidateOrderByWithRelationInput | Prisma.IssuanceCandidateOrderByWithRelationInput[]
+  cursor?: Prisma.IssuanceCandidateWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.IssuanceCandidateScalarFieldEnum | Prisma.IssuanceCandidateScalarFieldEnum[]
 }
 
 /**

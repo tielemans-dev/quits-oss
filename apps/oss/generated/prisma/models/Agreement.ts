@@ -95,6 +95,10 @@ export type AgreementMinAggregateOutputType = {
   closedAt: Date | null
   closeReason: string | null
   notes: string | null
+  artifactPdfRef: string | null
+  artifactPdfHash: string | null
+  artifactUblRef: string | null
+  artifactUblHash: string | null
   createdAt: Date | null
   updatedAt: Date | null
   calculationVersion: string | null
@@ -147,6 +151,10 @@ export type AgreementMaxAggregateOutputType = {
   closedAt: Date | null
   closeReason: string | null
   notes: string | null
+  artifactPdfRef: string | null
+  artifactPdfHash: string | null
+  artifactUblRef: string | null
+  artifactUblHash: string | null
   createdAt: Date | null
   updatedAt: Date | null
   calculationVersion: string | null
@@ -202,6 +210,10 @@ export type AgreementCountAggregateOutputType = {
   closedAt: number
   closeReason: number
   notes: number
+  artifactPdfRef: number
+  artifactPdfHash: number
+  artifactUblRef: number
+  artifactUblHash: number
   createdAt: number
   updatedAt: number
   calculationVersion: number
@@ -279,6 +291,10 @@ export type AgreementMinAggregateInputType = {
   closedAt?: true
   closeReason?: true
   notes?: true
+  artifactPdfRef?: true
+  artifactPdfHash?: true
+  artifactUblRef?: true
+  artifactUblHash?: true
   createdAt?: true
   updatedAt?: true
   calculationVersion?: true
@@ -331,6 +347,10 @@ export type AgreementMaxAggregateInputType = {
   closedAt?: true
   closeReason?: true
   notes?: true
+  artifactPdfRef?: true
+  artifactPdfHash?: true
+  artifactUblRef?: true
+  artifactUblHash?: true
   createdAt?: true
   updatedAt?: true
   calculationVersion?: true
@@ -386,6 +406,10 @@ export type AgreementCountAggregateInputType = {
   closedAt?: true
   closeReason?: true
   notes?: true
+  artifactPdfRef?: true
+  artifactPdfHash?: true
+  artifactUblRef?: true
+  artifactUblHash?: true
   createdAt?: true
   updatedAt?: true
   calculationVersion?: true
@@ -529,6 +553,10 @@ export type AgreementGroupByOutputType = {
   closedAt: Date | null
   closeReason: string | null
   notes: string | null
+  artifactPdfRef: string | null
+  artifactPdfHash: string | null
+  artifactUblRef: string | null
+  artifactUblHash: string | null
   createdAt: Date
   updatedAt: Date
   calculationVersion: string
@@ -608,6 +636,10 @@ export type AgreementWhereInput = {
   closedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
   closeReason?: Prisma.StringNullableFilter<"Agreement"> | string | null
   notes?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactPdfRef?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactPdfHash?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactUblRef?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactUblHash?: Prisma.StringNullableFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   calculationVersion?: Prisma.StringFilter<"Agreement"> | string
@@ -668,6 +700,10 @@ export type AgreementOrderByWithRelationInput = {
   closedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   closeReason?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -732,6 +768,10 @@ export type AgreementWhereUniqueInput = Prisma.AtLeast<{
   closedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
   closeReason?: Prisma.StringNullableFilter<"Agreement"> | string | null
   notes?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactPdfRef?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactPdfHash?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactUblRef?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactUblHash?: Prisma.StringNullableFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   calculationVersion?: Prisma.StringFilter<"Agreement"> | string
@@ -792,6 +832,10 @@ export type AgreementOrderByWithAggregationInput = {
   closedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   closeReason?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -856,6 +900,10 @@ export type AgreementScalarWhereWithAggregatesInput = {
   closedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Agreement"> | Date | string | null
   closeReason?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
   notes?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  artifactPdfRef?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  artifactPdfHash?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  artifactUblRef?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
+  artifactUblHash?: Prisma.StringNullableWithAggregatesFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Agreement"> | Date | string
   calculationVersion?: Prisma.StringWithAggregatesFilter<"Agreement"> | string
@@ -909,6 +957,10 @@ export type AgreementCreateInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -969,6 +1021,10 @@ export type AgreementUncheckedCreateInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1023,6 +1079,10 @@ export type AgreementUpdateInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1083,6 +1143,10 @@ export type AgreementUncheckedUpdateInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1140,6 +1204,10 @@ export type AgreementCreateManyInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1193,6 +1261,10 @@ export type AgreementUpdateManyMutationInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1249,6 +1321,10 @@ export type AgreementUncheckedUpdateManyInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1320,6 +1396,10 @@ export type AgreementCountOrderByAggregateInput = {
   closedAt?: Prisma.SortOrder
   closeReason?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -1384,6 +1464,10 @@ export type AgreementMaxOrderByAggregateInput = {
   closedAt?: Prisma.SortOrder
   closeReason?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -1436,6 +1520,10 @@ export type AgreementMinOrderByAggregateInput = {
   closedAt?: Prisma.SortOrder
   closeReason?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  artifactPdfRef?: Prisma.SortOrder
+  artifactPdfHash?: Prisma.SortOrder
+  artifactUblRef?: Prisma.SortOrder
+  artifactUblHash?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
@@ -1644,6 +1732,10 @@ export type AgreementCreateWithoutOrganizationInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1702,6 +1794,10 @@ export type AgreementUncheckedCreateWithoutOrganizationInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1788,6 +1884,10 @@ export type AgreementScalarWhereInput = {
   closedAt?: Prisma.DateTimeNullableFilter<"Agreement"> | Date | string | null
   closeReason?: Prisma.StringNullableFilter<"Agreement"> | string | null
   notes?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactPdfRef?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactPdfHash?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactUblRef?: Prisma.StringNullableFilter<"Agreement"> | string | null
+  artifactUblHash?: Prisma.StringNullableFilter<"Agreement"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agreement"> | Date | string
   calculationVersion?: Prisma.StringFilter<"Agreement"> | string
@@ -1841,6 +1941,10 @@ export type AgreementCreateWithoutContactInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1899,6 +2003,10 @@ export type AgreementUncheckedCreateWithoutContactInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -1979,6 +2087,10 @@ export type AgreementCreateWithoutDeliverablesInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -2038,6 +2150,10 @@ export type AgreementUncheckedCreateWithoutDeliverablesInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -2107,6 +2223,10 @@ export type AgreementUpdateWithoutDeliverablesInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2166,6 +2286,10 @@ export type AgreementUncheckedUpdateWithoutDeliverablesInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2219,6 +2343,10 @@ export type AgreementCreateWithoutTemplateInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -2277,6 +2405,10 @@ export type AgreementUncheckedCreateWithoutTemplateInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -2359,6 +2491,10 @@ export type AgreementCreateManyOrganizationInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -2412,6 +2548,10 @@ export type AgreementUpdateWithoutOrganizationInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2470,6 +2610,10 @@ export type AgreementUncheckedUpdateWithoutOrganizationInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2526,6 +2670,10 @@ export type AgreementUncheckedUpdateManyWithoutOrganizationInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2581,6 +2729,10 @@ export type AgreementCreateManyContactInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -2634,6 +2786,10 @@ export type AgreementUpdateWithoutContactInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2692,6 +2848,10 @@ export type AgreementUncheckedUpdateWithoutContactInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2748,6 +2908,10 @@ export type AgreementUncheckedUpdateManyWithoutContactInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2803,6 +2967,10 @@ export type AgreementCreateManyTemplateInput = {
   closedAt?: Date | string | null
   closeReason?: string | null
   notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
@@ -2856,6 +3024,10 @@ export type AgreementUpdateWithoutTemplateInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2914,6 +3086,10 @@ export type AgreementUncheckedUpdateWithoutTemplateInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2970,6 +3146,10 @@ export type AgreementUncheckedUpdateManyWithoutTemplateInput = {
   closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -3057,6 +3237,10 @@ export type AgreementSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   closedAt?: boolean
   closeReason?: boolean
   notes?: boolean
+  artifactPdfRef?: boolean
+  artifactPdfHash?: boolean
+  artifactUblRef?: boolean
+  artifactUblHash?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
@@ -3118,6 +3302,10 @@ export type AgreementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   closedAt?: boolean
   closeReason?: boolean
   notes?: boolean
+  artifactPdfRef?: boolean
+  artifactPdfHash?: boolean
+  artifactUblRef?: boolean
+  artifactUblHash?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
@@ -3177,6 +3365,10 @@ export type AgreementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   closedAt?: boolean
   closeReason?: boolean
   notes?: boolean
+  artifactPdfRef?: boolean
+  artifactPdfHash?: boolean
+  artifactUblRef?: boolean
+  artifactUblHash?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
@@ -3236,13 +3428,17 @@ export type AgreementSelectScalar = {
   closedAt?: boolean
   closeReason?: boolean
   notes?: boolean
+  artifactPdfRef?: boolean
+  artifactPdfHash?: boolean
+  artifactUblRef?: boolean
+  artifactUblHash?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
   vatEvidence?: boolean
 }
 
-export type AgreementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "title" | "summary" | "termsMarkdown" | "templateId" | "taxRate" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "dueInDays" | "billingTrigger" | "subtotalNet" | "totalTax" | "totalGross" | "sellerSnapshot" | "buyerSnapshot" | "validUntil" | "issueDate" | "expiresAt" | "offerRevision" | "offerSnapshot" | "offerSnapshotHash" | "issuedToEmail" | "issuedVia" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "acceptedAt" | "acceptedOfferRevision" | "acceptedByName" | "acceptanceIp" | "acceptanceUserAgent" | "acceptanceMethod" | "acceptanceEvidenceNote" | "declinedAt" | "declineReason" | "closedAt" | "closeReason" | "notes" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["agreement"]>
+export type AgreementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "title" | "summary" | "termsMarkdown" | "templateId" | "taxRate" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "dueInDays" | "billingTrigger" | "subtotalNet" | "totalTax" | "totalGross" | "sellerSnapshot" | "buyerSnapshot" | "validUntil" | "issueDate" | "expiresAt" | "offerRevision" | "offerSnapshot" | "offerSnapshotHash" | "issuedToEmail" | "issuedVia" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "acceptedAt" | "acceptedOfferRevision" | "acceptedByName" | "acceptanceIp" | "acceptanceUserAgent" | "acceptanceMethod" | "acceptanceEvidenceNote" | "declinedAt" | "declineReason" | "closedAt" | "closeReason" | "notes" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["agreement"]>
 export type AgreementInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -3319,6 +3515,10 @@ export type $AgreementPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     closedAt: Date | null
     closeReason: string | null
     notes: string | null
+    artifactPdfRef: string | null
+    artifactPdfHash: string | null
+    artifactUblRef: string | null
+    artifactUblHash: string | null
     createdAt: Date
     updatedAt: Date
     calculationVersion: string
@@ -3799,6 +3999,10 @@ export interface AgreementFieldRefs {
   readonly closedAt: Prisma.FieldRef<"Agreement", 'DateTime'>
   readonly closeReason: Prisma.FieldRef<"Agreement", 'String'>
   readonly notes: Prisma.FieldRef<"Agreement", 'String'>
+  readonly artifactPdfRef: Prisma.FieldRef<"Agreement", 'String'>
+  readonly artifactPdfHash: Prisma.FieldRef<"Agreement", 'String'>
+  readonly artifactUblRef: Prisma.FieldRef<"Agreement", 'String'>
+  readonly artifactUblHash: Prisma.FieldRef<"Agreement", 'String'>
   readonly createdAt: Prisma.FieldRef<"Agreement", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Agreement", 'DateTime'>
   readonly calculationVersion: Prisma.FieldRef<"Agreement", 'String'>

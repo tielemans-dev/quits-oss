@@ -103,6 +103,8 @@ model Organization {
   agentKeys               AgentKey[]
   approvalRequests        ApprovalRequest[]
   schedulerScans          SchedulerScan[]
+  artifactStaging         ArtifactStaging[]
+  issuanceCandidates      IssuanceCandidate[]
   settings                OrgSettings?
 
   @@map("organization")
@@ -340,6 +342,11 @@ model Invoice {
   recurringInvoiceId      String?
   recurringInvoice        RecurringInvoice? @relation(fields: [recurringInvoiceId], references: [id], onDelete: SetNull)
   recurringRunDate        DateTime?
+  artifactPdfRef          String?
+  artifactPdfHash         String?
+  artifactUblRef          String?
+  artifactUblHash         String?
+
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
 
@@ -492,6 +499,11 @@ model CreditNote {
   lastEmailAttemptCode    String?
   lastEmailAttemptMessage String?
   items                   CreditNoteItem[]
+  artifactPdfRef          String?
+  artifactPdfHash         String?
+  artifactUblRef          String?
+  artifactUblHash         String?
+
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
 
@@ -778,6 +790,11 @@ model Agreement {
   closeReason             String?
   notes                   String?
   deliverables            Deliverable[]
+  artifactPdfRef          String?
+  artifactPdfHash         String?
+  artifactUblRef          String?
+  artifactUblHash         String?
+
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
 
@@ -901,4 +918,55 @@ model EventConsumerDelivery {
   @@unique([organizationId, consumerKey, sequence])
   @@index([organizationId, consumerKey, status, sequence], map: "event_consumer_delivery_scope_status_sequence_idx")
   @@map("event_consumer_delivery")
+}
+
+// Request aliases let a new delivery attempt reuse prepared bytes without losing retry identity.
+model ArtifactStaging {
+  id                 String @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentKind       String
+  documentId         String
+  requestKey         String
+  requestKeys        String[] @default([])
+  renderInputHash    String
+  renderInput        Json
+  rendererVersion    String
+  status             String @default("reserved")
+  prepToken          String?
+  leaseUntil         DateTime
+  artifacts          Json?
+  missingReason      String?
+  reservedNumber     String?
+  numberWasAllocated Boolean @default(false)
+  candidateRefs      String[] @default([])
+  candidates         IssuanceCandidate[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([organizationId, documentKind, documentId, renderInputHash])
+  @@unique([organizationId, requestKey])
+  @@index([organizationId, status, leaseUntil])
+  @@map("artifact_staging")
+}
+
+model IssuanceCandidate {
+  id              String @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentKind    String
+  documentId      String
+  stagingId       String
+  staging         ArtifactStaging @relation(fields: [stagingId], references: [id])
+  renderInput     Json
+  renderInputHash String
+  recipient       String?
+  artifacts       Json?
+  attemptAt       DateTime
+  status          String @default("bound")
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, documentKind, documentId])
+  @@index([stagingId, status, createdAt])
+  @@map("issuance_candidate")
 }
