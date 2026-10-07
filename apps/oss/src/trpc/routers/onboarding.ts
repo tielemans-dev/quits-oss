@@ -1,3 +1,4 @@
+import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import {
@@ -213,8 +214,10 @@ export const onboardingRouter = router({
       }
       if ("locale" in input) settingsUpdateData.locale = input.locale
       if ("timezone" in input) settingsUpdateData.timezone = input.timezone
-      if ("defaultCurrency" in input)
+      if ("defaultCurrency" in input) {
+        assertSettingsCurrency(input.defaultCurrency)
         settingsUpdateData.defaultCurrency = input.defaultCurrency
+      }
       if ("taxRegime" in input) settingsUpdateData.taxRegime = input.taxRegime
       if ("pricesIncludeTax" in input)
         settingsUpdateData.pricesIncludeTax = input.pricesIncludeTax

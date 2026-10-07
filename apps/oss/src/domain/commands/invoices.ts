@@ -23,6 +23,7 @@ import { queueDocumentEmail, refuseWhileSending } from "../documents/document-de
 import { lockDocument } from "../documents/locks"
 import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { allocateDocumentNumber } from "../documents/numbering"
+import { requireDraftCurrency } from "../documents/currency"
 import { impliedTaxRate, priceDocument } from "../documents/pricing"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
 import { InvalidState, NotFound } from "../errors"
@@ -100,6 +101,7 @@ export const buildInvoiceDraft = (
     const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
     const number = yield* allocateDocumentNumber("invoice")
     const currency = input.currency ?? settings.defaultCurrency ?? settings.currency
+    if (!origin) yield* requireDraftCurrency(currency)
     const priced = priceDocument({
       profile,
       items: input.items,

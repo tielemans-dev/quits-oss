@@ -1,3 +1,4 @@
+import { requireCurrencyExponent } from "@quits/shared/currency"
 import { randomUUID } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
 import { prisma } from "../db"
@@ -109,6 +110,8 @@ export async function applySetupInitialization(
       "Setup has already been initialized for this installation"
     )
   }
+
+  requireCurrencyExponent(input.locale.currency)
 
   const now = new Date()
   const adminEmail = input.admin.email.toLowerCase()
