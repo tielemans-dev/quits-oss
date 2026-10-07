@@ -1,3 +1,4 @@
+import { assertSettingsCurrency } from "../currency"
 import { TRPCError } from "@trpc/server"
 import {
   countryCodeSchema,
@@ -295,7 +296,10 @@ async function applyPatchToOrgSettings(
   }
   if ("locale" in patch) updateData.locale = patch.locale
   if ("timezone" in patch) updateData.timezone = patch.timezone
-  if ("defaultCurrency" in patch) updateData.defaultCurrency = patch.defaultCurrency
+  if ("defaultCurrency" in patch) {
+    assertSettingsCurrency(patch.defaultCurrency)
+    updateData.defaultCurrency = patch.defaultCurrency
+  }
   if ("taxRegime" in patch) updateData.taxRegime = patch.taxRegime
   if ("pricesIncludeTax" in patch) updateData.pricesIncludeTax = patch.pricesIncludeTax
   if ("invoicePrefix" in patch) updateData.invoicePrefix = patch.invoicePrefix

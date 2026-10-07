@@ -343,6 +343,9 @@ model Invoice {
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
 
+  calculationVersion String @default("legacy_per_line")
+  vatEvidence        Json?
+
   @@unique([organizationId, number])
   @@unique([recurringInvoiceId, recurringRunDate])
   @@index([organizationId])
@@ -369,6 +372,13 @@ model InvoiceItem {
   taxCategory    String  @default("standard")
   taxCode        String?
   sortOrder      Int     @default(0)
+
+  vatTreatment   String  @default("standard")
+  vatCountry     String?
+  vatReasonCode  String?
+  quantityInput  String?
+  unitPriceInput String?
+  inputPrecision String?
 
   @@index([invoiceId])
   @@map("invoice_item")
@@ -415,6 +425,9 @@ model Quote {
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
 
+  calculationVersion String @default("legacy_per_line")
+  vatEvidence        Json?
+
   @@unique([organizationId, number])
   @@index([organizationId])
   @@index([contactId])
@@ -438,6 +451,13 @@ model QuoteItem {
   taxCategory    String  @default("standard")
   taxCode        String?
   sortOrder      Int     @default(0)
+
+  vatTreatment   String  @default("standard")
+  vatCountry     String?
+  vatReasonCode  String?
+  quantityInput  String?
+  unitPriceInput String?
+  inputPrecision String?
 
   @@index([quoteId])
   @@map("quote_item")
@@ -475,6 +495,9 @@ model CreditNote {
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
 
+  calculationVersion String @default("legacy_per_line")
+  vatEvidence        Json?
+
   @@unique([organizationId, number])
   @@index([organizationId])
   @@index([invoiceId])
@@ -498,6 +521,13 @@ model CreditNoteItem {
   taxCategory    String     @default("standard")
   taxCode        String?
   sortOrder      Int        @default(0)
+
+  vatTreatment   String  @default("standard")
+  vatCountry     String?
+  vatReasonCode  String?
+  quantityInput  String?
+  unitPriceInput String?
+  inputPrecision String?
 
   @@index([creditNoteId])
   @@map("credit_note_item")
@@ -751,6 +781,9 @@ model Agreement {
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
 
+  calculationVersion String @default("legacy_per_line")
+  vatEvidence        Json?
+
   @@unique([organizationId, number])
   @@index([organizationId, status])
   @@index([contactId])
@@ -785,6 +818,13 @@ model Deliverable {
   acceptanceEvidenceNote String?
   changeRequestNote      String?
   sortOrder              Int       @default(0)
+
+  vatTreatment   String  @default("standard")
+  vatCountry     String?
+  vatReasonCode  String?
+  quantityInput  String?
+  unitPriceInput String?
+  inputPrecision String?
 
   @@index([agreementId])
   @@map("deliverable")

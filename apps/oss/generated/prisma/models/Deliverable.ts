@@ -79,6 +79,12 @@ export type DeliverableMinAggregateOutputType = {
   acceptanceEvidenceNote: string | null
   changeRequestNote: string | null
   sortOrder: number | null
+  vatTreatment: string | null
+  vatCountry: string | null
+  vatReasonCode: string | null
+  quantityInput: string | null
+  unitPriceInput: string | null
+  inputPrecision: string | null
 }
 
 export type DeliverableMaxAggregateOutputType = {
@@ -108,6 +114,12 @@ export type DeliverableMaxAggregateOutputType = {
   acceptanceEvidenceNote: string | null
   changeRequestNote: string | null
   sortOrder: number | null
+  vatTreatment: string | null
+  vatCountry: string | null
+  vatReasonCode: string | null
+  quantityInput: string | null
+  unitPriceInput: string | null
+  inputPrecision: string | null
 }
 
 export type DeliverableCountAggregateOutputType = {
@@ -137,6 +149,12 @@ export type DeliverableCountAggregateOutputType = {
   acceptanceEvidenceNote: number
   changeRequestNote: number
   sortOrder: number
+  vatTreatment: number
+  vatCountry: number
+  vatReasonCode: number
+  quantityInput: number
+  unitPriceInput: number
+  inputPrecision: number
   _all: number
 }
 
@@ -194,6 +212,12 @@ export type DeliverableMinAggregateInputType = {
   acceptanceEvidenceNote?: true
   changeRequestNote?: true
   sortOrder?: true
+  vatTreatment?: true
+  vatCountry?: true
+  vatReasonCode?: true
+  quantityInput?: true
+  unitPriceInput?: true
+  inputPrecision?: true
 }
 
 export type DeliverableMaxAggregateInputType = {
@@ -223,6 +247,12 @@ export type DeliverableMaxAggregateInputType = {
   acceptanceEvidenceNote?: true
   changeRequestNote?: true
   sortOrder?: true
+  vatTreatment?: true
+  vatCountry?: true
+  vatReasonCode?: true
+  quantityInput?: true
+  unitPriceInput?: true
+  inputPrecision?: true
 }
 
 export type DeliverableCountAggregateInputType = {
@@ -252,6 +282,12 @@ export type DeliverableCountAggregateInputType = {
   acceptanceEvidenceNote?: true
   changeRequestNote?: true
   sortOrder?: true
+  vatTreatment?: true
+  vatCountry?: true
+  vatReasonCode?: true
+  quantityInput?: true
+  unitPriceInput?: true
+  inputPrecision?: true
   _all?: true
 }
 
@@ -368,6 +404,12 @@ export type DeliverableGroupByOutputType = {
   acceptanceEvidenceNote: string | null
   changeRequestNote: string | null
   sortOrder: number
+  vatTreatment: string
+  vatCountry: string | null
+  vatReasonCode: string | null
+  quantityInput: string | null
+  unitPriceInput: string | null
+  inputPrecision: string | null
   _count: DeliverableCountAggregateOutputType | null
   _avg: DeliverableAvgAggregateOutputType | null
   _sum: DeliverableSumAggregateOutputType | null
@@ -420,6 +462,12 @@ export type DeliverableWhereInput = {
   acceptanceEvidenceNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   changeRequestNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   sortOrder?: Prisma.IntFilter<"Deliverable"> | number
+  vatTreatment?: Prisma.StringFilter<"Deliverable"> | string
+  vatCountry?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  vatReasonCode?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  quantityInput?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  unitPriceInput?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  inputPrecision?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   agreement?: Prisma.XOR<Prisma.AgreementScalarRelationFilter, Prisma.AgreementWhereInput>
 }
 
@@ -450,6 +498,12 @@ export type DeliverableOrderByWithRelationInput = {
   acceptanceEvidenceNote?: Prisma.SortOrderInput | Prisma.SortOrder
   changeRequestNote?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrderInput | Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  quantityInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrderInput | Prisma.SortOrder
   agreement?: Prisma.AgreementOrderByWithRelationInput
 }
 
@@ -483,6 +537,12 @@ export type DeliverableWhereUniqueInput = Prisma.AtLeast<{
   acceptanceEvidenceNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   changeRequestNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   sortOrder?: Prisma.IntFilter<"Deliverable"> | number
+  vatTreatment?: Prisma.StringFilter<"Deliverable"> | string
+  vatCountry?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  vatReasonCode?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  quantityInput?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  unitPriceInput?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  inputPrecision?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   agreement?: Prisma.XOR<Prisma.AgreementScalarRelationFilter, Prisma.AgreementWhereInput>
 }, "id">
 
@@ -513,6 +573,12 @@ export type DeliverableOrderByWithAggregationInput = {
   acceptanceEvidenceNote?: Prisma.SortOrderInput | Prisma.SortOrder
   changeRequestNote?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrderInput | Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  quantityInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrderInput | Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.DeliverableCountOrderByAggregateInput
   _avg?: Prisma.DeliverableAvgOrderByAggregateInput
   _max?: Prisma.DeliverableMaxOrderByAggregateInput
@@ -550,6 +616,12 @@ export type DeliverableScalarWhereWithAggregatesInput = {
   acceptanceEvidenceNote?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
   changeRequestNote?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
   sortOrder?: Prisma.IntWithAggregatesFilter<"Deliverable"> | number
+  vatTreatment?: Prisma.StringWithAggregatesFilter<"Deliverable"> | string
+  vatCountry?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
+  vatReasonCode?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
+  quantityInput?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
+  unitPriceInput?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
+  inputPrecision?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
 }
 
 export type DeliverableCreateInput = {
@@ -578,6 +650,12 @@ export type DeliverableCreateInput = {
   acceptanceEvidenceNote?: string | null
   changeRequestNote?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
   agreement: Prisma.AgreementCreateNestedOneWithoutDeliverablesInput
 }
 
@@ -608,6 +686,12 @@ export type DeliverableUncheckedCreateInput = {
   acceptanceEvidenceNote?: string | null
   changeRequestNote?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type DeliverableUpdateInput = {
@@ -636,6 +720,12 @@ export type DeliverableUpdateInput = {
   acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   agreement?: Prisma.AgreementUpdateOneRequiredWithoutDeliverablesNestedInput
 }
 
@@ -666,6 +756,12 @@ export type DeliverableUncheckedUpdateInput = {
   acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type DeliverableCreateManyInput = {
@@ -695,6 +791,12 @@ export type DeliverableCreateManyInput = {
   acceptanceEvidenceNote?: string | null
   changeRequestNote?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type DeliverableUpdateManyMutationInput = {
@@ -723,6 +825,12 @@ export type DeliverableUpdateManyMutationInput = {
   acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type DeliverableUncheckedUpdateManyInput = {
@@ -752,6 +860,12 @@ export type DeliverableUncheckedUpdateManyInput = {
   acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type DeliverableListRelationFilter = {
@@ -791,6 +905,12 @@ export type DeliverableCountOrderByAggregateInput = {
   acceptanceEvidenceNote?: Prisma.SortOrder
   changeRequestNote?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrder
+  quantityInput?: Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrder
 }
 
 export type DeliverableAvgOrderByAggregateInput = {
@@ -833,6 +953,12 @@ export type DeliverableMaxOrderByAggregateInput = {
   acceptanceEvidenceNote?: Prisma.SortOrder
   changeRequestNote?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrder
+  quantityInput?: Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrder
 }
 
 export type DeliverableMinOrderByAggregateInput = {
@@ -862,6 +988,12 @@ export type DeliverableMinOrderByAggregateInput = {
   acceptanceEvidenceNote?: Prisma.SortOrder
   changeRequestNote?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatTreatment?: Prisma.SortOrder
+  vatCountry?: Prisma.SortOrder
+  vatReasonCode?: Prisma.SortOrder
+  quantityInput?: Prisma.SortOrder
+  unitPriceInput?: Prisma.SortOrder
+  inputPrecision?: Prisma.SortOrder
 }
 
 export type DeliverableSumOrderByAggregateInput = {
@@ -945,6 +1077,12 @@ export type DeliverableCreateWithoutAgreementInput = {
   acceptanceEvidenceNote?: string | null
   changeRequestNote?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type DeliverableUncheckedCreateWithoutAgreementInput = {
@@ -973,6 +1111,12 @@ export type DeliverableUncheckedCreateWithoutAgreementInput = {
   acceptanceEvidenceNote?: string | null
   changeRequestNote?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type DeliverableCreateOrConnectWithoutAgreementInput = {
@@ -1031,6 +1175,12 @@ export type DeliverableScalarWhereInput = {
   acceptanceEvidenceNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   changeRequestNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   sortOrder?: Prisma.IntFilter<"Deliverable"> | number
+  vatTreatment?: Prisma.StringFilter<"Deliverable"> | string
+  vatCountry?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  vatReasonCode?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  quantityInput?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  unitPriceInput?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  inputPrecision?: Prisma.StringNullableFilter<"Deliverable"> | string | null
 }
 
 export type DeliverableCreateManyAgreementInput = {
@@ -1059,6 +1209,12 @@ export type DeliverableCreateManyAgreementInput = {
   acceptanceEvidenceNote?: string | null
   changeRequestNote?: string | null
   sortOrder?: number
+  vatTreatment?: string
+  vatCountry?: string | null
+  vatReasonCode?: string | null
+  quantityInput?: string | null
+  unitPriceInput?: string | null
+  inputPrecision?: string | null
 }
 
 export type DeliverableUpdateWithoutAgreementInput = {
@@ -1087,6 +1243,12 @@ export type DeliverableUpdateWithoutAgreementInput = {
   acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type DeliverableUncheckedUpdateWithoutAgreementInput = {
@@ -1115,6 +1277,12 @@ export type DeliverableUncheckedUpdateWithoutAgreementInput = {
   acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type DeliverableUncheckedUpdateManyWithoutAgreementInput = {
@@ -1143,6 +1311,12 @@ export type DeliverableUncheckedUpdateManyWithoutAgreementInput = {
   acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
+  vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantityInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitPriceInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inputPrecision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -1174,6 +1348,12 @@ export type DeliverableSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   acceptanceEvidenceNote?: boolean
   changeRequestNote?: boolean
   sortOrder?: boolean
+  vatTreatment?: boolean
+  vatCountry?: boolean
+  vatReasonCode?: boolean
+  quantityInput?: boolean
+  unitPriceInput?: boolean
+  inputPrecision?: boolean
   agreement?: boolean | Prisma.AgreementDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["deliverable"]>
 
@@ -1204,6 +1384,12 @@ export type DeliverableSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   acceptanceEvidenceNote?: boolean
   changeRequestNote?: boolean
   sortOrder?: boolean
+  vatTreatment?: boolean
+  vatCountry?: boolean
+  vatReasonCode?: boolean
+  quantityInput?: boolean
+  unitPriceInput?: boolean
+  inputPrecision?: boolean
   agreement?: boolean | Prisma.AgreementDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["deliverable"]>
 
@@ -1234,6 +1420,12 @@ export type DeliverableSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   acceptanceEvidenceNote?: boolean
   changeRequestNote?: boolean
   sortOrder?: boolean
+  vatTreatment?: boolean
+  vatCountry?: boolean
+  vatReasonCode?: boolean
+  quantityInput?: boolean
+  unitPriceInput?: boolean
+  inputPrecision?: boolean
   agreement?: boolean | Prisma.AgreementDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["deliverable"]>
 
@@ -1264,9 +1456,15 @@ export type DeliverableSelectScalar = {
   acceptanceEvidenceNote?: boolean
   changeRequestNote?: boolean
   sortOrder?: boolean
+  vatTreatment?: boolean
+  vatCountry?: boolean
+  vatReasonCode?: boolean
+  quantityInput?: boolean
+  unitPriceInput?: boolean
+  inputPrecision?: boolean
 }
 
-export type DeliverableOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "agreementId" | "title" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "agreedDate" | "expectedDate" | "isDeposit" | "status" | "billingStatus" | "deliveryRevision" | "deliveredAt" | "acceptedAt" | "acceptedRevision" | "acceptedVia" | "acceptanceEvidenceNote" | "changeRequestNote" | "sortOrder", ExtArgs["result"]["deliverable"]>
+export type DeliverableOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "agreementId" | "title" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "agreedDate" | "expectedDate" | "isDeposit" | "status" | "billingStatus" | "deliveryRevision" | "deliveredAt" | "acceptedAt" | "acceptedRevision" | "acceptedVia" | "acceptanceEvidenceNote" | "changeRequestNote" | "sortOrder" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["deliverable"]>
 export type DeliverableInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   agreement?: boolean | Prisma.AgreementDefaultArgs<ExtArgs>
 }
@@ -1309,6 +1507,12 @@ export type $DeliverablePayload<ExtArgs extends runtime.Types.Extensions.Interna
     acceptanceEvidenceNote: string | null
     changeRequestNote: string | null
     sortOrder: number
+    vatTreatment: string
+    vatCountry: string | null
+    vatReasonCode: string | null
+    quantityInput: string | null
+    unitPriceInput: string | null
+    inputPrecision: string | null
   }, ExtArgs["result"]["deliverable"]>
   composites: {}
 }
@@ -1759,6 +1963,12 @@ export interface DeliverableFieldRefs {
   readonly acceptanceEvidenceNote: Prisma.FieldRef<"Deliverable", 'String'>
   readonly changeRequestNote: Prisma.FieldRef<"Deliverable", 'String'>
   readonly sortOrder: Prisma.FieldRef<"Deliverable", 'Int'>
+  readonly vatTreatment: Prisma.FieldRef<"Deliverable", 'String'>
+  readonly vatCountry: Prisma.FieldRef<"Deliverable", 'String'>
+  readonly vatReasonCode: Prisma.FieldRef<"Deliverable", 'String'>
+  readonly quantityInput: Prisma.FieldRef<"Deliverable", 'String'>
+  readonly unitPriceInput: Prisma.FieldRef<"Deliverable", 'String'>
+  readonly inputPrecision: Prisma.FieldRef<"Deliverable", 'String'>
 }
     
 

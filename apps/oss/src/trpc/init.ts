@@ -1,3 +1,4 @@
+import { CurrencyPrecisionUnsupported } from "@quits/shared/currency"
 import { initTRPC, TRPCError } from "@trpc/server"
 import superjson from "superjson"
 import { auth } from "../lib/auth"
@@ -26,8 +27,9 @@ export { ORGANIZATION_CHANGED_MESSAGE }
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
-    // Lets the client tell "the organization changed" apart from every other CONFLICT.
-    const reason = error.cause instanceof OrganizationChangedError ? ORGANIZATION_CHANGED_REASON : null
+    // Preserve machine-readable reasons for organization and currency boundary errors.
+    const reason = error.cause instanceof OrganizationChangedError ? ORGANIZATION_CHANGED_REASON
+      : error.cause instanceof CurrencyPrecisionUnsupported ? error.cause.code : null
     return { ...shape, data: { ...shape.data, reason } }
   },
 })

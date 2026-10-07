@@ -1,3 +1,4 @@
+import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, authorizedProcedure } from "../init"
@@ -174,6 +175,9 @@ export const settingsRouter = router({
         clearStripeWebhookSecret,
         ...settingsInput
       } = input
+
+      assertSettingsCurrency(settingsInput.currency)
+      assertSettingsCurrency(settingsInput.defaultCurrency)
 
       return prisma.$transaction(async (tx) => {
         const current = await tx.orgSettings.findUnique({

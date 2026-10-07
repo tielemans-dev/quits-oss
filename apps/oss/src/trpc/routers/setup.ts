@@ -1,3 +1,4 @@
+import { CurrencyPrecisionUnsupported } from "@quits/shared/currency"
 import { TRPCError } from "@trpc/server"
 import { router, setupProcedure } from "../init"
 import {
@@ -9,6 +10,9 @@ import {
 import { setupInitializeSchema } from "../../lib/setup/validators"
 
 function toTrpcError(error: unknown): never {
+  if (error instanceof CurrencyPrecisionUnsupported) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: error.code, cause: error })
+  }
   if (error instanceof SetupFlowError) {
     if (error.code === "SETUP_ALREADY_COMPLETE") {
       throw new TRPCError({ code: "FORBIDDEN", message: error.message })

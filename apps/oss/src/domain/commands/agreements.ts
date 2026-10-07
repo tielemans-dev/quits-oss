@@ -1,3 +1,4 @@
+import { requireDraftCurrency } from "../documents/currency"
 import { deliverableCommands } from "./deliverables"
 import {
   lockedDeliverable,
@@ -108,6 +109,7 @@ export const createAgreementDraft = defineCommand({
       yield* validateTemplate(input.templateId)
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       const currency = input.currency ?? settings.defaultCurrency
+      yield* requireDraftCurrency(currency)
       const priced = priceAgreement({
         profile,
         deliverables: input.deliverables,

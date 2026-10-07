@@ -1,3 +1,4 @@
+import { requireDraftCurrency } from "../documents/currency"
 import { Effect } from "effect"
 import { z } from "zod"
 import {
@@ -95,6 +96,7 @@ export const createQuoteDraft = defineCommand({
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       const number = yield* allocateDocumentNumber("quote")
       const currency = input.currency ?? settings.defaultCurrency ?? settings.currency
+      yield* requireDraftCurrency(currency)
       const priced = priceDocument({
         profile,
         items: input.items,

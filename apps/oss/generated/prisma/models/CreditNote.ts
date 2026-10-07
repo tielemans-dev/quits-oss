@@ -63,6 +63,7 @@ export type CreditNoteMinAggregateOutputType = {
   lastEmailAttemptMessage: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  calculationVersion: string | null
 }
 
 export type CreditNoteMaxAggregateOutputType = {
@@ -90,6 +91,7 @@ export type CreditNoteMaxAggregateOutputType = {
   lastEmailAttemptMessage: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  calculationVersion: string | null
 }
 
 export type CreditNoteCountAggregateOutputType = {
@@ -119,6 +121,8 @@ export type CreditNoteCountAggregateOutputType = {
   lastEmailAttemptMessage: number
   createdAt: number
   updatedAt: number
+  calculationVersion: number
+  vatEvidence: number
   _all: number
 }
 
@@ -160,6 +164,7 @@ export type CreditNoteMinAggregateInputType = {
   lastEmailAttemptMessage?: true
   createdAt?: true
   updatedAt?: true
+  calculationVersion?: true
 }
 
 export type CreditNoteMaxAggregateInputType = {
@@ -187,6 +192,7 @@ export type CreditNoteMaxAggregateInputType = {
   lastEmailAttemptMessage?: true
   createdAt?: true
   updatedAt?: true
+  calculationVersion?: true
 }
 
 export type CreditNoteCountAggregateInputType = {
@@ -216,6 +222,8 @@ export type CreditNoteCountAggregateInputType = {
   lastEmailAttemptMessage?: true
   createdAt?: true
   updatedAt?: true
+  calculationVersion?: true
+  vatEvidence?: true
   _all?: true
 }
 
@@ -332,6 +340,8 @@ export type CreditNoteGroupByOutputType = {
   lastEmailAttemptMessage: string | null
   createdAt: Date
   updatedAt: Date
+  calculationVersion: string
+  vatEvidence: runtime.JsonValue | null
   _count: CreditNoteCountAggregateOutputType | null
   _avg: CreditNoteAvgAggregateOutputType | null
   _sum: CreditNoteSumAggregateOutputType | null
@@ -384,6 +394,8 @@ export type CreditNoteWhereInput = {
   lastEmailAttemptMessage?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   createdAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
+  calculationVersion?: Prisma.StringFilter<"CreditNote"> | string
+  vatEvidence?: Prisma.JsonNullableFilter<"CreditNote">
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   invoice?: Prisma.XOR<Prisma.InvoiceScalarRelationFilter, Prisma.InvoiceWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
@@ -417,6 +429,8 @@ export type CreditNoteOrderByWithRelationInput = {
   lastEmailAttemptMessage?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
+  vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
   organization?: Prisma.OrganizationOrderByWithRelationInput
   invoice?: Prisma.InvoiceOrderByWithRelationInput
   contact?: Prisma.ContactOrderByWithRelationInput
@@ -454,6 +468,8 @@ export type CreditNoteWhereUniqueInput = Prisma.AtLeast<{
   lastEmailAttemptMessage?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   createdAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
+  calculationVersion?: Prisma.StringFilter<"CreditNote"> | string
+  vatEvidence?: Prisma.JsonNullableFilter<"CreditNote">
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   invoice?: Prisma.XOR<Prisma.InvoiceScalarRelationFilter, Prisma.InvoiceWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
@@ -487,6 +503,8 @@ export type CreditNoteOrderByWithAggregationInput = {
   lastEmailAttemptMessage?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
+  vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.CreditNoteCountOrderByAggregateInput
   _avg?: Prisma.CreditNoteAvgOrderByAggregateInput
   _max?: Prisma.CreditNoteMaxOrderByAggregateInput
@@ -524,6 +542,8 @@ export type CreditNoteScalarWhereWithAggregatesInput = {
   lastEmailAttemptMessage?: Prisma.StringNullableWithAggregatesFilter<"CreditNote"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"CreditNote"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"CreditNote"> | Date | string
+  calculationVersion?: Prisma.StringWithAggregatesFilter<"CreditNote"> | string
+  vatEvidence?: Prisma.JsonNullableWithAggregatesFilter<"CreditNote">
 }
 
 export type CreditNoteCreateInput = {
@@ -550,6 +570,8 @@ export type CreditNoteCreateInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
@@ -583,6 +605,8 @@ export type CreditNoteUncheckedCreateInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
@@ -610,6 +634,8 @@ export type CreditNoteUpdateInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
@@ -643,6 +669,8 @@ export type CreditNoteUncheckedUpdateInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
@@ -673,6 +701,8 @@ export type CreditNoteCreateManyInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteUpdateManyMutationInput = {
@@ -699,6 +729,8 @@ export type CreditNoteUpdateManyMutationInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteUncheckedUpdateManyInput = {
@@ -728,6 +760,8 @@ export type CreditNoteUncheckedUpdateManyInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteListRelationFilter = {
@@ -772,6 +806,8 @@ export type CreditNoteCountOrderByAggregateInput = {
   lastEmailAttemptMessage?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
+  vatEvidence?: Prisma.SortOrder
 }
 
 export type CreditNoteAvgOrderByAggregateInput = {
@@ -805,6 +841,7 @@ export type CreditNoteMaxOrderByAggregateInput = {
   lastEmailAttemptMessage?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
 }
 
 export type CreditNoteMinOrderByAggregateInput = {
@@ -832,6 +869,7 @@ export type CreditNoteMinOrderByAggregateInput = {
   lastEmailAttemptMessage?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  calculationVersion?: Prisma.SortOrder
 }
 
 export type CreditNoteSumOrderByAggregateInput = {
@@ -1009,6 +1047,8 @@ export type CreditNoteCreateWithoutOrganizationInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
@@ -1040,6 +1080,8 @@ export type CreditNoteUncheckedCreateWithoutOrganizationInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
@@ -1099,6 +1141,8 @@ export type CreditNoteScalarWhereInput = {
   lastEmailAttemptMessage?: Prisma.StringNullableFilter<"CreditNote"> | string | null
   createdAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CreditNote"> | Date | string
+  calculationVersion?: Prisma.StringFilter<"CreditNote"> | string
+  vatEvidence?: Prisma.JsonNullableFilter<"CreditNote">
 }
 
 export type CreditNoteCreateWithoutContactInput = {
@@ -1125,6 +1169,8 @@ export type CreditNoteCreateWithoutContactInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
@@ -1156,6 +1202,8 @@ export type CreditNoteUncheckedCreateWithoutContactInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
@@ -1209,6 +1257,8 @@ export type CreditNoteCreateWithoutInvoiceInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
@@ -1240,6 +1290,8 @@ export type CreditNoteUncheckedCreateWithoutInvoiceInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
@@ -1293,6 +1345,8 @@ export type CreditNoteCreateWithoutItemsInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
@@ -1325,6 +1379,8 @@ export type CreditNoteUncheckedCreateWithoutItemsInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteCreateOrConnectWithoutItemsInput = {
@@ -1367,6 +1423,8 @@ export type CreditNoteUpdateWithoutItemsInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
@@ -1399,6 +1457,8 @@ export type CreditNoteUncheckedUpdateWithoutItemsInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteCreateManyOrganizationInput = {
@@ -1427,6 +1487,8 @@ export type CreditNoteCreateManyOrganizationInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteUpdateWithoutOrganizationInput = {
@@ -1453,6 +1515,8 @@ export type CreditNoteUpdateWithoutOrganizationInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
@@ -1484,6 +1548,8 @@ export type CreditNoteUncheckedUpdateWithoutOrganizationInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
@@ -1513,6 +1579,8 @@ export type CreditNoteUncheckedUpdateManyWithoutOrganizationInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteCreateManyContactInput = {
@@ -1541,6 +1609,8 @@ export type CreditNoteCreateManyContactInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteUpdateWithoutContactInput = {
@@ -1567,6 +1637,8 @@ export type CreditNoteUpdateWithoutContactInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
@@ -1598,6 +1670,8 @@ export type CreditNoteUncheckedUpdateWithoutContactInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
@@ -1627,6 +1701,8 @@ export type CreditNoteUncheckedUpdateManyWithoutContactInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteCreateManyInvoiceInput = {
@@ -1655,6 +1731,8 @@ export type CreditNoteCreateManyInvoiceInput = {
   lastEmailAttemptMessage?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type CreditNoteUpdateWithoutInvoiceInput = {
@@ -1681,6 +1759,8 @@ export type CreditNoteUpdateWithoutInvoiceInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
@@ -1712,6 +1792,8 @@ export type CreditNoteUncheckedUpdateWithoutInvoiceInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
@@ -1741,6 +1823,8 @@ export type CreditNoteUncheckedUpdateManyWithoutInvoiceInput = {
   lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 
@@ -1801,6 +1885,8 @@ export type CreditNoteSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   lastEmailAttemptMessage?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  calculationVersion?: boolean
+  vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -1835,6 +1921,8 @@ export type CreditNoteSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   lastEmailAttemptMessage?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  calculationVersion?: boolean
+  vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -1867,6 +1955,8 @@ export type CreditNoteSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   lastEmailAttemptMessage?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  calculationVersion?: boolean
+  vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -1899,9 +1989,11 @@ export type CreditNoteSelectScalar = {
   lastEmailAttemptMessage?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  calculationVersion?: boolean
+  vatEvidence?: boolean
 }
 
-export type CreditNoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "invoiceId" | "contactId" | "number" | "status" | "reason" | "issueDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "notes" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "createdAt" | "updatedAt", ExtArgs["result"]["creditNote"]>
+export type CreditNoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "invoiceId" | "contactId" | "number" | "status" | "reason" | "issueDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "notes" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["creditNote"]>
 export type CreditNoteInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
@@ -1955,6 +2047,8 @@ export type $CreditNotePayload<ExtArgs extends runtime.Types.Extensions.Internal
     lastEmailAttemptMessage: string | null
     createdAt: Date
     updatedAt: Date
+    calculationVersion: string
+    vatEvidence: runtime.JsonValue | null
   }, ExtArgs["result"]["creditNote"]>
   composites: {}
 }
@@ -2408,6 +2502,8 @@ export interface CreditNoteFieldRefs {
   readonly lastEmailAttemptMessage: Prisma.FieldRef<"CreditNote", 'String'>
   readonly createdAt: Prisma.FieldRef<"CreditNote", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"CreditNote", 'DateTime'>
+  readonly calculationVersion: Prisma.FieldRef<"CreditNote", 'String'>
+  readonly vatEvidence: Prisma.FieldRef<"CreditNote", 'Json'>
 }
     
 
