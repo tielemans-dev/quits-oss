@@ -1,352 +1,421 @@
 # Freelancer Agreements and Deliverables Design
 
-Status: draft for adversarial review (2026-10-07)
+Status: revision 2, after adversarial review round 1 (2026-10-07)
 
 ## Summary
 
 Quits models the money half of freelance work: quotes, invoices, payments, reminders, credit notes
 and recurring invoices. It does not model what the money is for. A freelancer's actual flow is
-**agreement, work, money**. This design adds the first two so that the third falls out of them:
+**agreement, work, money**. This design adds the first two so that the third follows from them:
 
-1. **Agreements**: a document the freelancer and the customer both commit to. Scope, terms, price
-   model, validity, and an acceptance record with an audit trail.
-2. **Deliverables**: the units of work inside an agreement. Each has a description, an amount, a due
-   date and a status, and is accepted by the customer.
-3. **Invoicing from deliverables**: accepted deliverables become invoice lines, so an invoice can
-   always be traced back to what was agreed and what was delivered.
-4. **Customer sign-off**: the public agreement page lets the customer accept deliverables or request
-   changes, without an account.
-5. **Retainers**: an agreement whose billing is recurring, linked to the existing recurring invoice.
+1. **Agreements**: a document the freelancer and the customer both commit to. Scope, terms, price,
+   validity, and an acceptance record with an audit trail.
+2. **Deliverables**: the units of work inside an agreement. Each has a description, an amount, an
+   agreed date and a fulfillment status, and is accepted by the customer.
+3. **Invoicing from deliverables**: deliverables become invoice lines with a reservation that makes
+   double billing impossible, so every invoice line traces back to what was agreed and delivered.
+4. **Customer sign-off**: the customer accepts or disputes delivered work through a signed link,
+   without an account.
 
 Everything is built on the domain core from the invoicing lifecycle design: commands with client
 request ids, deciders, domain events, approval gating for outward-facing commands, and agent tools.
 Nothing here is cloud-only.
 
+Revision 2 narrows the first implementation. Retainers, amendments of accepted agreements,
+provider-backed signatures and hosted plan limits are **deferred** to their own designs; the
+reasons are in "Deferred work". The remaining scope is four shippable phases.
+
 ## Why this and not a wider pivot
 
 The scope test for every idea in this area is: **does it sit on the line from agreement to work to
-money?** Agreements, deliverables, acceptance and billing from deliverables do. The following do
-not, and are explicit non-goals (see below): time tracking, a sales pipeline or CRM, proposals with
-cover pages and case studies, project boards, a customer portal with login, and expense tracking.
-Each of those is a separate product. Adding them one at a time because each feels adjacent produces
-a worse copy of Bonsai or HoneyBook.
+money?** Agreements, deliverables, acceptance and billing from deliverables do. Time tracking, a
+sales pipeline, proposals with marketing content, project boards, a customer portal with login and
+expense tracking do not. Each of those is a separate product; adding them one at a time because
+each feels adjacent produces a worse copy of Bonsai or HoneyBook.
 
-The differentiator Quits actually has is the combination of open source, self-hostable, and an agent
-API. A freelancer's own agent drafting the agreement, tracking what was delivered, and raising the
-invoice is a story the incumbents cannot tell. Every feature below is therefore designed agent-first:
-every mutation is a domain command, every command is an MCP tool, and outward-facing commands are
-approval-gated.
+The differentiator Quits has is the combination of open source, self-hostable, and an agent API. A
+freelancer's own agent drafting the agreement, tracking what was delivered, and raising the invoice
+is a story the incumbents cannot tell. Every feature below is designed agent-first: every mutation
+is a domain command, drafting commands are MCP tools, outward-facing commands are approval-gated,
+and attestations about the customer are human-only.
 
 ## Naming
 
-The code calls the new document an **Agreement**, not a contract, because `packages/contracts` already
-means TypeScript contracts and the collision would be constant. The UI may label it "Agreement" or
-"Contract" per locale; the default English label is "Agreement".
+The code calls the new document an **Agreement**, not a contract, because `packages/contracts`
+already means TypeScript contracts. The default English UI label is "Agreement".
 
 ## Non-goals
 
-- Time tracking, timesheets, or hourly billing from tracked time. An hourly agreement is billed from
-  deliverables or a manual invoice; tracking the hours is out of scope.
-- A CRM, lead pipeline, or proposal builder with marketing content.
+- Time tracking, timesheets, or billing from tracked hours.
+- A CRM, lead pipeline, or proposal builder.
 - Project management: tasks, boards, assignments, comments.
-- A customer portal with accounts and login. Customers act through signed public links, as with
-  quotes and invoices today.
+- A customer portal with accounts. Customers act through signed links, as for quotes and invoices.
 - Legal templates per jurisdiction, or any claim that a template is legally sufficient. Quits ships
-  neutral default templates with a "not legal advice" notice and lets the organization bring its own.
-- Qualified or advanced electronic signatures (eIDAS QES/AdES, DocuSign-class) in OSS. OSS ships
-  click-to-accept with an audit trail. A provider-backed signature is a hosted capability behind a
-  runtime extension and is designed here only as an interface.
-- Replacing quotes. A quote remains a priced offer. An agreement can be created from an accepted
-  quote, but quotes keep working on their own.
-- Change orders as a first-class document. A changed scope is a new agreement version (see
-  versioning). A formal change-order document may come later.
+  neutral default templates with a visible "not legal advice" notice and lets the organization
+  edit or replace them. This document makes no claim about the legal adequacy of click-to-accept.
+- Replacing quotes. A quote remains a priced offer.
+- Attachments in email. Emails link to an authorized PDF download; the outbox stores text only.
 
 ## Data model
 
-New Prisma models, all organization-scoped, all following the existing conventions (cuid ids,
-`organizationId` with cascade, `@@map` snake_case, `createdAt` and `updatedAt`).
+New Prisma models, organization-scoped, following the conventions of `Quote` and `QuoteItem`
+(cuid ids, `organizationId` with cascade on the parent, `@@map` snake_case). Child rows carry no
+`organizationId`, like `QuoteItem`.
 
 ### Agreement
 
 | Field | Notes |
 | --- | --- |
-| `number` | Allocated by `allocateDocumentNumber` with a new `agreement` sequence and prefix setting (default `AGR-`). Unique per organization. |
-| `contactId` | The customer. Required. |
+| `number` | Allocated by `allocateDocumentNumber("agreement")`. New counter `agreementPrefix` (default `AGR`) and `agreementNextNum` on `OrgSettings`; `formatDocumentNumber` adds the hyphen. `NumberedDocumentKind`, `lockableTables` and the document-delivery `config` are closed unions and each gains an `agreement` entry. |
+| `contactId` | The customer. Immutable after send. |
 | `status` | `draft`, `sent`, `accepted`, `declined`, `expired`, `completed`, `cancelled`. See lifecycle. |
-| `title` | Short human name, e.g. "Website redesign". |
-| `summary` | Optional plain-text scope statement shown above the deliverables. |
-| `termsMarkdown` | The terms body as edited. Markdown, rendered server-side for the public page and PDF. |
-| `termsSnapshot` | Frozen rendered terms at send time, with `termsHash` (SHA-256). What the customer accepted. |
-| `templateId` | Optional reference to the `AgreementTemplate` the terms started from. Informational only. |
-| `pricingModel` | `fixed`, `milestones`, `retainer`. Drives validation of deliverables and billing. |
-| `currency`, `countryCode`, `locale`, `timezone`, `taxRegime`, `pricesIncludeTax` | Same localization columns as `Quote`, defaulted from `OrgSettings`. |
-| `totalNet`, `totalTax`, `totalGross` | Sum of deliverables. Recomputed by the pricing module on every change. |
-| `sellerSnapshot`, `buyerSnapshot` | Same as quotes. Frozen at send. |
-| `issueDate`, `validUntil` | Validity window for acceptance. After `validUntil` a sent agreement expires. |
-| `startDate`, `endDate` | Optional service period. Required for `retainer`. |
-| `sourceQuoteId` | Optional. The accepted quote this was created from. |
-| `recurringInvoiceId` | Optional. Set for `retainer` once billing is activated. |
-| `version`, `supersedesAgreementId` | See versioning. |
-| `publicAccessKeyVersion`, `publicAccessIssuedAt` | Signed public link, same mechanism as quotes. |
-| `acceptedAt`, `acceptedByName`, `acceptedByEmail`, `acceptanceIp`, `acceptanceUserAgent`, `acceptanceMethod` | The acceptance record. `acceptanceMethod` is `click_to_accept` in OSS; a hosted signature extension may write `provider:<id>`. |
+| `title`, `summary` | Short name and optional plain-text scope statement. |
+| `termsMarkdown` | The terms as edited. Bounded to 50,000 characters. |
+| `templateId` | Optional, informational: which template the terms started from. |
+| `taxRate` | One rate per agreement, like `RecurringInvoice.taxRate`. The pricing module takes one document-wide rate; a per-line rate is not supported. |
+| `currency`, `countryCode`, `locale`, `timezone`, `taxRegime`, `pricesIncludeTax` | Same columns as `Quote`, defaulted from `OrgSettings`. |
+| `dueInDays` | Payment terms for invoices raised from this agreement. Default from `OrgSettings`. |
+| `subtotalNet`, `totalTax`, `totalGross` | Sum of deliverables, computed by `priceDocument` through an adapter that maps deliverables to its `{ description, quantity, unitPrice }` input. |
+| `sellerSnapshot`, `buyerSnapshot` | Built at draft creation like quotes, and **refreshed at send** so the customer sees current details. The approval preview is rendered from the refreshed snapshots. |
+| `issueDate`, `validUntil` | Validity window for acceptance. `validUntil` is a calendar date interpreted as end of day in the agreement's `timezone`. |
+| `sourceQuoteId` | Optional. The accepted quote this was created from (Phase 4). |
+| `parentAgreementId` | Optional. For an **addendum**: a separate agreement that adds work to an accepted one. The parent is not changed. |
+| `publicAccessKeyVersion`, `publicAccessIssuedAt` | Signed read-and-decide link, same mechanism as quotes. Rotated on recall and resend. |
+| `acceptedSnapshot`, `acceptedSnapshotHash` | The **canonical agreement JSON** (terms, deliverables with agreed dates and prices, totals, parties, validity, payment terms) frozen at send and hashed with SHA-256. This, not a terms hash, is what the customer accepts. |
+| `acceptedAt`, `acceptedByName`, `acceptanceRecipientEmail`, `acceptanceIp`, `acceptanceUserAgent`, `acceptanceMethod`, `acceptanceEvidenceNote` | The acceptance record. `acceptedByName` is typed by the customer. `acceptanceRecipientEmail` is the address the link was sent to, captured server-side, never typed. IP and user agent are captured from the request. `acceptanceMethod` is `customer_link` or `internal`; `internal` requires `acceptanceEvidenceNote` (e.g. "accepted by email on 3 Oct, forwarded to records"). |
 | `declinedAt`, `declineReason` | Mirror of quote rejection. |
-| `lastEmailAttempt*` | Same four columns as invoices and quotes, used by document delivery. |
-| `notes` | Internal notes, never shown to the customer. |
+| `closedAt`, `closeReason` | Set by `agreement.close`. |
+| `lastEmailAttempt*` | The four document-delivery columns. |
+| `notes` | Internal. Never serialized to the public DTO. |
 
 ### Deliverable
 
 | Field | Notes |
 | --- | --- |
-| `agreementId` | Cascade delete with the agreement while it is a draft; see lifecycle for sent agreements. |
-| `title`, `description` | What is being delivered. |
-| `quantity`, `unitPriceNet`, `unitPriceGross`, `lineNet`, `lineTax`, `lineGross`, `taxRate`, `taxCategory`, `taxCode` | Identical shape to `QuoteItem` so the pricing module and invoice item snapshotting can be reused unchanged. |
-| `dueDate` | Optional. Shown to the customer, used for the dashboard. |
-| `status` | `planned`, `in_progress`, `delivered`, `accepted`, `changes_requested`, `invoiced`, `cancelled`. |
-| `deliveredAt`, `acceptedAt`, `acceptedVia` | `acceptedVia` is `customer` (public page) or `internal` (the freelancer marks it accepted, e.g. accepted by email). Stored so the audit trail says who accepted. |
-| `changeRequestNote` | The customer's note when requesting changes. Cleared when the deliverable is delivered again. |
-| `billingTrigger` | `on_acceptance` (default), `on_delivery`, `upfront`, `manual`. Decides when "invoice from deliverables" offers the line. |
-| `invoiceItemId` | Set when invoiced. One deliverable maps to at most one invoice item. |
+| `agreementId` | Cascade delete. Deliverables are never deleted after the agreement is sent; they are cancelled. |
+| `title`, `description` | What is being delivered. Immutable after send. |
+| `quantity`, `unitPriceNet`, `unitPriceGross`, `lineNet`, `lineTax`, `lineGross`, `taxRate`, `taxCategory`, `taxCode` | Same shape as `QuoteItem`, stored as computed by `priceDocument`. Immutable after send. |
+| `agreedDate` | The date in the accepted snapshot. Immutable after send. Nullable. |
+| `expectedDate` | Operational forecast the freelancer may update at any time. Defaults to `agreedDate`. Shown to the customer as "expected", never as "agreed". |
+| `status` | **Fulfillment** only: `planned`, `in_progress`, `delivered`, `accepted`, `changes_requested`, `cancelled`. |
+| `billingStatus` | **Billing** only: `unbilled`, `reserved`, `invoiced`. Orthogonal to `status`. |
+| `isDeposit` | A deposit line may be reserved while `planned`. Everything else is billable only when `accepted` (Phase 2) or `delivered` when the agreement's `billingTrigger` is `on_delivery`. |
+| `deliveryRevision` | Integer, starts at 0, incremented each time the deliverable moves to `delivered`. Customer sign-off is bound to it. |
+| `deliveredAt`, `acceptedAt`, `acceptedVia`, `acceptanceEvidenceNote` | `acceptedVia` is `customer_link` or `internal`; internal requires the note. |
+| `changeRequestNote` | The customer's latest note. History is in the event log. |
 | `sortOrder` | Display order. |
+
+The agreement carries `billingTrigger`: `on_acceptance` (default) or `on_delivery`. One trigger per
+agreement plus `isDeposit` per line replaces the per-line trigger of revision 1. There is no
+`manual` trigger.
 
 ### AgreementTemplate
 
 | Field | Notes |
 | --- | --- |
 | `name` | Unique per organization. |
-| `termsMarkdown` | Body with placeholders: `{{seller.name}}`, `{{buyer.name}}`, `{{agreement.title}}`, `{{agreement.validUntil}}`, `{{agreement.total}}`, `{{deliverables}}`. |
+| `termsMarkdown` | Body with placeholders `{{seller.name}}`, `{{buyer.name}}`, `{{agreement.title}}`, `{{agreement.validUntil}}`, `{{agreement.total}}`, `{{deliverables}}`. Placeholder values are escaped before Markdown rendering. |
 | `isDefault` | At most one per organization. |
-| `isBuiltIn` | The two shipped templates ("Fixed-scope project", "Monthly retainer") are seeded per organization on first use and can be edited or deleted like any other. |
+
+Two templates ("Fixed-scope project" and "Milestone project") are seeded per organization the first
+time the agreement editor opens, so a later wording change in Quits never silently changes what an
+organization sends. Template editing is Phase 4; Phase 1 only selects.
 
 ### Changes to existing models
 
-- `InvoiceItem.deliverableId` (nullable): back-link so an invoice line knows which deliverable it bills.
-- `Invoice.agreementId` (nullable): the agreement an invoice was raised from. An invoice bills
-  deliverables of exactly one agreement; mixing agreements on one invoice is refused.
-- `RecurringInvoice.agreementId` (nullable): a retainer's billing schedule.
-- `Contact` gains `agreements Agreement[]`.
-- `OrgSettings` gains `agreementNumberPrefix` and `agreementNextNumber`, following the quote columns.
-- Permissions: new resources `agreement` (`read`, `create`, `update`, `send`, `delete`, `cancel`) and
-  `deliverable` (`read`, `update`, `accept`). Admin and member get all; accountant gets `read` only.
+- `InvoiceItem.deliverableId` (nullable, **unique**). This is the one authoritative billing link. A
+  deliverable can be billed by at most one invoice item, enforced by the database.
+- `Invoice.agreementId` (nullable). An invoice bills deliverables of exactly one agreement.
+- `Contact.agreements`, `Quote.agreements`.
+- `OrgSettings.agreementPrefix`, `OrgSettings.agreementNextNum`.
+- Permissions, added to `statement` and the three grant tables in `lib/permissions.ts`:
+
+| Resource | Actions | admin | member | accountant |
+| --- | --- | --- | --- | --- |
+| `agreement` | `create`, `read`, `update`, `send`, `delete`, `accept`, `close`, `manageTemplates` | all | `create`, `read`, `update`, `send`, `accept`, `close` | `read` |
+| `deliverable` | `read`, `update`, `accept` | all | all | `read` |
+
+Members do not delete, matching the invoice and quote policy. `agreement:accept`,
+`agreement:close` and `deliverable:accept` are attestations about the customer or the engagement;
+they are **not exposed as agent tools** in this design (see Agent API).
 
 ## Lifecycle
 
-### Agreement
+### Agreement transition table
 
-```
-draft --send--> sent --customer accepts--> accepted --all deliverables invoiced or cancelled--> completed
-  |               |--customer declines--> declined
-  |               |--validUntil passes--> expired (scheduler task, like overdue)
-  |--delete       |--cancel--> cancelled (from sent or accepted; records reason)
-```
-
-- A draft is fully editable. Sending freezes terms (`termsSnapshot`, `termsHash`), seller and buyer
-  snapshots, and the deliverables' descriptions and prices. The same `lockDocument` and
-  `refuseWhileSending` helpers as quotes apply.
-- After sending, deliverable **prices and descriptions are immutable**. Status, `dueDate`,
-  `deliveredAt` and the change-request note still change. Adding or removing deliverables after
-  sending requires a new version.
-- `accepted` is the only state from which deliverables can be delivered, accepted and invoiced.
-- `completed` is derived, not set by the user: it is reached when every deliverable is `invoiced`
-  or `cancelled`. A retainer never auto-completes; it completes when the freelancer ends it, which
-  also deactivates its recurring invoice.
-- Cancelling an accepted agreement is allowed and recorded with a reason, because real engagements
-  end early. Already-invoiced deliverables stay invoiced; the invoices are untouched. Uninvoiced
-  deliverables become `cancelled`.
-
-### Versioning
-
-A sent or accepted agreement cannot be edited. To change scope, the freelancer **creates a new
-version**: a new draft agreement with `version + 1`, `supersedesAgreementId` set, deliverables copied
-with their current status. On sending the new version, the superseded agreement moves to
-`cancelled` with reason `superseded` and its uninvoiced deliverables are cancelled; invoiced ones
-are left as they are. The customer accepts the new version through the normal flow. The public
-link of the old version shows that it was replaced and links to the new one. This keeps a single
-rule, "accepted documents never change", without inventing a change-order document.
-
-### Deliverable
-
-```
-planned --> in_progress --> delivered --customer accepts--> accepted --invoiced--> invoiced
-                              ^              |--customer requests changes--> changes_requested --+
-                              +--------------------------------------------------------------------+
-any non-invoiced state --cancel--> cancelled
-```
-
-- `planned`, `in_progress` and `delivered` are set by the freelancer (or agent).
-- `accepted` is set by the customer on the public page, or by the freelancer with `acceptedVia:
-  internal` when the customer accepted some other way. The event records which.
-- `changes_requested` returns the deliverable to the freelancer with the note. Delivering again
-  moves it back to `delivered` and keeps the note history in the event log.
-- `invoiced` is set by the invoicing command, never by hand.
-- `upfront` deliverables (a deposit) may be invoiced from `planned`; others only from `accepted`,
-  or from `delivered` when `billingTrigger` is `on_delivery`.
-
-## Commands
-
-All in `apps/oss/src/domain/commands/agreements.ts` and `deliverables.ts`, defined with
-`defineCommand`, with zod inputs in `packages/contracts/src/agreements.ts`. Outward-facing commands
-are marked and go through approval gating for `approval_required` agents.
-
-| Command | Permission | Outward | Notes |
+| From | Command or trigger | To | Conditions and effects |
 | --- | --- | --- | --- |
-| `agreement.createDraft` | `agreement:create` | no | From scratch, from a template, or from an accepted quote (`sourceQuoteId`: copies quote items as deliverables). |
-| `agreement.updateDraft` | `agreement:update` | no | Draft only. |
-| `agreement.deleteDraft` | `agreement:delete` | no | Draft only. |
-| `agreement.send` | `agreement:send` | **yes** | Freezes snapshots, allocates number if missing, queues `email.deliver` via document delivery. |
-| `agreement.resend` | `agreement:send` | **yes** | Same link, new email. |
-| `agreement.createVersion` | `agreement:create` | no | See versioning. |
-| `agreement.cancel` | `agreement:cancel` | no | Reason required. |
-| `agreement.recordAcceptance` | `agreement:update` | no | Internal acceptance when the customer accepted out of band. Requires `acceptedByName`. Recorded as `acceptanceMethod: internal`. |
-| `agreement.activateRetainer` | `agreement:update` | **yes** | Retainer only. Creates and activates a `RecurringInvoice` from the deliverables. Outward because it will send invoices. |
-| `deliverable.update` | `deliverable:update` | no | Status transitions and dates. Description and price only while draft. |
-| `deliverable.accept` | `deliverable:accept` | no | Internal acceptance with `acceptedVia: internal`. |
-| `deliverable.cancel` | `deliverable:update` | no | |
-| `invoice.createFromDeliverables` | `invoice:create` | no | Takes `agreementId` and `deliverableIds`. Validates each is billable (see billing trigger). Creates an invoice draft with one item per deliverable, sets `deliverableId` and `agreementId`, marks deliverables `invoiced` only when the invoice is **sent** (see below). |
+| draft | `updateDraft` | draft | Any field. Deliverables may be added, edited, removed. At least one deliverable required to send. |
+| draft | `deleteDraft` | (gone) | |
+| draft | `send` | draft, then sent | Refreshes snapshots, builds `acceptedSnapshot` and its hash, allocates number, queues `agreement.send` delivery. Becomes `sent` when the delivery settles as delivered or unconfirmed (document-delivery completion, same as quotes). A rejected delivery reopens the draft. |
+| draft | `issue` (send without email) | sent | Same freeze, no email. Marks the link issued so it can be shared by hand. Allowed for users; for agents it is outward-facing. |
+| sent | customer accepts (public) | accepted | Inside a transaction: lock the agreement, recheck `status = sent`, key version, and `validUntil`. Writes the acceptance record. Emits `agreement.accepted`. Queues notification emails (see Email). Idempotent: a repeat with the same key returns the existing acceptance. |
+| sent | customer declines (public) | declined | Same locking and rechecks. |
+| sent | `recordAcceptance` | accepted | Internal attestation, human-only. Requires `acceptanceEvidenceNote`. Same rechecks as the public path. Rotates the public link so the stale decision link cannot be used afterwards. |
+| sent | `recall` | draft | Only while unaccepted. Locks, rechecks `sent`, rotates `publicAccessKeyVersion`, clears the frozen snapshot. The previous send is kept in the event log. The old link shows "This agreement was withdrawn". |
+| sent | scheduler `expire` task | expired | Conditional update `status = sent AND validUntil < now()` per organization timezone, following `features/overdue.ts`. Emits only on actual change. |
+| sent, expired, declined | `send` or `resend` with a new `validUntil` | sent | `resend` from `sent` reuses the snapshot and rotates the link. From `expired` or `declined` the command is `send` again: it requires `validUntil` in the future, rebuilds the snapshot, rotates the link. |
+| accepted | `close` with `disposition: completed` | completed | Refused while any deliverable is `reserved` (list the linked drafts in the error). Uninvoiced, uncancelled deliverables are refused too, unless `cancelRemaining: true`, which cancels them with the close reason. |
+| sent, accepted | `close` with `disposition: cancelled` | cancelled | Reason required. Refused while any deliverable is `reserved`. Remaining non-invoiced deliverables are cancelled. Invoiced ones and their invoices are untouched. From `sent`, rotates the link. |
+| draft, sent, accepted | `createAddendum` | (new draft) | Creates a new agreement with `parentAgreementId`, same contact, empty deliverables. The parent is unchanged. |
 
-**Invoiced timing.** A deliverable is marked `invoiced` when the invoice that bills it is sent, not
-when the draft is created, so deleting an unsent draft releases the deliverables. The invoice `send`
-decider gains one rule: on send, every linked deliverable moves to `invoiced`. The invoice `delete`
-(draft) command clears `invoiceItemId` on linked deliverables. A credit note against an invoice does
-not change deliverable status; the money side is handled by the credit note as today.
+`completed` is never derived. Progress (delivered, accepted, invoiced counts) is computed for
+display from the deliverables.
 
-### Public commands (customer, via signed link)
+**Lock order** for every command touching more than one aggregate: agreement, then its
+deliverables, then invoices, each with `lockDocument(..., "update")`. Invoice commands that touch
+deliverables lock the agreement first too. This prevents the close-versus-issue race.
 
-Mirror `applyPublicQuoteDecision`, with their own module under `apps/oss/src/lib/agreements/`:
+### Deliverable transition table
 
-- `agreement.publicAccept`: requires `acceptedByName` and an explicit "I accept these terms"
-  confirmation. Stores the acceptance record and `termsHash`. Refuses if the link's
-  `publicAccessKeyVersion` is stale, the agreement is not `sent`, or `validUntil` has passed.
-  Emits `agreement.accepted` and queues a confirmation email to both parties with the PDF attached.
-- `agreement.publicDecline`: optional reason.
-- `deliverable.publicAccept` and `deliverable.publicRequestChanges`: only on `accepted` agreements,
-  only for `delivered` deliverables. Emits events; queues a notification email to the freelancer.
+| From | Command | To | Conditions |
+| --- | --- | --- | --- |
+| planned | `deliverable.update` | in_progress | Agreement `accepted`. |
+| planned, in_progress, changes_requested | `deliverable.update` | delivered | Agreement `accepted`. Increments `deliveryRevision`, sets `deliveredAt`, clears `changeRequestNote`. Queues a sign-off notification (Phase 3). |
+| delivered | customer accepts (public, Phase 3) | accepted | Submission carries `deliveryRevision`; refused if it differs from the current one or the agreement is not `accepted`. Locks the agreement and deliverable. |
+| delivered | customer requests changes (public, Phase 3) | changes_requested | Same binding. Note required. |
+| delivered | `deliverable.accept` | accepted | Internal, human-only, note required. |
+| delivered, accepted | `deliverable.update` | in_progress | The freelancer reopens work. Not allowed when `billingStatus` is `invoiced`. |
+| any except cancelled | `deliverable.cancel` | cancelled | Refused when `billingStatus` is `reserved` or `invoiced`. |
+| any | `deliverable.update` | (same) | `expectedDate` may change at any time; `title`, `description`, prices and `agreedDate` only while the agreement is a draft. |
 
-Public commands run as the `system` actor with reason `public_link`, the same as the quote decision
-path, so they bypass role checks but still write events and receipts. They are rate-limited per
-token like the public pay page.
+Billing status moves independently, only through the invoice commands below:
 
-## Public page and PDF
+| From | Trigger | To |
+| --- | --- | --- |
+| unbilled | `invoice.createFromDeliverables`, or `invoice.update` adding the line to a draft | reserved |
+| reserved | linked draft deleted, or `invoice.update` removing the line | unbilled |
+| reserved | linked invoice **issued** | invoiced |
 
-- Route `/a/$token`, built like `/q/$token`: signed token, key version check, server-rendered.
-- Shows title, summary, deliverables with amounts and due dates, totals, rendered terms, validity.
-- Before acceptance: name field, checkbox, Accept and Decline. After: the acceptance record and,
-  per deliverable, Accept or Request changes for `delivered` items.
-- PDF: a new `agreement-pdf.tsx` alongside `invoice-pdf.tsx` and `credit-note-pdf.tsx`. Includes the
-  acceptance block (name, email, timestamp, method, terms hash) when accepted. The PDF is the
-  artifact both parties keep.
+A deliverable is **billable** (may move to `reserved`) when `billingStatus = unbilled` and the
+agreement is `accepted` and one of: `isDeposit`; `status = accepted`; `status = delivered` and the
+agreement's `billingTrigger = on_delivery`. A credit note against the invoice is a financial
+correction and does not change `billingStatus`.
 
-## Email
+## Invoice integration
 
-Three new email compositions in `apps/oss/src/lib/emails/`: agreement sent, agreement accepted
-(to both parties), deliverable status (to the freelancer). All go through document delivery and the
-existing `email.deliver` job, so delivery outcomes behave exactly as for invoices.
+### One issuance operation
+
+Today an invoice becomes `sent` in three places: the delivery completion for `delivered`, the
+completion for `unconfirmed`, and the send-without-email path. Phase 2 extracts one
+`issueInvoice(tx, invoice, at)` used by all three. Inside the same transaction it sets
+`deliverable.billingStatus = invoiced` for every linked item and emits `deliverable.invoiced`
+events. A rejected delivery leaves the reservation in place, because the draft still exists.
+
+### Reservation
+
+`invoice.createFromDeliverables({ agreementId, deliverableIds, issueDate?, dueDate? })`:
+
+1. Rejects duplicate ids in the input.
+2. Locks the agreement, then each deliverable in id order.
+3. Checks every deliverable belongs to this agreement and organization and is billable.
+4. Creates the invoice draft with `agreementId`, `contactId` from the agreement, currency, tax
+   settings and `dueInDays` from the agreement, one item per deliverable with `deliverableId` set
+   and the frozen line values copied (not repriced), and sets each deliverable to `reserved`.
+
+The unique index on `InvoiceItem.deliverableId` is the last line of defence against two concurrent
+requests with different client request ids.
+
+### Edits of linked invoices
+
+The current `invoice.update` replaces every item. For an invoice with `agreementId`:
+
+- `contactId`, `currency`, `taxRegime` and `pricesIncludeTax` are immutable.
+- Items with `deliverableId` keep their identity and their commercial fields (description,
+  quantity, prices, tax). Omitting one from the update removes it and releases the deliverable to
+  `unbilled` in the same transaction.
+- Items without `deliverableId` (extra expenses, discounts) may be added, edited and removed freely.
+- Adding a deliverable to an existing draft goes through `invoice.addDeliverables`, which applies
+  the same reservation rules.
+
+`invoice.deleteDraft` releases every linked deliverable. Both run under the lock order above.
+
+## Public links
+
+### Agreement decision link
+
+Route `/a/$token`, built like `/q/$token`: signed token carrying agreement id and
+`publicAccessKeyVersion`, server-rendered. Shows title, summary, deliverables with agreed dates,
+totals, rendered terms and validity. Before acceptance: a name field, a checkbox "I accept this
+agreement on behalf of {buyer}", Accept and Decline. After acceptance the page is read-only and
+shows the acceptance record. It never shows sign-off controls: decision authority after acceptance
+comes only from per-delivery links.
+
+Rotation on recall, resend, internal acceptance and cancellation invalidates earlier links.
+Tokens also carry `validUntil` as `exp`, and the server rechecks the column. A leaked link grants
+nothing after rotation or expiry, and nothing beyond reading before that.
+
+### Sign-off link (Phase 3)
+
+When a deliverable moves to `delivered`, the notification email carries a separate signed token
+with agreement id, deliverable id, `deliveryRevision` and the agreement's current key version.
+Route `/a/$token/sign-off`. Accept and Request changes submit that revision. A later delivery
+invalidates the earlier link by revision; a rotation invalidates it by key version.
+
+### Rate limiting
+
+Neither quote nor pay links are rate-limited today. This design adds a `PublicLinkAttempt`
+table keyed by token hash with a sliding count; more than 10 decision submissions in an hour
+returns a retry-later response. Reads are not limited. The same guard is wired to the quote
+decision path, as a small shared improvement.
+
+### Public DTO
+
+An explicit allowlist in `lib/agreements/public.ts`: never `notes`, never acceptance IP or user
+agent, never internal evidence notes. The quote serializer exposes `notes`; it is not copied.
+
+### Markdown
+
+Terms are rendered with a restricted renderer: raw HTML disabled, only `http`, `https` and
+`mailto` link protocols, no images, output sanitized, placeholder values escaped before rendering.
+The same renderer feeds the public page, the PDF and the email preview. Tests include a corpus of
+hostile input for all three.
+
+## Approval and attestation
+
+Outward-facing commands, which queue for approval in `approval_required` mode: `agreement.send`,
+`agreement.issue`, `agreement.resend`. Their `approvalContext` has `version = acceptedSnapshotHash
++ ":" + recipient email`, computed from the refreshed snapshots under the agreement lock, and
+`details` with customer, total, validity, deliverable count and a link to the rendered PDF so the
+approver reviews the actual document, not a digest. Approval execution recomputes the hash and
+refuses on mismatch, as `execute.ts` does today.
+
+Human-only commands, not registered as agent tools: `agreement.recordAcceptance`,
+`agreement.close`, `deliverable.accept`, `deliverable.cancel`, `agreement.recall`. They assert
+things about the customer or end an engagement, which is not drafting. An agent can read their
+outcome and draft around it.
+
+Public (customer) commands run as the `system` actor with reason `customer_link`, like
+`applyPublicQuoteDecision`, and are excluded from the user and MCP registries.
+
+## PDF and email
+
+- `agreement-pdf.tsx` alongside the invoice and credit note PDFs, rendered from `acceptedSnapshot`
+  once it exists, including the acceptance block (name, recipient email, timestamp, method, hash).
+- The PDF is fetched through an authorized route: signed public link for the customer, session for
+  the freelancer. Emails link to it; the outbox is not extended with attachments.
+- Emails: agreement sent (document delivery, settles the `sent` transition); agreement accepted
+  (to the freelancer and to the customer); deliverable delivered with sign-off link (customer);
+  sign-off received (freelancer). The last three are **notifications**, not document deliveries.
+  They run as a new `notification.deliver` job with their own idempotency key
+  (`agreement-<id>-accepted-<recipient>`), their own completion record, and no use of the
+  document's `lastEmailAttempt*` marker. A failed notification never changes agreement state.
+  Managed sender resolution is reused from the invoice email module.
 
 ## Agent API
 
-New MCP tools in `apps/oss/src/domain/agent-tools/tools/agreements.ts`, following `define.ts`:
+Tools in `apps/oss/src/domain/agent-tools/tools/agreements.ts`:
 
-- Reads: `agreement.list` (filter by status, contact), `agreement.get` (with deliverables and
-  acceptance record), `deliverable.list` (filter by status, due before), `agreementTemplate.list`.
-- Commands: one tool per command above. `agreement.send`, `agreement.resend` and
-  `agreement.activateRetainer` are described as outward-facing and queue approval requests in
-  `approval_required` mode. The review context for an approval shows the customer, total, validity,
-  and the terms hash, so the approver sees what will be sent.
+- Reads: `agreement.list` (status, contact, parent), `agreement.get` (with deliverables, billing
+  status, acceptance record, progress), `deliverable.list` (status, billing status, expected
+  before), `agreementTemplate.list`.
+- Commands: `agreement.createDraft`, `agreement.updateDraft`, `agreement.deleteDraft`,
+  `agreement.send`, `agreement.issue`, `agreement.resend`, `agreement.createAddendum`,
+  `deliverable.update`, `invoice.createFromDeliverables`, `invoice.addDeliverables`.
 
-Scopes: `agreement:*` and `deliverable:*` join the scope list and the key presets. "Drafting
-assistant" gets `agreement:create`, `agreement:update`, `deliverable:read`, `deliverable:update`;
-sends wait for approval as today.
+Scopes are the exact permission strings; there are no wildcards. Preset changes:
+
+- Read-only bookkeeper: `agreement:read`, `deliverable:read`.
+- Drafting assistant: the above plus `agreement:create`, `agreement:update`, `agreement:send`
+  (queued for approval), `deliverable:update`, and `invoice:create` as today.
+- Full access: every scope the creator holds; attestation commands remain unavailable to agents
+  regardless of scope.
 
 ## OSS and cloud boundary
 
-Everything above is OSS: self-hosters get the whole feature. Cloud is involved in exactly two ways,
-both through the existing runtime extension interface:
+Everything in this design is OSS. No capability key, extension point or plan limit is added. If a
+hosted plan later meters agreements, that is an injected service with an OSS no-op, like invoice
+limits, in its own change. Provider signatures are deferred (below). Managed email domains apply to
+the new emails with no new work.
 
-1. **Signature capability.** New capability key `agreementSignature` with `method:
-   "click_to_accept" | "provider"` and `providerLabel`. OSS default is `click_to_accept`. A hosted
-   extension may set `provider` and register a signature adapter (`startSignature(agreement)`,
-   `handleCallback(payload)`) that writes `acceptanceMethod: provider:<id>` and the provider's
-   evidence id. The adapter interface lives in OSS; no provider code does. This is designed now so
-   the public page can branch on it, but no provider integration is part of this plan.
-2. **Plan limits.** If the hosted plan meters agreements, it does so through the existing capability
-   patching, as for AI drafting. Nothing in OSS checks a plan.
+## Deferred work
 
-Managed email domains already apply to the new emails with no new work.
+Each of these needs its own design before implementation. They are listed so the schema above does
+not paint them into a corner.
+
+- **Retainers.** Needs a schedule-ownership contract: snapshot of cadence, period price, first
+  billing date and payment terms the customer accepted; provenance on generated invoices; guards
+  on every recurring entry point (edit, resume, run-now, queued auto-send) against a cancelled or
+  unaccepted agreement; and defined behaviour for generated drafts when the retainer ends. The
+  "Monthly retainer" template is not seeded until then.
+- **Amendments of accepted agreements.** Revision 1 superseded on send, which destroyed the
+  current engagement before its replacement was accepted, and copied deliverables without a stable
+  billing identity. Until designed, scope changes are an addendum (additive, separate agreement)
+  or close-and-recreate.
+- **Provider-backed signatures.** A future adapter submits verified evidence through a domain
+  command; it never writes acceptance columns. The `acceptanceMethod` column leaves room for it.
+- **Plan limits for the hosted product.**
 
 ## Phases
 
-Each phase is independently shippable and leaves the app fully working.
-
 ### Phase 1: Agreements with acceptance
 
-Schema for `Agreement`, `Deliverable`, `AgreementTemplate`. Numbering, pricing, snapshots. Commands
-`createDraft`, `updateDraft`, `deleteDraft`, `send`, `resend`, `cancel`, `recordAcceptance`. Public
-page with accept and decline. PDF. Emails for sent and accepted. UI: list, editor, detail with
-activity feed, templates in settings. Two seeded templates. Agent tools for all of the above.
-Deliverables in this phase are scope lines only: `planned` and `cancelled`, no customer sign-off.
+Schema for `Agreement`, `Deliverable`, `AgreementTemplate`, counters and permissions. Numbering,
+pricing adapter, snapshots, canonical snapshot and hash. Commands: `createDraft`, `updateDraft`,
+`deleteDraft`, `send`, `issue`, `resend`, `recall`, `recordAcceptance`, `close`, `createAddendum`,
+`deliverable.update` (fulfillment statuses and dates), `deliverable.accept` (internal),
+`deliverable.cancel`. Expiry scheduler task. Public decision link with accept and decline, DTO
+allowlist, restricted Markdown, rate limiting. PDF. Agreement-sent delivery and accepted
+notifications. UI: list, editor with template selection, detail with deliverables, progress and
+activity, approvals entry. Agent tools for the drafting commands and reads. Contract schemas in
+`packages/contracts/src/agreements.ts`, added to the package exports.
 
-Verification: unit tests for deciders (every transition in both lifecycles), tRPC router tests,
-public-session tests mirroring the quote ones, a Playwright flow: create, send, open public link,
-accept, see the acceptance record and PDF.
+No billing in this phase: `billingStatus` exists and stays `unbilled`.
+
+Verification: decider tests for every row of both transition tables including refusals; concurrent
+accept-versus-recall and accept-versus-expire tests under the lock; public-session tests mirroring
+the quote ones plus key rotation and expiry; hostile Markdown corpus for page, PDF and email;
+contracts package export check; Playwright: create, send, open link, accept, see record and PDF;
+recall and see the withdrawn page.
 
 ### Phase 2: Invoicing from deliverables
 
-`InvoiceItem.deliverableId`, `Invoice.agreementId`, `invoice.createFromDeliverables`, the send-time
-`invoiced` transition, draft-delete release. Deliverable statuses `in_progress`, `delivered`,
-`accepted` with internal acceptance. UI: "Invoice" action on the agreement detail that preselects
-billable deliverables. Dashboard tile: deliverables due this week and accepted but not invoiced.
+`InvoiceItem.deliverableId` (unique), `Invoice.agreementId`, `issueInvoice` extraction,
+`invoice.createFromDeliverables`, `invoice.addDeliverables`, linked-invoice edit rules, draft-delete
+release, close-while-reserved refusal. UI: "Invoice" action preselecting billable deliverables;
+billing status on the detail page.
 
-Verification: decider tests for billability per trigger, an integration test that sending the
-invoice marks deliverables invoiced and deleting the draft releases them, Playwright: accept
-deliverable internally, invoice it, send, see status.
+Verification: reservation under concurrency (two requests, different client ids, one wins);
+duplicate ids rejected; edit of a linked draft cannot change contact or linked line values and
+releases omitted lines; delete releases; issuance through delivered, unconfirmed and no-email paths
+all mark invoiced; rejected delivery keeps the reservation; close refused while reserved; credit
+note leaves billing status alone.
 
 ### Phase 3: Customer sign-off
 
-`deliverable.publicAccept`, `deliverable.publicRequestChanges`, `changes_requested` state, the
-notification email, the public page's deliverable section. Agent tools surface
-`changes_requested` with the note so an agent can draft the response.
+`deliveryRevision` binding, sign-off link and route, `deliverable.publicAccept`,
+`deliverable.publicRequestChanges`, delivered and sign-off-received notifications. Agent tools
+surface `changes_requested` with the note.
 
-### Phase 4: Versions and quote conversion
+Verification: stale revision refused; stale key version refused; sign-off on a non-accepted
+agreement refused; rate limit; idempotent resubmission.
 
-`agreement.createVersion`, supersession rules, the "replaced by" public page state. `createDraft`
-from an accepted quote. Quote detail gains "Create agreement".
+### Phase 4: Quote conversion and template editing
 
-### Phase 5: Retainers
-
-`pricingModel: retainer`, `startDate` and `endDate`, `agreement.activateRetainer` creating a
-`RecurringInvoice`, ending a retainer deactivates it. Retainer deliverables describe the monthly
-scope and are not individually invoiced; the recurring invoice's items are generated from them.
+`createDraft` from an accepted quote copies quote items as deliverables. Policy: refused when the
+quote already has invoices; once a quote has an agreement, `quote.convertToInvoice` is refused with
+a message pointing at the agreement. Template create, update, delete under
+`agreement:manageTemplates` in settings.
 
 ## Risks and how the design handles them
 
-- **Legal exposure from templates.** Templates are neutral, carry a visible notice, are editable,
-  and are seeded per organization rather than referenced centrally, so a later wording change never
-  silently changes what an organization is sending. The `termsHash` on acceptance proves what was
-  accepted.
-- **Acceptance evidence strength.** Click-to-accept with name, email, IP, user agent, timestamp and
-  terms hash is adequate for most freelance work and matches how quotes are accepted today. Stronger
-  evidence is the hosted signature capability.
-- **Double billing.** A deliverable maps to at most one invoice item, enforced by the unique
-  `invoiceItemId` and by the billability check in `createFromDeliverables`. Marking `invoiced` at
-  send time, not draft time, prevents stranded deliverables.
-- **Drift between agreement and invoice totals.** Invoice items are snapshots of deliverables, like
-  quote items become invoice items today. Totals are recomputed by the same pricing module. The
-  agreement does not try to track "amount invoiced"; the invoice list filtered by `agreementId` is
-  the source.
-- **Scope creep.** The non-goals list is part of the design. A request that fails the
-  agreement-to-money test is answered with "that is a different product" rather than built.
-- **Public token abuse.** Same signing, key rotation, expiry and rate limiting as quotes and pay
-  links. Deliverable sign-off is only possible on `accepted` agreements, so a leaked pre-acceptance
-  link cannot sign off work.
+- **Legal exposure from templates.** Neutral, editable, seeded per organization, with a visible
+  notice. The canonical snapshot hash proves what was accepted.
+- **Double billing.** One authoritative unique link, reservation at draft time under locks, release
+  on delete or line removal, issuance in one operation. Quote conversion is policed so a quote
+  cannot be billed twice through two paths.
+- **Engagement destroyed by a race.** Explicit close, refused while anything is reserved, under a
+  fixed lock order; no automatic supersession.
+- **Public token abuse.** Rotation on every state change that should invalidate a link, token
+  expiry, per-token rate limiting, read-only after acceptance, per-revision sign-off links.
+- **Scope creep.** The non-goals and deferred lists are part of the design.
 
 ## Open questions for review
 
-1. Should `completed` really be derived, or should the freelancer close an agreement explicitly even
-   with uninvoiced deliverables? The design says derived plus explicit `cancel` with reason; review
-   whether that is enough.
-2. Is `billingTrigger` per deliverable over-engineered for Phase 2? The alternative is one trigger
-   per agreement and a separate `isDeposit` flag.
-3. Does versioning by supersession cover change requests well enough, or will users expect to edit a
-   sent draft before the customer has accepted it? A possible middle ground: allow `recall` of a
-   `sent`, unaccepted agreement back to `draft`, invalidating the public link.
-4. Should deliverable acceptance by the customer require the same name-and-checkbox ceremony as
-   agreement acceptance, or is a single click enough once the agreement is accepted?
+1. Is `agreement.issue` (freeze without email) worth having in Phase 1, or should a user who wants
+   to share the link by hand just send to themselves? It exists because customers often get the
+   link through a channel Quits does not control.
+2. Is one `billingTrigger` per agreement plus `isDeposit` the right simplification, or will users
+   need to mix acceptance-billed and delivery-billed lines in one agreement?
+3. The expiry task and the public accept path both check `validUntil`. Is end-of-day in the
+   agreement timezone the right boundary, or should `validUntil` be a timestamp?
