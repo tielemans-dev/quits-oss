@@ -21,6 +21,24 @@ export function normalizeCountryCode(value: string | null | undefined): string |
   return /^[A-Z]{2}$/.test(code) ? code : null
 }
 
+// Region codes Intl knows that are not countries: groupings, "Unknown Region" and the
+// user-assigned ranges (Kosovo's XK is the one user-assigned code in general use).
+const NON_COUNTRY_REGIONS = /^(EU|EZ|UN|ZZ|Q[M-Z]|X[A-JL-Z])$/
+let regionNames: Intl.DisplayNames | null = null
+
+/** The English name of an ISO 3166 country, or null when the code names no country. */
+export function countryLabel(value: string | null | undefined): string | null {
+  const code = normalizeCountryCode(value)
+  if (!code || NON_COUNTRY_REGIONS.test(code)) return null
+  regionNames ??= new Intl.DisplayNames(["en"], { type: "region", fallback: "none" })
+  return byCode.get(code)?.label ?? regionNames.of(code) ?? null
+}
+
+/** Whether the value is an ISO 3166 country code. Unsupported countries count. */
+export function isCountryCode(value: string | null | undefined): boolean {
+  return countryLabel(value) !== null
+}
+
 export function findCountryModule(countryCode: string | null | undefined): CountryModule | null {
   const code = normalizeCountryCode(countryCode)
   return code ? (byCode.get(code) ?? null) : null

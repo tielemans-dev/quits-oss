@@ -8,6 +8,7 @@ import {
 } from "../../lib/validation/settings-form"
 import {
   COUNTRY_OPTIONS,
+  countryOptionsIncluding,
   LOCALE_OPTIONS,
   TAX_REGIMES,
 } from "../../lib/compliance/countries"
@@ -755,7 +756,7 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.country.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {COUNTRY_OPTIONS.map((country) => (
+                    {countryOptionsIncluding(settings?.countryCode).map((country) => (
                       <SelectItem key={country.code} value={country.code}>
                         {countryDisplayNames.of(country.code) ?? country.label}
                       </SelectItem>

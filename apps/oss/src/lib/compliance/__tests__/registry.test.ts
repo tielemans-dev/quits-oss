@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
+import { countryOptionsIncluding } from "../countries"
 import {
+  countryLabel,
   findCountryInText,
+  isCountryCode,
   isNationalRegistrationScheme,
   isVatNumberScheme,
   resolveCountryProfile,
@@ -29,6 +32,25 @@ describe("resolveCountryProfile", () => {
     }
     expect(resolveCountryProfile(null).countryCode).toBeNull()
     expect(resolveCountryProfile("Denmark").countryCode).toBeNull()
+  })
+})
+
+describe("country codes", () => {
+  it("accepts every ISO country, supported or not, and nothing else", () => {
+    expect(countryLabel("dk")).toBe("Denmark")
+    expect(countryLabel("GB")).toBe("United Kingdom")
+    expect(isCountryCode("XK")).toBe(true)
+    for (const code of ["ZZ", "EU", "UN", "QO", "XX", "Denmark", "", null]) {
+      expect(isCountryCode(code)).toBe(false)
+    }
+  })
+
+  it("keeps an unsupported current country among the options", () => {
+    const supported = countryOptionsIncluding(null).map((option) => option.code)
+    expect(supported).toEqual(["US", "DK", "DE", "FR", "NL"])
+    expect(countryOptionsIncluding("DK").map((option) => option.code)).toEqual(supported)
+    expect(countryOptionsIncluding("gb").at(-1)).toEqual({ code: "GB", label: "United Kingdom" })
+    expect(countryOptionsIncluding("ZZ").map((option) => option.code)).toEqual(supported)
   })
 })
 

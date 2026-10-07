@@ -20,6 +20,13 @@ describe("settingsUpdateSchema", () => {
     expect(parsed.aiOpenRouterModel).toBe("openai/gpt-4o-mini")
   })
 
+  it("accepts countries without a module so their organizations can still save settings", () => {
+    expect(settingsUpdateSchema.parse({ countryCode: "gb" }).countryCode).toBe("GB")
+    for (const countryCode of ["ZZ", "EU", "XX"]) {
+      expect(() => settingsUpdateSchema.parse({ countryCode })).toThrow()
+    }
+  })
+
   it("rejects unsupported tax regime", () => {
     expect(() =>
       settingsUpdateSchema.parse({

@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { isCountryCode } from "../compliance/registry"
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const currencyRegex = /^[A-Z]{3}$/
@@ -22,7 +23,12 @@ export const setupInitializeSchema = z.object({
   }),
   locale: z.object({
     locale: z.string().trim().min(2).max(16),
-    countryCode: z.string().trim().length(2).transform((value) => value.toUpperCase()),
+    countryCode: z
+      .string()
+      .trim()
+      .length(2)
+      .transform((value) => value.toUpperCase())
+      .refine(isCountryCode, "Unknown country"),
     timezone: z.string().trim().min(1).max(120),
     currency: z.string().trim().regex(currencyRegex),
   }),

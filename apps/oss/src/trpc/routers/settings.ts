@@ -18,7 +18,8 @@ import { encryptSecret } from "../../lib/secrets"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
-import { COUNTRY_OPTIONS, LOCALE_OPTIONS } from "../../lib/compliance/countries"
+import { LOCALE_OPTIONS } from "../../lib/compliance/countries"
+import { isCountryCode } from "../../lib/compliance/registry"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import {
   normalizeCountryCode,
@@ -37,7 +38,6 @@ const companyLogoSchema = z
     "Company logo must be an image URL or uploaded image data"
   )
 
-const supportedCountryCodes = new Set(COUNTRY_OPTIONS.map((country) => country.code))
 const supportedLocales = new Set(LOCALE_OPTIONS)
 const configureDocumentSendingDomainSchema = z.object({
   domain: z.string().trim().min(1).max(255),
@@ -80,7 +80,7 @@ export const settingsUpdateSchema = z.object({
     .trim()
     .length(2)
     .transform((value) => value.toUpperCase())
-    .refine((value) => supportedCountryCodes.has(value), "Unsupported country")
+    .refine(isCountryCode, "Unknown country")
     .optional(),
   locale: z
     .string()
