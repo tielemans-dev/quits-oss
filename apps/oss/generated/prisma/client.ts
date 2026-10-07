@@ -203,3 +203,13 @@ export type AgreementTemplate = Prisma.AgreementTemplateModel
  * 
  */
 export type PublicLinkAttempt = Prisma.PublicLinkAttemptModel
+/**
+ * Model EventConsumerCursor
+ * 
+ */
+export type EventConsumerCursor = Prisma.EventConsumerCursorModel
+/**
+ * Model EventConsumerDelivery
+ * 
+ */
+export type EventConsumerDelivery = Prisma.EventConsumerDeliveryModel

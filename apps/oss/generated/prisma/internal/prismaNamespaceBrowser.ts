@@ -82,7 +82,9 @@ export const ModelName = {
   Agreement: 'Agreement',
   Deliverable: 'Deliverable',
   AgreementTemplate: 'AgreementTemplate',
-  PublicLinkAttempt: 'PublicLinkAttempt'
+  PublicLinkAttempt: 'PublicLinkAttempt',
+  EventConsumerCursor: 'EventConsumerCursor',
+  EventConsumerDelivery: 'EventConsumerDelivery'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -577,6 +579,7 @@ export type RecurringInvoiceScalarFieldEnum = (typeof RecurringInvoiceScalarFiel
 
 
 export const DomainEventScalarFieldEnum = {
+  schemaVersion: 'schemaVersion',
   id: 'id',
   organizationId: 'organizationId',
   sequence: 'sequence',
@@ -793,6 +796,37 @@ export const PublicLinkAttemptScalarFieldEnum = {
 } as const
 
 export type PublicLinkAttemptScalarFieldEnum = (typeof PublicLinkAttemptScalarFieldEnum)[keyof typeof PublicLinkAttemptScalarFieldEnum]
+
+
+export const EventConsumerCursorScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  consumerKey: 'consumerKey',
+  acknowledgedSequence: 'acknowledgedSequence',
+  scannedSequence: 'scannedSequence',
+  version: 'version',
+  updatedAt: 'updatedAt'
+} as const
+
+export type EventConsumerCursorScalarFieldEnum = (typeof EventConsumerCursorScalarFieldEnum)[keyof typeof EventConsumerCursorScalarFieldEnum]
+
+
+export const EventConsumerDeliveryScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  consumerKey: 'consumerKey',
+  sequence: 'sequence',
+  status: 'status',
+  claimToken: 'claimToken',
+  leaseUntil: 'leaseUntil',
+  attempts: 'attempts',
+  externalRef: 'externalRef',
+  error: 'error',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type EventConsumerDeliveryScalarFieldEnum = (typeof EventConsumerDeliveryScalarFieldEnum)[keyof typeof EventConsumerDeliveryScalarFieldEnum]
 
 
 export const SortOrder = {

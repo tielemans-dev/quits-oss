@@ -1,0 +1,20 @@
+{
+  "type": "reminders.policy_updated",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/reminders.ts",
+      "typeExpression": "\"reminders.policy_updated\"",
+      "payloadExpression": "policy",
+      "variant": "default",
+      "payload": {
+        "enabled": true,
+        "offsetsDays": [
+          -1,
+          0,
+          7
+        ]
+      }
+    }
+  ]
+}

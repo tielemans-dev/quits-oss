@@ -1,0 +1,53 @@
+{
+  "type": "recurring.auto_send_failed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/recurring.ts",
+      "typeExpression": "\"recurring.auto_send_failed\"",
+      "payloadExpression": "{ invoiceId: input.invoiceId, error: input.error }",
+      "variant": "default",
+      "payload": {
+        "invoiceId": "invoice-1",
+        "error": {
+          "tag": "InvalidState",
+          "message": "Fixture failure",
+          "code": "fixture_failure"
+        }
+      }
+    },
+    {
+      "source": "commands/recurring.ts",
+      "typeExpression": "\"recurring.auto_send_failed\"",
+      "payloadExpression": "{ invoiceId: input.invoiceId, error: input.error }",
+      "variant": "no_optional",
+      "payload": {
+        "invoiceId": "invoice-1",
+        "error": {
+          "tag": "InvalidState",
+          "message": "Fixture failure"
+        }
+      }
+    },
+    {
+      "source": "commands/recurring.ts",
+      "typeExpression": "\"recurring.auto_send_failed\"",
+      "payloadExpression": "{ invoiceId: input.invoiceId, error: input.error }",
+      "variant": "validation_error",
+      "payload": {
+        "invoiceId": "invoice-1",
+        "error": {
+          "tag": "InvalidState",
+          "message": "Fixture failure",
+          "code": "fixture_failure",
+          "issues": [
+            {
+              "path": "items",
+              "message": "Invalid items"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

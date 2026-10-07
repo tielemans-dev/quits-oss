@@ -1,0 +1,33 @@
+{
+  "type": "agreement.accepted",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-lifecycle.ts",
+      "typeExpression": "\"agreement.accepted\"",
+      "payloadExpression": "{\n          method: \"internal\",\n          name: input.acceptedByName,\n          evidenceNote: input.evidenceNote,\n          revision: agreement.offerRevision,\n          hash: agreement.offerSnapshotHash,\n          recipient: agreement.issuedToEmail,\n        }",
+      "variant": "default",
+      "payload": {
+        "method": "internal",
+        "name": "Customer",
+        "evidenceNote": "Written confirmation",
+        "revision": 1,
+        "hash": "hash-1",
+        "recipient": "customer@example.test"
+      }
+    },
+    {
+      "source": "commands/agreement-lifecycle.ts",
+      "typeExpression": "decision.decision === \"accept\" ? \"agreement.accepted\" : \"agreement.declined\"",
+      "payloadExpression": "{\n          revision: payload.offerRevision,\n          hash: agreement.offerSnapshotHash,\n          recipient: agreement.issuedToEmail,\n          method: \"customer_link\",\n          ...(decision.decision === \"accept\"\n            ? { name: decision.acceptedByName }\n            : { reason: decision.reason ?? null }),\n        }",
+      "variant": "default",
+      "payload": {
+        "revision": 1,
+        "hash": "hash-1",
+        "recipient": "customer@example.test",
+        "method": "customer_link",
+        "name": "Customer"
+      }
+    }
+  ]
+}

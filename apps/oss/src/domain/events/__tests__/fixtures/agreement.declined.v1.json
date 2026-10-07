@@ -1,0 +1,19 @@
+{
+  "type": "agreement.declined",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-lifecycle.ts",
+      "typeExpression": "decision.decision === \"accept\" ? \"agreement.accepted\" : \"agreement.declined\"",
+      "payloadExpression": "{\n          revision: payload.offerRevision,\n          hash: agreement.offerSnapshotHash,\n          recipient: agreement.issuedToEmail,\n          method: \"customer_link\",\n          ...(decision.decision === \"accept\"\n            ? { name: decision.acceptedByName }\n            : { reason: decision.reason ?? null }),\n        }",
+      "variant": "decline",
+      "payload": {
+        "revision": 1,
+        "hash": "hash-1",
+        "recipient": "customer@example.test",
+        "method": "customer_link",
+        "reason": "Not needed"
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "type": "recurring.invoice_generated",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/recurring.ts",
+      "typeExpression": "\"recurring.invoice_generated\"",
+      "payloadExpression": "{\n        invoiceId: invoice.id,\n        number: invoice.number,\n        runDate: formatCalendarDate(runDate),\n        autoSend: schedule.autoSend,\n      }",
+      "variant": "default",
+      "payload": {
+        "invoiceId": "document-1",
+        "number": "DOC-0001",
+        "runDate": "2026-01-15",
+        "autoSend": true
+      }
+    }
+  ]
+}

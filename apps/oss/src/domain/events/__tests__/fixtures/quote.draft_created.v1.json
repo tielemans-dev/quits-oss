@@ -1,0 +1,17 @@
+{
+  "type": "quote.draft_created",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/quotes.ts",
+      "typeExpression": "\"quote.draft_created\"",
+      "payloadExpression": "{ number: quote.number, contactId: contact.id, totalGross: priced.totalGross }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "contactId": "document-1",
+        "totalGross": 100
+      }
+    }
+  ]
+}

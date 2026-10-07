@@ -1,0 +1,20 @@
+{
+  "type": "credit_note.issued",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/credit-notes.ts",
+      "typeExpression": "\"credit_note.issued\"",
+      "payloadExpression": "{\n          number,\n          invoiceId: invoice.id,\n          invoiceNumber: invoice.number,\n          mode: input.mode,\n          reason: input.reason,\n          totalGross: built.totalGross,\n        }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "invoiceId": "document-1",
+        "invoiceNumber": "DOC-0001",
+        "mode": "full",
+        "reason": "Correction",
+        "totalGross": 100
+      }
+    }
+  ]
+}

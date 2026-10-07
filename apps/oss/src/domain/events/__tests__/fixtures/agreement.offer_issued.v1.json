@@ -1,0 +1,48 @@
+{
+  "type": "agreement.offer_issued",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "agreements/issuance.ts",
+      "typeExpression": "\"agreement.offer_issued\"",
+      "payloadExpression": "{\n        number,\n        offerRevision: agreement.offerRevision,\n        hash,\n        recipient,\n        method,\n        unchangedRetry: unchanged,\n      }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "offerRevision": 1,
+        "hash": "hash-1",
+        "recipient": "customer@example.test",
+        "method": "email",
+        "unchangedRetry": false
+      }
+    },
+    {
+      "source": "agreements/issuance.ts",
+      "typeExpression": "\"agreement.offer_issued\"",
+      "payloadExpression": "{\n        number,\n        offerRevision: agreement.offerRevision,\n        hash,\n        recipient,\n        method,\n        unchangedRetry: unchanged,\n      }",
+      "variant": "manual_no_recipient",
+      "payload": {
+        "number": "DOC-0001",
+        "offerRevision": 1,
+        "hash": "hash-1",
+        "recipient": null,
+        "method": "manual",
+        "unchangedRetry": false
+      }
+    },
+    {
+      "source": "agreements/issuance.ts",
+      "typeExpression": "\"agreement.offer_issued\"",
+      "payloadExpression": "{\n        number,\n        offerRevision: agreement.offerRevision,\n        hash,\n        recipient,\n        method,\n        unchangedRetry: unchanged,\n      }",
+      "variant": "unchanged_retry",
+      "payload": {
+        "number": "DOC-0001",
+        "offerRevision": 1,
+        "hash": "hash-1",
+        "recipient": "customer@example.test",
+        "method": "email",
+        "unchangedRetry": true
+      }
+    }
+  ]
+}

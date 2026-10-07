@@ -1,0 +1,19 @@
+{
+  "type": "agent_key.created",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "agent-keys.ts",
+      "typeExpression": "\"agent_key.created\"",
+      "payloadExpression": "{ name: created.name, mode: created.mode, scopes }",
+      "variant": "default",
+      "payload": {
+        "name": "Bookkeeper",
+        "mode": "approval_required",
+        "scopes": [
+          "invoice:read"
+        ]
+      }
+    }
+  ]
+}

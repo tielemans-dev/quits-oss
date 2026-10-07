@@ -1,0 +1,18 @@
+{
+  "type": "contact.updated",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/contacts.ts",
+      "typeExpression": "\"contact.updated\"",
+      "payloadExpression": "{ fields: Object.keys(data) }",
+      "variant": "default",
+      "payload": {
+        "fields": [
+          "name",
+          "email"
+        ]
+      }
+    }
+  ]
+}

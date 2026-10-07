@@ -1,0 +1,17 @@
+{
+  "type": "agreement.recipient_changed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-lifecycle.ts",
+      "typeExpression": "\"agreement.recipient_changed\"",
+      "payloadExpression": "{\n            previousRecipient: agreement.issuedToEmail,\n            recipient,\n            offerRevision: agreement.offerRevision,\n          }",
+      "variant": "default",
+      "payload": {
+        "previousRecipient": "customer@example.test",
+        "recipient": "customer@example.test",
+        "offerRevision": 1
+      }
+    }
+  ]
+}

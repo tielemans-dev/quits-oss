@@ -1,0 +1,17 @@
+{
+  "type": "invoice.paid",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/payments.ts",
+      "typeExpression": "\"invoice.paid\"",
+      "payloadExpression": "{\n          number: invoice.number,\n          amountPaid: refreshed.settlement.amountPaid.toFixed(2),\n          currency: invoice.currency,\n        }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "amountPaid": "100.00",
+        "currency": "USD"
+      }
+    }
+  ]
+}

@@ -358,6 +358,23 @@ export type JsonWithAggregatesFilterBase<$PrismaModel = never> = {
   _max?: Prisma.NestedJsonFilter<$PrismaModel>
 }
 
+export type EnumEventConsumerDeliveryStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.EventConsumerDeliveryStatus | Prisma.EnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.EventConsumerDeliveryStatus[] | Prisma.ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.EventConsumerDeliveryStatus[] | Prisma.ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumEventConsumerDeliveryStatusFilter<$PrismaModel> | $Enums.EventConsumerDeliveryStatus
+}
+
+export type EnumEventConsumerDeliveryStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.EventConsumerDeliveryStatus | Prisma.EnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.EventConsumerDeliveryStatus[] | Prisma.ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.EventConsumerDeliveryStatus[] | Prisma.ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumEventConsumerDeliveryStatusWithAggregatesFilter<$PrismaModel> | $Enums.EventConsumerDeliveryStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumEventConsumerDeliveryStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumEventConsumerDeliveryStatusFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -659,6 +676,23 @@ export type NestedJsonFilterBase<$PrismaModel = never> = {
   gt?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   gte?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   not?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel> | Prisma.JsonNullValueFilter
+}
+
+export type NestedEnumEventConsumerDeliveryStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.EventConsumerDeliveryStatus | Prisma.EnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.EventConsumerDeliveryStatus[] | Prisma.ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.EventConsumerDeliveryStatus[] | Prisma.ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumEventConsumerDeliveryStatusFilter<$PrismaModel> | $Enums.EventConsumerDeliveryStatus
+}
+
+export type NestedEnumEventConsumerDeliveryStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.EventConsumerDeliveryStatus | Prisma.EnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.EventConsumerDeliveryStatus[] | Prisma.ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.EventConsumerDeliveryStatus[] | Prisma.ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumEventConsumerDeliveryStatusWithAggregatesFilter<$PrismaModel> | $Enums.EventConsumerDeliveryStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumEventConsumerDeliveryStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumEventConsumerDeliveryStatusFilter<$PrismaModel>
 }
 
 

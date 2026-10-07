@@ -1,0 +1,18 @@
+{
+  "type": "invoice.reminder_failed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/reminders.ts",
+      "typeExpression": "failure.reason === \"unconfirmed\"\n            ? \"invoice.reminder_unconfirmed\"\n            : failure.reason === \"withdrawn\"\n              ? \"invoice.reminder_skipped\"\n              : \"invoice.reminder_failed\"",
+      "payloadExpression": "{\n          number: target.number,\n          reminderId: target.reminderId,\n          reason: failure.reason === \"withdrawn\" ? failure.message : failure.reason,\n          message: failure.message,\n        }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "reminderId": "reminder-1",
+        "reason": "rejected",
+        "message": "Fixture failure"
+      }
+    }
+  ]
+}

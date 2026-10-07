@@ -1,0 +1,39 @@
+{
+  "type": "agreement.sent",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "agreements/issuance.ts",
+      "typeExpression": "\"agreement.sent\"",
+      "payloadExpression": "{ number, recipient, emailSent: false }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": "customer@example.test",
+        "emailSent": false
+      }
+    },
+    {
+      "source": "agreements/issuance.ts",
+      "typeExpression": "\"agreement.sent\"",
+      "payloadExpression": "{ number, recipient, emailSent: false }",
+      "variant": "manual_no_recipient",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": null,
+        "emailSent": false
+      }
+    },
+    {
+      "source": "documents/document-delivery.ts",
+      "typeExpression": "kind === \"creditNote\" ? \"credit_note.sent\" : `${kind}.${deliveredEvent(kind, mode)}`",
+      "payloadExpression": "{\n              number: target.number,\n              recipient: target.recipient,\n              ...(mode === \"send\" ? { emailSent: true } : {}),\n            }",
+      "variant": "agreement/send/delivered",
+      "payload": {
+        "number": "DOC-0001",
+        "recipient": "customer@example.test",
+        "emailSent": true
+      }
+    }
+  ]
+}

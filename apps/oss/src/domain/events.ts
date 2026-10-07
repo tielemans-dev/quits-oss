@@ -1,6 +1,7 @@
 import type { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { actorId, type Actor } from "./actor"
+import { serializeEvent } from "./events/registry"
 import type { PendingEvent } from "./services"
 
 /**
@@ -22,6 +23,8 @@ export async function appendEvents(
     return
   }
 
+  const events = input.events.map((event) => ({ ...event, ...serializeEvent(event.type, event.payload) }))
+
   const { eventSequence: last } = await tx.orgSettings.upsert({
     where: { organizationId: input.organizationId },
     create: { organizationId: input.organizationId, eventSequence: input.events.length },
@@ -31,13 +34,14 @@ export async function appendEvents(
   const first = last - input.events.length + 1
 
   await tx.domainEvent.createMany({
-    data: input.events.map((event, index) => ({
+    data: events.map((event, index) => ({
       organizationId: input.organizationId,
       sequence: first + index,
       aggregateType: event.aggregateType,
       aggregateId: event.aggregateId,
       type: event.type,
-      payload: JSON.parse(JSON.stringify(event.payload)) as Prisma.InputJsonValue,
+      payload: event.payload as Prisma.InputJsonValue,
+      schemaVersion: event.schemaVersion,
       actorKind: input.actor.kind,
       actorId: actorId(input.actor),
       actorLabel: input.actor.label,
@@ -76,6 +80,7 @@ export async function readActivity(query: ActivityQuery) {
       aggregateType: row.aggregateType,
       aggregateId: row.aggregateId,
       type: row.type,
+      schemaVersion: row.schemaVersion,
       payload: row.payload,
       actor: { kind: row.actorKind, id: row.actorId, label: row.actorLabel },
       approvedByUserId: row.approvedByUserId,

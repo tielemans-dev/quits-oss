@@ -1,0 +1,16 @@
+{
+  "type": "agreement.draft_deleted",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreements.ts",
+      "typeExpression": "\"agreement.draft_deleted\"",
+      "payloadExpression": "{ title: agreement.title, number: agreement.number }",
+      "variant": "default",
+      "payload": {
+        "title": "Website",
+        "number": "DOC-0001"
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "type": "approval.rejected",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "approvals.ts",
+      "typeExpression": "\"approval.rejected\"",
+      "payloadExpression": "{ commandType: request.commandType, note: note ?? null }",
+      "variant": "default",
+      "payload": {
+        "commandType": "invoice.send",
+        "note": "Reviewed"
+      }
+    },
+    {
+      "source": "approvals.ts",
+      "typeExpression": "\"approval.rejected\"",
+      "payloadExpression": "{ commandType: request.commandType, note: note ?? null }",
+      "variant": "no_optional",
+      "payload": {
+        "commandType": "invoice.send",
+        "note": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "type": "quote.draft_deleted",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/quotes.ts",
+      "typeExpression": "\"quote.draft_deleted\"",
+      "payloadExpression": "{ number: quote.number }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001"
+      }
+    }
+  ]
+}

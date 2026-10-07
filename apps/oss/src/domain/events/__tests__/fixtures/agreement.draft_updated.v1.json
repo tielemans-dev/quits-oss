@@ -1,0 +1,27 @@
+{
+  "type": "agreement.draft_updated",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreements.ts",
+      "typeExpression": "\"agreement.draft_updated\"",
+      "payloadExpression": "{ fields: Object.keys(input).filter((key) => key !== \"id\") }",
+      "variant": "default",
+      "payload": {
+        "fields": [
+          "checkoutSessionId",
+          "method",
+          "mode",
+          "reason",
+          "acceptedByName",
+          "evidenceNote",
+          "decision",
+          "runDate",
+          "invoiceId",
+          "error",
+          "notes"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "type": "agreement.links_revoked",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-lifecycle.ts",
+      "typeExpression": "\"agreement.links_revoked\"",
+      "payloadExpression": "{ keyVersion: updated.publicAccessKeyVersion }",
+      "variant": "default",
+      "payload": {
+        "keyVersion": 1
+      }
+    }
+  ]
+}

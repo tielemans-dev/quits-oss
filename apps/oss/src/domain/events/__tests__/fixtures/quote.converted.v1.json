@@ -1,0 +1,17 @@
+{
+  "type": "quote.converted",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/quotes.ts",
+      "typeExpression": "\"quote.converted\"",
+      "payloadExpression": "{ number: quote.number, invoiceId: invoice.id, invoiceNumber: invoice.number }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "invoiceId": "document-1",
+        "invoiceNumber": "DOC-0001"
+      }
+    }
+  ]
+}

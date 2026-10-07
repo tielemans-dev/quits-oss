@@ -1,0 +1,27 @@
+{
+  "type": "quote.accepted",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/quotes.ts",
+      "typeExpression": "input.decision === \"accepted\" ? \"quote.accepted\" : \"quote.rejected\"",
+      "payloadExpression": "{\n          number: quote.number,\n          source: \"customer\",\n          ...(next.publicRejectionReason ? { rejectionReason: next.publicRejectionReason } : {}),\n        }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "source": "customer",
+        "rejectionReason": "Not needed"
+      }
+    },
+    {
+      "source": "commands/quotes.ts",
+      "typeExpression": "input.decision === \"accepted\" ? \"quote.accepted\" : \"quote.rejected\"",
+      "payloadExpression": "{\n          number: quote.number,\n          source: \"customer\",\n          ...(next.publicRejectionReason ? { rejectionReason: next.publicRejectionReason } : {}),\n        }",
+      "variant": "no_optional",
+      "payload": {
+        "number": "DOC-0001",
+        "source": "customer"
+      }
+    }
+  ]
+}

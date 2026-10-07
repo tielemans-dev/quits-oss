@@ -1,0 +1,26 @@
+{
+  "type": "approval.approved",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "approvals.ts",
+      "typeExpression": "\"approval.approved\"",
+      "payloadExpression": "{ commandType: request.commandType, note: request.decisionNote ?? input.note ?? null }",
+      "variant": "default",
+      "payload": {
+        "commandType": "invoice.send",
+        "note": "Reviewed"
+      }
+    },
+    {
+      "source": "approvals.ts",
+      "typeExpression": "\"approval.approved\"",
+      "payloadExpression": "{ commandType: request.commandType, note: request.decisionNote ?? input.note ?? null }",
+      "variant": "no_optional",
+      "payload": {
+        "commandType": "invoice.send",
+        "note": null
+      }
+    }
+  ]
+}

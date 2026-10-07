@@ -1,0 +1,17 @@
+{
+  "type": "agreement.draft_created",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreements.ts",
+      "typeExpression": "\"agreement.draft_created\"",
+      "payloadExpression": "{ title: agreement.title, contactId: contact.id, totalGross: priced.totalGross }",
+      "variant": "default",
+      "payload": {
+        "title": "Website",
+        "contactId": "document-1",
+        "totalGross": 100
+      }
+    }
+  ]
+}

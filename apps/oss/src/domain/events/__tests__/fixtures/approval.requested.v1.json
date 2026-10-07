@@ -1,0 +1,16 @@
+{
+  "type": "approval.requested",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "execute.ts",
+      "typeExpression": "\"approval.requested\"",
+      "payloadExpression": "{ commandType: definition.type, summary }",
+      "variant": "default",
+      "payload": {
+        "commandType": "invoice.send",
+        "summary": "Send invoice"
+      }
+    }
+  ]
+}

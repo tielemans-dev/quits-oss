@@ -1,0 +1,16 @@
+{
+  "type": "agreement.cancelled",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/agreement-lifecycle.ts",
+      "typeExpression": "\"agreement.cancelled\"",
+      "payloadExpression": "{ reason: input.reason, previousStatus: agreement.status }",
+      "variant": "default",
+      "payload": {
+        "reason": "Correction",
+        "previousStatus": "sent"
+      }
+    }
+  ]
+}
