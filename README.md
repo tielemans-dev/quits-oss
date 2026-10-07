@@ -199,6 +199,14 @@ This repository is Bun-native. Use `bun install` and `bun run ...` commands for 
 - Completion requires invoice-readiness fields (company identity, locale/timezone/currency, tax regime, numbering defaults).
 - Cloud-only onboarding AI endpoints are available under `onboardingAi.*` and only suggest/apply patches through the same canonical readiness checks.
 
+### Password recovery
+
+Password recovery uses Better Auth's verification records and the installation email sender. Reset links expire after 30 minutes. A successful reset consumes the link and revokes existing sessions. Database admission limits are shared across app instances.
+
+The Node runtime uses the direct connection address for recovery limits and ignores forwarding headers. If no peer address is available, requests share a conservative bucket. Deployments behind a trusted proxy can provide `AuthHooks.getRecoveryClientKey` using metadata that the proxy overwrites. Do not read an arbitrary client-supplied forwarding header.
+
+Long-running Node processes keep reset email delivery in the background. Runtimes with request-scoped lifetimes must provide `AuthHooks.runInBackground` to keep the delivery task alive after the response. Custom auth adapters must provide `createTransactionDatabaseAdapter` bound only to the supplied transaction client.
+
 ## Environment Variables
 
 | Variable | Description | Required |

@@ -55,6 +55,7 @@ export const ModelName = {
   Session: 'Session',
   Account: 'Account',
   Verification: 'Verification',
+  AuthRecoveryRateLimit: 'AuthRecoveryRateLimit',
   Organization: 'Organization',
   Member: 'Member',
   Invitation: 'Invitation',
@@ -162,6 +163,15 @@ export const VerificationScalarFieldEnum = {
 } as const
 
 export type VerificationScalarFieldEnum = (typeof VerificationScalarFieldEnum)[keyof typeof VerificationScalarFieldEnum]
+
+
+export const AuthRecoveryRateLimitScalarFieldEnum = {
+  key: 'key',
+  count: 'count',
+  resetAt: 'resetAt'
+} as const
+
+export type AuthRecoveryRateLimitScalarFieldEnum = (typeof AuthRecoveryRateLimitScalarFieldEnum)[keyof typeof AuthRecoveryRateLimitScalarFieldEnum]
 
 
 export const OrganizationScalarFieldEnum = {

@@ -1,21 +1,31 @@
-import type { BetterAuthOptions } from "better-auth"
+import type { BetterAuthOptions, DBAdapter } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
+import { APIError, createAuthMiddleware, resetPassword } from "better-auth/api"
+import { createInternalAdapter } from "better-auth/db"
+import { runWithAdapter } from "@better-auth/core/context"
 import { organization } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { readBooleanEnv, resolveUrlOrigin } from "@quits/shared/runtimeEnv"
 
-import type { PrismaClient } from "../../../generated/prisma/client"
+import type { Prisma, PrismaClient } from "../../../generated/prisma/client"
 
 import { getConfiguredSocialProviders } from "../auth/providers"
 import { sendInvitationEmail } from "../email"
 import { sendPasswordResetEmail } from "../emails/password-reset-email"
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_RESET_EXPIRES_IN } from "../auth/password-policy"
+import { admitRecoveryRequest, recoveryClientKey } from "../auth/password-recovery"
 import { ac, accountant, admin, member } from "../permissions"
 
 export type AuthHooks = {
+  /** Keep background delivery alive for the runtime's request lifetime (e.g. an execution context). */
+  runInBackground?: (task: Promise<void>) => void
+  /** Return a client key only from authenticated proxy metadata or the direct connection. Never use arbitrary forwarding headers. */
+  getRecoveryClientKey?: (request?: Request) => string | Promise<string>
   /** Hosted runtimes can provide their own transactional email delivery. */
   sendResetPassword?: NonNullable<BetterAuthOptions["emailAndPassword"]>["sendResetPassword"]
   createDatabaseAdapter?: (prisma: PrismaClient) => unknown
+  /** Must bind every auth query to this transaction, without a separate session-read connection. */
+  createTransactionDatabaseAdapter?: (prisma: Prisma.TransactionClient) => unknown
   password?: {
     hash?: (password: string) => Promise<string>
     verify?: (input: { hash: string; password: string }) => Promise<boolean>
@@ -96,8 +106,10 @@ export function buildQuitsAuthOptions(input: {
     rateLimit: {
       enabled: true,
       customRules: {
-        "/request-password-reset": { window: 60, max: 3 },
-        "/reset-password": { window: 60, max: 5 },
+        // Recovery uses atomic database admission below. Do not also use post-response memory
+        // counters keyed by client-controlled forwarding headers.
+        "/request-password-reset": false as const,
+        "/reset-password": false as const,
       },
     },
     database:
@@ -106,16 +118,62 @@ export function buildQuitsAuthOptions(input: {
         provider: "postgresql",
       }),
     ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
-    ...(crossSubDomainEnabled
-      ? {
-          advanced: {
-            crossSubDomainCookies: {
-              enabled: true,
-              ...(crossSubDomainDomain ? { domain: crossSubDomainDomain } : {}),
-            },
-          },
-        }
-      : {}),
+    advanced: {
+      backgroundTasks: {
+        handler(task: Promise<unknown>) {
+          const safeTask = task.then(() => {}).catch(() => {
+            console.error("Auth background task failed")
+          })
+          if (hooks.runInBackground) hooks.runInBackground(safeTask)
+          else void safeTask
+        },
+      },
+      ...(crossSubDomainEnabled ? {
+        crossSubDomainCookies: {
+          enabled: true,
+          ...(crossSubDomainDomain ? { domain: crossSubDomainDomain } : {}),
+        },
+      } : {}),
+    },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/request-password-reset" && ctx.path !== "/reset-password") return
+        const clientKey = hooks.getRecoveryClientKey
+          ? await hooks.getRecoveryClientKey(ctx.request)
+          : recoveryClientKey()
+        await admitRecoveryRequest(input.prisma, ctx.path, clientKey, env.getEnv("BETTER_AUTH_SECRET"))
+        if (ctx.path !== "/reset-password") return
+        const token = ctx.body?.token ?? ctx.query?.token
+        if (typeof token !== "string") return
+        // The native endpoint remains responsible for validation, hashing, token consumption and
+        // session revocation. Lock its existing record until all those writes commit together.
+        const result = await input.prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT id FROM verification WHERE identifier = ${`reset-password:${token}`} FOR UPDATE`
+          const adapterFactory = hooks.createTransactionDatabaseAdapter?.(tx) ?? prismaAdapter(tx, { provider: "postgresql" })
+          const adapter = (adapterFactory as (options: BetterAuthOptions) => DBAdapter)(ctx.context.options)
+          const internalAdapter = createInternalAdapter(adapter, {
+            ...ctx.context,
+            hooks: [ctx.context.options.databaseHooks ?? {}],
+          })
+          return runWithAdapter(adapter, () => resetPassword({
+            ...ctx,
+            method: "POST",
+            body: ctx.body as { token?: string; newPassword: string },
+            context: { ...ctx.context, internalAdapter },
+            asResponse: false,
+            returnHeaders: false,
+            returnStatus: false,
+          }))
+        }, { maxWait: 10_000, timeout: 15_000 }).catch((error: unknown) => {
+          if (error instanceof APIError) throw error
+          console.error("Password reset transaction failed")
+          throw new APIError("INTERNAL_SERVER_ERROR", { message: "Could not reset password. Please try again." })
+        })
+        // Better Auth otherwise copies request headers onto an early hook response, including
+        // Content-Length and cookies. Supply the completed response so it keeps response headers.
+        return ctx.json(result, Response.json(result))
+      }),
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: PASSWORD_MIN_LENGTH,

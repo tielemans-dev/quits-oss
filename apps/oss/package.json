@@ -57,6 +57,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@better-auth/core": "^1.4.19",
     "@hookform/resolvers": "^5.2.2",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@prisma/adapter-pg": "^7.4.1",

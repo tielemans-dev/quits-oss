@@ -72,6 +72,16 @@ model Verification {
   @@map("verification")
 }
 
+// Admission counters for password recovery, shared by every app instance.
+model AuthRecoveryRateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+  @@map("auth_recovery_rate_limit")
+}
+
 // ── Organization Models ──
 
 model Organization {
