@@ -37,8 +37,8 @@ Source-available invoicing for freelancers and small businesses.
 1. Clone the repo:
 
    ```bash
-   git clone https://github.com/yourusername/yaip.git
-   cd yaip
+   git clone https://github.com/tielemans-dev/quits-oss.git
+   cd quits-oss
    ```
 
 2. Install dependencies:
@@ -100,8 +100,8 @@ Source-available invoicing for freelancers and small businesses.
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/yaip.git
-cd yaip
+git clone https://github.com/tielemans-dev/quits-oss.git
+cd quits-oss
 
 # Set your secrets
 echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" > .env
@@ -151,7 +151,7 @@ invoices.
 - This repository is the OSS runtime baseline.
 - This repository now also owns the versioned app artifact consumed by hosted cloud builds.
 - Stable consumer entrypoints are exposed through the versioned `@quits/oss` release artifact export surface.
-- Hosted cloud-specific modules (managed billing/webhooks/infra) belong to a private `yaip-cloud` repository.
+- Hosted cloud-specific modules (managed billing/webhooks/infra) belong to a private `quits-cloud` repository.
 - Ownership and constraints are documented in `docs/architecture/oss-cloud-boundary.md`.
 - Release and cutover checklist is documented in `docs/releases/oss-v1-cutover.md`.
 
