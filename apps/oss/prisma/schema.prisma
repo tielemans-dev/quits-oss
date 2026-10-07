@@ -75,33 +75,35 @@ model Verification {
 // ── Organization Models ──
 
 model Organization {
-  id                   String              @id
-  name                 String
-  slug                 String              @unique
-  logo                 String?
-  metadata             String?
-  createdAt            DateTime
-  stripeCustomerId     String?             @unique
-  stripeSubscriptionId String?
-  stripePriceId        String?
-  subscriptionStatus   String?             @default("free")
-  members              Member[]
-  invitations          Invitation[]
-  contacts             Contact[]
-  catalogItems         CatalogItem[]
-  taxIds               OrganizationTaxId[]
-  invoices             Invoice[]
-  agreements           Agreement[]
-  agreementTemplates   AgreementTemplate[]
-  quotes               Quote[]
-  creditNotes          CreditNote[]
-  payments             Payment[]
-  recurringInvoices    RecurringInvoice[]
-  domainEvents         DomainEvent[]
-  agentKeys            AgentKey[]
-  approvalRequests     ApprovalRequest[]
-  schedulerScans       SchedulerScan[]
-  settings             OrgSettings?
+  id                      String                  @id
+  name                    String
+  slug                    String                  @unique
+  logo                    String?
+  metadata                String?
+  createdAt               DateTime
+  stripeCustomerId        String?                 @unique
+  stripeSubscriptionId    String?
+  stripePriceId           String?
+  subscriptionStatus      String?                 @default("free")
+  members                 Member[]
+  invitations             Invitation[]
+  contacts                Contact[]
+  catalogItems            CatalogItem[]
+  taxIds                  OrganizationTaxId[]
+  invoices                Invoice[]
+  agreements              Agreement[]
+  agreementTemplates      AgreementTemplate[]
+  quotes                  Quote[]
+  creditNotes             CreditNote[]
+  payments                Payment[]
+  recurringInvoices       RecurringInvoice[]
+  domainEvents            DomainEvent[]
+  eventConsumerCursors    EventConsumerCursor[]
+  eventConsumerDeliveries EventConsumerDelivery[]
+  agentKeys               AgentKey[]
+  approvalRequests        ApprovalRequest[]
+  schedulerScans          SchedulerScan[]
+  settings                OrgSettings?
 
   @@map("organization")
 }
@@ -574,6 +576,7 @@ model RecurringInvoice {
 }
 
 model DomainEvent {
+  schemaVersion    Int          @default(1)
   id               String       @id @default(cuid())
   organizationId   String
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -816,4 +819,46 @@ model PublicLinkAttempt {
   @@index([documentKind, documentId, scope, keyVersion, targetId, revision, createdAt])
   @@index([createdAt])
   @@map("public_link_attempt")
+}
+
+enum EventConsumerDeliveryStatus {
+  pending
+  claimed
+  done
+  failed
+  skipped
+}
+
+model EventConsumerCursor {
+  id                   String       @id @default(cuid())
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  consumerKey          String
+  acknowledgedSequence Int          @default(0)
+  scannedSequence      Int          @default(0)
+  version              Int          @default(0)
+  updatedAt            DateTime     @updatedAt
+
+  @@unique([organizationId, consumerKey])
+  @@map("event_consumer_cursor")
+}
+
+model EventConsumerDelivery {
+  id             String                      @id @default(cuid())
+  organizationId String
+  organization   Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  consumerKey    String
+  sequence       Int
+  status         EventConsumerDeliveryStatus @default(pending)
+  claimToken     String?
+  leaseUntil     DateTime?
+  attempts       Int                         @default(0)
+  externalRef    String?
+  error          Json?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@unique([organizationId, consumerKey, sequence])
+  @@index([organizationId, consumerKey, status, sequence], map: "event_consumer_delivery_scope_status_sequence_idx")
+  @@map("event_consumer_delivery")
 }

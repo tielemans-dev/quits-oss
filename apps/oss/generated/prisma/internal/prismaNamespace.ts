@@ -415,7 +415,9 @@ export const ModelName = {
   Agreement: 'Agreement',
   Deliverable: 'Deliverable',
   AgreementTemplate: 'AgreementTemplate',
-  PublicLinkAttempt: 'PublicLinkAttempt'
+  PublicLinkAttempt: 'PublicLinkAttempt',
+  EventConsumerCursor: 'EventConsumerCursor',
+  EventConsumerDelivery: 'EventConsumerDelivery'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -431,7 +433,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt"
+    modelProps: "user" | "session" | "account" | "verification" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2803,6 +2805,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    EventConsumerCursor: {
+      payload: Prisma.$EventConsumerCursorPayload<ExtArgs>
+      fields: Prisma.EventConsumerCursorFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EventConsumerCursorFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EventConsumerCursorFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload>
+        }
+        findFirst: {
+          args: Prisma.EventConsumerCursorFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EventConsumerCursorFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload>
+        }
+        findMany: {
+          args: Prisma.EventConsumerCursorFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload>[]
+        }
+        create: {
+          args: Prisma.EventConsumerCursorCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload>
+        }
+        createMany: {
+          args: Prisma.EventConsumerCursorCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EventConsumerCursorCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload>[]
+        }
+        delete: {
+          args: Prisma.EventConsumerCursorDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload>
+        }
+        update: {
+          args: Prisma.EventConsumerCursorUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload>
+        }
+        deleteMany: {
+          args: Prisma.EventConsumerCursorDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EventConsumerCursorUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EventConsumerCursorUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload>[]
+        }
+        upsert: {
+          args: Prisma.EventConsumerCursorUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerCursorPayload>
+        }
+        aggregate: {
+          args: Prisma.EventConsumerCursorAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEventConsumerCursor>
+        }
+        groupBy: {
+          args: Prisma.EventConsumerCursorGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EventConsumerCursorGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EventConsumerCursorCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EventConsumerCursorCountAggregateOutputType> | number
+        }
+      }
+    }
+    EventConsumerDelivery: {
+      payload: Prisma.$EventConsumerDeliveryPayload<ExtArgs>
+      fields: Prisma.EventConsumerDeliveryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EventConsumerDeliveryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EventConsumerDeliveryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload>
+        }
+        findFirst: {
+          args: Prisma.EventConsumerDeliveryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EventConsumerDeliveryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload>
+        }
+        findMany: {
+          args: Prisma.EventConsumerDeliveryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload>[]
+        }
+        create: {
+          args: Prisma.EventConsumerDeliveryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload>
+        }
+        createMany: {
+          args: Prisma.EventConsumerDeliveryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EventConsumerDeliveryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload>[]
+        }
+        delete: {
+          args: Prisma.EventConsumerDeliveryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload>
+        }
+        update: {
+          args: Prisma.EventConsumerDeliveryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload>
+        }
+        deleteMany: {
+          args: Prisma.EventConsumerDeliveryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EventConsumerDeliveryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EventConsumerDeliveryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload>[]
+        }
+        upsert: {
+          args: Prisma.EventConsumerDeliveryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EventConsumerDeliveryPayload>
+        }
+        aggregate: {
+          args: Prisma.EventConsumerDeliveryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEventConsumerDelivery>
+        }
+        groupBy: {
+          args: Prisma.EventConsumerDeliveryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EventConsumerDeliveryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EventConsumerDeliveryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EventConsumerDeliveryCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -3318,6 +3468,7 @@ export type RecurringInvoiceScalarFieldEnum = (typeof RecurringInvoiceScalarFiel
 
 
 export const DomainEventScalarFieldEnum = {
+  schemaVersion: 'schemaVersion',
   id: 'id',
   organizationId: 'organizationId',
   sequence: 'sequence',
@@ -3536,6 +3687,37 @@ export const PublicLinkAttemptScalarFieldEnum = {
 export type PublicLinkAttemptScalarFieldEnum = (typeof PublicLinkAttemptScalarFieldEnum)[keyof typeof PublicLinkAttemptScalarFieldEnum]
 
 
+export const EventConsumerCursorScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  consumerKey: 'consumerKey',
+  acknowledgedSequence: 'acknowledgedSequence',
+  scannedSequence: 'scannedSequence',
+  version: 'version',
+  updatedAt: 'updatedAt'
+} as const
+
+export type EventConsumerCursorScalarFieldEnum = (typeof EventConsumerCursorScalarFieldEnum)[keyof typeof EventConsumerCursorScalarFieldEnum]
+
+
+export const EventConsumerDeliveryScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  consumerKey: 'consumerKey',
+  sequence: 'sequence',
+  status: 'status',
+  claimToken: 'claimToken',
+  leaseUntil: 'leaseUntil',
+  attempts: 'attempts',
+  externalRef: 'externalRef',
+  error: 'error',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type EventConsumerDeliveryScalarFieldEnum = (typeof EventConsumerDeliveryScalarFieldEnum)[keyof typeof EventConsumerDeliveryScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -3664,6 +3846,20 @@ export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'J
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
+ * Reference to a field of type 'EventConsumerDeliveryStatus'
+ */
+export type EnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EventConsumerDeliveryStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'EventConsumerDeliveryStatus[]'
+ */
+export type ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EventConsumerDeliveryStatus[]'>
     
 
 
@@ -3807,6 +4003,8 @@ export type GlobalOmitConfig = {
   deliverable?: Prisma.DeliverableOmit
   agreementTemplate?: Prisma.AgreementTemplateOmit
   publicLinkAttempt?: Prisma.PublicLinkAttemptOmit
+  eventConsumerCursor?: Prisma.EventConsumerCursorOmit
+  eventConsumerDelivery?: Prisma.EventConsumerDeliveryOmit
 }
 
 /* Types for Logging */

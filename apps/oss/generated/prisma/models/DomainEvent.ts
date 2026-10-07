@@ -27,14 +27,17 @@ export type AggregateDomainEvent = {
 }
 
 export type DomainEventAvgAggregateOutputType = {
+  schemaVersion: number | null
   sequence: number | null
 }
 
 export type DomainEventSumAggregateOutputType = {
+  schemaVersion: number | null
   sequence: number | null
 }
 
 export type DomainEventMinAggregateOutputType = {
+  schemaVersion: number | null
   id: string | null
   organizationId: string | null
   sequence: number | null
@@ -50,6 +53,7 @@ export type DomainEventMinAggregateOutputType = {
 }
 
 export type DomainEventMaxAggregateOutputType = {
+  schemaVersion: number | null
   id: string | null
   organizationId: string | null
   sequence: number | null
@@ -65,6 +69,7 @@ export type DomainEventMaxAggregateOutputType = {
 }
 
 export type DomainEventCountAggregateOutputType = {
+  schemaVersion: number
   id: number
   organizationId: number
   sequence: number
@@ -83,14 +88,17 @@ export type DomainEventCountAggregateOutputType = {
 
 
 export type DomainEventAvgAggregateInputType = {
+  schemaVersion?: true
   sequence?: true
 }
 
 export type DomainEventSumAggregateInputType = {
+  schemaVersion?: true
   sequence?: true
 }
 
 export type DomainEventMinAggregateInputType = {
+  schemaVersion?: true
   id?: true
   organizationId?: true
   sequence?: true
@@ -106,6 +114,7 @@ export type DomainEventMinAggregateInputType = {
 }
 
 export type DomainEventMaxAggregateInputType = {
+  schemaVersion?: true
   id?: true
   organizationId?: true
   sequence?: true
@@ -121,6 +130,7 @@ export type DomainEventMaxAggregateInputType = {
 }
 
 export type DomainEventCountAggregateInputType = {
+  schemaVersion?: true
   id?: true
   organizationId?: true
   sequence?: true
@@ -224,6 +234,7 @@ export type DomainEventGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inte
 }
 
 export type DomainEventGroupByOutputType = {
+  schemaVersion: number
   id: string
   organizationId: string
   sequence: number
@@ -263,6 +274,7 @@ export type DomainEventWhereInput = {
   AND?: Prisma.DomainEventWhereInput | Prisma.DomainEventWhereInput[]
   OR?: Prisma.DomainEventWhereInput[]
   NOT?: Prisma.DomainEventWhereInput | Prisma.DomainEventWhereInput[]
+  schemaVersion?: Prisma.IntFilter<"DomainEvent"> | number
   id?: Prisma.StringFilter<"DomainEvent"> | string
   organizationId?: Prisma.StringFilter<"DomainEvent"> | string
   sequence?: Prisma.IntFilter<"DomainEvent"> | number
@@ -280,6 +292,7 @@ export type DomainEventWhereInput = {
 }
 
 export type DomainEventOrderByWithRelationInput = {
+  schemaVersion?: Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
@@ -302,6 +315,7 @@ export type DomainEventWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.DomainEventWhereInput | Prisma.DomainEventWhereInput[]
   OR?: Prisma.DomainEventWhereInput[]
   NOT?: Prisma.DomainEventWhereInput | Prisma.DomainEventWhereInput[]
+  schemaVersion?: Prisma.IntFilter<"DomainEvent"> | number
   organizationId?: Prisma.StringFilter<"DomainEvent"> | string
   sequence?: Prisma.IntFilter<"DomainEvent"> | number
   aggregateType?: Prisma.StringFilter<"DomainEvent"> | string
@@ -318,6 +332,7 @@ export type DomainEventWhereUniqueInput = Prisma.AtLeast<{
 }, "id" | "organizationId_sequence">
 
 export type DomainEventOrderByWithAggregationInput = {
+  schemaVersion?: Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
@@ -342,6 +357,7 @@ export type DomainEventScalarWhereWithAggregatesInput = {
   AND?: Prisma.DomainEventScalarWhereWithAggregatesInput | Prisma.DomainEventScalarWhereWithAggregatesInput[]
   OR?: Prisma.DomainEventScalarWhereWithAggregatesInput[]
   NOT?: Prisma.DomainEventScalarWhereWithAggregatesInput | Prisma.DomainEventScalarWhereWithAggregatesInput[]
+  schemaVersion?: Prisma.IntWithAggregatesFilter<"DomainEvent"> | number
   id?: Prisma.StringWithAggregatesFilter<"DomainEvent"> | string
   organizationId?: Prisma.StringWithAggregatesFilter<"DomainEvent"> | string
   sequence?: Prisma.IntWithAggregatesFilter<"DomainEvent"> | number
@@ -358,6 +374,7 @@ export type DomainEventScalarWhereWithAggregatesInput = {
 }
 
 export type DomainEventCreateInput = {
+  schemaVersion?: number
   id?: string
   sequence: number
   aggregateType: string
@@ -374,6 +391,7 @@ export type DomainEventCreateInput = {
 }
 
 export type DomainEventUncheckedCreateInput = {
+  schemaVersion?: number
   id?: string
   organizationId: string
   sequence: number
@@ -390,6 +408,7 @@ export type DomainEventUncheckedCreateInput = {
 }
 
 export type DomainEventUpdateInput = {
+  schemaVersion?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
   aggregateType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -406,6 +425,7 @@ export type DomainEventUpdateInput = {
 }
 
 export type DomainEventUncheckedUpdateInput = {
+  schemaVersion?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
@@ -422,6 +442,7 @@ export type DomainEventUncheckedUpdateInput = {
 }
 
 export type DomainEventCreateManyInput = {
+  schemaVersion?: number
   id?: string
   organizationId: string
   sequence: number
@@ -438,6 +459,7 @@ export type DomainEventCreateManyInput = {
 }
 
 export type DomainEventUpdateManyMutationInput = {
+  schemaVersion?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
   aggregateType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -453,6 +475,7 @@ export type DomainEventUpdateManyMutationInput = {
 }
 
 export type DomainEventUncheckedUpdateManyInput = {
+  schemaVersion?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
@@ -484,6 +507,7 @@ export type DomainEventOrganizationIdSequenceCompoundUniqueInput = {
 }
 
 export type DomainEventCountOrderByAggregateInput = {
+  schemaVersion?: Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
@@ -500,10 +524,12 @@ export type DomainEventCountOrderByAggregateInput = {
 }
 
 export type DomainEventAvgOrderByAggregateInput = {
+  schemaVersion?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
 }
 
 export type DomainEventMaxOrderByAggregateInput = {
+  schemaVersion?: Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
@@ -519,6 +545,7 @@ export type DomainEventMaxOrderByAggregateInput = {
 }
 
 export type DomainEventMinOrderByAggregateInput = {
+  schemaVersion?: Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
@@ -534,6 +561,7 @@ export type DomainEventMinOrderByAggregateInput = {
 }
 
 export type DomainEventSumOrderByAggregateInput = {
+  schemaVersion?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
 }
 
@@ -580,6 +608,7 @@ export type DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput = {
 }
 
 export type DomainEventCreateWithoutOrganizationInput = {
+  schemaVersion?: number
   id?: string
   sequence: number
   aggregateType: string
@@ -595,6 +624,7 @@ export type DomainEventCreateWithoutOrganizationInput = {
 }
 
 export type DomainEventUncheckedCreateWithoutOrganizationInput = {
+  schemaVersion?: number
   id?: string
   sequence: number
   aggregateType: string
@@ -639,6 +669,7 @@ export type DomainEventScalarWhereInput = {
   AND?: Prisma.DomainEventScalarWhereInput | Prisma.DomainEventScalarWhereInput[]
   OR?: Prisma.DomainEventScalarWhereInput[]
   NOT?: Prisma.DomainEventScalarWhereInput | Prisma.DomainEventScalarWhereInput[]
+  schemaVersion?: Prisma.IntFilter<"DomainEvent"> | number
   id?: Prisma.StringFilter<"DomainEvent"> | string
   organizationId?: Prisma.StringFilter<"DomainEvent"> | string
   sequence?: Prisma.IntFilter<"DomainEvent"> | number
@@ -655,6 +686,7 @@ export type DomainEventScalarWhereInput = {
 }
 
 export type DomainEventCreateManyOrganizationInput = {
+  schemaVersion?: number
   id?: string
   sequence: number
   aggregateType: string
@@ -670,6 +702,7 @@ export type DomainEventCreateManyOrganizationInput = {
 }
 
 export type DomainEventUpdateWithoutOrganizationInput = {
+  schemaVersion?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
   aggregateType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -685,6 +718,7 @@ export type DomainEventUpdateWithoutOrganizationInput = {
 }
 
 export type DomainEventUncheckedUpdateWithoutOrganizationInput = {
+  schemaVersion?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
   aggregateType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -700,6 +734,7 @@ export type DomainEventUncheckedUpdateWithoutOrganizationInput = {
 }
 
 export type DomainEventUncheckedUpdateManyWithoutOrganizationInput = {
+  schemaVersion?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
   aggregateType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -717,6 +752,7 @@ export type DomainEventUncheckedUpdateManyWithoutOrganizationInput = {
 
 
 export type DomainEventSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  schemaVersion?: boolean
   id?: boolean
   organizationId?: boolean
   sequence?: boolean
@@ -734,6 +770,7 @@ export type DomainEventSelect<ExtArgs extends runtime.Types.Extensions.InternalA
 }, ExtArgs["result"]["domainEvent"]>
 
 export type DomainEventSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  schemaVersion?: boolean
   id?: boolean
   organizationId?: boolean
   sequence?: boolean
@@ -751,6 +788,7 @@ export type DomainEventSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
 }, ExtArgs["result"]["domainEvent"]>
 
 export type DomainEventSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  schemaVersion?: boolean
   id?: boolean
   organizationId?: boolean
   sequence?: boolean
@@ -768,6 +806,7 @@ export type DomainEventSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
 }, ExtArgs["result"]["domainEvent"]>
 
 export type DomainEventSelectScalar = {
+  schemaVersion?: boolean
   id?: boolean
   organizationId?: boolean
   sequence?: boolean
@@ -783,7 +822,7 @@ export type DomainEventSelectScalar = {
   occurredAt?: boolean
 }
 
-export type DomainEventOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "sequence" | "aggregateType" | "aggregateId" | "type" | "payload" | "actorKind" | "actorId" | "actorLabel" | "approvedByUserId" | "commandId" | "occurredAt", ExtArgs["result"]["domainEvent"]>
+export type DomainEventOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"schemaVersion" | "id" | "organizationId" | "sequence" | "aggregateType" | "aggregateId" | "type" | "payload" | "actorKind" | "actorId" | "actorLabel" | "approvedByUserId" | "commandId" | "occurredAt", ExtArgs["result"]["domainEvent"]>
 export type DomainEventInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }
@@ -800,6 +839,7 @@ export type $DomainEventPayload<ExtArgs extends runtime.Types.Extensions.Interna
     organization: Prisma.$OrganizationPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
+    schemaVersion: number
     id: string
     organizationId: string
     sequence: number
@@ -896,8 +936,8 @@ export interface DomainEventDelegate<ExtArgs extends runtime.Types.Extensions.In
    * // Get first 10 DomainEvents
    * const domainEvents = await prisma.domainEvent.findMany({ take: 10 })
    * 
-   * // Only select the `id`
-   * const domainEventWithIdOnly = await prisma.domainEvent.findMany({ select: { id: true } })
+   * // Only select the `schemaVersion`
+   * const domainEventWithSchemaVersionOnly = await prisma.domainEvent.findMany({ select: { schemaVersion: true } })
    * 
    */
   findMany<T extends DomainEventFindManyArgs>(args?: Prisma.SelectSubset<T, DomainEventFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DomainEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
@@ -941,9 +981,9 @@ export interface DomainEventDelegate<ExtArgs extends runtime.Types.Extensions.In
    *   ]
    * })
    * 
-   * // Create many DomainEvents and only return the `id`
-   * const domainEventWithIdOnly = await prisma.domainEvent.createManyAndReturn({
-   *   select: { id: true },
+   * // Create many DomainEvents and only return the `schemaVersion`
+   * const domainEventWithSchemaVersionOnly = await prisma.domainEvent.createManyAndReturn({
+   *   select: { schemaVersion: true },
    *   data: [
    *     // ... provide data here
    *   ]
@@ -1032,9 +1072,9 @@ export interface DomainEventDelegate<ExtArgs extends runtime.Types.Extensions.In
    *   ]
    * })
    * 
-   * // Update zero or more DomainEvents and only return the `id`
-   * const domainEventWithIdOnly = await prisma.domainEvent.updateManyAndReturn({
-   *   select: { id: true },
+   * // Update zero or more DomainEvents and only return the `schemaVersion`
+   * const domainEventWithSchemaVersionOnly = await prisma.domainEvent.updateManyAndReturn({
+   *   select: { schemaVersion: true },
    *   where: {
    *     // ... provide filter here
    *   },
@@ -1237,6 +1277,7 @@ export interface Prisma__DomainEventClient<T, Null = never, ExtArgs extends runt
  * Fields of the DomainEvent model
  */
 export interface DomainEventFieldRefs {
+  readonly schemaVersion: Prisma.FieldRef<"DomainEvent", 'Int'>
   readonly id: Prisma.FieldRef<"DomainEvent", 'String'>
   readonly organizationId: Prisma.FieldRef<"DomainEvent", 'String'>
   readonly sequence: Prisma.FieldRef<"DomainEvent", 'Int'>
