@@ -163,6 +163,7 @@ model OrgSettings {
   locale                             String       @default("en-US")
   timezone                           String       @default("UTC")
   defaultCurrency                    String       @default("USD")
+  baseCurrency                       String       @default("USD")
   taxRegime                          String       @default("us_sales_tax")
   pricesIncludeTax                   Boolean      @default(false)
   currency                           String       @default("USD")
@@ -362,6 +363,8 @@ model Invoice {
   updatedAt               DateTime          @updatedAt
 
   calculationVersion String @default("legacy_per_line")
+  valuation          Json?
+  issuanceSnapshot   Json?
   vatEvidence        Json?
 
   @@unique([organizationId, number])
@@ -524,6 +527,8 @@ model CreditNote {
   updatedAt               DateTime         @updatedAt
 
   calculationVersion String @default("legacy_per_line")
+  valuation          Json?
+  issuanceSnapshot   Json?
   vatEvidence        Json?
   // Immutable v2 credited components and cumulative group residuals.
   creditedGroups     Json?

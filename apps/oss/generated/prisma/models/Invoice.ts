@@ -214,6 +214,8 @@ export type InvoiceCountAggregateOutputType = {
   createdAt: number
   updatedAt: number
   calculationVersion: number
+  valuation: number
+  issuanceSnapshot: number
   vatEvidence: number
   _all: number
 }
@@ -407,6 +409,8 @@ export type InvoiceCountAggregateInputType = {
   createdAt?: true
   updatedAt?: true
   calculationVersion?: true
+  valuation?: true
+  issuanceSnapshot?: true
   vatEvidence?: true
   _all?: true
 }
@@ -555,6 +559,8 @@ export type InvoiceGroupByOutputType = {
   createdAt: Date
   updatedAt: Date
   calculationVersion: string
+  valuation: runtime.JsonValue | null
+  issuanceSnapshot: runtime.JsonValue | null
   vatEvidence: runtime.JsonValue | null
   _count: InvoiceCountAggregateOutputType | null
   _avg: InvoiceAvgAggregateOutputType | null
@@ -639,6 +645,8 @@ export type InvoiceWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   calculationVersion?: Prisma.StringFilter<"Invoice"> | string
+  valuation?: Prisma.JsonNullableFilter<"Invoice">
+  issuanceSnapshot?: Prisma.JsonNullableFilter<"Invoice">
   vatEvidence?: Prisma.JsonNullableFilter<"Invoice">
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
@@ -709,6 +717,8 @@ export type InvoiceOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
+  valuation?: Prisma.SortOrderInput | Prisma.SortOrder
+  issuanceSnapshot?: Prisma.SortOrderInput | Prisma.SortOrder
   vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
   organization?: Prisma.OrganizationOrderByWithRelationInput
   contact?: Prisma.ContactOrderByWithRelationInput
@@ -784,6 +794,8 @@ export type InvoiceWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   calculationVersion?: Prisma.StringFilter<"Invoice"> | string
+  valuation?: Prisma.JsonNullableFilter<"Invoice">
+  issuanceSnapshot?: Prisma.JsonNullableFilter<"Invoice">
   vatEvidence?: Prisma.JsonNullableFilter<"Invoice">
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
@@ -854,6 +866,8 @@ export type InvoiceOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
+  valuation?: Prisma.SortOrderInput | Prisma.SortOrder
+  issuanceSnapshot?: Prisma.SortOrderInput | Prisma.SortOrder
   vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.InvoiceCountOrderByAggregateInput
   _avg?: Prisma.InvoiceAvgOrderByAggregateInput
@@ -923,6 +937,8 @@ export type InvoiceScalarWhereWithAggregatesInput = {
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Invoice"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Invoice"> | Date | string
   calculationVersion?: Prisma.StringWithAggregatesFilter<"Invoice"> | string
+  valuation?: Prisma.JsonNullableWithAggregatesFilter<"Invoice">
+  issuanceSnapshot?: Prisma.JsonNullableWithAggregatesFilter<"Invoice">
   vatEvidence?: Prisma.JsonNullableWithAggregatesFilter<"Invoice">
 }
 
@@ -979,6 +995,8 @@ export type InvoiceCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
@@ -1049,6 +1067,8 @@ export type InvoiceUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
@@ -1109,6 +1129,8 @@ export type InvoiceUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
@@ -1179,6 +1201,8 @@ export type InvoiceUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -1244,6 +1268,8 @@ export type InvoiceCreateManyInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -1300,6 +1326,8 @@ export type InvoiceUpdateManyMutationInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -1361,6 +1389,8 @@ export type InvoiceUncheckedUpdateManyInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -1442,6 +1472,8 @@ export type InvoiceCountOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   calculationVersion?: Prisma.SortOrder
+  valuation?: Prisma.SortOrder
+  issuanceSnapshot?: Prisma.SortOrder
   vatEvidence?: Prisma.SortOrder
 }
 
@@ -1903,6 +1935,8 @@ export type InvoiceCreateWithoutOrganizationInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
   items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
@@ -1971,6 +2005,8 @@ export type InvoiceUncheckedCreateWithoutOrganizationInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
@@ -2065,6 +2101,8 @@ export type InvoiceScalarWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   calculationVersion?: Prisma.StringFilter<"Invoice"> | string
+  valuation?: Prisma.JsonNullableFilter<"Invoice">
+  issuanceSnapshot?: Prisma.JsonNullableFilter<"Invoice">
   vatEvidence?: Prisma.JsonNullableFilter<"Invoice">
 }
 
@@ -2121,6 +2159,8 @@ export type InvoiceCreateWithoutContactInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   items?: Prisma.InvoiceItemCreateNestedManyWithoutInvoiceInput
@@ -2189,6 +2229,8 @@ export type InvoiceUncheckedCreateWithoutContactInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
@@ -2275,6 +2317,8 @@ export type InvoiceCreateWithoutItemsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
@@ -2344,6 +2388,8 @@ export type InvoiceUncheckedCreateWithoutItemsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
@@ -2419,6 +2465,8 @@ export type InvoiceUpdateWithoutItemsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
@@ -2488,6 +2536,8 @@ export type InvoiceUncheckedUpdateWithoutItemsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -2547,6 +2597,8 @@ export type InvoiceCreateWithoutQuoteInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
@@ -2615,6 +2667,8 @@ export type InvoiceUncheckedCreateWithoutQuoteInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
@@ -2701,6 +2755,8 @@ export type InvoiceCreateWithoutCreditNotesInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
@@ -2770,6 +2826,8 @@ export type InvoiceUncheckedCreateWithoutCreditNotesInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
@@ -2845,6 +2903,8 @@ export type InvoiceUpdateWithoutCreditNotesInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
@@ -2914,6 +2974,8 @@ export type InvoiceUncheckedUpdateWithoutCreditNotesInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -2973,6 +3035,8 @@ export type InvoiceCreateWithoutPaymentsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
@@ -3042,6 +3106,8 @@ export type InvoiceUncheckedCreateWithoutPaymentsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutInvoiceInput
@@ -3117,6 +3183,8 @@ export type InvoiceUpdateWithoutPaymentsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
@@ -3186,6 +3254,8 @@ export type InvoiceUncheckedUpdateWithoutPaymentsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -3245,6 +3315,8 @@ export type InvoiceCreateWithoutRemindersInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
@@ -3314,6 +3386,8 @@ export type InvoiceUncheckedCreateWithoutRemindersInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
@@ -3389,6 +3463,8 @@ export type InvoiceUpdateWithoutRemindersInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
@@ -3458,6 +3534,8 @@ export type InvoiceUncheckedUpdateWithoutRemindersInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -3517,6 +3595,8 @@ export type InvoiceCreateWithoutRecurringInvoiceInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
@@ -3585,6 +3665,8 @@ export type InvoiceUncheckedCreateWithoutRecurringInvoiceInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
@@ -3671,6 +3753,8 @@ export type InvoiceCreateWithoutAgreementInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization: Prisma.OrganizationCreateNestedOneWithoutInvoicesInput
   contact: Prisma.ContactCreateNestedOneWithoutInvoicesInput
@@ -3739,6 +3823,8 @@ export type InvoiceUncheckedCreateWithoutAgreementInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutInvoiceInput
@@ -3829,6 +3915,8 @@ export type InvoiceCreateManyOrganizationInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -3885,6 +3973,8 @@ export type InvoiceUpdateWithoutOrganizationInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
   items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
@@ -3953,6 +4043,8 @@ export type InvoiceUncheckedUpdateWithoutOrganizationInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -4017,6 +4109,8 @@ export type InvoiceUncheckedUpdateManyWithoutOrganizationInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -4077,6 +4171,8 @@ export type InvoiceCreateManyContactInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -4133,6 +4229,8 @@ export type InvoiceUpdateWithoutContactInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   items?: Prisma.InvoiceItemUpdateManyWithoutInvoiceNestedInput
@@ -4201,6 +4299,8 @@ export type InvoiceUncheckedUpdateWithoutContactInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -4265,6 +4365,8 @@ export type InvoiceUncheckedUpdateManyWithoutContactInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -4325,6 +4427,8 @@ export type InvoiceCreateManyQuoteInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -4381,6 +4485,8 @@ export type InvoiceUpdateWithoutQuoteInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
@@ -4449,6 +4555,8 @@ export type InvoiceUncheckedUpdateWithoutQuoteInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -4513,6 +4621,8 @@ export type InvoiceUncheckedUpdateManyWithoutQuoteInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -4573,6 +4683,8 @@ export type InvoiceCreateManyRecurringInvoiceInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -4629,6 +4741,8 @@ export type InvoiceUpdateWithoutRecurringInvoiceInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
@@ -4697,6 +4811,8 @@ export type InvoiceUncheckedUpdateWithoutRecurringInvoiceInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -4761,6 +4877,8 @@ export type InvoiceUncheckedUpdateManyWithoutRecurringInvoiceInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -4821,6 +4939,8 @@ export type InvoiceCreateManyAgreementInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -4877,6 +4997,8 @@ export type InvoiceUpdateWithoutAgreementInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutInvoicesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutInvoicesNestedInput
@@ -4945,6 +5067,8 @@ export type InvoiceUncheckedUpdateWithoutAgreementInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   items?: Prisma.InvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutInvoiceNestedInput
@@ -5009,6 +5133,8 @@ export type InvoiceUncheckedUpdateManyWithoutAgreementInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
@@ -5128,6 +5254,8 @@ export type InvoiceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
+  valuation?: boolean
+  issuanceSnapshot?: boolean
   vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -5199,6 +5327,8 @@ export type InvoiceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
+  valuation?: boolean
+  issuanceSnapshot?: boolean
   vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -5265,6 +5395,8 @@ export type InvoiceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
+  valuation?: boolean
+  issuanceSnapshot?: boolean
   vatEvidence?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -5331,10 +5463,12 @@ export type InvoiceSelectScalar = {
   createdAt?: boolean
   updatedAt?: boolean
   calculationVersion?: boolean
+  valuation?: boolean
+  issuanceSnapshot?: boolean
   vatEvidence?: boolean
 }
 
-export type InvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "issueDate" | "dueDate" | "supplyDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "complianceStatus" | "complianceErrors" | "legalText" | "paymentStatus" | "paidAt" | "publicPaymentIssuedAt" | "publicPaymentKeyVersion" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "stripeCheckoutSessionId" | "stripePaymentIntentId" | "paymentFailureReason" | "paymentReference" | "purchaseOrderRef" | "einvoiceFormat" | "einvoiceStatus" | "einvoiceExternalId" | "notes" | "amountPaid" | "amountCredited" | "remindersPaused" | "purpose" | "disputed" | "disputedRevision" | "scheduleSaleChoice" | "agreementId" | "quoteId" | "recurringInvoiceId" | "recurringRunDate" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["invoice"]>
+export type InvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "issueDate" | "dueDate" | "supplyDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "complianceStatus" | "complianceErrors" | "legalText" | "paymentStatus" | "paidAt" | "publicPaymentIssuedAt" | "publicPaymentKeyVersion" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "stripeCheckoutSessionId" | "stripePaymentIntentId" | "paymentFailureReason" | "paymentReference" | "purchaseOrderRef" | "einvoiceFormat" | "einvoiceStatus" | "einvoiceExternalId" | "notes" | "amountPaid" | "amountCredited" | "remindersPaused" | "purpose" | "disputed" | "disputedRevision" | "scheduleSaleChoice" | "agreementId" | "quoteId" | "recurringInvoiceId" | "recurringRunDate" | "artifactPdfRef" | "artifactPdfHash" | "artifactUblRef" | "artifactUblHash" | "createdAt" | "updatedAt" | "calculationVersion" | "valuation" | "issuanceSnapshot" | "vatEvidence", ExtArgs["result"]["invoice"]>
 export type InvoiceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -5433,6 +5567,8 @@ export type $InvoicePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     createdAt: Date
     updatedAt: Date
     calculationVersion: string
+    valuation: runtime.JsonValue | null
+    issuanceSnapshot: runtime.JsonValue | null
     vatEvidence: runtime.JsonValue | null
   }, ExtArgs["result"]["invoice"]>
   composites: {}
@@ -5923,6 +6059,8 @@ export interface InvoiceFieldRefs {
   readonly createdAt: Prisma.FieldRef<"Invoice", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Invoice", 'DateTime'>
   readonly calculationVersion: Prisma.FieldRef<"Invoice", 'String'>
+  readonly valuation: Prisma.FieldRef<"Invoice", 'Json'>
+  readonly issuanceSnapshot: Prisma.FieldRef<"Invoice", 'Json'>
   readonly vatEvidence: Prisma.FieldRef<"Invoice", 'Json'>
 }
     

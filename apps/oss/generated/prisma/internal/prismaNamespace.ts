@@ -3261,6 +3261,7 @@ export const OrgSettingsScalarFieldEnum = {
   locale: 'locale',
   timezone: 'timezone',
   defaultCurrency: 'defaultCurrency',
+  baseCurrency: 'baseCurrency',
   taxRegime: 'taxRegime',
   pricesIncludeTax: 'pricesIncludeTax',
   currency: 'currency',
@@ -3429,6 +3430,8 @@ export const InvoiceScalarFieldEnum = {
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   calculationVersion: 'calculationVersion',
+  valuation: 'valuation',
+  issuanceSnapshot: 'issuanceSnapshot',
   vatEvidence: 'vatEvidence'
 } as const
 
@@ -3563,6 +3566,8 @@ export const CreditNoteScalarFieldEnum = {
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   calculationVersion: 'calculationVersion',
+  valuation: 'valuation',
+  issuanceSnapshot: 'issuanceSnapshot',
   vatEvidence: 'vatEvidence',
   creditedGroups: 'creditedGroups',
   payableRounding: 'payableRounding'
