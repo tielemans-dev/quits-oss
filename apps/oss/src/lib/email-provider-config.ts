@@ -24,6 +24,13 @@ function booleanSetting(env: EmailEnvironment, name: string, fallback: boolean) 
   throw new SmtpConfigurationError([name], `${name} must be true or false`)
 }
 
+/** SMTP auth email uses the platform sender, rather than an explicit message sender. */
+export function requireSmtpFromEmail(environment: EmailEnvironment): string {
+  const fromEmail = environment.FROM_EMAIL?.trim()
+  if (!fromEmail) throw new SmtpConfigurationError(["FROM_EMAIL"], "FROM_EMAIL is not configured")
+  return fromEmail
+}
+
 /** Shared by the status screen and Node adapter; never returns secrets to a client. */
 export function readSmtpConfiguration(env: EmailEnvironment = getRuntimeEnv()) {
   const host = env.SMTP_HOST?.trim()

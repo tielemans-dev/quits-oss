@@ -3,7 +3,10 @@ import { buildQuitsAuthOptions } from "../runtime/auth-config"
 import { sendInvitationEmail } from "../email"
 
 vi.mock("../email", () => ({ sendInvitationEmail: vi.fn() }))
-afterEach(() => vi.mocked(sendInvitationEmail).mockReset())
+afterEach(() => {
+  vi.mocked(sendInvitationEmail).mockReset()
+  vi.unstubAllEnvs()
+})
 
 function invitationHook(configuration: Record<string, string>) {
   return buildQuitsAuthOptions({
@@ -16,7 +19,7 @@ const invitation = { id: "invite-42", email: "person@example.com", inviter: { us
 
 describe("auth invitation email provider", () => {
   it("sends invitations with SMTP when there is no Resend key", async () => {
-    const send = invitationHook({ BETTER_AUTH_URL: "https://app.example", EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example" })
+    const send = invitationHook({ BETTER_AUTH_URL: "https://app.example", EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example", FROM_EMAIL: "billing@example.com" })
     await send(invitation as never)
     expect(sendInvitationEmail).toHaveBeenCalledWith(
       { to: "person@example.com", inviterName: "Ada", orgName: "Acme", invitationUrl: "https://app.example/accept-invitation/invite-42", locale: "en-US" },
@@ -28,6 +31,15 @@ describe("auth invitation email provider", () => {
 
   it("keeps the previous default behavior without a Resend key", async () => {
     await invitationHook({ BETTER_AUTH_URL: "https://app.example" })(invitation as never)
+    expect(sendInvitationEmail).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, "", "  \t\n"])("rejects a missing or blank supplied SMTP sender (%j)", async (fromEmail) => {
+    vi.stubEnv("FROM_EMAIL", "global@example.com")
+    await expect(invitationHook({
+      BETTER_AUTH_URL: "https://app.example", EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example",
+      ...(fromEmail === undefined ? {} : { FROM_EMAIL: fromEmail }),
+    })(invitation as never)).rejects.toThrow("FROM_EMAIL")
     expect(sendInvitationEmail).not.toHaveBeenCalled()
   })
 

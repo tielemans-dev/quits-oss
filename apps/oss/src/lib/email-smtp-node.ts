@@ -4,9 +4,14 @@ import { readSmtpConfiguration, type EmailEnvironment } from "./email-provider-c
 import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
 
 /** Nodemailer also labels post-DATA socket errors CONN, so the command alone is not proof. */
-export function isSmtpPreSubmissionFailure(error: unknown): boolean {
+export function isSmtpPreSubmissionFailure(error: unknown, tlsHandshakePending = false): boolean {
   if (!error || typeof error !== "object") return false
   const smtpError = error as { code?: string; command?: string; syscall?: string; message?: string }
+  if (smtpError.code === "ETLS" && (smtpError.command === "STARTTLS" || smtpError.command === "CONN")) return true
+  // Certificate errors lose their original code in Nodemailer. Only classify them when
+  // our connection state proves TLS has not completed; later socket errors stay uncertain.
+  if (tlsHandshakePending && smtpError.command === "CONN"
+    && ["ESOCKET", "ECONNECTION", "ETIMEDOUT"].includes(smtpError.code ?? "")) return true
   if (smtpError.command !== "CONN") return false
   return smtpError.code === "EDNS"
     || (smtpError.code === "ESOCKET" && smtpError.syscall === "connect")
@@ -25,7 +30,21 @@ export async function deliverSmtp(message: EmailMessage, environment: EmailEnvir
   const configuration = readSmtpConfiguration(environment)
   const moduleName = "nodemailer"
   const { default: nodemailer } = await import(/* @vite-ignore */ moduleName) as { default: typeof import("nodemailer") }
-  const transport = nodemailer.createTransport(configuration)
+  let tlsHandshakePending = configuration.secure
+  const discardLog = () => {}
+  const transport = nodemailer.createTransport({
+    ...configuration,
+    transactionLog: true,
+    // Observe outgoing commands before they reach the socket. Any command after STARTTLS
+    // proves the handshake ended. This logger never stores or emits credentials or content.
+    logger: {
+      level: discardLog, trace: discardLog, info: discardLog,
+      warn: discardLog, error: discardLog, fatal: discardLog,
+      debug(entry: { tnx?: string }, command: string) {
+        if (entry.tnx === "client") tlsHandshakePending = command === "STARTTLS"
+      },
+    },
+  })
   try {
     if (message.react || (!message.html && !message.text)) {
       throw new EmailSendError("smtp_unsupported_content", "SMTP email requires rendered HTML or text")
@@ -65,8 +84,8 @@ export async function deliverSmtp(message: EmailMessage, environment: EmailEnvir
     return { id: result.messageId }
   } catch (error) {
     if (error instanceof EmailSendError) throw error
-    if (isSmtpPreSubmissionFailure(error)) {
-      throw new EmailSendError("smtp_unavailable", "The SMTP relay could not be reached before message submission, so nothing was delivered")
+    if (isSmtpPreSubmissionFailure(error, tlsHandshakePending)) {
+      throw new EmailSendError("smtp_unavailable", "The SMTP connection failed before message submission, so nothing was delivered")
     }
     const smtpError = error as { responseCode?: number }
     // A completed negative SMTP response proves this submission was refused. A connection

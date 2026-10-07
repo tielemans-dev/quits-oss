@@ -8,6 +8,8 @@ vi.mock("../../lib/email", async () => {
 
 import { prisma } from "../../lib/db"
 import { deliver, EmailSendError } from "../../lib/email"
+import { deliverSmtp } from "../../lib/email-smtp-node"
+import { withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
 import { defaultNodePlatform } from "../../lib/runtime/node-platform"
 import { resetRuntimePlatform, setRuntimePlatform } from "../../lib/runtime/platform"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
@@ -194,6 +196,22 @@ describeIfDatabase("email outbox", () => {
     expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "failed" })
     expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "rejected" })
     expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, aggregateId: invoiceId, type: "invoice.sent" } })).toBe(0)
+    expect(deliver).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["starttls", "implicit"] as const)("keeps an invoice editable after a real %s certificate failure", async (mode) => {
+    const { org, invoiceId } = await setup()
+    useSmtp()
+    await withUntrustedSmtpTls(mode, async (environment, commands) => {
+      vi.mocked(deliver).mockImplementationOnce((message) => deliverSmtp(message, environment))
+      await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+      expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "failed" })
+      expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "rejected" })
+      expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, aggregateId: invoiceId, type: "invoice.sent" } })).toBe(0)
+      expect(commands.some((command) => /^(?:MAIL|RCPT|DATA)\b/.test(command))).toBe(false)
+      const edit = await executeIssuanceCommand(updateInvoiceDraft, { id: invoiceId, notes: "Correct the relay certificate and try again" }, { actor: org.actors.admin })
+      expect(edit.status).toBe("completed")
+    })
     expect(deliver).toHaveBeenCalledTimes(1)
   })
 

@@ -8,6 +8,7 @@ import { buildQuitsAuthOptions } from "../runtime/auth-config"
 import { readFileSync } from "node:fs"
 import { parse as parseDotenv } from "dotenv"
 import { isSmtpPreSubmissionFailure } from "../email-smtp-node"
+import { withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -28,6 +29,13 @@ describe("SMTP configuration", () => {
     expect(isSmtpPreSubmissionFailure({ code: "ECONNECTION", command: "CONN" })).toBe(false)
     expect(isSmtpPreSubmissionFailure({ code: "ETIMEDOUT", message: "Greeting never received" })).toBe(false)
     expect(isSmtpPreSubmissionFailure(new Error("Unknown failure"))).toBe(false)
+    expect(isSmtpPreSubmissionFailure({ code: "ETLS", command: "STARTTLS" })).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ETLS", command: "CONN" })).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "CONN", message: "self signed certificate" })).toBe(false)
+    expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "CONN", message: "self signed certificate" }, true)).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ETIMEDOUT", command: "CONN", message: "Timeout" }, true)).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ECONNECTION", command: "CONN" }, true)).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "DATA" }, true)).toBe(false)
   })
   it("keeps Resend as the default and rejects unknown providers", () => {
     expect(selectedEmailProvider("")).toBe("resend")
@@ -132,6 +140,14 @@ async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | 
 }
 
 describe("real SMTP transport", () => {
+  it.each(["starttls", "implicit"] as const)("rejects an untrusted %s certificate before submission", async (mode) => {
+    await withUntrustedSmtpTls(mode, async (environment, commands) => {
+      await expect(deliver(message, { environment })).rejects.toMatchObject({ name: "EmailSendError", providerCode: "smtp_unavailable" })
+      expect(commands.some((command) => /^(?:MAIL|RCPT|DATA)\b/.test(command))).toBe(false)
+      if (mode === "starttls") expect(commands).toContain("STARTTLS")
+    })
+  })
+
   it("reports a refused connection as definitely not submitted", async () => {
     const server = createServer()
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
