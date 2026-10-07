@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { resolveCountryProfile } from "../../lib/compliance"
 import { documentFractionDigits, priceDocument } from "../documents/pricing"
-
-const profile = resolveCountryProfile("DK")
 
 describe("document pricing", () => {
   it("rounds amounts to the currency's precision so no unpayable fraction is owed", () => {
     const priced = priceDocument({
-      profile,
       items: [{ description: "Consulting", quantity: 1, unitPrice: 105 }],
       taxRate: 25,
       pricesIncludeTax: false,
@@ -21,7 +17,6 @@ describe("document pricing", () => {
 
   it("keeps two decimals for ordinary currencies", () => {
     const priced = priceDocument({
-      profile,
       items: [{ description: "Consulting", quantity: 1, unitPrice: 105 }],
       taxRate: 25,
       pricesIncludeTax: false,

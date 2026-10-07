@@ -18,7 +18,6 @@ import {
   deliverableUpdateInputSchema,
 } from "@quits/contracts/agreements"
 import { assertCloudOnboardingComplete } from "../../lib/onboarding/guard"
-import { resolveCountryProfile } from "../../lib/compliance"
 import { defineCommand } from "../command"
 import { loadDocumentContext } from "../documents/context"
 import { lockDocument } from "../documents/locks"
@@ -113,12 +112,11 @@ export const createAgreementDraft = defineCommand({
       const { input, quote } = yield* resolveQuoteDraft(request)
       const contact = yield* findContact(input.contactId)
       const template = yield* validateTemplate(input.templateId)
-      const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
+      const { settings, sellerTaxIds } = yield* loadDocumentContext
       const context = quote ?? settings
       const currency = input.currency ?? settings.defaultCurrency
       yield* requireDraftCurrency(currency)
       const priced = priceAgreementV2({
-        profile: quote ? resolveCountryProfile(quote.countryCode) : profile,
         deliverables: input.deliverables,
         taxRate: input.taxRate,
         pricesIncludeTax: context.pricesIncludeTax,
@@ -210,7 +208,6 @@ export const updateAgreementDraft = defineCommand({
         input.currency !== undefined
       ) {
         const priced = (existing.offerFormatVersion === 2 ? priceAgreementV2 : priceAgreement)({
-          profile: resolveCountryProfile(existing.countryCode),
           deliverables:
             input.deliverables ??
             existing.deliverables.map((line) => ({ ...lineInput(line, existing.pricesIncludeTax), ...(input.taxRate !== undefined && existing.offerFormatVersion === 2 ? { vat: undefined } : {}) })),
@@ -323,7 +320,6 @@ export const updateDeliverable = defineCommand({
         )
         lines[index] = { ...lines[index]!, ...changes, quantity: String(changes.quantity ?? lines[index]!.quantity), unitPrice: String(changes.unitPrice ?? lines[index]!.unitPrice) }
         const priced = (agreement.offerFormatVersion === 2 ? priceAgreementV2 : priceAgreement)({
-          profile: resolveCountryProfile(agreement.countryCode),
           deliverables: lines,
           taxRate: agreement.taxRateInput ?? agreement.taxRate.toString(),
           pricesIncludeTax: agreement.pricesIncludeTax,

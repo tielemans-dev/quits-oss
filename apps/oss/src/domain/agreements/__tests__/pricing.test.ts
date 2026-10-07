@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest"
-import { resolveCountryProfile } from "../../../lib/compliance"
 import { priceDocument } from "../../documents/pricing"
 import { priceAgreement } from "../pricing"
 
 describe("agreement pricing adapter", () => {
   it.each([
-    { country: "DK", currency: "DKK", taxRate: 25, pricesIncludeTax: false },
-    { country: "DK", currency: "DKK", taxRate: 25, pricesIncludeTax: true },
-    { country: "US", currency: "USD", taxRate: 8.25, pricesIncludeTax: false },
-    { country: "JP", currency: "JPY", taxRate: 10, pricesIncludeTax: false },
-    { country: "US", currency: "KWD", taxRate: 0, pricesIncludeTax: false },
+    { currency: "DKK", taxRate: 25, pricesIncludeTax: false },
+    { currency: "DKK", taxRate: 25, pricesIncludeTax: true },
+    { currency: "USD", taxRate: 8.25, pricesIncludeTax: false },
+    { currency: "JPY", taxRate: 10, pricesIncludeTax: false },
+    { currency: "KWD", taxRate: 0, pricesIncludeTax: false },
   ])("matches priceDocument fixtures for $currency, tax inclusive $pricesIncludeTax", (context) => {
     const lines = [
       { title: "Deposit", description: "Upfront", quantity: 1, unitPrice: 300.15, isDeposit: true },
@@ -21,9 +20,8 @@ describe("agreement pricing adapter", () => {
         agreedDate: "2026-11-01",
       },
     ]
-    const input = { ...context, profile: resolveCountryProfile(context.country) }
-    const actual = priceAgreement({ ...input, deliverables: lines })
-    const expected = priceDocument({ ...input, items: lines })
+    const actual = priceAgreement({ ...context, deliverables: lines })
+    const expected = priceDocument({ ...context, items: lines })
     expect({
       subtotalNet: actual.subtotalNet,
       totalTax: actual.totalTax,
@@ -43,7 +41,6 @@ describe("agreement pricing adapter", () => {
   })
   it("includes deposits in the total and accepts an empty draft", () => {
     const context = {
-      profile: resolveCountryProfile("US"),
       currency: "USD",
       taxRate: 0,
       pricesIncludeTax: false,

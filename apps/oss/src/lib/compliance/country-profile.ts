@@ -27,38 +27,6 @@ export type TaxId = {
   countryCode?: string | null
 }
 
-export type DocumentLineInput = {
-  description: string
-  quantity: number
-  unitPrice: number
-}
-
-export type TaxComputationInput = {
-  items: DocumentLineInput[]
-  taxRate: number
-  pricesIncludeTax: boolean
-  /** Decimals line and document amounts are rounded to; 0 for currencies such as JPY. Default 2. */
-  fractionDigits?: number
-}
-
-export type ComputedLine = {
-  description: string
-  quantity: number
-  unitPriceNet: number
-  unitPriceGross: number
-  lineNet: number
-  lineTax: number
-  lineGross: number
-  taxRate: number
-}
-
-export type TaxComputationOutput = {
-  subtotalNet: number
-  totalTax: number
-  totalGross: number
-  lines: ComputedLine[]
-}
-
 export type ValidationInput = {
   sellerTaxIds: TaxId[]
   buyerTaxIds: TaxId[]

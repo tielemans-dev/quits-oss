@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { computeDocumentTotals } from "../compute"
-import { resolveCountryProfile } from "../registry"
+import { calculateLegacyDocument } from "./index"
 
-describe("computeDocumentTotals", () => {
-  it("computes US-style totals from net prices", () => {
-    const us = resolveCountryProfile("US")
-    const result = computeDocumentTotals(us, {
+describe("calculateLegacyDocument", () => {
+  it("computes totals from net prices", () => {
+    const result = calculateLegacyDocument({
       items: [{ description: "Design", quantity: 2, unitPrice: 100 }],
       taxRate: 8.25,
       pricesIncludeTax: false,
@@ -21,9 +19,8 @@ describe("computeDocumentTotals", () => {
     expect(result.lines[0]?.lineGross).toBe(216.5)
   })
 
-  it("computes EU VAT totals when prices include tax", () => {
-    const eu = resolveCountryProfile("DE")
-    const result = computeDocumentTotals(eu, {
+  it("computes totals when prices include tax", () => {
+    const result = calculateLegacyDocument({
       items: [{ description: "Consulting", quantity: 1, unitPrice: 125 }],
       taxRate: 25,
       pricesIncludeTax: true,
