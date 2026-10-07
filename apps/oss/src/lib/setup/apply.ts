@@ -113,6 +113,10 @@ export async function applySetupInitialization(
   }
 
   requireCurrencyExponent(input.locale.currency)
+  const profile = resolveCountryProfile(input.locale.countryCode)
+  // An unsupported country has no default currency; the currency chosen at setup stands in.
+  const baseCurrency = profile.country?.defaults.currency ?? input.locale.currency
+  const taxRegime = profile.regime?.id ?? "custom"
 
   const now = new Date()
   const adminEmail = input.admin.email.toLowerCase()
@@ -190,7 +194,8 @@ export async function applySetupInitialization(
         countryCode: input.locale.countryCode,
         timezone: input.locale.timezone,
         defaultCurrency: input.locale.currency,
-        baseCurrency: resolveCountryProfile(input.locale.countryCode).defaultCurrency,
+        baseCurrency,
+        taxRegime,
         currency: input.locale.currency,
         companyName,
         companyEmail,
@@ -201,7 +206,8 @@ export async function applySetupInitialization(
         countryCode: input.locale.countryCode,
         timezone: input.locale.timezone,
         defaultCurrency: input.locale.currency,
-        baseCurrency: resolveCountryProfile(input.locale.countryCode).defaultCurrency,
+        baseCurrency,
+        taxRegime,
         currency: input.locale.currency,
         companyName,
         companyEmail,

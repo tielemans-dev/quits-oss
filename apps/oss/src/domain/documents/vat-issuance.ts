@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { validateVatIssuance, percentageToFraction, assertStoredDocumentEquation } from "@quits/shared/pricing"
+import { isVatNumberScheme } from "../../lib/compliance"
 import { InvalidState } from "../errors"
 
 /** Shared by issuance entry commands. Resends and issued-document operations never reprice. */
@@ -35,7 +36,7 @@ export function requireVatIssuance(document: {
       rate: item.vatRateInput ?? percentageToFraction(item.taxRate.toString()),
     })),
     evidence: document.vatEvidence,
-    sellerVatId: seller?.taxIds?.find((id) => ["VAT", "CVR", "DK_CVR"].includes(id.scheme?.toUpperCase() ?? ""))?.value,
+    sellerVatId: seller?.taxIds?.find((id) => isVatNumberScheme(id.scheme))?.value,
     buyerCountry: buyer?.country,
   })
   const evidence = document.vatEvidence as { buyerVatId?: string } | null

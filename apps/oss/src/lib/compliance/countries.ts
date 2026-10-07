@@ -1,3 +1,5 @@
+import { COUNTRY_MODULES } from "./registry"
+
 export type CountryOption = {
   code: string
   label: string
@@ -5,38 +7,12 @@ export type CountryOption = {
   defaultCurrency: string
 }
 
-export const COUNTRY_OPTIONS: CountryOption[] = [
-  {
-    code: "US",
-    label: "United States",
-    defaultLocale: "en-US",
-    defaultCurrency: "USD",
-  },
-  {
-    code: "DK",
-    label: "Denmark",
-    defaultLocale: "da-DK",
-    defaultCurrency: "DKK",
-  },
-  {
-    code: "DE",
-    label: "Germany",
-    defaultLocale: "de-DE",
-    defaultCurrency: "EUR",
-  },
-  {
-    code: "FR",
-    label: "France",
-    defaultLocale: "fr-FR",
-    defaultCurrency: "EUR",
-  },
-  {
-    code: "NL",
-    label: "Netherlands",
-    defaultLocale: "nl-NL",
-    defaultCurrency: "EUR",
-  },
-]
+export const COUNTRY_OPTIONS: CountryOption[] = COUNTRY_MODULES.map((country) => ({
+  code: country.countryCode,
+  label: country.label,
+  defaultLocale: country.defaults.locale,
+  defaultCurrency: country.defaults.currency,
+}))
 
 export const LOCALE_OPTIONS = [
   "en-US",

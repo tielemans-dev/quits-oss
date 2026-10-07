@@ -23,13 +23,25 @@ export function validateDocument(
     })
   }
 
-  if (profile.requiresSellerTaxId && !hasTaxIds(input.sellerTaxIds)) {
+  if (profile.regime?.requiresSellerTaxId && !hasTaxIds(input.sellerTaxIds)) {
+    const copy = profile.country?.primaryTaxIdCopy ?? profile.regime.primaryTaxIdCopy
     issues.push({
       code: "MISSING_SELLER_TAX_ID",
       severity: "error",
       message: "Seller tax identifier is required for this country profile",
       fieldPath: "sellerTaxIds",
-      hint: "Add VAT/CVR/EIN to organization settings before sending",
+      hint: `Add your ${copy.label} to organization settings before sending`,
+    })
+  }
+
+  if (!profile.country) {
+    issues.push({
+      code: "UNSUPPORTED_COUNTRY",
+      severity: "warning",
+      message: profile.regime
+        ? "Quits has no rules for this country beyond its tax regime"
+        : "Quits has no tax rules for this country",
+      fieldPath: "countryCode",
     })
   }
 

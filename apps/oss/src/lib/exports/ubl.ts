@@ -6,8 +6,8 @@ import {
   type EinvoiceMissingField,
 } from "@quits/contracts/exports"
 import { formatAmount, formatPlainNumber, toDecimal, type DecimalLike } from "./format"
+import { findCountryModule } from "../compliance"
 import {
-  DANISH_CVR_SCHEME,
   isValidElectronicAddress,
   isValidLegalIdentifier,
   type ElectronicAddress,
@@ -89,8 +89,9 @@ export function validateEinvoice(document: EinvoiceDocument): EinvoiceMissingFie
   if (!seller.countryCode) missing.push("seller.country")
   if (!seller.street && !seller.city) missing.push("seller.address")
   if (!seller.vatId) missing.push("seller.taxId")
-  // DK-R-002 and DK-R-014: Danish suppliers must give their CVR number with scheme 0184.
-  if (seller.countryCode === "DK" && seller.legalId?.scheme !== DANISH_CVR_SCHEME) {
+  // National rules such as DK-R-002 and DK-R-014 require the national registration number.
+  const registration = findCountryModule(seller.countryCode)?.nationalRegistration
+  if (registration?.requiredForSeller && seller.legalId?.scheme !== registration.icd) {
     missing.push("seller.legalId")
   }
   // PEPPOL-COMMON-R040 and friends also apply to a legal ID's CompanyID with a schemeID.

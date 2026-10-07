@@ -855,9 +855,13 @@ function SettingsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="vat">VAT</SelectItem>
-                      <SelectItem value="cvr">CVR</SelectItem>
-                      <SelectItem value="ein">EIN</SelectItem>
+                      {taxRules.primaryTaxIdSchemes.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                      {primaryTaxIdScheme !== "other" &&
+                      !taxRules.primaryTaxIdSchemes.some((option) => option.value === primaryTaxIdScheme) ? (
+                        <SelectItem value={primaryTaxIdScheme}>{primaryTaxIdScheme.toUpperCase()}</SelectItem>
+                      ) : null}
                       <SelectItem value="other">{t("settings.primaryTaxIdScheme.other")}</SelectItem>
                     </SelectContent>
                   </Select>

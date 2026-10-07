@@ -3,6 +3,11 @@ import {
   isValidPeppolIdentifier,
   normalizePeppolIdentifier,
 } from "@quits/contracts/exports"
+import {
+  findCountryModule,
+  isNationalRegistrationScheme,
+  nationalRegistrationForScheme,
+} from "../compliance"
 
 /**
  * Normalizes the loosely typed party data Quits stores (free-text countries, addresses and tax
@@ -15,9 +20,6 @@ export type ElectronicAddress = { scheme: string; id: string }
 
 /** A party's legal registration number with its ISO 6523 ICD scheme, when the scheme is known. */
 export type LegalIdentifier = { id: string; scheme: string | null }
-
-/** ISO 6523 ICD for the Danish CVR register; DK-R-014 requires it on Danish legal entities. */
-export const DANISH_CVR_SCHEME = "0184"
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let regionNames: Map<string, string> | null = null
@@ -136,7 +138,8 @@ function compact(value: string) {
 
 /**
  * The party's VAT identifier with its country prefix (BR-CO-09), when one of its tax IDs is a
- * VAT number. A Danish CVR number doubles as the VAT number, so it is accepted for DK.
+ * VAT number. A national registration number that doubles as the VAT number (Denmark's CVR) is
+ * accepted in its own country.
  */
 export function vatIdentifier(taxIds: readonly TaxIdLike[], countryCode: string | null): string | null {
   for (const taxId of taxIds) {
@@ -147,7 +150,7 @@ export function vatIdentifier(taxIds: readonly TaxIdLike[], countryCode: string 
     const prefix = country ? (VAT_PREFIX[country] ?? country) : null
     const hasPrefix = /^[A-Z]{2}[0-9A-Z]{2,13}$/.test(value)
 
-    if (VAT_SCHEMES.has(scheme) || (scheme === "cvr" && country === "DK")) {
+    if (VAT_SCHEMES.has(scheme) || isNationalRegistrationScheme(scheme, country)) {
       if (hasPrefix) return value
       return prefix ? `${prefix}${value}` : null
     }
@@ -160,18 +163,17 @@ export function vatIdentifier(taxIds: readonly TaxIdLike[], countryCode: string 
 
 /**
  * Tax-ID schemes Quits stores that map to an ISO 6523 ICD, with how to bring a value into the
- * identifier's canonical form. Whether that form is valid is checked by the Peppol rules.
+ * identifier's canonical form. Whether that form is valid is checked by the Peppol rules. National
+ * registration numbers come from the country modules.
  */
 const LEGAL_SCHEMES: Record<string, { scheme: string; normalize: (value: string) => string }> = {
-  cvr: { scheme: DANISH_CVR_SCHEME, normalize: (value) => compact(value).replace(/^DK(?=\d)/, "") },
   gln: { scheme: "0088", normalize: compact },
   duns: { scheme: "0060", normalize: compact },
 }
 
-/** An 8-digit Danish CVR number, accepting an optional "DK" prefix. */
-function danishCvr(value: string): string | null {
-  const digits = compact(value).replace(/^DK/, "")
-  return /^\d{8}$/.test(digits) ? digits : null
+function legalScheme(scheme: string) {
+  const registration = nationalRegistrationForScheme(scheme)
+  return registration ? { scheme: registration.icd, normalize: registration.normalize } : LEGAL_SCHEMES[scheme]
 }
 
 /** Whether a legal identifier passes the Peppol rules for its scheme; unschemed IDs are free text. */
@@ -180,10 +182,10 @@ export function isValidLegalIdentifier(legalId: LegalIdentifier) {
 }
 
 /**
- * The party's legal registration number (BT-30 / BT-47) with its scheme where known. Danish
- * parties use their CVR number (scheme 0184), taken from a CVR tax ID or derived from a DK VAT
- * number, because DK-R-002 and DK-R-014 require exactly that for Danish suppliers. Other
- * registration numbers are kept without a scheme. A valid identifier is preferred; an invalid
+ * The party's legal registration number (BT-30 / BT-47) with its scheme where known. In a country
+ * with a national registration number (Denmark's CVR), parties use it, taken from a tax ID with
+ * its scheme or derived from the VAT number, because national rules such as DK-R-002 and DK-R-014
+ * require exactly that. Other registration numbers are kept without a scheme. A valid identifier is preferred; an invalid
  * one with a known scheme is still returned so the export reports it instead of dropping it.
  */
 export function legalIdentifier(
@@ -196,18 +198,19 @@ export function legalIdentifier(
     const scheme = taxId.scheme?.trim().toLowerCase() ?? ""
     const value = taxId.value.trim()
     if (!value || !scheme || VAT_SCHEMES.has(scheme) || scheme === "ein") continue
-    const known = LEGAL_SCHEMES[scheme]
+    const known = legalScheme(scheme)
     const id = known ? known.normalize(value) : value
     if (id) candidates.push({ id, scheme: known ? known.scheme : null })
   }
 
-  if (countryCode === "DK") {
-    const cvr = candidates.find(
-      (candidate) => candidate.scheme === DANISH_CVR_SCHEME && isValidLegalIdentifier(candidate)
+  const registration = findCountryModule(countryCode)?.nationalRegistration
+  if (registration) {
+    const national = candidates.find(
+      (candidate) => candidate.scheme === registration.icd && isValidLegalIdentifier(candidate)
     )
-    if (cvr) return cvr
-    const fromVat = vatId?.startsWith("DK") ? danishCvr(vatId) : null
-    if (fromVat) return { id: fromVat, scheme: DANISH_CVR_SCHEME }
+    if (national) return national
+    const fromVat = vatId ? registration.fromVatId(vatId) : null
+    if (fromVat) return { id: fromVat, scheme: registration.icd }
   }
   return candidates.find(isValidLegalIdentifier) ?? candidates[0] ?? null
 }

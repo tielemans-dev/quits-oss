@@ -21,7 +21,7 @@ import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
 import { COUNTRY_OPTIONS, LOCALE_OPTIONS } from "../../lib/compliance/countries"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import {
-  getCountryCodeOrFallback,
+  normalizeCountryCode,
   validateLocalizedFields,
 } from "../../lib/validation/localization"
 
@@ -193,7 +193,7 @@ export const settingsRouter = router({
           where: { organizationId: ctx.organizationId },
           select: { countryCode: true },
         })
-        const resolvedCountry = getCountryCodeOrFallback(
+        const resolvedCountry = normalizeCountryCode(
           settingsInput.countryCode ?? current?.countryCode
         )
         const localizedIssues = validateLocalizedFields(resolvedCountry, {

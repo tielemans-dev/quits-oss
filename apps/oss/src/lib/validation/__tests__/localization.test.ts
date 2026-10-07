@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
-  getCountryCodeOrFallback,
+  normalizeCountryCode,
   isValidPhoneForCountry,
   isValidPostalCodeForCountry,
   isValidTaxIdForCountry,
@@ -8,10 +8,16 @@ import {
 } from "../localization"
 
 describe("localization validators", () => {
-  it("resolves country code fallback to US", () => {
-    expect(getCountryCodeOrFallback("dk")).toBe("DK")
-    expect(getCountryCodeOrFallback(undefined)).toBe("US")
-    expect(getCountryCodeOrFallback("")).toBe("US")
+  it("normalizes country codes without falling back to the US", () => {
+    expect(normalizeCountryCode("dk")).toBe("DK")
+    expect(normalizeCountryCode(undefined)).toBeNull()
+    expect(normalizeCountryCode("")).toBeNull()
+  })
+
+  it("checks countries without a module against generic formats", () => {
+    expect(isValidPostalCodeForCountry("GB", "SW1A 1AA")).toBe(true)
+    expect(isValidPhoneForCountry("GB", "+44 20 7946 0958")).toBe(true)
+    expect(isValidTaxIdForCountry(null, "GB123456789")).toBe(true)
   })
 
   it("validates phone numbers by country", () => {

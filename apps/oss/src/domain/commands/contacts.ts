@@ -8,7 +8,7 @@ import {
 } from "@quits/contracts/contacts"
 import { peppolEndpointIssue } from "@quits/contracts/exports"
 import {
-  getCountryCodeOrFallback,
+  normalizeCountryCode,
   validateLocalizedFields,
 } from "../../lib/validation/localization"
 import { defineCommand } from "../command"
@@ -20,7 +20,7 @@ function normalizeCountry(country: string | undefined) {
 }
 
 function validateLocalized(
-  countryCode: string,
+  countryCode: string | null,
   fields: { phone?: string | null; zip?: string | null; taxId?: string | null }
 ) {
   const issues = validateLocalizedFields(countryCode, {
@@ -88,7 +88,7 @@ export const createContact = defineCommand({
       const orgCountry = yield* loadOrgCountry
 
       yield* validateLocalized(
-        getCountryCodeOrFallback(
+        normalizeCountryCode(
           (input.country?.trim().length === 2 ? input.country : undefined) || orgCountry
         ),
         input
@@ -148,7 +148,7 @@ export const updateContact = defineCommand({
 
       const orgCountry = yield* loadOrgCountry
       yield* validateLocalized(
-        getCountryCodeOrFallback(
+        normalizeCountryCode(
           (input.country?.trim().length === 2 ? input.country : undefined) ||
             (existing.country?.trim().length === 2 ? existing.country : undefined) ||
             orgCountry

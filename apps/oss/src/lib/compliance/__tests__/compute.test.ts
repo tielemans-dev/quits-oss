@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { computeDocumentTotals } from "../compute"
-import { resolveCountryProfile } from "../resolve-profile"
+import { resolveCountryProfile } from "../registry"
 
 describe("computeDocumentTotals", () => {
   it("computes US-style totals from net prices", () => {
