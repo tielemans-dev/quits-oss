@@ -35,6 +35,11 @@ test("recovers a local account through native reset tokens without sending email
       'SELECT identifier FROM verification WHERE value = $1 AND identifier LIKE \'reset-password:%\' ORDER BY "createdAt" DESC LIMIT 1', [userId],
     )
     const token = verification.rows[0]!.identifier.slice("reset-password:".length)
+    const malformedPassword = await request.post("/api/auth/reset-password", {
+      data: { token, newPassword: null }, headers: { origin: baseURL! },
+    })
+    expect(malformedPassword.status()).toBe(400)
+    expect(await malformedPassword.json()).toEqual(expect.objectContaining({ code: "VALIDATION_ERROR" }))
     await page.goto(`/api/auth/reset-password/${encodeURIComponent(token)}?callbackURL=${encodeURIComponent(`${baseURL}/reset-password`)}`)
     await waitForClientReady(page)
     await page.getByLabel("New password", { exact: true }).fill("new-test-password456")

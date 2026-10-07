@@ -174,7 +174,9 @@ export function buildQuitsAuthOptions(input: {
             returnStatus: false,
           }))
         }, { maxWait: 10_000, timeout: 15_000 }).catch((error: unknown) => {
-          if (error instanceof APIError) throw error
+          // Native schema errors use Better Call's base APIError, which is not an instance of
+          // Better Auth's exported subclass in newer versions. Match native error recognition.
+          if (error instanceof APIError || (error instanceof Error && error.name === "APIError")) throw error
           console.error("Password reset transaction failed")
           throw new APIError("INTERNAL_SERVER_ERROR", { message: "Could not reset password. Please try again." })
         })
