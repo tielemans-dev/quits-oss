@@ -72,7 +72,7 @@ describeIfDatabase("settings email delivery status", () => {
       expect(JSON.stringify(settings)).not.toContain("synthetic-smtp-password")
       expect(JSON.stringify(settings.emailDelivery)).not.toContain("smtp-user")
     } finally {
-      await prisma.organization.deleteMany({ where: { id: orgId } })
+      await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
 
