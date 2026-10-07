@@ -14,7 +14,7 @@
     },
     "apps/oss": {
       "name": "@quits/oss",
-      "version": "0.1.4",
+      "version": "0.2.0",
       "dependencies": {
         "@hookform/resolvers": "^5.2.2",
         "@modelcontextprotocol/sdk": "^1.32.1",
@@ -83,7 +83,7 @@
     },
     "packages/contracts": {
       "name": "@quits/contracts",
-      "version": "0.1.4",
+      "version": "0.2.0",
       "dependencies": {
         "zod": "^4.3.6",
       },
@@ -95,7 +95,7 @@
     },
     "packages/shared": {
       "name": "@quits/shared",
-      "version": "0.1.4",
+      "version": "0.2.0",
       "dependencies": {
         "@quits/contracts": "workspace:*",
         "decimal.js-light": "2.5.1",
