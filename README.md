@@ -227,3 +227,18 @@ Repository-local coding agent instructions live in `AGENTS.md` and `CLAUDE.md`.
 ## License
 
 [PolyForm Noncommercial 1.0.0](LICENSE)
+
+### Document artifacts
+
+Self-hosted servers render invoice, credit note and agreement PDFs on the server and keep the
+issued bytes in `QUITS_ARTIFACT_DIR`. `YAIP_ARTIFACT_DIR` remains a supported fallback. The default
+is `./data/artifacts`, relative to the server's working directory. Persist and back up this directory
+alongside the database. Docker Compose persists the default directory in its `artifacts` named
+volume. Files use `<organization>/<kind>/<documentId>/<sha256>.pdf` paths,
+with metadata alongside them. The server serves them only after checking the owner's session or
+the customer's signed public link. Draft downloads render live. Older issued documents without
+stored artifacts render live with `X-Quits-Artifact: reconstructed`.
+
+Runtime hosts can supply `documentRenderer` and `documentArtifactStore` services to
+`bootstrapQuitsRuntime`. This release advertises `documents.artifactsRequired: false`; hosts
+without both adapters can still issue documents and record `document.artifact_missing`.

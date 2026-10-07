@@ -1,4 +1,4 @@
-import { Document, Image, Page, StyleSheet, Text, View, pdf } from "@react-pdf/renderer"
+import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import type { OrgSettingsForPdf } from "./invoice-pdf"
@@ -94,7 +94,7 @@ export function CreditNotePdfDocument({
   const money = (amount: number) => formatCurrency(amount, creditNote.currency, locale)
 
   return (
-    <Document>
+    <Document creationDate={new Date(creditNote.issueDate)} modificationDate={new Date(creditNote.issueDate)}>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View>
@@ -194,27 +194,4 @@ export function CreditNotePdfDocument({
       </Page>
     </Document>
   )
-}
-
-export async function generateCreditNotePdf(
-  creditNote: CreditNoteForPdf,
-  org: OrgSettingsForPdf = {}
-): Promise<Blob> {
-  return pdf(<CreditNotePdfDocument creditNote={creditNote} org={org} />).toBlob()
-}
-
-/** Triggers a browser download of the credit note PDF. */
-export async function downloadCreditNotePdf(
-  creditNote: CreditNoteForPdf,
-  org: OrgSettingsForPdf = {}
-) {
-  const blob = await generateCreditNotePdf(creditNote, org)
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement("a")
-  anchor.href = url
-  anchor.download = `${creditNote.number}.pdf`
-  document.body.appendChild(anchor)
-  anchor.click()
-  document.body.removeChild(anchor)
-  URL.revokeObjectURL(url)
 }

@@ -33,16 +33,9 @@ function isValidEmailAddress(email: string | null | undefined) {
   return Boolean(email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
 }
 
-async function downloadPdf(creditNote: CreditNoteDetail, org: OrgSettingsForPdf) {
-  const { downloadCreditNotePdf } = await import("../../../lib/credit-note-pdf")
-  const buyer = parseBuyerSnapshot(creditNote.buyerSnapshot)
-  await downloadCreditNotePdf(
-    {
-      ...creditNote,
-      contact: { ...creditNote.contact, ...buyer, name: buyer?.name ?? creditNote.contact.name },
-    },
-    org
-  )
+async function downloadPdf(creditNote: CreditNoteDetail, _org: OrgSettingsForPdf) {
+  const { downloadDocumentPdf } = await import("../../../lib/documents-download")
+  await downloadDocumentPdf("creditNote", creditNote.id, creditNote.number)
 }
 
 function CreditNoteDetailPage() {

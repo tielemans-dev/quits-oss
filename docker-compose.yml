@@ -10,6 +10,8 @@ services:
       CRON_SECRET: "${CRON_SECRET:?Set CRON_SECRET in .env to a random secret, e.g. openssl rand -base64 32}"
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       FROM_EMAIL: ${FROM_EMAIL:-}
+    volumes:
+      - artifacts:/app/apps/oss/data/artifacts
     depends_on:
       db:
         condition: service_healthy
@@ -54,4 +56,5 @@ services:
       retries: 5
 
 volumes:
+  artifacts:
   pgdata:

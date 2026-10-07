@@ -1,3 +1,4 @@
+import { storedPdfResponse } from "../documents/pdf-access"
 import { agreementOfferSnapshotSchema } from "@quits/contracts/agreements"
 import { auth } from "../auth"
 import { prisma } from "../db"
@@ -18,7 +19,11 @@ export async function publicAgreementPdf(token: string) {
   const session = await loadPublicAgreementByToken(token)
   if (!session) return new Response("This link is no longer valid", { status: 404 })
   const dto = publicAgreementDto(session.agreement)
-  return agreementPdfResponse({ ...dto, snapshot: dto.snapshot })
+  const stored = await storedPdfResponse(session.agreement)
+  if (stored) return stored
+  const response = await agreementPdfResponse({ ...dto, snapshot: dto.snapshot })
+  response.headers.set("X-Quits-Artifact", "reconstructed")
+  return response
 }
 export async function privateAgreementPdf(request: Request, id: string) {
   const actor = await agreementPdfActor(request)
@@ -27,7 +32,11 @@ export async function privateAgreementPdf(request: Request, id: string) {
     where: { id, organizationId: actor.organizationId },
   })
   if (!agreement?.offerSnapshot) return new Response("Agreement not found", { status: 404 })
-  return agreementPdfResponse(publicAgreementDto(agreement))
+  const stored = await storedPdfResponse(agreement)
+  if (stored) return stored
+  const response = await agreementPdfResponse(publicAgreementDto(agreement))
+  response.headers.set("X-Quits-Artifact", "reconstructed")
+  return response
 }
 export async function approvalAgreementPdf(request: Request, id: string) {
   const actor = await agreementPdfActor(request)
