@@ -1,6 +1,6 @@
 # Ledger-Ready Money Model Design
 
-Status: revision 7, after adversarial review rounds 1 to 6 (accounting lens and code-fit lens),
+Status: revision 8, after adversarial review rounds 1 to 6 and the code-fit round-5 amendment (accounting lens and code-fit lens),
 2026-10-07. Built on four read-only code audits of commit 267dc06.
 
 **Scope of this revision.** Phase A (the invoice side, PRs A1 to A4, plus the cloud gates) is a
@@ -249,13 +249,21 @@ receipt lookup and approval gating by every entry point: tRPC `invoices.send` (i
 `invoice_send`, `credit_note_issue`, `agreement_send`, `agreement_issue`; and **approval execution
 and recovery** in `domain/approvals.ts`, which pass the stored command input and request identity
 through internal execution options. Resends and re-emails never enter it; they reuse published
-artifacts.
+artifacts. **Recurring auto-send** (`domain/commands/recurring.ts`, which today calls
+`executeCommand(sendInvoice, …)` directly) is routed through `issueDocument` by an injected
+dispatcher registered at bootstrap, so the job module never imports the orchestration module and
+no import cycle is created.
 
 ### Reservation, preparation, commit
 
-1. **Reserve** (own short transaction with the root client): allocate the document number from
-   the counter, create the document id for documents that do not exist yet (credit notes), fix
-   `issuedAt` as the reservation time, and write `ArtifactStaging(id, organizationId,
+1. **Reserve** (own short transaction with the root client, completed before the command
+   transaction opens; it locks the `OrgSettings` counter row like `allocateDocumentNumber` and
+   `appendEvents` do, and nothing else): **reuse** the document's existing number when it has
+   one (invoices receive theirs at draft creation; agreements already have theirs), otherwise
+   allocate; create the document id only for documents that do not exist yet (credit notes); fix
+   `issuedAt` as the reservation time. The reservation is looked up first by a **stable request
+   identity** `(organizationId, actorKey, clientRequestId)` stored on the staging row, so a retry
+   of the same request reuses the same id, number and timestamp instead of allocating again; and write `ArtifactStaging(id, organizationId,
    documentKind, documentId, renderInputHash, renderInput JSON, rendererVersion, status:
    reserved, prepToken, leaseUntil, artifacts null, missingReason null, candidateRefs [],
    createdAt)` with unique `(organizationId, documentKind, documentId, renderInputHash)`.
@@ -281,14 +289,22 @@ artifacts.
 
 Flows: definite rejection marks the candidate `retired`; an unchanged retry within the lease
 reuses the staging row and artifacts (new candidate, same refs); an edited retry reserves again.
-Agreements keep their existing pre-queue issuance and use steps 1 to 3 for their PDF only. Sweep:
-a staging row with no `published` candidate and an expired lease is `abandoned` and its number
-voided; artifact bytes are deleted only when **no** candidate, job or publication references them;
-retired candidates whose refs are shared with a live candidate keep their bytes. Tests: crash
+Agreements keep their existing pre-queue issuance and use steps 1 to 3 for their PDF only. Sweep (runs under the same `OrgSettings` lock as commit and completion, so it cannot race
+them): a staging row is `abandoned` only when its lease has expired **and** it has no candidate at
+all, or every candidate it has is `retired` **and** no delivery job for any of them is queued,
+running, or awaiting settlement (`domain/delivery/outbox.ts` permits delayed settlement). A number
+is voided (`document.number_voided` v1: organizationId, documentKind, number, reservationId,
+reason) only for an abandoned reservation that **allocated** a fresh number; a reused number
+belongs to the document and is never voided. Artifact bytes are deleted only when no
+`candidate_bound` or `published` staging row and no retired candidate younger than seven days
+references them; after seven days a retired candidate no longer protects bytes. Tests: crash
 after `put`; lease expiry before commit; concurrent preparation; concurrent edit between reserve
 and commit; rejection then unchanged retry then sweep (bytes survive); rejection then edited retry
 (old bytes swept, new kept); approval execution whose stored snapshot differs from the render
-input; number voided for an abandoned reservation.
+input; number voided for an abandoned reservation that allocated; number **not** voided for a reused
+invoice number; delayed settlement arriving after the lease expired but with the candidate's job
+still unsettled (publishes, nothing voided); retry with the same client request id reuses the
+reservation.
 
 ### Cloud gates and release sequencing
 
@@ -450,7 +466,7 @@ Kept verbatim in spirit from review round 3 so a human can decide:
 | A2a.1 | Additive: `@quits/shared/pricing` decimal calculator (string inputs, number compatibility, independent input precision) with packed-package verification; VAT treatment columns, evidence JSON, contracts; `calculationVersion`, `quantityInput`, `unitPriceInput` columns with backfill; precision rule at settings and drafts. Legacy execution path unchanged; v2 not yet produced. | A1 |
 | A2a.2 | Activation: every producer on v2 (invoice and quote create and edit including no-item edits that reconstruct from Decimal columns, quote conversion, recurring generation, agreement pricing for v2 offers); every editor on the shared calculator; `calculationVersion` propagation. | A2a.1 |
 | A2b | Version-aware credit pricing with residuals and rounding reversal; versioned UBL with the K, G, AE, E, O mapping. | A2a.2 |
-| A3a | Part 5: interfaces, self-host entrypoint, `issueDocument` orchestration used by all entry points and approval recovery, reservation and staging protocol, candidate, sweep with number voiding, `document.artifact_stored` and `document.artifact_missing`, `documents.artifactsRequired` capability. Merge gates: packaged cloud compile; the nine protocol tests. | A1 |
+| A3a | Part 5: interfaces, self-host entrypoint, `issueDocument` orchestration used by all entry points and approval recovery, reservation and staging protocol, candidate, sweep with number voiding, `document.artifact_stored` and `document.artifact_missing`, `documents.artifactsRequired` capability. Merge gates: packaged cloud compile; the eleven protocol tests. | A1 |
 | Cloud 0 | Gated sync PR with `check-oss-release-compat.sh`. Prerequisite of the A3a release. | nothing |
 | Cloud 1 | Workers renderer and store adapters; harness passes with adapters against the published A3a release. | A3a released, Cloud 0 |
 | Agreements Phase 2 | Offer format v2 with absent-means-v1 dispatch, invoicing from deliverables on `issueDocument`, two-draft command, `purpose` column with prepayment issuance refused. | A3a, A2a.2 |

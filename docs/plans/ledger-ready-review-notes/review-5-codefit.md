@@ -1,0 +1,6 @@
+# Review 5, code-fit lens (Codex, 2026-10-07) on rev 5 Phase A. A2a.1 brief-ready: yes. A3a: amend Part 5 first.
+33 partial: recurring auto-send calls executeCommand(sendInvoice) directly (recurring.ts:685); route via injected dispatcher to avoid a cycle. Approval recovery passes resumeReceiptId, approver, reviewed version; preserve.
+34 partial: reservation compatible with the counter upsert and the OrgSettings lock (numbering.ts:28, events.ts:25) if it completes before the command transaction; invoices already have numbers at draft creation (invoices.ts:101), agreements reuse theirs (issuance.ts:125): specify reuse vs allocate; persist a stable request-to-reservation identity so retries reuse.
+35 partial: sweep must not void a reservation whose candidate has a pending or unsettled job (outbox.ts:28 allows delayed settlement); exclude live candidates and already-issued agreement offers; fence sweep against commit/completion; define when retired refs stop protecting bytes; test count mismatch.
+36 resolved: harness realistic; boot packages/app-runtime with its wrangler.jsonc and local Hyperdrive (CI has PostgreSQL); bare root wrangler dev targets the shell.
+37, 38, 39, 40 resolved. document.number_voided compatible with exports (einvoice.ts:160,199) and compliance (validate.ts:11); accountant acceptance unproven.
