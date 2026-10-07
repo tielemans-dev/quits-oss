@@ -1,3 +1,4 @@
+import { agreementTools } from "./tools/agreements"
 /**
  * Agent tool registry: every tool the MCP endpoint (`/api/mcp`) can expose.
  *
@@ -40,6 +41,7 @@ const featureTools: AgentTool[] = [
   ...organizationTools,
   ...contactTools,
   ...invoiceTools,
+  ...agreementTools,
   ...quoteTools,
   ...paymentTools,
   ...creditNoteTools,

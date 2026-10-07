@@ -1,3 +1,4 @@
+import { agreementsRouter } from "./routers/agreements"
 import { router } from "./init"
 import { paymentsRouter } from "./routers/payments"
 import { creditNotesRouter } from "./routers/credit-notes"
@@ -35,6 +36,7 @@ export const appRouter = router({
   invoices: invoicesRouter,
   onboarding: onboardingRouter,
   onboardingAi: onboardingAiRouter,
+  agreements: agreementsRouter,
   quotes: quotesRouter,
   runtime: runtimeRouter,
   setup: setupRouter,
