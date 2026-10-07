@@ -443,9 +443,20 @@ describeIfDatabase("overdue and reminders", () => {
         session: { activeOrganizationId: context.org.organizationId },
       },
     } as never)
+    await prisma.orgSettings.update({
+      where: { organizationId: context.org.organizationId },
+      data: { timezone: "Europe/Copenhagen" },
+    })
     const listing = await caller.reminders.listForInvoice({ invoiceId: invoice.id })
 
-    expect(listing).toMatchObject({ policyEnabled: true, remindable: true, hasRecipient: true, remindersPaused: false })
+    expect(listing).toMatchObject({
+      // The panel shows when reminders were sent in the organization's time zone.
+      timeZone: "Europe/Copenhagen",
+      policyEnabled: true,
+      remindable: true,
+      hasRecipient: true,
+      remindersPaused: false,
+    })
     expect(listing.reminders.map((reminder) => [reminder.offsetDays, reminder.status])).toEqual([
       [-3, "sent"],
       [7, "upcoming"],

@@ -71,7 +71,13 @@ export const remindersRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" })
       }
 
-      const policy = await readPolicy(ctx.organizationId)
+      const [policy, settings] = await Promise.all([
+        readPolicy(ctx.organizationId),
+        prisma.orgSettings.findUnique({
+          where: { organizationId: ctx.organizationId },
+          select: { timezone: true },
+        }),
+      ])
       const blocker = reminderBlocker(invoice)
       const now = new Date()
       const records: InvoiceReminderRecord[] = invoice.reminders.map((reminder) => ({
@@ -105,6 +111,11 @@ export const remindersRouter = router({
 
       return {
         invoiceId: invoice.id,
+        /**
+         * When a reminder was sent is shown in this time zone. Scheduled dates are calendar days
+         * (the due date plus an offset) and stay in UTC.
+         */
+        timeZone: settings?.timezone ?? "UTC",
         remindersPaused: invoice.remindersPaused,
         policyEnabled: policy.enabled,
         remindable: blocker === null,

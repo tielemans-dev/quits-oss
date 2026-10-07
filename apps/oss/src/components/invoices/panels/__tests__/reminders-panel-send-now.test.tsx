@@ -127,4 +127,53 @@ describe("InvoiceRemindersPanel history", () => {
     expect(badge.className).toContain("amber")
     expect(screen.queryByText("reminders.status.sent")).toBeNull()
   })
+
+  it("shows when a reminder was sent in the organization's time zone", async () => {
+    api.list.mockResolvedValue({
+      timeZone: "Europe/Copenhagen",
+      remindersPaused: false,
+      policyEnabled: true,
+      remindable: true,
+      hasRecipient: true,
+      reminders: [
+        {
+          id: "r_1",
+          offsetDays: 7,
+          scheduledFor: new Date("2026-10-01T00:00:00.000Z"),
+          // 01:30 on October 2 in Copenhagen.
+          sentAt: new Date("2026-10-01T23:30:00.000Z"),
+          status: "sent",
+          manual: false,
+          message: null,
+        },
+      ],
+    })
+    render(<InvoiceRemindersPanel invoice={invoice} locale="en-US" onChanged={onChanged} />)
+
+    expect(await screen.findByText("Oct 2, 2026")).toBeTruthy()
+  })
+
+  it("keeps a scheduled reminder on its calendar day in any time zone", async () => {
+    api.list.mockResolvedValue({
+      timeZone: "America/Los_Angeles",
+      remindersPaused: false,
+      policyEnabled: true,
+      remindable: true,
+      hasRecipient: true,
+      reminders: [
+        {
+          id: null,
+          offsetDays: 7,
+          scheduledFor: new Date("2026-10-05T00:00:00.000Z"),
+          sentAt: null,
+          status: "upcoming",
+          manual: false,
+          message: null,
+        },
+      ],
+    })
+    render(<InvoiceRemindersPanel invoice={invoice} locale="en-US" onChanged={onChanged} />)
+
+    expect(await screen.findByText("Oct 5, 2026")).toBeTruthy()
+  })
 })

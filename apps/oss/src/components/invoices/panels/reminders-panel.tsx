@@ -24,6 +24,8 @@ type ReminderCapabilities = { canSendNow: boolean; canPause: boolean; canResume:
 const NO_CAPABILITIES: ReminderCapabilities = { canSendNow: false, canPause: false, canResume: false }
 
 type RemindersState = {
+  /** The organization's time zone, for the moment a reminder was sent. */
+  timeZone?: string
   remindersPaused: boolean
   policyEnabled: boolean
   remindable: boolean
@@ -217,7 +219,10 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
                   {state.reminders.map((reminder) => (
                     <TableRow key={reminder.id ?? `upcoming-${reminder.offsetDays}`}>
                       <TableCell>
-                        {formatDate(reminder.sentAt ?? reminder.scheduledFor, locale, undefined, { month: "short" })}
+                        {reminder.sentAt
+                          ? formatDate(reminder.sentAt, locale, state.timeZone, { month: "short" })
+                          : // A scheduled date is a calendar day, stored at midnight UTC.
+                            formatDate(reminder.scheduledFor, locale, "UTC", { month: "short" })}
                       </TableCell>
                       <TableCell>
                         {reminder.manual
