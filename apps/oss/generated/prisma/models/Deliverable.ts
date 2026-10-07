@@ -34,6 +34,8 @@ export type DeliverableAvgAggregateOutputType = {
   lineTax: runtime.Decimal | null
   lineGross: runtime.Decimal | null
   taxRate: runtime.Decimal | null
+  deliveryRevision: number | null
+  acceptedRevision: number | null
   sortOrder: number | null
 }
 
@@ -45,6 +47,8 @@ export type DeliverableSumAggregateOutputType = {
   lineTax: runtime.Decimal | null
   lineGross: runtime.Decimal | null
   taxRate: runtime.Decimal | null
+  deliveryRevision: number | null
+  acceptedRevision: number | null
   sortOrder: number | null
 }
 
@@ -67,6 +71,13 @@ export type DeliverableMinAggregateOutputType = {
   isDeposit: boolean | null
   status: string | null
   billingStatus: string | null
+  deliveryRevision: number | null
+  deliveredAt: Date | null
+  acceptedAt: Date | null
+  acceptedRevision: number | null
+  acceptedVia: string | null
+  acceptanceEvidenceNote: string | null
+  changeRequestNote: string | null
   sortOrder: number | null
 }
 
@@ -89,6 +100,13 @@ export type DeliverableMaxAggregateOutputType = {
   isDeposit: boolean | null
   status: string | null
   billingStatus: string | null
+  deliveryRevision: number | null
+  deliveredAt: Date | null
+  acceptedAt: Date | null
+  acceptedRevision: number | null
+  acceptedVia: string | null
+  acceptanceEvidenceNote: string | null
+  changeRequestNote: string | null
   sortOrder: number | null
 }
 
@@ -111,6 +129,13 @@ export type DeliverableCountAggregateOutputType = {
   isDeposit: number
   status: number
   billingStatus: number
+  deliveryRevision: number
+  deliveredAt: number
+  acceptedAt: number
+  acceptedRevision: number
+  acceptedVia: number
+  acceptanceEvidenceNote: number
+  changeRequestNote: number
   sortOrder: number
   _all: number
 }
@@ -124,6 +149,8 @@ export type DeliverableAvgAggregateInputType = {
   lineTax?: true
   lineGross?: true
   taxRate?: true
+  deliveryRevision?: true
+  acceptedRevision?: true
   sortOrder?: true
 }
 
@@ -135,6 +162,8 @@ export type DeliverableSumAggregateInputType = {
   lineTax?: true
   lineGross?: true
   taxRate?: true
+  deliveryRevision?: true
+  acceptedRevision?: true
   sortOrder?: true
 }
 
@@ -157,6 +186,13 @@ export type DeliverableMinAggregateInputType = {
   isDeposit?: true
   status?: true
   billingStatus?: true
+  deliveryRevision?: true
+  deliveredAt?: true
+  acceptedAt?: true
+  acceptedRevision?: true
+  acceptedVia?: true
+  acceptanceEvidenceNote?: true
+  changeRequestNote?: true
   sortOrder?: true
 }
 
@@ -179,6 +215,13 @@ export type DeliverableMaxAggregateInputType = {
   isDeposit?: true
   status?: true
   billingStatus?: true
+  deliveryRevision?: true
+  deliveredAt?: true
+  acceptedAt?: true
+  acceptedRevision?: true
+  acceptedVia?: true
+  acceptanceEvidenceNote?: true
+  changeRequestNote?: true
   sortOrder?: true
 }
 
@@ -201,6 +244,13 @@ export type DeliverableCountAggregateInputType = {
   isDeposit?: true
   status?: true
   billingStatus?: true
+  deliveryRevision?: true
+  deliveredAt?: true
+  acceptedAt?: true
+  acceptedRevision?: true
+  acceptedVia?: true
+  acceptanceEvidenceNote?: true
+  changeRequestNote?: true
   sortOrder?: true
   _all?: true
 }
@@ -310,6 +360,13 @@ export type DeliverableGroupByOutputType = {
   isDeposit: boolean
   status: string
   billingStatus: string
+  deliveryRevision: number
+  deliveredAt: Date | null
+  acceptedAt: Date | null
+  acceptedRevision: number | null
+  acceptedVia: string | null
+  acceptanceEvidenceNote: string | null
+  changeRequestNote: string | null
   sortOrder: number
   _count: DeliverableCountAggregateOutputType | null
   _avg: DeliverableAvgAggregateOutputType | null
@@ -355,6 +412,13 @@ export type DeliverableWhereInput = {
   isDeposit?: Prisma.BoolFilter<"Deliverable"> | boolean
   status?: Prisma.StringFilter<"Deliverable"> | string
   billingStatus?: Prisma.StringFilter<"Deliverable"> | string
+  deliveryRevision?: Prisma.IntFilter<"Deliverable"> | number
+  deliveredAt?: Prisma.DateTimeNullableFilter<"Deliverable"> | Date | string | null
+  acceptedAt?: Prisma.DateTimeNullableFilter<"Deliverable"> | Date | string | null
+  acceptedRevision?: Prisma.IntNullableFilter<"Deliverable"> | number | null
+  acceptedVia?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  acceptanceEvidenceNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  changeRequestNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   sortOrder?: Prisma.IntFilter<"Deliverable"> | number
   agreement?: Prisma.XOR<Prisma.AgreementScalarRelationFilter, Prisma.AgreementWhereInput>
 }
@@ -378,6 +442,13 @@ export type DeliverableOrderByWithRelationInput = {
   isDeposit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   billingStatus?: Prisma.SortOrder
+  deliveryRevision?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedRevision?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedVia?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrderInput | Prisma.SortOrder
+  changeRequestNote?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   agreement?: Prisma.AgreementOrderByWithRelationInput
 }
@@ -404,6 +475,13 @@ export type DeliverableWhereUniqueInput = Prisma.AtLeast<{
   isDeposit?: Prisma.BoolFilter<"Deliverable"> | boolean
   status?: Prisma.StringFilter<"Deliverable"> | string
   billingStatus?: Prisma.StringFilter<"Deliverable"> | string
+  deliveryRevision?: Prisma.IntFilter<"Deliverable"> | number
+  deliveredAt?: Prisma.DateTimeNullableFilter<"Deliverable"> | Date | string | null
+  acceptedAt?: Prisma.DateTimeNullableFilter<"Deliverable"> | Date | string | null
+  acceptedRevision?: Prisma.IntNullableFilter<"Deliverable"> | number | null
+  acceptedVia?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  acceptanceEvidenceNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  changeRequestNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   sortOrder?: Prisma.IntFilter<"Deliverable"> | number
   agreement?: Prisma.XOR<Prisma.AgreementScalarRelationFilter, Prisma.AgreementWhereInput>
 }, "id">
@@ -427,6 +505,13 @@ export type DeliverableOrderByWithAggregationInput = {
   isDeposit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   billingStatus?: Prisma.SortOrder
+  deliveryRevision?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedRevision?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptedVia?: Prisma.SortOrderInput | Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrderInput | Prisma.SortOrder
+  changeRequestNote?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   _count?: Prisma.DeliverableCountOrderByAggregateInput
   _avg?: Prisma.DeliverableAvgOrderByAggregateInput
@@ -457,6 +542,13 @@ export type DeliverableScalarWhereWithAggregatesInput = {
   isDeposit?: Prisma.BoolWithAggregatesFilter<"Deliverable"> | boolean
   status?: Prisma.StringWithAggregatesFilter<"Deliverable"> | string
   billingStatus?: Prisma.StringWithAggregatesFilter<"Deliverable"> | string
+  deliveryRevision?: Prisma.IntWithAggregatesFilter<"Deliverable"> | number
+  deliveredAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Deliverable"> | Date | string | null
+  acceptedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Deliverable"> | Date | string | null
+  acceptedRevision?: Prisma.IntNullableWithAggregatesFilter<"Deliverable"> | number | null
+  acceptedVia?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
+  acceptanceEvidenceNote?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
+  changeRequestNote?: Prisma.StringNullableWithAggregatesFilter<"Deliverable"> | string | null
   sortOrder?: Prisma.IntWithAggregatesFilter<"Deliverable"> | number
 }
 
@@ -478,6 +570,13 @@ export type DeliverableCreateInput = {
   isDeposit?: boolean
   status?: string
   billingStatus?: string
+  deliveryRevision?: number
+  deliveredAt?: Date | string | null
+  acceptedAt?: Date | string | null
+  acceptedRevision?: number | null
+  acceptedVia?: string | null
+  acceptanceEvidenceNote?: string | null
+  changeRequestNote?: string | null
   sortOrder?: number
   agreement: Prisma.AgreementCreateNestedOneWithoutDeliverablesInput
 }
@@ -501,6 +600,13 @@ export type DeliverableUncheckedCreateInput = {
   isDeposit?: boolean
   status?: string
   billingStatus?: string
+  deliveryRevision?: number
+  deliveredAt?: Date | string | null
+  acceptedAt?: Date | string | null
+  acceptedRevision?: number | null
+  acceptedVia?: string | null
+  acceptanceEvidenceNote?: string | null
+  changeRequestNote?: string | null
   sortOrder?: number
 }
 
@@ -522,6 +628,13 @@ export type DeliverableUpdateInput = {
   isDeposit?: Prisma.BoolFieldUpdateOperationsInput | boolean
   status?: Prisma.StringFieldUpdateOperationsInput | string
   billingStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   agreement?: Prisma.AgreementUpdateOneRequiredWithoutDeliverablesNestedInput
 }
@@ -545,6 +658,13 @@ export type DeliverableUncheckedUpdateInput = {
   isDeposit?: Prisma.BoolFieldUpdateOperationsInput | boolean
   status?: Prisma.StringFieldUpdateOperationsInput | string
   billingStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -567,6 +687,13 @@ export type DeliverableCreateManyInput = {
   isDeposit?: boolean
   status?: string
   billingStatus?: string
+  deliveryRevision?: number
+  deliveredAt?: Date | string | null
+  acceptedAt?: Date | string | null
+  acceptedRevision?: number | null
+  acceptedVia?: string | null
+  acceptanceEvidenceNote?: string | null
+  changeRequestNote?: string | null
   sortOrder?: number
 }
 
@@ -588,6 +715,13 @@ export type DeliverableUpdateManyMutationInput = {
   isDeposit?: Prisma.BoolFieldUpdateOperationsInput | boolean
   status?: Prisma.StringFieldUpdateOperationsInput | string
   billingStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -610,6 +744,13 @@ export type DeliverableUncheckedUpdateManyInput = {
   isDeposit?: Prisma.BoolFieldUpdateOperationsInput | boolean
   status?: Prisma.StringFieldUpdateOperationsInput | string
   billingStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -642,6 +783,13 @@ export type DeliverableCountOrderByAggregateInput = {
   isDeposit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   billingStatus?: Prisma.SortOrder
+  deliveryRevision?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrder
+  acceptedRevision?: Prisma.SortOrder
+  acceptedVia?: Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrder
+  changeRequestNote?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
 }
 
@@ -653,6 +801,8 @@ export type DeliverableAvgOrderByAggregateInput = {
   lineTax?: Prisma.SortOrder
   lineGross?: Prisma.SortOrder
   taxRate?: Prisma.SortOrder
+  deliveryRevision?: Prisma.SortOrder
+  acceptedRevision?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
 }
 
@@ -675,6 +825,13 @@ export type DeliverableMaxOrderByAggregateInput = {
   isDeposit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   billingStatus?: Prisma.SortOrder
+  deliveryRevision?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrder
+  acceptedRevision?: Prisma.SortOrder
+  acceptedVia?: Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrder
+  changeRequestNote?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
 }
 
@@ -697,6 +854,13 @@ export type DeliverableMinOrderByAggregateInput = {
   isDeposit?: Prisma.SortOrder
   status?: Prisma.SortOrder
   billingStatus?: Prisma.SortOrder
+  deliveryRevision?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrder
+  acceptedAt?: Prisma.SortOrder
+  acceptedRevision?: Prisma.SortOrder
+  acceptedVia?: Prisma.SortOrder
+  acceptanceEvidenceNote?: Prisma.SortOrder
+  changeRequestNote?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
 }
 
@@ -708,6 +872,8 @@ export type DeliverableSumOrderByAggregateInput = {
   lineTax?: Prisma.SortOrder
   lineGross?: Prisma.SortOrder
   taxRate?: Prisma.SortOrder
+  deliveryRevision?: Prisma.SortOrder
+  acceptedRevision?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
 }
 
@@ -771,6 +937,13 @@ export type DeliverableCreateWithoutAgreementInput = {
   isDeposit?: boolean
   status?: string
   billingStatus?: string
+  deliveryRevision?: number
+  deliveredAt?: Date | string | null
+  acceptedAt?: Date | string | null
+  acceptedRevision?: number | null
+  acceptedVia?: string | null
+  acceptanceEvidenceNote?: string | null
+  changeRequestNote?: string | null
   sortOrder?: number
 }
 
@@ -792,6 +965,13 @@ export type DeliverableUncheckedCreateWithoutAgreementInput = {
   isDeposit?: boolean
   status?: string
   billingStatus?: string
+  deliveryRevision?: number
+  deliveredAt?: Date | string | null
+  acceptedAt?: Date | string | null
+  acceptedRevision?: number | null
+  acceptedVia?: string | null
+  acceptanceEvidenceNote?: string | null
+  changeRequestNote?: string | null
   sortOrder?: number
 }
 
@@ -843,6 +1023,13 @@ export type DeliverableScalarWhereInput = {
   isDeposit?: Prisma.BoolFilter<"Deliverable"> | boolean
   status?: Prisma.StringFilter<"Deliverable"> | string
   billingStatus?: Prisma.StringFilter<"Deliverable"> | string
+  deliveryRevision?: Prisma.IntFilter<"Deliverable"> | number
+  deliveredAt?: Prisma.DateTimeNullableFilter<"Deliverable"> | Date | string | null
+  acceptedAt?: Prisma.DateTimeNullableFilter<"Deliverable"> | Date | string | null
+  acceptedRevision?: Prisma.IntNullableFilter<"Deliverable"> | number | null
+  acceptedVia?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  acceptanceEvidenceNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
+  changeRequestNote?: Prisma.StringNullableFilter<"Deliverable"> | string | null
   sortOrder?: Prisma.IntFilter<"Deliverable"> | number
 }
 
@@ -864,6 +1051,13 @@ export type DeliverableCreateManyAgreementInput = {
   isDeposit?: boolean
   status?: string
   billingStatus?: string
+  deliveryRevision?: number
+  deliveredAt?: Date | string | null
+  acceptedAt?: Date | string | null
+  acceptedRevision?: number | null
+  acceptedVia?: string | null
+  acceptanceEvidenceNote?: string | null
+  changeRequestNote?: string | null
   sortOrder?: number
 }
 
@@ -885,6 +1079,13 @@ export type DeliverableUpdateWithoutAgreementInput = {
   isDeposit?: Prisma.BoolFieldUpdateOperationsInput | boolean
   status?: Prisma.StringFieldUpdateOperationsInput | string
   billingStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -906,6 +1107,13 @@ export type DeliverableUncheckedUpdateWithoutAgreementInput = {
   isDeposit?: Prisma.BoolFieldUpdateOperationsInput | boolean
   status?: Prisma.StringFieldUpdateOperationsInput | string
   billingStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -927,6 +1135,13 @@ export type DeliverableUncheckedUpdateManyWithoutAgreementInput = {
   isDeposit?: Prisma.BoolFieldUpdateOperationsInput | boolean
   status?: Prisma.StringFieldUpdateOperationsInput | string
   billingStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  changeRequestNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
@@ -951,6 +1166,13 @@ export type DeliverableSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   isDeposit?: boolean
   status?: boolean
   billingStatus?: boolean
+  deliveryRevision?: boolean
+  deliveredAt?: boolean
+  acceptedAt?: boolean
+  acceptedRevision?: boolean
+  acceptedVia?: boolean
+  acceptanceEvidenceNote?: boolean
+  changeRequestNote?: boolean
   sortOrder?: boolean
   agreement?: boolean | Prisma.AgreementDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["deliverable"]>
@@ -974,6 +1196,13 @@ export type DeliverableSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   isDeposit?: boolean
   status?: boolean
   billingStatus?: boolean
+  deliveryRevision?: boolean
+  deliveredAt?: boolean
+  acceptedAt?: boolean
+  acceptedRevision?: boolean
+  acceptedVia?: boolean
+  acceptanceEvidenceNote?: boolean
+  changeRequestNote?: boolean
   sortOrder?: boolean
   agreement?: boolean | Prisma.AgreementDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["deliverable"]>
@@ -997,6 +1226,13 @@ export type DeliverableSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   isDeposit?: boolean
   status?: boolean
   billingStatus?: boolean
+  deliveryRevision?: boolean
+  deliveredAt?: boolean
+  acceptedAt?: boolean
+  acceptedRevision?: boolean
+  acceptedVia?: boolean
+  acceptanceEvidenceNote?: boolean
+  changeRequestNote?: boolean
   sortOrder?: boolean
   agreement?: boolean | Prisma.AgreementDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["deliverable"]>
@@ -1020,10 +1256,17 @@ export type DeliverableSelectScalar = {
   isDeposit?: boolean
   status?: boolean
   billingStatus?: boolean
+  deliveryRevision?: boolean
+  deliveredAt?: boolean
+  acceptedAt?: boolean
+  acceptedRevision?: boolean
+  acceptedVia?: boolean
+  acceptanceEvidenceNote?: boolean
+  changeRequestNote?: boolean
   sortOrder?: boolean
 }
 
-export type DeliverableOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "agreementId" | "title" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "agreedDate" | "expectedDate" | "isDeposit" | "status" | "billingStatus" | "sortOrder", ExtArgs["result"]["deliverable"]>
+export type DeliverableOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "agreementId" | "title" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "agreedDate" | "expectedDate" | "isDeposit" | "status" | "billingStatus" | "deliveryRevision" | "deliveredAt" | "acceptedAt" | "acceptedRevision" | "acceptedVia" | "acceptanceEvidenceNote" | "changeRequestNote" | "sortOrder", ExtArgs["result"]["deliverable"]>
 export type DeliverableInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   agreement?: boolean | Prisma.AgreementDefaultArgs<ExtArgs>
 }
@@ -1058,6 +1301,13 @@ export type $DeliverablePayload<ExtArgs extends runtime.Types.Extensions.Interna
     isDeposit: boolean
     status: string
     billingStatus: string
+    deliveryRevision: number
+    deliveredAt: Date | null
+    acceptedAt: Date | null
+    acceptedRevision: number | null
+    acceptedVia: string | null
+    acceptanceEvidenceNote: string | null
+    changeRequestNote: string | null
     sortOrder: number
   }, ExtArgs["result"]["deliverable"]>
   composites: {}
@@ -1501,6 +1751,13 @@ export interface DeliverableFieldRefs {
   readonly isDeposit: Prisma.FieldRef<"Deliverable", 'Boolean'>
   readonly status: Prisma.FieldRef<"Deliverable", 'String'>
   readonly billingStatus: Prisma.FieldRef<"Deliverable", 'String'>
+  readonly deliveryRevision: Prisma.FieldRef<"Deliverable", 'Int'>
+  readonly deliveredAt: Prisma.FieldRef<"Deliverable", 'DateTime'>
+  readonly acceptedAt: Prisma.FieldRef<"Deliverable", 'DateTime'>
+  readonly acceptedRevision: Prisma.FieldRef<"Deliverable", 'Int'>
+  readonly acceptedVia: Prisma.FieldRef<"Deliverable", 'String'>
+  readonly acceptanceEvidenceNote: Prisma.FieldRef<"Deliverable", 'String'>
+  readonly changeRequestNote: Prisma.FieldRef<"Deliverable", 'String'>
   readonly sortOrder: Prisma.FieldRef<"Deliverable", 'Int'>
 }
     

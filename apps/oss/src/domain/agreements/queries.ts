@@ -1,3 +1,4 @@
+import { deliverableProgress } from "./progress"
 import type { z } from "zod"
 import type { agreementListInputSchema } from "@quits/contracts/agreements"
 import { prisma } from "../../lib/db"
@@ -67,5 +68,6 @@ export function serializeAgreementDetail(agreement: Awaited<ReturnType<typeof ge
   return {
     ...serializeAgreement(agreement),
     deliverables: agreement.deliverables.map(serializeDeliverable),
+    progress: deliverableProgress(agreement.deliverables),
   }
 }

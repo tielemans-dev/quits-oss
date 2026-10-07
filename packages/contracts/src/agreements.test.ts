@@ -11,7 +11,7 @@ import {
 } from "@quits/contracts/agreements"
 
 describe("agreement contracts", () => {
-  it("validates real calendar dates and refuses lifecycle fields", () => {
+  it("validates real calendar dates and refuses unauthorized lifecycle fields", () => {
     const input = { contactId: "buyer", title: "Design", validUntil: "2026-10-31" }
     expect(agreementCreateDraftInputSchema.parse(input)).toMatchObject({
       deliverables: [],
@@ -29,9 +29,23 @@ describe("agreement contracts", () => {
       deliverableUpdateInputSchema.safeParse({
         id: "line",
         agreementId: "agreement",
-        status: "in_progress",
+        status: "delivered",
       }).success,
     ).toBe(false)
+  })
+  it("allows only the update fulfillment transition, preserving zero create defaults", () => {
+    expect(
+      deliverableUpdateInputSchema.parse({ id: "line", agreementId: "a", status: "in_progress" }),
+    ).toEqual({ id: "line", agreementId: "a", status: "in_progress" })
+    for (const field of [
+      { status: "cancelled" },
+      { deliveryRevision: 2 },
+      { acceptedAt: "2026-10-07" },
+      { billingStatus: "invoiced" },
+    ])
+      expect(
+        deliverableUpdateInputSchema.safeParse({ id: "line", agreementId: "a", ...field }).success,
+      ).toBe(false)
   })
   it("preserves omitted draft and deliverable fields instead of applying create defaults", () => {
     expect(agreementUpdateDraftInputSchema.parse({ id: "a", notes: "private" })).toEqual({

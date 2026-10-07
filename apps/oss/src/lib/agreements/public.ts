@@ -1,5 +1,5 @@
 import { agreementOfferSnapshotSchema } from "@quits/contracts/agreements"
-import type { Agreement } from "../../../generated/prisma/client"
+import type { Agreement, Deliverable } from "../../../generated/prisma/client"
 import { sanitizeAgreementHtml } from "./markdown"
 
 /** Public evidence excludes IP, user agent and internal evidence notes. */
@@ -15,7 +15,11 @@ export function agreementAcceptanceRecord(agreement: Agreement) {
   }
 }
 /** Explicit allowlist. Never spread the database row into a public response. */
-export function publicAgreementDto(agreement: Agreement) {
+export function publicAgreementDto(
+  agreement: Agreement & {
+    deliverables?: Pick<Deliverable, "sortOrder" | "expectedDate">[]
+  },
+) {
   const snapshot = agreementOfferSnapshotSchema.parse(agreement.offerSnapshot)
   return {
     number: agreement.number,
@@ -23,7 +27,16 @@ export function publicAgreementDto(agreement: Agreement) {
     offerRevision: agreement.offerRevision,
     issueDate: agreement.issueDate?.toISOString() ?? null,
     expiresAt: agreement.expiresAt?.toISOString() ?? null,
-    snapshot: { ...snapshot, termsHtml: sanitizeAgreementHtml(snapshot.termsHtml) },
+    snapshot: {
+      ...snapshot,
+      termsHtml: sanitizeAgreementHtml(snapshot.termsHtml),
+    },
+    expectedDates: snapshot.deliverables.map(
+      (line) =>
+        agreement.deliverables
+          ?.find((current) => current.sortOrder === line.sortOrder)
+          ?.expectedDate?.toISOString() ?? null,
+    ),
     acceptance: agreementAcceptanceRecord(agreement),
     declinedAt: agreement.declinedAt?.toISOString() ?? null,
     declineReason: agreement.declineReason,

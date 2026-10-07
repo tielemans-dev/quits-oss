@@ -1,3 +1,6 @@
+import { deliverableProgress } from "../../agreements/progress"
+import { markDeliverableDelivered } from "../../commands/deliverables"
+import { deliverableIdInputSchema } from "@quits/contracts/agreements"
 import {
   sendAgreement,
   issueAgreement,
@@ -29,6 +32,14 @@ const agreementListToolInputSchema = agreementListInputSchema.extend({
 })
 
 export const agreementTools: AgentTool[] = [
+  defineCommandTool({
+    name: "deliverable_mark_delivered",
+    title: "Mark deliverable delivered",
+    description:
+      "Marks planned, in-progress or changes-requested work delivered on an accepted agreement. Excludes deposits. Increments deliveryRevision and clears current acceptance. Requires approval in approval_required mode; no email is sent yet.",
+    command: markDeliverableDelivered,
+    input: deliverableIdInputSchema,
+  }),
   defineCommandTool({
     name: "agreement_send",
     title: "Send agreement",
@@ -70,7 +81,10 @@ export const agreementTools: AgentTool[] = [
     input: agreementListToolInputSchema,
     run: async ({ actor }, input) => {
       const { limit, cursor, ...filter } = input
-      const rows = await listAgreements(actor.organizationId, filter, { limit, cursor })
+      const rows = await listAgreements(actor.organizationId, filter, {
+        limit,
+        cursor,
+      })
       return toPage(rows, limit, (row) => row.createdAt.toISOString())
     },
   }),
@@ -78,15 +92,22 @@ export const agreementTools: AgentTool[] = [
     name: "agreement_get",
     title: "Get agreement",
     description:
-      "Returns an agreement with status, offer revision, acceptance record, customer, deliverables and billing status.",
+      "Returns an agreement with status, offer revision, acceptance record, customer, progress, deliverables, fulfillment status, deliveryRevision, current acceptance and billing status.",
     permission: "agreement:read",
     input: agreementIdInputSchema,
-    run: ({ actor }, input) => getAgreement(actor.organizationId, input.id),
+    run: async ({ actor }, input) => {
+      const agreement = await getAgreement(actor.organizationId, input.id)
+      return {
+        ...agreement,
+        progress: deliverableProgress(agreement.deliverables),
+      }
+    },
   }),
   defineQueryTool({
     name: "deliverable_list",
     title: "List deliverables",
-    description: "Lists deliverables in agreement order, with fulfillment and billing status.",
+    description:
+      "Lists deliverables in agreement order, with fulfillment status, deliveryRevision, current acceptance and billing status.",
     permission: "deliverable:read",
     input: z.object({ agreementId: z.string().min(1) }).strict(),
     run: async ({ actor }, input) =>
@@ -127,9 +148,9 @@ export const agreementTools: AgentTool[] = [
   }),
   defineCommandTool({
     name: "deliverable_update",
-    title: "Update draft deliverable",
+    title: "Update deliverable",
     description:
-      "Edits offer fields or the expected date of a draft deliverable. Does not change fulfillment or billing status.",
+      "Edits offer fields only in drafts, or expectedDate in any agreement state. Set status to in_progress to start planned work or reopen delivered/accepted unbilled work on an accepted agreement. Deposits cannot enter fulfillment.",
     command: updateDeliverable,
     input: deliverableUpdateInputSchema,
   }),

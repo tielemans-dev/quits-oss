@@ -755,6 +755,13 @@ export const DeliverableScalarFieldEnum = {
   isDeposit: 'isDeposit',
   status: 'status',
   billingStatus: 'billingStatus',
+  deliveryRevision: 'deliveryRevision',
+  deliveredAt: 'deliveredAt',
+  acceptedAt: 'acceptedAt',
+  acceptedRevision: 'acceptedRevision',
+  acceptedVia: 'acceptedVia',
+  acceptanceEvidenceNote: 'acceptanceEvidenceNote',
+  changeRequestNote: 'changeRequestNote',
   sortOrder: 'sortOrder'
 } as const
 

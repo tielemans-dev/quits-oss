@@ -1,3 +1,9 @@
+import {
+  markDeliverableDelivered,
+  acceptDeliverable,
+  cancelDeliverable,
+} from "../../domain/commands/deliverables"
+import { deliverableIdInputSchema, deliverableAcceptInputSchema } from "@quits/contracts/agreements"
 import { actorCan } from "../../domain/actor"
 import {
   sendAgreement,
@@ -49,6 +55,9 @@ export const agreementsRouter = router({
     accept: actorCan(ctx.actor, "agreement:accept"),
     close: actorCan(ctx.actor, "agreement:close"),
     delete: actorCan(ctx.actor, "agreement:delete"),
+    deliverableUpdate: actorCan(ctx.actor, "deliverable:update"),
+    deliverableDeliver: actorCan(ctx.actor, "deliverable:deliver"),
+    deliverableAccept: actorCan(ctx.actor, "deliverable:accept"),
   })),
   send: authorizedProcedure("agreement:send")
     .input(agreementIdInputSchema)
@@ -84,7 +93,11 @@ export const agreementsRouter = router({
     .input(agreementRecordAcceptanceInputSchema)
     .mutation(async ({ ctx, input }) =>
       serializeAgreementDetail(
-        unwrapOutcome(await executeCommand(recordAgreementAcceptance, input, { actor: ctx.actor })),
+        unwrapOutcome(
+          await executeCommand(recordAgreementAcceptance, input, {
+            actor: ctx.actor,
+          }),
+        ),
       ),
     ),
   close: authorizedProcedure("agreement:close")
@@ -98,14 +111,20 @@ export const agreementsRouter = router({
     .input(agreementIdInputSchema)
     .mutation(async ({ ctx, input }) =>
       serializeAgreementDetail(
-        unwrapOutcome(await executeCommand(revokeAgreementLinks, input, { actor: ctx.actor })),
+        unwrapOutcome(
+          await executeCommand(revokeAgreementLinks, input, {
+            actor: ctx.actor,
+          }),
+        ),
       ),
     ),
   sendReadLink: authorizedProcedure("agreement:send")
     .input(agreementIdInputSchema)
     .mutation(async ({ ctx, input }) => {
       const result = unwrapOutcome(
-        await executeCommand(sendAgreementReadLink, input, { actor: ctx.actor }),
+        await executeCommand(sendAgreementReadLink, input, {
+          actor: ctx.actor,
+        }),
       )
       await readEmailDelivery(result.deliveryKey, "agreement")
       return serializeAgreementDetail(await getAgreement(ctx.organizationId, input.id))
@@ -134,14 +153,22 @@ export const agreementsRouter = router({
     .input(agreementCreateDraftInputSchema)
     .mutation(async ({ ctx, input }) =>
       serializeAgreementDetail(
-        unwrapOutcome(await executeCommand(createAgreementDraft, input, { actor: ctx.actor })),
+        unwrapOutcome(
+          await executeCommand(createAgreementDraft, input, {
+            actor: ctx.actor,
+          }),
+        ),
       ),
     ),
   updateDraft: authorizedProcedure("agreement:update")
     .input(agreementUpdateDraftInputSchema)
     .mutation(async ({ ctx, input }) =>
       serializeAgreementDetail(
-        unwrapOutcome(await executeCommand(updateAgreementDraft, input, { actor: ctx.actor })),
+        unwrapOutcome(
+          await executeCommand(updateAgreementDraft, input, {
+            actor: ctx.actor,
+          }),
+        ),
       ),
     ),
   deleteDraft: authorizedProcedure("agreement:delete")
@@ -154,6 +181,31 @@ export const agreementsRouter = router({
     .mutation(async ({ ctx, input }) =>
       serializeDeliverable(
         unwrapOutcome(await executeCommand(updateDeliverable, input, { actor: ctx.actor })),
+      ),
+    ),
+  markDeliverableDelivered: authorizedProcedure("deliverable:deliver")
+    .input(deliverableIdInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeDeliverable(
+        unwrapOutcome(
+          await executeCommand(markDeliverableDelivered, input, {
+            actor: ctx.actor,
+          }),
+        ),
+      ),
+    ),
+  acceptDeliverable: authorizedProcedure("deliverable:accept")
+    .input(deliverableAcceptInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeDeliverable(
+        unwrapOutcome(await executeCommand(acceptDeliverable, input, { actor: ctx.actor })),
+      ),
+    ),
+  cancelDeliverable: authorizedProcedure("deliverable:update")
+    .input(deliverableIdInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      serializeDeliverable(
+        unwrapOutcome(await executeCommand(cancelDeliverable, input, { actor: ctx.actor })),
       ),
     ),
   listTemplates: authorizedProcedure("agreement:read").query(({ ctx }) =>
