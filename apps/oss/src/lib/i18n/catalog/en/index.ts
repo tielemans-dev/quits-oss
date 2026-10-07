@@ -1,3 +1,4 @@
+import { enAgreementsMessages } from "./agreements"
 import { enPaymentsMessages } from "./payments"
 import { enCreditNotesMessages } from "./credit-notes"
 import { enRemindersMessages } from "./reminders"
@@ -25,6 +26,7 @@ import { enUiMessages } from "./ui"
 import { enUserMessages } from "./user"
 
 export const enCatalog = {
+  ...enAgreementsMessages,
   ...enPaymentsMessages,
   ...enCreditNotesMessages,
   ...enRemindersMessages,

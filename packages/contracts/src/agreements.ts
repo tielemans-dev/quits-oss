@@ -1,0 +1,139 @@
+import { z } from "zod"
+import { buyerSnapshotSchema, sellerSnapshotSchema } from "./documents"
+
+export const agreementStatusSchema = z.enum([
+  "draft",
+  "sent",
+  "accepted",
+  "declined",
+  "expired",
+  "completed",
+  "cancelled",
+])
+export const deliverableStatusSchema = z.enum([
+  "planned",
+  "in_progress",
+  "delivered",
+  "accepted",
+  "changes_requested",
+  "cancelled",
+])
+export const deliverableBillingStatusSchema = z.enum(["unbilled", "reserved", "invoiced"])
+export const agreementBillingTriggerSchema = z.enum(["on_acceptance", "on_delivery"])
+export const agreementDateSchema = z.iso.date()
+const nullableDate = agreementDateSchema.nullable().optional()
+const currencySchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Z]{3}$/)
+export const agreementTermsSchema = z.string().max(50_000)
+export const agreementIdInputSchema = z.object({ id: z.string().min(1) }).strict()
+export const deliverableInputSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(500).default(""),
+    quantity: z.number().positive().max(1_000_000),
+    unitPrice: z.number().min(0).max(1_000_000_000),
+    agreedDate: nullableDate,
+    expectedDate: nullableDate,
+    isDeposit: z.boolean().default(false),
+  })
+  .strict()
+export const agreementCreateDraftInputSchema = z
+  .object({
+    contactId: z.string().trim().min(1),
+    title: z.string().trim().min(1).max(200),
+    summary: z.string().trim().max(5000).nullable().optional(),
+    termsMarkdown: agreementTermsSchema.default(""),
+    templateId: z.string().min(1).nullable().optional(),
+    validUntil: agreementDateSchema,
+    currency: currencySchema.optional(),
+    taxRate: z.number().min(0).max(100).default(0),
+    dueInDays: z.number().int().min(0).max(3650).default(30),
+    billingTrigger: agreementBillingTriggerSchema.default("on_acceptance"),
+    notes: z.string().trim().max(5000).nullable().optional(),
+    deliverables: z.array(deliverableInputSchema).max(100).default([]),
+  })
+  .strict()
+export const agreementUpdateDraftInputSchema = agreementCreateDraftInputSchema
+  .partial()
+  .extend({
+    id: z.string().min(1),
+    termsMarkdown: agreementTermsSchema.optional(),
+    taxRate: z.number().min(0).max(100).optional(),
+    dueInDays: z.number().int().min(0).max(3650).optional(),
+    billingTrigger: agreementBillingTriggerSchema.optional(),
+    deliverables: z.array(deliverableInputSchema).max(100).optional(),
+  })
+  .strict()
+export const deliverableUpdateInputSchema = deliverableInputSchema
+  .partial()
+  .extend({
+    description: z.string().trim().max(500).optional(),
+    isDeposit: z.boolean().optional(),
+    id: z.string().min(1),
+    agreementId: z.string().min(1),
+  })
+  .strict()
+export const agreementTemplateDtoSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    termsMarkdown: agreementTermsSchema,
+    isDefault: z.boolean(),
+  })
+  .strict()
+export const agreementListInputSchema = z
+  .object({
+    status: agreementStatusSchema.optional(),
+    contactId: z.string().min(1).optional(),
+  })
+  .strict()
+
+const decimal = z.string().regex(/^-?\d+\.\d{2}$/)
+const isoDate = z.iso.datetime()
+export const offerDeliverableSnapshotSchema = z
+  .object({
+    title: z.string(),
+    description: z.string(),
+    quantity: decimal,
+    unitPriceNet: decimal,
+    unitPriceGross: decimal,
+    lineNet: decimal,
+    lineTax: decimal,
+    lineGross: decimal,
+    taxRate: decimal,
+    taxCategory: z.string(),
+    taxCode: z.string().nullable(),
+    agreedDate: isoDate.nullable(),
+    isDeposit: z.boolean(),
+    sortOrder: z.number().int(),
+  })
+  .strict()
+export const agreementOfferSnapshotSchema = z
+  .object({
+    sellerSnapshot: sellerSnapshotSchema.nullable(),
+    buyerSnapshot: buyerSnapshotSchema.nullable(),
+    title: z.string(),
+    summary: z.string().nullable(),
+    termsHtml: z.string(),
+    validUntil: isoDate,
+    timezone: z.string(),
+    currency: currencySchema,
+    countryCode: z.string(),
+    locale: z.string(),
+    taxRegime: z.string(),
+    taxRate: decimal,
+    pricesIncludeTax: z.boolean(),
+    dueInDays: z.number().int(),
+    billingTrigger: agreementBillingTriggerSchema,
+    subtotalNet: decimal,
+    totalTax: decimal,
+    totalGross: decimal,
+    deliverables: z.array(offerDeliverableSnapshotSchema),
+  })
+  .strict()
+export type AgreementCreateDraftInput = z.input<typeof agreementCreateDraftInputSchema>
+export type AgreementUpdateDraftInput = z.input<typeof agreementUpdateDraftInputSchema>
+export type DeliverableInput = z.input<typeof deliverableInputSchema>
+export type AgreementOfferSnapshot = z.infer<typeof agreementOfferSnapshotSchema>

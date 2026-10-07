@@ -29,6 +29,7 @@ import { Route as AppQuotesIndexRouteImport } from './routes/_app/quotes/index'
 import { Route as AppInvoicesIndexRouteImport } from './routes/_app/invoices/index'
 import { Route as AppCreditNotesIndexRouteImport } from './routes/_app/credit-notes/index'
 import { Route as AppContactsIndexRouteImport } from './routes/_app/contacts/index'
+import { Route as AppAgreementsIndexRouteImport } from './routes/_app/agreements/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe-webhook'
 import { Route as ApiCronTickRouteImport } from './routes/api/cron/tick'
@@ -42,6 +43,9 @@ import { Route as AppInvoicesInvoiceIdRouteImport } from './routes/_app/invoices
 import { Route as AppCreditNotesCreditNoteIdRouteImport } from './routes/_app/credit-notes/$creditNoteId'
 import { Route as AppContactsNewRouteImport } from './routes/_app/contacts/new'
 import { Route as AppContactsContactIdRouteImport } from './routes/_app/contacts/$contactId'
+import { Route as AppAgreementsNewRouteImport } from './routes/_app/agreements/new'
+import { Route as AppAgreementsAgreementIdRouteImport } from './routes/_app/agreements/$agreementId'
+import { Route as AppAgreementsAgreementIdEditRouteImport } from './routes/_app/agreements/$agreementId_.edit'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -143,6 +147,11 @@ const AppContactsIndexRoute = AppContactsIndexRouteImport.update({
   path: '/contacts/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgreementsIndexRoute = AppAgreementsIndexRouteImport.update({
+  id: '/agreements/',
+  path: '/agreements/',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/api/trpc/$',
   path: '/api/trpc/$',
@@ -210,6 +219,23 @@ const AppContactsContactIdRoute = AppContactsContactIdRouteImport.update({
   path: '/contacts/$contactId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgreementsNewRoute = AppAgreementsNewRouteImport.update({
+  id: '/agreements/new',
+  path: '/agreements/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgreementsAgreementIdRoute =
+  AppAgreementsAgreementIdRouteImport.update({
+    id: '/agreements/$agreementId',
+    path: '/agreements/$agreementId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAgreementsAgreementIdEditRoute =
+  AppAgreementsAgreementIdEditRouteImport.update({
+    id: '/agreements/$agreementId_/edit',
+    path: '/agreements/$agreementId/edit',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -226,6 +252,8 @@ export interface FileRoutesByFullPath {
   '/api/mcp': typeof ApiMcpRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
+  '/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
+  '/agreements/new': typeof AppAgreementsNewRoute
   '/contacts/$contactId': typeof AppContactsContactIdRoute
   '/contacts/new': typeof AppContactsNewRoute
   '/credit-notes/$creditNoteId': typeof AppCreditNotesCreditNoteIdRoute
@@ -239,11 +267,13 @@ export interface FileRoutesByFullPath {
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/agreements/': typeof AppAgreementsIndexRoute
   '/contacts/': typeof AppContactsIndexRoute
   '/credit-notes/': typeof AppCreditNotesIndexRoute
   '/invoices/': typeof AppInvoicesIndexRoute
   '/quotes/': typeof AppQuotesIndexRoute
   '/recurring/': typeof AppRecurringIndexRoute
+  '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -260,6 +290,8 @@ export interface FileRoutesByTo {
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/': typeof AppIndexRoute
+  '/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
+  '/agreements/new': typeof AppAgreementsNewRoute
   '/contacts/$contactId': typeof AppContactsContactIdRoute
   '/contacts/new': typeof AppContactsNewRoute
   '/credit-notes/$creditNoteId': typeof AppCreditNotesCreditNoteIdRoute
@@ -273,11 +305,13 @@ export interface FileRoutesByTo {
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/agreements': typeof AppAgreementsIndexRoute
   '/contacts': typeof AppContactsIndexRoute
   '/credit-notes': typeof AppCreditNotesIndexRoute
   '/invoices': typeof AppInvoicesIndexRoute
   '/quotes': typeof AppQuotesIndexRoute
   '/recurring': typeof AppRecurringIndexRoute
+  '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -296,6 +330,8 @@ export interface FileRoutesById {
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
+  '/_app/agreements/new': typeof AppAgreementsNewRoute
   '/_app/contacts/$contactId': typeof AppContactsContactIdRoute
   '/_app/contacts/new': typeof AppContactsNewRoute
   '/_app/credit-notes/$creditNoteId': typeof AppCreditNotesCreditNoteIdRoute
@@ -309,11 +345,13 @@ export interface FileRoutesById {
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/_app/agreements/': typeof AppAgreementsIndexRoute
   '/_app/contacts/': typeof AppContactsIndexRoute
   '/_app/credit-notes/': typeof AppCreditNotesIndexRoute
   '/_app/invoices/': typeof AppInvoicesIndexRoute
   '/_app/quotes/': typeof AppQuotesIndexRoute
   '/_app/recurring/': typeof AppRecurringIndexRoute
+  '/_app/agreements/$agreementId_/edit': typeof AppAgreementsAgreementIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -332,6 +370,8 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/pay/$token'
     | '/q/$token'
+    | '/agreements/$agreementId'
+    | '/agreements/new'
     | '/contacts/$contactId'
     | '/contacts/new'
     | '/credit-notes/$creditNoteId'
@@ -345,11 +385,13 @@ export interface FileRouteTypes {
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/agreements/'
     | '/contacts/'
     | '/credit-notes/'
     | '/invoices/'
     | '/quotes/'
     | '/recurring/'
+    | '/agreements/$agreementId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -366,6 +408,8 @@ export interface FileRouteTypes {
     | '/pay/$token'
     | '/q/$token'
     | '/'
+    | '/agreements/$agreementId'
+    | '/agreements/new'
     | '/contacts/$contactId'
     | '/contacts/new'
     | '/credit-notes/$creditNoteId'
@@ -379,11 +423,13 @@ export interface FileRouteTypes {
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/agreements'
     | '/contacts'
     | '/credit-notes'
     | '/invoices'
     | '/quotes'
     | '/recurring'
+    | '/agreements/$agreementId/edit'
   id:
     | '__root__'
     | '/_app'
@@ -401,6 +447,8 @@ export interface FileRouteTypes {
     | '/pay/$token'
     | '/q/$token'
     | '/_app/'
+    | '/_app/agreements/$agreementId'
+    | '/_app/agreements/new'
     | '/_app/contacts/$contactId'
     | '/_app/contacts/new'
     | '/_app/credit-notes/$creditNoteId'
@@ -414,11 +462,13 @@ export interface FileRouteTypes {
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/_app/agreements/'
     | '/_app/contacts/'
     | '/_app/credit-notes/'
     | '/_app/invoices/'
     | '/_app/quotes/'
     | '/_app/recurring/'
+    | '/_app/agreements/$agreementId_/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -579,6 +629,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppContactsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/agreements/': {
+      id: '/_app/agreements/'
+      path: '/agreements'
+      fullPath: '/agreements/'
+      preLoaderRoute: typeof AppAgreementsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/trpc/$': {
       id: '/api/trpc/$'
       path: '/api/trpc/$'
@@ -670,6 +727,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppContactsContactIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/agreements/new': {
+      id: '/_app/agreements/new'
+      path: '/agreements/new'
+      fullPath: '/agreements/new'
+      preLoaderRoute: typeof AppAgreementsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agreements/$agreementId': {
+      id: '/_app/agreements/$agreementId'
+      path: '/agreements/$agreementId'
+      fullPath: '/agreements/$agreementId'
+      preLoaderRoute: typeof AppAgreementsAgreementIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agreements/$agreementId_/edit': {
+      id: '/_app/agreements/$agreementId_/edit'
+      path: '/agreements/$agreementId/edit'
+      fullPath: '/agreements/$agreementId/edit'
+      preLoaderRoute: typeof AppAgreementsAgreementIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -681,6 +759,8 @@ interface AppRouteChildren {
   AppOnboardingRoute: typeof AppOnboardingRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAgreementsAgreementIdRoute: typeof AppAgreementsAgreementIdRoute
+  AppAgreementsNewRoute: typeof AppAgreementsNewRoute
   AppContactsContactIdRoute: typeof AppContactsContactIdRoute
   AppContactsNewRoute: typeof AppContactsNewRoute
   AppCreditNotesCreditNoteIdRoute: typeof AppCreditNotesCreditNoteIdRoute
@@ -689,11 +769,13 @@ interface AppRouteChildren {
   AppQuotesQuoteIdRoute: typeof AppQuotesQuoteIdRoute
   AppQuotesNewRoute: typeof AppQuotesNewRoute
   AppRecurringScheduleIdRoute: typeof AppRecurringScheduleIdRoute
+  AppAgreementsIndexRoute: typeof AppAgreementsIndexRoute
   AppContactsIndexRoute: typeof AppContactsIndexRoute
   AppCreditNotesIndexRoute: typeof AppCreditNotesIndexRoute
   AppInvoicesIndexRoute: typeof AppInvoicesIndexRoute
   AppQuotesIndexRoute: typeof AppQuotesIndexRoute
   AppRecurringIndexRoute: typeof AppRecurringIndexRoute
+  AppAgreementsAgreementIdEditRoute: typeof AppAgreementsAgreementIdEditRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -704,6 +786,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppOnboardingRoute: AppOnboardingRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAgreementsAgreementIdRoute: AppAgreementsAgreementIdRoute,
+  AppAgreementsNewRoute: AppAgreementsNewRoute,
   AppContactsContactIdRoute: AppContactsContactIdRoute,
   AppContactsNewRoute: AppContactsNewRoute,
   AppCreditNotesCreditNoteIdRoute: AppCreditNotesCreditNoteIdRoute,
@@ -712,11 +796,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppQuotesQuoteIdRoute: AppQuotesQuoteIdRoute,
   AppQuotesNewRoute: AppQuotesNewRoute,
   AppRecurringScheduleIdRoute: AppRecurringScheduleIdRoute,
+  AppAgreementsIndexRoute: AppAgreementsIndexRoute,
   AppContactsIndexRoute: AppContactsIndexRoute,
   AppCreditNotesIndexRoute: AppCreditNotesIndexRoute,
   AppInvoicesIndexRoute: AppInvoicesIndexRoute,
   AppQuotesIndexRoute: AppQuotesIndexRoute,
   AppRecurringIndexRoute: AppRecurringIndexRoute,
+  AppAgreementsAgreementIdEditRoute: AppAgreementsAgreementIdEditRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

@@ -2,6 +2,7 @@ export const daNavMessages = {
   "nav.navigation": "Navigation",
   "nav.dashboard": "Oversigt",
   "nav.invoices": "Fakturaer",
+  "nav.agreements": "Aftaler",
   "nav.quotes": "Tilbud",
   "nav.contacts": "Kontakter",
   "nav.billing": "Abonnement",

@@ -8,6 +8,8 @@ import {
 const statement = {
   ...defaultStatements,
   invoice: ["create", "read", "update", "delete", "send"],
+  agreement: ["create", "read", "update", "send", "delete", "accept", "close", "manageTemplates"],
+  deliverable: ["read", "update", "deliver", "accept"],
   quote: ["create", "read", "update", "delete", "send"],
   creditNote: ["create", "read", "send"],
   payment: ["create", "read", "void"],
@@ -24,6 +26,8 @@ export const ac = createAccessControl(statement)
 
 export const adminGrants = {
   invoice: ["create", "read", "update", "delete", "send"],
+  agreement: ["create", "read", "update", "send", "delete", "accept", "close", "manageTemplates"],
+  deliverable: ["read", "update", "deliver", "accept"],
   quote: ["create", "read", "update", "delete", "send"],
   creditNote: ["create", "read", "send"],
   payment: ["create", "read", "void"],
@@ -38,6 +42,8 @@ export const adminGrants = {
 
 export const memberGrants = {
   invoice: ["create", "read", "update", "send"],
+  agreement: ["create", "read", "update", "send", "accept", "close"],
+  deliverable: ["read", "update", "deliver", "accept"],
   quote: ["create", "read", "update", "send"],
   creditNote: ["create", "read", "send"],
   payment: ["create", "read"],
@@ -49,6 +55,8 @@ export const memberGrants = {
 
 export const accountantGrants = {
   invoice: ["read"],
+  agreement: ["read"],
+  deliverable: ["read"],
   quote: ["read"],
   creditNote: ["read"],
   payment: ["read"],

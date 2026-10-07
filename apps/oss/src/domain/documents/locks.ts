@@ -3,6 +3,7 @@ import { Prisma } from "../../../generated/prisma/client"
 import { Command, Db } from "../services"
 
 const lockableTables = {
+  agreement: "agreement",
   invoice: "invoice",
   quote: "quote",
   creditNote: "credit_note",

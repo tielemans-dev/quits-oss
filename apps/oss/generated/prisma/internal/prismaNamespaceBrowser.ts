@@ -78,7 +78,10 @@ export const ModelName = {
   ApprovalRequest: 'ApprovalRequest',
   AgentKey: 'AgentKey',
   Job: 'Job',
-  SchedulerScan: 'SchedulerScan'
+  SchedulerScan: 'SchedulerScan',
+  Agreement: 'Agreement',
+  Deliverable: 'Deliverable',
+  AgreementTemplate: 'AgreementTemplate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -227,6 +230,8 @@ export const OrgSettingsScalarFieldEnum = {
   companyLogo: 'companyLogo',
   invoicePrefix: 'invoicePrefix',
   invoiceNextNum: 'invoiceNextNum',
+  agreementPrefix: 'agreementPrefix',
+  agreementNextNum: 'agreementNextNum',
   quotePrefix: 'quotePrefix',
   quoteNextNum: 'quoteNextNum',
   creditNotePrefix: 'creditNotePrefix',
@@ -671,6 +676,90 @@ export const SchedulerScanScalarFieldEnum = {
 } as const
 
 export type SchedulerScanScalarFieldEnum = (typeof SchedulerScanScalarFieldEnum)[keyof typeof SchedulerScanScalarFieldEnum]
+
+
+export const AgreementScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  contactId: 'contactId',
+  number: 'number',
+  status: 'status',
+  title: 'title',
+  summary: 'summary',
+  termsMarkdown: 'termsMarkdown',
+  templateId: 'templateId',
+  taxRate: 'taxRate',
+  currency: 'currency',
+  countryCode: 'countryCode',
+  locale: 'locale',
+  timezone: 'timezone',
+  taxRegime: 'taxRegime',
+  pricesIncludeTax: 'pricesIncludeTax',
+  dueInDays: 'dueInDays',
+  billingTrigger: 'billingTrigger',
+  subtotalNet: 'subtotalNet',
+  totalTax: 'totalTax',
+  totalGross: 'totalGross',
+  sellerSnapshot: 'sellerSnapshot',
+  buyerSnapshot: 'buyerSnapshot',
+  validUntil: 'validUntil',
+  issueDate: 'issueDate',
+  expiresAt: 'expiresAt',
+  offerRevision: 'offerRevision',
+  offerSnapshot: 'offerSnapshot',
+  offerSnapshotHash: 'offerSnapshotHash',
+  issuedToEmail: 'issuedToEmail',
+  issuedVia: 'issuedVia',
+  publicAccessKeyVersion: 'publicAccessKeyVersion',
+  publicAccessIssuedAt: 'publicAccessIssuedAt',
+  lastEmailAttemptAt: 'lastEmailAttemptAt',
+  lastEmailAttemptOutcome: 'lastEmailAttemptOutcome',
+  lastEmailAttemptCode: 'lastEmailAttemptCode',
+  lastEmailAttemptMessage: 'lastEmailAttemptMessage',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AgreementScalarFieldEnum = (typeof AgreementScalarFieldEnum)[keyof typeof AgreementScalarFieldEnum]
+
+
+export const DeliverableScalarFieldEnum = {
+  id: 'id',
+  agreementId: 'agreementId',
+  title: 'title',
+  description: 'description',
+  quantity: 'quantity',
+  unitPriceNet: 'unitPriceNet',
+  unitPriceGross: 'unitPriceGross',
+  lineNet: 'lineNet',
+  lineTax: 'lineTax',
+  lineGross: 'lineGross',
+  taxRate: 'taxRate',
+  taxCategory: 'taxCategory',
+  taxCode: 'taxCode',
+  agreedDate: 'agreedDate',
+  expectedDate: 'expectedDate',
+  isDeposit: 'isDeposit',
+  status: 'status',
+  billingStatus: 'billingStatus',
+  sortOrder: 'sortOrder'
+} as const
+
+export type DeliverableScalarFieldEnum = (typeof DeliverableScalarFieldEnum)[keyof typeof DeliverableScalarFieldEnum]
+
+
+export const AgreementTemplateScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  name: 'name',
+  termsMarkdown: 'termsMarkdown',
+  isDefault: 'isDefault',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AgreementTemplateScalarFieldEnum = (typeof AgreementTemplateScalarFieldEnum)[keyof typeof AgreementTemplateScalarFieldEnum]
 
 
 export const SortOrder = {

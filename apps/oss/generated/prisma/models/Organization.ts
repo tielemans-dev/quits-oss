@@ -228,6 +228,8 @@ export type OrganizationWhereInput = {
   catalogItems?: Prisma.CatalogItemListRelationFilter
   taxIds?: Prisma.OrganizationTaxIdListRelationFilter
   invoices?: Prisma.InvoiceListRelationFilter
+  agreements?: Prisma.AgreementListRelationFilter
+  agreementTemplates?: Prisma.AgreementTemplateListRelationFilter
   quotes?: Prisma.QuoteListRelationFilter
   creditNotes?: Prisma.CreditNoteListRelationFilter
   payments?: Prisma.PaymentListRelationFilter
@@ -256,6 +258,8 @@ export type OrganizationOrderByWithRelationInput = {
   catalogItems?: Prisma.CatalogItemOrderByRelationAggregateInput
   taxIds?: Prisma.OrganizationTaxIdOrderByRelationAggregateInput
   invoices?: Prisma.InvoiceOrderByRelationAggregateInput
+  agreements?: Prisma.AgreementOrderByRelationAggregateInput
+  agreementTemplates?: Prisma.AgreementTemplateOrderByRelationAggregateInput
   quotes?: Prisma.QuoteOrderByRelationAggregateInput
   creditNotes?: Prisma.CreditNoteOrderByRelationAggregateInput
   payments?: Prisma.PaymentOrderByRelationAggregateInput
@@ -287,6 +291,8 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   catalogItems?: Prisma.CatalogItemListRelationFilter
   taxIds?: Prisma.OrganizationTaxIdListRelationFilter
   invoices?: Prisma.InvoiceListRelationFilter
+  agreements?: Prisma.AgreementListRelationFilter
+  agreementTemplates?: Prisma.AgreementTemplateListRelationFilter
   quotes?: Prisma.QuoteListRelationFilter
   creditNotes?: Prisma.CreditNoteListRelationFilter
   payments?: Prisma.PaymentListRelationFilter
@@ -347,6 +353,8 @@ export type OrganizationCreateInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -375,6 +383,8 @@ export type OrganizationUncheckedCreateInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -403,6 +413,8 @@ export type OrganizationUpdateInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -431,6 +443,8 @@ export type OrganizationUncheckedUpdateInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -735,6 +749,34 @@ export type OrganizationUpdateOneRequiredWithoutSchedulerScansNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutSchedulerScansInput, Prisma.OrganizationUpdateWithoutSchedulerScansInput>, Prisma.OrganizationUncheckedUpdateWithoutSchedulerScansInput>
 }
 
+export type OrganizationCreateNestedOneWithoutAgreementsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutAgreementsInput, Prisma.OrganizationUncheckedCreateWithoutAgreementsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutAgreementsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutAgreementsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutAgreementsInput, Prisma.OrganizationUncheckedCreateWithoutAgreementsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutAgreementsInput
+  upsert?: Prisma.OrganizationUpsertWithoutAgreementsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutAgreementsInput, Prisma.OrganizationUpdateWithoutAgreementsInput>, Prisma.OrganizationUncheckedUpdateWithoutAgreementsInput>
+}
+
+export type OrganizationCreateNestedOneWithoutAgreementTemplatesInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutAgreementTemplatesInput, Prisma.OrganizationUncheckedCreateWithoutAgreementTemplatesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutAgreementTemplatesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutAgreementTemplatesNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutAgreementTemplatesInput, Prisma.OrganizationUncheckedCreateWithoutAgreementTemplatesInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutAgreementTemplatesInput
+  upsert?: Prisma.OrganizationUpsertWithoutAgreementTemplatesInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutAgreementTemplatesInput, Prisma.OrganizationUpdateWithoutAgreementTemplatesInput>, Prisma.OrganizationUncheckedUpdateWithoutAgreementTemplatesInput>
+}
+
 export type OrganizationCreateWithoutMembersInput = {
   id: string
   name: string
@@ -751,6 +793,8 @@ export type OrganizationCreateWithoutMembersInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -778,6 +822,8 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -821,6 +867,8 @@ export type OrganizationUpdateWithoutMembersInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -848,6 +896,8 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -875,6 +925,8 @@ export type OrganizationCreateWithoutInvitationsInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -902,6 +954,8 @@ export type OrganizationUncheckedCreateWithoutInvitationsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -945,6 +999,8 @@ export type OrganizationUpdateWithoutInvitationsInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -972,6 +1028,8 @@ export type OrganizationUncheckedUpdateWithoutInvitationsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1000,6 +1058,8 @@ export type OrganizationCreateWithoutSettingsInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -1027,6 +1087,8 @@ export type OrganizationUncheckedCreateWithoutSettingsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1070,6 +1132,8 @@ export type OrganizationUpdateWithoutSettingsInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -1097,6 +1161,8 @@ export type OrganizationUncheckedUpdateWithoutSettingsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1123,6 +1189,8 @@ export type OrganizationCreateWithoutContactsInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -1150,6 +1218,8 @@ export type OrganizationUncheckedCreateWithoutContactsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1193,6 +1263,8 @@ export type OrganizationUpdateWithoutContactsInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -1220,6 +1292,8 @@ export type OrganizationUncheckedUpdateWithoutContactsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1247,6 +1321,8 @@ export type OrganizationCreateWithoutCatalogItemsInput = {
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -1274,6 +1350,8 @@ export type OrganizationUncheckedCreateWithoutCatalogItemsInput = {
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1317,6 +1395,8 @@ export type OrganizationUpdateWithoutCatalogItemsInput = {
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -1344,6 +1424,8 @@ export type OrganizationUncheckedUpdateWithoutCatalogItemsInput = {
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1371,6 +1453,8 @@ export type OrganizationCreateWithoutTaxIdsInput = {
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -1398,6 +1482,8 @@ export type OrganizationUncheckedCreateWithoutTaxIdsInput = {
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1441,6 +1527,8 @@ export type OrganizationUpdateWithoutTaxIdsInput = {
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -1468,6 +1556,8 @@ export type OrganizationUncheckedUpdateWithoutTaxIdsInput = {
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1495,6 +1585,8 @@ export type OrganizationCreateWithoutInvoicesInput = {
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -1522,6 +1614,8 @@ export type OrganizationUncheckedCreateWithoutInvoicesInput = {
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1565,6 +1659,8 @@ export type OrganizationUpdateWithoutInvoicesInput = {
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -1592,6 +1688,8 @@ export type OrganizationUncheckedUpdateWithoutInvoicesInput = {
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1620,6 +1718,8 @@ export type OrganizationCreateWithoutQuotesInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
@@ -1647,6 +1747,8 @@ export type OrganizationUncheckedCreateWithoutQuotesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1690,6 +1792,8 @@ export type OrganizationUpdateWithoutQuotesInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
@@ -1717,6 +1821,8 @@ export type OrganizationUncheckedUpdateWithoutQuotesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1744,6 +1850,8 @@ export type OrganizationCreateWithoutCreditNotesInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
@@ -1771,6 +1879,8 @@ export type OrganizationUncheckedCreateWithoutCreditNotesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1814,6 +1924,8 @@ export type OrganizationUpdateWithoutCreditNotesInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
@@ -1841,6 +1953,8 @@ export type OrganizationUncheckedUpdateWithoutCreditNotesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1868,6 +1982,8 @@ export type OrganizationCreateWithoutPaymentsInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
@@ -1895,6 +2011,8 @@ export type OrganizationUncheckedCreateWithoutPaymentsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1938,6 +2056,8 @@ export type OrganizationUpdateWithoutPaymentsInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
@@ -1965,6 +2085,8 @@ export type OrganizationUncheckedUpdateWithoutPaymentsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1992,6 +2114,8 @@ export type OrganizationCreateWithoutRecurringInvoicesInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -2019,6 +2143,8 @@ export type OrganizationUncheckedCreateWithoutRecurringInvoicesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2062,6 +2188,8 @@ export type OrganizationUpdateWithoutRecurringInvoicesInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -2089,6 +2217,8 @@ export type OrganizationUncheckedUpdateWithoutRecurringInvoicesInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2116,6 +2246,8 @@ export type OrganizationCreateWithoutDomainEventsInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -2143,6 +2275,8 @@ export type OrganizationUncheckedCreateWithoutDomainEventsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2186,6 +2320,8 @@ export type OrganizationUpdateWithoutDomainEventsInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -2213,6 +2349,8 @@ export type OrganizationUncheckedUpdateWithoutDomainEventsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2240,6 +2378,8 @@ export type OrganizationCreateWithoutApprovalRequestsInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -2267,6 +2407,8 @@ export type OrganizationUncheckedCreateWithoutApprovalRequestsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2310,6 +2452,8 @@ export type OrganizationUpdateWithoutApprovalRequestsInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -2337,6 +2481,8 @@ export type OrganizationUncheckedUpdateWithoutApprovalRequestsInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2364,6 +2510,8 @@ export type OrganizationCreateWithoutAgentKeysInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -2391,6 +2539,8 @@ export type OrganizationUncheckedCreateWithoutAgentKeysInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2434,6 +2584,8 @@ export type OrganizationUpdateWithoutAgentKeysInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -2461,6 +2613,8 @@ export type OrganizationUncheckedUpdateWithoutAgentKeysInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2488,6 +2642,8 @@ export type OrganizationCreateWithoutSchedulerScansInput = {
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
@@ -2515,6 +2671,8 @@ export type OrganizationUncheckedCreateWithoutSchedulerScansInput = {
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2558,6 +2716,8 @@ export type OrganizationUpdateWithoutSchedulerScansInput = {
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
@@ -2585,6 +2745,8 @@ export type OrganizationUncheckedUpdateWithoutSchedulerScansInput = {
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2592,6 +2754,270 @@ export type OrganizationUncheckedUpdateWithoutSchedulerScansInput = {
   domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
   agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutAgreementsInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutAgreementsInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutAgreementsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutAgreementsInput, Prisma.OrganizationUncheckedCreateWithoutAgreementsInput>
+}
+
+export type OrganizationUpsertWithoutAgreementsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutAgreementsInput, Prisma.OrganizationUncheckedUpdateWithoutAgreementsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutAgreementsInput, Prisma.OrganizationUncheckedCreateWithoutAgreementsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutAgreementsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutAgreementsInput, Prisma.OrganizationUncheckedUpdateWithoutAgreementsInput>
+}
+
+export type OrganizationUpdateWithoutAgreementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutAgreementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationCreateWithoutAgreementTemplatesInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutAgreementTemplatesInput = {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutAgreementTemplatesInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutAgreementTemplatesInput, Prisma.OrganizationUncheckedCreateWithoutAgreementTemplatesInput>
+}
+
+export type OrganizationUpsertWithoutAgreementTemplatesInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutAgreementTemplatesInput, Prisma.OrganizationUncheckedUpdateWithoutAgreementTemplatesInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutAgreementTemplatesInput, Prisma.OrganizationUncheckedCreateWithoutAgreementTemplatesInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutAgreementTemplatesInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutAgreementTemplatesInput, Prisma.OrganizationUncheckedUpdateWithoutAgreementTemplatesInput>
+}
+
+export type OrganizationUpdateWithoutAgreementTemplatesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutAgreementTemplatesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -2607,6 +3033,8 @@ export type OrganizationCountOutputType = {
   catalogItems: number
   taxIds: number
   invoices: number
+  agreements: number
+  agreementTemplates: number
   quotes: number
   creditNotes: number
   payments: number
@@ -2624,6 +3052,8 @@ export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Exte
   catalogItems?: boolean | OrganizationCountOutputTypeCountCatalogItemsArgs
   taxIds?: boolean | OrganizationCountOutputTypeCountTaxIdsArgs
   invoices?: boolean | OrganizationCountOutputTypeCountInvoicesArgs
+  agreements?: boolean | OrganizationCountOutputTypeCountAgreementsArgs
+  agreementTemplates?: boolean | OrganizationCountOutputTypeCountAgreementTemplatesArgs
   quotes?: boolean | OrganizationCountOutputTypeCountQuotesArgs
   creditNotes?: boolean | OrganizationCountOutputTypeCountCreditNotesArgs
   payments?: boolean | OrganizationCountOutputTypeCountPaymentsArgs
@@ -2684,6 +3114,20 @@ export type OrganizationCountOutputTypeCountTaxIdsArgs<ExtArgs extends runtime.T
  */
 export type OrganizationCountOutputTypeCountInvoicesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.InvoiceWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountAgreementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AgreementWhereInput
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountAgreementTemplatesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AgreementTemplateWhereInput
 }
 
 /**
@@ -2760,6 +3204,8 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   catalogItems?: boolean | Prisma.Organization$catalogItemsArgs<ExtArgs>
   taxIds?: boolean | Prisma.Organization$taxIdsArgs<ExtArgs>
   invoices?: boolean | Prisma.Organization$invoicesArgs<ExtArgs>
+  agreements?: boolean | Prisma.Organization$agreementsArgs<ExtArgs>
+  agreementTemplates?: boolean | Prisma.Organization$agreementTemplatesArgs<ExtArgs>
   quotes?: boolean | Prisma.Organization$quotesArgs<ExtArgs>
   creditNotes?: boolean | Prisma.Organization$creditNotesArgs<ExtArgs>
   payments?: boolean | Prisma.Organization$paymentsArgs<ExtArgs>
@@ -2819,6 +3265,8 @@ export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.Interna
   catalogItems?: boolean | Prisma.Organization$catalogItemsArgs<ExtArgs>
   taxIds?: boolean | Prisma.Organization$taxIdsArgs<ExtArgs>
   invoices?: boolean | Prisma.Organization$invoicesArgs<ExtArgs>
+  agreements?: boolean | Prisma.Organization$agreementsArgs<ExtArgs>
+  agreementTemplates?: boolean | Prisma.Organization$agreementTemplatesArgs<ExtArgs>
   quotes?: boolean | Prisma.Organization$quotesArgs<ExtArgs>
   creditNotes?: boolean | Prisma.Organization$creditNotesArgs<ExtArgs>
   payments?: boolean | Prisma.Organization$paymentsArgs<ExtArgs>
@@ -2842,6 +3290,8 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     catalogItems: Prisma.$CatalogItemPayload<ExtArgs>[]
     taxIds: Prisma.$OrganizationTaxIdPayload<ExtArgs>[]
     invoices: Prisma.$InvoicePayload<ExtArgs>[]
+    agreements: Prisma.$AgreementPayload<ExtArgs>[]
+    agreementTemplates: Prisma.$AgreementTemplatePayload<ExtArgs>[]
     quotes: Prisma.$QuotePayload<ExtArgs>[]
     creditNotes: Prisma.$CreditNotePayload<ExtArgs>[]
     payments: Prisma.$PaymentPayload<ExtArgs>[]
@@ -3263,6 +3713,8 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   catalogItems<T extends Prisma.Organization$catalogItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$catalogItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CatalogItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   taxIds<T extends Prisma.Organization$taxIdsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$taxIdsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrganizationTaxIdPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   invoices<T extends Prisma.Organization$invoicesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$invoicesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvoicePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  agreements<T extends Prisma.Organization$agreementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$agreementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgreementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  agreementTemplates<T extends Prisma.Organization$agreementTemplatesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$agreementTemplatesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgreementTemplatePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   quotes<T extends Prisma.Organization$quotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$quotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   creditNotes<T extends Prisma.Organization$creditNotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$creditNotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreditNotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   payments<T extends Prisma.Organization$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -3840,6 +4292,54 @@ export type Organization$invoicesArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   distinct?: Prisma.InvoiceScalarFieldEnum | Prisma.InvoiceScalarFieldEnum[]
+}
+
+/**
+ * Organization.agreements
+ */
+export type Organization$agreementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Agreement
+   */
+  select?: Prisma.AgreementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Agreement
+   */
+  omit?: Prisma.AgreementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AgreementInclude<ExtArgs> | null
+  where?: Prisma.AgreementWhereInput
+  orderBy?: Prisma.AgreementOrderByWithRelationInput | Prisma.AgreementOrderByWithRelationInput[]
+  cursor?: Prisma.AgreementWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AgreementScalarFieldEnum | Prisma.AgreementScalarFieldEnum[]
+}
+
+/**
+ * Organization.agreementTemplates
+ */
+export type Organization$agreementTemplatesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AgreementTemplate
+   */
+  select?: Prisma.AgreementTemplateSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AgreementTemplate
+   */
+  omit?: Prisma.AgreementTemplateOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AgreementTemplateInclude<ExtArgs> | null
+  where?: Prisma.AgreementTemplateWhereInput
+  orderBy?: Prisma.AgreementTemplateOrderByWithRelationInput | Prisma.AgreementTemplateOrderByWithRelationInput[]
+  cursor?: Prisma.AgreementTemplateWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AgreementTemplateScalarFieldEnum | Prisma.AgreementTemplateScalarFieldEnum[]
 }
 
 /**

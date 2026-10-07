@@ -186,3 +186,17 @@ write the domain command, then add one `defineCommandTool` or `defineQueryTool` 
 `tools/<feature>.ts`. Command tools inherit the command's permission, `clientRequestId` handling,
 and approval behaviour. End-to-end tests drive the endpoint with the MCP SDK client in
 `domain/agent-tools/__tests__/mcp-endpoint.integration.test.ts`.
+
+### Agreement drafts
+
+Agreement drafting is available before sending. The tools are `agreement_list`, `agreement_get`,
+`deliverable_list`, `agreement_template_list`, `agreement_create_draft`, `agreement_update_draft`,
+`agreement_delete_draft`, and `deliverable_update`. Each uses its exact agreement or deliverable
+permission. Template reads use `agreement:read`. Draft commands never require outward-facing
+approval. They do not allocate an agreement number or send anything.
+
+Dates are calendar dates (`YYYY-MM-DD`). Each agreement has one tax rate for all deliverables.
+Deposits are lines included in the agreed total. Passing `deliverables` to an update replaces the
+lines; omitting it preserves them. `deliverable_update` accepts only draft offer fields and the
+expected date; fulfillment and billing transitions arrive in later releases. The included templates
+are examples, not legal advice.

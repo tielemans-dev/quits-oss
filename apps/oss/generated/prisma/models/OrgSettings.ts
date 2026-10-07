@@ -29,6 +29,7 @@ export type AggregateOrgSettings = {
 export type OrgSettingsAvgAggregateOutputType = {
   taxRate: runtime.Decimal | null
   invoiceNextNum: number | null
+  agreementNextNum: number | null
   quoteNextNum: number | null
   creditNoteNextNum: number | null
   eventSequence: number | null
@@ -38,6 +39,7 @@ export type OrgSettingsAvgAggregateOutputType = {
 export type OrgSettingsSumAggregateOutputType = {
   taxRate: runtime.Decimal | null
   invoiceNextNum: number | null
+  agreementNextNum: number | null
   quoteNextNum: number | null
   creditNoteNextNum: number | null
   eventSequence: number | null
@@ -62,6 +64,8 @@ export type OrgSettingsMinAggregateOutputType = {
   companyLogo: string | null
   invoicePrefix: string | null
   invoiceNextNum: number | null
+  agreementPrefix: string | null
+  agreementNextNum: number | null
   quotePrefix: string | null
   quoteNextNum: number | null
   creditNotePrefix: string | null
@@ -107,6 +111,8 @@ export type OrgSettingsMaxAggregateOutputType = {
   companyLogo: string | null
   invoicePrefix: string | null
   invoiceNextNum: number | null
+  agreementPrefix: string | null
+  agreementNextNum: number | null
   quotePrefix: string | null
   quoteNextNum: number | null
   creditNotePrefix: string | null
@@ -152,6 +158,8 @@ export type OrgSettingsCountAggregateOutputType = {
   companyLogo: number
   invoicePrefix: number
   invoiceNextNum: number
+  agreementPrefix: number
+  agreementNextNum: number
   quotePrefix: number
   quoteNextNum: number
   creditNotePrefix: number
@@ -186,6 +194,7 @@ export type OrgSettingsCountAggregateOutputType = {
 export type OrgSettingsAvgAggregateInputType = {
   taxRate?: true
   invoiceNextNum?: true
+  agreementNextNum?: true
   quoteNextNum?: true
   creditNoteNextNum?: true
   eventSequence?: true
@@ -195,6 +204,7 @@ export type OrgSettingsAvgAggregateInputType = {
 export type OrgSettingsSumAggregateInputType = {
   taxRate?: true
   invoiceNextNum?: true
+  agreementNextNum?: true
   quoteNextNum?: true
   creditNoteNextNum?: true
   eventSequence?: true
@@ -219,6 +229,8 @@ export type OrgSettingsMinAggregateInputType = {
   companyLogo?: true
   invoicePrefix?: true
   invoiceNextNum?: true
+  agreementPrefix?: true
+  agreementNextNum?: true
   quotePrefix?: true
   quoteNextNum?: true
   creditNotePrefix?: true
@@ -264,6 +276,8 @@ export type OrgSettingsMaxAggregateInputType = {
   companyLogo?: true
   invoicePrefix?: true
   invoiceNextNum?: true
+  agreementPrefix?: true
+  agreementNextNum?: true
   quotePrefix?: true
   quoteNextNum?: true
   creditNotePrefix?: true
@@ -309,6 +323,8 @@ export type OrgSettingsCountAggregateInputType = {
   companyLogo?: true
   invoicePrefix?: true
   invoiceNextNum?: true
+  agreementPrefix?: true
+  agreementNextNum?: true
   quotePrefix?: true
   quoteNextNum?: true
   creditNotePrefix?: true
@@ -443,6 +459,8 @@ export type OrgSettingsGroupByOutputType = {
   companyLogo: string | null
   invoicePrefix: string
   invoiceNextNum: number
+  agreementPrefix: string
+  agreementNextNum: number
   quotePrefix: string
   quoteNextNum: number
   creditNotePrefix: string
@@ -513,6 +531,8 @@ export type OrgSettingsWhereInput = {
   companyLogo?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   invoicePrefix?: Prisma.StringFilter<"OrgSettings"> | string
   invoiceNextNum?: Prisma.IntFilter<"OrgSettings"> | number
+  agreementPrefix?: Prisma.StringFilter<"OrgSettings"> | string
+  agreementNextNum?: Prisma.IntFilter<"OrgSettings"> | number
   quotePrefix?: Prisma.StringFilter<"OrgSettings"> | string
   quoteNextNum?: Prisma.IntFilter<"OrgSettings"> | number
   creditNotePrefix?: Prisma.StringFilter<"OrgSettings"> | string
@@ -561,6 +581,8 @@ export type OrgSettingsOrderByWithRelationInput = {
   companyLogo?: Prisma.SortOrderInput | Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
+  agreementPrefix?: Prisma.SortOrder
+  agreementNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
   creditNotePrefix?: Prisma.SortOrder
@@ -612,6 +634,8 @@ export type OrgSettingsWhereUniqueInput = Prisma.AtLeast<{
   companyLogo?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   invoicePrefix?: Prisma.StringFilter<"OrgSettings"> | string
   invoiceNextNum?: Prisma.IntFilter<"OrgSettings"> | number
+  agreementPrefix?: Prisma.StringFilter<"OrgSettings"> | string
+  agreementNextNum?: Prisma.IntFilter<"OrgSettings"> | number
   quotePrefix?: Prisma.StringFilter<"OrgSettings"> | string
   quoteNextNum?: Prisma.IntFilter<"OrgSettings"> | number
   creditNotePrefix?: Prisma.StringFilter<"OrgSettings"> | string
@@ -660,6 +684,8 @@ export type OrgSettingsOrderByWithAggregationInput = {
   companyLogo?: Prisma.SortOrderInput | Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
+  agreementPrefix?: Prisma.SortOrder
+  agreementNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
   creditNotePrefix?: Prisma.SortOrder
@@ -715,6 +741,8 @@ export type OrgSettingsScalarWhereWithAggregatesInput = {
   companyLogo?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   invoicePrefix?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   invoiceNextNum?: Prisma.IntWithAggregatesFilter<"OrgSettings"> | number
+  agreementPrefix?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
+  agreementNextNum?: Prisma.IntWithAggregatesFilter<"OrgSettings"> | number
   quotePrefix?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   quoteNextNum?: Prisma.IntWithAggregatesFilter<"OrgSettings"> | number
   creditNotePrefix?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
@@ -761,6 +789,8 @@ export type OrgSettingsCreateInput = {
   companyLogo?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
+  agreementPrefix?: string
+  agreementNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
   creditNotePrefix?: string
@@ -809,6 +839,8 @@ export type OrgSettingsUncheckedCreateInput = {
   companyLogo?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
+  agreementPrefix?: string
+  agreementNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
   creditNotePrefix?: string
@@ -855,6 +887,8 @@ export type OrgSettingsUpdateInput = {
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  agreementNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -903,6 +937,8 @@ export type OrgSettingsUncheckedUpdateInput = {
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  agreementNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -950,6 +986,8 @@ export type OrgSettingsCreateManyInput = {
   companyLogo?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
+  agreementPrefix?: string
+  agreementNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
   creditNotePrefix?: string
@@ -996,6 +1034,8 @@ export type OrgSettingsUpdateManyMutationInput = {
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  agreementNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1043,6 +1083,8 @@ export type OrgSettingsUncheckedUpdateManyInput = {
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  agreementNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1095,6 +1137,8 @@ export type OrgSettingsCountOrderByAggregateInput = {
   companyLogo?: Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
+  agreementPrefix?: Prisma.SortOrder
+  agreementNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
   creditNotePrefix?: Prisma.SortOrder
@@ -1127,6 +1171,7 @@ export type OrgSettingsCountOrderByAggregateInput = {
 export type OrgSettingsAvgOrderByAggregateInput = {
   taxRate?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
+  agreementNextNum?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
   creditNoteNextNum?: Prisma.SortOrder
   eventSequence?: Prisma.SortOrder
@@ -1151,6 +1196,8 @@ export type OrgSettingsMaxOrderByAggregateInput = {
   companyLogo?: Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
+  agreementPrefix?: Prisma.SortOrder
+  agreementNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
   creditNotePrefix?: Prisma.SortOrder
@@ -1196,6 +1243,8 @@ export type OrgSettingsMinOrderByAggregateInput = {
   companyLogo?: Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
+  agreementPrefix?: Prisma.SortOrder
+  agreementNextNum?: Prisma.SortOrder
   quotePrefix?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
   creditNotePrefix?: Prisma.SortOrder
@@ -1226,6 +1275,7 @@ export type OrgSettingsMinOrderByAggregateInput = {
 export type OrgSettingsSumOrderByAggregateInput = {
   taxRate?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
+  agreementNextNum?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
   creditNoteNextNum?: Prisma.SortOrder
   eventSequence?: Prisma.SortOrder
@@ -1297,6 +1347,8 @@ export type OrgSettingsCreateWithoutOrganizationInput = {
   companyLogo?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
+  agreementPrefix?: string
+  agreementNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
   creditNotePrefix?: string
@@ -1343,6 +1395,8 @@ export type OrgSettingsUncheckedCreateWithoutOrganizationInput = {
   companyLogo?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
+  agreementPrefix?: string
+  agreementNextNum?: number
   quotePrefix?: string
   quoteNextNum?: number
   creditNotePrefix?: string
@@ -1405,6 +1459,8 @@ export type OrgSettingsUpdateWithoutOrganizationInput = {
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  agreementNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1451,6 +1507,8 @@ export type OrgSettingsUncheckedUpdateWithoutOrganizationInput = {
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
+  agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
+  agreementNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   quotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   quoteNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   creditNotePrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1500,6 +1558,8 @@ export type OrgSettingsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   companyLogo?: boolean
   invoicePrefix?: boolean
   invoiceNextNum?: boolean
+  agreementPrefix?: boolean
+  agreementNextNum?: boolean
   quotePrefix?: boolean
   quoteNextNum?: boolean
   creditNotePrefix?: boolean
@@ -1548,6 +1608,8 @@ export type OrgSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   companyLogo?: boolean
   invoicePrefix?: boolean
   invoiceNextNum?: boolean
+  agreementPrefix?: boolean
+  agreementNextNum?: boolean
   quotePrefix?: boolean
   quoteNextNum?: boolean
   creditNotePrefix?: boolean
@@ -1596,6 +1658,8 @@ export type OrgSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   companyLogo?: boolean
   invoicePrefix?: boolean
   invoiceNextNum?: boolean
+  agreementPrefix?: boolean
+  agreementNextNum?: boolean
   quotePrefix?: boolean
   quoteNextNum?: boolean
   creditNotePrefix?: boolean
@@ -1644,6 +1708,8 @@ export type OrgSettingsSelectScalar = {
   companyLogo?: boolean
   invoicePrefix?: boolean
   invoiceNextNum?: boolean
+  agreementPrefix?: boolean
+  agreementNextNum?: boolean
   quotePrefix?: boolean
   quoteNextNum?: boolean
   creditNotePrefix?: boolean
@@ -1673,7 +1739,7 @@ export type OrgSettingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "invoicePrefix" | "invoiceNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiOpenRouterApiKeyEnc" | "aiOpenRouterModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
+export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiOpenRouterApiKeyEnc" | "aiOpenRouterModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
 export type OrgSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }
@@ -1707,6 +1773,8 @@ export type $OrgSettingsPayload<ExtArgs extends runtime.Types.Extensions.Interna
     companyLogo: string | null
     invoicePrefix: string
     invoiceNextNum: number
+    agreementPrefix: string
+    agreementNextNum: number
     quotePrefix: string
     quoteNextNum: number
     creditNotePrefix: string
@@ -2175,6 +2243,8 @@ export interface OrgSettingsFieldRefs {
   readonly companyLogo: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly invoicePrefix: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly invoiceNextNum: Prisma.FieldRef<"OrgSettings", 'Int'>
+  readonly agreementPrefix: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly agreementNextNum: Prisma.FieldRef<"OrgSettings", 'Int'>
   readonly quotePrefix: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly quoteNextNum: Prisma.FieldRef<"OrgSettings", 'Int'>
   readonly creditNotePrefix: Prisma.FieldRef<"OrgSettings", 'String'>
