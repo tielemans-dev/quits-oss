@@ -102,6 +102,7 @@ export type RecurringInvoiceCountAggregateOutputType = {
   taxRate: number
   notes: number
   items: number
+  vatEvidence: number
   lastRunAt: number
   createdAt: number
   updatedAt: number
@@ -185,6 +186,7 @@ export type RecurringInvoiceCountAggregateInputType = {
   taxRate?: true
   notes?: true
   items?: true
+  vatEvidence?: true
   lastRunAt?: true
   createdAt?: true
   updatedAt?: true
@@ -295,6 +297,7 @@ export type RecurringInvoiceGroupByOutputType = {
   taxRate: runtime.Decimal
   notes: string | null
   items: runtime.JsonValue
+  vatEvidence: runtime.JsonValue | null
   lastRunAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -341,6 +344,7 @@ export type RecurringInvoiceWhereInput = {
   taxRate?: Prisma.DecimalFilter<"RecurringInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.StringNullableFilter<"RecurringInvoice"> | string | null
   items?: Prisma.JsonFilter<"RecurringInvoice">
+  vatEvidence?: Prisma.JsonNullableFilter<"RecurringInvoice">
   lastRunAt?: Prisma.DateTimeNullableFilter<"RecurringInvoice"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"RecurringInvoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"RecurringInvoice"> | Date | string
@@ -367,6 +371,7 @@ export type RecurringInvoiceOrderByWithRelationInput = {
   taxRate?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   items?: Prisma.SortOrder
+  vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
   lastRunAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -396,6 +401,7 @@ export type RecurringInvoiceWhereUniqueInput = Prisma.AtLeast<{
   taxRate?: Prisma.DecimalFilter<"RecurringInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.StringNullableFilter<"RecurringInvoice"> | string | null
   items?: Prisma.JsonFilter<"RecurringInvoice">
+  vatEvidence?: Prisma.JsonNullableFilter<"RecurringInvoice">
   lastRunAt?: Prisma.DateTimeNullableFilter<"RecurringInvoice"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"RecurringInvoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"RecurringInvoice"> | Date | string
@@ -422,6 +428,7 @@ export type RecurringInvoiceOrderByWithAggregationInput = {
   taxRate?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   items?: Prisma.SortOrder
+  vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
   lastRunAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -453,6 +460,7 @@ export type RecurringInvoiceScalarWhereWithAggregatesInput = {
   taxRate?: Prisma.DecimalWithAggregatesFilter<"RecurringInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.StringNullableWithAggregatesFilter<"RecurringInvoice"> | string | null
   items?: Prisma.JsonWithAggregatesFilter<"RecurringInvoice">
+  vatEvidence?: Prisma.JsonNullableWithAggregatesFilter<"RecurringInvoice">
   lastRunAt?: Prisma.DateTimeNullableWithAggregatesFilter<"RecurringInvoice"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"RecurringInvoice"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"RecurringInvoice"> | Date | string
@@ -474,6 +482,7 @@ export type RecurringInvoiceCreateInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -500,6 +509,7 @@ export type RecurringInvoiceUncheckedCreateInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -522,6 +532,7 @@ export type RecurringInvoiceUpdateInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -548,6 +559,7 @@ export type RecurringInvoiceUncheckedUpdateInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -572,6 +584,7 @@ export type RecurringInvoiceCreateManyInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -593,6 +606,7 @@ export type RecurringInvoiceUpdateManyMutationInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -616,6 +630,7 @@ export type RecurringInvoiceUncheckedUpdateManyInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -654,6 +669,7 @@ export type RecurringInvoiceCountOrderByAggregateInput = {
   taxRate?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   items?: Prisma.SortOrder
+  vatEvidence?: Prisma.SortOrder
   lastRunAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -833,6 +849,7 @@ export type RecurringInvoiceCreateWithoutOrganizationInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -857,6 +874,7 @@ export type RecurringInvoiceUncheckedCreateWithoutOrganizationInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -910,6 +928,7 @@ export type RecurringInvoiceScalarWhereInput = {
   taxRate?: Prisma.DecimalFilter<"RecurringInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.StringNullableFilter<"RecurringInvoice"> | string | null
   items?: Prisma.JsonFilter<"RecurringInvoice">
+  vatEvidence?: Prisma.JsonNullableFilter<"RecurringInvoice">
   lastRunAt?: Prisma.DateTimeNullableFilter<"RecurringInvoice"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"RecurringInvoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"RecurringInvoice"> | Date | string
@@ -931,6 +950,7 @@ export type RecurringInvoiceCreateWithoutContactInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -955,6 +975,7 @@ export type RecurringInvoiceUncheckedCreateWithoutContactInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1003,6 +1024,7 @@ export type RecurringInvoiceCreateWithoutInvoicesInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1028,6 +1050,7 @@ export type RecurringInvoiceUncheckedCreateWithoutInvoicesInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1065,6 +1088,7 @@ export type RecurringInvoiceUpdateWithoutInvoicesInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1090,6 +1114,7 @@ export type RecurringInvoiceUncheckedUpdateWithoutInvoicesInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1112,6 +1137,7 @@ export type RecurringInvoiceCreateManyOrganizationInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1133,6 +1159,7 @@ export type RecurringInvoiceUpdateWithoutOrganizationInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1157,6 +1184,7 @@ export type RecurringInvoiceUncheckedUpdateWithoutOrganizationInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1180,6 +1208,7 @@ export type RecurringInvoiceUncheckedUpdateManyWithoutOrganizationInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1202,6 +1231,7 @@ export type RecurringInvoiceCreateManyContactInput = {
   taxRate: runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: string | null
   items: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1223,6 +1253,7 @@ export type RecurringInvoiceUpdateWithoutContactInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1247,6 +1278,7 @@ export type RecurringInvoiceUncheckedUpdateWithoutContactInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1270,6 +1302,7 @@ export type RecurringInvoiceUncheckedUpdateManyWithoutContactInput = {
   taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastRunAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1324,6 +1357,7 @@ export type RecurringInvoiceSelect<ExtArgs extends runtime.Types.Extensions.Inte
   taxRate?: boolean
   notes?: boolean
   items?: boolean
+  vatEvidence?: boolean
   lastRunAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1351,6 +1385,7 @@ export type RecurringInvoiceSelectCreateManyAndReturn<ExtArgs extends runtime.Ty
   taxRate?: boolean
   notes?: boolean
   items?: boolean
+  vatEvidence?: boolean
   lastRunAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1376,6 +1411,7 @@ export type RecurringInvoiceSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   taxRate?: boolean
   notes?: boolean
   items?: boolean
+  vatEvidence?: boolean
   lastRunAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1401,12 +1437,13 @@ export type RecurringInvoiceSelectScalar = {
   taxRate?: boolean
   notes?: boolean
   items?: boolean
+  vatEvidence?: boolean
   lastRunAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type RecurringInvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "name" | "status" | "intervalCount" | "intervalUnit" | "startDate" | "nextRunAt" | "endsAt" | "remainingRuns" | "dueInDays" | "autoSend" | "currency" | "taxRate" | "notes" | "items" | "lastRunAt" | "createdAt" | "updatedAt", ExtArgs["result"]["recurringInvoice"]>
+export type RecurringInvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "name" | "status" | "intervalCount" | "intervalUnit" | "startDate" | "nextRunAt" | "endsAt" | "remainingRuns" | "dueInDays" | "autoSend" | "currency" | "taxRate" | "notes" | "items" | "vatEvidence" | "lastRunAt" | "createdAt" | "updatedAt", ExtArgs["result"]["recurringInvoice"]>
 export type RecurringInvoiceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -1447,6 +1484,7 @@ export type $RecurringInvoicePayload<ExtArgs extends runtime.Types.Extensions.In
     taxRate: runtime.Decimal
     notes: string | null
     items: runtime.JsonValue
+    vatEvidence: runtime.JsonValue | null
     lastRunAt: Date | null
     createdAt: Date
     updatedAt: Date
@@ -1893,6 +1931,7 @@ export interface RecurringInvoiceFieldRefs {
   readonly taxRate: Prisma.FieldRef<"RecurringInvoice", 'Decimal'>
   readonly notes: Prisma.FieldRef<"RecurringInvoice", 'String'>
   readonly items: Prisma.FieldRef<"RecurringInvoice", 'Json'>
+  readonly vatEvidence: Prisma.FieldRef<"RecurringInvoice", 'Json'>
   readonly lastRunAt: Prisma.FieldRef<"RecurringInvoice", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"RecurringInvoice", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"RecurringInvoice", 'DateTime'>

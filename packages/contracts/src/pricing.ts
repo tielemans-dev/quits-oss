@@ -2,7 +2,7 @@ import { z } from "zod"
 import { currencyCodeSchema } from "./baseSchemas"
 import {
   currencyExponentSchema, decimalStringSchema, nonnegativeDecimalStringSchema, nonnegativeMoneyStringSchema,
-  vatClassificationSchema, vatEvidenceSchema, vatGroupSchema,
+  vatClassificationSchema, draftVatClassificationSchema, vatEvidenceSchema, vatGroupSchema,
 } from "./vat"
 
 export const quantityInputSchema = z.string().max(40).regex(/^\d+(?:\.\d{1,6})?$/)
@@ -28,6 +28,9 @@ export const calculateDocumentInputSchema = z.strictObject({
   if (value.lines.some((line) => line.vat.treatment === "out_of_scope") &&
       value.lines.some((line) => line.vat.treatment !== "out_of_scope"))
     ctx.addIssue({ code: "custom", path: ["lines"], message: "out_of_scope cannot mix with other treatments" })
+})
+export const calculateDraftDocumentInputSchema = calculateDocumentInputSchema.safeExtend({
+  lines: z.array(pricingLineInputSchema.extend({ vat: draftVatClassificationSchema })).max(10_000),
 })
 export const pricingLineOutputSchema = pricingLineInputSchema.extend({
   groupKey: z.string(),

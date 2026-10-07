@@ -1,9 +1,10 @@
 import Decimal from "decimal.js-light"
 import {
-  calculateDocumentInputSchema, creditComponentsInputSchema,
+  calculateDocumentInputSchema, calculateDraftDocumentInputSchema, creditComponentsInputSchema,
   type CalculateDocumentInput, type CalculateDocumentOutput,
   type CreditComponentsInput, type CreditComponentsOutput,
 } from "@quits/contracts/pricing"
+import { vatClassificationSchema, vatEvidenceSchema } from "@quits/contracts/vat"
 import type { VatGroup } from "@quits/contracts/vat"
 import { requireCurrencyExponent } from "../currency"
 
@@ -48,9 +49,12 @@ function equation(left: Decimal, right: Decimal, exponent: number) {
   return { left: money(left, exponent), right: money(right, exponent), balanced: true as const }
 }
 
-/** Pure v2 calculation. Legacy producers deliberately do not call this function. */
+/** Pure v2 calculation shared by draft producers and editors. */
 export function calculateDocument(raw: CalculateDocumentInput): CalculateDocumentOutput {
-  const input = calculateDocumentInputSchema.parse(raw)
+  return calculateParsedDocument(calculateDocumentInputSchema.parse(raw))
+}
+
+function calculateParsedDocument(input: ReturnType<typeof calculateDocumentInputSchema.parse>): CalculateDocumentOutput {
   const exponent = requireCurrencyExponent(input.currency)
   const baseCurrency = input.baseCurrency ?? input.currency
   const baseExponent = requireCurrencyExponent(baseCurrency)
@@ -154,4 +158,207 @@ export function creditComponents(raw: CreditComponentsInput): CreditComponentsOu
     cumulativeGross: money(cumulative, group.exponent),
     equations: { document: equation(net.plus(tax).plus(payableRounding), credit, group.exponent), base: equation(netBase.plus(taxBase).plus(payableRoundingBase), grossBase, group.baseExponent) },
   }
+}
+
+/** Document percentage convenience; explicit per-line fractional rates take precedence. */
+export function documentVat(line: import("@quits/contracts/invoices").DocumentLineInput, taxRate: string | number) {
+  const rate = new D(String(taxRate)).div(100).toFixed()
+  const treatment = line.vat?.treatment ?? (new D(rate).isZero() ? "out_of_scope" : "standard")
+  return {
+    treatment,
+    rate: line.vat?.rate ?? (treatment === "standard" ? rate : "0"),
+    country: line.vat?.country ?? null,
+    reasonCode: line.vat?.reasonCode ?? null,
+  }
+}
+
+/** Used by all v2 previews and producers. Decimal strings remain intact until calculation. */
+export function calculateDraft(input: {
+  items: import("@quits/contracts/invoices").DocumentLineInput[]
+  taxRate: string | number
+  currency: string
+  pricesIncludeTax: boolean
+  vatEvidence?: import("@quits/contracts/vat").DraftVatEvidence
+}) {
+  const evidence = vatEvidenceSchema.safeParse(input.vatEvidence)
+  return calculateParsedDocument(calculateDraftDocumentInputSchema.parse({
+    currency: input.currency,
+    pricesIncludeTax: input.pricesIncludeTax,
+    lines: input.items.map((line, sortOrder) => ({
+      quantity: decimalInput(line.quantity).value,
+      unitPrice: decimalInput(line.unitPrice).value,
+      sortOrder,
+      vat: documentVat(line, input.taxRate),
+      ...(evidence.success ? { evidence: evidence.data } : {}),
+    })),
+  }))
+}
+
+/** UI inputs may be empty while typing; an invalid preview never displays guessed totals. */
+export function previewDraft(input: Parameters<typeof calculateDraft>[0]) {
+  try { return { result: calculateDraft(input), error: null } }
+  catch (error) { return { result: null, error: error instanceof Error ? error.message : "Invalid decimal input" } }
+}
+
+const euCountries = new Set(["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE"])
+
+/** Pure issuance guard. It validates stored classifications/evidence without repricing a document. */
+export function validateVatIssuance(input: {
+  lines: Array<{ treatment: string; rate: string; country?: string | null; reasonCode?: string | null }>
+  evidence: unknown
+  sellerVatId?: string | null
+  buyerCountry?: string | null
+}): string[] {
+  const issues: string[] = []
+  const evidence = vatEvidenceSchema.safeParse(input.evidence ?? {})
+  if (!evidence.success) return ["Invalid VAT evidence"]
+  const e = evidence.data
+  const present = (value?: string | null) => Boolean(value?.trim())
+  if (input.lines.some((line) => line.treatment === "out_of_scope") && input.lines.some((line) => line.treatment !== "out_of_scope"))
+    issues.push("out_of_scope cannot mix with other treatments")
+  for (const line of input.lines) {
+    const classification = vatClassificationSchema.safeParse({ ...line, country: line.country ?? null, reasonCode: line.reasonCode ?? null })
+    if (!classification.success) issues.push("Invalid VAT classification or rate")
+    switch (line.treatment) {
+      case "intra_community":
+        if (!present(input.sellerVatId) || !present(e.buyerVatId) || e.viesCheck?.result !== "valid" || !present(e.statementText))
+          issues.push("Intra-community supply requires seller and buyer VAT ids, valid VIES and a statement")
+        break
+      case "export": {
+        const country = input.buyerCountry?.toUpperCase()
+        if (!e.exportEvidence || !present(e.exportEvidence.ref) || !country || !/^[A-Z]{2}$/.test(country) || euCountries.has(country))
+          issues.push("Export requires evidence and a buyer country outside the EU")
+        break
+      }
+      case "exempt":
+        if (!present(e.statementText)) issues.push("Exemption requires reason text")
+        break
+      case "reverse_charge_domestic": case "zero_rated": case "unclassified_zero":
+        issues.push(`${line.treatment} is refused in Phase A`)
+        break
+    }
+  }
+  return [...new Set(issues)]
+}
+
+/** Frozen v1 offer calculation. Do not change the arithmetic or snapshot fixtures. */
+function roundTo(value: number, digits: number): number {
+  const factor = 10 ** digits
+  return Math.round((value + Number.EPSILON) * factor) / factor
+}
+
+function round2(value: number): number {
+  return roundTo(value, 2)
+}
+
+export function calculateLegacyDocument(input: {
+  items: Array<{ description: string; quantity: number; unitPrice: number }>
+  taxRate: number
+  pricesIncludeTax: boolean
+  fractionDigits?: number
+}) {
+  const rate = input.taxRate / 100
+  // Amounts follow the currency's precision so a document never owes a fraction the currency
+  // cannot be paid in; unit prices stay at two decimals because they are per-unit references.
+  const digits = input.fractionDigits ?? 2
+  const roundAmount = (value: number) => roundTo(value, digits)
+
+  let subtotalNet = 0
+  let totalTax = 0
+  let totalGross = 0
+  const lines: Array<{ description: string; quantity: number; unitPriceNet: number; unitPriceGross: number; lineNet: number; lineTax: number; lineGross: number; taxRate: number }> = []
+
+  for (const item of input.items) {
+    const lineGrossInput = roundAmount(item.quantity * item.unitPrice)
+
+    if (input.pricesIncludeTax) {
+      const lineNet = roundAmount(lineGrossInput / (1 + rate))
+      const lineTax = roundAmount(lineGrossInput - lineNet)
+      const unitPriceNet = round2(item.quantity > 0 ? lineNet / item.quantity : 0)
+      const unitPriceGross = round2(item.quantity > 0 ? lineGrossInput / item.quantity : 0)
+      subtotalNet += lineNet
+      totalTax += lineTax
+      totalGross += lineGrossInput
+      lines.push({
+        description: item.description,
+        quantity: item.quantity,
+        unitPriceNet,
+        unitPriceGross,
+        lineNet,
+        lineTax,
+        lineGross: lineGrossInput,
+        taxRate: input.taxRate,
+      })
+      continue
+    }
+
+    const lineNet = lineGrossInput
+    const lineTax = roundAmount(lineNet * rate)
+    const lineGross = roundAmount(lineNet + lineTax)
+    const unitPriceNet = round2(item.quantity > 0 ? lineNet / item.quantity : 0)
+    const unitPriceGross = round2(item.quantity > 0 ? lineGross / item.quantity : 0)
+    subtotalNet += lineNet
+    totalTax += lineTax
+    totalGross += lineGross
+    lines.push({
+      description: item.description,
+      quantity: item.quantity,
+      unitPriceNet,
+      unitPriceGross,
+      lineNet,
+      lineTax,
+      lineGross,
+      taxRate: input.taxRate,
+    })
+  }
+
+  return {
+    subtotalNet: roundAmount(subtotalNet),
+    totalTax: roundAmount(totalTax),
+    totalGross: roundAmount(totalGross),
+    lines,
+  }
+}
+
+
+export function percentageToFraction(value: string | number) { return new D(String(value)).div(100).toFixed() }
+export function decimalReferencePrices(quantity: string, net: string, gross: string) {
+  return { unitPriceNet: new D(net).div(quantity).toFixed(2), unitPriceGross: new D(gross).div(quantity).toFixed(2) }
+}
+
+export function fractionToPercentage(value: string) { return new D(value).times(100).toFixed() }
+
+/** Assert the document equation from persisted amounts, never from recalculated inputs. */
+export function assertStoredDocumentEquation(input: {
+  currency: string
+  pricesIncludeTax: boolean
+  net: string
+  tax: string
+  gross: string
+  lines: Array<{ vat: { treatment: string; reasonCode?: string | null; rate: string; country?: string | null }; net: string; tax: string; gross: string }>
+}) {
+  const exponent = requireCurrencyExponent(input.currency)
+  const groups = new Map<string, { net: Decimal; tax: Decimal; gross: Decimal }>()
+  for (const line of input.lines) {
+    for (const value of [line.net, line.tax, line.gross]) {
+      const amount = new D(value)
+      if (amount.lt(0) || !round(amount, exponent).eq(amount)) throw new Error("Invalid stored line precision")
+    }
+    const key = vatGroupKey(line.vat)
+    const group = groups.get(key) ?? { net: new D(0), tax: new D(0), gross: new D(0) }
+    group.net = group.net.plus(line.net); group.tax = group.tax.plus(line.tax); group.gross = group.gross.plus(line.gross)
+    groups.set(key, group)
+  }
+  const totals = [...groups.values()]
+  for (const name of ["net", "tax", "gross"] as const) {
+    const amount = new D(input[name])
+    if (!round(amount, exponent).eq(amount) || !sum(totals.map((group) => group[name])).eq(amount))
+      throw new Error("Stored document totals do not match its lines")
+  }
+  for (const group of totals) {
+    const rounding = group.gross.minus(group.net).minus(group.tax)
+    if ((!input.pricesIncludeTax && !rounding.isZero()) || rounding.abs().gt(new D(1).div(new D(10).pow(exponent))))
+      throw new Error("Invalid stored payable rounding")
+  }
+  return equation(new D(input.net).plus(input.tax).plus(sum(totals.map((group) => group.gross.minus(group.net).minus(group.tax)))), new D(input.gross), exponent)
 }

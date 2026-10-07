@@ -62,6 +62,7 @@ export type InvoiceItemMinAggregateOutputType = {
   taxCategory: string | null
   taxCode: string | null
   sortOrder: number | null
+  vatRateInput: string | null
   vatTreatment: string | null
   vatCountry: string | null
   vatReasonCode: string | null
@@ -84,6 +85,7 @@ export type InvoiceItemMaxAggregateOutputType = {
   taxCategory: string | null
   taxCode: string | null
   sortOrder: number | null
+  vatRateInput: string | null
   vatTreatment: string | null
   vatCountry: string | null
   vatReasonCode: string | null
@@ -106,6 +108,7 @@ export type InvoiceItemCountAggregateOutputType = {
   taxCategory: number
   taxCode: number
   sortOrder: number
+  vatRateInput: number
   vatTreatment: number
   vatCountry: number
   vatReasonCode: number
@@ -152,6 +155,7 @@ export type InvoiceItemMinAggregateInputType = {
   taxCategory?: true
   taxCode?: true
   sortOrder?: true
+  vatRateInput?: true
   vatTreatment?: true
   vatCountry?: true
   vatReasonCode?: true
@@ -174,6 +178,7 @@ export type InvoiceItemMaxAggregateInputType = {
   taxCategory?: true
   taxCode?: true
   sortOrder?: true
+  vatRateInput?: true
   vatTreatment?: true
   vatCountry?: true
   vatReasonCode?: true
@@ -196,6 +201,7 @@ export type InvoiceItemCountAggregateInputType = {
   taxCategory?: true
   taxCode?: true
   sortOrder?: true
+  vatRateInput?: true
   vatTreatment?: true
   vatCountry?: true
   vatReasonCode?: true
@@ -305,6 +311,7 @@ export type InvoiceItemGroupByOutputType = {
   taxCategory: string
   taxCode: string | null
   sortOrder: number
+  vatRateInput: string | null
   vatTreatment: string
   vatCountry: string | null
   vatReasonCode: string | null
@@ -350,6 +357,7 @@ export type InvoiceItemWhereInput = {
   taxCategory?: Prisma.StringFilter<"InvoiceItem"> | string
   taxCode?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   sortOrder?: Prisma.IntFilter<"InvoiceItem"> | number
+  vatRateInput?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   vatTreatment?: Prisma.StringFilter<"InvoiceItem"> | string
   vatCountry?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   vatReasonCode?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
@@ -373,6 +381,7 @@ export type InvoiceItemOrderByWithRelationInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrderInput | Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrderInput | Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -399,6 +408,7 @@ export type InvoiceItemWhereUniqueInput = Prisma.AtLeast<{
   taxCategory?: Prisma.StringFilter<"InvoiceItem"> | string
   taxCode?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   sortOrder?: Prisma.IntFilter<"InvoiceItem"> | number
+  vatRateInput?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   vatTreatment?: Prisma.StringFilter<"InvoiceItem"> | string
   vatCountry?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   vatReasonCode?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
@@ -422,6 +432,7 @@ export type InvoiceItemOrderByWithAggregationInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrderInput | Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrderInput | Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -452,6 +463,7 @@ export type InvoiceItemScalarWhereWithAggregatesInput = {
   taxCategory?: Prisma.StringWithAggregatesFilter<"InvoiceItem"> | string
   taxCode?: Prisma.StringNullableWithAggregatesFilter<"InvoiceItem"> | string | null
   sortOrder?: Prisma.IntWithAggregatesFilter<"InvoiceItem"> | number
+  vatRateInput?: Prisma.StringNullableWithAggregatesFilter<"InvoiceItem"> | string | null
   vatTreatment?: Prisma.StringWithAggregatesFilter<"InvoiceItem"> | string
   vatCountry?: Prisma.StringNullableWithAggregatesFilter<"InvoiceItem"> | string | null
   vatReasonCode?: Prisma.StringNullableWithAggregatesFilter<"InvoiceItem"> | string | null
@@ -473,6 +485,7 @@ export type InvoiceItemCreateInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -496,6 +509,7 @@ export type InvoiceItemUncheckedCreateInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -517,6 +531,7 @@ export type InvoiceItemUpdateInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -540,6 +555,7 @@ export type InvoiceItemUncheckedUpdateInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -562,6 +578,7 @@ export type InvoiceItemCreateManyInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -583,6 +600,7 @@ export type InvoiceItemUpdateManyMutationInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -605,6 +623,7 @@ export type InvoiceItemUncheckedUpdateManyInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -637,6 +656,7 @@ export type InvoiceItemCountOrderByAggregateInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrder
@@ -670,6 +690,7 @@ export type InvoiceItemMaxOrderByAggregateInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrder
@@ -692,6 +713,7 @@ export type InvoiceItemMinOrderByAggregateInput = {
   taxCategory?: Prisma.SortOrder
   taxCode?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
+  vatRateInput?: Prisma.SortOrder
   vatTreatment?: Prisma.SortOrder
   vatCountry?: Prisma.SortOrder
   vatReasonCode?: Prisma.SortOrder
@@ -766,6 +788,7 @@ export type InvoiceItemCreateWithoutInvoiceInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -787,6 +810,7 @@ export type InvoiceItemUncheckedCreateWithoutInvoiceInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -838,6 +862,7 @@ export type InvoiceItemScalarWhereInput = {
   taxCategory?: Prisma.StringFilter<"InvoiceItem"> | string
   taxCode?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   sortOrder?: Prisma.IntFilter<"InvoiceItem"> | number
+  vatRateInput?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   vatTreatment?: Prisma.StringFilter<"InvoiceItem"> | string
   vatCountry?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   vatReasonCode?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
@@ -859,6 +884,7 @@ export type InvoiceItemCreateManyInvoiceInput = {
   taxCategory?: string
   taxCode?: string | null
   sortOrder?: number
+  vatRateInput?: string | null
   vatTreatment?: string
   vatCountry?: string | null
   vatReasonCode?: string | null
@@ -880,6 +906,7 @@ export type InvoiceItemUpdateWithoutInvoiceInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -901,6 +928,7 @@ export type InvoiceItemUncheckedUpdateWithoutInvoiceInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -922,6 +950,7 @@ export type InvoiceItemUncheckedUpdateManyWithoutInvoiceInput = {
   taxCategory?: Prisma.StringFieldUpdateOperationsInput | string
   taxCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  vatRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatTreatment?: Prisma.StringFieldUpdateOperationsInput | string
   vatCountry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   vatReasonCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -946,6 +975,7 @@ export type InvoiceItemSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatRateInput?: boolean
   vatTreatment?: boolean
   vatCountry?: boolean
   vatReasonCode?: boolean
@@ -969,6 +999,7 @@ export type InvoiceItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatRateInput?: boolean
   vatTreatment?: boolean
   vatCountry?: boolean
   vatReasonCode?: boolean
@@ -992,6 +1023,7 @@ export type InvoiceItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatRateInput?: boolean
   vatTreatment?: boolean
   vatCountry?: boolean
   vatReasonCode?: boolean
@@ -1015,6 +1047,7 @@ export type InvoiceItemSelectScalar = {
   taxCategory?: boolean
   taxCode?: boolean
   sortOrder?: boolean
+  vatRateInput?: boolean
   vatTreatment?: boolean
   vatCountry?: boolean
   vatReasonCode?: boolean
@@ -1023,7 +1056,7 @@ export type InvoiceItemSelectScalar = {
   inputPrecision?: boolean
 }
 
-export type InvoiceItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "invoiceId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["invoiceItem"]>
+export type InvoiceItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "invoiceId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatRateInput" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["invoiceItem"]>
 export type InvoiceItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
 }
@@ -1053,6 +1086,7 @@ export type $InvoiceItemPayload<ExtArgs extends runtime.Types.Extensions.Interna
     taxCategory: string
     taxCode: string | null
     sortOrder: number
+    vatRateInput: string | null
     vatTreatment: string
     vatCountry: string | null
     vatReasonCode: string | null
@@ -1496,6 +1530,7 @@ export interface InvoiceItemFieldRefs {
   readonly taxCategory: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly taxCode: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly sortOrder: Prisma.FieldRef<"InvoiceItem", 'Int'>
+  readonly vatRateInput: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly vatTreatment: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly vatCountry: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly vatReasonCode: Prisma.FieldRef<"InvoiceItem", 'String'>
