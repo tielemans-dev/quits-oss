@@ -28,7 +28,8 @@
     "./runtime/extensions": "./src/lib/runtime/extensions.ts",
     "./runtime/platform": "./src/lib/runtime/platform.ts",
     "./runtime/services": "./src/lib/runtime/services.ts",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./emails/password-reset-email": "./src/lib/emails/password-reset-email.ts"
   },
   "imports": {
     "#/*": "./src/*"

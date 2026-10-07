@@ -1,3 +1,4 @@
+import type { BetterAuthOptions } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { organization } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
@@ -7,9 +8,13 @@ import type { PrismaClient } from "../../../generated/prisma/client"
 
 import { getConfiguredSocialProviders } from "../auth/providers"
 import { sendInvitationEmail } from "../email"
+import { sendPasswordResetEmail } from "../emails/password-reset-email"
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_RESET_EXPIRES_IN } from "../auth/password-policy"
 import { ac, accountant, admin, member } from "../permissions"
 
 export type AuthHooks = {
+  /** Hosted runtimes can provide their own transactional email delivery. */
+  sendResetPassword?: NonNullable<BetterAuthOptions["emailAndPassword"]>["sendResetPassword"]
   createDatabaseAdapter?: (prisma: PrismaClient) => unknown
   password?: {
     hash?: (password: string) => Promise<string>
@@ -87,6 +92,14 @@ export function buildQuitsAuthOptions(input: {
   const cookiesPlugin = tanstackStartCookies()
 
   return {
+    ...(betterAuthUrl ? { baseURL: betterAuthUrl } : {}),
+    rateLimit: {
+      enabled: true,
+      customRules: {
+        "/request-password-reset": { window: 60, max: 3 },
+        "/reset-password": { window: 60, max: 5 },
+      },
+    },
     database:
       hooks.createDatabaseAdapter?.(input.prisma) ??
       prismaAdapter(input.prisma, {
@@ -105,6 +118,29 @@ export function buildQuitsAuthOptions(input: {
       : {}),
     emailAndPassword: {
       enabled: true,
+      minPasswordLength: PASSWORD_MIN_LENGTH,
+      maxPasswordLength: PASSWORD_MAX_LENGTH,
+      resetPasswordTokenExpiresIn: PASSWORD_RESET_EXPIRES_IN,
+      revokeSessionsOnPasswordReset: true,
+      async sendResetPassword(data: Parameters<NonNullable<AuthHooks["sendResetPassword"]>>[0], request?: Request) {
+        try {
+          if (hooks.sendResetPassword) {
+            await hooks.sendResetPassword(data, request)
+          } else {
+            await sendPasswordResetEmail({
+              to: data.user.email,
+              name: data.user.name,
+              resetUrl: data.url,
+              fromEmail: env.getEnv("FROM_EMAIL"),
+              locale: request?.headers.get("accept-language")?.split(",")[0],
+            })
+          }
+        } catch {
+          // Preserve the same response for existing and unknown accounts, even on delivery failure.
+          // Never include the provider error, reset URL, token, password, or recipient in logs.
+          console.error("Password reset email delivery failed")
+        }
+      },
       ...(password?.hash || password?.verify
         ? {
             password: {

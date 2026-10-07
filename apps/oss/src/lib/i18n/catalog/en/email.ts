@@ -15,4 +15,11 @@ export const enEmailMessages = {
   "email.invitation.accept": "Accept Invitation",
   "email.invitation.expiry": "This invitation expires in 48 hours. If you didn't expect this, you can ignore this email.",
   "email.invitation.subject": "{inviterName} invited you to join {orgName} on Quits",
+  "email.passwordReset.subject": "Reset your Quits password",
+  "email.passwordReset.title": "Reset your password",
+  "email.passwordReset.greeting": "Hi {name},",
+  "email.passwordReset.body": "Use the link below to choose a new password. This link expires in {minutes} minutes.",
+  "email.passwordReset.action": "Reset password",
+  "email.passwordReset.fallback": "If the button does not work, open this link:",
+  "email.passwordReset.ignore": "If you did not request this, you can ignore this email. Your password will stay the same.",
 } as const

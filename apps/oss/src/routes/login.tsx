@@ -93,7 +93,7 @@ function LoginPage() {
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="flex flex-col gap-4">
+          <CardContent className="flex flex-col gap-4 pb-4">
             {message && (
               <p className="text-sm text-muted-foreground" role="status">
                 {message}
@@ -117,7 +117,12 @@ function LoginPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="password">{t('auth.password')}</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="password">{t('auth.password')}</Label>
+                <Link to="/forgot-password" className="text-sm text-primary underline underline-offset-4">
+                  {t('auth.login.forgotPassword')}
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
