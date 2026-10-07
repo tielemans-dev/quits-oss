@@ -2,7 +2,8 @@ import { Effect } from "effect"
 import { z } from "zod"
 import { prisma } from "../../lib/db"
 import { appLogger } from "../../lib/observability"
-import { expireOpenStripeCheckoutSession, getStripePaymentCredentials } from "../../lib/payments/stripe"
+import { expireOpenStripeCheckoutSession } from "../../lib/payments/stripe"
+import { decryptSecret } from "../../lib/secrets"
 import { registerJobHandler, TerminalJobError } from "../jobs"
 import { Command, Db } from "../services"
 
@@ -67,18 +68,17 @@ export const expireReplacedCheckoutSession = (
     ? expireStaleCheckoutSession(invoice)
     : Effect.void
 
-/** Loads the organization's Stripe secret key, or null when Stripe is not configured. */
+/**
+ * Loads the organization's Stripe API secret key, or null when none is stored. Expiring a session
+ * needs only this key, so it is read on its own: a payment configuration that is incomplete
+ * otherwise (no webhook secret, say) must not stop a stale session from being expired.
+ */
 export async function organizationStripeSecretKey(organizationId: string) {
   const settings = await prisma.orgSettings.findUnique({
     where: { organizationId },
-    select: { stripePublishableKey: true, stripeSecretKeyEnc: true, stripeWebhookSecretEnc: true },
+    select: { stripeSecretKeyEnc: true },
   })
-  const credentials = getStripePaymentCredentials({
-    stripePublishableKey: settings?.stripePublishableKey ?? null,
-    stripeSecretKeyEnc: settings?.stripeSecretKeyEnc ?? null,
-    stripeWebhookSecretEnc: settings?.stripeWebhookSecretEnc ?? null,
-  })
-  return credentials?.secretKey ?? null
+  return settings?.stripeSecretKeyEnc ? decryptSecret(settings.stripeSecretKeyEnc) : null
 }
 
 /*
@@ -93,13 +93,16 @@ registerJobHandler(EXPIRE_CHECKOUT_SESSION_JOB, async (job) => {
   const { invoiceId, checkoutSessionId } = parsed.data
   const secretKey = await organizationStripeSecretKey(job.organizationId)
   if (!secretKey) {
-    // Without the organization's Stripe key the session cannot be expired; retrying cannot help.
-    paymentsLogger.warn("checkout.expire.stripe_not_configured", {
+    // The session was opened with a key that has since been removed and may still be payable.
+    // Fail visibly and retry, so restoring the key lets the expiry go through.
+    paymentsLogger.error("checkout.expire.no_secret_key", {
       organizationId: job.organizationId,
       invoiceId,
       checkoutSessionId,
     })
-    return
+    throw new Error(
+      `Cannot expire Stripe Checkout session ${checkoutSessionId}: the organization has no Stripe secret key`
+    )
   }
   const outcome = await expireOpenStripeCheckoutSession({ secretKey, sessionId: checkoutSessionId })
   paymentsLogger.info("checkout.expire.done", {

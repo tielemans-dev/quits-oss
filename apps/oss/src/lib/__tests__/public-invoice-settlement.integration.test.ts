@@ -5,6 +5,7 @@ import { issueCreditNote } from "../../domain/commands/credit-notes"
 import { createInvoiceDraft, sendInvoice } from "../../domain/commands/invoices"
 import { recordPayment, voidPayment } from "../../domain/commands/payments"
 import { EXPIRE_CHECKOUT_SESSION_JOB } from "../../domain/documents/checkout-sessions"
+import { runDueJobs } from "../../domain/jobs"
 import { executeCommand } from "../../domain/execute"
 import { processStripeWebhookEvent } from "../payments/webhooks"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
@@ -172,6 +173,50 @@ describeIfDatabase("public invoice links after settlement changes", () => {
       })
       expect(job).toMatchObject({ status: "pending", lastError: "Stripe is unavailable" })
       expect(job.payload).toEqual({ invoiceId: context.invoiceId, checkoutSessionId: sessionId })
+    })
+
+    it("expires the session with the API key alone when the rest of the Stripe setup is incomplete", async () => {
+      const context = await setup()
+      const sessionId = await openCheckout(context)
+      await prisma.orgSettings.update({
+        where: { organizationId: context.org.organizationId },
+        data: { stripeWebhookSecretEnc: null, stripePublishableKey: null },
+      })
+
+      const paid = await bankTransfer(context, 50)
+      expect(paid.status).toBe("completed")
+      expect(expireCheckoutSession).toHaveBeenCalledWith({ secretKey: "sk_test_12345678901234567890", sessionId })
+    })
+
+    it("keeps retrying the expiry while the Stripe secret key is missing, and expires once it is back", async () => {
+      const context = await setup()
+      const sessionId = await openCheckout(context)
+      const { stripeSecretKeyEnc } = await prisma.orgSettings.findUniqueOrThrow({
+        where: { organizationId: context.org.organizationId },
+      })
+      await prisma.orgSettings.update({
+        where: { organizationId: context.org.organizationId },
+        data: { stripeSecretKeyEnc: null },
+      })
+
+      const paid = await bankTransfer(context, 50)
+      expect(paid.status).toBe("completed")
+      expect(expireCheckoutSession).not.toHaveBeenCalled()
+      const where = { organizationId: context.org.organizationId, type: EXPIRE_CHECKOUT_SESSION_JOB }
+      const failed = await prisma.job.findFirstOrThrow({ where })
+      expect(failed.status).toBe("pending")
+      expect(failed.lastError).toContain("no Stripe secret key")
+
+      await prisma.orgSettings.update({
+        where: { organizationId: context.org.organizationId },
+        data: { stripeSecretKeyEnc },
+      })
+      await runDueJobs({
+        now: new Date(Date.now() + 60 * 60 * 1000),
+        organizationIds: [context.org.organizationId],
+      })
+      expect(expireCheckoutSession).toHaveBeenCalledWith({ secretKey: "sk_test_12345678901234567890", sessionId })
+      expect((await prisma.job.findFirstOrThrow({ where })).status).toBe("done")
     })
 
     it("expires the previous session when the customer opens a new one", async () => {
