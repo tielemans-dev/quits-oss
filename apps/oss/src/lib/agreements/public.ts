@@ -1,4 +1,4 @@
-import { agreementOfferSnapshotSchema } from "@quits/contracts/agreements"
+import { readAgreementOfferSnapshot, type AgreementOfferSnapshot } from "@quits/contracts/agreements"
 import type { Agreement, Deliverable } from "../../../generated/prisma/client"
 import { sanitizeAgreementHtml } from "./markdown"
 
@@ -20,7 +20,7 @@ export function publicAgreementDto(
     deliverables?: Pick<Deliverable, "sortOrder" | "expectedDate">[]
   },
 ) {
-  const snapshot = agreementOfferSnapshotSchema.parse(agreement.offerSnapshot)
+  const snapshot = readAgreementOfferSnapshot(agreement.offerSnapshot)
   return {
     number: agreement.number,
     status: agreement.status,
@@ -30,7 +30,7 @@ export function publicAgreementDto(
     snapshot: {
       ...snapshot,
       termsHtml: sanitizeAgreementHtml(snapshot.termsHtml),
-    },
+    } as AgreementOfferSnapshot,
     expectedDates: snapshot.deliverables.map(
       (line) =>
         agreement.deliverables

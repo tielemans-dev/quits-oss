@@ -17,7 +17,7 @@ import {
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { useI18n } from "../../../lib/i18n/react"
 import { renderAgreementMarkdown } from "../../../lib/agreements/markdown"
-import { calculateLegacyDocument } from "@quits/shared/pricing"
+import { calculateLegacyDocument, previewDraft } from "@quits/shared/pricing"
 import { currencyFractionDigits } from "../../../lib/payments/stripe-amounts"
 import { formatCurrency } from "../../../lib/i18n/format"
 import { Plus, Trash2 } from "lucide-react"
@@ -69,6 +69,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
     Awaited<ReturnType<typeof trpc.agreements.listTemplates.query>>
   >([])
   const [sellerName, setSellerName] = useState("")
+  const [offerFormatVersion, setOfferFormatVersion] = useState<number | null>(2)
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -90,6 +91,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
         setPricesIncludeTax(agreement?.pricesIncludeTax ?? settings.pricesIncludeTax)
         if (agreement) {
           if (agreement.status !== "draft") throw new Error(t("agreements.draftOnly"))
+          setOfferFormatVersion(agreement.offerFormatVersion)
           setForm({
             contactId: agreement.contactId,
             title: agreement.title,
@@ -152,11 +154,8 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
           "buyer.name": contacts.find((item) => item.id === deferred.contactId)?.name ?? "",
           "agreement.title": deferred.title,
           "agreement.validUntil": deferred.validUntil,
-          "agreement.total": `${calculateLegacyDocument({
-            items: deferred.deliverables.map((line) => ({ description: line.description ?? "", quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })),
-            taxRate: Number(deferred.taxRate),
-            pricesIncludeTax,
-            fractionDigits: Math.min(currencyFractionDigits(deferred.currency.match(/^[A-Z]{3}$/) ? deferred.currency : "USD"), 2),
+          "agreement.total": `${offerFormatVersion === 2 ? previewDraft({ items: deferred.deliverables.filter(line => !line.isDeposit).map(line => ({ description: line.description || line.title || " ", quantity: line.quantity, unitPrice: line.unitPrice, vat: line.vat })), taxRate: deferred.taxRate, currency: deferred.currency, pricesIncludeTax }).result?.gross ?? "" : calculateLegacyDocument({
+            items: deferred.deliverables.map(line => ({ description: line.description ?? "", quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })), taxRate: Number(deferred.taxRate), pricesIncludeTax, fractionDigits: Math.min(currencyFractionDigits(deferred.currency), 2),
           }).totalGross.toFixed(2)} ${deferred.currency}`,
           deliverables: deferred.deliverables
             .map((line) => `${line.title}: ${line.description ?? ""}`)
@@ -167,7 +166,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
     } catch (err) {
       return { html: "", error: err instanceof Error ? err.message : t("agreements.error") }
     }
-  }, [deferred, sellerName, contacts, t, pricesIncludeTax])
+  }, [deferred, sellerName, contacts, t, pricesIncludeTax, offerFormatVersion])
   async function save() {
     setError(null)
     const parsed = agreementCreateDraftDecimalInputSchema.safeParse(form)
@@ -338,7 +337,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
                     checked={line.isDeposit ?? false}
                     onChange={(e) => changeLine(index, { isDeposit: e.target.checked })}
                   />
-                  {t("agreements.deposit")}
+                  {t(offerFormatVersion === 2 ? "agreements.scheduleLine" : "agreements.deposit")}
                 </Label>
               </div>
             ))}
@@ -392,9 +391,9 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            {pricesIncludeTax ? t("docForm.summary.total") : t("docForm.summary.subtotal")}:{" "}
+            {offerFormatVersion === 2 ? t("agreements.serviceTotal") : pricesIncludeTax ? t("docForm.summary.total") : t("docForm.summary.subtotal")}:{" "}
             {formatCurrency(
-              calculateLegacyDocument({ items: form.deliverables.map((line) => ({ description: line.description ?? "", quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })), taxRate: Number(form.taxRate), pricesIncludeTax, fractionDigits: Math.min(currencyFractionDigits(form.currency), 2) })[pricesIncludeTax ? "totalGross" : "subtotalNet"],
+              offerFormatVersion === 2 ? Number(previewDraft({ items: form.deliverables.filter(line => !line.isDeposit).map(line => ({ description: line.description || line.title || " ", quantity: line.quantity, unitPrice: line.unitPrice, vat: line.vat })), taxRate: form.taxRate, currency: form.currency, pricesIncludeTax }).result?.[pricesIncludeTax ? "gross" : "net"] ?? "0") : calculateLegacyDocument({ items: form.deliverables.map((line) => ({ description: line.description ?? "", quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })), taxRate: Number(form.taxRate), pricesIncludeTax, fractionDigits: Math.min(currencyFractionDigits(form.currency), 2) })[pricesIncludeTax ? "totalGross" : "subtotalNet"],
               form.currency.match(/^[A-Z]{3}$/) ? form.currency : "USD",
               locale,
             )}

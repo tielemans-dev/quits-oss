@@ -1,0 +1,171 @@
+{
+  "snapshot": {
+    "sellerSnapshot": null,
+    "buyerSnapshot": null,
+    "title": "Ledger-ready offer",
+    "summary": null,
+    "termsHtml": "<p>Service price 0.02 DKK.</p>\n",
+    "validUntil": "2099-01-01T00:00:00.000Z",
+    "timezone": "Europe/Copenhagen",
+    "currency": "DKK",
+    "countryCode": "DK",
+    "locale": "da-DK",
+    "taxRegime": "eu_vat",
+    "taxRate": "25.00",
+    "pricesIncludeTax": true,
+    "dueInDays": 30,
+    "billingTrigger": "on_acceptance",
+    "subtotalNet": "0.02",
+    "totalTax": "0.01",
+    "totalGross": "0.02",
+    "deliverables": [
+      {
+        "title": "Service A",
+        "description": "Work A",
+        "quantity": "1.000001",
+        "unitPriceNet": "0.01",
+        "unitPriceGross": "0.01",
+        "lineNet": "0.01",
+        "lineTax": "0.01",
+        "lineGross": "0.01",
+        "taxRate": "25.00",
+        "taxCategory": "standard",
+        "taxCode": null,
+        "agreedDate": null,
+        "isDeposit": false,
+        "sortOrder": 0
+      },
+      {
+        "title": "Service B",
+        "description": "Work B",
+        "quantity": "1",
+        "unitPriceNet": "0.01",
+        "unitPriceGross": "0.01",
+        "lineNet": "0.01",
+        "lineTax": "0.00",
+        "lineGross": "0.01",
+        "taxRate": "25.00",
+        "taxCategory": "standard",
+        "taxCode": null,
+        "agreedDate": null,
+        "isDeposit": false,
+        "sortOrder": 1
+      },
+      {
+        "title": "Deposit",
+        "description": "Payment on acceptance",
+        "quantity": "1",
+        "unitPriceNet": "16.00",
+        "unitPriceGross": "20.00",
+        "lineNet": "16.00",
+        "lineTax": "4.00",
+        "lineGross": "20.00",
+        "taxRate": "25.00",
+        "taxCategory": "standard",
+        "taxCode": null,
+        "agreedDate": null,
+        "isDeposit": true,
+        "sortOrder": 2
+      }
+    ],
+    "offerFormatVersion": 2,
+    "calculationVersion": "v2",
+    "serviceTotal": {
+      "net": "0.02",
+      "tax": "0.01",
+      "gross": "0.02",
+      "payableRounding": "-0.01",
+      "vatBasis": "gross"
+    },
+    "paymentSchedule": [
+      {
+        "title": "Deposit",
+        "sortOrder": 2,
+        "amount": "20.00",
+        "vatBasis": "gross",
+        "trigger": "on_agreement_acceptance",
+        "vatGroupKey": "[\"standard\",null,\"0.25\",null]",
+        "net": "16.00",
+        "tax": "4.00",
+        "gross": "20.00"
+      }
+    ],
+    "originalInputs": [
+      {
+        "sortOrder": 0,
+        "quantity": "1.000001",
+        "unitPrice": "0.0100",
+        "inputPrecision": "string",
+        "vat": {
+          "treatment": "standard",
+          "rate": "0.25",
+          "country": null,
+          "reasonCode": null
+        }
+      },
+      {
+        "sortOrder": 1,
+        "quantity": "1",
+        "unitPrice": "0.01",
+        "inputPrecision": "string",
+        "vat": {
+          "treatment": "standard",
+          "rate": "0.25",
+          "country": null,
+          "reasonCode": null
+        }
+      },
+      {
+        "sortOrder": 2,
+        "quantity": "1",
+        "unitPrice": "20",
+        "inputPrecision": "string",
+        "vat": {
+          "treatment": "standard",
+          "rate": "0.25",
+          "country": null,
+          "reasonCode": null
+        }
+      }
+    ],
+    "vatGroups": [
+      {
+        "treatment": "standard",
+        "reasonCode": null,
+        "rate": "0.25",
+        "country": null,
+        "key": "[\"standard\",null,\"0.25\",null]",
+        "exponent": 2,
+        "baseExponent": 2,
+        "net": "0.02",
+        "tax": "0.01",
+        "gross": "0.02",
+        "payableRounding": "-0.01",
+        "netBase": "0.02",
+        "taxBase": "0.01",
+        "grossBase": "0.02",
+        "payableRoundingBase": "-0.01"
+      }
+    ],
+    "scheduleVatGroups": [
+      {
+        "treatment": "standard",
+        "reasonCode": null,
+        "rate": "0.25",
+        "country": null,
+        "key": "[\"standard\",null,\"0.25\",null]",
+        "exponent": 2,
+        "baseExponent": 2,
+        "net": "16.00",
+        "tax": "4.00",
+        "gross": "20.00",
+        "payableRounding": "0.00",
+        "netBase": "16.00",
+        "taxBase": "4.00",
+        "grossBase": "20.00",
+        "payableRoundingBase": "0.00"
+      }
+    ]
+  },
+  "hash": "ab24f56026ca8986af8c4ff149833ec35beafce7a2230f70cd0f5cc8105999cd"
+}

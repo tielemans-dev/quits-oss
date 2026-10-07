@@ -1,5 +1,8 @@
 import { z } from "zod"
 import { quantityDecimalSchema, unitPriceDecimalSchema, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
+import { decimalStringSchema, vatGroupSchema } from "./vat"
+import { quantityInputSchema, unitPriceInputSchema } from "./pricing"
+import { documentVatInputSchema } from "./invoices"
 import { buyerSnapshotSchema, sellerSnapshotSchema } from "./documents"
 
 export const agreementStatusSchema = z.enum([
@@ -38,6 +41,7 @@ export const deliverableInputSchema = z
     agreedDate: nullableDate,
     expectedDate: nullableDate,
     isDeposit: z.boolean().default(false),
+    vat: documentVatInputSchema.optional(),
   })
   .strict()
 export const agreementCreateDraftInputSchema = z
@@ -117,7 +121,7 @@ export const offerDeliverableSnapshotSchema = z
     sortOrder: z.number().int(),
   })
   .strict()
-export const agreementOfferSnapshotSchema = z
+export const agreementOfferSnapshotV1Schema = z
   .object({
     sellerSnapshot: sellerSnapshotSchema.nullable(),
     buyerSnapshot: buyerSnapshotSchema.nullable(),
@@ -140,6 +144,30 @@ export const agreementOfferSnapshotSchema = z
     deliverables: z.array(offerDeliverableSnapshotSchema),
   })
   .strict()
+/** Missing version means the unchanged v1 contract. Never default a version into a hash. */
+export const agreementOfferSnapshotV2Schema = agreementOfferSnapshotV1Schema.extend({
+  deliverables: z.array(offerDeliverableSnapshotSchema.extend({ quantity: quantityInputSchema })),
+  offerFormatVersion: z.literal(2),
+  calculationVersion: z.literal("v2"),
+  serviceTotal: z.strictObject({ net: decimalStringSchema, tax: decimalStringSchema, gross: decimalStringSchema, payableRounding: decimalStringSchema, vatBasis: z.enum(["net", "gross"]) }),
+  paymentSchedule: z.array(z.strictObject({
+    title: z.string(), sortOrder: z.number().int(), amount: decimalStringSchema,
+    vatBasis: z.enum(["net", "gross"]), trigger: z.literal("on_agreement_acceptance"),
+    vatGroupKey: z.string(), net: decimalStringSchema, tax: decimalStringSchema, gross: decimalStringSchema,
+  })),
+  originalInputs: z.array(z.strictObject({
+    sortOrder: z.number().int(), quantity: quantityInputSchema, unitPrice: unitPriceInputSchema,
+    inputPrecision: z.enum(["string", "number", "backfilled"]),
+    vat: documentVatInputSchema.required(),
+  })),
+  vatGroups: z.array(vatGroupSchema),
+  scheduleVatGroups: z.array(vatGroupSchema),
+}).strict()
+export const agreementOfferSnapshotSchema = z.union([agreementOfferSnapshotV1Schema, agreementOfferSnapshotV2Schema])
+export function readAgreementOfferSnapshot(input: unknown) {
+  const version = input && typeof input === "object" && "offerFormatVersion" in input ? input.offerFormatVersion : undefined
+  return version === undefined ? agreementOfferSnapshotV1Schema.parse(input) : agreementOfferSnapshotV2Schema.parse(input)
+}
 export type AgreementCreateDraftInput = z.input<typeof agreementCreateDraftInputSchema>
 export type AgreementUpdateDraftInput = z.input<typeof agreementUpdateDraftInputSchema>
 export type DeliverableInput = z.input<typeof deliverableInputSchema>
@@ -153,7 +181,8 @@ export const agreementRecordAcceptanceInputSchema = agreementIdInputSchema.exten
   evidenceNote: z.string().trim().min(1).max(5000),
 }).strict()
 export const agreementCloseInputSchema = agreementIdInputSchema.extend({
-  disposition: z.literal("cancelled"),
+  disposition: z.enum(["cancelled", "completed"]),
+  cancelRemaining: z.boolean().optional(),
   reason: z.string().trim().min(1).max(5000),
 }).strict()
 export const agreementPublicTokenPayloadSchema = z.discriminatedUnion("scope", [
