@@ -9,7 +9,7 @@ vi.mock("../../lib/email", async () => {
 import { prisma } from "../../lib/db"
 import { deliver, EmailSendError } from "../../lib/email"
 import { deliverSmtp } from "../../lib/email-smtp-node"
-import { withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
+import { withSmtpDisconnect, withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
 import { defaultNodePlatform } from "../../lib/runtime/node-platform"
 import { resetRuntimePlatform, setRuntimePlatform } from "../../lib/runtime/platform"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
@@ -213,6 +213,21 @@ describeIfDatabase("email outbox", () => {
       expect(edit.status).toBe("completed")
     })
     expect(deliver).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not issue an invoice when a real relay closes before its greeting", async () => {
+    const { org, invoiceId } = await setup()
+    useSmtp()
+    await withSmtpDisconnect("before-greeting", async (environment, commands, bodies) => {
+      vi.mocked(deliver).mockImplementationOnce((message) => deliverSmtp(message, environment))
+      await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+      expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "failed" })
+      expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "rejected" })
+      expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, aggregateId: invoiceId, type: "invoice.sent" } })).toBe(0)
+      expect(commands).toHaveLength(0)
+      expect(bodies).toHaveLength(0)
+      expect(await executeIssuanceCommand(updateInvoiceDraft, { id: invoiceId, notes: "Try a working relay" }, { actor: org.actors.admin })).toMatchObject({ status: "completed" })
+    })
   })
 
   it("settles a recorded SMTP acceptance without another submission", async () => {

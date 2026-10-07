@@ -10,7 +10,7 @@ import { parse as parseDotenv } from "dotenv"
 import { isSmtpPreSubmissionFailure } from "../email-smtp-node"
 import { betterAuth } from "better-auth"
 import { memoryAdapter } from "better-auth/adapters/memory"
-import { withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
+import { withSmtpDisconnect, withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -34,10 +34,11 @@ describe("SMTP configuration", () => {
     expect(isSmtpPreSubmissionFailure({ code: "ETLS", command: "STARTTLS" })).toBe(true)
     expect(isSmtpPreSubmissionFailure({ code: "ETLS", command: "CONN" })).toBe(true)
     expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "CONN", message: "self signed certificate" })).toBe(false)
-    expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "CONN", message: "self signed certificate" }, true)).toBe(true)
-    expect(isSmtpPreSubmissionFailure({ code: "ETIMEDOUT", command: "CONN", message: "Timeout" }, true)).toBe(true)
-    expect(isSmtpPreSubmissionFailure({ code: "ECONNECTION", command: "CONN" }, true)).toBe(true)
-    expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "DATA" }, true)).toBe(false)
+    expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "CONN", message: "self signed certificate" }, "connection")).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ETIMEDOUT", command: "CONN", message: "Timeout" }, "connection")).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ECONNECTION", command: "CONN" }, "connection")).toBe(true)
+    expect(isSmtpPreSubmissionFailure({ code: "ESOCKET", command: "CONN" }, "data")).toBe(false)
+    expect(isSmtpPreSubmissionFailure({ code: "ECONNECTION", command: "CONN" }, "data")).toBe(false)
   })
   it("keeps Resend as the default and rejects unknown providers", () => {
     expect(selectedEmailProvider("")).toBe("resend")
@@ -89,8 +90,9 @@ describe("SMTP configuration", () => {
 })
 
 /** Disposable local relay, including the ambiguous disconnect after the body arrives. */
-async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | "greeting-timeout" | "hold", run: (bodies: string[], release: () => void) => Promise<void>) {
+async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | "greeting-timeout" | "malformed-auth" | "hold", run: (bodies: string[], commands: string[], release: () => void) => Promise<void>) {
   const bodies: string[] = []
+  const commands: string[] = []
   const sockets = new Set<Socket>()
   const pending = new Set<Socket>()
   const server = createServer((socket) => {
@@ -116,7 +118,13 @@ async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | 
           if (end < 0) return
           const line = buffered.slice(0, end)
           buffered = buffered.slice(end + 2)
-          if (/^EHLO/i.test(line)) socket.write("250-local.test\r\n250 8BITMIME\r\n")
+          commands.push(line)
+          if (/^EHLO/i.test(line) && mode === "malformed-auth") {
+            // A bounded hostile whitespace run plus an invalid lookalike mechanism.
+            // Patched Nodemailer must parse whole tokens and select only LOGIN.
+            socket.write(`250-local.test\r\n250-AUTH ${" ".repeat(16_384)}X-PLAIN-SUFFIX\r\n250 AUTH=LOGIN\r\n`)
+          } else if (/^EHLO/i.test(line)) socket.write("250-local.test\r\n250 8BITMIME\r\n")
+          else if (/^AUTH/i.test(line) && mode === "malformed-auth") socket.write("535 credentials refused\r\n")
           else if (/^STARTTLS/i.test(line)) socket.write("454 TLS unavailable\r\n")
           else if (/^RCPT/i.test(line) && (mode === "reject" || (mode === "partial" && line.includes("customer@example.com")))) socket.write("550 recipient refused\r\n")
           else if (/^DATA/i.test(line)) { inData = true; socket.write("354 send message\r\n") }
@@ -137,7 +145,7 @@ async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | 
   vi.stubEnv("SMTP_USER", "")
   vi.stubEnv("SMTP_PASS", "")
   vi.stubEnv("SMTP_PASSWORD", "")
-  try { await run(bodies, () => {
+  try { await run(bodies, commands, () => {
     for (const socket of pending) socket.write("250 queued as local-42\r\n")
     pending.clear()
   }) } finally {
@@ -172,7 +180,7 @@ function recoveryAuth(environment: Record<string, string | undefined>) {
 
 describe("real SMTP transport", () => {
   it("recovers through the supplied SMTP environment while delivery is pending and global Resend has no key", async () => {
-    await withRelay("hold", async (bodies, release) => {
+    await withRelay("hold", async (bodies, _commands, release) => {
       const environment = {
         EMAIL_PROVIDER: "smtp", SMTP_HOST: "127.0.0.1", SMTP_PORT: process.env.SMTP_PORT!,
         SMTP_SECURE: "false", SMTP_REQUIRE_TLS: "false", FROM_EMAIL: "initial@example.com",
@@ -234,6 +242,38 @@ describe("real SMTP transport", () => {
         expect(bodies).toHaveLength(0)
         expect(logged.mock.calls).toEqual([["Password reset email delivery failed"]])
       } finally { await Promise.all(f.background); logged.mockRestore() }
+    })
+  })
+
+
+  it("processes bounded malformed EHLO AUTH padding and ignores lookalike mechanisms", async () => {
+    await withRelay("malformed-auth", async (bodies, commands) => {
+      vi.stubEnv("SMTP_USER", "test-user")
+      vi.stubEnv("SMTP_PASS", "test-password")
+      await expect(deliver(message)).rejects.toMatchObject({ providerCode: "smtp_rejected" })
+      expect(commands.filter((command) => /^AUTH/i.test(command))).toEqual(["AUTH LOGIN"])
+      expect(commands.some((command) => /^(?:MAIL|RCPT|DATA)\b/.test(command))).toBe(false)
+      expect(bodies).toHaveLength(0)
+    })
+  }, 2_000)
+
+  it.each(["before-greeting", "after-envelope"] as const)("rejects a relay close %s without submitting a message", async (mode) => {
+    await withSmtpDisconnect(mode, async (environment, commands, bodies) => {
+      await expect(deliver(message, { environment })).rejects.toMatchObject({ providerCode: "smtp_unavailable" })
+      if (mode === "before-greeting") expect(commands).toHaveLength(0)
+      else expect(commands.some((command) => command.startsWith("MAIL FROM:"))).toBe(true)
+      expect(commands).not.toContain("DATA")
+      expect(bodies).toHaveLength(0)
+    })
+  })
+
+  it("keeps the same connection-close error ambiguous after DATA", async () => {
+    await withSmtpDisconnect("after-data", async (environment, commands, bodies) => {
+      const error = await deliver(message, { environment }).catch((failure: unknown) => failure)
+      expect(error).toMatchObject({ code: "ECONNECTION", command: "CONN" })
+      expect(error).not.toBeInstanceOf(EmailSendError)
+      expect(commands).toContain("DATA")
+      expect(bodies).toHaveLength(1)
     })
   })
 

@@ -4,14 +4,13 @@ import { readSmtpConfiguration, type EmailEnvironment } from "./email-provider-c
 import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
 
 /** Nodemailer also labels post-DATA socket errors CONN, so the command alone is not proof. */
-export function isSmtpPreSubmissionFailure(error: unknown, tlsHandshakePending = false): boolean {
+export function isSmtpPreSubmissionFailure(error: unknown, phase?: "connection" | "envelope" | "data"): boolean {
   if (!error || typeof error !== "object") return false
+  // Each transport sends one message. An observed DATA command permanently marks the
+  // submission as uncertain; before it, no message body could have reached the relay.
+  if (phase !== undefined) return phase !== "data"
   const smtpError = error as { code?: string; command?: string; syscall?: string; message?: string }
   if (smtpError.code === "ETLS" && (smtpError.command === "STARTTLS" || smtpError.command === "CONN")) return true
-  // Certificate errors lose their original code in Nodemailer. Only classify them when
-  // our connection state proves TLS has not completed; later socket errors stay uncertain.
-  if (tlsHandshakePending && smtpError.command === "CONN"
-    && ["ESOCKET", "ECONNECTION", "ETIMEDOUT"].includes(smtpError.code ?? "")) return true
   if (smtpError.command !== "CONN") return false
   return smtpError.code === "EDNS"
     || (smtpError.code === "ESOCKET" && smtpError.syscall === "connect")
@@ -30,18 +29,20 @@ export async function deliverSmtp(message: EmailMessage, environment: EmailEnvir
   const configuration = readSmtpConfiguration(environment)
   const moduleName = "nodemailer"
   const { default: nodemailer } = await import(/* @vite-ignore */ moduleName) as { default: typeof import("nodemailer") }
-  let tlsHandshakePending = configuration.secure
+  let phase: "connection" | "envelope" | "data" = "connection"
   const discardLog = () => {}
   const transport = nodemailer.createTransport({
     ...configuration,
     transactionLog: true,
-    // Observe outgoing commands before they reach the socket. Any command after STARTTLS
-    // proves the handshake ended. This logger never stores or emits credentials or content.
+    // Nodemailer logs commands before writing them to the socket. Never move back from
+    // DATA, even if the connection then fails. Store no credentials, addresses or content.
     logger: {
       level: discardLog, trace: discardLog, info: discardLog,
       warn: discardLog, error: discardLog, fatal: discardLog,
       debug(entry: { tnx?: string }, command: string) {
-        if (entry.tnx === "client") tlsHandshakePending = command === "STARTTLS"
+        if (entry.tnx !== "client" || phase === "data") return
+        if (command === "DATA") phase = "data"
+        else if (command.startsWith("MAIL FROM:")) phase = "envelope"
       },
     },
   })
@@ -84,14 +85,14 @@ export async function deliverSmtp(message: EmailMessage, environment: EmailEnvir
     return { id: result.messageId }
   } catch (error) {
     if (error instanceof EmailSendError) throw error
-    if (isSmtpPreSubmissionFailure(error, tlsHandshakePending)) {
-      throw new EmailSendError("smtp_unavailable", "The SMTP connection failed before message submission, so nothing was delivered")
-    }
     const smtpError = error as { responseCode?: number }
     // A completed negative SMTP response proves this submission was refused. A connection
     // loss or timeout may occur after DATA was accepted and must remain unconfirmed.
     if (smtpError.responseCode && smtpError.responseCode >= 400 && smtpError.responseCode <= 599) {
       throw new EmailSendError("smtp_rejected", `SMTP server refused delivery (${smtpError.responseCode})`)
+    }
+    if (isSmtpPreSubmissionFailure(error, phase)) {
+      throw new EmailSendError("smtp_unavailable", "The SMTP connection failed before message submission, so nothing was delivered")
     }
     throw error
   } finally {
