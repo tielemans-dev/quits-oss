@@ -1,0 +1,76 @@
+{
+  "kind": "invoice",
+  "issued": true,
+  "number": "INV-0007",
+  "issueDate": "2026-10-01",
+  "dueDate": "2026-10-31",
+  "deliveryDate": null,
+  "currency": "DKK",
+  "buyerReference": "PO-42",
+  "orderReference": "PO-42",
+  "billingReference": null,
+  "note": null,
+  "seller": {
+    "name": "Nordic Design ApS",
+    "street": "Vesterbrogade 1",
+    "additionalStreet": null,
+    "city": "København V",
+    "postalZone": "1620",
+    "region": null,
+    "countryCode": "DK",
+    "vatId": "DK12345678",
+    "legalId": {
+      "id": "12345678",
+      "scheme": "0184"
+    },
+    "electronicAddress": {
+      "scheme": "0184",
+      "id": "12345678"
+    },
+    "email": "billing@nordic.test"
+  },
+  "buyer": {
+    "name": "Acme & Sons <GmbH>",
+    "street": "Hauptstraße 5",
+    "additionalStreet": null,
+    "city": "Berlin",
+    "postalZone": "10115",
+    "region": null,
+    "countryCode": "DE",
+    "vatId": "DE123456789",
+    "legalId": null,
+    "electronicAddress": {
+      "scheme": "9930",
+      "id": "DE123456789"
+    },
+    "email": null
+  },
+  "lines": [
+    {
+      "description": "Design",
+      "quantity": "2",
+      "unitPriceNet": "100",
+      "lineNet": "200",
+      "taxRate": "25",
+      "taxCategory": "standard"
+    },
+    {
+      "description": "Hosting",
+      "quantity": "3",
+      "unitPriceNet": "33.33",
+      "lineNet": "99.99",
+      "taxRate": "25",
+      "taxCategory": "standard"
+    },
+    {
+      "description": "Book",
+      "quantity": "1",
+      "unitPriceNet": "50",
+      "lineNet": "50",
+      "taxRate": "0",
+      "taxCategory": "exempt"
+    }
+  ],
+  "storedGross": "424.99",
+  "amountPaid": "100"
+}
