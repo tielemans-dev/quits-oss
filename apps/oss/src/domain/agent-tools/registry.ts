@@ -10,7 +10,8 @@
  *    spread it into `agentTools` below for a new feature):
  *      - state changes: `defineCommandTool({ name, title, description, command, input, present? })`.
  *        `clientRequestId` is added to the input, the scope is the command's permission, and
- *        approval behaviour follows `command.outwardFacing`, so the description says so automatically.
+ *        approval behaviour follows `command.outwardFacing` (and `command.requiresApproval` when it
+ *        depends on the target), so the description says so automatically.
  *      - reads: `defineQueryTool({ name, title, description, input, permission, run })`. Scope every
  *        query by `actor.organizationId` and throw domain errors (`NotFound`, ...) for failures.
  * 3. Name tools `<noun>_<verb>` (e.g. `payment_record`, `credit_note_create`) and write the

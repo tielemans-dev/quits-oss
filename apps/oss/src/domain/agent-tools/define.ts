@@ -70,6 +70,16 @@ const approvalNote =
   "Leaves Quits or moves money: with an approval_required key it is queued for a person " +
   "(status awaiting_approval) and runs only after they approve; call command_wait with the commandId."
 
+const conditionalApprovalNote =
+  "When it would leave Quits or move money (see above), an approval_required key queues it for a " +
+  "person (status awaiting_approval) and it runs only after they approve; call command_wait with the " +
+  "commandId. Otherwise it runs at once."
+
+function approvalNoteFor(command: { outwardFacing: boolean; requiresApproval?: unknown }) {
+  if (!command.outwardFacing) return null
+  return command.requiresApproval ? conditionalApprovalNote : approvalNote
+}
+
 /**
  * Exposes a domain command to agents. The tool input is the command input plus
  * `clientRequestId`, so the agent contract stays identical to the UI contract.
@@ -90,7 +100,7 @@ export function defineCommandTool<Input extends AnyObjectSchema, Result>(tool: {
   return {
     name: tool.name,
     title: tool.title,
-    description: [tool.description, tool.command.outwardFacing ? approvalNote : null, commandFooter]
+    description: [tool.description, approvalNoteFor(tool.command), commandFooter]
       .filter(Boolean)
       .join(" "),
     kind: "command",

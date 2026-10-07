@@ -75,7 +75,9 @@ export const recurringTools: AgentTool[] = [
   defineCommandTool({
     name: "recurring_resume",
     title: "Resume recurring invoice",
-    description: "Turns a paused schedule back on. It does not bill the paused period.",
+    description:
+      "Turns a paused schedule back on. It does not bill the paused period. Needs approval only " +
+      "when the schedule sends invoices automatically (autoSend).",
     command: resumeRecurringInvoice,
     input: recurringIdInputSchema,
   }),
@@ -83,7 +85,9 @@ export const recurringTools: AgentTool[] = [
   defineCommandTool({
     name: "recurring_run_now",
     title: "Generate next recurring invoice now",
-    description: "Generates the next scheduled invoice early and moves the schedule on.",
+    description:
+      "Generates the next scheduled invoice early and moves the schedule on. Needs approval only " +
+      "when the schedule sends invoices automatically (autoSend); otherwise the invoice is kept as a draft.",
     command: runRecurringInvoiceNow,
     input: recurringIdInputSchema,
   }),

@@ -148,8 +148,8 @@ command tools. Money is returned as numbers in the document currency; dates are 
 | `recurring_create` | command | `recurring:create` | schedule fields; auto-sending schedules from approval-mode keys start paused |
 | `recurring_update` | command | `recurring:update` | `id` + changed fields |
 | `recurring_set_status` | command | `recurring:update` | `id`, `status` (`paused`, `ended`) |
-| `recurring_resume` | command, outward-facing | `recurring:update` | `id` |
-| `recurring_run_now` | command, outward-facing | `recurring:update` | `id` |
+| `recurring_resume` | command, outward-facing when the schedule auto-sends | `recurring:update` | `id` |
+| `recurring_run_now` | command, outward-facing when the schedule auto-sends | `recurring:update` | `id` |
 | `export_einvoice` | query | `invoice:read` (+ `creditNote:read` for credit notes) | `kind` (`invoice`, `creditNote`), `id`; Peppol UBL XML or the missing fields |
 | `export_accounting` | query | `export:read` | `from`, `to` (YYYY-MM-DD), `dataset` (`invoices`, `creditNotes`, `payments`) |
 | `activity_read` | query | `audit:read` | `afterSequence`, `aggregateType`, `aggregateId`, `limit`; page with `nextSequence` while `hasMore` |

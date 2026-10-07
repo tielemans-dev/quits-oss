@@ -1,3 +1,4 @@
+import { Effect } from "effect"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("../../lib/email", async () => {
@@ -23,6 +24,7 @@ import {
   setRecurringInvoiceStatus,
   updateRecurringInvoice,
 } from "../commands/recurring"
+import { getAgentTool } from "../agent-tools/registry"
 import { readActivity } from "../events"
 import { executeCommand } from "../execute"
 import { runRecurringTick } from "../features/recurring"
@@ -535,6 +537,63 @@ describeIfDatabase("recurring invoices", () => {
         { actor: agent, approvedByUserId: org.actors.admin.userId, resumeReceiptId: activation.commandId }
       )
       expect(approved).toMatchObject({ status: "completed", result: { status: "active" } })
+    })
+
+    it("resumes and runs a draft-only schedule without approval", async () => {
+      const { org, contactId } = await setup()
+      const agent = await approvalAgent(org)
+      const schedule = await createSchedule(org.actors.admin, contactId)
+      const paused = await executeCommand(
+        setRecurringInvoiceStatus,
+        { id: schedule.id, status: "paused" },
+        { actor: org.actors.admin }
+      )
+      expect(paused.status).toBe("completed")
+
+      const resumed = await executeCommand(
+        resumeRecurringInvoice,
+        { id: schedule.id },
+        { actor: agent, clientRequestId: "resume-drafts" }
+      )
+      expect(resumed).toMatchObject({ status: "completed", result: { status: "active" } })
+
+      const ran = await executeCommand(
+        runRecurringInvoiceNow,
+        { id: schedule.id },
+        { actor: agent, clientRequestId: "run-drafts" }
+      )
+      expect(ran.status).toBe("completed")
+      const invoices = await generatedInvoices(schedule.id)
+      expect(invoices).toHaveLength(1)
+      expect(invoices[0]?.status).toBe("draft")
+      expect(await prisma.approvalRequest.count({ where: { organizationId: org.organizationId } })).toBe(0)
+    })
+
+    it("refuses an unapproved run when the schedule started auto-sending after the approval check", async () => {
+      const { org, contactId } = await setup()
+      const agent = await approvalAgent(org)
+      const schedule = await createSchedule(org.actors.admin, contactId, { autoSend: true })
+      // Simulates the schedule switching to auto-send between the approval check and the run.
+      const staleCheck = { requiresApproval: () => Effect.succeed(false) }
+
+      for (const command of [runRecurringInvoiceNow, resumeRecurringInvoice]) {
+        const outcome = await executeCommand({ ...command, ...staleCheck }, { id: schedule.id }, {
+          actor: agent,
+          clientRequestId: `stale-${command.type}`,
+        })
+        expect(outcome).toMatchObject({ status: "failed", error: { code: "approval_required" } })
+      }
+      expect(await generatedInvoices(schedule.id)).toHaveLength(0)
+    })
+
+    it("tells agents that resuming and running a schedule need approval only when it auto-sends", async () => {
+      const { org } = await setup()
+      const agent = await approvalAgent(org)
+      for (const name of ["recurring_resume", "recurring_run_now"]) {
+        const tool = getAgentTool(agent, name)
+        expect(tool.description).toContain("Needs approval only when the schedule sends invoices automatically")
+        expect(tool.description).toContain("Otherwise it runs at once")
+      }
     })
 
     it("pauses an active auto-sending schedule when the agent edits it", async () => {

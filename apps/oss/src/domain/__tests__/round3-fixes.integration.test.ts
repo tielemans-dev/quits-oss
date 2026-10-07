@@ -52,6 +52,8 @@ describeIfDatabase("round 3 review fixes", () => {
           items: [{ description: "Retainer", quantity: 1, unitPrice: 100 }],
           startDate: "2099-01-01",
           notes: "Thanks!",
+          // Running a schedule early only needs approval when it sends the invoice.
+          autoSend: true,
         },
         { actor: org.actors.admin }
       )

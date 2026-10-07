@@ -40,11 +40,11 @@ import { recurringApproval } from "../approval-contexts"
  *   `approval_required` mode creates or edits a schedule that would be active and auto-sending,
  *   the schedule is saved paused instead. Edits by such an agent to an active auto-sending
  *   schedule pause it too, so an agent cannot change what is being sent without review.
- * - `recurring.resume` (turning a schedule on) is outward-facing, so the agent's activation is
- *   queued in the approval inbox. Pausing and ending (`recurring.set_status`) are not, so an
- *   agent can always stop a schedule.
- * - `recurring.run_now` is outward-facing because it sends the generated invoice when the
- *   schedule auto-sends.
+ * - `recurring.resume` (turning a schedule on) and `recurring.run_now` (generating the next
+ *   invoice early) are outward-facing when the schedule auto-sends, so the agent's request is
+ *   queued in the approval inbox. For a schedule that only creates drafts they run directly.
+ *   Pausing and ending (`recurring.set_status`) never need approval, so an agent can always stop
+ *   a schedule.
  */
 function requiresHumanActivation(scope: CommandScope) {
   return (
@@ -53,6 +53,33 @@ function requiresHumanActivation(scope: CommandScope) {
     !scope.approvedByUserId
   )
 }
+
+/**
+ * Whether an approval-mode agent's request to turn on or run a schedule needs approval: only when
+ * the schedule emails customers on its own.
+ */
+const scheduleAutoSends = (input: { id: string }) =>
+  Effect.gen(function* () {
+    const schedule = yield* findSchedule(input.id)
+    return schedule.autoSend
+  })
+
+/**
+ * The approval decision is read before the command's transaction. If the schedule started
+ * auto-sending since, an unapproved agent request is refused instead of sending unreviewed.
+ */
+const refuseUnapprovedAutoSend = (schedule: { autoSend: boolean }) =>
+  Effect.gen(function* () {
+    const command = yield* Command
+    if (schedule.autoSend && requiresHumanActivation(command)) {
+      return yield* new InvalidState({
+        message:
+          "This schedule now sends invoices automatically, so this needs a person's approval. " +
+          "Retry with a new clientRequestId to request approval.",
+        code: "approval_required",
+      })
+    }
+  })
 
 export const AUTO_SEND_JOB = "recurring.auto_send"
 
@@ -361,6 +388,7 @@ export const resumeRecurringInvoice = defineCommand({
   permission: "recurring:update",
   outwardFacing: true,
   input: recurringIdInputSchema,
+  requiresApproval: scheduleAutoSends,
   summarize: (input) => `Activate recurring schedule ${input.id}`,
   approvalContext: (input) => recurringApproval(input, "resume"),
   handle: (input) =>
@@ -368,6 +396,7 @@ export const resumeRecurringInvoice = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const existing = yield* findScheduleForUpdate(input.id)
+      yield* refuseUnapprovedAutoSend(existing)
 
       if (existing.status === "ended") {
         return yield* new InvalidState({ message: "Ended schedules cannot be resumed", code: "schedule_ended" })
@@ -521,11 +550,13 @@ export const runRecurringInvoiceNow = defineCommand({
   permission: "recurring:update",
   outwardFacing: true,
   input: recurringIdInputSchema,
+  requiresApproval: scheduleAutoSends,
   summarize: (input) => `Generate the next invoice of recurring schedule ${input.id} now`,
   approvalContext: (input) => recurringApproval(input, "run_now"),
   handle: (input) =>
     Effect.gen(function* () {
       const schedule = yield* findScheduleForUpdate(input.id)
+      yield* refuseUnapprovedAutoSend(schedule)
       if (schedule.status === "ended") {
         return yield* new InvalidState({ message: "The schedule has ended", code: "schedule_ended" })
       }

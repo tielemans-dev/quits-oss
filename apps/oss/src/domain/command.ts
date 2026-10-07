@@ -12,6 +12,13 @@ export type CommandDefinition<Input = unknown, Result = unknown> = {
    * `approval_required` mode queue them for a human instead of running them.
    */
   readonly outwardFacing: boolean
+  /**
+   * For outward-facing commands whose effect depends on what they act on: whether this input
+   * needs approval at all. Read before the command runs, outside its transaction, so a handler
+   * that skips approval must recheck the condition after locking and refuse if it no longer
+   * holds. Without it, an outward-facing command always needs approval.
+   */
+  readonly requiresApproval?: (input: Input) => Effect.Effect<boolean, DomainError, Db | Command>
   readonly input: z.ZodType<Input>
   /** One line a human approver can act on, e.g. "Send invoice INV-0042 to Acme". */
   readonly summarize: (input: Input) => string

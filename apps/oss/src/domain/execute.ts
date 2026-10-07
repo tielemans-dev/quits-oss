@@ -210,13 +210,26 @@ export async function executeCommand<Input, Result>(
   }
   const input = parsed.data
 
-  const needsApproval =
+  let needsApproval =
     actor.kind === "agent" &&
     actor.mode === "approval_required" &&
     definition.outwardFacing &&
     !options.approvedByUserId
 
-  if (needsApproval) {
+  if (needsApproval && definition.requiresApproval) {
+    const decided = await readInScope(definition.requiresApproval(input), {
+      actor,
+      organizationId,
+      commandId: provisionalId,
+      now,
+    })
+    if (decided.kind === "failed") {
+      return rejectEarly(decided.error)
+    }
+    needsApproval = decided.value
+  }
+
+  if (needsApproval && actor.kind === "agent") {
     return queueForApproval(definition, input, {
       actor,
       organizationId,
@@ -442,6 +455,53 @@ async function recordFailedReceipt<Result>(
   }
 }
 
+type ReadScope = { actor: Actor; organizationId: string; commandId: string; now: Date }
+
+/**
+ * Runs a read-only domain effect (no events, no jobs) in `tx`. A domain failure is thrown as
+ * `HandlerFailed`.
+ */
+async function runRead<Value>(
+  tx: Prisma.TransactionClient,
+  effect: Effect.Effect<Value, DomainError, Db | Command>,
+  scope: ReadScope
+): Promise<Value> {
+  const exit = await Effect.runPromiseExit(
+    effect.pipe(
+      Effect.provideService(Db, tx),
+      Effect.provideService(Command, {
+        ...scope,
+        approvedByUserId: null,
+        emit: () => undefined,
+        enqueue: () => undefined,
+      })
+    )
+  )
+  if (Exit.isFailure(exit)) {
+    const failureOption = Cause.failureOption(exit.cause)
+    if (Option.isSome(failureOption)) {
+      throw new HandlerFailed(failureOption.value)
+    }
+    throw Cause.squash(exit.cause)
+  }
+  return exit.value
+}
+
+/** Runs a read-only domain effect in its own transaction, returning a domain failure as a value. */
+async function readInScope<Value>(
+  effect: Effect.Effect<Value, DomainError, Db | Command>,
+  scope: ReadScope
+): Promise<{ kind: "ok"; value: Value } | { kind: "failed"; error: DomainError }> {
+  try {
+    return { kind: "ok", value: await prisma.$transaction((tx) => runRead(tx, effect, scope)) }
+  } catch (error) {
+    if (error instanceof HandlerFailed) {
+      return { kind: "failed", error: error.domainError }
+    }
+    throw error
+  }
+}
+
 async function queueForApproval<Input, Result>(
   definition: CommandDefinition<Input, Result>,
   input: Input,
@@ -458,28 +518,7 @@ async function queueForApproval<Input, Result>(
     const approval = await prisma.$transaction(async (tx) => {
       let review: ApprovalContext | null = null
       if (definition.approvalContext) {
-        const exit = await Effect.runPromiseExit(
-          definition.approvalContext(input).pipe(
-            Effect.provideService(Db, tx),
-            Effect.provideService(Command, {
-              actor: context.actor,
-              organizationId: context.organizationId,
-              commandId: context.commandId,
-              now: context.now,
-              approvedByUserId: null,
-              emit: () => undefined,
-              enqueue: () => undefined,
-            })
-          )
-        )
-        if (Exit.isFailure(exit)) {
-          const failureOption = Cause.failureOption(exit.cause)
-          if (Option.isSome(failureOption)) {
-            throw new HandlerFailed(failureOption.value)
-          }
-          throw Cause.squash(exit.cause)
-        }
-        review = exit.value
+        review = await runRead(tx, definition.approvalContext(input), context)
       }
       const summary = review?.summary ?? definition.summarize(input)
 
