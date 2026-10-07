@@ -1,3 +1,4 @@
+import { DeliverableControls } from "../../../components/agreements/deliverable-controls"
 import { AgreementActions } from "../../../components/agreements/agreement-actions"
 import { AcceptanceRecord } from "../../../components/agreements/acceptance-record"
 import { ActivityList } from "../../../components/activity/activity-list"
@@ -41,7 +42,10 @@ function AgreementDetail() {
   async function refresh() {
     const [data, activity, link] = await Promise.all([
       trpc.agreements.get.query({ id: agreementId }),
-      trpc.activity.forDocument.query({ aggregateType: "agreement", aggregateId: agreementId }),
+      trpc.activity.forDocument.query({
+        aggregateType: "agreement",
+        aggregateId: agreementId,
+      }),
       trpc.agreements.publicLink.query({ id: agreementId }),
     ])
     setAgreement(data)
@@ -55,7 +59,10 @@ function AgreementDetail() {
     Promise.all([
       trpc.agreements.get.query({ id: agreementId }),
       trpc.agreements.capabilities.query(),
-      trpc.activity.forDocument.query({ aggregateType: "agreement", aggregateId: agreementId }),
+      trpc.activity.forDocument.query({
+        aggregateType: "agreement",
+        aggregateId: agreementId,
+      }),
       trpc.agreements.publicLink.query({ id: agreementId }),
     ])
       .then(([data, access, activity, link]) => {
@@ -75,8 +82,13 @@ function AgreementDetail() {
   const preview = useMemo(() => {
     if (!agreement) return { html: "", error: null }
     if (agreement.offerSnapshot)
-      return { html: (agreement.offerSnapshot as { termsHtml: string }).termsHtml, error: null }
-    const seller = agreement.sellerSnapshot as { companyName?: string | null } | null
+      return {
+        html: (agreement.offerSnapshot as { termsHtml: string }).termsHtml,
+        error: null,
+      }
+    const seller = agreement.sellerSnapshot as {
+      companyName?: string | null
+    } | null
     const buyer = agreement.buyerSnapshot as { name?: string } | null
     try {
       return {
@@ -93,7 +105,10 @@ function AgreementDetail() {
         error: null,
       }
     } catch (err) {
-      return { html: "", error: err instanceof Error ? err.message : t("agreements.error") }
+      return {
+        html: "",
+        error: err instanceof Error ? err.message : t("agreements.error"),
+      }
     }
   }, [agreement, t])
   async function remove() {
@@ -230,9 +245,33 @@ function AgreementDetail() {
           <CardTitle>{t("agreements.deliverables")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
+          <section aria-label={t("agreements.progress")} className="flex flex-wrap gap-3 text-sm">
+            {(
+              [
+                "planned",
+                "in_progress",
+                "delivered",
+                "accepted",
+                "changes_requested",
+                "cancelled",
+              ] as const
+            ).map((status) => (
+              <p key={status}>
+                {t(`agreements.fulfillment.${status}`)}: {agreement.progress[status]}
+              </p>
+            ))}
+            <p>
+              {t("agreements.deposits")}: {agreement.progress.deposits}
+            </p>
+          </section>
           {agreement.deliverables.length === 0 && <p>{t("agreements.noLines")}</p>}
           {agreement.deliverables.map((line) => (
-            <div key={line.id} className="border-b pb-3 last:border-0">
+            <div
+              key={line.id}
+              role="group"
+              aria-label={line.title}
+              className="border-b pb-3 last:border-0"
+            >
               <h3 className="font-medium">{line.title}</h3>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {line.description}
@@ -248,7 +287,48 @@ function AgreementDetail() {
                   {t("agreements.expectedDate")}: {formatDate(line.expectedDate, locale, "UTC")}
                 </p>
               )}
-              {line.isDeposit && <Badge variant="outline">{t("agreements.deposit")}</Badge>}
+              <div className="flex flex-wrap gap-2">
+                {line.isDeposit && <Badge variant="outline">{t("agreements.deposit")}</Badge>}
+                <Badge variant="secondary">
+                  {t(
+                    `agreements.fulfillment.${line.status as "planned" | "in_progress" | "delivered" | "accepted" | "changes_requested" | "cancelled"}`,
+                  )}
+                </Badge>
+              </div>
+              {!line.isDeposit && (
+                <p className="text-sm">
+                  {t("agreements.deliveryRevision")}: {line.deliveryRevision}
+                </p>
+              )}
+              {line.acceptedAt && (
+                <div className="text-sm">
+                  <p>
+                    {t("agreements.acceptedAt")}: {line.acceptedAt.toLocaleString(locale)}
+                  </p>
+                  <p>
+                    {t("agreements.acceptedRevision")}: {line.acceptedRevision}
+                  </p>
+                  <p>
+                    {t("agreements.method")}:{" "}
+                    {line.acceptedVia === "internal"
+                      ? t("agreements.internalMethod")
+                      : line.acceptedVia}
+                  </p>
+                  <p>
+                    {t("agreements.evidenceNote")}: {line.acceptanceEvidenceNote}
+                  </p>
+                </div>
+              )}
+              {capabilities && (
+                <DeliverableControls
+                  key={`${line.id}:${line.expectedDate?.toISOString() ?? ""}`}
+                  agreement={agreement}
+                  line={line}
+                  capabilities={capabilities}
+                  onChanged={refresh}
+                  onError={setError}
+                />
+              )}
             </div>
           ))}
         </CardContent>

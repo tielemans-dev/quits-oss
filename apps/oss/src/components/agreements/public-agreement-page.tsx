@@ -72,6 +72,11 @@ export function PublicAgreementPage({
                 {t("agreements.agreedDate")}: {line.agreedDate.slice(0, 10)}
               </p>
             )}
+            {document.expectedDates[i] && (
+              <p>
+                {t("agreements.expectedDate")}: {document.expectedDates[i]!.slice(0, 10)}
+              </p>
+            )}
             {line.isDeposit && <p>{t("agreements.deposit")}</p>}
           </div>
         ))}
