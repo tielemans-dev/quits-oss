@@ -1,6 +1,6 @@
 # Ledger-Ready Money Model Design
 
-Status: revision 6, after adversarial review rounds 1 to 5 (accounting lens and code-fit lens),
+Status: revision 7, after adversarial review rounds 1 to 6 (accounting lens and code-fit lens),
 2026-10-07. Built on four read-only code audits of commit 267dc06.
 
 **Scope of this revision.** Phase A (the invoice side, PRs A1 to A4, plus the cloud gates) is a
@@ -357,12 +357,12 @@ ancillary expiry only for items unreachable from any posting.
 
 `domain/accounting/postings.ts` exports `postingsFor(event): Posting[] | PostingRefusal`, pure.
 Roles in Phase A: `debtor`, `revenue`, `output_vat`, `payable_rounding`, `fx_gain`, `fx_loss`,
-`customer_credit`. Debits equal credits in base minor units, asserted at construction.
+`customer_credit`. Debits equal credits in base minor units, asserted at construction. **Signed components:** every component amount in an event may be negative after the difference rules of Part 3; a line is built from a signed amount by putting its absolute value on the debit side when the intended direction and sign agree and on the credit side otherwise, so no component is ever dropped or clamped.
 
 | Event | Posting |
 | --- | --- |
 | `invoice.issued` sale | Dr `debtor` gross base; Cr `revenue` net base per group; Cr `output_vat` tax base per group (zero-tax treatments post no VAT line; group retained); `payable_rounding` per sign. |
-| `credit_note.issued` (postable) | Dr `revenue`, Dr `output_vat`, Dr or Cr `payable_rounding` at the credited frozen base components; Cr `debtor` at `debtorDischarge.carryingBase`, which equals their sum. No FX line in Phase A. |
+| `credit_note.issued` (postable) | Reverse each credited base component as a **signed** line: revenue, output VAT and payable rounding are posted as Dr when the component is positive and as Cr when it is negative (a derived negative base net at an unfavourable rate is a Cr `revenue`); Cr `debtor` at `debtorDischarge.carryingBase`, which equals the signed sum. No FX line in Phase A. |
 
 Refusals, each a typed `PostingRefusal` with a fixture proving it: `base_valuation_unknown`,
 `not_postable` (sparse v1, legacy currency, any `incompleteReason`), `tax_point_review_required`
@@ -391,6 +391,9 @@ ledger in the test helper:
    inclusive EUR 0.01 lines at 7.4567 with rounding −0.01: base gross 0.15, tax 0.07, rounding
    −0.07, net 0.15; debtor base 0.15; the credit rule on base components balances for both.
 4c. Intra-community services with valid evidence but rate 25%: refused.
+4d. Gross 0.05, tax 0.01 at rate 0.8 (base 0.04, 0.01, 0.03), five credits of 0.01: the third
+   credit's base net is −0.01 and posts as Cr `revenue` 0.01 beside Dr `output_vat` 0.01; every
+   credit balances and the five sum to the frozen components.
 5. Credit note on an invoice with a payment: refused `allocations_pending`; credit on a prepayment
    invoice: `purpose_not_supported`; credit exceeding open balance after a prior credit: refused.
 6. Non-VAT-registered seller: all lines `out_of_scope`; mixing refused; `standard` with rate 0
@@ -466,4 +469,5 @@ Kept verbatim in spirit from review round 3 so a human can decide:
   and uses full precision, not `toFixed`.
 - Status line: revision 5 incorporates the round-4 accounting findings 1 to 8; revision 6 the
   round-5 counterexamples (cumulative entitlement for partial credits, rounding in base net,
-  zero rate on non-standard treatments, canonical key in step 2).
+  zero rate on non-standard treatments, canonical key in step 2); revision 7 the round-6 signed
+  component rule. Round 6 confirmed every other Phase A arithmetic rule with fresh counterexamples.
