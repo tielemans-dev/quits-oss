@@ -77,7 +77,9 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
     const ctx = await setup(); await ctx.ready()
     const results = await Promise.all(["client-a", "client-b"].map(clientRequestId => executeIssuanceCommand(createInvoiceFromDeliverables, ctx.selection(), { actor: ctx.actor, clientRequestId })))
     expect(results.filter(result => result.status === "completed")).toHaveLength(1)
-    refused(results.find(result => result.status !== "completed")!, "deliverable_not_billable")
+    const loser = results.find(result => result.status !== "completed")!
+    refused(loser, "deliverable_reserved")
+    expect(loser).toMatchObject({ error: { details: { deliverableId: ctx.item().id, holdingInvoiceStatus: "draft" } } })
     expect(await prisma.invoice.count({ where: { agreementId: ctx.agreement.id } })).toBe(1)
     expect((await ctx.line()).billingStatus).toBe("reserved")
     const winner = results.findIndex(result => result.status === "completed")

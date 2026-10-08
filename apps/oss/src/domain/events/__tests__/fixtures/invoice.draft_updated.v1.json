@@ -47,6 +47,17 @@
       }
     },
     {
+      "source": "commands/billing-allocation.ts",
+      "typeExpression": "\"invoice.draft_updated\"",
+      "payloadExpression": "{ fields: [\"deliverables\"] }",
+      "variant": "default",
+      "payload": {
+        "fields": [
+          "deliverables"
+        ]
+      }
+    },
+    {
       "source": "agreements/linked-invoice.ts",
       "typeExpression": "\"invoice.draft_updated\"",
       "payloadExpression": "{ fields: Object.keys(input).filter(key => key !== \"id\") }",

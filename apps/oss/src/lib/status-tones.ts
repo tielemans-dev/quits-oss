@@ -79,6 +79,14 @@ export const statusTones = {
     reserved: { tone: "progress", labelKey: "agreements.billing.reserved" },
     invoiced: { tone: "success", labelKey: "agreements.billing.invoiced" },
   },
+  /** Where a piece of billable work stands, derived from its allocation and issued credits. Nothing here is "scheduled": no scheduler bills work. */
+  billableAllocation: {
+    unbilled: { tone: "neutral", labelKey: "agreements.billing.unbilled" },
+    reserved: { tone: "progress", labelKey: "agreements.billing.reserved" },
+    invoiced: { tone: "success", labelKey: "agreements.billing.invoiced" },
+    partially_credited: { tone: "warning", labelKey: "agreements.billing.partially_credited" },
+    credited: { tone: "info", labelKey: "agreements.billing.credited" },
+  },
   /**
    * The outcome of the last attempt to email a document. `skipped` means the document was issued
    * without an email, so the customer has not been told.

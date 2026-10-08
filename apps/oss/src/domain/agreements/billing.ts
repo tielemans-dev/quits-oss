@@ -3,23 +3,54 @@ import { Prisma, type Deliverable, type InvoiceItem } from "../../../generated/p
 import { percentageToFraction } from "@quits/shared/pricing"
 import { InvalidState } from "../errors"
 import { Command, Db } from "../services"
+import { actorCan } from "../actor"
 import { lockedAgreement } from "./issuance"
 
 import { isBillable } from "./billing-rules"
 export { isBillable } from "./billing-rules"
+
+/** The invoice line currently allocating a deliverable, and the document that holds it. */
+const currentAllocation = (line: Pick<Deliverable, "id" | "billingGeneration">) => Effect.gen(function* () {
+  const db = yield* Db
+  return yield* Effect.promise(() => db.invoiceItem.findFirst({
+    where: { deliverableId: line.id, allocationGeneration: line.billingGeneration },
+    select: { invoice: { select: { id: true, number: true, status: true } } },
+  }))
+})
+/** Fails with why work is unavailable, naming the draft or invoice that holds it when the actor may read it. */
+const unavailableReason = (agreementId: string, line: Deliverable) => Effect.gen(function* () {
+  const command = yield* Command
+  const holder = yield* currentAllocation(line)
+  const visible = actorCan(command.actor, "invoice:read") ? holder?.invoice : undefined
+  const details = { deliverableId: line.id, agreementId, ...(visible ? { holdingInvoiceId: visible.id, holdingInvoiceNumber: visible.number, holdingInvoiceStatus: visible.status } : {}) }
+  const where = visible ? ` by ${visible.status === "draft" ? "draft invoice" : "invoice"}${visible.number ? ` ${visible.number}` : ""}` : ""
+  if (line.billingStatus === "reserved")
+    return yield* new InvalidState({ code: "deliverable_reserved", details, message: `"${line.title}" is reserved${where}. Open that draft to keep the work there, or release the line from it first.` })
+  return yield* new InvalidState({ code: "deliverable_already_invoiced", details, message: `"${line.title}" was already invoiced${where}. A credit note does not make it billable again; a person must authorize a rebill.` })
+})
 export const billableSelection = (agreementId: string, ids: string[]) => Effect.gen(function* () {
   if (new Set(ids).size !== ids.length) return yield* new InvalidState({ code: "duplicate_deliverables", message: "Deliverable ids must be unique" })
   const agreement = yield* lockedAgreement(agreementId)
   const lines = ids.map(id => agreement.deliverables.find(line => line.id === id))
+  for (const line of lines)
+    if (line && (line.billingStatus === "reserved" || line.billingStatus === "invoiced")) return yield* unavailableReason(agreement.id, line)
   if (lines.some(line => !line || !isBillable(agreement, line)))
     return yield* new InvalidState({ code: "deliverable_not_billable", message: "Every selected deliverable must belong to this agreement and be billable" })
   return { agreement, lines: lines as Deliverable[] }
 })
 
+/**
+ * Source identity recorded on the invoice line. See `@quits/contracts/billing` for the rules every
+ * billable source follows; `sourceRevision` is the revision of the source that was billed.
+ */
+export const allocationIdentity = (line: Pick<Deliverable, "id" | "deliveryRevision" | "billingGeneration">) => ({
+  deliverableId: line.id, sourceKind: "deliverable", sourceId: line.id,
+  sourceRevision: String(line.deliveryRevision), allocationGeneration: line.billingGeneration,
+})
 /** Copy commercial values, including v2 original inputs and allocated VAT, without repricing. */
 export function frozenInvoiceLine(line: Deliverable, sortOrder: number, pricesIncludeTax: boolean) {
   return {
-    deliverableId: line.id, description: line.description || line.title,
+    ...allocationIdentity(line), description: line.description || line.title,
     quantity: line.quantity, unitPriceNet: line.unitPriceNet, unitPriceGross: line.unitPriceGross,
     lineNet: line.lineNet, lineTax: line.lineTax, lineGross: line.lineGross, taxRate: line.taxRate,
     taxCategory: line.taxCategory, taxCode: line.taxCode, sortOrder,

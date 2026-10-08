@@ -50,6 +50,10 @@ import {
 } from "../../domain/agreements/queries"
 import { listAgreementTemplates } from "../../domain/agreements/templates"
 import { executeCommand } from "../../domain/execute"
+import { prisma } from "../../lib/db"
+import { describeAllocations } from "../../domain/agreements/allocations"
+import { releaseDeliverableReservation, authorizeDeliverableRebill } from "../../domain/commands/billing-allocation"
+import { deliverableReleaseReservationInputSchema, deliverableAuthorizeRebillInputSchema } from "@quits/contracts/billing"
 import { router, authorizedProcedure } from "../init"
 import { unwrapOutcome } from "../outcome"
 
@@ -71,6 +75,9 @@ export const agreementsRouter = router({
     deliverableUpdate: actorCan(ctx.actor, "deliverable:update"),
     deliverableDeliver: actorCan(ctx.actor, "deliverable:deliver"),
     deliverableAccept: actorCan(ctx.actor, "deliverable:accept"),
+    releaseReservation: actorCan(ctx.actor, "invoice:update"),
+    authorizeRebill: actorCan(ctx.actor, "invoice:create"),
+    readInvoices: actorCan(ctx.actor, "invoice:read"),
   })),
   send: authorizedProcedure("agreement:send")
     .input(agreementIdInputSchema)
@@ -159,9 +166,19 @@ export const agreementsRouter = router({
     ),
   get: authorizedProcedure("agreement:read")
     .input(agreementIdInputSchema)
-    .query(async ({ ctx, input }) =>
-      serializeAgreementDetail(await getAgreement(ctx.organizationId, input.id)),
-    ),
+    .query(async ({ ctx, input }) => {
+      const detail = serializeAgreementDetail(await getAgreement(ctx.organizationId, input.id))
+      const allocations = await describeAllocations(prisma, ctx.organizationId, detail.id, detail.deliverables, {
+        invoices: actorCan(ctx.actor, "invoice:read"), creditNotes: actorCan(ctx.actor, "creditNote:read"),
+      }, detail.status)
+      return { ...detail, deliverables: detail.deliverables.map(line => ({ ...line, allocation: allocations.get(line.id)! })) }
+    }),
+  releaseReservation: authorizedProcedure("invoice:update")
+    .input(deliverableReleaseReservationInputSchema)
+    .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(releaseDeliverableReservation, input, { actor: ctx.actor }))),
+  authorizeRebill: authorizedProcedure("invoice:create")
+    .input(deliverableAuthorizeRebillInputSchema)
+    .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(authorizeDeliverableRebill, input, { actor: ctx.actor }))),
   createDraft: authorizedProcedure("agreement:create")
     .input(agreementCreateDraftRequestSchema)
     .mutation(async ({ ctx, input }) =>

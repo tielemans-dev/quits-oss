@@ -25,6 +25,8 @@ export const commandErrorSchema = z.object({
   tag: z.string(),
   message: z.string(),
   code: z.string().optional(),
+  // Structured facts that make a refusal actionable, such as the draft holding a reservation.
+  details: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
   issues: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
 })
 

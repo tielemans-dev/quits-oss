@@ -674,6 +674,7 @@ export type AgreementWhereInput = {
   vatEvidence?: Prisma.JsonNullableFilter<"Agreement">
   sourceQuote?: Prisma.XOR<Prisma.QuoteNullableScalarRelationFilter, Prisma.QuoteWhereInput> | null
   invoices?: Prisma.InvoiceListRelationFilter
+  rebills?: Prisma.DeliverableRebillListRelationFilter
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   template?: Prisma.XOR<Prisma.AgreementTemplateNullableScalarRelationFilter, Prisma.AgreementTemplateWhereInput> | null
@@ -743,6 +744,7 @@ export type AgreementOrderByWithRelationInput = {
   vatEvidence?: Prisma.SortOrderInput | Prisma.SortOrder
   sourceQuote?: Prisma.QuoteOrderByWithRelationInput
   invoices?: Prisma.InvoiceOrderByRelationAggregateInput
+  rebills?: Prisma.DeliverableRebillOrderByRelationAggregateInput
   organization?: Prisma.OrganizationOrderByWithRelationInput
   contact?: Prisma.ContactOrderByWithRelationInput
   template?: Prisma.AgreementTemplateOrderByWithRelationInput
@@ -816,6 +818,7 @@ export type AgreementWhereUniqueInput = Prisma.AtLeast<{
   vatEvidence?: Prisma.JsonNullableFilter<"Agreement">
   sourceQuote?: Prisma.XOR<Prisma.QuoteNullableScalarRelationFilter, Prisma.QuoteWhereInput> | null
   invoices?: Prisma.InvoiceListRelationFilter
+  rebills?: Prisma.DeliverableRebillListRelationFilter
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   template?: Prisma.XOR<Prisma.AgreementTemplateNullableScalarRelationFilter, Prisma.AgreementTemplateWhereInput> | null
@@ -1015,6 +1018,7 @@ export type AgreementCreateInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteCreateNestedOneWithoutAgreementInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutAgreementInput
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
@@ -1083,6 +1087,7 @@ export type AgreementUncheckedCreateInput = {
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -1145,6 +1150,7 @@ export type AgreementUpdateInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteUpdateOneWithoutAgreementNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutAgreementNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
@@ -1213,6 +1219,7 @@ export type AgreementUncheckedUpdateInput = {
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -1777,6 +1784,20 @@ export type AgreementUpdateOneRequiredWithoutDeliverablesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.AgreementUpdateToOneWithWhereWithoutDeliverablesInput, Prisma.AgreementUpdateWithoutDeliverablesInput>, Prisma.AgreementUncheckedUpdateWithoutDeliverablesInput>
 }
 
+export type AgreementCreateNestedOneWithoutRebillsInput = {
+  create?: Prisma.XOR<Prisma.AgreementCreateWithoutRebillsInput, Prisma.AgreementUncheckedCreateWithoutRebillsInput>
+  connectOrCreate?: Prisma.AgreementCreateOrConnectWithoutRebillsInput
+  connect?: Prisma.AgreementWhereUniqueInput
+}
+
+export type AgreementUpdateOneRequiredWithoutRebillsNestedInput = {
+  create?: Prisma.XOR<Prisma.AgreementCreateWithoutRebillsInput, Prisma.AgreementUncheckedCreateWithoutRebillsInput>
+  connectOrCreate?: Prisma.AgreementCreateOrConnectWithoutRebillsInput
+  upsert?: Prisma.AgreementUpsertWithoutRebillsInput
+  connect?: Prisma.AgreementWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AgreementUpdateToOneWithWhereWithoutRebillsInput, Prisma.AgreementUpdateWithoutRebillsInput>, Prisma.AgreementUncheckedUpdateWithoutRebillsInput>
+}
+
 export type AgreementCreateNestedManyWithoutTemplateInput = {
   create?: Prisma.XOR<Prisma.AgreementCreateWithoutTemplateInput, Prisma.AgreementUncheckedCreateWithoutTemplateInput> | Prisma.AgreementCreateWithoutTemplateInput[] | Prisma.AgreementUncheckedCreateWithoutTemplateInput[]
   connectOrCreate?: Prisma.AgreementCreateOrConnectWithoutTemplateInput | Prisma.AgreementCreateOrConnectWithoutTemplateInput[]
@@ -1878,6 +1899,7 @@ export type AgreementCreateWithoutOrganizationInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteCreateNestedOneWithoutAgreementInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutAgreementInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
   deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
@@ -1944,6 +1966,7 @@ export type AgreementUncheckedCreateWithoutOrganizationInput = {
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -2098,6 +2121,7 @@ export type AgreementCreateWithoutContactInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteCreateNestedOneWithoutAgreementInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutAgreementInput
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
   deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
@@ -2164,6 +2188,7 @@ export type AgreementUncheckedCreateWithoutContactInput = {
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -2251,6 +2276,7 @@ export type AgreementCreateWithoutInvoicesInput = {
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteCreateNestedOneWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutAgreementInput
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
@@ -2318,6 +2344,7 @@ export type AgreementUncheckedCreateWithoutInvoicesInput = {
   updatedAt?: Date | string
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -2395,6 +2422,7 @@ export type AgreementUpdateWithoutInvoicesInput = {
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteUpdateOneWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutAgreementNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
@@ -2462,6 +2490,7 @@ export type AgreementUncheckedUpdateWithoutInvoicesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -2523,6 +2552,7 @@ export type AgreementCreateWithoutSourceQuoteInput = {
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutAgreementInput
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
@@ -2590,6 +2620,7 @@ export type AgreementUncheckedCreateWithoutSourceQuoteInput = {
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -2667,6 +2698,7 @@ export type AgreementUpdateWithoutSourceQuoteInput = {
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutAgreementNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
@@ -2734,6 +2766,7 @@ export type AgreementUncheckedUpdateWithoutSourceQuoteInput = {
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -2796,6 +2829,7 @@ export type AgreementCreateWithoutDeliverablesInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteCreateNestedOneWithoutAgreementInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutAgreementInput
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
@@ -2863,6 +2897,7 @@ export type AgreementUncheckedCreateWithoutDeliverablesInput = {
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutAgreementInput
 }
 
 export type AgreementCreateOrConnectWithoutDeliverablesInput = {
@@ -2940,6 +2975,7 @@ export type AgreementUpdateWithoutDeliverablesInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteUpdateOneWithoutAgreementNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutAgreementNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
@@ -3007,6 +3043,283 @@ export type AgreementUncheckedUpdateWithoutDeliverablesInput = {
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutAgreementNestedInput
+}
+
+export type AgreementCreateWithoutRebillsInput = {
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
+  id?: string
+  number?: string | null
+  status?: string
+  title: string
+  summary?: string | null
+  termsMarkdown: string
+  taxRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  dueInDays?: number
+  billingTrigger?: string
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  validUntil: Date | string
+  issueDate?: Date | string | null
+  expiresAt?: Date | string | null
+  offerRevision?: number
+  offerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  offerSnapshotHash?: string | null
+  issuedToEmail?: string | null
+  issuedVia?: string | null
+  publicAccessKeyVersion?: number
+  publicAccessIssuedAt?: Date | string | null
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
+  notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  sourceQuote?: Prisma.QuoteCreateNestedOneWithoutAgreementInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
+  organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
+  contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
+  template?: Prisma.AgreementTemplateCreateNestedOneWithoutAgreementsInput
+  deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
+}
+
+export type AgreementUncheckedCreateWithoutRebillsInput = {
+  sourceQuoteId?: string | null
+  taxRateInput?: string | null
+  offerFormatVersion?: number | null
+  id?: string
+  organizationId: string
+  contactId: string
+  number?: string | null
+  status?: string
+  title: string
+  summary?: string | null
+  termsMarkdown: string
+  templateId?: string | null
+  taxRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  countryCode?: string
+  locale?: string
+  timezone?: string
+  taxRegime?: string
+  pricesIncludeTax?: boolean
+  dueInDays?: number
+  billingTrigger?: string
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  validUntil: Date | string
+  issueDate?: Date | string | null
+  expiresAt?: Date | string | null
+  offerRevision?: number
+  offerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  offerSnapshotHash?: string | null
+  issuedToEmail?: string | null
+  issuedVia?: string | null
+  publicAccessKeyVersion?: number
+  publicAccessIssuedAt?: Date | string | null
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  acceptedAt?: Date | string | null
+  acceptedOfferRevision?: number | null
+  acceptedByName?: string | null
+  acceptanceIp?: string | null
+  acceptanceUserAgent?: string | null
+  acceptanceMethod?: string | null
+  acceptanceEvidenceNote?: string | null
+  declinedAt?: Date | string | null
+  declineReason?: string | null
+  closedAt?: Date | string | null
+  closeReason?: string | null
+  notes?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  calculationVersion?: string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
+  deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
+}
+
+export type AgreementCreateOrConnectWithoutRebillsInput = {
+  where: Prisma.AgreementWhereUniqueInput
+  create: Prisma.XOR<Prisma.AgreementCreateWithoutRebillsInput, Prisma.AgreementUncheckedCreateWithoutRebillsInput>
+}
+
+export type AgreementUpsertWithoutRebillsInput = {
+  update: Prisma.XOR<Prisma.AgreementUpdateWithoutRebillsInput, Prisma.AgreementUncheckedUpdateWithoutRebillsInput>
+  create: Prisma.XOR<Prisma.AgreementCreateWithoutRebillsInput, Prisma.AgreementUncheckedCreateWithoutRebillsInput>
+  where?: Prisma.AgreementWhereInput
+}
+
+export type AgreementUpdateToOneWithWhereWithoutRebillsInput = {
+  where?: Prisma.AgreementWhereInput
+  data: Prisma.XOR<Prisma.AgreementUpdateWithoutRebillsInput, Prisma.AgreementUncheckedUpdateWithoutRebillsInput>
+}
+
+export type AgreementUpdateWithoutRebillsInput = {
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  termsMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  dueInDays?: Prisma.IntFieldUpdateOperationsInput | number
+  billingTrigger?: Prisma.StringFieldUpdateOperationsInput | string
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  validUntil?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  issueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  offerRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  offerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  offerSnapshotHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  issuedToEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  issuedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publicAccessKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  publicAccessIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  sourceQuote?: Prisma.QuoteUpdateOneWithoutAgreementNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
+  template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
+  deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
+}
+
+export type AgreementUncheckedUpdateWithoutRebillsInput = {
+  sourceQuoteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  taxRateInput?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  offerFormatVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  termsMarkdown?: Prisma.StringFieldUpdateOperationsInput | string
+  templateId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  taxRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  dueInDays?: Prisma.IntFieldUpdateOperationsInput | number
+  billingTrigger?: Prisma.StringFieldUpdateOperationsInput | string
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  validUntil?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  issueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  offerRevision?: Prisma.IntFieldUpdateOperationsInput | number
+  offerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  offerSnapshotHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  issuedToEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  issuedVia?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  publicAccessKeyVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  publicAccessIssuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  acceptedOfferRevision?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  acceptedByName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  acceptanceEvidenceNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  declinedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  declineReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  closeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
+  deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
 export type AgreementCreateWithoutTemplateInput = {
@@ -3068,6 +3381,7 @@ export type AgreementCreateWithoutTemplateInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteCreateNestedOneWithoutAgreementInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutAgreementInput
   organization: Prisma.OrganizationCreateNestedOneWithoutAgreementsInput
   contact: Prisma.ContactCreateNestedOneWithoutAgreementsInput
   deliverables?: Prisma.DeliverableCreateNestedManyWithoutAgreementInput
@@ -3134,6 +3448,7 @@ export type AgreementUncheckedCreateWithoutTemplateInput = {
   calculationVersion?: string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutAgreementInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutAgreementInput
   deliverables?: Prisma.DeliverableUncheckedCreateNestedManyWithoutAgreementInput
 }
 
@@ -3284,6 +3599,7 @@ export type AgreementUpdateWithoutOrganizationInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteUpdateOneWithoutAgreementNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutAgreementNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
   deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
@@ -3350,6 +3666,7 @@ export type AgreementUncheckedUpdateWithoutOrganizationInput = {
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -3536,6 +3853,7 @@ export type AgreementUpdateWithoutContactInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteUpdateOneWithoutAgreementNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutAgreementNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   template?: Prisma.AgreementTemplateUpdateOneWithoutAgreementsNestedInput
   deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
@@ -3602,6 +3920,7 @@ export type AgreementUncheckedUpdateWithoutContactInput = {
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -3788,6 +4107,7 @@ export type AgreementUpdateWithoutTemplateInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   sourceQuote?: Prisma.QuoteUpdateOneWithoutAgreementNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutAgreementNestedInput
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutAgreementsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutAgreementsNestedInput
   deliverables?: Prisma.DeliverableUpdateManyWithoutAgreementNestedInput
@@ -3854,6 +4174,7 @@ export type AgreementUncheckedUpdateWithoutTemplateInput = {
   calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutAgreementNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutAgreementNestedInput
   deliverables?: Prisma.DeliverableUncheckedUpdateManyWithoutAgreementNestedInput
 }
 
@@ -3926,11 +4247,13 @@ export type AgreementUncheckedUpdateManyWithoutTemplateInput = {
 
 export type AgreementCountOutputType = {
   invoices: number
+  rebills: number
   deliverables: number
 }
 
 export type AgreementCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   invoices?: boolean | AgreementCountOutputTypeCountInvoicesArgs
+  rebills?: boolean | AgreementCountOutputTypeCountRebillsArgs
   deliverables?: boolean | AgreementCountOutputTypeCountDeliverablesArgs
 }
 
@@ -3949,6 +4272,13 @@ export type AgreementCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Ex
  */
 export type AgreementCountOutputTypeCountInvoicesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.InvoiceWhereInput
+}
+
+/**
+ * AgreementCountOutputType without action
+ */
+export type AgreementCountOutputTypeCountRebillsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DeliverableRebillWhereInput
 }
 
 /**
@@ -4022,6 +4352,7 @@ export type AgreementSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   vatEvidence?: boolean
   sourceQuote?: boolean | Prisma.Agreement$sourceQuoteArgs<ExtArgs>
   invoices?: boolean | Prisma.Agreement$invoicesArgs<ExtArgs>
+  rebills?: boolean | Prisma.Agreement$rebillsArgs<ExtArgs>
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   template?: boolean | Prisma.Agreement$templateArgs<ExtArgs>
@@ -4230,6 +4561,7 @@ export type AgreementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs 
 export type AgreementInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   sourceQuote?: boolean | Prisma.Agreement$sourceQuoteArgs<ExtArgs>
   invoices?: boolean | Prisma.Agreement$invoicesArgs<ExtArgs>
+  rebills?: boolean | Prisma.Agreement$rebillsArgs<ExtArgs>
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   template?: boolean | Prisma.Agreement$templateArgs<ExtArgs>
@@ -4254,6 +4586,7 @@ export type $AgreementPayload<ExtArgs extends runtime.Types.Extensions.InternalA
   objects: {
     sourceQuote: Prisma.$QuotePayload<ExtArgs> | null
     invoices: Prisma.$InvoicePayload<ExtArgs>[]
+    rebills: Prisma.$DeliverableRebillPayload<ExtArgs>[]
     organization: Prisma.$OrganizationPayload<ExtArgs>
     contact: Prisma.$ContactPayload<ExtArgs>
     template: Prisma.$AgreementTemplatePayload<ExtArgs> | null
@@ -4716,6 +5049,7 @@ export interface Prisma__AgreementClient<T, Null = never, ExtArgs extends runtim
   readonly [Symbol.toStringTag]: "PrismaPromise"
   sourceQuote<T extends Prisma.Agreement$sourceQuoteArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agreement$sourceQuoteArgs<ExtArgs>>): Prisma.Prisma__QuoteClient<runtime.Types.Result.GetResult<Prisma.$QuotePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   invoices<T extends Prisma.Agreement$invoicesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agreement$invoicesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvoicePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  rebills<T extends Prisma.Agreement$rebillsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agreement$rebillsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DeliverableRebillPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   organization<T extends Prisma.OrganizationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrganizationDefaultArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   contact<T extends Prisma.ContactDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ContactDefaultArgs<ExtArgs>>): Prisma.Prisma__ContactClient<runtime.Types.Result.GetResult<Prisma.$ContactPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   template<T extends Prisma.Agreement$templateArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agreement$templateArgs<ExtArgs>>): Prisma.Prisma__AgreementTemplateClient<runtime.Types.Result.GetResult<Prisma.$AgreementTemplatePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
@@ -5245,6 +5579,30 @@ export type Agreement$invoicesArgs<ExtArgs extends runtime.Types.Extensions.Inte
   take?: number
   skip?: number
   distinct?: Prisma.InvoiceScalarFieldEnum | Prisma.InvoiceScalarFieldEnum[]
+}
+
+/**
+ * Agreement.rebills
+ */
+export type Agreement$rebillsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DeliverableRebill
+   */
+  select?: Prisma.DeliverableRebillSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DeliverableRebill
+   */
+  omit?: Prisma.DeliverableRebillOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DeliverableRebillInclude<ExtArgs> | null
+  where?: Prisma.DeliverableRebillWhereInput
+  orderBy?: Prisma.DeliverableRebillOrderByWithRelationInput | Prisma.DeliverableRebillOrderByWithRelationInput[]
+  cursor?: Prisma.DeliverableRebillWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DeliverableRebillScalarFieldEnum | Prisma.DeliverableRebillScalarFieldEnum[]
 }
 
 /**

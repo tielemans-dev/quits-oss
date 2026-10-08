@@ -175,6 +175,11 @@ export type Agreement = Prisma.AgreementModel
  */
 export type Deliverable = Prisma.DeliverableModel
 /**
+ * Model DeliverableRebill
+ * 
+ */
+export type DeliverableRebill = Prisma.DeliverableRebillModel
+/**
  * Model AgreementTemplate
  * 
  */

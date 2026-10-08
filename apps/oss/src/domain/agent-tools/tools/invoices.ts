@@ -1,3 +1,5 @@
+import { releaseDeliverableReservation, authorizeDeliverableRebill } from "../../commands/billing-allocation"
+import { deliverableReleaseReservationInputSchema, deliverableAuthorizeRebillInputSchema } from "@quits/contracts/billing"
 import { recordBaseValuation, recordBaseValuationInputSchema } from "../../commands/base-valuation"
 import { createInvoiceFromDeliverables, addInvoiceDeliverables } from "../../commands/invoices-from-deliverables"
 import { invoiceCreateFromDeliverablesInputSchema, invoiceAddDeliverablesInputSchema } from "@quits/contracts/invoices"
@@ -36,6 +38,12 @@ export const invoiceTools: AgentTool[] = [
   defineCommandTool({ name: "invoice_create_from_deliverables", title: "Invoice deliverables",
     description: "Reserves billable deliverables and creates drafts atomically. Returns { saleInvoiceId?, prepaymentInvoiceId? }. Schedule lines create prepayment drafts whose issuance is not supported yet. Set scheduleAsSale only on explicit instruction to invoice schedule lines as sales; that choice is recorded. Nothing is sent.",
     command: createInvoiceFromDeliverables, input: invoiceCreateFromDeliverablesInputSchema }),
+  defineCommandTool({ name: "deliverable_release_reservation", title: "Release deliverable from draft",
+    description: "Removes one reserved deliverable from the draft invoice that holds it, so it can be billed elsewhere. Requires expectedAllocation (invoiceId, invoiceItemId, generation) from the reviewed allocation. Refused with allocation_changed if the holder changed; refresh before retrying. Refused for work on an issued invoice. Nothing is sent. Returns { invoiceId, invoiceNumber, remainingLines }.",
+    command: releaseDeliverableReservation, input: deliverableReleaseReservationInputSchema }),
+  defineCommandTool({ name: "deliverable_authorize_rebill", title: "Authorize rebilling credited work",
+    description: "Human review only. Records a person's decision to bill work again on an accepted agreement after a credit note fully credited its invoice line. Closed agreements receive agreement_not_accepted. Agents receive human_review_required. A credit note alone never makes work billable again.",
+    command: authorizeDeliverableRebill, input: deliverableAuthorizeRebillInputSchema }),
   defineCommandTool({ name: "invoice_add_deliverables", title: "Add deliverables to invoice",
     description: "Reserves billable work on a draft linked to the same agreement. The draft purpose must match; scheduleAsSale records an explicit sale choice. Nothing is sent.",
     command: addInvoiceDeliverables, input: invoiceAddDeliverablesInputSchema, present: presentInvoice }),

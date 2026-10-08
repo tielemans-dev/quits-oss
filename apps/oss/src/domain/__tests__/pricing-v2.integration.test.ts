@@ -88,7 +88,7 @@ describe.skipIf(!hasTestDatabase)("v2 producer and editor parity", () => {
     expect(converted.result.calculationVersion).toBe(version)
     expect(converted.result.totalGross.toString()).toBe("999.99")
     expect(converted.result.vatEvidence).toEqual(quote.vatEvidence)
-    expect(converted.result.items.map(({ id: _id, invoiceId: _invoice, deliverableId: _deliverable, ...item }) => item)).toEqual(quote.items.map(({ id: _id, quoteId: _quote, ...item }) => item))
+    expect(converted.result.items.map(({ id: _id, invoiceId: _invoice, deliverableId: _deliverable, sourceKind: _kind, sourceId: _source, sourceRevision: _revision, allocationGeneration: _generation, ...item }) => item)).toEqual(quote.items.map(({ id: _id, quoteId: _quote, ...item }) => item))
   })
   it("quote no-item editing preserves original inputs and upgrades the version", async () => {
     const { contactId, options } = await setup()

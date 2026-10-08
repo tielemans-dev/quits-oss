@@ -7,7 +7,7 @@ import { moneyEmitterState } from "./money-emitter-state"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
-  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "payment-details"].map((name) => `commands/${name}.ts`),
+  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "billing-allocation", "payment-details"].map((name) => `commands/${name}.ts`),
   "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "documents/numbering.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
@@ -69,6 +69,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     artifacts: { pdf: { ref: "organization-1/invoice/document-1/artifact.pdf", hash: "a".repeat(64), size: 100 },
       ...(optional ? { ubl: { ref: "organization-1/invoice/document-1/artifact.xml", hash: "b".repeat(64), size: 200 } } : {}) },
     invoice: record, quote: record, creditNote: record, agreement: { ...record, sourceQuoteId: variant === "from_quote" ? "quote-1" : null }, template: record, contact: record, schedule: record,
+    item: { invoiceId: "invoice-1" }, credit: { id: "credit-note-1" }, generation: 1,
     candidate: record, existing: line, line: { ...line, status: variant === "in_progress" ? "in_progress" : "delivered" },
     delivered: { deliveryRevision: 2 }, accepted: record, updated: expression.source === "commands/public-deliverables.ts" ? { ...record, acceptedVia: "customer_link", acceptanceEvidenceNote: null } : record,
     input: { ...(expression.typeExpression.includes("agreement.completed") ? { disposition: variant === "completed" ? "completed" : "cancelled" } : {}), checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", ...(expression.source === "commands/public-deliverables.ts" ? { note: "Please revise" } : {}), decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },

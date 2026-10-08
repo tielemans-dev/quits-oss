@@ -82,6 +82,7 @@ export const ModelName = {
   SchedulerScan: 'SchedulerScan',
   Agreement: 'Agreement',
   Deliverable: 'Deliverable',
+  DeliverableRebill: 'DeliverableRebill',
   AgreementTemplate: 'AgreementTemplate',
   PublicLinkAttempt: 'PublicLinkAttempt',
   EventConsumerCursor: 'EventConsumerCursor',
@@ -423,6 +424,10 @@ export type InvoiceScalarFieldEnum = (typeof InvoiceScalarFieldEnum)[keyof typeo
 
 export const InvoiceItemScalarFieldEnum = {
   deliverableId: 'deliverableId',
+  sourceKind: 'sourceKind',
+  sourceId: 'sourceId',
+  sourceRevision: 'sourceRevision',
+  allocationGeneration: 'allocationGeneration',
   id: 'id',
   invoiceId: 'invoiceId',
   description: 'description',
@@ -820,6 +825,7 @@ export type AgreementScalarFieldEnum = (typeof AgreementScalarFieldEnum)[keyof t
 
 
 export const DeliverableScalarFieldEnum = {
+  billingGeneration: 'billingGeneration',
   vatRateInput: 'vatRateInput',
   id: 'id',
   agreementId: 'agreementId',
@@ -856,6 +862,23 @@ export const DeliverableScalarFieldEnum = {
 } as const
 
 export type DeliverableScalarFieldEnum = (typeof DeliverableScalarFieldEnum)[keyof typeof DeliverableScalarFieldEnum]
+
+
+export const DeliverableRebillScalarFieldEnum = {
+  id: 'id',
+  agreementId: 'agreementId',
+  deliverableId: 'deliverableId',
+  generation: 'generation',
+  priorInvoiceId: 'priorInvoiceId',
+  priorInvoiceItemId: 'priorInvoiceItemId',
+  creditNoteId: 'creditNoteId',
+  reason: 'reason',
+  decidedBy: 'decidedBy',
+  commandId: 'commandId',
+  createdAt: 'createdAt'
+} as const
+
+export type DeliverableRebillScalarFieldEnum = (typeof DeliverableRebillScalarFieldEnum)[keyof typeof DeliverableRebillScalarFieldEnum]
 
 
 export const AgreementTemplateScalarFieldEnum = {

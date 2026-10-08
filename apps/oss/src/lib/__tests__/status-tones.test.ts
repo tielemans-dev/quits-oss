@@ -1,3 +1,4 @@
+import { billableAllocationStateSchema } from "@quits/contracts/billing"
 import { agreementStatusSchema, deliverableBillingStatusSchema, deliverableStatusSchema } from "@quits/contracts/agreements"
 import { creditNoteStatusSchema } from "@quits/contracts/credit-notes"
 import { emailDeliveryOutcomeSchema, emailDeliveryRuntimeStateSchema } from "@quits/contracts/email"
@@ -27,6 +28,7 @@ const contractStatuses: Partial<Record<StatusDomain, readonly string[]>> = {
   agreement: agreementStatusSchema.options,
   deliverable: deliverableStatusSchema.options,
   deliverableBilling: deliverableBillingStatusSchema.options,
+  billableAllocation: billableAllocationStateSchema.options,
   emailDelivery: emailDeliveryOutcomeSchema.options,
   emailSetup: emailDeliveryRuntimeStateSchema.options,
   reminder: reminderStatusSchema.options,

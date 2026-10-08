@@ -456,6 +456,7 @@ export type CreditNoteWhereInput = {
   invoice?: Prisma.XOR<Prisma.InvoiceScalarRelationFilter, Prisma.InvoiceWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   items?: Prisma.CreditNoteItemListRelationFilter
+  rebills?: Prisma.DeliverableRebillListRelationFilter
 }
 
 export type CreditNoteOrderByWithRelationInput = {
@@ -499,6 +500,7 @@ export type CreditNoteOrderByWithRelationInput = {
   invoice?: Prisma.InvoiceOrderByWithRelationInput
   contact?: Prisma.ContactOrderByWithRelationInput
   items?: Prisma.CreditNoteItemOrderByRelationAggregateInput
+  rebills?: Prisma.DeliverableRebillOrderByRelationAggregateInput
 }
 
 export type CreditNoteWhereUniqueInput = Prisma.AtLeast<{
@@ -546,6 +548,7 @@ export type CreditNoteWhereUniqueInput = Prisma.AtLeast<{
   invoice?: Prisma.XOR<Prisma.InvoiceScalarRelationFilter, Prisma.InvoiceWhereInput>
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   items?: Prisma.CreditNoteItemListRelationFilter
+  rebills?: Prisma.DeliverableRebillListRelationFilter
 }, "id" | "organizationId_number">
 
 export type CreditNoteOrderByWithAggregationInput = {
@@ -672,6 +675,7 @@ export type CreditNoteCreateInput = {
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteUncheckedCreateInput = {
@@ -712,6 +716,7 @@ export type CreditNoteUncheckedCreateInput = {
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteUpdateInput = {
@@ -752,6 +757,7 @@ export type CreditNoteUpdateInput = {
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteUncheckedUpdateInput = {
@@ -792,6 +798,7 @@ export type CreditNoteUncheckedUpdateInput = {
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteCreateManyInput = {
@@ -1187,6 +1194,20 @@ export type CreditNoteUpdateOneRequiredWithoutItemsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.CreditNoteUpdateToOneWithWhereWithoutItemsInput, Prisma.CreditNoteUpdateWithoutItemsInput>, Prisma.CreditNoteUncheckedUpdateWithoutItemsInput>
 }
 
+export type CreditNoteCreateNestedOneWithoutRebillsInput = {
+  create?: Prisma.XOR<Prisma.CreditNoteCreateWithoutRebillsInput, Prisma.CreditNoteUncheckedCreateWithoutRebillsInput>
+  connectOrCreate?: Prisma.CreditNoteCreateOrConnectWithoutRebillsInput
+  connect?: Prisma.CreditNoteWhereUniqueInput
+}
+
+export type CreditNoteUpdateOneRequiredWithoutRebillsNestedInput = {
+  create?: Prisma.XOR<Prisma.CreditNoteCreateWithoutRebillsInput, Prisma.CreditNoteUncheckedCreateWithoutRebillsInput>
+  connectOrCreate?: Prisma.CreditNoteCreateOrConnectWithoutRebillsInput
+  upsert?: Prisma.CreditNoteUpsertWithoutRebillsInput
+  connect?: Prisma.CreditNoteWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CreditNoteUpdateToOneWithWhereWithoutRebillsInput, Prisma.CreditNoteUpdateWithoutRebillsInput>, Prisma.CreditNoteUncheckedUpdateWithoutRebillsInput>
+}
+
 export type CreditNoteCreateWithoutOrganizationInput = {
   id?: string
   number: string
@@ -1224,6 +1245,7 @@ export type CreditNoteCreateWithoutOrganizationInput = {
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteUncheckedCreateWithoutOrganizationInput = {
@@ -1263,6 +1285,7 @@ export type CreditNoteUncheckedCreateWithoutOrganizationInput = {
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteCreateOrConnectWithoutOrganizationInput = {
@@ -1370,6 +1393,7 @@ export type CreditNoteCreateWithoutContactInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteUncheckedCreateWithoutContactInput = {
@@ -1409,6 +1433,7 @@ export type CreditNoteUncheckedCreateWithoutContactInput = {
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteCreateOrConnectWithoutContactInput = {
@@ -1474,6 +1499,7 @@ export type CreditNoteCreateWithoutInvoiceInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
   items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteUncheckedCreateWithoutInvoiceInput = {
@@ -1513,6 +1539,7 @@ export type CreditNoteUncheckedCreateWithoutInvoiceInput = {
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteCreateOrConnectWithoutInvoiceInput = {
@@ -1578,6 +1605,7 @@ export type CreditNoteCreateWithoutItemsInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
   invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
   contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
+  rebills?: Prisma.DeliverableRebillCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteUncheckedCreateWithoutItemsInput = {
@@ -1617,6 +1645,7 @@ export type CreditNoteUncheckedCreateWithoutItemsInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  rebills?: Prisma.DeliverableRebillUncheckedCreateNestedManyWithoutCreditNoteInput
 }
 
 export type CreditNoteCreateOrConnectWithoutItemsInput = {
@@ -1672,6 +1701,7 @@ export type CreditNoteUpdateWithoutItemsInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteUncheckedUpdateWithoutItemsInput = {
@@ -1711,6 +1741,183 @@ export type CreditNoteUncheckedUpdateWithoutItemsInput = {
   vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutCreditNoteNestedInput
+}
+
+export type CreditNoteCreateWithoutRebillsInput = {
+  id?: string
+  number: string
+  status?: string
+  reason: string
+  issueDate?: Date | string
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency: string
+  countryCode: string
+  locale: string
+  timezone: string
+  taxRegime: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  notes?: string | null
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  organization: Prisma.OrganizationCreateNestedOneWithoutCreditNotesInput
+  invoice: Prisma.InvoiceCreateNestedOneWithoutCreditNotesInput
+  contact: Prisma.ContactCreateNestedOneWithoutCreditNotesInput
+  items?: Prisma.CreditNoteItemCreateNestedManyWithoutCreditNoteInput
+}
+
+export type CreditNoteUncheckedCreateWithoutRebillsInput = {
+  id?: string
+  organizationId: string
+  invoiceId: string
+  contactId: string
+  number: string
+  status?: string
+  reason: string
+  issueDate?: Date | string
+  subtotalNet: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency: string
+  countryCode: string
+  locale: string
+  timezone: string
+  taxRegime: string
+  pricesIncludeTax?: boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  notes?: string | null
+  lastEmailAttemptAt?: Date | string | null
+  lastEmailAttemptOutcome?: string | null
+  lastEmailAttemptCode?: string | null
+  lastEmailAttemptMessage?: string | null
+  artifactPdfRef?: string | null
+  artifactPdfHash?: string | null
+  artifactUblRef?: string | null
+  artifactUblHash?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  calculationVersion?: string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  items?: Prisma.CreditNoteItemUncheckedCreateNestedManyWithoutCreditNoteInput
+}
+
+export type CreditNoteCreateOrConnectWithoutRebillsInput = {
+  where: Prisma.CreditNoteWhereUniqueInput
+  create: Prisma.XOR<Prisma.CreditNoteCreateWithoutRebillsInput, Prisma.CreditNoteUncheckedCreateWithoutRebillsInput>
+}
+
+export type CreditNoteUpsertWithoutRebillsInput = {
+  update: Prisma.XOR<Prisma.CreditNoteUpdateWithoutRebillsInput, Prisma.CreditNoteUncheckedUpdateWithoutRebillsInput>
+  create: Prisma.XOR<Prisma.CreditNoteCreateWithoutRebillsInput, Prisma.CreditNoteUncheckedCreateWithoutRebillsInput>
+  where?: Prisma.CreditNoteWhereInput
+}
+
+export type CreditNoteUpdateToOneWithWhereWithoutRebillsInput = {
+  where?: Prisma.CreditNoteWhereInput
+  data: Prisma.XOR<Prisma.CreditNoteUpdateWithoutRebillsInput, Prisma.CreditNoteUncheckedUpdateWithoutRebillsInput>
+}
+
+export type CreditNoteUpdateWithoutRebillsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
+  invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
+  items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
+}
+
+export type CreditNoteUncheckedUpdateWithoutRebillsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  subtotalNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalTax?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalGross?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  locale?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
+  taxRegime?: Prisma.StringFieldUpdateOperationsInput | string
+  pricesIncludeTax?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sellerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  buyerSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastEmailAttemptOutcome?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastEmailAttemptMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactPdfHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  artifactUblHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  calculationVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  valuation?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  issuanceSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  vatEvidence?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteCreateManyOrganizationInput = {
@@ -1788,6 +1995,7 @@ export type CreditNoteUpdateWithoutOrganizationInput = {
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteUncheckedUpdateWithoutOrganizationInput = {
@@ -1827,6 +2035,7 @@ export type CreditNoteUncheckedUpdateWithoutOrganizationInput = {
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteUncheckedUpdateManyWithoutOrganizationInput = {
@@ -1942,6 +2151,7 @@ export type CreditNoteUpdateWithoutContactInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   invoice?: Prisma.InvoiceUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteUncheckedUpdateWithoutContactInput = {
@@ -1981,6 +2191,7 @@ export type CreditNoteUncheckedUpdateWithoutContactInput = {
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteUncheckedUpdateManyWithoutContactInput = {
@@ -2096,6 +2307,7 @@ export type CreditNoteUpdateWithoutInvoiceInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutCreditNotesNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutCreditNotesNestedInput
   items?: Prisma.CreditNoteItemUpdateManyWithoutCreditNoteNestedInput
+  rebills?: Prisma.DeliverableRebillUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteUncheckedUpdateWithoutInvoiceInput = {
@@ -2135,6 +2347,7 @@ export type CreditNoteUncheckedUpdateWithoutInvoiceInput = {
   creditedGroups?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payableRounding?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   items?: Prisma.CreditNoteItemUncheckedUpdateManyWithoutCreditNoteNestedInput
+  rebills?: Prisma.DeliverableRebillUncheckedUpdateManyWithoutCreditNoteNestedInput
 }
 
 export type CreditNoteUncheckedUpdateManyWithoutInvoiceInput = {
@@ -2182,10 +2395,12 @@ export type CreditNoteUncheckedUpdateManyWithoutInvoiceInput = {
 
 export type CreditNoteCountOutputType = {
   items: number
+  rebills: number
 }
 
 export type CreditNoteCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   items?: boolean | CreditNoteCountOutputTypeCountItemsArgs
+  rebills?: boolean | CreditNoteCountOutputTypeCountRebillsArgs
 }
 
 /**
@@ -2203,6 +2418,13 @@ export type CreditNoteCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.E
  */
 export type CreditNoteCountOutputTypeCountItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.CreditNoteItemWhereInput
+}
+
+/**
+ * CreditNoteCountOutputType without action
+ */
+export type CreditNoteCountOutputTypeCountRebillsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DeliverableRebillWhereInput
 }
 
 
@@ -2247,6 +2469,7 @@ export type CreditNoteSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   items?: boolean | Prisma.CreditNote$itemsArgs<ExtArgs>
+  rebills?: boolean | Prisma.CreditNote$rebillsArgs<ExtArgs>
   _count?: boolean | Prisma.CreditNoteCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["creditNote"]>
 
@@ -2379,6 +2602,7 @@ export type CreditNoteInclude<ExtArgs extends runtime.Types.Extensions.InternalA
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   items?: boolean | Prisma.CreditNote$itemsArgs<ExtArgs>
+  rebills?: boolean | Prisma.CreditNote$rebillsArgs<ExtArgs>
   _count?: boolean | Prisma.CreditNoteCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type CreditNoteIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2399,6 +2623,7 @@ export type $CreditNotePayload<ExtArgs extends runtime.Types.Extensions.Internal
     invoice: Prisma.$InvoicePayload<ExtArgs>
     contact: Prisma.$ContactPayload<ExtArgs>
     items: Prisma.$CreditNoteItemPayload<ExtArgs>[]
+    rebills: Prisma.$DeliverableRebillPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2835,6 +3060,7 @@ export interface Prisma__CreditNoteClient<T, Null = never, ExtArgs extends runti
   invoice<T extends Prisma.InvoiceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.InvoiceDefaultArgs<ExtArgs>>): Prisma.Prisma__InvoiceClient<runtime.Types.Result.GetResult<Prisma.$InvoicePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   contact<T extends Prisma.ContactDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ContactDefaultArgs<ExtArgs>>): Prisma.Prisma__ContactClient<runtime.Types.Result.GetResult<Prisma.$ContactPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   items<T extends Prisma.CreditNote$itemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CreditNote$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreditNoteItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  rebills<T extends Prisma.CreditNote$rebillsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CreditNote$rebillsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DeliverableRebillPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3317,6 +3543,30 @@ export type CreditNote$itemsArgs<ExtArgs extends runtime.Types.Extensions.Intern
   take?: number
   skip?: number
   distinct?: Prisma.CreditNoteItemScalarFieldEnum | Prisma.CreditNoteItemScalarFieldEnum[]
+}
+
+/**
+ * CreditNote.rebills
+ */
+export type CreditNote$rebillsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DeliverableRebill
+   */
+  select?: Prisma.DeliverableRebillSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DeliverableRebill
+   */
+  omit?: Prisma.DeliverableRebillOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DeliverableRebillInclude<ExtArgs> | null
+  where?: Prisma.DeliverableRebillWhereInput
+  orderBy?: Prisma.DeliverableRebillOrderByWithRelationInput | Prisma.DeliverableRebillOrderByWithRelationInput[]
+  cursor?: Prisma.DeliverableRebillWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DeliverableRebillScalarFieldEnum | Prisma.DeliverableRebillScalarFieldEnum[]
 }
 
 /**
