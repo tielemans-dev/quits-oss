@@ -4,16 +4,28 @@ import { requireCurrencyExponent } from "@quits/shared/currency"
 import { InvalidState } from "../errors"
 import { lockArtifactOrganization } from "./artifacts"
 
+/**
+ * Whether the organization has issued any document, which locks its base currency.
+ * One statement, so the check costs a single round trip and a single connection.
+ * Each EXISTS mirrors one condition: a non-draft invoice or quote, any credit note, an
+ * agreement with an offer snapshot, an issuance event in history, or a bound issuance candidate.
+ */
 export async function hasIssuedDocuments(tx: Prisma.TransactionClient, organizationId: string) {
-  const [invoice, credit, quote, agreement, history, pending] = await Promise.all([
-    tx.invoice.findFirst({ where: { organizationId, status: { not: "draft" } }, select: { id: true } }),
-    tx.creditNote.findFirst({ where: { organizationId }, select: { id: true } }),
-    tx.quote.findFirst({ where: { organizationId, status: { not: "draft" } }, select: { id: true } }),
-    tx.agreement.findFirst({ where: { organizationId, offerSnapshot: { not: Prisma.DbNull } }, select: { id: true } }),
-    tx.domainEvent.findFirst({ where: { organizationId, type: { in: ["invoice.issued", "invoice.sent", "credit_note.issued", "quote.sent", "agreement.offer_issued"] } }, select: { id: true } }),
-    tx.issuanceCandidate.findFirst({ where: { organizationId, status: "bound" }, select: { id: true } }),
-  ])
-  return !!(invoice || credit || quote || agreement || history || pending)
+  const [row] = await tx.$queryRaw<[{ issued: boolean }]>`
+    SELECT (
+      EXISTS (SELECT 1 FROM "invoice" WHERE "organizationId" = ${organizationId} AND "status" <> 'draft')
+      OR EXISTS (SELECT 1 FROM "credit_note" WHERE "organizationId" = ${organizationId})
+      OR EXISTS (SELECT 1 FROM "quote" WHERE "organizationId" = ${organizationId} AND "status" <> 'draft')
+      OR EXISTS (SELECT 1 FROM "agreement" WHERE "organizationId" = ${organizationId} AND "offerSnapshot" IS NOT NULL)
+      OR EXISTS (
+        SELECT 1 FROM "domain_event"
+        WHERE "organizationId" = ${organizationId}
+          AND "type" IN ('invoice.issued', 'invoice.sent', 'credit_note.issued', 'quote.sent', 'agreement.offer_issued')
+      )
+      OR EXISTS (SELECT 1 FROM "issuance_candidate" WHERE "organizationId" = ${organizationId} AND "status" = 'bound')
+    ) AS "issued"
+  `
+  return row?.issued === true
 }
 
 /** Same organization lock as issuance. Country changes only default books before issuance. */

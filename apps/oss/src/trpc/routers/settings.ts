@@ -1,5 +1,6 @@
 import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { InvalidState } from "../../domain/errors"
+import { isUniqueViolation } from "../../domain/execute"
 import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
@@ -93,22 +94,81 @@ export const settingsUpdateSchema = z.object({
   primaryTaxIdScheme: z.string().trim().max(40).optional(),
 })
 
+/** Columns `settings.get` maps into its response. Keep in sync with that mapping. */
+const orgSettingsReadSelect = {
+  id: true,
+  countryCode: true,
+  locale: true,
+  timezone: true,
+  defaultCurrency: true,
+  baseCurrency: true,
+  onboardingInvoicingIdentity: true,
+  taxRegime: true,
+  pricesIncludeTax: true,
+  currency: true,
+  taxRate: true,
+  companyName: true,
+  companyAddress: true,
+  companyEmail: true,
+  companyPhone: true,
+  companyLogo: true,
+  invoicePrefix: true,
+  invoiceNextNum: true,
+  quotePrefix: true,
+  quoteNextNum: true,
+  creditNotePrefix: true,
+  creditNoteNextNum: true,
+  aiOpenRouterApiKeyEnc: true,
+  aiOpenRouterModel: true,
+  stripePublishableKey: true,
+  stripeSecretKeyEnc: true,
+  stripeWebhookSecretEnc: true,
+  documentSendingDomain: true,
+  documentSendingDomainProviderId: true,
+  documentSendingDomainStatus: true,
+  documentSendingDomainRecords: true,
+  documentSendingDomainFailureReason: true,
+  documentSendingDomainVerifiedAt: true,
+  documentSendingLastSyncedAt: true,
+  documentSendingLastSyncSource: true,
+} satisfies Prisma.OrgSettingsSelect
+
+/**
+ * Creates the default settings row on first read. A concurrent first read may create it
+ * first; the unique organizationId then rejects this insert and the existing row is read.
+ */
+async function createDefaultOrgSettings(organizationId: string) {
+  try {
+    return await prisma.orgSettings.create({
+      data: { organizationId },
+      select: orgSettingsReadSelect,
+    })
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error
+    return prisma.orgSettings.findUniqueOrThrow({
+      where: { organizationId },
+      select: orgSettingsReadSelect,
+    })
+  }
+}
+
 export const settingsRouter = router({
   get: authorizedProcedure("settings:read").query(async ({ ctx }) => {
-    const primaryTaxId = await prisma.organizationTaxId.findFirst({
-      where: { organizationId: ctx.organizationId },
-      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-      select: { value: true, scheme: true },
-    })
-
-    let settings = await prisma.orgSettings.findUnique({
-      where: { organizationId: ctx.organizationId },
-    })
-    if (!settings) {
-      settings = await prisma.orgSettings.create({
-        data: { organizationId: ctx.organizationId },
-      })
-    }
+    // Three independent reads run concurrently: each is a database round trip on hosted
+    // runtimes. Keep this fan-out small; hosted runtimes cap simultaneous connections.
+    const [primaryTaxId, existingSettings, baseCurrencyLocked] = await Promise.all([
+      prisma.organizationTaxId.findFirst({
+        where: { organizationId: ctx.organizationId },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        select: { value: true, scheme: true },
+      }),
+      prisma.orgSettings.findUnique({
+        where: { organizationId: ctx.organizationId },
+        select: orgSettingsReadSelect,
+      }),
+      hasIssuedDocuments(prisma, ctx.organizationId),
+    ])
+    const settings = existingSettings ?? (await createDefaultOrgSettings(ctx.organizationId))
     const stripeState = getStripePaymentConfigurationState({
       stripePublishableKey: settings.stripePublishableKey,
       stripeSecretKeyEnc: settings.stripeSecretKeyEnc,
@@ -137,7 +197,7 @@ export const settingsRouter = router({
       timezone: settings.timezone,
       defaultCurrency: settings.defaultCurrency,
       baseCurrency: settings.baseCurrency,
-      baseCurrencyLocked: await hasIssuedDocuments(prisma, ctx.organizationId),
+      baseCurrencyLocked,
       onboardingInvoicingIdentity: settings.onboardingInvoicingIdentity,
       taxRegime: settings.taxRegime,
       pricesIncludeTax: settings.pricesIncludeTax,
