@@ -303,6 +303,7 @@ async function enable(parsed: Parsed, env: Env, io: Io) {
       acceptedGates: (parsed.flags.get("accept-gate") ?? []) as GateName[],
     })
     emit(io, parsed, result, () => {
+      if (result.cutover === "acknowledged_exception") io.out(`WARNING: acknowledged exception for ${result.acceptedGates.join(", ")}; this is not a verified cutover.`)
       io.out(`Operations enabled${result.cancelledJobs ? `; ${result.cancelledJobs} queued job(s) cancelled` : ""}.`)
       if (environmentHold(env)) io.out("QUITS_OPERATIONS_HOLD is still set in this shell's environment; unset it on the app and scheduler too.")
       io.out("The next scheduler tick resumes reminders, recurring invoices and queued jobs.")

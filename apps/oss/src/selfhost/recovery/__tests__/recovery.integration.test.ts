@@ -20,12 +20,13 @@ import { hasTestDatabase } from "../../../test-utils/organization"
 import { localDiskArtifactStore } from "../../artifact-store"
 import { seedRehearsalFixture } from "../fixture"
 import { selfhostDocumentRenderer } from "../../runtime"
-import { createBackup } from "../backup"
+import { createBackup, recordBackup } from "../backup"
 import { verifyBundle } from "../bundle"
 import { RecoveryError } from "../../../lib/recovery/format"
 import { enableOperations, reviewPendingWork, reviewToken } from "../operations"
 import { queryFn } from "../../../lib/recovery/pgdb"
 import { preflightRestore, restoreBundle, RestoreBlockedError } from "../restore"
+import { runCli } from "../cli"
 import { collectOperationalStatus } from "../../../lib/recovery/status"
 
 const SECRET = "integration-test-secret-0123456789abcdef"
@@ -196,6 +197,25 @@ describe.runIf(hasTestDatabase)("backup and isolated restore", () => {
     expect(status.mail).toMatchObject({ provider: "smtp", configured: true })
     expect(status.scheduler.pendingJobs).toBeGreaterThanOrEqual(1)
     expect(status.problems.map((problem) => problem.code)).toContain("scheduler_silent")
+  })
+
+  it("records verification time separately from the actual bundle snapshot", async () => {
+    const { manifest, manifestSha256 } = await verifyBundle(bundle)
+    const at = new Date("2026-10-08T12:00:00Z")
+    await sourceClient.query("BEGIN")
+    try {
+      await sourceClient.query("DELETE FROM backup_record")
+      const old = { ...manifest, createdAt: "2026-09-01T12:00:00Z" }
+      await recordBackup(queryFn(sourceClient), "verified", old, manifestSha256)
+      await sourceClient.query(`UPDATE backup_record SET "createdAt" = '2026-10-08 12:00:00'`)
+      const status = () => collectOperationalStatus({ query: queryFn(sourceClient), env: {}, environmentHold: true, artifactCheckLimit: 0, now: at })
+      expect((await status()).backups).toMatchObject({ ageHours: 888, stale: true, verificationAgeHours: 0 })
+      await recordBackup(queryFn(sourceClient), "created", { ...manifest, createdAt: "2026-10-08T06:00:00Z" }, manifestSha256)
+      await recordBackup(queryFn(sourceClient), "verified", old, manifestSha256)
+      expect((await status()).backups).toMatchObject({ ageHours: 6, stale: false })
+    } finally {
+      await sourceClient.query("ROLLBACK")
+    }
   })
 
   describe("a restore that cannot be done", () => {
@@ -395,12 +415,126 @@ describe.runIf(hasTestDatabase)("backup and isolated restore", () => {
       await target.job.deleteMany({ where: { payload: { equals: {} } } })
     })
 
-    it("does not enable operations after a rehearsal without production keys", async () => {
+    it.each(["identity", "payload"])("rejects a changed email %s with identical counts and dates without exposing its payload", async (change) => {
+      const job = await target.job.findFirstOrThrow({ where: { status: "pending" } })
+      const before = await reviewPendingWork(queryFn(targetClient))
+      // No timestamp/version bump: each change independently invalidates the review.
+      const newId = change === "identity" ? `${job.id}-replacement` : job.id
+      const payload = change === "payload" ? { to: "private-replacement@example.test", documentId: "different-document" } : job.payload
+      await targetClient.query(`UPDATE job SET id = $1, payload = $2::jsonb WHERE id = $3`, [newId, JSON.stringify(payload), job.id])
+      try {
+        const after = await reviewPendingWork(queryFn(targetClient))
+        expect(after.jobs).toEqual(before.jobs)
+        expect(reviewToken(after)).not.toBe(reviewToken(before))
+        expect(JSON.stringify(after)).not.toContain("private-replacement")
+        const output: string[] = []
+        const env = { ...process.env, DATABASE_URL: withSchema(targetSchema) }
+        const io = { out: (line: string) => output.push(line), err: (line: string) => output.push(line) }
+        expect(await runCli(["review", "--json"], env, io)).toBe(0)
+        expect(output.join("\n")).not.toContain("private-replacement")
+        expect(JSON.parse(output[0]!).reviewToken).toBe(reviewToken(after))
+        expect(await runCli(["enable-operations", "--review-token", reviewToken(before), "--jobs", "keep", "--source-stopped"], env, io)).toBe(1)
+        await expect(enableOperations({ client: targetClient, reviewToken: reviewToken(before), jobs: "keep", sourceStopped: true })).rejects.toMatchObject({ code: "review_stale" })
+      } finally {
+        await targetClient.query(`UPDATE job SET id = $1, payload = $2::jsonb WHERE id = $3`, [job.id, JSON.stringify(job.payload), newId])
+      }
+    })
+
+    it("binds recurring terms, reminders, linked document data and new business tables", async () => {
+      const mutations = [
+        `UPDATE recurring_invoice SET "dueInDays" = "dueInDays" + 1`,
+        `UPDATE invoice_reminder SET "scheduledFor" = "scheduledFor" - interval '1 minute'`,
+        `UPDATE invoice SET notes = 'changed after review'`,
+        `UPDATE domain_event SET payload = payload || '{"recoveryTestChanged":true}'::jsonb`,
+        `CREATE TABLE recovery_test_future_delivery (id text, payload jsonb)`,
+      ]
+      for (const sql of mutations) {
+        const before = reviewToken(await reviewPendingWork(queryFn(targetClient)))
+        // Exercise direct writes too: the protocol must not depend on Prisma timestamp bumps.
+        await targetClient.query("BEGIN")
+        await targetClient.query(sql)
+        await targetClient.query("COMMIT")
+        try {
+          expect(reviewToken(await reviewPendingWork(queryFn(targetClient)))).not.toBe(before)
+          await expect(enableOperations({ client: targetClient, reviewToken: before, jobs: "keep", sourceStopped: true })).rejects.toMatchObject({ code: "review_stale" })
+        } finally {
+          if (sql.startsWith("CREATE")) await targetClient.query("DROP TABLE recovery_test_future_delivery")
+        }
+      }
+    })
+
+    it("detects a real writer committing between BEGIN and validation", async () => {
+      const writer = new Client({ connectionString: withSchema(targetSchema) })
+      await writer.connect()
+      const token = reviewToken(await reviewPendingWork(queryFn(targetClient)))
+      const client = { query: async (sql: string, params?: unknown[]) => {
+        const result = await targetClient.query(sql, params)
+        if (sql.startsWith("BEGIN")) await writer.query(`UPDATE recurring_invoice SET "dueInDays" = "dueInDays" + 1`)
+        return result
+      } } as unknown as Client
+      try {
+        await expect(enableOperations({ client, reviewToken: token, jobs: "keep", sourceStopped: true })).rejects.toMatchObject({ code: "review_stale" })
+        expect((await target.recoveryState.findUniqueOrThrow({ where: { id: "default" } })).operationsMode).toBe("held")
+      } finally {
+        await writer.end()
+      }
+    })
+
+    it("refuses cutover while a real enqueue transaction is uncommitted", async () => {
+      const token = reviewToken(await reviewPendingWork(queryFn(targetClient)))
+      const writer = new Client({ connectionString: withSchema(targetSchema) })
+      await writer.connect()
+      try {
+        await writer.query("BEGIN")
+        await writer.query(`INSERT INTO job (id, "organizationId", type, payload, "updatedAt") VALUES ('concurrent-enqueue', $1, 'email.deliver', '{}', now())`, [organizationId])
+        await expect(enableOperations({ client: targetClient, reviewToken: token, jobs: "keep", sourceStopped: true })).rejects.toMatchObject({ code: "cutover_busy" })
+        expect((await target.recoveryState.findUniqueOrThrow({ where: { id: "default" } })).operationsMode).toBe("held")
+      } finally {
+        await writer.query("ROLLBACK")
+        await writer.end()
+      }
+    })
+
+    it("requires an explicit exception to enable a rehearsal without production keys", async () => {
       const state = await target.recoveryState.findUniqueOrThrow({ where: { id: "default" } })
       await targetClient.query(`UPDATE recovery_state SET "restoreReport" = jsonb_set("restoreReport", '{gates,keys}', '"skipped"')`)
       const token = reviewToken(await reviewPendingWork(queryFn(targetClient)))
       await expect(enableOperations({ client: targetClient, reviewToken: token, jobs: "keep", sourceStopped: true })).rejects.toMatchObject({ code: "gates_not_passed", message: expect.stringContaining("keys (skipped)") })
-      await targetClient.query(`UPDATE recovery_state SET "restoreReport" = $1::jsonb`, [JSON.stringify(state.restoreReport)])
+      const enabled = await enableOperations({ client: targetClient, reviewToken: token, jobs: "keep", sourceStopped: true, acceptedGates: ["keys"] })
+      expect(enabled).toMatchObject({ cutover: "acknowledged_exception", acceptedGates: ["keys"] })
+      const exception = await target.recoveryState.findUniqueOrThrow({ where: { id: "default" } })
+      expect(exception.restoreReport).toMatchObject({ gates: { keys: "skipped" }, enabled: { cutover: "acknowledged_exception", acceptedGates: ["keys"] } })
+      await targetClient.query(`UPDATE recovery_state SET "operationsMode" = 'held', "restoreReport" = $1::jsonb`, [JSON.stringify(state.restoreReport)])
+    })
+
+    it("holds real enqueue, reminder and recurrence writers out of validation until commit", async () => {
+      const token = reviewToken(await reviewPendingWork(queryFn(targetClient)))
+      const writer = new Client({ connectionString: withSchema(targetSchema) })
+      await writer.connect()
+      await writer.query("SET lock_timeout = '100ms'")
+      let checked = false
+      const client = { query: async (sql: string, params?: unknown[]) => {
+        if (sql.startsWith('SELECT "operationsMode"')) {
+          // This hook only schedules another real connection. PostgreSQL enforces the exclusion.
+          for (const statement of [
+            `INSERT INTO job (id, "organizationId", type, payload, "updatedAt") VALUES ('locked-enqueue', $1, 'email.deliver', '{}', now())`,
+            `UPDATE invoice_reminder SET "scheduledFor" = "scheduledFor" + interval '1 minute'`,
+            `UPDATE recurring_invoice SET "dueInDays" = "dueInDays" + 1`,
+            `UPDATE invoice SET notes = 'racing edit'`,
+          ]) await expect(writer.query(statement, statement.startsWith("INSERT") ? [organizationId] : [])).rejects.toMatchObject({ code: "55P03" })
+          checked = true
+        }
+        return targetClient.query(sql, params)
+      } } as unknown as Client
+      try {
+        expect(await enableOperations({ client, reviewToken: token, jobs: "keep", sourceStopped: true })).toMatchObject({ cutover: "verified" })
+        expect(checked).toBe(true)
+        // The same write succeeds after commit. It is new live work, outside the reviewed restore.
+        await writer.query(`UPDATE recurring_invoice SET "dueInDays" = "dueInDays" + 1`)
+      } finally {
+        await writer.end()
+        await targetClient.query(`UPDATE recovery_state SET "operationsMode" = 'held'`)
+      }
     })
 
     it("resumes work only after the explicit action, and then the queued email goes out", async () => {

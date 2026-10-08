@@ -80,7 +80,12 @@ and the pending work at the time.
 
 Run the backup on a schedule (for example with cron) and `recovery backup verify --record` after
 copying it off the machine. `recovery status` and `GET /api/cron/status` report the age of the
-newest recorded backup and warn after 48 hours (`QUITS_BACKUP_MAX_AGE_HOURS` changes the limit).
+newest recorded **snapshot** and warn after 48 hours (`QUITS_BACKUP_MAX_AGE_HOURS` changes the limit).
+The snapshot date comes from the manifest, even for a verification recorded today. Verifying an
+old bundle cannot refresh its data or replace a newer snapshot in this report. The JSON report
+separately exposes `newestSnapshotAt`, `ageHours`, `lastVerifiedAt` and `verificationAgeHours`.
+`lastCreatedAt` records when a creation was logged, not the snapshot date. Missing, invalid or
+future snapshot dates do not count as fresh backups.
 
 ## 2. Rehearse a restore
 
@@ -156,8 +161,11 @@ guide: please report it.
 
 `--skip-key-check` lets you rehearse on a machine without the production `BETTER_AUTH_SECRET`.
 Row, total and artifact checks still run. The `keys` check is recorded as `skipped`, stored
-provider secrets stay unreadable, and `enable-operations` refuses such a restore. A cutover needs
-a restore that passed every check.
+provider secrets stay unreadable, and `enable-operations` refuses such a restore by default.
+A **verified cutover** needs every check to pass. An operator can explicitly use `--accept-gate keys`
+to enable it anyway. This is an **acknowledged exception**, not proof the keys work. The command
+warns about the exception and saves it in `restoreReport.enabled`; `gates.keys` stays `skipped`.
+Restore again with the correct keys for a verified cutover.
 
 ### Trying it without your own data
 
@@ -210,7 +218,23 @@ Do this when the source installation is gone or you are moving to a new machine.
    The command checks that: the restore passed every check (a failed or skipped check blocks it,
    unless you name it with `--accept-gate`), you chose what happens to queued jobs, you confirmed the
    source is stopped, and the token still matches the pending work, so a review that has gone stale
-   is refused. Remove `QUITS_OPERATIONS_HOLD` from the app and scheduler environment if you set it.
+   is refused. `--accept-gate` produces an acknowledged exception recorded in the cutover result,
+   never a passed verification gate. Remove `QUITS_OPERATIONS_HOLD` from the app and scheduler
+   environment if you set it.
+
+   Stop target application writers and migration processes during review and cutover. The review
+   token covers complete durable database rows and their columns, including job identities and
+   payloads, linked documents, contacts, reminder times, recurring terms and event deliveries.
+   Only a digest and aggregate counts are displayed. Any durable edit can require another review,
+   even if the number of due jobs did not change. Time passing can also make another reminder due.
+
+   Cutover takes PostgreSQL `SHARE ROW EXCLUSIVE` table locks before validation and retains them
+   through job cancellation and hold removal in the same transaction. Ordinary Prisma and SQL
+   writers need no special cooperation. An already-active writer causes `cutover_busy` and leaves
+   operations held. Writers that arrive after the locks wait until the transaction ends. Work
+   committed after cutover is new live work. Do not run schema migrations during this process.
+   This maintenance operation reads all durable rows and briefly blocks writes across the target;
+   size its maintenance window using your own rehearsal.
 5. Start the scheduler. The next tick resumes reminders, recurring invoices and queued jobs.
    Watch `recovery status` for a few ticks.
 
@@ -243,3 +267,25 @@ can alert on it. It never contacts your mail provider or Stripe.
 - A restore needs the same or a newer Quits version than the backup, with a schema that can hold
   it. Restoring across a removed column is refused with the version to use instead.
 - Backups and rehearsals say nothing about legal retention periods or archival requirements.
+
+### Recovery integration contract
+
+Recovery uses the runtime database and artifact store. It does not change organization scopes,
+command authorization, email payloads, job deduplication, invoice rendering or document revisions.
+The cutover digest discovers durable tables and columns at runtime, so additional journal records,
+consequence records and invoice or quote `editRevision` fields are included without a recovery
+schema fork. It does not depend on writers updating `updatedAt`. New outbound providers must still
+call `assertOperationsLive` before external effects; job and scheduler entry points already do.
+
+Only the backup exclusions are omitted from the row digest: sign-in sessions, verification tokens,
+rate-limit counters, scheduler claims, migration history, backup history and recovery status.
+The restore origin and verification gates are bound separately into the token; scheduler heartbeat
+telemetry cannot invalidate it. Revisit this exclusion list if an excluded table starts determining
+outbound work. Review uses a dedicated connection and a read-only repeatable-read transaction;
+cutover uses a dedicated connection and owns its transaction. Neither API accepts an existing
+transaction. Application database credentials must be able to read and lock the target tables.
+
+Legacy issued documents with no artifact reference remain recorded gaps. Agreements with an
+artifact reference are verified, but an agreement without a reference is not currently counted as
+a missing artifact. A successful synthetic rehearsal does not establish historical completeness,
+first-time operator usability, accountant approval or large-installation performance.

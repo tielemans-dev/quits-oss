@@ -42,7 +42,7 @@ export type RestoreOptions = {
   artifactStore: DocumentArtifactStore
   bundle: string
   env: Record<string, string | undefined>
-  /** Rehearse without production secrets: skip the key checks. Operations can then not be enabled. */
+  /** Rehearse without production secrets: skip the key checks. Enabling then requires an explicit keys exception. */
   skipKeyCheck?: boolean
   /** Restore despite artifacts missing from the bundle; the artifacts gate fails and is recorded. */
   allowIncomplete?: boolean
@@ -182,7 +182,7 @@ export async function preflightRestore(options: RestoreOptions): Promise<Preflig
     findings.push({
       severity: "warning",
       code: "keys_not_checked",
-      message: "Key checks were skipped. This restore can be rehearsed but operations cannot be enabled on it.",
+      message: "Key checks were skipped. Enabling operations requires an explicit --accept-gate keys exception; this is not a verified cutover.",
       action: "Restore again with the production keys before cutover.",
     })
   } else {

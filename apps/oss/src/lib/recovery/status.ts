@@ -13,7 +13,7 @@ export type OperationalStatus = {
   /** True when nothing needs an operator's attention. */
   ok: boolean
   operations: { held: boolean; source: "environment" | "database" | null; reason: string | null; heldAt: string | null; enabledAt: string | null }
-  backups: { lastCreatedAt: string | null; lastVerifiedAt: string | null; ageHours: number | null; maxAgeHours: number; stale: boolean }
+  backups: { lastCreatedAt: string | null; lastVerifiedAt: string | null; newestSnapshotAt: string | null; verificationAgeHours: number | null; ageHours: number | null; maxAgeHours: number; stale: boolean }
   artifacts: { issuedDocuments: number; checked: number; withoutReference: number; missingObjects: number; mismatched: number; truncated: boolean }
   scheduler: {
     lastTickAt: string | null
@@ -70,23 +70,30 @@ export async function collectOperationalStatus(options: StatusOptions): Promise<
 
   // Backups.
   const maxAgeHours = Number(readProductEnv(env, "BACKUP_MAX_AGE_HOURS")) || 48
-  const records = await query(`SELECT kind, max(${instant('"createdAt"')}) AS at FROM backup_record GROUP BY kind`)
-  const lastOf = (kind: string) => {
-    const at = records.find((row) => row.kind === kind)?.at
-    return at ? new Date(String(at instanceof Date ? at.toISOString() : at)) : null
+  const records = await query(`SELECT kind, ${instant('"createdAt"')} AS at, summary->>'createdAt' AS "snapshotAt" FROM backup_record WHERE kind IN ('created', 'verified')`)
+  const validDate = (value: unknown) => {
+    if (!value) return null
+    const date = value instanceof Date ? value : new Date(String(value))
+    return Number.isFinite(date.getTime()) && date <= now ? date : null
   }
+  const newestDate = (dates: Array<Date | null>) => dates.filter((date): date is Date => date !== null).sort((a, b) => b.getTime() - a.getTime())[0] ?? null
+  const lastOf = (kind: string) => newestDate(records.filter((row) => row.kind === kind).map((row) => validDate(row.at)))
   const created = lastOf("created")
   const verified = lastOf("verified")
-  const newest = [created, verified].filter((date): date is Date => Boolean(date)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null
-  const ageHours = newest ? Math.round(((now.getTime() - newest.getTime()) / 3_600_000) * 10) / 10 : null
+  // Verification proves integrity at a later instant; it cannot refresh the recovered data.
+  const newest = newestDate(records.map((row) => validDate(row.snapshotAt)))
+  const hours = (date: Date | null) => date ? Math.round(((now.getTime() - date.getTime()) / 3_600_000) * 10) / 10 : null
+  const ageHours = hours(newest)
   const backups: OperationalStatus["backups"] = {
     lastCreatedAt: created?.toISOString() ?? null,
     lastVerifiedAt: verified?.toISOString() ?? null,
+    newestSnapshotAt: newest?.toISOString() ?? null,
+    verificationAgeHours: hours(verified),
     ageHours,
     maxAgeHours,
     stale: ageHours === null || ageHours > maxAgeHours,
   }
-  if (ageHours === null) problems.push({ severity: "warning", code: "no_backup", message: "No backup has been recorded for this installation. Run `recovery backup create`." })
+  if (ageHours === null) problems.push({ severity: "warning", code: "no_backup", message: "No backup with a valid snapshot timestamp has been recorded for this installation. Run `recovery backup create`." })
   else if (backups.stale) problems.push({ severity: "warning", code: "backup_stale", message: `The newest recorded backup is ${ageHours} hours old (limit ${maxAgeHours}).` })
 
   // Artifacts.
