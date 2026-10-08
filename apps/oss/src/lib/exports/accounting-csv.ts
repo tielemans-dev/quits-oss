@@ -36,6 +36,10 @@ export type CreditNoteExportRow = {
 }
 
 export type PaymentExportRow = {
+  paymentId?: string
+  receiptId?: string | null
+  receiptAmount?: DecimalLike | null
+  receiptCurrency?: string | null
   paidAt: Date
   invoiceNumber: string
   customer: string
@@ -107,6 +111,11 @@ export function paymentsCsv(rows: readonly PaymentExportRow[], timeZone: string)
       reference: row.reference,
       voided: row.voidedAt !== null,
       void_reason: row.voidReason,
+      payment_id: row.paymentId,
+      receipt_id: row.receiptId,
+      receipt_amount: row.receiptAmount ? amount(row.receiptAmount) : null,
+      receipt_currency: row.receiptCurrency,
+      record_kind: row.receiptId ? "receipt_allocation" : "legacy_payment",
     }))
   )
 }

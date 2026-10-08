@@ -404,6 +404,8 @@ export const ModelName = {
   QuoteItem: 'QuoteItem',
   CreditNote: 'CreditNote',
   CreditNoteItem: 'CreditNoteItem',
+  SettlementReceipt: 'SettlementReceipt',
+  SettlementRefund: 'SettlementRefund',
   Payment: 'Payment',
   InvoiceReminder: 'InvoiceReminder',
   RecurringInvoice: 'RecurringInvoice',
@@ -437,7 +439,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
+    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "settlementReceipt" | "settlementRefund" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1918,6 +1920,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.CreditNoteItemCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.CreditNoteItemCountAggregateOutputType> | number
+        }
+      }
+    }
+    SettlementReceipt: {
+      payload: Prisma.$SettlementReceiptPayload<ExtArgs>
+      fields: Prisma.SettlementReceiptFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SettlementReceiptFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SettlementReceiptFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        findFirst: {
+          args: Prisma.SettlementReceiptFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SettlementReceiptFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        findMany: {
+          args: Prisma.SettlementReceiptFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>[]
+        }
+        create: {
+          args: Prisma.SettlementReceiptCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        createMany: {
+          args: Prisma.SettlementReceiptCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SettlementReceiptCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>[]
+        }
+        delete: {
+          args: Prisma.SettlementReceiptDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        update: {
+          args: Prisma.SettlementReceiptUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        deleteMany: {
+          args: Prisma.SettlementReceiptDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SettlementReceiptUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SettlementReceiptUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>[]
+        }
+        upsert: {
+          args: Prisma.SettlementReceiptUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        aggregate: {
+          args: Prisma.SettlementReceiptAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSettlementReceipt>
+        }
+        groupBy: {
+          args: Prisma.SettlementReceiptGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementReceiptGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SettlementReceiptCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementReceiptCountAggregateOutputType> | number
+        }
+      }
+    }
+    SettlementRefund: {
+      payload: Prisma.$SettlementRefundPayload<ExtArgs>
+      fields: Prisma.SettlementRefundFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SettlementRefundFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SettlementRefundFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload>
+        }
+        findFirst: {
+          args: Prisma.SettlementRefundFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SettlementRefundFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload>
+        }
+        findMany: {
+          args: Prisma.SettlementRefundFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload>[]
+        }
+        create: {
+          args: Prisma.SettlementRefundCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload>
+        }
+        createMany: {
+          args: Prisma.SettlementRefundCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SettlementRefundCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload>[]
+        }
+        delete: {
+          args: Prisma.SettlementRefundDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload>
+        }
+        update: {
+          args: Prisma.SettlementRefundUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload>
+        }
+        deleteMany: {
+          args: Prisma.SettlementRefundDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SettlementRefundUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SettlementRefundUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload>[]
+        }
+        upsert: {
+          args: Prisma.SettlementRefundUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementRefundPayload>
+        }
+        aggregate: {
+          args: Prisma.SettlementRefundAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSettlementRefund>
+        }
+        groupBy: {
+          args: Prisma.SettlementRefundGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementRefundGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SettlementRefundCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementRefundCountAggregateOutputType> | number
         }
       }
     }
@@ -3776,6 +3926,47 @@ export const CreditNoteItemScalarFieldEnum = {
 export type CreditNoteItemScalarFieldEnum = (typeof CreditNoteItemScalarFieldEnum)[keyof typeof CreditNoteItemScalarFieldEnum]
 
 
+export const SettlementReceiptScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  contactId: 'contactId',
+  currency: 'currency',
+  grossAmount: 'grossAmount',
+  netAmount: 'netAmount',
+  feeAmount: 'feeAmount',
+  paidAt: 'paidAt',
+  method: 'method',
+  reference: 'reference',
+  reason: 'reason',
+  evidence: 'evidence',
+  feeReason: 'feeReason',
+  feeEvidence: 'feeEvidence',
+  actorKey: 'actorKey',
+  commandId: 'commandId',
+  creditReason: 'creditReason',
+  creditEvidence: 'creditEvidence',
+  reversedAt: 'reversedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementReceiptScalarFieldEnum = (typeof SettlementReceiptScalarFieldEnum)[keyof typeof SettlementReceiptScalarFieldEnum]
+
+
+export const SettlementRefundScalarFieldEnum = {
+  id: 'id',
+  receiptId: 'receiptId',
+  amount: 'amount',
+  reason: 'reason',
+  evidence: 'evidence',
+  actorKey: 'actorKey',
+  commandId: 'commandId',
+  reversedAt: 'reversedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementRefundScalarFieldEnum = (typeof SettlementRefundScalarFieldEnum)[keyof typeof SettlementRefundScalarFieldEnum]
+
+
 export const PaymentScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
@@ -3787,6 +3978,12 @@ export const PaymentScalarFieldEnum = {
   reference: 'reference',
   note: 'note',
   source: 'source',
+  receiptId: 'receiptId',
+  receiptAmount: 'receiptAmount',
+  allocationReason: 'allocationReason',
+  allocationEvidence: 'allocationEvidence',
+  exchangeReason: 'exchangeReason',
+  exchangeEvidence: 'exchangeEvidence',
   stripeCheckoutSessionId: 'stripeCheckoutSessionId',
   stripePaymentIntentId: 'stripePaymentIntentId',
   voidedAt: 'voidedAt',
@@ -4455,6 +4652,8 @@ export type GlobalOmitConfig = {
   quoteItem?: Prisma.QuoteItemOmit
   creditNote?: Prisma.CreditNoteOmit
   creditNoteItem?: Prisma.CreditNoteItemOmit
+  settlementReceipt?: Prisma.SettlementReceiptOmit
+  settlementRefund?: Prisma.SettlementRefundOmit
   payment?: Prisma.PaymentOmit
   invoiceReminder?: Prisma.InvoiceReminderOmit
   recurringInvoice?: Prisma.RecurringInvoiceOmit

@@ -118,6 +118,16 @@ export type CreditNote = Prisma.CreditNoteModel
  */
 export type CreditNoteItem = Prisma.CreditNoteItemModel
 /**
+ * Model SettlementReceipt
+ * 
+ */
+export type SettlementReceipt = Prisma.SettlementReceiptModel
+/**
+ * Model SettlementRefund
+ * 
+ */
+export type SettlementRefund = Prisma.SettlementRefundModel
+/**
  * Model Payment
  * 
  */

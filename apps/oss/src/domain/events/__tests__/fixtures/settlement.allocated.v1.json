@@ -1,0 +1,26 @@
+{
+  "type": "settlement.allocated",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/settlements.ts",
+      "typeExpression": "\"settlement.allocated\"",
+      "payloadExpression": "{\n            receiptId: receipt.id,\n            paymentId: payment.id,\n            invoiceId: payment.invoiceId,\n            receiptCurrency: receipt.currency,\n            receiptAmount: allocation.receiptAmount,\n            invoiceCurrency: allocation.currency,\n            invoiceAmount: allocation.invoiceAmount,\n            balanceDue: allocation.after,\n            reason: input.reason,\n            evidence: input.evidence,\n            exchangeReason: allocation.exchangeEvidence?.reason ?? null,\n            exchangeEvidence: allocation.exchangeEvidence?.evidence ?? null,\n          }",
+      "variant": "default",
+      "payload": {
+        "receiptId": "receipt-1",
+        "paymentId": "payment-1",
+        "invoiceId": "invoice-1",
+        "receiptCurrency": "USD",
+        "receiptAmount": "100.00",
+        "invoiceCurrency": "USD",
+        "invoiceAmount": "100.00",
+        "balanceDue": "0.00",
+        "reason": "Correction",
+        "evidence": "https://evidence.example.test/statement/1",
+        "exchangeReason": "Agreed conversion",
+        "exchangeEvidence": "https://evidence.example.test/fx/1"
+      }
+    }
+  ]
+}

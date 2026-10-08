@@ -1,3 +1,5 @@
+import { ACCOUNTING_EXPORT_COLUMNS } from "@quits/contracts/exports"
+import { buildCsv, csvNumber } from "./csv"
 import { parseBuyerSnapshot } from "@quits/contracts/documents"
 import type { AccountingExportInput, AccountingExportResult } from "@quits/contracts/exports"
 import { computeSettlement } from "../../domain/documents/settlement"
@@ -7,6 +9,7 @@ import { dateRangeInTimeZone } from "./format"
 import { issuedNumber } from "../../domain/documents/numbering"
 
 const FILE_PREFIX = {
+  settlements: "settlements",
   invoices: "invoices",
   creditNotes: "credit-notes",
   payments: "payments",
@@ -36,6 +39,10 @@ export async function exportAccounting(
   const contact = { select: { name: true, company: true } } as const
 
   switch (input.dataset) {
+    case "settlements": {
+      const events = await prisma.domainEvent.findMany({ where: { organizationId, type: { startsWith: "settlement." }, occurredAt: { gte: start, lt: end } }, orderBy: { sequence: "asc" } })
+      return { filename, csv: buildCsv(ACCOUNTING_EXPORT_COLUMNS.settlements, events.map(event => [event.id, csvNumber(String(event.schemaVersion)), event.occurredAt.toISOString(), event.type, event.actorKind, event.actorId, event.commandId, JSON.stringify(event.payload)])) }
+    }
     case "invoices": {
       const invoices = await prisma.invoice.findMany({
         where: { organizationId, status: { not: "draft" }, issueDate: { gte: start, lt: end } },
@@ -88,11 +95,16 @@ export async function exportAccounting(
         where: { organizationId, paidAt: { gte: start, lt: end } },
         include: {
           invoice: { select: { number: true, buyerSnapshot: true, contact } },
+          receipt: { select: { currency: true } },
         },
         orderBy: [{ paidAt: "asc" }, { createdAt: "asc" }],
       })
       const csv = paymentsCsv(
         payments.map((payment) => ({
+          paymentId: payment.id,
+          receiptId: payment.receiptId,
+          receiptAmount: payment.receiptAmount,
+          receiptCurrency: payment.receipt?.currency,
           paidAt: payment.paidAt,
           invoiceNumber: issuedNumber(payment.invoice),
           customer: customerName(payment.invoice.buyerSnapshot, payment.invoice.contact),

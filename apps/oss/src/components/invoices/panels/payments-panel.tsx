@@ -1,3 +1,4 @@
+import { ReceiptsPanel } from "./receipts-panel"
 import { useCallback, useEffect, useState } from "react"
 import { Plus } from "lucide-react"
 import type { PaymentMethod } from "@quits/contracts/payments"
@@ -194,7 +195,7 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
                       </TableCell>
                       {view.canVoid ? (
                         <TableCell className="text-right">
-                          {voided ? null : (
+                          {voided || payment.receiptId ? null : (
                             <Button variant="ghost" size="sm" onClick={() => setVoiding(payment)}>
                               {t("payments.action.void")}
                             </Button>
@@ -208,6 +209,7 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
             </Table>
           </div>
         )}
+        <ReceiptsPanel invoiceId={invoice.id} currency={invoice.currency} today={todayIsoDate(view?.timeZone ?? "UTC")} balanceDue={balanceDue} onChanged={handleChanged} />
       </CardContent>
 
       {recordOpen ? (

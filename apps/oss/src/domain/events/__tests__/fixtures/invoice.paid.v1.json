@@ -12,6 +12,17 @@
         "amountPaid": "100.00",
         "currency": "USD"
       }
+    },
+    {
+      "source": "commands/settlements.ts",
+      "typeExpression": "\"invoice.paid\"",
+      "payloadExpression": "{\n              number: allocation.number,\n              amountPaid: refreshed.settlement.amountPaid.toFixed(2),\n              currency: allocation.currency,\n            }",
+      "variant": "default",
+      "payload": {
+        "number": "DOC-0001",
+        "amountPaid": "100.00",
+        "currency": "USD"
+      }
     }
   ]
 }

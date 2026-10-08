@@ -5,6 +5,7 @@ import {
   paymentVoidInputSchema,
   publicInvoiceCheckoutResultSchema,
   publicInvoiceTokenInputSchema,
+  settlementEvidenceSchema,
 } from "./payments"
 
 describe("payments contracts", () => {
@@ -49,4 +50,44 @@ describe("payments contracts", () => {
     expect(paymentVoidInputSchema.safeParse({ paymentId: "pay_1", reason: "  " }).success).toBe(false)
     expect(paymentVoidInputSchema.safeParse({ paymentId: "pay_1", reason: "Bounced" }).success).toBe(true)
   })
+})
+
+describe("settlement evidence", () => {
+  it.each([
+    "https://operator:credential@example.test/statement",
+    "https://operator@example.test/statement",
+    "https://:credential@example.test/statement",
+  ])("refuses embedded credentials in %s", (evidence) => {
+    expect(settlementEvidenceSchema.safeParse({ reason: "Statement", evidence }).success).toBe(false)
+  })
+
+  it.each(["\u0000", "\t", "\n", "\r", "\u001f", "\u007f", "\u0085"])(
+    "refuses raw control characters before trimming or URL normalization (%j)",
+    (control) => {
+      for (const evidence of [
+        `${control}https://example.test/statement`,
+        `https://exam${control}ple.test/statement`,
+        `https://example.test/statement${control}`,
+      ]) {
+        expect(settlementEvidenceSchema.safeParse({ reason: "Statement", evidence }).success).toBe(false)
+      }
+    },
+  )
+
+  it.each([
+    "http://example.test/statement",
+    "https://example.test/statement?sig=intentionally-shared&expires=123#receipt",
+    "https://localhost/statement",
+    "https://example.test/statement%0A1",
+  ])("keeps intentionally shared HTTP(S) evidence links (%s)", (evidence) => {
+    expect(settlementEvidenceSchema.parse({ reason: " Statement ", evidence: ` ${evidence} ` }))
+      .toEqual({ reason: "Statement", evidence })
+  })
+
+  it.each(["javascript:alert(1)", "data:text/html,test", "ftp://example.test/statement", "https:/example.test", "not a URL"])(
+    "refuses invalid or non-HTTP(S) evidence (%s)",
+    (evidence) => {
+      expect(settlementEvidenceSchema.safeParse({ reason: "Statement", evidence }).success).toBe(false)
+    },
+  )
 })

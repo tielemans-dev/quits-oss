@@ -158,7 +158,7 @@ describeIfDatabase("exports and activity routers", () => {
     expect(trailing).toBe("")
 
     const payments = await accountant.exports.accounting({ ...range, dataset: "payments" })
-    expect(payments.csv.split("\r\n")[1]).toMatch(/,INV-0001,Acme GmbH,DKK,50.00,bank_transfer,'=SUM\(A1\),false,$/)
+    expect(payments.csv.split("\r\n")[1]).toMatch(/,INV-0001,Acme GmbH,DKK,50.00,bank_transfer,'=SUM\(A1\),false,,[^,]+,,,,legacy_payment$/)
 
     const empty = await accountant.exports.accounting({ from: "2020-01-01", to: "2020-01-31", dataset: "creditNotes" })
     expect(empty.csv).toBe(`${ACCOUNTING_EXPORT_COLUMNS.creditNotes.join(",")}\r\n`)

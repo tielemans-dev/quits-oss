@@ -7,7 +7,7 @@ import { moneyEmitterState } from "./money-emitter-state"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
-  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "billing-allocation", "payment-details"].map((name) => `commands/${name}.ts`),
+  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "settlements", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "billing-allocation", "payment-details"].map((name) => `commands/${name}.ts`),
   "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "documents/numbering.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
@@ -62,6 +62,10 @@ export function reconstruct(expression: { source: string; typeExpression: string
   const optional = variant !== "no_optional"
   const line = { ...record, status: "delivered", ...(variant === "no_previous_acceptance" ? { acceptedAt: null } : {}) }
   const scope = {
+    receipt: { ...record, id: "receipt-1", method: "bank_transfer", reference: "BANK-1" },
+    gross: { toFixed: () => "200.00" }, net: money, fee: money, paidAt: instant,
+    allocation: { number: "DOC-0001", receiptAmount: "100.00", currency: "USD", invoiceAmount: "100.00", after: "0.00", exchangeEvidence: { reason: "Agreed conversion", evidence: "https://evidence.example.test/fx/1" } },
+    targetId: "target-1", invoiceAmount: "100.00", invoiceCurrency: "USD",
     disputedInvoiceIds: ["invoice-1"],
     invoiceId: "invoice-1",
     documentKind: kind === "quote" ? "invoice" : kind, documentId: "document-1", candidateId: "candidate-1",
@@ -72,11 +76,11 @@ export function reconstruct(expression: { source: string; typeExpression: string
     item: { invoiceId: "invoice-1" }, credit: { id: "credit-note-1" }, creditNoteIds: ["credit-note-1"], generation: 1,
     candidate: record, existing: line, line: { ...line, status: variant === "in_progress" ? "in_progress" : "delivered" },
     delivered: { deliveryRevision: 2 }, accepted: record, updated: expression.source === "commands/public-deliverables.ts" ? { ...record, acceptedVia: "customer_link", acceptanceEvidenceNote: null } : record,
-    input: { ...(expression.source === "commands/billing-allocation.ts" ? { creditNoteId: "credit-note-1" } : {}), ...(expression.typeExpression.includes("agreement.completed") ? { disposition: variant === "completed" ? "completed" : "cancelled" } : {}), checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", ...(expression.source === "commands/public-deliverables.ts" ? { note: "Please revise" } : {}), decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },
+    input: { ...(expression.source === "commands/billing-allocation.ts" ? { creditNoteId: "credit-note-1" } : {}), ...(expression.source === "commands/settlements.ts" ? { evidence: "https://evidence.example.test/statement/1", feeEvidence: { reason: "Processor fee", evidence: "https://evidence.example.test/fees/1" }, action: variant === "user" ? "customer_credit" : variant === "decline" ? "reverse_allocation" : variant === "no_optional" ? "reverse_refund" : variant === "completed" ? "reverse_receipt" : "refund" } : {}), ...(expression.typeExpression.includes("agreement.completed") ? { disposition: variant === "completed" ? "completed" : "cancelled" } : {}), checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", ...(expression.source === "commands/public-deliverables.ts" ? { note: "Please revise" } : {}), decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },
     decision: { decision: variant === "decline" ? "decline" : "accept", acceptedByName: "Customer", reason: optional ? "Not needed" : undefined },
     next: { publicRejectionReason: optional ? "Not needed" : null },
     current: optional, overpaidBy: { ...money, greaterThan: () => optional },
-    payment: { id: "payment-1", amount: money, currency: "USD" },
+    payment: { id: "payment-1", invoiceId: "invoice-1", amount: money, currency: "USD" },
     amount: money, refreshed: { settlement: { balanceDue: money, amountPaid: money, paymentStatus: "paid" }, invoice: record },
     priced: { totalGross: 100 }, built: { totalGross: 100 }, number: "DOC-0001", recipient: manual && ["agreements/issuance.ts", "commands/invoices.ts", "commands/quotes.ts"].includes(expression.source) ? null : "customer@example.test",
     reason: "paused_by_user", from: "active", to: "paused", status: expression.source === "commands/agreements.ts" && !optional ? undefined : variant === "in_progress" ? "in_progress" : "active",

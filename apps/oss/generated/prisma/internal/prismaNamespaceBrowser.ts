@@ -71,6 +71,8 @@ export const ModelName = {
   QuoteItem: 'QuoteItem',
   CreditNote: 'CreditNote',
   CreditNoteItem: 'CreditNoteItem',
+  SettlementReceipt: 'SettlementReceipt',
+  SettlementRefund: 'SettlementRefund',
   Payment: 'Payment',
   InvoiceReminder: 'InvoiceReminder',
   RecurringInvoice: 'RecurringInvoice',
@@ -591,6 +593,47 @@ export const CreditNoteItemScalarFieldEnum = {
 export type CreditNoteItemScalarFieldEnum = (typeof CreditNoteItemScalarFieldEnum)[keyof typeof CreditNoteItemScalarFieldEnum]
 
 
+export const SettlementReceiptScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  contactId: 'contactId',
+  currency: 'currency',
+  grossAmount: 'grossAmount',
+  netAmount: 'netAmount',
+  feeAmount: 'feeAmount',
+  paidAt: 'paidAt',
+  method: 'method',
+  reference: 'reference',
+  reason: 'reason',
+  evidence: 'evidence',
+  feeReason: 'feeReason',
+  feeEvidence: 'feeEvidence',
+  actorKey: 'actorKey',
+  commandId: 'commandId',
+  creditReason: 'creditReason',
+  creditEvidence: 'creditEvidence',
+  reversedAt: 'reversedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementReceiptScalarFieldEnum = (typeof SettlementReceiptScalarFieldEnum)[keyof typeof SettlementReceiptScalarFieldEnum]
+
+
+export const SettlementRefundScalarFieldEnum = {
+  id: 'id',
+  receiptId: 'receiptId',
+  amount: 'amount',
+  reason: 'reason',
+  evidence: 'evidence',
+  actorKey: 'actorKey',
+  commandId: 'commandId',
+  reversedAt: 'reversedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementRefundScalarFieldEnum = (typeof SettlementRefundScalarFieldEnum)[keyof typeof SettlementRefundScalarFieldEnum]
+
+
 export const PaymentScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
@@ -602,6 +645,12 @@ export const PaymentScalarFieldEnum = {
   reference: 'reference',
   note: 'note',
   source: 'source',
+  receiptId: 'receiptId',
+  receiptAmount: 'receiptAmount',
+  allocationReason: 'allocationReason',
+  allocationEvidence: 'allocationEvidence',
+  exchangeReason: 'exchangeReason',
+  exchangeEvidence: 'exchangeEvidence',
   stripeCheckoutSessionId: 'stripeCheckoutSessionId',
   stripePaymentIntentId: 'stripePaymentIntentId',
   voidedAt: 'voidedAt',

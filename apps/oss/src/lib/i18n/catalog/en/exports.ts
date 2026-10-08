@@ -44,6 +44,7 @@ export const enExportsMessages = {
   "exports.accounting.dataset": "Data",
   "exports.accounting.dataset.invoices": "Invoices",
   "exports.accounting.dataset.creditNotes": "Credit notes",
+  "exports.accounting.dataset.settlements": "Settlement events",
   "exports.accounting.dataset.payments": "Payments",
   "exports.accounting.download": "Download CSV",
   "exports.accounting.preparing": "Preparing...",

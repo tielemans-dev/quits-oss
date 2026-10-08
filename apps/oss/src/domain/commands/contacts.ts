@@ -203,7 +203,7 @@ export const deleteContact = defineCommand({
           select: {
             id: true,
             name: true,
-            _count: { select: { invoices: true, quotes: true, creditNotes: true, recurringInvoices: true, agreements: true } },
+            _count: { select: { invoices: true, quotes: true, creditNotes: true, recurringInvoices: true, agreements: true, settlementReceipts: true } },
           },
         })
       )

@@ -293,6 +293,6 @@ describe("accounting csv", () => {
         ],
         "UTC"
       )
-    ).toBe(`${header("payments")}2026-03-03,INV-0001,Acme,EUR,50.00,bank_transfer,'+REF,true,Bounced\r\n`)
+    ).toBe(`${header("payments")}2026-03-03,INV-0001,Acme,EUR,50.00,bank_transfer,'+REF,true,Bounced,,,,,legacy_payment\r\n`)
   })
 })
