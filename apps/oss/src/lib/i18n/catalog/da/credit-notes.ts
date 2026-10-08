@@ -6,6 +6,7 @@ export const daCreditNotesMessages = {
   "creditNotes.empty.title": "Ingen kreditnotaer endnu",
   "creditNotes.empty.description": "Kreditnotaer, du udsteder på fakturaer, vises her.",
   "creditNotes.table.number": "Nummer",
+  "creditNotes.row.link": "Kreditnota {number}, {customer}",
   "creditNotes.table.invoice": "Faktura",
   "creditNotes.table.customer": "Kunde",
   "creditNotes.table.date": "Dato",

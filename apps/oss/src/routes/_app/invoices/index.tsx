@@ -132,13 +132,14 @@ function InvoicesListPage() {
       ) : (
         <ListTable
           label={t("invoices.title")}
-          columns="minmax(0,2.2fr) 7.5rem 7.5rem 7.5rem minmax(8.5rem,1fr) 8.5rem 2.25rem"
+          columns="minmax(0,2.2fr) 6rem 7rem 7rem minmax(8.5rem,1fr) 8rem 2.25rem"
+          compactColumns="minmax(0,2.2fr) 6rem 7rem minmax(8.5rem,1fr) 8rem 2.25rem"
         >
           <ListHead>
             <ListHeadCell>{t("invoices.table.contact")}</ListHeadCell>
             <ListHeadCell>{t("invoices.table.number")}</ListHeadCell>
-            <ListHeadCell>{t("invoices.table.issueDate")}</ListHeadCell>
-            <ListHeadCell>{t("invoices.table.dueDate")}</ListHeadCell>
+            <ListHeadCell className="hidden @5xl:block">{t("invoices.table.issueDate")}</ListHeadCell>
+            <ListHeadCell className="hidden @4xl:block">{t("invoices.table.dueDate")}</ListHeadCell>
             <ListHeadCell align="end">{t("invoices.table.total")}</ListHeadCell>
             <ListHeadCell>{t("invoices.table.status")}</ListHeadCell>
             <ListHeadCell />
@@ -150,7 +151,7 @@ function InvoicesListPage() {
               const dueDate = formatDate(invoice.dueDate, locale)
               return (
                 <ListRow key={invoice.id}>
-                  <ListCell className="max-md:col-start-1 max-md:row-start-1">
+                  <ListCell className="@max-4xl:col-start-1 @max-4xl:row-start-1">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <CustomerMark name={invoice.contact.name} />
                       <div className="min-w-0">
@@ -158,13 +159,18 @@ function InvoicesListPage() {
                           to="/invoices/$invoiceId"
                           params={{ invoiceId: invoice.id }}
                           search={{ emailWarning: undefined }}
+                          aria-label={
+                            invoice.number
+                              ? t("invoices.row.link", { number: invoice.number, customer: invoice.contact.name })
+                              : t("invoices.row.linkDraft", { customer: invoice.contact.name })
+                          }
                           className={cn(listRowLinkClass, "block truncate font-semibold")}
                         >
                           {invoice.contact.name}
                         </Link>
                         <span
                           className={cn(
-                            "text-muted-foreground block truncate text-xs md:hidden",
+                            "text-muted-foreground block truncate text-xs @4xl:hidden",
                             invoice.status === "overdue" && "text-tone-danger"
                           )}
                         >
@@ -173,7 +179,7 @@ function InvoicesListPage() {
                       </div>
                     </div>
                   </ListCell>
-                  <ListCell className="font-mono text-[12.5px] tracking-[0.01em] max-md:col-start-1 max-md:row-start-2">
+                  <ListCell className="font-mono text-[12.5px] tracking-[0.01em] @max-4xl:col-start-1 @max-4xl:row-start-2">
                     {invoice.number ?? (
                       <>
                         <span aria-hidden="true" className="text-muted-foreground">
@@ -183,18 +189,18 @@ function InvoicesListPage() {
                       </>
                     )}
                   </ListCell>
-                  <ListCell className="text-muted-foreground max-md:hidden">
+                  <ListCell className="text-muted-foreground hidden @5xl:block">
                     {formatDate(invoice.issueDate, locale)}
                   </ListCell>
                   <ListCell
                     className={cn(
-                      "text-muted-foreground max-md:hidden",
+                      "text-muted-foreground hidden @4xl:block",
                       invoice.status === "overdue" && "text-tone-danger"
                     )}
                   >
                     {dueDate}
                   </ListCell>
-                  <ListCell align="end" className="max-md:col-start-2 max-md:row-start-1">
+                  <ListCell align="end" className="@max-4xl:col-start-2 @max-4xl:row-start-1">
                     <div className="flex flex-col items-end">
                       <Amount
                         value={decimalFromNumber(invoice.total, invoice.currency)}
@@ -215,10 +221,10 @@ function InvoicesListPage() {
                       ) : null}
                     </div>
                   </ListCell>
-                  <ListCell className="max-md:col-start-2 max-md:row-start-2 max-md:justify-self-end">
+                  <ListCell className="@max-4xl:col-start-2 @max-4xl:row-start-2 @max-4xl:justify-self-end">
                     <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
                   </ListCell>
-                  <ListCell className="max-md:col-span-2 max-md:row-start-3 max-md:empty:hidden">
+                  <ListCell className="@max-4xl:col-span-2 @max-4xl:row-start-3 @max-4xl:empty:sr-only">
                     {invoice.status === "draft" && (
                       <div className={rowActionsClass}>
                         <AlertDialog>

@@ -7,6 +7,8 @@ export const daQuotesMessages = {
   "quotes.empty.description":
     "Opret dit første tilbud for at sende forslag til dine kunder.",
   "quotes.table.number": "Nummer",
+  "quotes.row.link": "Tilbud {number}, {customer}",
+  "quotes.row.linkDraft": "Tilbudskladde, {customer}",
   "quotes.number.draft": "Kladde",
   "quotes.number.draftHeading": "Tilbudskladde",
   "quotes.number.willBe": "Får nummer {number}, når det sendes. Nummeret er ikke reserveret: et andet tilbud kan blive sendt først.",

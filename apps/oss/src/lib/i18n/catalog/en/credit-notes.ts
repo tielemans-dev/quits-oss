@@ -6,6 +6,7 @@ export const enCreditNotesMessages = {
   "creditNotes.empty.title": "No credit notes yet",
   "creditNotes.empty.description": "Credit notes you issue against invoices appear here.",
   "creditNotes.table.number": "Number",
+  "creditNotes.row.link": "Credit note {number}, {customer}",
   "creditNotes.table.invoice": "Invoice",
   "creditNotes.table.customer": "Customer",
   "creditNotes.table.date": "Date",

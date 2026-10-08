@@ -5,29 +5,39 @@ import { cn } from "../../lib/utils"
 
 /**
  * The list of a document page: a div-based ARIA table, so the rows can be a grid that turns into
- * a card on a phone and still read as a table with rows to a screen reader.
+ * a card on a narrow space and still read as a table with rows to a screen reader.
  *
- * `columns` is the desktop grid-template-columns. Below `md` the header is hidden and each row is
- * a two-column card: the first cell and the last cells place themselves with the classes the page
- * passes to `ListCell` (`max-md:col-start-* max-md:row-start-*`), and cells that make no sense on
- * a phone take `max-md:hidden`.
+ * The layout follows the width of the list, not of the window: the sidebar takes 16rem of a laptop
+ * screen, so a viewport breakpoint would squeeze the grid. The table is a container and has three
+ * tiers: below 56rem (`@4xl`) every row is a two-column card; from 56rem it is a grid on
+ * `compactColumns`; from 64rem (`@5xl`) on `columns`, which has one column more (the issue date).
+ * In the card tier the header is visually hidden but stays in the accessibility tree, and the
+ * cells that do not fit are `hidden` in the header and in every row alike, so the column counts
+ * match. Pages place the card cells with `@max-4xl:col-start-* @max-4xl:row-start-*`.
  */
 export function ListTable({
   label,
   columns,
+  compactColumns,
   className,
   style,
   children,
   ...props
-}: ComponentProps<"div"> & { label: string; columns: string }) {
+}: ComponentProps<"div"> & {
+  label: string
+  /** Grid template from 64rem. */
+  columns: string
+  /** Grid template from 56rem to 64rem: `columns` without the issue date. */
+  compactColumns: string
+}) {
   return (
     <div
       role="table"
       aria-label={label}
       data-slot="list-table"
-      style={{ "--list-cols": columns, ...style } as CSSProperties}
+      style={{ "--list-cols": columns, "--list-cols-compact": compactColumns, ...style } as CSSProperties}
       className={cn(
-        "border-hairline bg-panel overflow-hidden rounded-xl border shadow-[0_1px_2px_rgb(16_18_27/6%)] dark:shadow-none",
+        "border-hairline bg-panel @container overflow-hidden rounded-xl border shadow-[0_1px_2px_rgb(16_18_27/6%)] dark:shadow-none",
         className
       )}
       {...props}
@@ -42,7 +52,7 @@ export function ListHead({ children }: { children: ReactNode }) {
     <div role="rowgroup">
       <div
         role="row"
-        className="border-hairline hidden items-center gap-x-4 border-b px-4 py-2.5 md:grid md:grid-cols-(--list-cols)"
+        className="border-hairline items-center gap-x-4 border-b px-4 py-2.5 @max-4xl:sr-only @4xl:grid @4xl:grid-cols-(--list-cols-compact) @5xl:grid-cols-(--list-cols)"
       >
         {children}
       </div>
@@ -88,7 +98,7 @@ export function ListRow({ className, children, ...props }: ComponentProps<"div">
       role="row"
       data-slot="list-row"
       className={cn(
-        "group/row border-hairline relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b px-4 py-3 transition-colors duration-150 last:border-b-0 md:grid-cols-(--list-cols) md:py-2.5",
+        "group/row border-hairline relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b px-4 py-3 transition-colors duration-150 last:border-b-0 @4xl:grid-cols-(--list-cols-compact) @4xl:py-2.5 @5xl:grid-cols-(--list-cols)",
         "hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-inset",
         className
       )}

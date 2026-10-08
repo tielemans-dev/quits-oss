@@ -119,13 +119,14 @@ function QuotesListPage() {
       ) : (
         <ListTable
           label={t("quotes.title")}
-          columns="minmax(0,2.2fr) 7.5rem 7.5rem 7.5rem minmax(8.5rem,1fr) 8.5rem 2.25rem"
+          columns="minmax(0,2.2fr) 6rem 7rem 7rem minmax(8.5rem,1fr) 8rem 2.25rem"
+          compactColumns="minmax(0,2.2fr) 6rem 7rem minmax(8.5rem,1fr) 8rem 2.25rem"
         >
           <ListHead>
             <ListHeadCell>{t("quotes.table.contact")}</ListHeadCell>
             <ListHeadCell>{t("quotes.table.number")}</ListHeadCell>
-            <ListHeadCell>{t("quotes.table.issueDate")}</ListHeadCell>
-            <ListHeadCell>{t("quotes.table.expiryDate")}</ListHeadCell>
+            <ListHeadCell className="hidden @5xl:block">{t("quotes.table.issueDate")}</ListHeadCell>
+            <ListHeadCell className="hidden @4xl:block">{t("quotes.table.expiryDate")}</ListHeadCell>
             <ListHeadCell align="end">{t("quotes.table.total")}</ListHeadCell>
             <ListHeadCell>{t("quotes.table.status")}</ListHeadCell>
             <ListHeadCell />
@@ -135,7 +136,7 @@ function QuotesListPage() {
               const expiryDate = formatDate(quote.expiryDate, locale)
               return (
                 <ListRow key={quote.id}>
-                  <ListCell className="max-md:col-start-1 max-md:row-start-1">
+                  <ListCell className="@max-4xl:col-start-1 @max-4xl:row-start-1">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <CustomerMark name={quote.contact.name} />
                       <div className="min-w-0">
@@ -143,17 +144,22 @@ function QuotesListPage() {
                           to="/quotes/$quoteId"
                           params={{ quoteId: quote.id }}
                           search={{ emailWarning: undefined }}
+                          aria-label={
+                            quote.number
+                              ? t("quotes.row.link", { number: quote.number, customer: quote.contact.name })
+                              : t("quotes.row.linkDraft", { customer: quote.contact.name })
+                          }
                           className={cn(listRowLinkClass, "block truncate font-semibold")}
                         >
                           {quote.contact.name}
                         </Link>
-                        <span className="text-muted-foreground block truncate text-xs md:hidden">
+                        <span className="text-muted-foreground block truncate text-xs @4xl:hidden">
                           {t("quotes.table.expiryDate")} {expiryDate}
                         </span>
                       </div>
                     </div>
                   </ListCell>
-                  <ListCell className="font-mono text-[12.5px] tracking-[0.01em] max-md:col-start-1 max-md:row-start-2">
+                  <ListCell className="font-mono text-[12.5px] tracking-[0.01em] @max-4xl:col-start-1 @max-4xl:row-start-2">
                     {quote.number ?? (
                       <>
                         <span aria-hidden="true" className="text-muted-foreground">
@@ -163,11 +169,11 @@ function QuotesListPage() {
                       </>
                     )}
                   </ListCell>
-                  <ListCell className="text-muted-foreground max-md:hidden">
+                  <ListCell className="text-muted-foreground hidden @5xl:block">
                     {formatDate(quote.issueDate, locale)}
                   </ListCell>
-                  <ListCell className="text-muted-foreground max-md:hidden">{expiryDate}</ListCell>
-                  <ListCell align="end" className="max-md:col-start-2 max-md:row-start-1">
+                  <ListCell className="text-muted-foreground hidden @4xl:block">{expiryDate}</ListCell>
+                  <ListCell align="end" className="@max-4xl:col-start-2 @max-4xl:row-start-1">
                     {/* The double rule is for money that has arrived; a quote asks for none. */}
                     <Amount
                       value={decimalFromNumber(quote.total, quote.currency)}
@@ -175,10 +181,10 @@ function QuotesListPage() {
                       locale={locale}
                     />
                   </ListCell>
-                  <ListCell className="max-md:col-start-2 max-md:row-start-2 max-md:justify-self-end">
+                  <ListCell className="@max-4xl:col-start-2 @max-4xl:row-start-2 @max-4xl:justify-self-end">
                     <StatusBadge domain="quote" status={quote.status} />
                   </ListCell>
-                  <ListCell className="max-md:col-span-2 max-md:row-start-3 max-md:empty:hidden">
+                  <ListCell className="@max-4xl:col-span-2 @max-4xl:row-start-3 @max-4xl:empty:sr-only">
                     {quote.status === "draft" && (
                       <div className={rowActionsClass}>
                         <AlertDialog>

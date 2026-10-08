@@ -16,6 +16,8 @@ export const daInvoicesMessages = {
   "invoices.number.willBe": "Får nummer {number}, når den sendes. Nummeret er ikke reserveret: en anden faktura kan blive sendt først.",
   "invoices.number.assignedOnSend": "Får sit nummer, når den sendes.",
   "invoices.table.number": "Nummer",
+  "invoices.row.link": "Faktura {number}, {customer}",
+  "invoices.row.linkDraft": "Fakturakladde, {customer}",
   "invoices.table.contact": "Kontakt",
   "invoices.table.issueDate": "Udstedelsesdato",
   "invoices.table.dueDate": "Forfaldsdato",
