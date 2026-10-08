@@ -20,12 +20,12 @@ export const paymentDetailsRouter = router({
       select: paymentDetailsSelect,
     })
     return {
-      details: paymentDetailsFromColumns(settings),
+      ...paymentDetailsFromColumns(settings),
       canUpdate: actorCan(ctx.actor, "settings:update"),
     }
   }),
 
-  /** Replaces all payment details; a field left out or blank is cleared. */
+  /** Replaces all payment details; a field left out or blank is cleared, and no account clears the account. */
   update: authorizedProcedure("settings:update")
     .input(paymentDetailsInputSchema)
     .mutation(async ({ ctx, input }): Promise<PaymentDetailsState> => {
@@ -36,6 +36,6 @@ export const paymentDetailsRouter = router({
         create: { organizationId: ctx.organizationId, ...columns },
         select: paymentDetailsSelect,
       })
-      return { details: paymentDetailsFromColumns(settings), canUpdate: true }
+      return { ...paymentDetailsFromColumns(settings), canUpdate: true }
     }),
 })

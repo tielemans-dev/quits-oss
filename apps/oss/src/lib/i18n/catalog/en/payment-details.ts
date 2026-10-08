@@ -32,7 +32,9 @@ export const enPaymentDetailsMessages = {
   "settings.paymentDetails.error.accountNumber": "Enter 1 to 10 digits.",
   "settings.paymentDetails.error.accountNumber.required":
     "Enter the account number together with the registration number.",
-  "settings.paymentDetails.error.iban": "This is not a valid IBAN. Check the characters and try again.",
+  "settings.paymentDetails.error.iban": "This is not a valid IBAN. Check the characters and the length, and try again.",
+  "settings.paymentDetails.error.iban.required":
+    "Enter an IBAN, or a registration number and account number, so customers know where to pay.",
   "settings.paymentDetails.error.bic": "Enter 8 or 11 characters, for example DABADKKK.",
   "settings.paymentDetails.error.accountHolder": "Use at most 120 characters.",
   "settings.paymentDetails.error.bankName": "Use at most 120 characters.",

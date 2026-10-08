@@ -1,6 +1,8 @@
 import {
-  hasPaymentDetails,
-  type BankDetailsSnapshot,
+  BANK_ACCOUNT_FIELDS,
+  hasBankAccount,
+  type BankAccount,
+  type BankAccountSnapshot,
   type PaymentDetails,
 } from "@quits/contracts/payment-details"
 
@@ -25,37 +27,50 @@ export type PaymentDetailsColumns = {
   paymentNote: string | null
 }
 
-export function paymentDetailsFromColumns(row: Partial<PaymentDetailsColumns> | null | undefined): PaymentDetails {
-  return {
+function accountFromColumns(row: Partial<PaymentDetailsColumns> | null | undefined): BankAccount | null {
+  const account: BankAccount = {
     accountHolder: row?.bankAccountHolder ?? null,
     bankName: row?.bankName ?? null,
     regNumber: row?.bankRegNumber ?? null,
     accountNumber: row?.bankAccountNumber ?? null,
     iban: row?.bankIban ?? null,
     bic: row?.bankBic ?? null,
-    note: row?.paymentNote ?? null,
   }
+  return hasBankAccount(account) ? account : null
+}
+
+export function paymentDetailsFromColumns(row: Partial<PaymentDetailsColumns> | null | undefined): PaymentDetails {
+  return { bankAccount: accountFromColumns(row), note: row?.paymentNote ?? null }
 }
 
 export function paymentDetailsToColumns(details: PaymentDetails): PaymentDetailsColumns {
+  const account = details.bankAccount
   return {
-    bankAccountHolder: details.accountHolder,
-    bankName: details.bankName,
-    bankRegNumber: details.regNumber,
-    bankAccountNumber: details.accountNumber,
-    bankIban: details.iban,
-    bankBic: details.bic,
+    bankAccountHolder: account?.accountHolder ?? null,
+    bankName: account?.bankName ?? null,
+    bankRegNumber: account?.regNumber ?? null,
+    bankAccountNumber: account?.accountNumber ?? null,
+    bankIban: account?.iban ?? null,
+    bankBic: account?.bic ?? null,
     paymentNote: details.note,
   }
 }
 
+/** The payment details of an issued invoice, frozen into its seller snapshot. */
+export type PaymentSnapshot = {
+  bankAccount?: BankAccountSnapshot
+  paymentNote?: string
+}
+
 /**
- * The bank details to freeze onto an invoice being issued, or null when the organization has
- * entered none (the snapshot then carries no `bankDetails` at all, as before this feature).
+ * The payment details to freeze onto an invoice being issued. A part the organization has not
+ * entered is left out, so an organization without payment details gets neither key, as before
+ * this feature existed.
  */
-export function bankDetailsSnapshotFromColumns(
-  row: Partial<PaymentDetailsColumns> | null | undefined
-): BankDetailsSnapshot | null {
-  const details = paymentDetailsFromColumns(row)
-  return hasPaymentDetails(details) ? details : null
+export function paymentSnapshotFromColumns(row: Partial<PaymentDetailsColumns> | null | undefined): PaymentSnapshot {
+  const { bankAccount, note } = paymentDetailsFromColumns(row)
+  return {
+    ...(bankAccount ? { bankAccount: Object.fromEntries(BANK_ACCOUNT_FIELDS.map((field) => [field, bankAccount[field]])) } : {}),
+    ...(note ? { paymentNote: note } : {}),
+  }
 }

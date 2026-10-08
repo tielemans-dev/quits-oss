@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest"
 import {
   EMPTY_PAYMENT_DETAILS,
   IBAN_LENGTH_BY_COUNTRY,
+  bankAccountSchema,
   formatIban,
+  hasBankAccount,
   hasPaymentDetails,
   isValidBic,
   isValidIban,
@@ -13,6 +15,15 @@ import { parseSellerSnapshot } from "./documents"
 
 /** A valid Danish IBAN: DK, check digits 50, reg.nr. 0040, account number 0440116243. */
 const DANISH_IBAN = "DK5000400440116243"
+
+const EMPTY_BANK_ACCOUNT = {
+  accountHolder: null,
+  bankName: null,
+  regNumber: null,
+  accountNumber: null,
+  iban: null,
+  bic: null,
+}
 
 /** An IBAN with correct mod-97 check digits for any country and basic account number. */
 function ibanWithCheckDigits(country: string, bban: string): string {
@@ -70,12 +81,6 @@ describe("IBAN validation", () => {
     expect(isValidIban(ibanWithCheckDigits("DK", "0040044011624"))).toBe(false)
   })
 
-  it("rejects a DK IBAN with one digit too many through the input schema", () => {
-    const result = paymentDetailsInputSchema.safeParse({ iban: ibanWithCheckDigits("DK", "004004401162430") })
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error.issues[0]?.path).toEqual(["iban"])
-  })
-
   it.each(Object.entries(IBAN_LENGTH_BY_COUNTRY))(
     "accepts a %s IBAN of %i characters and rejects one more or less",
     (country, length) => {
@@ -113,91 +118,147 @@ describe("BIC validation", () => {
   )
 })
 
-describe("payment details input", () => {
-  it("accepts a complete set of details and normalizes them", () => {
+const FULL_ACCOUNT = {
+  accountHolder: "Acme ApS",
+  bankName: "Danske Bank",
+  regNumber: "0040",
+  accountNumber: "0440116243",
+  iban: DANISH_IBAN,
+  bic: "DABADKKK",
+}
+
+const issuePaths = (result: ReturnType<typeof bankAccountSchema.safeParse>) =>
+  result.success ? [] : result.error.issues.map((issue) => issue.path.join("."))
+
+describe("bank account", () => {
+  it("accepts a complete account and normalizes it", () => {
     expect(
-      paymentDetailsInputSchema.parse({
+      bankAccountSchema.parse({
         accountHolder: "  Acme ApS ",
         bankName: "Danske Bank",
         regNumber: " 0040 ",
         accountNumber: "0440 116243",
         iban: "dk50 0040 0440 1162 43",
         bic: " dabadkkk ",
-        note: "MobilePay Box 12345",
       })
-    ).toEqual({
-      accountHolder: "Acme ApS",
-      bankName: "Danske Bank",
-      regNumber: "0040",
-      accountNumber: "0440116243",
-      iban: DANISH_IBAN,
-      bic: "DABADKKK",
-      note: "MobilePay Box 12345",
-    })
+    ).toEqual(FULL_ACCOUNT)
   })
 
-  it("makes every field optional and turns empty values into null", () => {
-    expect(paymentDetailsInputSchema.parse({})).toEqual(EMPTY_PAYMENT_DETAILS)
+  it("accepts an account with nothing in it", () => {
+    expect(bankAccountSchema.parse({})).toEqual(EMPTY_BANK_ACCOUNT)
     expect(
-      paymentDetailsInputSchema.parse({
-        accountHolder: "",
-        bankName: "   ",
-        regNumber: "",
-        accountNumber: "",
-        iban: " ",
-        bic: "",
-        note: "",
-      })
-    ).toEqual(EMPTY_PAYMENT_DETAILS)
-    expect(paymentDetailsInputSchema.parse({ iban: null, note: null })).toEqual(EMPTY_PAYMENT_DETAILS)
+      bankAccountSchema.parse({ accountHolder: "", bankName: "   ", regNumber: "", accountNumber: "", iban: " ", bic: "" })
+    ).toEqual(EMPTY_BANK_ACCOUNT)
   })
 
   it("accepts an international-only setup without Danish account numbers", () => {
-    expect(paymentDetailsInputSchema.parse({ iban: DANISH_IBAN, bic: "DABADKKK" })).toMatchObject({
+    expect(bankAccountSchema.parse({ iban: DANISH_IBAN, bic: "DABADKKK" })).toMatchObject({
       iban: DANISH_IBAN,
       regNumber: null,
       accountNumber: null,
     })
   })
 
+  it("accepts a Danish-only setup without an IBAN", () => {
+    expect(bankAccountSchema.parse({ regNumber: "0040", accountNumber: "0440116243" })).toMatchObject({
+      iban: null,
+      regNumber: "0040",
+    })
+  })
+
   it.each([["123"], ["12345"], ["12a4"], ["12-4"]])("rejects the reg.nr. %j", (regNumber) => {
-    const result = paymentDetailsInputSchema.safeParse({ regNumber, accountNumber: "1234567" })
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error.issues.map((issue) => issue.path[0])).toContain("regNumber")
+    expect(issuePaths(bankAccountSchema.safeParse({ regNumber, accountNumber: "1234567" }))).toContain("regNumber")
   })
 
   it.each([["12345678901"], ["12a"], ["1-2"]])("rejects the account number %j", (accountNumber) => {
-    const result = paymentDetailsInputSchema.safeParse({ regNumber: "0040", accountNumber })
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error.issues.map((issue) => issue.path[0])).toContain("accountNumber")
+    expect(issuePaths(bankAccountSchema.safeParse({ regNumber: "0040", accountNumber }))).toContain("accountNumber")
   })
 
   it("accepts account numbers from one to ten digits", () => {
-    expect(paymentDetailsInputSchema.safeParse({ regNumber: "0040", accountNumber: "1" }).success).toBe(true)
-    expect(paymentDetailsInputSchema.safeParse({ regNumber: "0040", accountNumber: "1234567890" }).success).toBe(true)
+    expect(bankAccountSchema.safeParse({ regNumber: "0040", accountNumber: "1" }).success).toBe(true)
+    expect(bankAccountSchema.safeParse({ regNumber: "0040", accountNumber: "1234567890" }).success).toBe(true)
   })
 
   it("requires the reg.nr. and account number together", () => {
-    const onlyReg = paymentDetailsInputSchema.safeParse({ regNumber: "0040" })
-    expect(onlyReg.success).toBe(false)
-    if (!onlyReg.success) expect(onlyReg.error.issues.map((issue) => issue.path[0])).toEqual(["accountNumber"])
-
-    const onlyAccount = paymentDetailsInputSchema.safeParse({ accountNumber: "0440116243" })
-    expect(onlyAccount.success).toBe(false)
-    if (!onlyAccount.success) expect(onlyAccount.error.issues.map((issue) => issue.path[0])).toEqual(["regNumber"])
-
+    expect(issuePaths(bankAccountSchema.safeParse({ regNumber: "0040" }))).toEqual(["accountNumber"])
+    expect(issuePaths(bankAccountSchema.safeParse({ accountNumber: "0440116243" }))).toEqual(["regNumber"])
     // A blank counterpart is the same as a missing one.
-    expect(paymentDetailsInputSchema.safeParse({ regNumber: "0040", accountNumber: "  " }).success).toBe(false)
+    expect(bankAccountSchema.safeParse({ regNumber: "0040", accountNumber: "  " }).success).toBe(false)
+    // Together they are enough, even with an IBAN missing.
+    expect(bankAccountSchema.safeParse({ regNumber: "0040", accountNumber: "0440116243" }).success).toBe(true)
+  })
+
+  it.each([
+    ["a bank name", { bankName: "Danske Bank" }],
+    ["an account holder", { accountHolder: "Acme ApS" }],
+    ["a BIC", { bic: "DABADKKK" }],
+    ["a holder, bank and BIC", { accountHolder: "Acme ApS", bankName: "Danske Bank", bic: "DABADKKK" }],
+  ])("refuses %s without an IBAN or reg.nr. and account number", (_name, input) => {
+    expect(issuePaths(bankAccountSchema.safeParse(input))).toEqual(["iban"])
+  })
+
+  it("accepts a bank name next to an IBAN, or next to a reg.nr. and account number", () => {
+    expect(bankAccountSchema.safeParse({ bankName: "Danske Bank", iban: DANISH_IBAN }).success).toBe(true)
+    expect(
+      bankAccountSchema.safeParse({ bankName: "Danske Bank", regNumber: "0040", accountNumber: "0440116243" }).success
+    ).toBe(true)
   })
 
   it("rejects a corrupted IBAN and a malformed BIC", () => {
-    const corrupted = paymentDetailsInputSchema.safeParse({ iban: "DK5000400440116244" })
-    expect(corrupted.success).toBe(false)
-    if (!corrupted.success) expect(corrupted.error.issues[0]?.path).toEqual(["iban"])
+    expect(issuePaths(bankAccountSchema.safeParse({ iban: "DK5000400440116244" }))).toEqual(["iban"])
+    expect(issuePaths(bankAccountSchema.safeParse({ iban: DANISH_IBAN, bic: "DABADKK" }))).toEqual(["bic"])
+  })
 
-    const bic = paymentDetailsInputSchema.safeParse({ bic: "DABADKK" })
-    expect(bic.success).toBe(false)
-    if (!bic.success) expect(bic.error.issues[0]?.path).toEqual(["bic"])
+  it("limits the account holder and bank name", () => {
+    expect(bankAccountSchema.safeParse({ iban: DANISH_IBAN, accountHolder: "x".repeat(121) }).success).toBe(false)
+    expect(bankAccountSchema.safeParse({ iban: DANISH_IBAN, bankName: "x".repeat(121) }).success).toBe(false)
+  })
+
+  it("reports whether any account field is filled in", () => {
+    expect(hasBankAccount(null)).toBe(false)
+    expect(hasBankAccount(EMPTY_BANK_ACCOUNT)).toBe(false)
+    expect(hasBankAccount({ bankName: "  " })).toBe(false)
+    expect(hasBankAccount({ bankName: "Danske Bank" })).toBe(true)
+  })
+})
+
+describe("payment details input", () => {
+  it("takes an account and a note", () => {
+    expect(
+      paymentDetailsInputSchema.parse({ bankAccount: { ...FULL_ACCOUNT, iban: "dk50 0040 0440 1162 43" }, note: " MobilePay Box 12345 " })
+    ).toEqual({ bankAccount: FULL_ACCOUNT, note: "MobilePay Box 12345" })
+  })
+
+  it("makes everything optional, and a blank account is no account", () => {
+    expect(paymentDetailsInputSchema.parse({})).toEqual(EMPTY_PAYMENT_DETAILS)
+    expect(paymentDetailsInputSchema.parse({ bankAccount: null, note: null })).toEqual(EMPTY_PAYMENT_DETAILS)
+    expect(paymentDetailsInputSchema.parse({ bankAccount: {}, note: "  " })).toEqual(EMPTY_PAYMENT_DETAILS)
+    expect(
+      paymentDetailsInputSchema.parse({ bankAccount: { accountHolder: "", iban: " ", bic: "" }, note: "" })
+    ).toEqual(EMPTY_PAYMENT_DETAILS)
+  })
+
+  it("accepts a note without an account", () => {
+    expect(paymentDetailsInputSchema.parse({ note: "Pay by MobilePay" })).toEqual({
+      bankAccount: null,
+      note: "Pay by MobilePay",
+    })
+  })
+
+  it("reports account problems under the account", () => {
+    const result = paymentDetailsInputSchema.safeParse({ bankAccount: { regNumber: "0040" } })
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error.issues.map((issue) => issue.path)).toEqual([["bankAccount", "accountNumber"]])
+
+    const bankNameOnly = paymentDetailsInputSchema.safeParse({ bankAccount: { bankName: "Danske Bank" } })
+    expect(bankNameOnly.success).toBe(false)
+    if (!bankNameOnly.success) expect(bankNameOnly.error.issues.map((issue) => issue.path)).toEqual([["bankAccount", "iban"]])
+  })
+
+  it("rejects a DK IBAN with one digit too many", () => {
+    const result = paymentDetailsInputSchema.safeParse({ bankAccount: { iban: ibanWithCheckDigits("DK", "004004401162430") } })
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error.issues[0]?.path).toEqual(["bankAccount", "iban"])
   })
 
   it("limits the payment note to 500 characters", () => {
@@ -207,36 +268,37 @@ describe("payment details input", () => {
     if (!tooLong.success) expect(tooLong.error.issues[0]?.path).toEqual(["note"])
   })
 
-  it("limits the account holder and bank name", () => {
-    expect(paymentDetailsInputSchema.safeParse({ accountHolder: "x".repeat(121) }).success).toBe(false)
-    expect(paymentDetailsInputSchema.safeParse({ bankName: "x".repeat(121) }).success).toBe(false)
-  })
-
-  it("reports whether any detail is filled in", () => {
+  it("reports whether there is anything to print", () => {
     expect(hasPaymentDetails(null)).toBe(false)
     expect(hasPaymentDetails(EMPTY_PAYMENT_DETAILS)).toBe(false)
-    expect(hasPaymentDetails({ note: "  " })).toBe(false)
+    expect(hasPaymentDetails({ bankAccount: {}, note: "  " })).toBe(false)
     expect(hasPaymentDetails({ note: "MobilePay Box 12345" })).toBe(true)
+    expect(hasPaymentDetails({ bankAccount: { iban: DANISH_IBAN } })).toBe(true)
   })
 })
 
-describe("seller snapshot bank details", () => {
-  it("keeps parsing snapshots issued before bank details existed", () => {
+describe("seller snapshot payment details", () => {
+  it("keeps parsing snapshots issued before payment details existed", () => {
     expect(parseSellerSnapshot({ companyName: "Acme", taxIds: [] })).toEqual({
       companyName: "Acme",
       taxIds: [],
     })
   })
 
-  it("parses frozen bank details", () => {
-    const bankDetails = { iban: DANISH_IBAN, bic: "DABADKKK", regNumber: "0040", accountNumber: "0440116243" }
-    expect(parseSellerSnapshot({ companyName: "Acme", bankDetails })?.bankDetails).toEqual(bankDetails)
-    expect(parseSellerSnapshot({ companyName: "Acme", bankDetails: null })?.bankDetails).toBeNull()
+  it("parses a frozen bank account and note", () => {
+    const bankAccount = { iban: DANISH_IBAN, bic: "DABADKKK", regNumber: "0040", accountNumber: "0440116243" }
+    const parsed = parseSellerSnapshot({ companyName: "Acme", bankAccount, paymentNote: "MobilePay Box 12345" })
+    expect(parsed?.bankAccount).toEqual(bankAccount)
+    expect(parsed?.paymentNote).toBe("MobilePay Box 12345")
+    expect(parseSellerSnapshot({ companyName: "Acme", bankAccount: null, paymentNote: null })).toMatchObject({
+      bankAccount: null,
+      paymentNote: null,
+    })
   })
 
-  it("reads stored bank details leniently", () => {
+  it("reads stored values leniently", () => {
     // Values were validated on the way in; an old snapshot is never re-validated.
-    expect(parseSellerSnapshot({ bankDetails: { iban: "not an iban", regNumber: "12" } })?.bankDetails).toEqual({
+    expect(parseSellerSnapshot({ bankAccount: { iban: "not an iban", regNumber: "12" } })?.bankAccount).toEqual({
       iban: "not an iban",
       regNumber: "12",
     })

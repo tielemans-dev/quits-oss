@@ -6,7 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer"
-import type { BankDetailsSnapshot } from "@quits/contracts/payment-details"
+import type { BankAccountSnapshot } from "@quits/contracts/payment-details"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import { canRenderLogo } from "./documents/logo"
@@ -202,10 +202,11 @@ export type InvoiceForPdf = {
   currency: string
   notes: string | null
   /**
-   * Where to pay. An issued invoice carries the details frozen when it was issued; a draft
-   * preview carries the organization's current ones. Documents issued earlier have none.
+   * Where to pay. An issued invoice carries the account and note frozen when it was issued; a
+   * draft preview carries the organization's current ones. Documents issued earlier have none.
    */
-  bankDetails?: BankDetailsSnapshot | null
+  bankAccount?: BankAccountSnapshot | null
+  paymentNote?: string | null
   contact: {
     name: string
     email?: string | null
@@ -265,7 +266,11 @@ export function InvoicePdfDocument({
   const locale = org.locale
   const timezone = org.timezone
   const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null
-  const paymentDetails = buildPaymentDetailsBlock(invoice.bankDetails, invoice.number, locale)
+  const paymentDetails = buildPaymentDetailsBlock(
+    { bankAccount: invoice.bankAccount, note: invoice.paymentNote },
+    invoice.number,
+    locale
+  )
 
   return (
     <Document creationDate={new Date(invoice.issueDate)} modificationDate={new Date(invoice.issueDate)}>

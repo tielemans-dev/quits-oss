@@ -10,7 +10,7 @@ import {
   type SellerSnapshot,
 } from "@quits/contracts/documents"
 import type { EinvoiceDocumentKind, EinvoiceExportResult } from "@quits/contracts/exports"
-import { normalizeBic, normalizeIban, type BankDetailsSnapshot } from "@quits/contracts/payment-details"
+import { normalizeBic, normalizeIban, type BankAccountSnapshot } from "@quits/contracts/payment-details"
 import { prisma } from "../db"
 import { formatIsoDate, safeFileName } from "./format"
 import {
@@ -106,16 +106,16 @@ export function buildSellerParty(source: SellerSource): EinvoiceParty {
 }
 
 /**
- * SEPA credit transfer instructions for an invoice, from the bank details frozen on it. Only an
+ * SEPA credit transfer instructions for an invoice, from the bank account frozen on it. Only an
  * IBAN can be sent; the Danish reg.nr. and account number have no place in Peppol BIS.
  */
 export function buildEinvoicePayment(
-  bankDetails: BankDetailsSnapshot | null | undefined,
+  bankAccount: BankAccountSnapshot | null | undefined,
   invoiceNumber: string
 ): EinvoicePayment | null {
-  const iban = normalizeIban(bankDetails?.iban ?? "")
+  const iban = normalizeIban(bankAccount?.iban ?? "")
   if (!iban) return null
-  return { iban, bic: normalizeBic(bankDetails?.bic ?? "") || null, reference: invoiceNumber }
+  return { iban, bic: normalizeBic(bankAccount?.bic ?? "") || null, reference: invoiceNumber }
 }
 
 /** Buyer party: snapshot values first, the live contact for anything missing and for the endpoint. */
@@ -204,7 +204,7 @@ export async function loadEinvoiceDocument(
         documentCountryCode: invoice.countryCode,
       }),
       buyer,
-      payment: buildEinvoicePayment(sellerSnapshot?.bankDetails, invoice.number),
+      payment: buildEinvoicePayment(sellerSnapshot?.bankAccount, invoice.number),
       calculationVersion: invoice.calculationVersion,
       frozenGroups: invoice.calculationVersion === "v2" ? frozenVatGroups(invoice) : undefined,
       lines: invoice.items.map(exportLine),

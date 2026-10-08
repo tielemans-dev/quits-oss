@@ -13,7 +13,7 @@ export function frozenEinvoiceInput(input: {
   lines: Array<{ description: string; quantity: string; unitPriceNet: string; lineNet: string; taxRate: string; taxCategory: string; vatTreatment?: string; vatCountry?: string | null; vatReasonCode?: string | null; vatRateInput?: string | null }>;
 }): EinvoiceDocument {
   const buyer = buildBuyerParty(input.money.buyer, input.contact)
-  const payment = input.kind === "invoice" ? buildEinvoicePayment(input.money.seller.bankDetails, input.money.number) : null
+  const payment = input.kind === "invoice" ? buildEinvoicePayment(input.money.seller.bankAccount, input.money.number) : null
   return {
     kind: input.kind, issued: true, calculationVersion: input.money.calculation.version,
     frozenGroups: input.money.vatGroups, number: input.money.number, issueDate: input.money.issueDate,

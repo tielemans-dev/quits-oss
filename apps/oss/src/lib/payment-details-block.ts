@@ -1,4 +1,4 @@
-import { formatIban, hasPaymentDetails, type BankDetailsSnapshot } from "@quits/contracts/payment-details"
+import { formatIban, hasPaymentDetails, type BankAccountSnapshot } from "@quits/contracts/payment-details"
 import type { TranslationKey } from "./i18n/messages"
 import { translate } from "./i18n/translate"
 
@@ -15,18 +15,19 @@ export type PaymentDetailsBlock = {
  * the settings preview both build the block here, so they cannot drift apart.
  */
 export function buildPaymentDetailsBlock(
-  details: BankDetailsSnapshot | null | undefined,
+  details: { bankAccount?: BankAccountSnapshot | null; note?: string | null } | null | undefined,
   invoiceNumber: string,
   locale: string | null | undefined
 ): PaymentDetailsBlock | null {
   if (!details || !hasPaymentDetails(details)) return null
+  const account = details.bankAccount
   const entries: Array<[TranslationKey, string | null | undefined]> = [
-    ["pdf.regNumber", details.regNumber],
-    ["pdf.accountNumber", details.accountNumber],
-    ["pdf.iban", details.iban ? formatIban(details.iban) : null],
-    ["pdf.bic", details.bic],
-    ["pdf.accountHolder", details.accountHolder],
-    ["pdf.bankName", details.bankName],
+    ["pdf.regNumber", account?.regNumber],
+    ["pdf.accountNumber", account?.accountNumber],
+    ["pdf.iban", account?.iban ? formatIban(account.iban) : null],
+    ["pdf.bic", account?.bic],
+    ["pdf.accountHolder", account?.accountHolder],
+    ["pdf.bankName", account?.bankName],
   ]
   return {
     title: translate("pdf.paymentDetails", locale),

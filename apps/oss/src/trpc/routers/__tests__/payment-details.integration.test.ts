@@ -14,24 +14,23 @@ function callerFor(organizationId: string, userId: string) {
   } as never)
 }
 
-const complete = {
+const account = {
   accountHolder: "Nordic Design ApS",
   bankName: "Danske Bank",
   regNumber: "0040",
   accountNumber: "0440116243",
   iban: "DK5000400440116243",
   bic: "DABADKKK",
-  note: "MobilePay Box 12345",
 }
-
-const empty = {
+const complete = { bankAccount: account, note: "MobilePay Box 12345" }
+const empty = { bankAccount: null, note: null }
+const emptyAccount = {
   accountHolder: null,
   bankName: null,
   regNumber: null,
   accountNumber: null,
   iban: null,
   bic: null,
-  note: null,
 }
 
 describeIfDatabase("paymentDetails router", () => {
@@ -53,10 +52,10 @@ describeIfDatabase("paymentDetails router", () => {
 
   it("starts empty and stores what an admin saves", async () => {
     const { org, admin } = await organization()
-    expect(await admin.paymentDetails.get()).toEqual({ details: empty, canUpdate: true })
+    expect(await admin.paymentDetails.get()).toEqual({ ...empty, canUpdate: true })
 
-    expect(await admin.paymentDetails.update(complete)).toEqual({ details: complete, canUpdate: true })
-    expect(await admin.paymentDetails.get()).toEqual({ details: complete, canUpdate: true })
+    expect(await admin.paymentDetails.update(complete)).toEqual({ ...complete, canUpdate: true })
+    expect(await admin.paymentDetails.get()).toEqual({ ...complete, canUpdate: true })
 
     expect(
       await prisma.orgSettings.findUniqueOrThrow({
@@ -86,81 +85,92 @@ describeIfDatabase("paymentDetails router", () => {
     const { admin } = await organization()
     expect(
       await admin.paymentDetails.update({
-        accountHolder: "  Nordic Design ApS  ",
-        bankName: "",
-        regNumber: " 0040 ",
-        accountNumber: "0440 116243",
-        iban: "dk50 0040 0440 1162 43",
-        bic: " dabadkkk ",
+        bankAccount: {
+          accountHolder: "  Nordic Design ApS  ",
+          bankName: "",
+          regNumber: " 0040 ",
+          accountNumber: "0440 116243",
+          iban: "dk50 0040 0440 1162 43",
+          bic: " dabadkkk ",
+        },
         note: "   ",
       })
     ).toEqual({
-      details: {
-        ...empty,
-        accountHolder: "Nordic Design ApS",
-        regNumber: "0040",
-        accountNumber: "0440116243",
-        iban: "DK5000400440116243",
-        bic: "DABADKKK",
-      },
+      bankAccount: { ...account, bankName: null },
+      note: null,
       canUpdate: true,
     })
   })
 
-  it("replaces all details, so a field left out is cleared", async () => {
+  it("replaces all details, so a part left out is cleared", async () => {
     const { admin } = await organization()
     await admin.paymentDetails.update(complete)
-    expect(await admin.paymentDetails.update({ iban: "DK5000400440116243" })).toEqual({
-      details: { ...empty, iban: "DK5000400440116243" },
+    const ibanOnly = { bankAccount: { ...emptyAccount, iban: "DK5000400440116243" }, note: null }
+    expect(await admin.paymentDetails.update({ bankAccount: { iban: "DK5000400440116243" } })).toEqual({
+      ...ibanOnly,
       canUpdate: true,
     })
-    expect((await admin.paymentDetails.get()).details).toEqual({ ...empty, iban: "DK5000400440116243" })
-    expect((await admin.paymentDetails.update({})).details).toEqual(empty)
+    const { canUpdate: _, ...saved } = await admin.paymentDetails.get()
+    expect(saved).toEqual(ibanOnly)
+    const { canUpdate: __, ...cleared } = await admin.paymentDetails.update({})
+    expect(cleared).toEqual(empty)
+  })
+
+  it("treats a blank account like no account and keeps the note", async () => {
+    const { admin } = await organization()
+    await admin.paymentDetails.update(complete)
+    const { canUpdate: _, ...saved } = await admin.paymentDetails.update({
+      bankAccount: { accountHolder: " ", iban: "" },
+      note: "Pay by transfer",
+    })
+    expect(saved).toEqual({ bankAccount: null, note: "Pay by transfer" })
   })
 
   it("creates the settings row when the organization has none yet", async () => {
     const { org, admin } = await organization()
     await prisma.orgSettings.delete({ where: { organizationId: org.organizationId } })
-    expect((await admin.paymentDetails.get()).details).toEqual(empty)
-    expect((await admin.paymentDetails.update({ note: "Pay by transfer" })).details).toEqual({
-      ...empty,
+    expect(await admin.paymentDetails.get()).toMatchObject(empty)
+    expect(await admin.paymentDetails.update({ note: "Pay by transfer" })).toMatchObject({
+      bankAccount: null,
       note: "Pay by transfer",
     })
   })
 
   it.each([
-    ["a corrupted IBAN", { iban: "DK5000400440116244" }],
-    ["a malformed BIC", { bic: "DABADKK" }],
-    ["a reg.nr. without account number", { regNumber: "0040" }],
-    ["an account number without reg.nr.", { accountNumber: "0440116243" }],
-    ["a reg.nr. that is not four digits", { regNumber: "004", accountNumber: "0440116243" }],
-    ["an account number longer than ten digits", { regNumber: "0040", accountNumber: "12345678901" }],
+    ["a corrupted IBAN", { bankAccount: { iban: "DK5000400440116244" } }],
+    ["a DK IBAN with one digit too many", { bankAccount: { iban: "DK50004004401162430" } }],
+    ["a malformed BIC", { bankAccount: { iban: "DK5000400440116243", bic: "DABADKK" } }],
+    ["a reg.nr. without account number", { bankAccount: { regNumber: "0040" } }],
+    ["an account number without reg.nr.", { bankAccount: { accountNumber: "0440116243" } }],
+    ["a reg.nr. that is not four digits", { bankAccount: { regNumber: "004", accountNumber: "0440116243" } }],
+    ["an account number longer than ten digits", { bankAccount: { regNumber: "0040", accountNumber: "12345678901" } }],
+    ["a bank name without anything to pay to", { bankAccount: { bankName: "Danske Bank" } }],
     ["a payment note over 500 characters", { note: "x".repeat(501) }],
   ])("rejects %s and keeps what was saved", async (_name, input) => {
     const { admin } = await organization()
     await admin.paymentDetails.update(complete)
     await expect(admin.paymentDetails.update(input)).rejects.toMatchObject({ code: "BAD_REQUEST" })
-    expect((await admin.paymentDetails.get()).details).toEqual(complete)
+    expect(await admin.paymentDetails.get()).toEqual({ ...complete, canUpdate: true })
   })
 
   it("lets members and accountants read the details but not change them", async () => {
     const { admin, member, accountant } = await organization()
     await admin.paymentDetails.update(complete)
 
-    expect(await member.paymentDetails.get()).toEqual({ details: complete, canUpdate: false })
-    expect(await accountant.paymentDetails.get()).toEqual({ details: complete, canUpdate: false })
-    await expect(member.paymentDetails.update({ iban: "DK5000400440116243" })).rejects.toMatchObject({
+    expect(await member.paymentDetails.get()).toEqual({ ...complete, canUpdate: false })
+    expect(await accountant.paymentDetails.get()).toEqual({ ...complete, canUpdate: false })
+    await expect(member.paymentDetails.update({ bankAccount: { iban: "DK5000400440116243" } })).rejects.toMatchObject({
       code: "FORBIDDEN",
     })
     await expect(accountant.paymentDetails.update({})).rejects.toMatchObject({ code: "FORBIDDEN" })
-    expect((await admin.paymentDetails.get()).details).toEqual(complete)
+    expect(await admin.paymentDetails.get()).toEqual({ ...complete, canUpdate: true })
   })
 
   it("keeps each organization's details to itself", async () => {
     const first = await organization()
     const second = await organization()
     await first.admin.paymentDetails.update(complete)
-    expect((await second.admin.paymentDetails.get()).details).toEqual(empty)
+    expect(await second.admin.paymentDetails.get()).toEqual({ ...empty, canUpdate: true })
   })
 
   it("requires a signed-in user", async () => {

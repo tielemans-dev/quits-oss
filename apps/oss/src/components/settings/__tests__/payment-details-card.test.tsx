@@ -33,16 +33,19 @@ function translate(key: string) {
   return key
 }
 
-const empty = { accountHolder: null, bankName: null, regNumber: null, accountNumber: null, iban: null, bic: null, note: null }
+const empty = { bankAccount: null, note: null }
 const complete = {
-  accountHolder: "Nordic Design ApS",
-  bankName: "Danske Bank",
-  regNumber: "0040",
-  accountNumber: "0440116243",
-  iban: "DK5000400440116243",
-  bic: "DABADKKK",
+  bankAccount: {
+    accountHolder: "Nordic Design ApS",
+    bankName: "Danske Bank",
+    regNumber: "0040",
+    accountNumber: "0440116243",
+    iban: "DK5000400440116243",
+    bic: "DABADKKK",
+  },
   note: "MobilePay Box 12345",
 }
+const noAccountFields = { accountHolder: null, bankName: null, regNumber: null, accountNumber: null, iban: null, bic: null }
 
 afterEach(() => {
   cleanup()
@@ -54,18 +57,19 @@ const field = (label: string) => screen.getByLabelText(label) as HTMLInputElemen
 const saveButton = () => screen.getByRole("button", { name: "settings.paymentDetails.save" }) as HTMLButtonElement
 const type = (label: string, value: string) => fireEvent.change(field(label), { target: { value } })
 
-async function renderAs(state: { details: typeof empty | typeof complete; canUpdate: boolean }) {
-  api.get.mockResolvedValue(state)
+async function renderAs(state: typeof empty | typeof complete, options: { canUpdate?: boolean } = {}) {
+  const canUpdate = options.canUpdate ?? true
+  api.get.mockResolvedValue({ ...state, canUpdate })
   const view = render(<PaymentDetailsCard />)
   await waitFor(() => expect(api.get).toHaveBeenCalled())
   await screen.findByText("settings.paymentDetails.title")
-  await waitFor(() => expect((field("settings.paymentDetails.iban.label") as HTMLInputElement).disabled).toBe(!state.canUpdate))
+  await waitFor(() => expect((field("settings.paymentDetails.iban.label") as HTMLInputElement).disabled).toBe(!canUpdate))
   return view
 }
 
 describe("PaymentDetailsCard", () => {
   it("shows the saved details, with the IBAN grouped as it is printed", async () => {
-    await renderAs({ details: complete, canUpdate: true })
+    await renderAs(complete)
 
     expect(field("settings.paymentDetails.regNumber.label").value).toBe("0040")
     expect(field("settings.paymentDetails.accountNumber.label").value).toBe("0440116243")
@@ -77,7 +81,7 @@ describe("PaymentDetailsCard", () => {
   })
 
   it("groups the Danish account and the international transfer fields", async () => {
-    await renderAs({ details: empty, canUpdate: true })
+    await renderAs(empty)
 
     const danish = screen.getByRole("group", { name: "settings.paymentDetails.group.dk.title" })
     expect(within(danish).getByLabelText("settings.paymentDetails.regNumber.label")).toBeTruthy()
@@ -88,7 +92,7 @@ describe("PaymentDetailsCard", () => {
   })
 
   it("previews the block as it will appear on invoices, updating while typing", async () => {
-    await renderAs({ details: empty, canUpdate: true })
+    await renderAs(empty)
     expect(screen.getByText("settings.paymentDetails.preview.empty")).toBeTruthy()
     expect(screen.queryByTestId("payment-details-preview")).toBeNull()
 
@@ -106,8 +110,12 @@ describe("PaymentDetailsCard", () => {
   })
 
   it("saves the normalized details and reports success", async () => {
-    await renderAs({ details: empty, canUpdate: true })
-    api.update.mockResolvedValue({ details: { ...empty, iban: "DK5000400440116243", bic: "DABADKKK" }, canUpdate: true })
+    await renderAs(empty)
+    api.update.mockResolvedValue({
+      bankAccount: { ...noAccountFields, iban: "DK5000400440116243", bic: "DABADKKK" },
+      note: null,
+      canUpdate: true,
+    })
 
     expect(saveButton().disabled).toBe(true)
     type("settings.paymentDetails.iban.label", "dk50 0040 0440 1162 43")
@@ -116,13 +124,16 @@ describe("PaymentDetailsCard", () => {
     fireEvent.click(saveButton())
 
     expect(await screen.findByText("settings.paymentDetails.saved")).toBeTruthy()
-    expect(api.update).toHaveBeenCalledWith({ ...empty, iban: "DK5000400440116243", bic: "DABADKKK" })
+    expect(api.update).toHaveBeenCalledWith({
+      bankAccount: { ...noAccountFields, iban: "DK5000400440116243", bic: "DABADKKK" },
+      note: null,
+    })
     expect(field("settings.paymentDetails.iban.label").value).toBe("DK50 0040 0440 1162 43")
     expect(saveButton().disabled).toBe(true)
   })
 
   it("does not save an IBAN with a wrong check digit and says why", async () => {
-    await renderAs({ details: empty, canUpdate: true })
+    await renderAs(empty)
 
     type("settings.paymentDetails.iban.label", "DK5000400440116244")
     // The error appears once the person leaves the field, not while still typing.
@@ -135,13 +146,35 @@ describe("PaymentDetailsCard", () => {
     expect(api.update).not.toHaveBeenCalled()
   })
 
+  it("asks for an IBAN or reg.nr. and account number once a bank name is entered", async () => {
+    await renderAs(empty)
+
+    type("settings.paymentDetails.bankName.label", "Danske Bank")
+    fireEvent.click(saveButton())
+
+    expect(screen.getByText("settings.paymentDetails.error.iban.required")).toBeTruthy()
+    expect(api.update).not.toHaveBeenCalled()
+
+    type("settings.paymentDetails.iban.label", "DK5000400440116243")
+    expect(screen.queryByText("settings.paymentDetails.error.iban.required")).toBeNull()
+  })
+
+  it("rejects a DK IBAN with one digit too many", async () => {
+    await renderAs(empty)
+    type("settings.paymentDetails.iban.label", "DK50 0040 0440 1162 430")
+    fireEvent.blur(field("settings.paymentDetails.iban.label"))
+    expect(screen.getByText("settings.paymentDetails.error.iban")).toBeTruthy()
+  })
+
   it("asks for the reg.nr. and account number together", async () => {
-    await renderAs({ details: empty, canUpdate: true })
+    await renderAs(empty)
 
     type("settings.paymentDetails.regNumber.label", "0040")
     fireEvent.click(saveButton())
 
     expect(screen.getByText("settings.paymentDetails.error.accountNumber.required")).toBeTruthy()
+    // The missing counterpart is the problem, not a missing IBAN.
+    expect(screen.queryByText("settings.paymentDetails.error.iban.required")).toBeNull()
     expect(api.update).not.toHaveBeenCalled()
 
     type("settings.paymentDetails.accountNumber.label", "0440116243")
@@ -153,7 +186,7 @@ describe("PaymentDetailsCard", () => {
     ["settings.paymentDetails.bic.label", "DABADKK", "settings.paymentDetails.error.bic"],
     ["settings.paymentDetails.note.label", "x".repeat(501), "settings.paymentDetails.error.note"],
   ])("rejects an invalid %s", async (label, value, errorKey) => {
-    await renderAs({ details: empty, canUpdate: true })
+    await renderAs(empty)
     type(label, value)
     if (label.includes("regNumber")) type("settings.paymentDetails.accountNumber.label", "0440116243")
     fireEvent.click(saveButton())
@@ -162,7 +195,7 @@ describe("PaymentDetailsCard", () => {
   })
 
   it("shows a server failure instead of success", async () => {
-    await renderAs({ details: empty, canUpdate: true })
+    await renderAs(empty)
     api.update.mockRejectedValue(new Error("Your role does not allow settings:update"))
     type("settings.paymentDetails.note.label", "Pay by transfer")
     fireEvent.click(saveButton())
@@ -172,7 +205,7 @@ describe("PaymentDetailsCard", () => {
   })
 
   it.each(["member", "accountant"])("shows the details read-only to a %s", async () => {
-    await renderAs({ details: complete, canUpdate: false })
+    await renderAs(complete, { canUpdate: false })
 
     expect(screen.getByText("settings.paymentDetails.readOnly")).toBeTruthy()
     expect(screen.queryByRole("button", { name: "settings.paymentDetails.save" })).toBeNull()
@@ -191,7 +224,7 @@ describe("PaymentDetailsCard", () => {
   })
 
   it("reloads and drops edit rights when the user switches organization", async () => {
-    const { rerender } = await renderAs({ details: complete, canUpdate: true })
+    const { rerender } = await renderAs(complete)
     type("settings.paymentDetails.note.label", "Unsaved edit")
     expect(field("settings.paymentDetails.note.label").value).toBe("Unsaved edit")
 
@@ -205,7 +238,7 @@ describe("PaymentDetailsCard", () => {
   })
 
   it("ignores a save response that arrives after the user switched organization", async () => {
-    api.get.mockResolvedValueOnce({ details: empty, canUpdate: true })
+    api.get.mockResolvedValueOnce({ ...empty, canUpdate: true })
     let resolveSave: (state: unknown) => void = () => undefined
     api.update.mockReturnValueOnce(new Promise((resolve) => (resolveSave = resolve)))
     const { rerender } = render(<PaymentDetailsCard />)
@@ -215,12 +248,12 @@ describe("PaymentDetailsCard", () => {
     fireEvent.click(saveButton())
     expect(api.update).toHaveBeenCalledTimes(1)
 
-    api.get.mockResolvedValueOnce({ details: { ...empty, note: "Organization B" }, canUpdate: true })
+    api.get.mockResolvedValueOnce({ ...empty, note: "Organization B", canUpdate: true })
     auth.session = { data: { session: { activeOrganizationId: "org_b" } }, isPending: false }
     rerender(<PaymentDetailsCard />)
     await waitFor(() => expect(field("settings.paymentDetails.note.label").value).toBe("Organization B"))
 
-    await act(async () => resolveSave({ details: { ...empty, note: "From organization A" }, canUpdate: true }))
+    await act(async () => resolveSave({ ...empty, note: "From organization A", canUpdate: true }))
 
     expect(field("settings.paymentDetails.note.label").value).toBe("Organization B")
     expect(screen.queryByText("settings.paymentDetails.saved")).toBeNull()

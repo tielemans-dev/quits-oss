@@ -31,7 +31,9 @@ export const daPaymentDetailsMessages = {
   "settings.paymentDetails.error.regNumber.required": "Angiv reg.nr. sammen med kontonummeret.",
   "settings.paymentDetails.error.accountNumber": "Angiv 1 til 10 cifre.",
   "settings.paymentDetails.error.accountNumber.required": "Angiv kontonummer sammen med reg.nr.",
-  "settings.paymentDetails.error.iban": "IBAN er ikke gyldigt. Kontrollér tegnene, og prøv igen.",
+  "settings.paymentDetails.error.iban": "IBAN er ikke gyldigt. Kontrollér tegnene og længden, og prøv igen.",
+  "settings.paymentDetails.error.iban.required":
+    "Angiv et IBAN eller et reg.nr. og kontonummer, så kunderne ved, hvor de skal betale.",
   "settings.paymentDetails.error.bic": "Angiv 8 eller 11 tegn, fx DABADKKK.",
   "settings.paymentDetails.error.accountHolder": "Brug højst 120 tegn.",
   "settings.paymentDetails.error.bankName": "Brug højst 120 tegn.",

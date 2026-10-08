@@ -5,15 +5,18 @@ import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { InvoicePdfDocument, type InvoiceForPdf } from "../invoice-pdf"
 import { buildPaymentDetailsBlock } from "../payment-details-block"
 
-const bankDetails = {
+const bankAccount = {
   accountHolder: "Nordic Design ApS",
   bankName: "Danske Bank",
   regNumber: "0040",
   accountNumber: "0440116243",
   iban: "DK5000400440116243",
   bic: "DABADKKK",
-  note: "MobilePay Box 12345",
 }
+const paymentNote = "MobilePay Box 12345"
+const details = { bankAccount, note: paymentNote }
+/** The payment details of an invoice, as the PDF input carries them. */
+const payment = { bankAccount, paymentNote }
 
 const invoice: InvoiceForPdf = {
   number: "INV-0042",
@@ -46,7 +49,7 @@ const renderedText = (input: InvoiceForPdf, locale: string) =>
 
 describe("payment details block", () => {
   it("lists every given detail with the invoice number as payment reference", () => {
-    expect(buildPaymentDetailsBlock(bankDetails, "INV-0042", "en-US")).toEqual({
+    expect(buildPaymentDetailsBlock(details, "INV-0042", "en-US")).toEqual({
       title: "Payment details",
       rows: [
         { label: "Reg. no.", value: "0040" },
@@ -62,7 +65,7 @@ describe("payment details block", () => {
   })
 
   it("is written in Danish for a Danish organization", () => {
-    expect(buildPaymentDetailsBlock(bankDetails, "INV-0042", "da-DK")).toMatchObject({
+    expect(buildPaymentDetailsBlock(details, "INV-0042", "da-DK")).toMatchObject({
       title: "Betalingsoplysninger",
       rows: [
         { label: "Reg.nr.", value: "0040" },
@@ -77,7 +80,7 @@ describe("payment details block", () => {
   })
 
   it("only lists what is present", () => {
-    const block = buildPaymentDetailsBlock({ iban: "DK5000400440116243", regNumber: null, note: "  " }, "INV-1", "en")
+    const block = buildPaymentDetailsBlock({ bankAccount: { iban: "DK5000400440116243", regNumber: null }, note: "  " }, "INV-1", "en")
     expect(block?.rows).toEqual([{ label: "IBAN", value: "DK50 0040 0440 1162 43" }])
     expect(block?.note).toBeNull()
 
@@ -90,13 +93,14 @@ describe("payment details block", () => {
     expect(buildPaymentDetailsBlock(undefined, "INV-1", "en")).toBeNull()
     expect(buildPaymentDetailsBlock(null, "INV-1", "en")).toBeNull()
     expect(buildPaymentDetailsBlock({}, "INV-1", "en")).toBeNull()
-    expect(buildPaymentDetailsBlock({ iban: " ", note: "" }, "INV-1", "en")).toBeNull()
+    expect(buildPaymentDetailsBlock({ bankAccount: { iban: " " }, note: "" }, "INV-1", "en")).toBeNull()
+    expect(buildPaymentDetailsBlock({ bankAccount: null, note: null }, "INV-1", "en")).toBeNull()
   })
 })
 
 describe("invoice PDF payment details", () => {
   it("shows the block after the totals and before the notes", () => {
-    const text = renderedText({ ...invoice, notes: "Thank you", bankDetails }, "en-US")
+    const text = renderedText({ ...invoice, notes: "Thank you", ...payment }, "en-US")
     const order = ["Subtotal", "Payment details", "Payment reference: INV-0042", "Notes", "Thank you"].map((needle) =>
       text.lastIndexOf(needle)
     )
@@ -107,12 +111,12 @@ describe("invoice PDF payment details", () => {
   })
 
   it("prints the payment reference as one line", () => {
-    expect(renderedText({ ...invoice, bankDetails }, "en-US").split("\n")).toContain("Payment reference: INV-0042")
-    expect(renderedText({ ...invoice, bankDetails }, "da-DK").split("\n")).toContain("Betalingsreference: INV-0042")
+    expect(renderedText({ ...invoice, ...payment }, "en-US").split("\n")).toContain("Payment reference: INV-0042")
+    expect(renderedText({ ...invoice, ...payment }, "da-DK").split("\n")).toContain("Betalingsreference: INV-0042")
   })
 
   it("is localized", () => {
-    const text = renderedText({ ...invoice, bankDetails }, "da-DK")
+    const text = renderedText({ ...invoice, ...payment }, "da-DK")
     expect(text).toContain("Betalingsoplysninger")
     expect(text).toContain("Reg.nr.")
     expect(text).toContain("Kontonr.")
@@ -120,26 +124,26 @@ describe("invoice PDF payment details", () => {
     expect(text).not.toContain("Payment details")
   })
 
-  it("leaves out the block without bank details, as on documents issued earlier", () => {
-    for (const bankDetailsValue of [undefined, null, {}] as const) {
-      const text = renderedText({ ...invoice, bankDetails: bankDetailsValue }, "en-US")
+  it("leaves out the block without payment details, as on documents issued earlier", () => {
+    for (const empty of [{}, { bankAccount: null, paymentNote: null }, { bankAccount: {} }] as const) {
+      const text = renderedText({ ...invoice, ...empty }, "en-US")
       expect(text).not.toContain("Payment details")
       expect(text).not.toContain("Payment reference")
     }
   })
 
-  it("renders an invoice whose seller snapshot predates bank details", async () => {
+  it("renders an invoice whose seller snapshot predates payment details", async () => {
     const legacy = parseSellerSnapshot({ companyName: "Old ApS", taxIds: [] })
     const buffer = await renderToBuffer(
-      InvoicePdfDocument({ invoice: { ...invoice, bankDetails: legacy?.bankDetails }, org: { locale: "da-DK" } }) as never
+      InvoicePdfDocument({ invoice: { ...invoice, bankAccount: legacy?.bankAccount, paymentNote: legacy?.paymentNote }, org: { locale: "da-DK" } }) as never
     )
     expect(buffer.subarray(0, 5).toString()).toBe("%PDF-")
   })
 
-  it("renders a complete PDF with bank details in both languages", async () => {
+  it("renders a complete PDF with payment details in both languages", async () => {
     for (const locale of ["en-US", "da-DK"]) {
       const buffer = await renderToBuffer(
-        InvoicePdfDocument({ invoice: { ...invoice, bankDetails }, org: { locale } }) as never
+        InvoicePdfDocument({ invoice: { ...invoice, ...payment }, org: { locale } }) as never
       )
       expect(buffer.subarray(0, 5).toString()).toBe("%PDF-")
       expect(buffer.byteLength).toBeGreaterThan(1000)

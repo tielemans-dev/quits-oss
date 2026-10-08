@@ -1,12 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import {
-  PAYMENT_DETAILS_FIELDS,
+  BANK_ACCOUNT_FIELDS,
   PAYMENT_NOTE_MAX_LENGTH,
   formatIban,
   paymentDetailsInputSchema,
-  type BankDetailsSnapshot,
+  type BankAccountField,
   type PaymentDetails,
-  type PaymentDetailsField,
+  type PaymentDetailsInput,
 } from "@quits/contracts/payment-details"
 import { useActiveOrganizationId } from "../../lib/active-organization"
 import { useI18n } from "../../lib/i18n/react"
@@ -18,6 +18,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Textarea } from "../ui/textarea"
+
+/** The form's fields: the bank account's, and the organization-level payment note. */
+type PaymentDetailsField = BankAccountField | "note"
+const PAYMENT_DETAILS_FIELDS: readonly PaymentDetailsField[] = [...BANK_ACCOUNT_FIELDS, "note"]
 
 type Values = Record<PaymentDetailsField, string>
 type FieldError = "invalid" | "required"
@@ -47,20 +51,39 @@ const ERROR_KEYS: Record<PaymentDetailsField, { invalid: TranslationKey; require
     invalid: "settings.paymentDetails.error.accountNumber",
     required: "settings.paymentDetails.error.accountNumber.required",
   },
-  iban: { invalid: "settings.paymentDetails.error.iban" },
+  iban: {
+    invalid: "settings.paymentDetails.error.iban",
+    required: "settings.paymentDetails.error.iban.required",
+  },
   bic: { invalid: "settings.paymentDetails.error.bic" },
   note: { invalid: "settings.paymentDetails.error.note" },
 }
 
 function toValues(details: PaymentDetails): Values {
+  const account = details.bankAccount
   return {
-    accountHolder: details.accountHolder ?? "",
-    bankName: details.bankName ?? "",
-    regNumber: details.regNumber ?? "",
-    accountNumber: details.accountNumber ?? "",
-    iban: details.iban ? formatIban(details.iban) : "",
-    bic: details.bic ?? "",
+    accountHolder: account?.accountHolder ?? "",
+    bankName: account?.bankName ?? "",
+    regNumber: account?.regNumber ?? "",
+    accountNumber: account?.accountNumber ?? "",
+    iban: account?.iban ? formatIban(account.iban) : "",
+    bic: account?.bic ?? "",
     note: details.note ?? "",
+  }
+}
+
+/** The form as the input the server takes: the account fields grouped under `bankAccount`. */
+function toInput(values: Values): PaymentDetailsInput {
+  return {
+    bankAccount: {
+      accountHolder: values.accountHolder,
+      bankName: values.bankName,
+      regNumber: values.regNumber,
+      accountNumber: values.accountNumber,
+      iban: values.iban,
+      bic: values.bic,
+    },
+    note: values.note,
   }
 }
 
@@ -69,11 +92,12 @@ const isField = (value: unknown): value is PaymentDetailsField =>
 
 /** Checks the form with the same schema the server enforces. */
 function validate(values: Values): FieldErrors {
-  const result = paymentDetailsInputSchema.safeParse(values)
+  const result = paymentDetailsInputSchema.safeParse(toInput(values))
   if (result.success) return {}
   const errors: FieldErrors = {}
   for (const issue of result.error.issues) {
-    const field = issue.path[0]
+    // Paths are `["bankAccount", field]` for the account and `["note"]` for the note.
+    const field = issue.path.at(-1)
     if (!isField(field) || errors[field]) continue
     // A blank field with an error is the one a filled-in partner field asks for.
     errors[field] = values[field].trim() === "" ? "required" : "invalid"
@@ -82,15 +106,17 @@ function validate(values: Values): FieldErrors {
 }
 
 /** What the invoice would show for the values as typed, even while they are still invalid. */
-function previewDetails(values: Values): BankDetailsSnapshot {
+function previewDetails(values: Values) {
   const text = (value: string) => value.trim() || null
   return {
-    accountHolder: text(values.accountHolder),
-    bankName: text(values.bankName),
-    regNumber: text(values.regNumber.replace(/\s+/g, "")),
-    accountNumber: text(values.accountNumber.replace(/\s+/g, "")),
-    iban: text(values.iban.replace(/\s+/g, "")),
-    bic: text(values.bic.replace(/\s+/g, "").toUpperCase()),
+    bankAccount: {
+      accountHolder: text(values.accountHolder),
+      bankName: text(values.bankName),
+      regNumber: text(values.regNumber.replace(/\s+/g, "")),
+      accountNumber: text(values.accountNumber.replace(/\s+/g, "")),
+      iban: text(values.iban.replace(/\s+/g, "")),
+      bic: text(values.bic.replace(/\s+/g, "").toUpperCase()),
+    },
     note: text(values.note),
   }
 }
@@ -203,7 +229,7 @@ export function PaymentDetailsCard() {
       .then(() => trpc.paymentDetails.get.query())
       .then((state) => {
         if (cancelled) return
-        const next = toValues(state.details)
+        const next = toValues(state)
         setValues(next)
         setSaved(next)
         setCanUpdate(state.canUpdate)
@@ -235,7 +261,7 @@ export function PaymentDetailsCard() {
 
   async function handleSave() {
     setSubmitted(true)
-    const parsed = paymentDetailsInputSchema.safeParse(values)
+    const parsed = paymentDetailsInputSchema.safeParse(toInput(values))
     if (!parsed.success) return
     // A response that arrives after the user switched organization, or after a newer save started,
     // is stale and must not overwrite what is now on screen.
@@ -246,7 +272,7 @@ export function PaymentDetailsCard() {
     try {
       const state = await trpc.paymentDetails.update.mutate(parsed.data)
       if (!stillCurrent()) return
-      const next = toValues(state.details)
+      const next = toValues(state)
       setValues(next)
       setSaved(next)
       setTouched({})

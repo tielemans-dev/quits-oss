@@ -12,7 +12,7 @@ import type { CreditNoteForPdf } from "../../lib/credit-note-pdf"
 import type { AgreementPdfInput } from "../../lib/agreement-pdf"
 import { buildOfferSnapshot, canonicalizeOffer, hashOfferSnapshot } from "../agreements/snapshot"
 import { creditNoteIssueInputSchema } from "@quits/contracts/credit-notes"
-import { buildBuyerSnapshot, buildSellerSnapshot, withInvoiceBankDetails, withoutBankDetails } from "./snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, withInvoicePaymentDetails, withoutPaymentDetails } from "./snapshots"
 import { loadDocumentContext } from "./context"
 import { priceCreditNote } from "./credit-pricing"
 import { InvalidState, NotFound } from "../errors"
@@ -73,9 +73,9 @@ export const prospectiveRenderInput = (input: {
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.documentId })
     if (!input.preview && invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
-    // Bank details are always the ones valid now, also for agreement invoices, which keep the
+    // Payment details are always the ones valid now, also for agreement invoices, which keep the
     // agreed seller identity but are paid to the account in force when they are issued.
-    const seller = withInvoiceBankDetails(
+    const seller = withInvoicePaymentDetails(
       invoice.agreementId ? { ...parseSellerSnapshot(invoice.sellerSnapshot), taxIds: sellerTaxIds } : buildSellerSnapshot(settings, sellerTaxIds),
       settings
     )
@@ -88,7 +88,7 @@ export const prospectiveRenderInput = (input: {
     const pdfInvoice: InvoiceForPdf = {
       number: input.number, status: "sent", issueDate: base.issuedAt, dueDate: invoice.dueDate.toISOString(),
       subtotal: num(invoice.subtotalNet), taxAmount: num(invoice.totalTax), total: num(invoice.totalGross),
-      currency: invoice.currency, notes: invoice.notes, ...(seller.bankDetails ? { bankDetails: seller.bankDetails } : {}),
+      currency: invoice.currency, notes: invoice.notes, ...(seller.bankAccount ? { bankAccount: seller.bankAccount } : {}), ...(seller.paymentNote ? { paymentNote: seller.paymentNote } : {}),
       contact: { ...buyer, name: buyer?.name ?? invoice.contact.name },
       items: invoice.items.map(line => ({ description: line.description, quantity: num(line.quantity),
         unitPrice: num(line.unitPriceGross), total: num(line.lineGross) })),
@@ -113,7 +113,7 @@ export const prospectiveRenderInput = (input: {
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: selection.invoiceId })
     const built = yield* priceCreditNote(invoice, selection)
-    const sellerSnapshot = withoutBankDetails(invoice.sellerSnapshot) ?? buildSellerSnapshot(settings, sellerTaxIds)
+    const sellerSnapshot = withoutPaymentDetails(invoice.sellerSnapshot) ?? buildSellerSnapshot(settings, sellerTaxIds)
     const buyerSnapshot = invoice.buyerSnapshot ?? buildBuyerSnapshot(invoice.contact)
     const money = creditMoneySnapshot(invoice, { id: input.documentId, number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, reason: selection.reason, mode: selection.mode, built, hasPayments: invoice.payments.length > 0, paid: invoice.payments.reduce((sum, payment) => sum.plus(payment.amount), toDecimal(0)).toString(), priorCredits: invoice.creditNotes.reduce((sum, credit) => sum.plus(credit.totalGross), toDecimal(0)).toString(), seller: parseSellerSnapshot(sellerSnapshot) ?? {}, buyer: parseBuyerSnapshot(buyerSnapshot) ?? {} })
     const creditNote: CreditNoteForPdf = {

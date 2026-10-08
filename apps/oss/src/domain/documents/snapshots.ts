@@ -1,6 +1,6 @@
 import type { BuyerSnapshot, SellerSnapshot } from "@quits/contracts/documents"
 import type { TaxId } from "../../lib/compliance"
-import { bankDetailsSnapshotFromColumns, type PaymentDetailsColumns } from "../../lib/payment-details"
+import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../../lib/payment-details"
 
 export function buildSellerSnapshot(
   settings: { companyName: string | null; companyEmail: string | null; companyAddress: string | null },
@@ -15,28 +15,27 @@ export function buildSellerSnapshot(
 }
 
 /**
- * Invoices carry the bank details valid when they are issued, so payers always see the account
- * the seller named at that time. Quotes, credit notes and agreements do not take payments and
- * keep the plain seller snapshot. An organization without bank details gets no `bankDetails` key.
+ * Invoices carry the payment details valid when they are issued, so payers always see the account
+ * the seller named at that time: the bank account in `bankAccount` and the organization's note in
+ * `paymentNote`. Quotes, credit notes and agreements do not take payments and keep the plain
+ * seller snapshot. An organization without payment details gets neither key.
  */
-export function withInvoiceBankDetails<T extends SellerSnapshot>(
+export function withInvoicePaymentDetails<T extends SellerSnapshot>(
   seller: T,
   settings: Partial<PaymentDetailsColumns>
 ): T {
-  const { bankDetails: _replaced, ...rest } = seller
-  const bankDetails = bankDetailsSnapshotFromColumns(settings)
-  return (bankDetails ? { ...rest, bankDetails } : rest) as T
+  const { bankAccount: _account, paymentNote: _note, ...rest } = seller
+  return { ...rest, ...paymentSnapshotFromColumns(settings) } as T
 }
 
 /**
- * A credit note takes its seller from the invoice it corrects, but bank details only belong on
+ * A credit note takes its seller from the invoice it corrects, but payment details only belong on
  * the invoice: the note must not carry payment instructions for a document it reduces.
  */
-export function withoutBankDetails<T>(snapshot: T): T {
-  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot) || !("bankDetails" in snapshot)) {
-    return snapshot
-  }
-  const { bankDetails: _removed, ...rest } = snapshot as Record<string, unknown>
+export function withoutPaymentDetails<T>(snapshot: T): T {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return snapshot
+  if (!("bankAccount" in snapshot) && !("paymentNote" in snapshot)) return snapshot
+  const { bankAccount: _account, paymentNote: _note, ...rest } = snapshot as Record<string, unknown>
   return rest as T
 }
 

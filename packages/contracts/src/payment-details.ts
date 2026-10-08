@@ -90,18 +90,17 @@ function optionalText(options: {
 
 const withoutWhitespace = (value: string) => value.replace(/\s+/g, "")
 
-export const PAYMENT_DETAILS_FIELDS = [
+export const BANK_ACCOUNT_FIELDS = [
   "accountHolder",
   "bankName",
   "regNumber",
   "accountNumber",
   "iban",
   "bic",
-  "note",
 ] as const
-export type PaymentDetailsField = (typeof PAYMENT_DETAILS_FIELDS)[number]
+export type BankAccountField = (typeof BANK_ACCOUNT_FIELDS)[number]
 
-const paymentDetailsShape = {
+const bankAccountShape = {
   accountHolder: optionalText({
     maxLength: PAYMENT_DETAILS_TEXT_MAX_LENGTH,
     message: "Account holder must be at most 120 characters",
@@ -132,18 +131,20 @@ const paymentDetailsShape = {
     check: isValidBic,
     message: "BIC must be 8 or 11 characters, for example DABADKKK",
   }),
-  note: optionalText({
-    maxLength: PAYMENT_NOTE_MAX_LENGTH,
-    message: "Payment note must be at most 500 characters",
-  }),
 }
 
 /**
- * The bank details an organization prints on its invoices. Every field is optional and blank
- * values become null, but the Danish reg.nr. and account number only make sense together. The
- * IBAN and BIC are normalized (no spaces, upper case) and the IBAN's check digits are verified.
+ * One bank account an organization can be paid on. Every field is optional and blank values
+ * become null, but the account rules hold for the account as a whole:
+ *
+ * - the Danish reg.nr. and account number only make sense together;
+ * - once any field is filled in, the account must say where to pay: an IBAN, or a reg.nr. with an
+ *   account number. A bank name on its own is refused.
+ *
+ * The IBAN and BIC are normalized (no spaces, upper case) and the IBAN's check digits and length
+ * are verified.
  */
-export const paymentDetailsInputSchema = z.object(paymentDetailsShape).superRefine((value, ctx) => {
+export const bankAccountSchema = z.object(bankAccountShape).superRefine((value, ctx) => {
   if (value.regNumber !== null && value.accountNumber === null) {
     ctx.addIssue({
       code: "custom",
@@ -158,44 +159,82 @@ export const paymentDetailsInputSchema = z.object(paymentDetailsShape).superRefi
       message: "Registration number (reg.nr.) is required together with the account number",
     })
   }
+  // A lone reg.nr. or account number is already reported above; this is for an account with
+  // neither (a bank name or account holder on its own).
+  if (hasBankAccount(value) && value.iban === null && value.regNumber === null && value.accountNumber === null) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["iban"],
+      message: "Enter an IBAN, or a registration number and account number",
+    })
+  }
+})
+
+export type BankAccountInput = z.input<typeof bankAccountSchema>
+export type BankAccount = z.output<typeof bankAccountSchema>
+
+/** True when at least one account field is filled in. */
+export function hasBankAccount(
+  account: Partial<Record<BankAccountField, string | null | undefined>> | null | undefined
+): boolean {
+  return BANK_ACCOUNT_FIELDS.some((field) => Boolean(account?.[field]?.trim()))
+}
+
+/**
+ * The payment details an organization prints on its invoices: its bank account and a free-form
+ * note ("MobilePay box 12345", "pay within 8 days to avoid fees"). A blank account counts as no
+ * account, so `bankAccount` is null or a complete, valid account.
+ *
+ * Where this goes next: organizations will need several accounts, for example one for DKK and one
+ * for EUR. `bankAccount` is already one account as a self-contained value, so the path is:
+ *
+ * 1. a table of accounts (`org_bank_account`: organization, currency, default flag and the six
+ *    account columns), replacing the six `bank*` columns of `org_settings`;
+ * 2. a migration that copies each organization's current columns into that table as its default
+ *    account, so nothing has to be re-entered;
+ * 3. `bankAccount` here becomes a list, and issuing an invoice freezes the account for its
+ *    currency, falling back to the default one;
+ * 4. `sellerSnapshot.bankAccount` stays exactly as it is: a snapshot only ever holds the one
+ *    account an invoice is paid to, so issued invoices, PDFs and e-invoices need no migration.
+ *
+ * `note` stays organization-level, which is why it is not part of the account.
+ */
+export const paymentDetailsInputSchema = z.object({
+  bankAccount: bankAccountSchema.nullish().transform((account) => (account && hasBankAccount(account) ? account : null)),
+  note: optionalText({
+    maxLength: PAYMENT_NOTE_MAX_LENGTH,
+    message: "Payment note must be at most 500 characters",
+  }),
 })
 
 export type PaymentDetailsInput = z.input<typeof paymentDetailsInputSchema>
 export type PaymentDetails = z.output<typeof paymentDetailsInputSchema>
 
-export const EMPTY_PAYMENT_DETAILS: PaymentDetails = {
-  accountHolder: null,
-  bankName: null,
-  regNumber: null,
-  accountNumber: null,
-  iban: null,
-  bic: null,
-  note: null,
-}
+export const EMPTY_PAYMENT_DETAILS: PaymentDetails = { bankAccount: null, note: null }
 
-/** True when at least one field is filled in. */
-export function hasPaymentDetails(details: Partial<Record<PaymentDetailsField, string | null | undefined>> | null | undefined) {
-  return PAYMENT_DETAILS_FIELDS.some((field) => Boolean(details?.[field]?.trim()))
+/** True when there is an account or a note to print. */
+export function hasPaymentDetails(
+  details: { bankAccount?: Partial<Record<BankAccountField, string | null | undefined>> | null; note?: string | null } | null | undefined
+): boolean {
+  return hasBankAccount(details?.bankAccount) || Boolean(details?.note?.trim())
 }
 
 /**
- * Bank details as frozen onto an issued invoice. Reading is lenient: values were validated when
+ * A bank account as frozen onto an issued invoice. Reading is lenient: values were validated when
  * they were saved, and an old document must keep parsing whatever its contents.
  */
-export const bankDetailsSnapshotSchema = z.object({
+export const bankAccountSnapshotSchema = z.object({
   accountHolder: z.string().nullable().optional(),
   bankName: z.string().nullable().optional(),
   regNumber: z.string().nullable().optional(),
   accountNumber: z.string().nullable().optional(),
   iban: z.string().nullable().optional(),
   bic: z.string().nullable().optional(),
-  note: z.string().nullable().optional(),
 })
-export type BankDetailsSnapshot = z.infer<typeof bankDetailsSnapshotSchema>
+export type BankAccountSnapshot = z.infer<typeof bankAccountSnapshotSchema>
 
 /** What `paymentDetails.get` and `paymentDetails.update` return. */
-export type PaymentDetailsState = {
-  details: PaymentDetails
+export type PaymentDetailsState = PaymentDetails & {
   /** Whether the caller may change the details (the `settings:update` permission). */
   canUpdate: boolean
 }
