@@ -21,7 +21,12 @@ import { localDiskArtifactStore } from "../../artifact-store"
 import { seedRehearsalFixture } from "../fixture"
 import { selfhostDocumentRenderer } from "../../runtime"
 import { createBackup, recordBackup } from "../backup"
-import { verifyBundle } from "../bundle"
+import { sha256Bytes, verifyBundle } from "../bundle"
+import type { StoredArtifacts } from "../../../domain/documents/artifacts"
+import { executeIssuanceCommand, prepareDocument, reserveDocument } from "../../../application/issuance"
+import { createInvoiceDraft } from "../../../domain/commands/invoices"
+import { resolveUserActor } from "../../../domain/user-actor"
+import { documentPdf } from "../../../lib/documents/pdf-access"
 import { RecoveryError } from "../../../lib/recovery/format"
 import { enableOperations, reviewPendingWork, reviewToken } from "../operations"
 import { queryFn } from "../../../lib/recovery/pgdb"
@@ -57,19 +62,37 @@ async function migrate(schema: string) {
   }
 }
 
-/** A mail relay that only counts how many times anything connects to it. */
+/** Loopback-only SMTP adapter: accepts DATA and retains the message for assertions. */
 async function startMailRelay() {
   let connections = 0
+  const messages: string[] = []
   const server = net.createServer((socket) => {
     connections += 1
     socket.write("220 relay ready\r\n")
-    socket.on("data", () => socket.write("421 closing\r\n"))
+    let buffer = "", data = false, message = ""
+    socket.on("data", chunk => {
+      buffer += chunk.toString()
+      for (;;) {
+        const end = buffer.indexOf("\r\n")
+        if (end < 0) break
+        const line = buffer.slice(0, end)
+        buffer = buffer.slice(end + 2)
+        if (data) {
+          if (line === ".") { messages.push(message); data = false; message = ""; socket.write("250 accepted\r\n") }
+          else message += `${line}\r\n`
+        } else if (/^(EHLO|HELO)/.test(line)) socket.write("250 localhost\r\n")
+        else if (line === "DATA") { data = true; socket.write("354 send message\r\n") }
+        else if (line === "QUIT") socket.end("221 goodbye\r\n")
+        else socket.write("250 OK\r\n")
+      }
+    })
     socket.on("error", () => undefined)
   })
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
   return {
     port: (server.address() as net.AddressInfo).port,
     connections: () => connections,
+    messages,
     close: () => new Promise<void>((resolve) => server.close(() => resolve())),
   }
 }
@@ -89,6 +112,10 @@ describe.runIf(hasTestDatabase)("backup and isolated restore", () => {
   let targetArtifacts: string
   let organizationId: string
   let invoiceIds: string[] = []
+  let pendingEmailInvoiceId: string
+  let pendingArtifacts: StoredArtifacts
+  let stagedArtifacts: StoredArtifacts
+  let storedStageId: string
 
   const usePlatform = (prisma: PrismaClient) =>
     bootstrapQuitsRuntime({ platform: { ...defaultNodePlatform, getPrisma: () => prisma } })
@@ -123,10 +150,34 @@ describe.runIf(hasTestDatabase)("backup and isolated restore", () => {
 
     // Seed the source through the real commands, the real renderer and a real artifact directory.
     usePlatform(source)
-    bootstrapQuitsRuntime({ services: { documentRenderer: selfhostDocumentRenderer, documentArtifactStore: localDiskArtifactStore(sourceArtifacts) } })
+    bootstrapQuitsRuntime({ services: { documentRenderer: { ...selfhostDocumentRenderer,
+      // Exercise the real preparation/store protocol with both supported formats. This small
+      // test adapter is not a UBL conformance assertion; PDFs use the actual renderer.
+      renderUbl: async input => new TextEncoder().encode(`<Invoice><ID>${input.number}</ID></Invoice>`),
+    }, documentArtifactStore: localDiskArtifactStore(sourceArtifacts) } })
     const fixture = await seedRehearsalFixture()
     organizationId = fixture.organizationId
     invoiceIds = fixture.invoiceIds
+    pendingEmailInvoiceId = fixture.pendingEmailInvoiceId
+    const candidate = await source.issuanceCandidate.findFirstOrThrow({ where: { documentId: pendingEmailInvoiceId, status: "bound" }, include: { staging: true } })
+    expect(candidate.staging.status).toBe("candidate_bound")
+    expect(candidate.artifacts).toEqual(candidate.staging.artifacts)
+    pendingArtifacts = candidate.artifacts as StoredArtifacts
+    expect(pendingArtifacts.ubl).toBeTruthy()
+    expect(await source.invoice.findUniqueOrThrow({ where: { id: pendingEmailInvoiceId } })).toMatchObject({ status: "draft", artifactPdfRef: null })
+    const member = await source.member.findFirstOrThrow({ where: { organizationId } })
+    const actor = (await resolveUserActor({ organizationId, userId: member.userId }))!
+    const contact = await source.contact.findFirstOrThrow({ where: { organizationId } })
+    const draft = await executeIssuanceCommand(createInvoiceDraft, { contactId: contact.id, dueDate: "2099-12-01", currency: "USD",
+      taxRate: 0, items: [{ description: "Prepared retry", quantity: 1, unitPrice: 3 }] }, { actor })
+    if (draft.status !== "completed") throw new Error("Fixture draft failed")
+    const reservation = await reserveDocument({ kind: "invoice", commandInput: { id: draft.result.id }, actor, clientRequestId: randomUUID() })
+    const prepared = await prepareDocument(reservation.id)
+    expect(prepared.status).toBe("stored")
+    storedStageId = prepared.id
+    stagedArtifacts = prepared.artifacts as StoredArtifacts
+    expect(await source.issuanceCandidate.count({ where: { stagingId: storedStageId } })).toBe(0)
+    console.log(`Recovery loopback SMTP reservation: 127.0.0.1:${relay.port}`)
   }, 120_000)
 
   afterAll(async () => {
@@ -188,6 +239,16 @@ describe.runIf(hasTestDatabase)("backup and isolated restore", () => {
     expect(check.manifestSha256).toBe(result.manifestSha256)
   }, 60_000)
 
+  it("bundles both formats owned only by a pending candidate and its staging row", async () => {
+    const { manifest } = await verifyBundle(bundle)
+    for (const artifact of [pendingArtifacts.pdf, pendingArtifacts.ubl!, stagedArtifacts.pdf, stagedArtifacts.ubl!]) {
+      const objects = manifest.artifacts.objects.filter(object => object.ref === artifact.ref)
+      expect(objects).toHaveLength(1)
+      expect(objects[0]).toMatchObject({ sha256: artifact.hash, bytes: artifact.size })
+      expect(await readFile(join(bundle, objects[0]!.file))).toEqual(await readFile(join(sourceArtifacts, artifact.ref)))
+    }
+  })
+
   it("records the backup so the application can report its age", async () => {
     const status = await collectOperationalStatus({ query: queryFn(sourceClient), env: { EMAIL_PROVIDER: "smtp", SMTP_HOST: "127.0.0.1", FROM_EMAIL: "a@b.test" }, artifactStore: localDiskArtifactStore(sourceArtifacts), environmentHold: false })
     expect(status.backups.ageHours).toBeLessThan(1)
@@ -216,6 +277,109 @@ describe.runIf(hasTestDatabase)("backup and isolated restore", () => {
     } finally {
       await sourceClient.query("ROLLBACK")
     }
+  })
+
+  describe("pending source artifacts", () => {
+    it.each(["pdf", "ubl"] as const)("refuses absent and corrupt candidate %s bytes and records explicit incomplete gaps", async format => {
+      const artifact = pendingArtifacts[format]!
+      const path = join(sourceArtifacts, artifact.ref)
+      const original = await readFile(path)
+      try {
+        for (const corrupt of [false, true]) {
+          if (corrupt) await writeFile(path, Buffer.alloc(original.length))
+          else await rm(path)
+          const create = (allowIncomplete: boolean) => createBackup({ client: sourceClient, artifactStore: localDiskArtifactStore(sourceArtifacts),
+            directory: join(workspace.dir, `bad-source-${format}-${corrupt}-${allowIncomplete}`), env: { ...process.env }, appVersion: "test", allowIncomplete, record: false })
+          await expect(create(false)).rejects.toMatchObject({ code: "artifacts_incomplete" })
+          const { manifest } = await create(true)
+          expect(manifest.artifacts.missing).toEqual(expect.arrayContaining([
+            expect.objectContaining({ table: "issuance_candidate", ref: artifact.ref, problem: corrupt ? "hash_mismatch" : "object_missing" }),
+            expect.objectContaining({ table: "artifact_staging", ref: artifact.ref, problem: corrupt ? "hash_mismatch" : "object_missing" }),
+          ]))
+        }
+      } finally { await writeFile(path, original) }
+    })
+
+    it.each(["pdf", "ubl"] as const)("refuses absent and corrupt unbound staging %s bytes", async format => {
+      const path = join(sourceArtifacts, stagedArtifacts[format]!.ref)
+      const original = await readFile(path)
+      try {
+        for (const corrupt of [false, true]) {
+          if (corrupt) await writeFile(path, Buffer.alloc(original.length))
+          else await rm(path)
+          await expect(createBackup({ client: sourceClient, artifactStore: localDiskArtifactStore(sourceArtifacts),
+            directory: join(workspace.dir, `bad-staging-${format}-${corrupt}`), env: { ...process.env }, appVersion: "test", record: false })).rejects.toMatchObject({ code: "artifacts_incomplete" })
+        }
+      } finally { await writeFile(path, original) }
+    })
+
+    it.each(["issuance_candidate", "artifact_staging"])("refuses missing or malformed required %s references", async table => {
+      const candidate = await source.issuanceCandidate.findFirstOrThrow({ where: { documentId: pendingEmailInvoiceId } })
+      const id = table === "issuance_candidate" ? candidate.id : candidate.stagingId
+      const original = (await sourceClient.query(`SELECT artifacts FROM "${table}" WHERE id = $1`, [id])).rows[0].artifacts
+      try {
+        for (const artifacts of [null, { pdf: pendingArtifacts.pdf, ubl: { ref: pendingArtifacts.ubl!.ref } }]) {
+          await sourceClient.query(`UPDATE "${table}" SET artifacts = $1::jsonb WHERE id = $2`, [artifacts === null ? null : JSON.stringify(artifacts), id])
+          await expect(createBackup({ client: sourceClient, artifactStore: localDiskArtifactStore(sourceArtifacts),
+            directory: join(workspace.dir, `invalid-${table}-${artifacts === null}`), env: { ...process.env }, appVersion: "test", record: false })).rejects.toMatchObject({ code: "artifacts_incomplete" })
+        }
+      } finally { await sourceClient.query(`UPDATE "${table}" SET artifacts = $1::jsonb WHERE id = $2`, [JSON.stringify(original), id]) }
+    })
+
+    it("retains expired unswept staging, bound candidates and protected retired work", async () => {
+      const candidate = await source.issuanceCandidate.findFirstOrThrow({ where: { documentId: pendingEmailInvoiceId } })
+      const stage = await source.artifactStaging.findUniqueOrThrow({ where: { id: candidate.stagingId } })
+      const job = await source.job.findFirstOrThrow({ where: { type: "email.deliver", status: "pending" } })
+      const stored = await source.artifactStaging.findUniqueOrThrow({ where: { id: storedStageId } })
+      const backup = async (name: string) => (await createBackup({ client: sourceClient, artifactStore: localDiskArtifactStore(sourceArtifacts),
+        directory: join(workspace.dir, name), env: { ...process.env }, appVersion: "test", record: false })).manifest.artifacts.objects.map(object => object.ref)
+      try {
+        await source.artifactStaging.updateMany({ where: { id: { in: [stage.id, stored.id] } }, data: { leaseUntil: new Date(0) } })
+        expect(await backup("expired-unswept")).toEqual(expect.arrayContaining([pendingArtifacts.pdf.ref, stagedArtifacts.pdf.ref]))
+        await source.issuanceCandidate.update({ where: { id: candidate.id }, data: { status: "retired" } })
+        await source.artifactStaging.update({ where: { id: stage.id }, data: { status: "abandoned" } })
+        await source.job.update({ where: { id: job.id }, data: { status: "failed", result: { status: "definitely_not_accepted" } } })
+        expect(await backup("recent-retired")).toContain(pendingArtifacts.pdf.ref)
+        // Test the UTC retention boundary in SQL and offset-free PostgreSQL bundle JSON.
+        await source.issuanceCandidate.update({ where: { id: candidate.id }, data: { createdAt: new Date(Date.now() - 7 * 24 * 3600_000 + 30 * 60_000) } })
+        expect(await backup("retired-near-boundary")).toContain(pendingArtifacts.pdf.ref)
+        const timezone = process.env.TZ
+        try {
+          process.env.TZ = "Asia/Tokyo"
+          const path = join(workspace.dir, "retired-near-boundary", "manifest.json")
+          const manifest = JSON.parse(await readFile(path, "utf8"))
+          manifest.artifacts.objects = manifest.artifacts.objects.filter((object: { ref: string }) => object.ref !== pendingArtifacts.pdf.ref)
+          await writeFile(path, JSON.stringify(manifest))
+          expect((await verifyBundle(join(workspace.dir, "retired-near-boundary"))).findings).toEqual(expect.arrayContaining([
+            expect.objectContaining({ code: "backup_object_not_bundled", message: expect.stringContaining(pendingArtifacts.pdf.ref) }),
+          ]))
+        } finally {
+          if (timezone === undefined) delete process.env.TZ
+          else process.env.TZ = timezone
+        }
+        await source.issuanceCandidate.update({ where: { id: candidate.id }, data: { createdAt: new Date(0) } })
+        expect(await backup("old-retired")).not.toContain(pendingArtifacts.pdf.ref)
+        // An unknown provider outcome keeps even old retired work protected.
+        await sourceClient.query(`UPDATE job SET result = NULL WHERE id = $1`, [job.id])
+        expect(await backup("old-unsettled")).toContain(pendingArtifacts.pdf.ref)
+      } finally {
+        await source.issuanceCandidate.update({ where: { id: candidate.id }, data: { status: candidate.status, createdAt: candidate.createdAt } })
+        await source.artifactStaging.update({ where: { id: stage.id }, data: { status: stage.status, leaseUntil: stage.leaseUntil, updatedAt: stage.updatedAt } })
+        await source.artifactStaging.update({ where: { id: stored.id }, data: { leaseUntil: stored.leaseUntil, updatedAt: stored.updatedAt } })
+        await sourceClient.query(`UPDATE job SET status = $1, result = $2::jsonb, "updatedAt" = $4::timestamptz AT TIME ZONE 'UTC' WHERE id = $3`, [job.status, job.result === null ? null : JSON.stringify(job.result), job.id, job.updatedAt])
+      }
+    })
+
+    it.each(["issuance_candidate", "artifact_staging"])("refuses contradictory %s hashes even for duplicate references", async table => {
+      const candidate = await source.issuanceCandidate.findFirstOrThrow({ where: { documentId: pendingEmailInvoiceId } })
+      const id = table === "issuance_candidate" ? candidate.id : candidate.stagingId
+      const original = (await sourceClient.query(`SELECT artifacts FROM "${table}" WHERE id = $1`, [id])).rows[0].artifacts
+      await sourceClient.query(`UPDATE "${table}" SET artifacts = jsonb_set(artifacts, '{pdf,hash}', $1::jsonb) WHERE id = $2`, [JSON.stringify("0".repeat(64)), id])
+      try {
+        await expect(createBackup({ client: sourceClient, artifactStore: localDiskArtifactStore(sourceArtifacts),
+          directory: join(workspace.dir, `disagree-${table}`), env: { ...process.env }, appVersion: "test", record: false })).rejects.toMatchObject({ code: "artifacts_incomplete" })
+      } finally { await sourceClient.query(`UPDATE "${table}" SET artifacts = $1::jsonb WHERE id = $2`, [JSON.stringify(original), id]) }
+    })
   })
 
   describe("a restore that cannot be done", () => {
@@ -253,6 +417,47 @@ describe.runIf(hasTestDatabase)("backup and isolated restore", () => {
       await rm(join(copy, manifest.artifacts.objects[1]!.file))
       const finding = await blocked({ bundle: copy }, "artifact_object_missing")
       expect(finding.message).toContain(manifest.artifacts.objects[1]!.file)
+    })
+
+    it.each(["pdf", "ubl"] as const)("rejects an old v1 inventory that omits the pending %s", async format => {
+      const copy = join(workspace.dir, `old-v1-${format}`)
+      await cp(bundle, copy, { recursive: true })
+      const manifest = JSON.parse(await readFile(join(copy, "manifest.json"), "utf8"))
+      const ref = pendingArtifacts[format]!.ref
+      manifest.artifacts.objects = manifest.artifacts.objects.filter((object: { ref: string }) => object.ref !== ref)
+      manifest.artifacts.missing = [] // Original v1 collector reported no gaps.
+      await rm(join(copy, "artifacts", ref), { force: true })
+      await writeFile(join(copy, "manifest.json"), JSON.stringify(manifest))
+      const finding = await blocked({ bundle: copy }, "backup_object_not_bundled")
+      expect(finding.message).toContain(ref)
+      expect(finding.action).toBeTruthy()
+    })
+
+    it("refuses conflicting duplicate object inventory entries", async () => {
+      const copy = join(workspace.dir, "duplicate-inventory")
+      await cp(bundle, copy, { recursive: true })
+      const manifest = JSON.parse(await readFile(join(copy, "manifest.json"), "utf8"))
+      const object = manifest.artifacts.objects.find((object: { ref: string }) => object.ref === pendingArtifacts.pdf.ref)
+      manifest.artifacts.objects.push({ ...object, sha256: "0".repeat(64) })
+      await writeFile(join(copy, "manifest.json"), JSON.stringify(manifest))
+      await blocked({ bundle: copy }, "artifact_duplicate_reference")
+    })
+
+    it("refuses metadata with the right hash but the wrong document identity", async () => {
+      const copy = join(workspace.dir, "wrong-object-owner")
+      await cp(bundle, copy, { recursive: true })
+      const manifest = JSON.parse(await readFile(join(copy, "manifest.json"), "utf8"))
+      const object = manifest.artifacts.objects.find((object: { ref: string }) => object.ref === pendingArtifacts.pdf.ref)
+      const metadata = JSON.parse(await readFile(join(copy, object.metaFile), "utf8"))
+      await writeFile(join(copy, object.metaFile), JSON.stringify({ ...metadata, documentId: "another-document" }))
+      await blocked({ bundle: copy }, "backup_metadata_identity_mismatch")
+    })
+
+    it("validates target bytes independently of a store's successful put and head", async () => {
+      const disk = localDiskArtifactStore(join(workspace.dir, "faulty-store"))
+      const store = { ...disk, get: async (ref: string) => ref === pendingArtifacts.pdf.ref ? new Uint8Array([0]) : disk.get(ref) }
+      await expect(restoreBundle(options({ artifactStore: store }))).rejects.toMatchObject({ code: "artifacts_unverified" })
+      await expectTargetEmpty()
     })
 
     it("rejects a backup format this release cannot read", async () => {
@@ -544,11 +749,51 @@ describe.runIf(hasTestDatabase)("backup and isolated restore", () => {
       const state = await target.recoveryState.findUniqueOrThrow({ where: { id: "default" } })
       expect(state).toMatchObject({ operationsMode: "live", heldReason: null })
       expect(relay.connections()).toBe(0)
-      // The relay counts real connections: with operations enabled, the queued email reaches it.
-      await runDueJobs({ organizationIds: [organizationId] })
-      expect(relay.connections()).toBeGreaterThan(0)
+      bootstrapQuitsRuntime({ services: { documentArtifactStore: localDiskArtifactStore(targetArtifacts),
+        documentRenderer: { version: "must-not-render", renderPdf: async () => { throw new Error("Issued bytes must not be regenerated") } },
+      } })
+      expect(await runDueJobs({ organizationIds: [organizationId] })).toMatchObject({ succeeded: 1, failed: 0 })
+      expect(relay.messages).toHaveLength(1)
+      expect(relay.messages[0]).toContain("accounts@acme.invalid")
+      const invoice = await target.invoice.findUniqueOrThrow({ where: { id: pendingEmailInvoiceId } })
+      expect(invoice).toMatchObject({ status: "sent", artifactPdfRef: pendingArtifacts.pdf.ref, artifactPdfHash: pendingArtifacts.pdf.hash,
+        artifactUblRef: pendingArtifacts.ubl!.ref, artifactUblHash: pendingArtifacts.ubl!.hash })
+      expect(await target.issuanceCandidate.findFirstOrThrow({ where: { documentId: pendingEmailInvoiceId } })).toMatchObject({ status: "published" })
+      const response = await documentPdf("invoice", pendingEmailInvoiceId, organizationId)
+      expect(response.status).toBe(200)
+      expect(response.headers.get("X-Quits-Artifact")).toBe("stored")
+      const published = new Uint8Array(await response.arrayBuffer())
+      expect(sha256Bytes(published)).toBe(pendingArtifacts.pdf.hash)
+      expect(Buffer.from(published)).toEqual(await readFile(join(sourceArtifacts, pendingArtifacts.pdf.ref)))
+      expect(sha256Bytes((await localDiskArtifactStore(targetArtifacts).get(pendingArtifacts.ubl!.ref))!)).toBe(pendingArtifacts.ubl!.hash)
     }, 60_000)
   })
+
+  it("keeps an explicitly incomplete old v1 restore held and refuses ordinary cutover", async () => {
+    const schema = `rec_incomplete_${randomUUID().replaceAll("-", "")}`
+    await migrate(schema)
+    const client = new Client({ connectionString: withSchema(schema) })
+    await client.connect()
+    try {
+      // The old v1 bundle keeps the real candidate, staging and job rows and omits only PDF inventory.
+      const copy = join(workspace.dir, "old-v1-pdf")
+      const restored = await restoreBundle(options({ client, bundle: copy, allowIncomplete: true,
+        artifactStore: localDiskArtifactStore(join(workspace.dir, "incomplete-artifacts")) }))
+      expect(restored.gates).toMatchObject({ integrity: "pass", artifacts: "fail", rows: "pass", keys: "pass" })
+      expect(restored.warnings.join(" ")).toContain(pendingArtifacts.pdf.ref)
+      const token = reviewToken(await reviewPendingWork(queryFn(client)))
+      await expect(enableOperations({ client, reviewToken: token, jobs: "keep", sourceStopped: true })).rejects.toMatchObject({
+        code: "gates_not_passed", message: expect.stringContaining("artifacts (fail)"),
+      })
+      expect((await client.query(`SELECT "operationsMode" FROM recovery_state`)).rows[0].operationsMode).toBe("held")
+      expect((await client.query(`SELECT status FROM issuance_candidate WHERE "documentId" = $1`, [pendingEmailInvoiceId])).rows[0].status).toBe("bound")
+      expect((await client.query(`SELECT count(*)::int AS n FROM job WHERE status = 'pending'`)).rows[0].n).toBeGreaterThan(0)
+      expect(relay.messages).toHaveLength(1) // Only the earlier deliberate successful cutover sent.
+    } finally {
+      await client.query(`DROP SCHEMA "${schema}" CASCADE`)
+      await client.end()
+    }
+  }, 60_000)
 
   it("cancels queued jobs at cutover when asked", async () => {
     const scratch = await mkdtemp(join(tmpdir(), "quits-recovery-cancel-"))

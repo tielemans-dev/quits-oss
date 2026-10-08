@@ -44,7 +44,7 @@ export const ENCRYPTED_COLUMNS: ReadonlyArray<{ table: string; column: string }>
   { table: "org_settings", column: "stripeWebhookSecretEnc" },
 ]
 
-/** Tables with issued-document references, and the columns holding them. */
+/** Document columns with artifact references. Recovery also inventories staging and candidates. */
 export const ARTIFACT_OWNERS: ReadonlyArray<{
   table: string
   documentKind: "invoice" | "creditNote" | "agreement"
@@ -120,7 +120,7 @@ export const manifestSchema = z.object({
         }),
       })
     ),
-    /** Issued documents whose references were absent or unreadable when the backup ran. */
+    /** Document or retained issuance requirements absent, unreadable or contradictory at backup. */
     missing: z.array(
       z.object({
         table: z.string(),

@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
+import { createInterface } from "node:readline"
+import type { ArtifactMeta } from "../../lib/runtime/services"
+import { artifactGap, inventoryArtifacts, referenceProblems } from "./artifacts"
 import { readFile, stat } from "node:fs/promises"
 import { isAbsolute, join, relative, resolve } from "node:path"
 import { ARTIFACT_DIRECTORY, MANIFEST_FILE, parseManifest, RecoveryError, type Manifest } from "../../lib/recovery/format"
@@ -94,10 +97,17 @@ export async function verifyBundle(directory: string): Promise<BundleCheck> {
   }
 
   for (const table of manifest.database.tables) await check(table.file, table.sha256, table.bytes, "database")
+  const databaseIntact = !findings.some(finding => finding.severity === "error")
+  const metadata = new Map<string, ArtifactMeta>()
+  const objects = new Map<string, Manifest["artifacts"]["objects"][number]>()
   for (const object of manifest.artifacts.objects) {
+    if (objects.has(object.ref)) findings.push({ severity: "error", code: "artifact_duplicate_reference",
+      message: `The manifest lists ${object.ref} more than once.`, action: "Use another copy or take a new backup; an object must have one inventory entry." })
+    objects.set(object.ref, object)
     await check(object.file, object.sha256, object.bytes, "artifact")
     try {
-      const meta = JSON.parse(await readFile(insideBundle(directory, object.metaFile), "utf8")) as { hash?: unknown; size?: unknown }
+      const meta = JSON.parse(await readFile(insideBundle(directory, object.metaFile), "utf8")) as ArtifactMeta
+      metadata.set(object.ref, meta)
       if (meta.hash !== object.sha256 || meta.size !== object.bytes) {
         findings.push({ severity: "error", code: "artifact_meta_mismatch", message: `${object.metaFile} disagrees with the manifest about ${object.ref}.`, action: "Use another copy of the bundle." })
       }
@@ -105,12 +115,40 @@ export async function verifyBundle(directory: string): Promise<BundleCheck> {
       findings.push({ severity: "error", code: "artifact_meta_missing", message: `${object.metaFile} is missing or unreadable.`, action: "Use another copy of the bundle." })
     }
   }
-  for (const problem of manifest.artifacts.missing) {
+  const gaps = [...manifest.artifacts.missing]
+  if (databaseIntact) {
+    try {
+      const inventory = await inventoryArtifacts(async (name, columns) => {
+        const table = manifest.database.tables.find(table => table.name === name)
+        if (!table) return [] // Older schemas need not contain all of today's tables.
+        const rows: Record<string, unknown>[] = []
+        const lines = createInterface({ input: createReadStream(insideBundle(directory, table.file), "utf8"), crlfDelay: Infinity })
+        for await (const line of lines) {
+          if (!line) continue
+          const row = JSON.parse(line) as Record<string, unknown>
+          rows.push(Object.fromEntries(columns.map(column => [column, row[column]])))
+        }
+        return rows
+      }, new Date(manifest.createdAt))
+      gaps.push(...inventory.missing)
+      for (const reference of inventory.references) {
+        const object = objects.get(reference.ref)
+        if (!object) { gaps.push(artifactGap(reference, "object_not_bundled")); continue }
+        const meta = metadata.get(reference.ref)
+        if (meta) for (const problem of referenceProblems(reference, meta, object.sha256, object.bytes)) gaps.push(artifactGap(reference, problem))
+      }
+    } catch {
+      findings.push({ severity: "error", code: "artifact_inventory_unreadable", message: "Artifact requirements could not be read from the bundled database rows.",
+        action: "Use another copy or take a new backup; do not enable operations from an unverified inventory." })
+    }
+  }
+  const uniqueGaps = new Map(gaps.map(gap => [JSON.stringify(gap), gap]))
+  for (const problem of uniqueGaps.values()) {
     const hard = problem.problem !== "no_reference"
     findings.push({
       severity: hard ? "error" : "warning",
       code: `backup_${problem.problem}`,
-      message: `${problem.table} ${problem.id}: ${problem.field} ${problemText(problem.problem)}${problem.ref ? ` (${problem.ref})` : ""}. The backup was taken with this gap.`,
+      message: `${problem.table} ${problem.id}: ${problem.field} ${problemText(problem.problem)}${problem.ref ? ` (${problem.ref})` : ""}. This bundle does not satisfy the recorded artifact requirement.`,
       action: hard ? "Restore the missing object into the source artifact directory and take a new backup." : "Documents issued before artifacts were recorded have none; this is expected for legacy data.",
     })
   }
@@ -125,6 +163,9 @@ export async function verifyBundle(directory: string): Promise<BundleCheck> {
 
 function problemText(problem: string) {
   switch (problem) {
+    case "object_not_bundled": return "references an object omitted from the bundle inventory"
+    case "required_reference_missing": return "has no PDF reference for retained issuance work"
+    case "staging_candidate_disagreement": return "disagrees with the linked staging artifacts"
     case "no_reference": return "has no stored artifact"
     case "object_missing": return "points at an object that was not in the artifact store"
     case "hash_mismatch": return "points at an object whose bytes do not match the recorded hash"

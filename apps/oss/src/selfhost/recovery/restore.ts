@@ -5,9 +5,11 @@ import type { Client } from "pg"
 import type { DocumentArtifactStore } from "../../lib/runtime/services"
 import { insideBundle, sha256Bytes, verifyBundle, type BundleCheck, type Finding } from "./bundle"
 import { readPendingWork, readTotals } from "./backup"
-import { ARTIFACT_OWNERS, ENCRYPTED_COLUMNS, RecoveryError, type CurrencyTotals, type Manifest } from "../../lib/recovery/format"
+import { ENCRYPTED_COLUMNS, RecoveryError, type CurrencyTotals, type Manifest } from "../../lib/recovery/format"
 import { compareKeys, countUndecryptable } from "./keys"
 import { orderByDependency, queryFn, quoteIdent, readAppliedMigrations, readTables, utcParam, type QueryFn } from "../../lib/recovery/pgdb"
+
+import { databaseArtifactRows, groupArtifactReferences, inspectArtifact, inventoryArtifacts, referenceProblems } from "./artifacts"
 
 export type GateName = "integrity" | "artifacts" | "totals" | "rows" | "keys"
 export type GateResult = "pass" | "fail" | "skipped"
@@ -253,25 +255,15 @@ export function diffTotals(expected: Record<string, CurrencyTotals>, actual: Rec
 }
 
 async function verifyRestoredArtifacts(query: QueryFn, store: DocumentArtifactStore, manifest: Manifest) {
-  const known = new Set(manifest.artifacts.missing.map((gap) => `${gap.table}:${gap.id}:${gap.field}`))
-  const problems: string[] = []
+  const inventory = await inventoryArtifacts(databaseArtifactRows(query), new Date(manifest.createdAt))
+  const problems = inventory.missing.filter(gap => gap.problem !== "no_reference").map(gap => `${gap.table} ${gap.id} (${gap.field}): ${gap.problem}`)
   let verified = 0
-  for (const owner of ARTIFACT_OWNERS) {
-    const columns = owner.fields.flatMap((field) => [quoteIdent(field.ref), quoteIdent(field.hash)]).join(", ")
-    for (const row of await query(`SELECT id, ${columns} FROM ${quoteIdent(owner.table)} ORDER BY id`)) {
-      for (const field of owner.fields) {
-        const ref = row[field.ref] == null ? null : String(row[field.ref])
-        if (!ref || known.has(`${owner.table}:${row.id}:${field.ref}`)) continue
-        const label = `${owner.table} ${row.id} (${field.ref})`
-        try {
-          const meta = await store.head(ref)
-          if (!meta) problems.push(`${label}: object ${ref} is not in the artifact store`)
-          else if (row[field.hash] !== meta.hash) problems.push(`${label}: stored hash differs from the recorded hash`)
-          else verified += 1
-        } catch {
-          problems.push(`${label}: object ${ref} does not match its recorded hash`)
-        }
-      }
+  for (const [ref, owners] of groupArtifactReferences(inventory.references)) {
+    const object = await inspectArtifact(store, ref)
+    for (const owner of owners) {
+      const failures = object.problem ? [object.problem] : referenceProblems(owner, object.meta, object.hash, object.bytes.byteLength)
+      for (const failure of failures) problems.push(`${owner.table} ${owner.id} (${owner.field}): ${failure} (${ref})`)
+      if (!failures.length) verified += 1
     }
   }
   return { verified, problems }
@@ -288,7 +280,7 @@ export async function restoreBundle(options: RestoreOptions): Promise<RestoreRep
   const { manifest } = preflight.check
   const query = queryFn(options.client)
   const warnings = preflight.findings.filter((finding) => finding.severity === "warning").map((finding) => finding.message)
-  const incomplete = manifest.artifacts.missing.some((gap) => gap.problem !== "no_reference")
+  const incomplete = preflight.check.findings.some(finding => finding.code.startsWith("backup_") && finding.code !== "backup_no_reference")
 
   // Artifacts first: content-addressed and idempotent, so an aborted restore leaves only harmless objects.
   for (const object of manifest.artifacts.objects) {

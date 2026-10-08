@@ -8,7 +8,6 @@ import type { DocumentArtifactStore } from "../../lib/runtime/services"
 import { insideBundle, sha256Bytes } from "./bundle"
 import {
   ARTIFACT_DIRECTORY,
-  ARTIFACT_OWNERS,
   BACKUP_FORMAT,
   BACKUP_FORMAT_VERSION,
   DATABASE_DIRECTORY,
@@ -21,6 +20,8 @@ import {
 } from "../../lib/recovery/format"
 import { configurationInventory, keyFingerprints } from "./keys"
 import { quoteIdent, queryFn, readAppliedMigrations, readPostgresVersion, readTables, utcNow, type QueryFn } from "../../lib/recovery/pgdb"
+
+import { artifactGap, databaseArtifactRows, groupArtifactReferences, inspectArtifact, inventoryArtifacts, referenceProblems } from "./artifacts"
 
 const FETCH_ROWS = 500
 
@@ -122,68 +123,36 @@ async function writeTable(client: Client, directory: string, table: { name: stri
   return { file, rows, bytes, sha256: hash.digest("hex") }
 }
 
-type ArtifactGap = Manifest["artifacts"]["missing"][number]
-
 async function collectArtifacts(input: {
   query: QueryFn
   store: DocumentArtifactStore
   directory: string
+  snapshotAt: Date
 }) {
+  const inventory = await inventoryArtifacts(databaseArtifactRows(input.query), input.snapshotAt)
+  const missing = [...inventory.missing]
   const objects = new Map<string, Manifest["artifacts"]["objects"][number]>()
-  const missing: ArtifactGap[] = []
-  for (const owner of ARTIFACT_OWNERS) {
-    const refColumns = owner.fields.flatMap((field) => [quoteIdent(field.ref), quoteIdent(field.hash)]).join(", ")
-    const rows = await input.query(
-      `SELECT id, "organizationId", ${refColumns}${owner.table === "invoice" ? ", status" : ""} FROM ${quoteIdent(owner.table)} ORDER BY id`
-    )
-    for (const row of rows) {
-      const issued = owner.table === "credit_note" || (owner.table === "invoice" && row.status !== "draft")
-      for (const field of owner.fields) {
-        const ref = row[field.ref] == null ? null : String(row[field.ref])
-        const recorded = row[field.hash] == null ? null : String(row[field.hash])
-        const gap = (problem: string): ArtifactGap => ({ table: owner.table, id: String(row.id), field: field.ref, ref, problem })
-        if (!ref) {
-          if (issued && field.format === "pdf") missing.push(gap("no_reference"))
-          continue
-        }
-        if (objects.has(ref)) continue
-        let bytes: Uint8Array | null
-        let metaText: string | null = null
-        try {
-          bytes = await input.store.get(ref)
-          const meta = bytes ? await input.store.head(ref) : null
-          metaText = meta ? JSON.stringify(meta) : null
-        } catch {
-          missing.push(gap("hash_mismatch"))
-          continue
-        }
-        if (!bytes || !metaText) {
-          missing.push(gap("object_missing"))
-          continue
-        }
-        const actual = sha256Bytes(bytes)
-        if (recorded === null) missing.push(gap("hash_not_recorded"))
-        else if (recorded !== actual) {
-          missing.push(gap("hash_mismatch"))
-          continue
-        }
-        const file = `${ARTIFACT_DIRECTORY}/${ref}`
-        const metaFile = `${file}.meta.json`
-        for (const [name, content] of [[file, bytes], [metaFile, metaText]] as const) {
-          const path = insideBundle(input.directory, name)
-          await mkdir(dirname(path), { recursive: true })
-          await writeFile(path, content, { mode: 0o600 })
-        }
-        objects.set(ref, {
-          ref,
-          file,
-          metaFile,
-          sha256: actual,
-          bytes: bytes.byteLength,
-          owner: { table: owner.table, id: String(row.id), organizationId: String(row.organizationId), field: field.ref },
-        })
-      }
+  // Group for one byte read per object, but verify every reference before deduplicating.
+  const refs = groupArtifactReferences(inventory.references)
+  for (const [ref, owners] of refs) {
+    const object = await inspectArtifact(input.store, ref)
+    if (object.problem) {
+      for (const owner of owners) missing.push(artifactGap(owner, object.problem))
+      continue
     }
+    for (const owner of owners) {
+      for (const problem of referenceProblems(owner, object.meta, object.hash, object.bytes.byteLength)) missing.push(artifactGap(owner, problem))
+    }
+    const file = `${ARTIFACT_DIRECTORY}/${ref}`
+    const metaFile = `${file}.meta.json`
+    for (const [name, content] of [[file, object.bytes], [metaFile, JSON.stringify(object.meta)]] as const) {
+      const path = insideBundle(input.directory, name)
+      await mkdir(dirname(path), { recursive: true })
+      await writeFile(path, content, { mode: 0o600 })
+    }
+    const owner = owners[0]!
+    objects.set(ref, { ref, file, metaFile, sha256: object.hash, bytes: object.bytes.byteLength,
+      owner: { table: owner.table, id: owner.id, organizationId: owner.organizationId, field: owner.field } })
   }
   return { objects: [...objects.values()], missing }
 }
@@ -226,13 +195,13 @@ export async function createBackup(options: CreateBackupOptions) {
       })
       tables.push({ name: table.name, columns: table.columns.map((column) => column.name), ...written })
     }
-    const artifacts = await collectArtifacts({ query, store: options.artifactStore, directory })
+    const artifacts = await collectArtifacts({ query, store: options.artifactStore, directory, snapshotAt: now })
     const hard = artifacts.missing.filter((gap) => gap.problem !== "no_reference")
     if (hard.length && !options.allowIncomplete) {
       const first = hard[0]!
       throw new RecoveryError(
         "artifacts_incomplete",
-        `${hard.length} issued document artifact(s) are missing or do not match their recorded hash (first: ${first.table} ${first.id}, ${first.field}, ${first.problem}).`,
+        `${hard.length} document or pending issuance artifact requirement(s) are missing, invalid or contradictory (first: ${first.table} ${first.id}, ${first.field}, ${first.problem}).`,
         "Restore the artifact directory from its own backup first, or pass --allow-incomplete to record the gaps and continue."
       )
     }
