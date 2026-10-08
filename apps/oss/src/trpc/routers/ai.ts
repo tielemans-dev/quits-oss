@@ -255,6 +255,13 @@ export const aiRouter = router({
         throw error
       }
 
+      if (draft.items.length === 0) {
+        // Not an error, but worth seeing when a real sale comes back empty. No prompt text.
+        console.warn(
+          `[ai] ${provider.id} drafted no items with model ${model} (reason given: ${draft.reason ? "yes" : "no"})`
+        )
+      }
+
       const resolvedContactId = resolveContactId({
         requestedContactId: draft.contactId,
         requestedContactName: draft.contactName,

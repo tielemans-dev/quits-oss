@@ -238,6 +238,7 @@ describe("provider fallbacks and errors", () => {
 
   it("returns no items and the model's reason when the prompt describes no sale", async () => {
     const complete = vi.fn(async () => '{"items":[],"reason":"Der står ikke, hvad der er solgt."}')
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     mocks.aiCapabilities = { ...defaultAiCapabilities, byok: false, managed: true }
     mocks.findMany.mockResolvedValue([])
     mocks.findUnique.mockResolvedValue({ aiModel: null })
@@ -247,6 +248,8 @@ describe("provider fallbacks and errors", () => {
     const result = await caller.generateInvoiceDraft({ prompt: "La la la. Jeg kan godt lide kage.", mode: "managed" })
 
     expect(result.draft).toMatchObject({ items: [], reason: "Der står ikke, hvad der er solgt." })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("drafted no items"))
+    expect(String(warn.mock.calls[0]?.[0])).not.toContain("kage")
     resetRuntimeServices()
   })
 

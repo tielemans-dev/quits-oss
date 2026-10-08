@@ -69,7 +69,7 @@ const INVOICE_DRAFT_RESPONSE_FORMAT: AiResponseFormat = {
   schema: INVOICE_DRAFT_JSON_SCHEMA,
 }
 
-const CURRENCY = String.raw`(?:kr\.?|dkk|eur|usd|gbp|sek|nok|[$€£])`
+const CURRENCY = String.raw`(?:kroner|kronor|euro|dollars?|kr\.?|dkk|eur|usd|gbp|sek|nok|[$€£])`
 const LEADING_UNIT = new RegExp(String.raw`^(?:${CURRENCY}\s*)+`, "i")
 const TRAILING_UNIT = new RegExp(String.raw`(?:\s*(?:${CURRENCY}|%|[.,]-))+$`, "i")
 
