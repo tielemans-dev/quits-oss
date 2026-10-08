@@ -236,7 +236,8 @@ function QuoteDetailPage() {
     setEditExpiryDate(new Date(quote.expiryDate).toISOString().split("T")[0])
     setEditNotes(quote.notes ?? "")
     setEditTaxRate(String(quote.items.find((item) => Number(item.taxRate) > 0)?.taxRate ?? 0))
-    setEditVatEvidence(draftVatEvidenceSchema.parse(quote.vatEvidence ?? {}))
+    const evidence = draftVatEvidenceSchema.safeParse(quote.vatEvidence ?? {})
+    setEditVatEvidence(evidence.success ? evidence.data : {})
     setEditItems(
       quote.items.map((item) => ({
         description: item.description,

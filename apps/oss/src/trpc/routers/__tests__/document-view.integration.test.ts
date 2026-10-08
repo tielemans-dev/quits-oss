@@ -88,6 +88,50 @@ async function issue(ctx: Context) {
       expect(documentViewSchema.parse(after.view)).toEqual(after.view)
     })
 
+    it(`saves a ${kind} with corrupt evidence without changing VAT or clearing its notice`, async () => {
+      const ctx = await setup()
+      const id = ctx[kind].id
+      const api = kind === "invoice" ? ctx.admin.invoices : ctx.admin.quotes
+      const stored = () => kind === "invoice"
+        ? prisma.invoice.findUniqueOrThrow({ where: { id } })
+        : prisma.quote.findUniqueOrThrow({ where: { id } })
+      const items = [
+        { key: "taxed", description: "Taxed", quantity: "1", unitPrice: "100", vat: { treatment: "standard" as const, rate: "0.25" } },
+        { key: "reverse", description: "Reverse charge", quantity: "1", unitPrice: "100", vat: { treatment: "intra_community" as const, rate: "0", reasonCode: "services_b2b" as const, country: "DE" } },
+      ]
+      const evidence = { buyerVatId: "DE123456789", statementText: "Reverse charge", viesCheck: { result: "valid" as const, at: "2026-10-07T00:00:00Z" } }
+      await api.updateV2({ id, items, vatEvidence: evidence })
+      const before = await api.view({ id })
+      const corrupt = { viesCheck: { result: 123 } }
+      if (kind === "invoice") await prisma.invoice.update({ where: { id }, data: { vatEvidence: corrupt } })
+      else await prisma.quote.update({ where: { id }, data: { vatEvidence: corrupt } })
+
+      await api.updateV2({ id, expectedRevision: before.revision, notes: "Saved despite corrupt evidence" })
+      const after = await api.view({ id })
+      expect(after).toMatchObject({ revision: before.revision + 1, notices: ["invalid_vat_evidence"], view: { vatEvidence: null, notes: "Saved despite corrupt evidence" } })
+      expect(after.view.totals).toEqual(before.view.totals)
+      expect(after.view.lines.map(line => line.vat)).toEqual(before.view.lines.map(line => line.vat))
+      expect((await stored()).vatEvidence).toEqual(corrupt)
+      // Saving remains possible, but issuing still requires usable evidence.
+      await expect(api.send({ id, allowSendWithoutEmail: true })).rejects.toMatchObject({ cause: { code: "evidence_incomplete" } })
+
+      await api.updateV2({ id, items: items.map(line => ({ ...line, quantity: "2" })) })
+      const edited = await api.view({ id })
+      expect(edited.notices).toEqual(["invalid_vat_evidence"])
+      expect(edited.view.totals).toMatchObject({ net: "400.00", tax: "50.00", gross: "450.00" })
+      expect(edited.view.lines.map(line => line.vat)).toEqual(before.view.lines.map(line => line.vat))
+      expect((await stored()).vatEvidence).toEqual(corrupt)
+
+      await api.updateV2({ id, vatEvidence: evidence })
+      expect(await api.view({ id })).toMatchObject({ notices: [], view: { vatEvidence: evidence } })
+      expect((await stored()).vatEvidence).toEqual(evidence)
+      await api.updateV2({ id, notes: "Keep repaired evidence" })
+      expect((await stored()).vatEvidence).toEqual(evidence)
+      await api.updateV2({ id, vatEvidence: {} })
+      expect(await api.view({ id })).toMatchObject({ notices: [], view: { vatEvidence: null } })
+      expect((await stored()).vatEvidence).toEqual({})
+    })
+
     it(`refuses duplicate ${kind} keys without saving and persists trimmed keys`, async () => {
       const ctx = await setup()
       const id = ctx[kind].id
@@ -180,7 +224,7 @@ async function issue(ctx: Context) {
     await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { companyName: "Changed seller", companyPhone: "new phone", companyLogo: null } })
     await prisma.invoiceItem.updateMany({ where: { invoiceId: issued.id }, data: { lineGross: 999, description: "Changed row" } })
     const result = await ctx.admin.invoices.view({ id: issued.id })
-    expect(result).toMatchObject({ canEdit: false, historical: false })
+    expect(result).toMatchObject({ canEdit: false, historical: false, notices: [] })
     expect(result.view).toEqual(buildIssuedView(snapshot, {
       kind: "invoice", status: issued.status, locale: issued.locale, timezone: issued.timezone,
       contactId: issued.contactId, notes: issued.notes, paymentReference: issued.paymentReference,

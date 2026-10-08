@@ -286,9 +286,14 @@ The app's `invoices.view`, `quotes.view` and `creditNotes.view` queries return
 update permission, and no email in progress. An agreement link locks individual reserved lines,
 not the whole draft. Unreadable stored VAT evidence becomes null in row-based views, with
 `"invalid_vat_evidence"` in `notices`. Reading a view does not change the stored evidence.
+Draft edits without explicit `vatEvidence` calculate with empty evidence when the stored evidence
+is corrupt, preserving the stored value and notice until it is replaced. VAT treatments still come
+from the lines and tax rate; issuance still validates evidence. Recurring generation instead returns
+`InvalidState` / `invalid_vat_evidence` until the template evidence is repaired.
 
 Issued invoices and credit notes read their money and parties from `issuanceSnapshot`, with
-branding from the published issuance candidate. If the snapshot is missing, incomplete or corrupt,
+branding from the published issuance candidate. Issued snapshot views return `notices: []`.
+If the snapshot is missing, incomplete or corrupt,
 `historical: true` tells the future UI to show a historical-document notice. The fallback preserves
 stored line amounts and document totals without repricing. Missing historical branding stays null.
 Credit-note correction dates come only from the corrected invoice's snapshot, or are null.
