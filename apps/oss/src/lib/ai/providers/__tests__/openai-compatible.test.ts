@@ -29,6 +29,18 @@ const completionRequest = {
 }
 
 describe("createOpenAiCompatibleProvider", () => {
+  it("bounds requests with a timeout signal and reports expiry as timeout", async () => {
+    const mock = vi.fn(async (_url: string, init?: RequestInit) => {
+      expect(init?.signal).toBeInstanceOf(AbortSignal)
+      throw new DOMException("The operation timed out.", "TimeoutError")
+    })
+    global.fetch = mock as unknown as typeof fetch
+
+    await expect(openRouter().complete(completionRequest)).rejects.toMatchObject({
+      code: "timeout",
+    })
+  })
+
   it("loads model ids from the models response", async () => {
     stubFetch({
       ok: true,

@@ -62,12 +62,31 @@ function uniqueModelIds(ids: Array<string | null | undefined>) {
   return Array.from(new Set(ids.filter((id): id is string => Boolean(id))))
 }
 
-/** Maps a provider failure to the tRPC error the client shows: setup problems vs. upstream failures. */
+/**
+ * Maps a provider failure to the tRPC error the client shows. Setup problems carry our own
+ * messages. Upstream failures can embed endpoint responses or agent stderr, so those details are
+ * logged on the server and the client gets a generic message.
+ */
 function toTrpcAiError(error: AiProviderError) {
   if (error.code === "disabled" || error.code === "not_configured") {
     return new TRPCError({ code: "PRECONDITION_FAILED", message: error.message, cause: error })
   }
-  return new TRPCError({ code: "BAD_GATEWAY", message: error.message, cause: error })
+  console.error(`[ai] ${error.providerId} request failed (${error.code}): ${error.message}`)
+  if (error.code === "busy") {
+    return new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "The AI provider is busy. Try again in a moment.",
+      cause: error,
+    })
+  }
+  return new TRPCError({
+    code: "BAD_GATEWAY",
+    message:
+      error.code === "timeout"
+        ? "The AI provider did not respond in time"
+        : "The AI provider request failed",
+    cause: error,
+  })
 }
 
 export const aiRouter = router({
@@ -131,16 +150,10 @@ export const aiRouter = router({
         })
       }
 
-      let provider: AiProvider
-      let model: string
-      if (input.mode === "managed") {
-        const settings = await prisma.orgSettings.findUnique({
-          where: { organizationId: ctx.organizationId },
-          select: { aiModel: true },
-        })
-        model = settings?.aiModel || DEFAULT_AI_MODEL
+      const useManaged = async (savedModel: string | null | undefined) => {
+        let managed: AiProvider
         try {
-          provider = resolveManagedAiProvider()
+          managed = resolveManagedAiProvider()
         } catch (error) {
           if (error instanceof AiProviderError) throw toTrpcAiError(error)
           throw error
@@ -154,14 +167,30 @@ export const aiRouter = router({
             })
           }
         }
+        return { provider: managed, model: savedModel || DEFAULT_AI_MODEL }
+      }
+
+      let provider: AiProvider
+      let model: string
+      if (input.mode === "managed") {
+        const settings = await prisma.orgSettings.findUnique({
+          where: { organizationId: ctx.organizationId },
+          select: { aiModel: true },
+        })
+        ;({ provider, model } = await useManaged(settings?.aiModel))
       } else {
         const settings = await readOrgAiSettings(ctx.organizationId)
         model = settings.model
         try {
           provider = resolveOrgAiProvider(settings)
         } catch (error) {
-          if (error instanceof AiProviderError) throw toTrpcAiError(error)
-          throw error
+          if (!(error instanceof AiProviderError)) throw error
+          // An organisation that has not set up its own provider uses the distribution's managed
+          // provider when one is available.
+          if (error.code !== "not_configured" || !capabilities.aiInvoiceDraft.managed) {
+            throw toTrpcAiError(error)
+          }
+          ;({ provider, model } = await useManaged(settings.model))
         }
       }
 

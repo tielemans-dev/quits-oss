@@ -160,6 +160,59 @@ describe("managed AI", () => {
   })
 })
 
+describe("provider fallbacks and errors", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetRuntimeServices()
+  })
+
+  it("uses managed AI when the organisation has not configured its own provider", async () => {
+    const complete = vi.fn(async () => '{"items":[{"description":"Consulting","quantity":3}]}')
+    mocks.aiCapabilities = { ...defaultAiCapabilities, managed: true }
+    mocks.findMany.mockResolvedValue([])
+    mocks.findUnique.mockResolvedValue({
+      aiProvider: "openrouter",
+      aiBaseUrl: null,
+      aiApiKeyEnc: null,
+      aiModel: "openai/gpt-4o-mini",
+    })
+    setRuntimeServices({ managedAiProvider: { id: "managed", complete } })
+
+    const caller = aiRouter.createCaller(createContext())
+    const result = await caller.generateInvoiceDraft({
+      prompt: "Invoice Acme for three hours of consulting",
+    })
+
+    expect(result.provider).toBe("managed")
+    expect(complete).toHaveBeenCalledTimes(1)
+    resetRuntimeServices()
+  })
+
+  it("does not pass upstream error details to the client", async () => {
+    const { AiProviderError } = await import("../../../lib/ai/provider")
+    const complete = vi.fn(async () => {
+      throw new AiProviderError({
+        code: "http",
+        providerId: "managed",
+        message: "AI endpoint failed (500): internal stack at /srv/secret/path",
+      })
+    })
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    mocks.aiCapabilities = { ...defaultAiCapabilities, byok: false, managed: true }
+    mocks.findMany.mockResolvedValue([])
+    mocks.findUnique.mockResolvedValue({ aiModel: null })
+    setRuntimeServices({ managedAiProvider: { id: "managed", complete } })
+
+    const caller = aiRouter.createCaller(createContext())
+    const error = await caller
+      .generateInvoiceDraft({ prompt: "Invoice Acme for three hours", mode: "managed" })
+      .catch((caught: unknown) => caught)
+
+    expect(error).toMatchObject({ code: "BAD_GATEWAY", message: "The AI provider request failed" })
+    resetRuntimeServices()
+  })
+})
+
 describe("settings router AI provider handling", () => {
   beforeEach(() => {
     vi.clearAllMocks()

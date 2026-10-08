@@ -238,6 +238,20 @@ describe("cli agent provider", () => {
     )
   })
 
+  it("refuses a run beyond the concurrency limit without spawning", async () => {
+    vi.stubEnv("QUITS_AI_LOCAL_AGENT_MAX_CONCURRENT", "1")
+    const first = await startAgent()
+
+    await expect(createCliAgentProvider().complete(REQUEST)).rejects.toMatchObject({
+      code: "busy",
+    })
+    expect(spawnMock).toHaveBeenCalledTimes(1)
+
+    first.child.writeStdout("done")
+    first.child.exit(0)
+    expect(await first.outcome).toEqual({ value: "done" })
+  })
+
   it("is disabled on the worker runtime and never spawns", async () => {
     setRuntimePlatform({
       id: "test-worker",

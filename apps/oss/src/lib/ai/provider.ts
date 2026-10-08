@@ -46,6 +46,7 @@ export type AiProviderErrorCode =
   | "invalid_response"
   | "empty_response"
   | "timeout"
+  | "busy"
   | "process_failed"
 
 export class AiProviderError extends Error {

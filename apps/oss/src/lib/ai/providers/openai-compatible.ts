@@ -30,6 +30,10 @@ const modelsResponseSchema = z.object({
  * LM Studio, vLLM and similar servers. `baseUrl` is the API root, for example
  * `https://openrouter.ai/api/v1`.
  */
+// A slow local model can take a while to draft; a model list should be quick.
+const COMPLETION_TIMEOUT_MS = 120_000
+const MODELS_TIMEOUT_MS = 15_000
+
 export function createOpenAiCompatibleProvider(input: {
   id: "openrouter" | "openai_compatible"
   baseUrl: string
@@ -43,6 +47,8 @@ export function createOpenAiCompatibleProvider(input: {
     method: "GET" | "POST"
     body?: unknown
     schema: z.ZodType<T>
+    /** Covers the whole exchange, including a slow body: the signal also aborts reading it. */
+    timeoutMs: number
   }): Promise<T> {
     const url = `${baseUrl}/${options.endpoint}`
     const body = options.body === undefined ? undefined : JSON.stringify(options.body)
@@ -57,8 +63,21 @@ export function createOpenAiCompatibleProvider(input: {
 
     let response: Response
     try {
-      response = await fetch(url, { method: options.method, headers, body })
+      response = await fetch(url, {
+        method: options.method,
+        headers,
+        body,
+        signal: AbortSignal.timeout(options.timeoutMs),
+      })
     } catch (cause) {
+      if (cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError")) {
+        throw new AiProviderError({
+          code: "timeout",
+          providerId: input.id,
+          message: `${providerName} ${options.endpoint} did not respond within ${options.timeoutMs / 1000} seconds`,
+          cause,
+        })
+      }
       throw new AiProviderError({
         code: "network",
         providerId: input.id,
@@ -107,6 +126,7 @@ export function createOpenAiCompatibleProvider(input: {
     async complete(request: AiCompletionRequest) {
       const payload = await requestJson({
         endpoint: "chat/completions",
+        timeoutMs: COMPLETION_TIMEOUT_MS,
         method: "POST",
         body: {
           model: request.model,
@@ -131,6 +151,7 @@ export function createOpenAiCompatibleProvider(input: {
     async listModels() {
       const payload = await requestJson({
         endpoint: "models",
+        timeoutMs: MODELS_TIMEOUT_MS,
         method: "GET",
         schema: modelsResponseSchema,
       })

@@ -125,12 +125,19 @@ export function getRuntimeCapabilities(
 ) {
   let capabilities = readDefaultCapabilities(env)
 
+  let disabledByExtension = false
   for (const extension of runtimeExtensions) {
-    capabilities = mergeCapabilities(
-      capabilities,
-      extension.resolveCapabilities?.(capabilities)
-    )
+    const patch = extension.resolveCapabilities?.(capabilities)
+    if (patch && patch.aiInvoiceDraft?.enabled === false) {
+      disabledByExtension = true
+    }
+    capabilities = mergeCapabilities(capabilities, patch)
   }
+
+  // `enabled` follows the provider flags after extensions patch them, so an extension that turns on
+  // managed AI also enables drafting. An extension can still switch drafting off explicitly.
+  const ai = capabilities.aiInvoiceDraft
+  ai.enabled = !disabledByExtension && (ai.byok || ai.managed || ai.localAgent)
 
   // Issuance artifacts are a release invariant; runtime extensions cannot opt out.
   capabilities.documents.artifactsRequired = true

@@ -1299,9 +1299,13 @@ function SettingsPage() {
                           variant="outline"
                           size="sm"
                           onClick={loadAiModels}
+                          // The server lists models for the saved provider, so refreshing is only
+                          // offered once the edited provider and base URL are saved.
                           disabled={
                             loadingAiModels ||
-                            (aiProvider === "openai_compatible" && !settings.aiBaseUrl)
+                            aiProvider !== settings.aiProvider ||
+                            (aiProvider === "openai_compatible" &&
+                              (!settings.aiBaseUrl || aiBaseUrl.trim() !== settings.aiBaseUrl))
                           }
                         >
                           {loadingAiModels

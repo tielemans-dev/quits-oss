@@ -60,6 +60,15 @@ async function runLocalAgent(request: AiCompletionRequest): Promise<string> {
     })
   }
 
+  const maxConcurrent = readMaxConcurrent(readProductEnv(env, "AI_LOCAL_AGENT_MAX_CONCURRENT"))
+  if (runningAgents >= maxConcurrent) {
+    throw new AiProviderError({
+      code: "busy",
+      providerId: PROVIDER_ID,
+      message: `${runningAgents} local agent runs are already in progress`,
+    })
+  }
+
   const timeoutMs = readTimeoutMs(readProductEnv(env, "AI_LOCAL_AGENT_TIMEOUT_MS"))
   // `request.model` is ignored: the CLI chooses its own model. `temperature` is not supported.
   const prompt = buildPrompt(request.messages)
@@ -69,14 +78,32 @@ async function runLocalAgent(request: AiCompletionRequest): Promise<string> {
     import("node:os"),
   ])
 
-  return collectAgentOutput({
-    spawn,
-    executable,
-    args,
-    prompt,
-    timeoutMs,
-    cwd: tmpdir(),
-  })
+  runningAgents += 1
+  try {
+    return await collectAgentOutput({
+      spawn,
+      executable,
+      args,
+      prompt,
+      timeoutMs,
+      cwd: tmpdir(),
+    })
+  } finally {
+    runningAgents -= 1
+  }
+}
+
+// Each run is a whole agent process, so the server caps how many run at once. The count is per
+// server process, which is the unit that pays for them.
+let runningAgents = 0
+const DEFAULT_MAX_CONCURRENT = 2
+
+function readMaxConcurrent(value: string | undefined) {
+  const parsed = Number.parseInt(value ?? "", 10)
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return DEFAULT_MAX_CONCURRENT
+  }
+  return Math.min(parsed, 16)
 }
 
 type SpawnFunction = (
