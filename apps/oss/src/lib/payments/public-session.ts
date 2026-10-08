@@ -11,7 +11,7 @@ import {
 import { invalidLinkLocale } from "../documents/public-invalid-link"
 import { publicLogoPath } from "../documents/public-logo"
 import { resolvePublicPresentation } from "../documents/public-presentation"
-import { issuedNumber } from "../../domain/documents/numbering"
+import { isDocumentNotIssued, issuedNumber } from "../../domain/documents/numbering"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -148,10 +148,18 @@ export const getPublicInvoiceSession = createServerFn({ method: "GET" })
       return { kind: "invalid", locale: invalidLinkLocale() } as const
     }
 
-    return {
-      kind: "ready",
-      ...serializePublicInvoiceSession(session, data.token),
-    } as const
+    try {
+      return {
+        kind: "ready",
+        ...serializePublicInvoiceSession(session, data.token),
+      } as const
+    } catch (error) {
+      if (!isDocumentNotIssued(error)) throw error
+      // A shared link whose invoice has no number is a broken invariant; show the link as invalid and say why in the log.
+      const { appLogger } = await import("../observability")
+      appLogger.child("payments").error("public_invoice.not_issued", { invoiceId: session.invoice.id })
+      return { kind: "invalid", locale: invalidLinkLocale() } as const
+    }
   })
 
 export const beginPublicInvoiceCheckout = createServerFn({ method: "POST" })

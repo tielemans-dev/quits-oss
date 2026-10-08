@@ -10,7 +10,7 @@ import {
 import { invalidLinkLocale } from "../documents/public-invalid-link"
 import { publicLogoPath } from "../documents/public-logo"
 import { resolvePublicPresentation } from "../documents/public-presentation"
-import { issuedNumber } from "../../domain/documents/numbering"
+import { isDocumentNotIssued, issuedNumber } from "../../domain/documents/numbering"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -136,10 +136,18 @@ export const getPublicQuoteSession = createServerFn({ method: "GET" })
       return { kind: "invalid", locale: invalidLinkLocale() } as const
     }
 
-    return {
-      kind: "ready",
-      ...serializePublicQuoteSession(session, data.token),
-    } as const
+    try {
+      return {
+        kind: "ready",
+        ...serializePublicQuoteSession(session, data.token),
+      } as const
+    } catch (error) {
+      if (!isDocumentNotIssued(error)) throw error
+      // A shared link whose quote has no number is a broken invariant; show the link as invalid and say why in the log.
+      const { appLogger } = await import("../observability")
+      appLogger.child("quotes").error("public_quote.not_issued", { quoteId: session.quote.id })
+      return { kind: "invalid", locale: invalidLinkLocale() } as const
+    }
   })
 
 export const submitPublicQuoteDecision = createServerFn({ method: "POST" })
