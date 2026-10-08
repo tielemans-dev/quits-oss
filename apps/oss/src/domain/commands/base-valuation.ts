@@ -1,3 +1,4 @@
+import { issuedNumber } from "../documents/numbering"
 import { assertStoredDocumentEquation, percentageToFraction } from "@quits/shared/pricing"
 import { z } from "zod"
 import { Effect } from "effect"
@@ -27,7 +28,7 @@ export const recordBaseValuation = defineCommand({
     const settings = yield* Effect.promise(() => db.orgSettings.findUniqueOrThrow({ where: { organizationId: command.organizationId } }))
     const snapshot = yield* Effect.try({ try: () => {
       assertStoredDocumentEquation({ currency: invoice.currency, pricesIncludeTax: invoice.pricesIncludeTax, net: invoice.subtotalNet.toString(), tax: invoice.totalTax.toString(), gross: invoice.totalGross.toString(), lines: invoice.items.map(line => ({ vat: { treatment: line.vatTreatment, rate: line.vatRateInput ?? percentageToFraction(line.taxRate.toString()), country: line.vatCountry, reasonCode: line.vatReasonCode }, net: line.lineNet.toString(), tax: line.lineTax.toString(), gross: line.lineGross.toString() })) })
-      return invoiceMoneySnapshot(invoice, { ...input, baseCurrency: settings.baseCurrency, issuedAt: invoice.issueDate, seller: parseSellerSnapshot(invoice.sellerSnapshot) ?? {}, buyer: parseBuyerSnapshot(invoice.buyerSnapshot) ?? {} })
+      return invoiceMoneySnapshot(invoice, { ...input, number: issuedNumber(invoice), baseCurrency: settings.baseCurrency, issuedAt: invoice.issueDate, seller: parseSellerSnapshot(invoice.sellerSnapshot) ?? {}, buyer: parseBuyerSnapshot(invoice.buyerSnapshot) ?? {} })
     }, catch: error => error instanceof InvalidState ? error : new InvalidState({ code: "historical_groups_unavailable", message: "Historical VAT groups need review before valuation can be recorded" }) })
     const payload = { documentId: invoice.id, number: invoice.number, valuation: snapshot.valuation, vatGroups: snapshot.vatGroups, reviewedByUserId: command.actor.userId, evidenceNote: input.evidenceNote, occurredAt: command.now.toISOString() }
     command.emit({ aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.base_valuation_recorded", payload })

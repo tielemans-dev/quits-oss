@@ -93,7 +93,8 @@ export const invoiceTools: AgentTool[] = [
     title: "Create draft invoice",
     description:
       "Creates a draft invoice for a contact. Drafts are free: nothing is sent and no approval is " +
-      "needed. unitPrice follows the organization's pricesIncludeTax setting (see organization_read); " +
+      "needed. A draft has no invoice number (number is null): the number is assigned when the invoice " +
+      "is sent, so deleting a draft never leaves a gap in the numbering. unitPrice follows the organization's pricesIncludeTax setting (see organization_read); " +
       "taxRate is a percentage. dueDate is YYYY-MM-DD.",
     command: createInvoiceDraft,
     input: invoiceCreateDraftV2InputSchema,
@@ -114,7 +115,8 @@ export const invoiceTools: AgentTool[] = [
     name: "invoice_send",
     title: "Send invoice",
     description:
-      "Issues a draft invoice and emails it to the contact's email address. The invoice gets an " +
+      "Issues a draft invoice and emails it to the contact's email address. The invoice gets the next " +
+      "invoice number (returned as number; a draft that already has a number keeps it), an " +
       "issue date and can no longer be edited. A disputed draft requires acknowledgeDisputed: true, recorded in activity. Set allowSendWithoutEmail only when the person asked " +
       "to mark it sent even though email delivery is not configured. The invoice becomes sent once the " +
       "email provider accepts the email; if the result has emailPending: true, check invoices_get " +

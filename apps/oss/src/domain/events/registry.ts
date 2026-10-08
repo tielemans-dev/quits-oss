@@ -22,7 +22,9 @@ const sent = z.object({ number: s, recipient: nullableString, emailSent: z.boole
 const resent = z.object({ number: s, recipient: s }).strict()
 const unconfirmed = z.object({ number: s, recipient: s, issued: z.boolean() }).strict()
 const failed = z.object({ number: s, recipient: s, reason: z.enum(["rejected", "withdrawn"]), message: s }).strict()
-const draft = z.object({ number: s, contactId: s, totalGross: n }).strict()
+// Drafts have no number until they are issued, so draft events carry null; later events carry the number.
+const draftNumber = z.object({ number: nullableString }).strict()
+const draft = z.object({ number: nullableString, contactId: s, totalGross: n }).strict()
 const acceptance = z.object({
   acceptedAt: date,
   acceptedRevision: i.nullable(),
@@ -47,7 +49,7 @@ export const eventRegistry = {
   "invoice.base_valuation_recorded": { version: 1, schema: baseValuationRecordedSchema },
   "invoice.draft_created": { version: 1, schema: draft.extend({ quoteId: s.optional() }).strict() },
   "invoice.draft_updated": { version: 1, schema: fields },
-  "invoice.draft_deleted": { version: 1, schema: number },
+  "invoice.draft_deleted": { version: 1, schema: draftNumber },
   "invoice.sent": { version: 1, schema: sent },
   "invoice.email_resent": { version: 1, schema: resent },
   "invoice.email_unconfirmed": { version: 1, schema: unconfirmed },
@@ -63,14 +65,14 @@ export const eventRegistry = {
   "invoice.reminder_skipped": { version: 1, schema: reminderFailure },
   "quote.draft_created": { version: 1, schema: draft },
   "quote.draft_updated": { version: 1, schema: fields },
-  "quote.draft_deleted": { version: 1, schema: number },
+  "quote.draft_deleted": { version: 1, schema: draftNumber },
   "quote.sent": { version: 1, schema: sent },
   "quote.email_resent": { version: 1, schema: resent },
   "quote.email_unconfirmed": { version: 1, schema: unconfirmed },
   "quote.email_failed": { version: 1, schema: failed },
   "quote.accepted": { version: 1, schema: z.object({ number: s, source: z.literal("customer"), rejectionReason: s.optional() }).strict() },
   "quote.rejected": { version: 1, schema: z.object({ number: s, source: z.enum(["user", "customer"]), rejectionReason: s.optional() }).strict() },
-  "quote.converted": { version: 1, schema: z.object({ number: s, invoiceId: s, invoiceNumber: s }).strict() },
+  "quote.converted": { version: 1, schema: z.object({ number: s, invoiceId: s, invoiceNumber: nullableString }).strict() },
   "credit_note.issued": { version: 2, schema: creditNoteIssuedSchema },
   "credit_note.sent": { version: 1, schema: sent },
   "credit_note.email_unconfirmed": { version: 1, schema: unconfirmed },
@@ -84,7 +86,7 @@ export const eventRegistry = {
   "recurring.status_changed": { version: 1, schema: z.object({ from: s, to: s, reason: s }).strict() },
   "recurring.created": { version: 1, schema: z.object({ name: s, contactId: s, status: s, autoSend: z.boolean(), nextRunAt: date }).strict() },
   "recurring.updated": { version: 1, schema: fields },
-  "recurring.invoice_generated": { version: 1, schema: z.object({ invoiceId: s, number: s, runDate: s, autoSend: z.boolean() }).strict() },
+  "recurring.invoice_generated": { version: 1, schema: z.object({ invoiceId: s, number: nullableString, runDate: s, autoSend: z.boolean() }).strict() },
   "recurring.run_failed": { version: 1, schema: z.object({ runDate: s, error: commandError }).strict() },
   "recurring.auto_send_failed": { version: 1, schema: z.object({ invoiceId: s, error: commandError }).strict() },
   "reminders.policy_updated": { version: 1, schema: z.object({ enabled: z.boolean(), offsetsDays: z.array(i) }).strict() },

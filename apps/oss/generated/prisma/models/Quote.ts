@@ -367,7 +367,7 @@ export type QuoteGroupByOutputType = {
   id: string
   organizationId: string
   contactId: string
-  number: string
+  number: string | null
   status: string
   issueDate: Date
   expiryDate: Date
@@ -430,7 +430,7 @@ export type QuoteWhereInput = {
   id?: Prisma.StringFilter<"Quote"> | string
   organizationId?: Prisma.StringFilter<"Quote"> | string
   contactId?: Prisma.StringFilter<"Quote"> | string
-  number?: Prisma.StringFilter<"Quote"> | string
+  number?: Prisma.StringNullableFilter<"Quote"> | string | null
   status?: Prisma.StringFilter<"Quote"> | string
   issueDate?: Prisma.DateTimeFilter<"Quote"> | Date | string
   expiryDate?: Prisma.DateTimeFilter<"Quote"> | Date | string
@@ -475,7 +475,7 @@ export type QuoteOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
-  number?: Prisma.SortOrder
+  number?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   issueDate?: Prisma.SortOrder
   expiryDate?: Prisma.SortOrder
@@ -524,7 +524,7 @@ export type QuoteWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.QuoteWhereInput | Prisma.QuoteWhereInput[]
   organizationId?: Prisma.StringFilter<"Quote"> | string
   contactId?: Prisma.StringFilter<"Quote"> | string
-  number?: Prisma.StringFilter<"Quote"> | string
+  number?: Prisma.StringNullableFilter<"Quote"> | string | null
   status?: Prisma.StringFilter<"Quote"> | string
   issueDate?: Prisma.DateTimeFilter<"Quote"> | Date | string
   expiryDate?: Prisma.DateTimeFilter<"Quote"> | Date | string
@@ -569,7 +569,7 @@ export type QuoteOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
-  number?: Prisma.SortOrder
+  number?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   issueDate?: Prisma.SortOrder
   expiryDate?: Prisma.SortOrder
@@ -617,7 +617,7 @@ export type QuoteScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Quote"> | string
   organizationId?: Prisma.StringWithAggregatesFilter<"Quote"> | string
   contactId?: Prisma.StringWithAggregatesFilter<"Quote"> | string
-  number?: Prisma.StringWithAggregatesFilter<"Quote"> | string
+  number?: Prisma.StringNullableWithAggregatesFilter<"Quote"> | string | null
   status?: Prisma.StringWithAggregatesFilter<"Quote"> | string
   issueDate?: Prisma.DateTimeWithAggregatesFilter<"Quote"> | Date | string
   expiryDate?: Prisma.DateTimeWithAggregatesFilter<"Quote"> | Date | string
@@ -655,7 +655,7 @@ export type QuoteScalarWhereWithAggregatesInput = {
 
 export type QuoteCreateInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -700,7 +700,7 @@ export type QuoteUncheckedCreateInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -741,7 +741,7 @@ export type QuoteUncheckedCreateInput = {
 
 export type QuoteUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -786,7 +786,7 @@ export type QuoteUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -829,7 +829,7 @@ export type QuoteCreateManyInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -867,7 +867,7 @@ export type QuoteCreateManyInput = {
 
 export type QuoteUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -907,7 +907,7 @@ export type QuoteUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1224,7 +1224,7 @@ export type QuoteUpdateOneWithoutAgreementNestedInput = {
 
 export type QuoteCreateWithoutOrganizationInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1267,7 +1267,7 @@ export type QuoteCreateWithoutOrganizationInput = {
 export type QuoteUncheckedCreateWithoutOrganizationInput = {
   id?: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1339,7 +1339,7 @@ export type QuoteScalarWhereInput = {
   id?: Prisma.StringFilter<"Quote"> | string
   organizationId?: Prisma.StringFilter<"Quote"> | string
   contactId?: Prisma.StringFilter<"Quote"> | string
-  number?: Prisma.StringFilter<"Quote"> | string
+  number?: Prisma.StringNullableFilter<"Quote"> | string | null
   status?: Prisma.StringFilter<"Quote"> | string
   issueDate?: Prisma.DateTimeFilter<"Quote"> | Date | string
   expiryDate?: Prisma.DateTimeFilter<"Quote"> | Date | string
@@ -1377,7 +1377,7 @@ export type QuoteScalarWhereInput = {
 
 export type QuoteCreateWithoutContactInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1420,7 +1420,7 @@ export type QuoteCreateWithoutContactInput = {
 export type QuoteUncheckedCreateWithoutContactInput = {
   id?: string
   organizationId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1487,7 +1487,7 @@ export type QuoteUpdateManyWithWhereWithoutContactInput = {
 
 export type QuoteCreateWithoutInvoicesInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1531,7 +1531,7 @@ export type QuoteUncheckedCreateWithoutInvoicesInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1587,7 +1587,7 @@ export type QuoteUpdateToOneWithWhereWithoutInvoicesInput = {
 
 export type QuoteUpdateWithoutInvoicesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1631,7 +1631,7 @@ export type QuoteUncheckedUpdateWithoutInvoicesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1671,7 +1671,7 @@ export type QuoteUncheckedUpdateWithoutInvoicesInput = {
 
 export type QuoteCreateWithoutItemsInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1715,7 +1715,7 @@ export type QuoteUncheckedCreateWithoutItemsInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1771,7 +1771,7 @@ export type QuoteUpdateToOneWithWhereWithoutItemsInput = {
 
 export type QuoteUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1815,7 +1815,7 @@ export type QuoteUncheckedUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1855,7 +1855,7 @@ export type QuoteUncheckedUpdateWithoutItemsInput = {
 
 export type QuoteCreateWithoutAgreementInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1899,7 +1899,7 @@ export type QuoteUncheckedCreateWithoutAgreementInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -1955,7 +1955,7 @@ export type QuoteUpdateToOneWithWhereWithoutAgreementInput = {
 
 export type QuoteUpdateWithoutAgreementInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1999,7 +1999,7 @@ export type QuoteUncheckedUpdateWithoutAgreementInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2040,7 +2040,7 @@ export type QuoteUncheckedUpdateWithoutAgreementInput = {
 export type QuoteCreateManyOrganizationInput = {
   id?: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -2078,7 +2078,7 @@ export type QuoteCreateManyOrganizationInput = {
 
 export type QuoteUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2121,7 +2121,7 @@ export type QuoteUpdateWithoutOrganizationInput = {
 export type QuoteUncheckedUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2163,7 +2163,7 @@ export type QuoteUncheckedUpdateWithoutOrganizationInput = {
 export type QuoteUncheckedUpdateManyWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2202,7 +2202,7 @@ export type QuoteUncheckedUpdateManyWithoutOrganizationInput = {
 export type QuoteCreateManyContactInput = {
   id?: string
   organizationId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   expiryDate: Date | string
@@ -2240,7 +2240,7 @@ export type QuoteCreateManyContactInput = {
 
 export type QuoteUpdateWithoutContactInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2283,7 +2283,7 @@ export type QuoteUpdateWithoutContactInput = {
 export type QuoteUncheckedUpdateWithoutContactInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2325,7 +2325,7 @@ export type QuoteUncheckedUpdateWithoutContactInput = {
 export type QuoteUncheckedUpdateManyWithoutContactInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiryDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2602,7 +2602,7 @@ export type $QuotePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     id: string
     organizationId: string
     contactId: string
-    number: string
+    number: string | null
     status: string
     issueDate: Date
     expiryDate: Date

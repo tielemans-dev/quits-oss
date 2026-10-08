@@ -10,6 +10,7 @@ import {
 import { invalidLinkLocale } from "../documents/public-invalid-link"
 import { publicLogoPath } from "../documents/public-logo"
 import { resolvePublicPresentation } from "../documents/public-presentation"
+import { issuedNumber } from "../../domain/documents/numbering"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -29,7 +30,7 @@ function toDateString(value: Date | string | null) {
 export function serializePublicQuoteSession(session: {
   quote: {
     id: string
-    number: string
+    number: string | null
     status: string
     issueDate: Date | string
     expiryDate: Date | string
@@ -69,7 +70,7 @@ export function serializePublicQuoteSession(session: {
     }>
     invoices: Array<{
       id: string
-      number: string
+      number: string | null
       status: string
     }>
   }
@@ -90,7 +91,8 @@ export function serializePublicQuoteSession(session: {
     decisionState: session.decisionState,
     quote: {
       id: quote.id,
-      number: quote.number,
+      // Public links exist only for sent quotes, which always have a number.
+      number: issuedNumber(quote),
       status: quote.status,
       issueDate: toDateString(quote.issueDate) ?? quote.issueDate,
       expiryDate: toDateString(quote.expiryDate) ?? quote.expiryDate,
@@ -113,7 +115,10 @@ export function serializePublicQuoteSession(session: {
         lineGross: toNumber(item.lineGross),
         sortOrder: item.sortOrder,
       })),
-      invoices: quote.invoices,
+      // A draft invoice is not the customer's to see; it has no number until it is issued.
+      invoices: quote.invoices.flatMap((invoice) =>
+        invoice.number === null || invoice.status === "draft" ? [] : [{ ...invoice, number: invoice.number }]
+      ),
     },
   }
 }

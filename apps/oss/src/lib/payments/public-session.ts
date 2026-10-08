@@ -11,6 +11,7 @@ import {
 import { invalidLinkLocale } from "../documents/public-invalid-link"
 import { publicLogoPath } from "../documents/public-logo"
 import { resolvePublicPresentation } from "../documents/public-presentation"
+import { issuedNumber } from "../../domain/documents/numbering"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -37,7 +38,7 @@ function publicSellerSnapshot(seller: SellerSnapshot | null): Omit<SellerSnapsho
 export function serializePublicInvoiceSession(session: {
   invoice: {
     id: string
-    number: string
+    number: string | null
     status: string
     paymentStatus: string
     issueDate: Date | string
@@ -104,7 +105,8 @@ export function serializePublicInvoiceSession(session: {
     stripeEnabled: session.stripeEnabled,
     invoice: {
       id: invoice.id,
-      number: invoice.number,
+      // Public links exist only for issued invoices, which always have a number.
+      number: issuedNumber(invoice),
       status: invoice.status,
       paymentStatus: invoice.paymentStatus,
       issueDate: toDateString(invoice.issueDate),

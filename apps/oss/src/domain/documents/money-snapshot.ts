@@ -8,8 +8,9 @@ import { frozenVatGroups } from "./frozen-vat-groups"
 import { InvalidState } from "../errors"
 
 export type InvoiceMoneySnapshot = Omit<InvoiceIssued, "artifacts" | "provenance"> & { provenance: Omit<InvoiceIssued["provenance"], "candidateId" | "commandId"> }
-export function invoiceMoneySnapshot(invoice: Invoice & { items: InvoiceItem[] }, input: {
-  issuedAt: Date; baseCurrency: string; supplyDate?: string; exchangeRate?: string; rateDate?: string;
+export function invoiceMoneySnapshot(invoice: Omit<Invoice, "number"> & { items: InvoiceItem[] }, input: {
+  /** The number the invoice is issued under; a draft has none of its own yet. */
+  number: string; issuedAt: Date; baseCurrency: string; supplyDate?: string; exchangeRate?: string; rateDate?: string;
   vatReporting?: InvoiceIssued["vatReporting"]; seller: SellerSnapshot; buyer: BuyerSnapshot;
 }): InvoiceMoneySnapshot {
   const exponent = requireCurrencyExponent(invoice.currency)
@@ -24,7 +25,7 @@ export function invoiceMoneySnapshot(invoice: Invoice & { items: InvoiceItem[] }
   const supplyDate = input.supplyDate ? input.supplyDate.slice(0, 10) : invoice.supplyDate ? invoice.supplyDate.toISOString().slice(0, 10) : null
   const reviewed = !supplyDate || supplyDate < issueDate
   return {
-    documentId: invoice.id, number: invoice.number, purpose: invoice.purpose,
+    documentId: invoice.id, number: input.number, purpose: invoice.purpose,
     occurredAt: input.issuedAt.toISOString(), postingDate: issueDate, issueDate,
     taxPointDate: reviewed ? null : issueDate, taxPointReason: reviewed ? "tax_point_review" : "invoice_issued",
     supplyDate, dueDate: formatIsoDate(invoice.dueDate, invoice.timezone), currency: invoice.currency, exponent,

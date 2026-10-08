@@ -42,7 +42,8 @@ type Line = {
  */
 export function documentFingerprint(
   document: {
-    number: string
+    /** Null for a draft that has not been numbered yet. */
+    number: string | null
     currency: string
     issueDate: Date
     subtotalNet: { toString(): string }

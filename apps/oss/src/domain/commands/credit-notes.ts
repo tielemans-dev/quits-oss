@@ -8,7 +8,7 @@ import type { AnyCommandDefinition } from "../command"
 import { defineCommand } from "../command"
 import { loadDocumentContext } from "../documents/context"
 import { requireRecipientEmail, resolveInvoiceEmailContext } from "../documents/invoice-email"
-import { allocateDocumentNumber } from "../documents/numbering"
+import { allocateDocumentNumber, asIssued } from "../documents/numbering"
 import { priceCreditNote } from "../documents/credit-pricing"
 import { refreshInvoiceSettlement } from "../documents/settlement"
 import { buildBuyerSnapshot, buildSellerSnapshot, withoutPaymentDetails } from "../documents/snapshots"
@@ -180,7 +180,7 @@ export const sendCreditNote = defineCommand({
             total: num(item.lineGross),
           })),
         },
-        invoice: creditNote.invoice,
+        invoice: asIssued(creditNote.invoice),
         org: {
           companyName: settings.companyName,
           companyEmail: settings.companyEmail,

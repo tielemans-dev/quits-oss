@@ -61,7 +61,8 @@ export type InvoiceRow = {
   agreementId?: string | null
   scheduleSaleChoice?: unknown
   id: string
-  number: string
+  /** Null while the invoice is a draft: it is numbered when it is issued. */
+  number: string | null
   status: string
   paymentStatus: string
   contactId: string
@@ -140,7 +141,8 @@ export function presentInvoice(invoice: InvoiceRow) {
 
 export type QuoteRow = {
   id: string
-  number: string
+  /** Null while the quote is a draft: it is numbered when it is sent. */
+  number: string | null
   status: string
   contactId: string
   issueDate: Date
@@ -160,7 +162,7 @@ export type QuoteRow = {
   updatedAt: Date
   contact?: { id?: string; name: string; email?: string | null } | null
   items?: LineItem[]
-  invoices?: Array<{ id: string; number: string }>
+  invoices?: Array<{ id: string; number: string | null }>
 }
 
 export function presentQuote(quote: QuoteRow) {

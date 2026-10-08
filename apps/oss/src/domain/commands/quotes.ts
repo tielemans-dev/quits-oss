@@ -20,7 +20,7 @@ import { assessCompliance, loadDocumentContext } from "../documents/context"
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
 import { documentFingerprint, lockedContact } from "../approval-contexts"
-import { allocateDocumentNumber } from "../documents/numbering"
+import { asIssued, documentRef, numberForIssuance } from "../documents/numbering"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
 import {
   composeQuoteEmail,
@@ -96,7 +96,6 @@ export const createQuoteDraft = defineCommand({
       const contact = yield* findContact(input.contactId)
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
-      const number = yield* allocateDocumentNumber("quote")
       const currency = input.currency ?? settings.defaultCurrency ?? settings.currency
       yield* requireDraftCurrency(currency)
       const calculated = yield* priceCurrentDraft({
@@ -113,7 +112,7 @@ export const createQuoteDraft = defineCommand({
           data: {
             organizationId,
             contactId: contact.id,
-            number,
+            // Drafts have no number: it is taken when the quote is sent, so deleting a draft leaves no gap.
             status: "draft",
             expiryDate: new Date(input.expiryDate),
             subtotalNet: calculated.subtotalNet,
@@ -276,8 +275,8 @@ const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
     return {
       summary:
         action === "send"
-          ? `Send quote ${quote.number} (${total}) to ${recipient ?? quote.contact.name}`
-          : `Email quote ${quote.number} (${total}) to ${recipient ?? quote.contact.name} again`,
+          ? `Send ${documentRef("quote", quote.number)} (${total}) to ${recipient ?? quote.contact.name}`
+          : `Email ${documentRef("quote", quote.number)} (${total}) to ${recipient ?? quote.contact.name} again`,
       version: documentFingerprint(quote, recipient, [quote.expiryDate]),
       details: {
         number: quote.number,
@@ -313,12 +312,15 @@ export const sendQuote = defineCommand({
       const command = yield* Command
       const { organizationId, now } = command
       yield* lockDocument("quote", input.id)
-      const quote = yield* findQuote(input.id)
+      const found = yield* findQuote(input.id)
 
-      if (quote.status !== "draft") {
+      if (found.status !== "draft") {
         return yield* new InvalidState({ message: "Only draft quotes can be sent", code: "not_draft" })
       }
-      yield* refuseWhileSending("quote", quote)
+      yield* refuseWhileSending("quote", found)
+      // The number is taken here, in the issuing transaction: if any later check fails, the
+      // transaction rolls back and the number goes back with it.
+      const quote = { ...found, number: yield* numberForIssuance("quote", found) }
       yield* requireVatIssuance(quote)
 
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
@@ -354,6 +356,7 @@ export const sendQuote = defineCommand({
           db.quote.update({
             where: { id: quote.id },
             data: {
+              number: quote.number,
               status: "sent",
               issueDate: now,
               publicAccessIssuedAt,
@@ -390,7 +393,7 @@ export const sendQuote = defineCommand({
         message: email.message,
         idempotencyKey: `quote-send:${quote.id}:${now.getTime()}`,
         publicLinkIssuedAt: publicAccessIssuedAt,
-        markSending: (data) => db.quote.update({ where: { id: quote.id }, data }),
+        markSending: (data) => db.quote.update({ where: { id: quote.id }, data: { ...data, number: quote.number } }),
       })
       quoteLogger.info("quote.email.queued", {
         organizationId,
@@ -444,7 +447,7 @@ export const resendQuoteEmail = defineCommand({
         })
       }
 
-      const email = composeQuoteEmail({ quote, settings, to: recipient, publicQuoteUrl })
+      const email = composeQuoteEmail({ quote: asIssued(quote), settings, to: recipient, publicQuoteUrl })
       const { document: updated, deliveryKey } = yield* queueDocumentEmail({
         kind: "quote",
         mode: "email",
@@ -527,13 +530,12 @@ export const convertQuoteToInvoice = defineCommand({
       // Conversion creates an invoice, so it is subject to the same billing limits.
       yield* precondition(() => billingProvider.assertInvoiceCreationAllowed(organizationId))
 
-      const number = yield* allocateDocumentNumber("invoice")
       const invoice = yield* Effect.promise(() =>
         db.invoice.create({
           data: {
             organizationId,
             contactId: quote.contactId,
-            number,
+            // The invoice is numbered when it is issued, like any other draft.
             status: "draft",
             dueDate: quote.expiryDate,
             supplyDate: quote.supplyDate,

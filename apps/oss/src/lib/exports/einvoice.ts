@@ -32,6 +32,7 @@ import {
   type EinvoiceParty,
   type EinvoicePayment,
 } from "./ubl"
+import { issuedNumber } from "../../domain/documents/numbering"
 
 export class EinvoiceArtifactUnavailable extends Error {
   readonly code = "stored_artifact_unavailable"
@@ -234,7 +235,8 @@ export async function loadEinvoiceDocument(
     return {
       kind,
       issued: invoice.status !== "draft",
-      number: invoice.number,
+      // A draft has no number yet. Its export is never produced: `document.notIssued` is reported.
+      number: invoice.number ?? "",
       issueDate: formatIsoDate(invoice.issueDate, invoice.timezone),
       dueDate: formatIsoDate(invoice.dueDate, invoice.timezone),
       deliveryDate: invoice.supplyDate ? formatIsoDate(invoice.supplyDate, invoice.timezone) : null,
@@ -281,7 +283,7 @@ export async function loadEinvoiceDocument(
     billingReference:
       invoice.status === "draft"
         ? null
-        : { number: invoice.number, issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) },
+        : { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) },
     note: creditNote.reason,
     seller: buildSellerParty({
       snapshot: parseSellerSnapshot(creditNote.sellerSnapshot),
@@ -313,7 +315,7 @@ export async function exportEinvoice(
     if (!row.artifactUblRef) throw new EinvoiceArtifactUnavailable()
     const bytes = await getDocumentArtifactStore()?.get(row.artifactUblRef)
     if (!bytes || hashBytes(bytes) !== row.artifactUblHash) throw new EinvoiceArtifactUnavailable()
-    return { ok: true, filename: `${safeFileName(row.number, kind)}.xml`, xml: new TextDecoder().decode(bytes) }
+    return { ok: true, filename: `${safeFileName(issuedNumber(row), kind)}.xml`, xml: new TextDecoder().decode(bytes) }
   }
   const document = await loadEinvoiceDocument(organizationId, kind, id)
   const missing = validateEinvoice(document)

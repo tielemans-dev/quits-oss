@@ -23,6 +23,7 @@ import { computeSettlement } from "../documents/settlement"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { reminderSendApproval } from "../approval-contexts"
+import { issuedNumber } from "../documents/numbering"
 
 const remindersLogger = appLogger.child("reminders")
 
@@ -312,7 +313,7 @@ const queueReminderEmail = (input: {
       replyTo: emailContext.envelope.replyTo,
       stage: reminderStage(invoice.dueDate, now),
       invoice: {
-        number: invoice.number,
+        number: issuedNumber(invoice),
         dueDate: invoice.dueDate,
         currency: invoice.currency,
         balanceDue: balanceDue.toNumber(),
@@ -330,7 +331,7 @@ const queueReminderEmail = (input: {
           reminderId: input.reminder.id,
           invoiceId: invoice.id,
           attemptAt: now.toISOString(),
-          number: invoice.number,
+          number: issuedNumber(invoice),
           recipient: input.recipient,
           offsetDays: String(input.reminder.offsetDays),
           balanceDue: balanceDue.toString(),

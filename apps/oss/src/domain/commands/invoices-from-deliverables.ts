@@ -11,7 +11,6 @@ import { Command, Db } from "../services"
 import { InvalidState, NotFound } from "../errors"
 import { lockDocument } from "../documents/locks"
 import { refuseWhileSending } from "../documents/document-delivery"
-import { allocateDocumentNumber } from "../documents/numbering"
 import { billableSelection, frozenInvoiceLine, frozenTotals, reserveLines } from "../agreements/billing"
 
 const include = { items: { orderBy: { sortOrder: "asc" as const } } }
@@ -36,12 +35,11 @@ export const createInvoiceFromDeliverables = defineCommand({
       const selected = lines.filter(line => (line.isDeposit && !input.scheduleAsSale ? "prepayment" : "sale") === purpose)
       if (!selected.length) continue
       yield* requireCreation
-      const number = yield* allocateDocumentNumber("invoice")
       const rows = selected.map((line, index) => frozenInvoiceLine(line, index, agreement.pricesIncludeTax))
       const saleIds = selected.filter(line => line.isDeposit && input.scheduleAsSale).map(line => line.id)
       const invoice = yield* Effect.promise(() => db.invoice.create({ data: {
         organizationId: command.organizationId, agreementId: agreement.id, contactId: agreement.contactId,
-        number, purpose, status: "draft", issueDate, dueDate, supplyDate: new Date(formatIsoDate(issueDate, agreement.timezone)),
+        purpose, status: "draft", issueDate, dueDate, supplyDate: new Date(formatIsoDate(issueDate, agreement.timezone)),
         ...frozenTotals(rows), calculationVersion: agreement.calculationVersion,
         currency: agreement.currency, countryCode: agreement.countryCode, locale: agreement.locale,
         timezone: agreement.timezone, taxRegime: agreement.taxRegime, pricesIncludeTax: agreement.pricesIncludeTax,

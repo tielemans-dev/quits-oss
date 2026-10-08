@@ -109,6 +109,21 @@ Tool failures are returned as MCP tool errors with `{ "error": { "tag", "message
 "issues?" } }`. Tags: `Forbidden`, `NotFound`, `InvalidState`, `ValidationFailed`,
 `ExternalFailure`, `InternalError`. Stack traces are never returned.
 
+## Document numbers
+
+Invoices and quotes are numbered when they are issued, not when the draft is created, so deleting a
+draft never leaves a gap in the series.
+
+- `number` on an invoice or quote is `null` while it is a draft. It is set by `invoice_send` and
+  `quote_send` (and by `invoice_send` for drafts created from deliverables, quotes or a recurring
+  schedule). Read it from the tool's result or from `invoice_get` / `quote_get` afterwards.
+- A draft created before this change already has a number and keeps it when it is sent.
+- Do not guess or reserve the next number. The `invoice_send` approval summary names a draft as
+  "draft invoice"; the number it receives is only known once it is sent.
+- `quote_convert_to_invoice` and `quote.invoices[].number` can also be `null` for the same reason.
+- The field name is unchanged, so clients that treat `number` as an opaque string only need to
+  accept `null` for drafts.
+
 ## Tools
 
 Tools are listed per key: an agent only sees tools whose scope it holds, and read-only keys never see
@@ -123,15 +138,15 @@ command tools. Money is returned as numbers in the document currency; dates are 
 | `contact_update` | command | `contact:update` | `id`, changed fields + `clientRequestId` |
 | `invoices_list` | query | `invoice:read` | `status`, `paymentStatus`, `contactId`, `limit`, `cursor`; includes `amountPaid`, `amountCredited`, `balanceDue` |
 | `invoice_get` | query | `invoice:read` | `id`; includes line items and public payment link |
-| `invoice_create_draft` | command | `invoice:create` | `contactId`, `dueDate`, `items`, `taxRate`, `currency?`, `notes?` |
+| `invoice_create_draft` | command | `invoice:create` | `contactId`, `dueDate`, `items`, `taxRate`, `currency?`, `notes?`; the draft's `number` is `null` until it is sent |
 | `invoice_update_draft` | command | `invoice:update` | `id` + changed fields; `items` replaces all lines |
-| `invoice_send` | command, outward-facing | `invoice:send` | `id`, `allowSendWithoutEmail?` |
+| `invoice_send` | command, outward-facing | `invoice:send` | `id`, `allowSendWithoutEmail?`; assigns the invoice number |
 | `invoice_resend_email` | command, outward-facing | `invoice:send` | `id` |
 | `quotes_list` | query | `quote:read` | `status`, `contactId`, `limit`, `cursor` |
 | `quote_get` | query | `quote:read` | `id`; includes line items and linked invoices |
-| `quote_create_draft` | command | `quote:create` | `contactId`, `expiryDate`, `items`, `taxRate`, `currency?`, `notes?` |
+| `quote_create_draft` | command | `quote:create` | `contactId`, `expiryDate`, `items`, `taxRate`, `currency?`, `notes?`; the draft's `number` is `null` until it is sent |
 | `quote_update_draft` | command | `quote:update` | `id` + changed fields; `items` replaces all lines |
-| `quote_send` | command, outward-facing | `quote:send` | `id`, `allowSendWithoutEmail?` |
+| `quote_send` | command, outward-facing | `quote:send` | `id`, `allowSendWithoutEmail?`; assigns the quote number |
 | `quote_resend_email` | command, outward-facing | `quote:send` | `id` |
 | `quote_convert_to_invoice` | command | `invoice:create` | `id` of an accepted quote; creates a draft invoice |
 | `payments_list` | query | `payment:read` | `invoiceId`; payments (incl. voided) and `balanceDue` |

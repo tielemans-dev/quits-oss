@@ -31,6 +31,7 @@ import {
   parseCalendarDate,
   type IntervalUnit,
 } from "../features/recurring-dates"
+import { NUMBER_CHANGED } from "../documents/numbering"
 import { buildInvoiceDraft, sendInvoice } from "./invoices"
 import { recurringApproval } from "../approval-contexts"
 
@@ -722,6 +723,10 @@ registerJobHandler(AUTO_SEND_JOB, async (job) => {
   ) {
     return
   }
+
+  // Other issuances kept taking the number this one was prepared with. Nothing is wrong with the
+  // draft; the job runner tries again.
+  if (outcome.error.code === NUMBER_CHANGED) throw new Error(outcome.error.message)
 
   await executeCommand(recordRecurringAutoSendFailure, { ...payload, error: outcome.error }, { actor })
   // Provider outages are retried by the job runner. Anything else (a missing recipient, a draft

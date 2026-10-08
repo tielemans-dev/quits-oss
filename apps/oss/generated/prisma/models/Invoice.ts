@@ -505,7 +505,7 @@ export type InvoiceGroupByOutputType = {
   id: string
   organizationId: string
   contactId: string
-  number: string
+  number: string | null
   status: string
   issueDate: Date
   dueDate: Date
@@ -591,7 +591,7 @@ export type InvoiceWhereInput = {
   id?: Prisma.StringFilter<"Invoice"> | string
   organizationId?: Prisma.StringFilter<"Invoice"> | string
   contactId?: Prisma.StringFilter<"Invoice"> | string
-  number?: Prisma.StringFilter<"Invoice"> | string
+  number?: Prisma.StringNullableFilter<"Invoice"> | string | null
   status?: Prisma.StringFilter<"Invoice"> | string
   issueDate?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   dueDate?: Prisma.DateTimeFilter<"Invoice"> | Date | string
@@ -663,7 +663,7 @@ export type InvoiceOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
-  number?: Prisma.SortOrder
+  number?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   issueDate?: Prisma.SortOrder
   dueDate?: Prisma.SortOrder
@@ -740,7 +740,7 @@ export type InvoiceWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.InvoiceWhereInput | Prisma.InvoiceWhereInput[]
   organizationId?: Prisma.StringFilter<"Invoice"> | string
   contactId?: Prisma.StringFilter<"Invoice"> | string
-  number?: Prisma.StringFilter<"Invoice"> | string
+  number?: Prisma.StringNullableFilter<"Invoice"> | string | null
   status?: Prisma.StringFilter<"Invoice"> | string
   issueDate?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   dueDate?: Prisma.DateTimeFilter<"Invoice"> | Date | string
@@ -812,7 +812,7 @@ export type InvoiceOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
-  number?: Prisma.SortOrder
+  number?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   issueDate?: Prisma.SortOrder
   dueDate?: Prisma.SortOrder
@@ -883,7 +883,7 @@ export type InvoiceScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Invoice"> | string
   organizationId?: Prisma.StringWithAggregatesFilter<"Invoice"> | string
   contactId?: Prisma.StringWithAggregatesFilter<"Invoice"> | string
-  number?: Prisma.StringWithAggregatesFilter<"Invoice"> | string
+  number?: Prisma.StringNullableWithAggregatesFilter<"Invoice"> | string | null
   status?: Prisma.StringWithAggregatesFilter<"Invoice"> | string
   issueDate?: Prisma.DateTimeWithAggregatesFilter<"Invoice"> | Date | string
   dueDate?: Prisma.DateTimeWithAggregatesFilter<"Invoice"> | Date | string
@@ -944,7 +944,7 @@ export type InvoiceScalarWhereWithAggregatesInput = {
 
 export type InvoiceCreateInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -1013,7 +1013,7 @@ export type InvoiceUncheckedCreateInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -1078,7 +1078,7 @@ export type InvoiceUncheckedCreateInput = {
 
 export type InvoiceUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1147,7 +1147,7 @@ export type InvoiceUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1214,7 +1214,7 @@ export type InvoiceCreateManyInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -1275,7 +1275,7 @@ export type InvoiceCreateManyInput = {
 
 export type InvoiceUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1335,7 +1335,7 @@ export type InvoiceUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1884,7 +1884,7 @@ export type InvoiceUncheckedUpdateManyWithoutAgreementNestedInput = {
 
 export type InvoiceCreateWithoutOrganizationInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -1951,7 +1951,7 @@ export type InvoiceCreateWithoutOrganizationInput = {
 export type InvoiceUncheckedCreateWithoutOrganizationInput = {
   id?: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -2047,7 +2047,7 @@ export type InvoiceScalarWhereInput = {
   id?: Prisma.StringFilter<"Invoice"> | string
   organizationId?: Prisma.StringFilter<"Invoice"> | string
   contactId?: Prisma.StringFilter<"Invoice"> | string
-  number?: Prisma.StringFilter<"Invoice"> | string
+  number?: Prisma.StringNullableFilter<"Invoice"> | string | null
   status?: Prisma.StringFilter<"Invoice"> | string
   issueDate?: Prisma.DateTimeFilter<"Invoice"> | Date | string
   dueDate?: Prisma.DateTimeFilter<"Invoice"> | Date | string
@@ -2108,7 +2108,7 @@ export type InvoiceScalarWhereInput = {
 
 export type InvoiceCreateWithoutContactInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -2175,7 +2175,7 @@ export type InvoiceCreateWithoutContactInput = {
 export type InvoiceUncheckedCreateWithoutContactInput = {
   id?: string
   organizationId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -2266,7 +2266,7 @@ export type InvoiceUpdateManyWithWhereWithoutContactInput = {
 
 export type InvoiceCreateWithoutItemsInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -2334,7 +2334,7 @@ export type InvoiceUncheckedCreateWithoutItemsInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -2414,7 +2414,7 @@ export type InvoiceUpdateToOneWithWhereWithoutItemsInput = {
 
 export type InvoiceUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2482,7 +2482,7 @@ export type InvoiceUncheckedUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2546,7 +2546,7 @@ export type InvoiceUncheckedUpdateWithoutItemsInput = {
 
 export type InvoiceCreateWithoutQuoteInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -2614,7 +2614,7 @@ export type InvoiceUncheckedCreateWithoutQuoteInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -2704,7 +2704,7 @@ export type InvoiceUpdateManyWithWhereWithoutQuoteInput = {
 
 export type InvoiceCreateWithoutCreditNotesInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -2772,7 +2772,7 @@ export type InvoiceUncheckedCreateWithoutCreditNotesInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -2852,7 +2852,7 @@ export type InvoiceUpdateToOneWithWhereWithoutCreditNotesInput = {
 
 export type InvoiceUpdateWithoutCreditNotesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2920,7 +2920,7 @@ export type InvoiceUncheckedUpdateWithoutCreditNotesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2984,7 +2984,7 @@ export type InvoiceUncheckedUpdateWithoutCreditNotesInput = {
 
 export type InvoiceCreateWithoutPaymentsInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -3052,7 +3052,7 @@ export type InvoiceUncheckedCreateWithoutPaymentsInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -3132,7 +3132,7 @@ export type InvoiceUpdateToOneWithWhereWithoutPaymentsInput = {
 
 export type InvoiceUpdateWithoutPaymentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3200,7 +3200,7 @@ export type InvoiceUncheckedUpdateWithoutPaymentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3264,7 +3264,7 @@ export type InvoiceUncheckedUpdateWithoutPaymentsInput = {
 
 export type InvoiceCreateWithoutRemindersInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -3332,7 +3332,7 @@ export type InvoiceUncheckedCreateWithoutRemindersInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -3412,7 +3412,7 @@ export type InvoiceUpdateToOneWithWhereWithoutRemindersInput = {
 
 export type InvoiceUpdateWithoutRemindersInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3480,7 +3480,7 @@ export type InvoiceUncheckedUpdateWithoutRemindersInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3544,7 +3544,7 @@ export type InvoiceUncheckedUpdateWithoutRemindersInput = {
 
 export type InvoiceCreateWithoutRecurringInvoiceInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -3612,7 +3612,7 @@ export type InvoiceUncheckedCreateWithoutRecurringInvoiceInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -3702,7 +3702,7 @@ export type InvoiceUpdateManyWithWhereWithoutRecurringInvoiceInput = {
 
 export type InvoiceCreateWithoutAgreementInput = {
   id?: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -3770,7 +3770,7 @@ export type InvoiceUncheckedCreateWithoutAgreementInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -3861,7 +3861,7 @@ export type InvoiceUpdateManyWithWhereWithoutAgreementInput = {
 export type InvoiceCreateManyOrganizationInput = {
   id?: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -3922,7 +3922,7 @@ export type InvoiceCreateManyOrganizationInput = {
 
 export type InvoiceUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -3989,7 +3989,7 @@ export type InvoiceUpdateWithoutOrganizationInput = {
 export type InvoiceUncheckedUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4055,7 +4055,7 @@ export type InvoiceUncheckedUpdateWithoutOrganizationInput = {
 export type InvoiceUncheckedUpdateManyWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4117,7 +4117,7 @@ export type InvoiceUncheckedUpdateManyWithoutOrganizationInput = {
 export type InvoiceCreateManyContactInput = {
   id?: string
   organizationId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -4178,7 +4178,7 @@ export type InvoiceCreateManyContactInput = {
 
 export type InvoiceUpdateWithoutContactInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4245,7 +4245,7 @@ export type InvoiceUpdateWithoutContactInput = {
 export type InvoiceUncheckedUpdateWithoutContactInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4311,7 +4311,7 @@ export type InvoiceUncheckedUpdateWithoutContactInput = {
 export type InvoiceUncheckedUpdateManyWithoutContactInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4374,7 +4374,7 @@ export type InvoiceCreateManyQuoteInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -4434,7 +4434,7 @@ export type InvoiceCreateManyQuoteInput = {
 
 export type InvoiceUpdateWithoutQuoteInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4502,7 +4502,7 @@ export type InvoiceUncheckedUpdateWithoutQuoteInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4568,7 +4568,7 @@ export type InvoiceUncheckedUpdateManyWithoutQuoteInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4630,7 +4630,7 @@ export type InvoiceCreateManyRecurringInvoiceInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -4690,7 +4690,7 @@ export type InvoiceCreateManyRecurringInvoiceInput = {
 
 export type InvoiceUpdateWithoutRecurringInvoiceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4758,7 +4758,7 @@ export type InvoiceUncheckedUpdateWithoutRecurringInvoiceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4824,7 +4824,7 @@ export type InvoiceUncheckedUpdateManyWithoutRecurringInvoiceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -4886,7 +4886,7 @@ export type InvoiceCreateManyAgreementInput = {
   id?: string
   organizationId: string
   contactId: string
-  number: string
+  number?: string | null
   status?: string
   issueDate?: Date | string
   dueDate: Date | string
@@ -4946,7 +4946,7 @@ export type InvoiceCreateManyAgreementInput = {
 
 export type InvoiceUpdateWithoutAgreementInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -5014,7 +5014,7 @@ export type InvoiceUncheckedUpdateWithoutAgreementInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -5080,7 +5080,7 @@ export type InvoiceUncheckedUpdateManyWithoutAgreementInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
-  number?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -5513,7 +5513,7 @@ export type $InvoicePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     id: string
     organizationId: string
     contactId: string
-    number: string
+    number: string | null
     status: string
     issueDate: Date
     dueDate: Date

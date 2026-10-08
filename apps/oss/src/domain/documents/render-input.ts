@@ -17,6 +17,7 @@ import { loadDocumentContext } from "./context"
 import { priceCreditNote } from "./credit-pricing"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
+import { issuedNumber } from "./numbering"
 
 type InvoiceForPdf = import("react").ComponentProps<typeof InvoicePdfDocument>["invoice"]
 
@@ -83,7 +84,7 @@ export const prospectiveRenderInput = (input: {
     const buyer = invoice.agreementId ? { ...parseBuyerSnapshot(invoice.buyerSnapshot), taxIds: refreshedBuyer.taxIds } : refreshedBuyer
     if (!input.preview && invoice.calculationVersion === "v2" && !invoice.supplyDate && !(input.commandInput as { supplyDate?: string }).supplyDate) return yield* new InvalidState({ code: "supply_date_required", message: "Confirm a supply date before issuing a v2 invoice" })
     if (!input.preview) yield* requireVatIssuance({ ...invoice, sellerSnapshot: seller, buyerSnapshot: buyer })
-    const money = input.preview ? undefined : yield* Effect.try({ try: () => invoiceMoneySnapshot(invoice, { ...(input.commandInput as { supplyDate?: string; exchangeRate?: string; rateDate?: string }), issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, seller: seller ?? buildSellerSnapshot(settings, sellerTaxIds), buyer }), catch: error => error instanceof InvalidState ? error : new InvalidState({ code: "money_snapshot_unavailable", message: "The document's currency or frozen money components cannot be valued" }) })
+    const money = input.preview ? undefined : yield* Effect.try({ try: () => invoiceMoneySnapshot(invoice, { ...(input.commandInput as { supplyDate?: string; exchangeRate?: string; rateDate?: string }), number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, seller: seller ?? buildSellerSnapshot(settings, sellerTaxIds), buyer }), catch: error => error instanceof InvalidState ? error : new InvalidState({ code: "money_snapshot_unavailable", message: "The document's currency or frozen money components cannot be valued" }) })
     // The reference a bank transfer is matched by: the invoice's own, else its number. A draft preview has no number yet.
     const paymentReference = invoice.paymentReference?.trim() || (input.preview ? null : input.number)
     // All PDF fields, including branding and the intended customer, are frozen here.
@@ -126,13 +127,13 @@ export const prospectiveRenderInput = (input: {
       subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
       currency: invoice.currency, locale: invoice.locale, timezone: invoice.timezone,
       sellerSnapshot, buyerSnapshot, contact: { ...buildBuyerSnapshot(invoice.contact), name: invoice.contact.name },
-      invoice: { number: invoice.number, issueDate: invoice.issueDate.toISOString() },
+      invoice: { number: issuedNumber(invoice), issueDate: invoice.issueDate.toISOString() },
       items: built.lines.map(line => ({ description: line.description, quantity: line.quantity,
         unitPrice: line.unitPriceGross, total: line.lineGross })),
     }
     return { ...base, kind: "creditNote" as const, recipient: null,
       selectionFingerprint: createHash("sha256").update(canonicalizeOffer(selection)).digest("hex"),
-      ubl: frozenEinvoiceInput({ kind: "creditNote", money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: invoice.number, issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) }),
+      ubl: frozenEinvoiceInput({ kind: "creditNote", money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) }),
       snapshot: { money, sellerSnapshot, buyerSnapshot, built, invoiceId: invoice.id,
         currency: invoice.currency, countryCode: invoice.countryCode, locale: invoice.locale,
         timezone: invoice.timezone, taxRegime: invoice.taxRegime, pricesIncludeTax: invoice.pricesIncludeTax },

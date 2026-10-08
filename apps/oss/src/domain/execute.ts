@@ -20,6 +20,7 @@ import { runJobsNow } from "./jobs"
 import { lockArtifactOrganization, bindIssuanceCandidate, publishCandidate } from "./documents/artifacts"
 import { prospectiveRenderInput, type ArtifactDocumentKind, type RenderInput } from "./documents/render-input"
 import { lockDocument } from "./documents/locks"
+import { NUMBER_CHANGED } from "./documents/numbering"
 import { Command, Db, type PendingEvent, type PendingJob } from "./services"
 
 const APPROVAL_TTL_MS = 7 * 24 * 60 * 60 * 1000
@@ -450,7 +451,11 @@ export async function executeCommand<Input, Result>(
       key,
       clientRequestId,
       resumeReceiptId: options.resumeReceiptId,
-      transient: error.domainError._tag === "ExternalFailure",
+      // A stale document number is not the caller's failure: leaving no receipt lets the same
+      // request id prepare the document again with the current number.
+      transient:
+        error.domainError._tag === "ExternalFailure" ||
+        (error.domainError._tag === "InvalidState" && error.domainError.code === NUMBER_CHANGED),
     })
     return winner ?? outcome
   }

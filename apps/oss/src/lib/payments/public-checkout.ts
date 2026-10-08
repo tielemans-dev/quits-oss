@@ -11,6 +11,7 @@ import {
 } from "./stripe"
 import { currencyFractionDigits, isExactInCurrency } from "./stripe-amounts"
 import { readProductEnv } from "@quits/shared/runtimeEnv"
+import { asIssued } from "../../domain/documents/numbering"
 
 const paymentsLogger = appLogger.child("payments")
 
@@ -132,7 +133,7 @@ async function openCheckoutSession(token: string) {
 
   const checkoutSession = await createStripeInvoiceCheckoutSession({
     credentials,
-    invoice: session.invoice,
+    invoice: asIssued(session.invoice),
     amountDue: balanceDue.toNumber(),
     successUrl: publicUrl,
     cancelUrl: publicUrl,

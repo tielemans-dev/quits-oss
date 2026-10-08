@@ -27,7 +27,7 @@ import {
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
 import { documentFingerprint, lockedContact } from "../approval-contexts"
-import { allocateDocumentNumber } from "../documents/numbering"
+import { asIssued, numberForIssuance, documentRef } from "../documents/numbering"
 import { requireDraftCurrency } from "../documents/currency"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
@@ -106,7 +106,6 @@ export const buildInvoiceDraft = (
     yield* precondition(() => billingProvider.assertInvoiceCreationAllowed(organizationId))
 
     const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
-    const number = yield* allocateDocumentNumber("invoice")
     const currency = input.currency ?? settings.defaultCurrency ?? settings.currency
     yield* requireDraftCurrency(currency)
     const calculated = yield* priceCurrentDraft({
@@ -123,7 +122,7 @@ export const buildInvoiceDraft = (
         data: {
           organizationId,
           contactId: contact.id,
-          number,
+          // Drafts have no number: it is taken when the invoice is issued, so deleting a draft leaves no gap.
           status: "draft",
           dueDate: new Date(input.dueDate),
           supplyDate: new Date(input.supplyDate ?? formatIsoDate(command.now, settings.timezone)),
@@ -309,8 +308,8 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
     return {
       summary:
         action === "send"
-          ? `Send invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name}`
-          : `Email invoice ${invoice.number} (${total}) to ${recipient ?? invoice.contact.name} again`,
+          ? `Send ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name}`
+          : `Email ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name} again`,
       version: `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}`,
       details: {
         disputed: String(invoice.disputed),
@@ -353,12 +352,15 @@ export const sendInvoice = defineCommand({
       const command = yield* Command
       const { organizationId, now } = command
       yield* lockDocument("invoice", input.id)
-      const invoice = yield* findInvoice(input.id)
+      const found = yield* findInvoice(input.id)
 
-      if (invoice.status !== "draft") {
+      if (found.status !== "draft") {
         return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
       }
-      yield* refuseWhileSending("invoice", invoice)
+      yield* refuseWhileSending("invoice", found)
+      // The number is taken here, in the issuing transaction: if any later check fails, the
+      // transaction rolls back and the number goes back with it.
+      const invoice = { ...found, number: yield* numberForIssuance("invoice", found) }
       if (invoice.disputed && !input.acknowledgeDisputed)
         return yield* new InvalidState({ code: "disputed_deliverables", message: "The customer requested changes. Explicitly acknowledge the disputed draft before sending." })
       if (invoice.disputed) command.emit({
@@ -393,6 +395,7 @@ export const sendInvoice = defineCommand({
           db.invoice.update({
             where: { id: invoice.id },
             data: {
+              number: invoice.number,
               status: "sent",
               issueDate: command.issuance?.issuedAt ?? now,
               publicPaymentIssuedAt: emailContext.stripeConfigured ? (invoice.publicPaymentIssuedAt ?? now) : null,
@@ -440,7 +443,7 @@ export const sendInvoice = defineCommand({
         message: email.message,
         idempotencyKey: `invoice-send:${invoice.id}:${now.getTime()}`,
         publicLinkIssuedAt: publicPaymentIssuedAt,
-        markSending: (data) => db.invoice.update({ where: { id: invoice.id }, data }),
+        markSending: (data) => db.invoice.update({ where: { id: invoice.id }, data: { ...data, number: invoice.number } }),
       })
       invoiceLogger.info("invoice.email.queued", {
         organizationId,
@@ -489,7 +492,7 @@ export const resendInvoiceEmail = defineCommand({
         })
       }
 
-      const email = composeInvoiceEmail({ invoice, settings, to: recipient, publicPaymentUrl })
+      const email = composeInvoiceEmail({ invoice: asIssued(invoice), settings, to: recipient, publicPaymentUrl })
       const { document: updated, deliveryKey } = yield* queueDocumentEmail({
         kind: "invoice",
         mode: "email",
