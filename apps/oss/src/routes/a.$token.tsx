@@ -61,12 +61,19 @@ function AgreementRouteContent() {
           token,
           decision:
             verb === "accept"
-              ? { decision: verb, acceptedByName: name, confirmed }
+              ? {
+                  decision: verb, acceptedByName: name, confirmed,
+                  expectedPreviewVersion: state.kind === "ready" && state.scope !== "sign_off"
+                    ? state.document.acceptancePreview.version : undefined,
+                }
               : { decision: verb, reason },
         },
       })
       if (next.kind === "retry_later") setError(t("agreements.retryLater"))
-      else if (next.kind === "already_decided") setError(t("agreements.alreadyDecided"))
+      else if (next.kind === "changed_since_review") {
+        setConfirmed(false)
+        setError(t("agreements.acceptanceReviewChanged"))
+      } else if (next.kind === "already_decided") setError(t("agreements.alreadyDecided"))
       else setState(next)
     } catch {
       setError(t("agreements.error"))

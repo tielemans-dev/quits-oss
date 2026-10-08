@@ -10,6 +10,7 @@ import { createTestOrganization, hasTestDatabase } from "../../../test-utils/org
 
 import { createAgreementDraft, updateAgreementDraft } from "../../../domain/commands/agreements"
 import { issueAgreement } from "../../../domain/commands/agreement-lifecycle"
+import { createInvoiceDraft, updateInvoiceDraft, sendInvoice } from "../../../domain/commands/invoices"
 import { createAgentKey, authenticateAgentSecret } from "../../../domain/agent-keys"
 import { approvalAgreementPdf, privateAgreementPdf, publicAgreementPdf } from "../pdf-access"
 import { mintAgreementLink } from "../tokens"
@@ -22,6 +23,27 @@ afterEach(async () => {
 ;(hasTestDatabase ? describe : describe.skip)(
   "agreement PDF authorization and preview binding",
   () => {
+    it("renders a frozen invoice review for a document reader and denies another organization", async () => {
+      const org = await createTestOrganization({ roles: ["admin", "accountant"] }); cleanups.push(org.cleanup)
+      const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Customer A", email: "customer-a@example.test" } })
+      const draft = await executeIssuanceCommand(createInvoiceDraft, { contactId: contact.id, dueDate: "2099-01-01", taxRate: 0, items: [{ description: "Reviewed service A", quantity: 1, unitPrice: 100 }] }, { actor: org.actors.admin })
+      if (draft.status !== "completed") throw new Error("draft failed")
+      const actor = await authenticateAgentSecret((await createAgentKey(org.actors.admin, { name: "Invoice preview", mode: "approval_required", scopes: ["invoice:send"] })).secret)
+      const queued = await executeIssuanceCommand(sendInvoice, { id: draft.result.id, allowSendWithoutEmail: true }, { actor, clientRequestId: "invoice-preview" })
+      if (queued.status !== "awaiting_approval") throw new Error("not queued")
+      await executeIssuanceCommand(updateInvoiceDraft, { id: draft.result.id, items: [{ description: "Changed service B", quantity: 1, unitPrice: 200 }] }, { actor: org.actors.admin })
+      const request = new Request("http://quits.test/preview")
+      vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: org.actors.accountant.userId }, session: { activeOrganizationId: org.organizationId } } as never)
+      const preview = await approvalAgreementPdf(request, queued.approvalRequestId)
+      expect(preview.status).toBe(200)
+      const body = await preview.text()
+      expect(body).toContain("Reviewed service A")
+      expect(body).not.toContain("Changed service B")
+      expect(await prisma.artifactStaging.count({ where: { organizationId: org.organizationId } })).toBe(0)
+      const other = await createTestOrganization(); cleanups.push(other.cleanup)
+      vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: other.actors.admin.userId }, session: { activeOrganizationId: other.organizationId } } as never)
+      expect((await approvalAgreementPdf(request, queued.approvalRequestId)).status).toBe(404)
+    })
     it("renders the stored A snapshot while the live draft is B, with organization and session checks", async () => {
       vi.stubEnv("BETTER_AUTH_SECRET", "preview-test-only-secret-over-32-characters")
       const org = await createTestOrganization()

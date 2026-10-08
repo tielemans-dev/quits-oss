@@ -180,3 +180,18 @@ export const commandWaitToolInputSchema = z.object({
 
 export type ApprovalDecideInput = z.infer<typeof approvalDecideInputSchema>
 export type AgentScopePresetId = z.infer<typeof agentScopePresetIdSchema>
+
+/** Expected records and messages, never a claim that they have happened. */
+export type CommandConsequences = {
+  records: Array<{ kind: "invoice_issue" | "agreement_issue" | "agreement_acceptance" | "payment_record"; documentId: string; revision: string }>
+  messages: Array<{ kind: "invoice_email" | "agreement_offer" | "agreement_accepted"; recipient: string }>
+  manualSteps: Array<"share_document" | "invoice_eligible_work" | "prepayment_blocked" | "collect_payment" | "record_received_money">
+  refreshWhen: "invoice_content" | "agreement_offer" | "payment_balance"
+  schedule?: Array<{ id: string; title: string; amount: string; currency: string; kind: "sale" | "prepayment"; state: "future_eligibility" | "draft" | "issued"; invoiceId: string | null }>
+}
+
+export const commandPreviewInputSchema = z.object({
+  commandType: z.enum(["invoice.send", "payment.record", "agreement.send", "agreement.issue", "agreement.record_acceptance"]),
+  command: z.record(z.string(), z.unknown()),
+  includeDocument: z.boolean().default(false),
+}).strict()

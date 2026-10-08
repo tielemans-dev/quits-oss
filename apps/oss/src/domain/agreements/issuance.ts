@@ -1,3 +1,4 @@
+import { agreementScheduleConsequences } from "./consequences"
 import { Effect } from "effect"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
 import { lockDocument } from "../documents/locks"
@@ -9,6 +10,7 @@ import { Command, Db } from "../services"
 import { agreementExpiresAt } from "./expiry"
 import { buildOfferSnapshot, hashOfferSnapshot } from "./snapshot"
 import { requireRecipientEmail } from "../documents/invoice-email"
+import { resolveQuoteEmailContext } from "../documents/quote-email"
 
 export const agreementInclude = {
   contact: true,
@@ -75,6 +77,8 @@ export const prospectiveIssuance = (
       }),
     )
     const { settings, sellerTaxIds } = yield* loadDocumentContext
+    if (method === "email" && !resolveQuoteEmailContext(settings).emailDelivery.available)
+      return yield* new InvalidState({ code: "email_unavailable", message: "Email delivery is not configured" })
     const sellerSnapshot = buildSellerSnapshot(settings, sellerTaxIds)
     const buyerSnapshot = buildBuyerSnapshot(contact)
     const snapshot = buildOfferSnapshot({ ...draft, sellerSnapshot, buyerSnapshot })
@@ -100,6 +104,13 @@ export const issuanceApproval = (
         validUntil: snapshot.validUntil.slice(0, 10),
       },
       preview: { snapshot, hash, recipient },
+      consequences: {
+        records: [{ kind: "agreement_issue" as const, documentId: draft.id, revision: String(draft.offerRevision + 1) }],
+        messages: method === "email" ? [{ kind: "agreement_offer" as const, recipient: recipient! }] : [],
+        manualSteps: [...(method === "manual" ? ["share_document" as const] : []), "invoice_eligible_work" as const, "prepayment_blocked" as const, "collect_payment" as const],
+        refreshWhen: "agreement_offer" as const,
+        schedule: yield* agreementScheduleConsequences(draft),
+      },
     }
   })
 /** Called after the approval version check, under the same transaction and locks. */

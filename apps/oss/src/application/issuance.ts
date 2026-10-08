@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
-import { Cause, Effect, Exit, Option } from "effect"
-import type { ArtifactStaging, Prisma } from "../../generated/prisma/client"
+import { Effect } from "effect"
+import type { ArtifactStaging } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { getDocumentArtifactStore, getDocumentRenderer } from "../lib/runtime/services"
 import { getRuntimeCapabilities } from "../lib/runtime/extensions"
@@ -15,25 +15,13 @@ import { prospectiveRenderInput, hashBytes, hashRenderInput, type ArtifactDocume
 import { artifactsJson, lockArtifactOrganization, type StoredArtifacts } from "../domain/documents/artifacts"
 import { ExternalFailure, InvalidState, serializeDomainError } from "../domain/errors"
 import { appLogger } from "../lib/observability"
-import { Command, Db } from "../domain/services"
+import { runScopedRead as runArtifactRead } from "../domain/read"
 
 export const RESERVATION_LEASE_MS = 15 * 60_000
 export function reservationRequestKey(actor: Actor, clientRequestId: string) {
   return `${actor.organizationId}:${actorKey(actor)}:${clientRequestId}`
 }
-/** Preserve typed domain failures rather than wrapping them as Effect defects. */
-export async function runArtifactRead<T>(program: Effect.Effect<T, unknown, Db | Command>, tx: Prisma.TransactionClient,
-  actor: Actor, now: Date) {
-  const exit = await Effect.runPromiseExit(program.pipe(
-    Effect.provideService(Db, tx), Effect.provideService(Command, {
-      actor, organizationId: actor.organizationId, commandId: "reservation", now,
-      approvedByUserId: null, emit: () => { throw new Error("Reservation cannot emit") },
-      enqueue: () => { throw new Error("Reservation cannot enqueue") },
-    })))
-  if (Exit.isSuccess(exit)) return exit.value
-  const failure = Cause.failureOption(exit.cause)
-  throw Option.isSome(failure) ? failure.value : Cause.squash(exit.cause)
-}
+export { runScopedRead as runArtifactRead } from "../domain/read"
 export async function reserveDocument(input: {
   kind: ArtifactDocumentKind; commandInput: unknown; actor: Actor; clientRequestId: string;
   now?: Date; method?: "email" | "manual"

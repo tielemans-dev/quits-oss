@@ -97,6 +97,7 @@ export function defineCommandTool<Input extends AnyObjectSchema, CommandInput, R
   const present = (result: unknown) => toJsonValue(tool.present ? tool.present(result as Result) : result)
   const input = tool.input.extend({
     clientRequestId: clientRequestIdSchema.describe(CLIENT_REQUEST_ID_HELP),
+    expectedPreviewVersion: z.string().length(64).optional().describe("Optional previewVersion from command_preview. Relevant changes fail with changed_since_review."),
   }) as unknown as AnyObjectSchema
 
   return {
@@ -111,10 +112,11 @@ export function defineCommandTool<Input extends AnyObjectSchema, CommandInput, R
     requiresWriteMode: true,
     commandType: tool.command.type,
     run: async (context, rawInput) => {
-      const { clientRequestId, ...commandInput } = rawInput as { clientRequestId: string }
+      const { clientRequestId, expectedPreviewVersion, ...commandInput } = rawInput as { clientRequestId: string; expectedPreviewVersion?: string }
       const outcome = await executeIssuanceCommand(tool.command, commandInput, {
         actor: context.actor,
         clientRequestId,
+        expectedPreviewVersion,
       })
       return presentRecord(toCommandRecord(tool.command.type, outcome), present)
     },

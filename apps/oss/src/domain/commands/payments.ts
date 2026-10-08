@@ -7,28 +7,22 @@ import {
   type PaymentSource,
 } from "@quits/contracts/payments"
 import { Prisma } from "../../../generated/prisma/client"
-import { formatIsoDate, startOfDayInTimeZone } from "../../lib/exports/format"
 import { appLogger } from "../../lib/observability"
-import { currencyFractionDigits, isExactInCurrency } from "../../lib/payments/stripe-amounts"
+import { parsePaidAt } from "../documents/payment-date"
+// Compatibility for consumers of the original command-module export.
+export { parsePaidAt } from "../documents/payment-date"
+import { planManualPayment } from "../documents/payment-plan"
 import type { Actor } from "../actor"
 import { defineCommand } from "../command"
 import { lockDocument } from "../documents/locks"
 import { expireReplacedCheckoutSession } from "../documents/checkout-sessions"
 import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
-import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { documentRef } from "../documents/numbering"
+import { Forbidden, InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { paymentRecordApproval, paymentVoidApproval } from "../approval-contexts"
 
 const paymentsLogger = appLogger.child("payments")
-
-/**
- * A full timestamp may come from a client whose clock or zone runs ahead of the server; "today"
- * somewhere on Earth can be up to 14 hours ahead of UTC, so allow that much slack.
- */
-const FUTURE_DATE_TOLERANCE_MS = 14 * 60 * 60 * 1000
-
-const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 function paymentSource(actor: Actor): PaymentSource {
   if (actor.kind === "system") {
@@ -111,39 +105,8 @@ const applyPayment = (input: ApplyPaymentInput) =>
       })
     }
 
-    if (!isStripe && (before.fullyCredited || invoice.status === "credited")) {
-      return yield* new InvalidState({
-        message: `The ${documentRef("invoice", invoice.number)} is fully credited and cannot receive payments`,
-        code: "invoice_credited",
-      })
-    }
-
+    if (!isStripe) yield* planManualPayment(invoice, input)
     const amount = toAmount(input.amount)
-
-    if (!isStripe) {
-      // Settling the exact remaining balance is always allowed, so an invoice whose total was
-      // computed with more precision than its currency has can still be paid off.
-      if (!isExactInCurrency(input.amount, invoice.currency) && !amount.equals(before.balanceDue)) {
-        const digits = currencyFractionDigits(invoice.currency)
-        const message =
-          digits === 0
-            ? `${invoice.currency} amounts cannot have decimals`
-            : `${invoice.currency} amounts can have at most ${digits} decimals`
-        return yield* new ValidationFailed({ message, issues: [{ path: "amount", message }] })
-      }
-      if (before.balanceDue.isZero()) {
-        return yield* new InvalidState({
-          message: `The ${documentRef("invoice", invoice.number)} is already paid`,
-          code: "invoice_already_paid",
-        })
-      }
-      if (amount.greaterThan(before.balanceDue)) {
-        return yield* new InvalidState({
-          message: `Payment of ${amount.toFixed(2)} ${invoice.currency} exceeds the balance due of ${before.balanceDue.toFixed(2)} ${invoice.currency}`,
-          code: "overpayment",
-        })
-      }
-    }
 
     const overpaidBy = Prisma.Decimal.max(amount.minus(before.balanceDue), 0)
     if (overpaidBy.greaterThan(0)) {
@@ -218,39 +181,6 @@ const applyPayment = (input: ApplyPaymentInput) =>
     }
 
     return { payment, invoice: refreshed.invoice, balanceDue: refreshed.settlement.balanceDue }
-  })
-
-const futurePaymentDate = () =>
-  new ValidationFailed({
-    message: "The payment date cannot be in the future",
-    issues: [{ path: "paidAt", message: "The payment date cannot be in the future" }],
-  })
-
-/**
- * A calendar date (`YYYY-MM-DD`) is the day the money arrived in the organization's time zone,
- * so it is stored as the instant that day starts there. Accounting exports group payments by the
- * same time zone, which keeps an October 1 payment in October. Full timestamps are kept as is.
- */
-const parsePaidAt = (value: string) =>
-  Effect.gen(function* () {
-    const db = yield* Db
-    const { organizationId, now } = yield* Command
-    if (CALENDAR_DATE.test(value)) {
-      const settings = yield* Effect.promise(() =>
-        db.orgSettings.findUnique({ where: { organizationId }, select: { timezone: true } })
-      )
-      const timeZone = settings?.timezone ?? "UTC"
-      if (value > formatIsoDate(now, timeZone)) {
-        return yield* futurePaymentDate()
-      }
-      return startOfDayInTimeZone(value, timeZone)
-    }
-
-    const paidAt = new Date(value)
-    if (paidAt.getTime() > now.getTime() + FUTURE_DATE_TOLERANCE_MS) {
-      return yield* futurePaymentDate()
-    }
-    return paidAt
   })
 
 export const recordPayment = defineCommand({

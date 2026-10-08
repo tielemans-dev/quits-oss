@@ -1,3 +1,4 @@
+import { ConsequenceReview } from "./consequence-review"
 import { Fragment, useState } from "react"
 import { Bot } from "lucide-react"
 import type { TranslationKey } from "../../lib/i18n/messages"
@@ -22,6 +23,8 @@ const reviewLabelKeys: Partial<Record<string, TranslationKey>> = {
   expiryDate: "agents.approvals.review.expiryDate",
   reason: "agents.approvals.review.reason",
   balanceDue: "agents.approvals.review.balanceDue",
+  balanceAfter: "agents.approvals.review.balanceAfter",
+  revision: "agents.preview.revision",
   paidAt: "agents.approvals.review.paidAt",
   method: "agents.approvals.review.method",
   name: "agents.approvals.review.name",
@@ -135,7 +138,7 @@ export function ApprovalItem({
           ) : null}
         </div>
 
-        {["agreement.send", "agreement.issue"].includes(approval.commandType) && (
+        {approval.hasDocumentPreview && (
           <a
             className="text-sm underline"
             href={`/app/approvals/${approval.id}/preview.pdf`}
@@ -145,13 +148,14 @@ export function ApprovalItem({
             {t("agreements.previewPdf")}
           </a>
         )}
+        {approval.consequences && <ConsequenceReview consequences={approval.consequences} />}
         {approval.reviewDetails ? (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm">
             {Object.entries(approval.reviewDetails).map(([key, value]) => (
               <Fragment key={key}>
                 <dt className="text-muted-foreground">{reviewLabel(key)}</dt>
                 {/* A draft has no number yet: it is numbered when it is sent. */}
-                <dd className="font-medium">{value ?? (key === "number" ? t("invoices.number.draft") : "—")}</dd>
+                <dd className="min-w-0 break-words font-medium">{value ?? (key === "number" ? t("invoices.number.draft") : "—")}</dd>
               </Fragment>
             ))}
           </dl>

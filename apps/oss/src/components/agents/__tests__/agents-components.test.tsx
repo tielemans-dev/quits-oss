@@ -20,6 +20,8 @@ const approval: ApprovalRow = {
   command: { id: "inv_1" },
   summary: "Send invoice INV-0001 (100.00 USD) to billing@acme.test",
   reviewDetails: { number: "INV-0001", recipient: "billing@acme.test", total: "100.00", currency: "USD" },
+  consequences: null,
+  hasDocumentPreview: true,
   status: "pending",
   agent: { id: "key_1", name: "Bookkeeper", displayPrefix: "quits_ak_abc123", revokedAt: null },
   createdAt: new Date("2026-10-06T10:00:00Z"),

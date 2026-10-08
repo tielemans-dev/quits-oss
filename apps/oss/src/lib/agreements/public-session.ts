@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start"
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { readAgreementOfferSnapshot } from "@quits/contracts/agreements"
@@ -13,7 +13,7 @@ import { publicAgreementDto, publicDeliverableDto } from "./public"
  * and with the seller's identity, both through the same rules as the invoice and quote pages.
  * `token` is the link the page was opened with: an uploaded logo is served from its logo route.
  */
-export function serializePublicAgreementSession(
+export const serializePublicAgreementSession = createServerOnlyFn(function serializePublicAgreementSession(
   session: NonNullable<Awaited<ReturnType<typeof loadPublicAgreementByToken>>>,
   token: string,
 ) {
@@ -43,10 +43,10 @@ export function serializePublicAgreementSession(
     scope: payload.scope,
     locale,
     seller,
-    document: publicAgreementDto(agreement),
+    document: publicAgreementDto(agreement, agreement.organization?.settings?.companyEmail),
     readLink: null,
   } as const
-}
+})
 
 export const getPublicAgreementSession = createServerFn({ method: "GET" })
   .inputValidator(z.object({ token: z.string().min(1).max(4096) }).strict())
@@ -75,6 +75,7 @@ export const submitPublicAgreementDecision = createServerFn({ method: "POST" })
       const code = error && typeof error === "object" && "code" in error ? error.code : "invalid"
       if (code === "retry_later") return { kind: "retry_later" } as const
       if (code === "already_decided") return { kind: "already_decided" } as const
+      if (code === "changed_since_review") return { kind: "changed_since_review" } as const
       return { kind: "invalid" } as const
     }
   })

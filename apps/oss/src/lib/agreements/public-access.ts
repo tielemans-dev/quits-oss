@@ -21,7 +21,7 @@ export async function loadPublicAgreementByToken(
     include: {
       deliverables: { orderBy: { sortOrder: "asc" } },
       // Language, timezone, name and logo of the seller, for presenting the page.
-      organization: { select: { settings: { select: publicPresentationSettingsSelect } } },
+      organization: { select: { settings: { select: { ...publicPresentationSettingsSelect, companyEmail: true } } } },
     },
   })
   if (

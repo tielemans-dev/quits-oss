@@ -83,6 +83,7 @@ describe("agreement page, PDF and email share the restricted terms", () => {
             expiresAt: null,
             snapshot,
             acceptance: null,
+            acceptancePreview: { version: "a".repeat(64), revision: 1, recipients: [] },
             declinedAt: null,
             declineReason: null,
           }}

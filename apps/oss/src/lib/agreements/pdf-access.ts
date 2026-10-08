@@ -29,18 +29,20 @@ export async function privateAgreementPdf(request: Request, id: string) {
   return await storedPdfResponse(agreement) ?? new Response("Stored artifact unavailable", { status: 503 })
 }
 export async function approvalAgreementPdf(request: Request, id: string) {
-  const actor = await agreementPdfActor(request)
-  if (!actor) return new Response("Unauthorized", { status: 401 })
-  const approval = await prisma.approvalRequest.findFirst({
-    where: {
-      id,
-      organizationId: actor.organizationId,
-      commandType: { in: ["agreement.send", "agreement.issue"] },
-    },
-    select: { reviewContext: true },
-  })
-  const preview = (approval?.reviewContext as { preview?: { snapshot?: unknown } } | null)?.preview
-  const snapshot = agreementOfferSnapshotSchema.safeParse(preview?.snapshot)
+  const session = await auth.api.getSession({ headers: request.headers })
+  const organizationId = session?.session.activeOrganizationId
+  if (!session || !organizationId) return new Response("Unauthorized", { status: 401 })
+  const actor = await resolveUserActor({ organizationId, userId: session.user.id })
+  const approval = await prisma.approvalRequest.findFirst({ where: { id, organizationId }, select: { commandType: true, reviewContext: true } })
+  if (!approval) return new Response("Preview not found", { status: 404 })
+  const permission = approval.commandType === "invoice.send" ? "invoice:read" : "agreement:read"
+  if (!actor || !actorCan(actor, permission)) return new Response("Forbidden", { status: 403 })
+  const review = approval.reviewContext as { documentPreview?: import("../../domain/documents/render-input").RenderInput; preview?: { snapshot?: unknown } } | null
+  if (review?.documentPreview) {
+    const { renderPdfResponse } = await import("../documents/pdf-access")
+    return renderPdfResponse(review.documentPreview, false)
+  }
+  const snapshot = agreementOfferSnapshotSchema.safeParse(review?.preview?.snapshot)
   if (!snapshot.success) return new Response("Preview not found", { status: 404 })
   return agreementPdfResponse({ snapshot: snapshot.data })
 }

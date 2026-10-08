@@ -115,7 +115,11 @@ async function setup() {
         })
       ).secret,
     )
-  return { org, actor, contact, agreement, run, get, issue, link, agent }
+  const reviewedAcceptance = async () => {
+    const settings = await prisma.orgSettings.findUnique({ where: { organizationId: org.organizationId } })
+    return { ...accept, expectedPreviewVersion: publicAgreementDto(await get(), settings?.companyEmail).acceptancePreview.version }
+  }
+  return { org, actor, contact, agreement, run, get, issue, link, agent, reviewedAcceptance }
 }
 const accept = { decision: "accept", acceptedByName: "  Customer Name  ", confirmed: true }
 const decline = { decision: "decline", reason: "No thanks" }
@@ -372,7 +376,7 @@ describe("agreement validity", () => {
         }),
       )
       expect(await ctx.issue()).toMatchObject({ offerRevision: 2, number: issued.number })
-      await expect(decidePublicAgreementByToken(old, accept, {}, now)).rejects.toMatchObject({
+      await expect(decidePublicAgreementByToken(old, await ctx.reviewedAcceptance(), {}, now)).rejects.toMatchObject({
         code: "invalid",
       })
     },
@@ -400,7 +404,7 @@ describe("agreement validity", () => {
       }),
       "changed_since_review",
     )
-    await decidePublicAgreementByToken(await ctx.link(), accept, {}, now)
+    await decidePublicAgreementByToken(await ctx.link(), await ctx.reviewedAcceptance(), {}, now)
     const read = await queue(sendAgreementReadLink, { id }, "read-review")
     if (read.status !== "awaiting_approval") throw new Error("not queued")
     completed(
@@ -478,10 +482,56 @@ describe("agreement validity", () => {
     const resending = ctx.run(resendAgreement, { id })
     await vi.waitFor(async () => expect((await ctx.get()).lastEmailAttemptOutcome).toBe("sending"), { timeout: 15_000 })
     await expect(
-      decidePublicAgreementByToken(await ctx.link(), accept, {}, now),
+      decidePublicAgreementByToken(await ctx.link(), await ctx.reviewedAcceptance(), {}, now),
     ).rejects.toMatchObject({ code: "retry_later" })
     release()
     completed(await resending)
+  })
+  it("refuses public acceptance after notification recipients change, before any acceptance effects", async () => {
+    const ctx = await setup()
+    await ctx.issue("customer@example.test")
+    await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { companyEmail: "seller-before@example.test" } })
+    const reviewed = publicAgreementDto(await ctx.get(), "seller-before@example.test").acceptancePreview
+    const beforeJobs = await findEmailDeliveryJobs(ctx.org.organizationId)
+    const beforeEvents = await prisma.domainEvent.count({ where: { aggregateId: ctx.agreement.id } })
+    await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { companyEmail: "seller-after@example.test" } })
+    await expect(decidePublicAgreementByToken(await ctx.link(), {
+      ...accept, expectedPreviewVersion: reviewed.version,
+    }, {}, now)).rejects.toMatchObject({ code: "changed_since_review" })
+    expect(await ctx.get()).toMatchObject({ status: "sent", acceptedAt: null })
+    expect(await findEmailDeliveryJobs(ctx.org.organizationId)).toEqual(beforeJobs)
+    expect(await prisma.domainEvent.count({ where: { aggregateId: ctx.agreement.id } })).toBe(beforeEvents)
+  })
+  it("requires a refreshed review for legacy acceptance requests while preserving legacy links and retries", async () => {
+    const ctx = await setup()
+    await ctx.issue("customer@example.test")
+    const token = await ctx.link()
+    expect(await loadPublicAgreementByToken(token, getAgreementPublicSecret(), now)).not.toBeNull()
+    await expect(decidePublicAgreementByToken(token, accept, {}, now)).rejects.toMatchObject({ code: "changed_since_review" })
+    expect(await ctx.get()).toMatchObject({ status: "sent", acceptedAt: null })
+    expect(await findEmailDeliveryJobs(ctx.org.organizationId)).toHaveLength(0)
+    const reviewed = await ctx.reviewedAcceptance()
+    const first = await decidePublicAgreementByToken(token, reviewed, {}, now)
+    const jobs = await findEmailDeliveryJobs(ctx.org.organizationId)
+    expect(jobs.length).toBeGreaterThan(0)
+    await decidePublicAgreementByToken(token, accept, {}, now)
+    expect(await findEmailDeliveryJobs(ctx.org.organizationId)).toHaveLength(jobs.length)
+    expect(first.document.status).toBe("accepted")
+  })
+  it("binds acceptance reviews to the agreement and issued recipient, but ignores internal notes", async () => {
+    const ctx = await setup(), other = await setup()
+    await ctx.issue("customer@example.test")
+    await other.issue("customer@example.test")
+    const reviewed = await ctx.reviewedAcceptance()
+    await expect(decidePublicAgreementByToken(await other.link(), reviewed, {}, now)).rejects.toMatchObject({ code: "changed_since_review" })
+    await prisma.agreement.update({ where: { id: ctx.agreement.id }, data: { issuedToEmail: "changed@example.test" } })
+    await expect(decidePublicAgreementByToken(await ctx.link(), reviewed, {}, now)).rejects.toMatchObject({ code: "changed_since_review" })
+    const fresh = await ctx.reviewedAcceptance()
+    await prisma.agreement.update({ where: { id: ctx.agreement.id }, data: { notes: "Unrelated private note" } })
+    expect((await decidePublicAgreementByToken(await ctx.link(), fresh, {}, now)).document.status).toBe("accepted")
+    const jobs = await findEmailDeliveryJobs(ctx.org.organizationId)
+    expect(JSON.stringify(jobs)).toContain("changed@example.test")
+    expect(JSON.stringify(jobs)).not.toContain("customer@example.test")
   })
   it.each(["accept", "decline"])(
     "replays %s at expiry, ignores changed evidence and refuses opposite verb",
@@ -491,7 +541,7 @@ describe("agreement validity", () => {
       const token = await ctx.link()
       const first = await decidePublicAgreementByToken(
         token,
-        verb === "accept" ? accept : decline,
+        verb === "accept" ? await ctx.reviewedAcceptance() : decline,
         { ip: "192.0.2.1", userAgent: "first" },
         now,
       )
@@ -514,7 +564,7 @@ describe("agreement validity", () => {
       await expect(
         decidePublicAgreementByToken(
           token,
-          verb === "accept" ? decline : accept,
+          verb === "accept" ? decline : await ctx.reviewedAcceptance(),
           {},
           issued.expiresAt!,
         ),
@@ -547,12 +597,12 @@ describe("agreement validity", () => {
   it("read survives offer expiry and accepted cancellation, rejects decide POST, and revokes explicitly", async () => {
     const ctx = await setup()
     const issued = await ctx.issue("customer@example.test")
-    const token = (await decidePublicAgreementByToken(await ctx.link(), accept, {}, now)).readLink!
+    const token = (await decidePublicAgreementByToken(await ctx.link(), await ctx.reviewedAcceptance(), {}, now)).readLink!
       .token
     expect(
       await loadPublicAgreementByToken(token, getAgreementPublicSecret(), issued.expiresAt!),
     ).not.toBeNull()
-    await expect(decidePublicAgreementByToken(token, accept, {}, now)).rejects.toMatchObject({
+    await expect(decidePublicAgreementByToken(token, await ctx.reviewedAcceptance(), {}, now)).rejects.toMatchObject({
       code: "invalid",
     })
     const key = (await ctx.get()).publicAccessKeyVersion
@@ -670,7 +720,7 @@ describe("agreement validity", () => {
     const ctx = await setup()
     await ctx.issue("customer@example.test")
     vi.mocked(deliver).mockRejectedValue(new Error("network timeout"))
-    await decidePublicAgreementByToken(await ctx.link(), accept, {}, now)
+    await decidePublicAgreementByToken(await ctx.link(), await ctx.reviewedAcceptance(), {}, now)
     const before = await ctx.get()
     expect(before.status).toBe("accepted")
     expect(before.lastEmailAttemptAt).toBeNull()
@@ -707,7 +757,7 @@ describe("agreement validity", () => {
   it("manual issuance without a recipient sends no customer email", async () => {
     const ctx = await setup()
     await ctx.issue()
-    await decidePublicAgreementByToken(await ctx.link(), accept, {}, now)
+    await decidePublicAgreementByToken(await ctx.link(), await ctx.reviewedAcceptance(), {}, now)
     const jobs = await findEmailDeliveryJobs(ctx.org.organizationId)
     expect(jobs).toHaveLength(1)
     expect((jobs[0]!.payload as { message: { to: string } }).message.to).not.toBe(ctx.contact.email)
@@ -717,7 +767,7 @@ describe("agreement validity", () => {
     const ctx = await setup()
     const issued = await ctx.issue()
     await expect(
-      decidePublicAgreementByToken(await ctx.link(), accept, {}, issued.expiresAt!),
+      decidePublicAgreementByToken(await ctx.link(), await ctx.reviewedAcceptance(), {}, issued.expiresAt!),
     ).rejects.toMatchObject({ code: "expired" })
     expect(
       await runAgreementExpiryTask(issued.expiresAt!, {
@@ -741,7 +791,7 @@ describe("agreement validity", () => {
         await Promise.allSettled([
           decidePublicAgreementByToken(
             token,
-            accept,
+            await ctx.reviewedAcceptance(),
             {},
             new Date(issued.expiresAt!.getTime() - 1),
           ),
@@ -795,7 +845,7 @@ describe("agreement validity", () => {
       ).rejects.toThrow()
     }
     await expect(
-      decidePublicAgreementByToken(await ctx.link(), accept, {}, now),
+      decidePublicAgreementByToken(await ctx.link(), await ctx.reviewedAcceptance(), {}, now),
     ).rejects.toMatchObject({ code: "retry_later" })
     const base = {
       documentKind: "agreement" as const,
@@ -936,7 +986,7 @@ describe("agreement validity", () => {
     await ctx.issue()
     await decidePublicAgreementByToken(
       await ctx.link(),
-      accept,
+      await ctx.reviewedAcceptance(),
       { ip: "192.0.2.99", userAgent: "secret-agent" },
       now,
     )
