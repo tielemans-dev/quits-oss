@@ -62,7 +62,7 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
             </Text>
             <Text>{line.description}</Text>
             <Text>
-              {line.quantity} x {line.unitPriceGross} = {line.lineGross} {snapshot.currency}
+              {line.quantity} × {line.unitPriceGross} = {line.lineGross} {snapshot.currency}
             </Text>
             {line.agreedDate && <Text>Agreed date: {line.agreedDate.slice(0, 10)}</Text>}
           </View>

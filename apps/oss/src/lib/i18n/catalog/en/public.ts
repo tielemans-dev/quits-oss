@@ -4,7 +4,7 @@ export const enPublicMessages = {
   "public.document.company": "Company",
   "public.document.notProvided": "Not provided",
   "public.document.status": "Status",
-  "public.document.lineQuantity": "{quantity} x {price}",
+  "public.document.lineQuantity": "{quantity}\u00a0×\u00a0{price}",
   "public.invoice.label": "Invoice",
   "public.invoice.from": "Invoice from {seller}",
   "public.invoice.unavailable.title": "Invoice unavailable",

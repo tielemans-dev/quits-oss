@@ -200,7 +200,7 @@ describe("PublicInvoicePaymentPage", () => {
       expect(html).toContain("Kunde")
       expect(html).toContain("Virksomhed")
       expect(html).toContain("1.250,00 kr.")
-      expect(html).toContain("2 x 625,00 kr.")
+      expect(html).toContain("2\u00a0×\u00a0625,00 kr.")
       expect(html).toContain("1. mar. 2026")
       expect(html).toContain("15. mar. 2026")
       expect(html).toContain('lang="da"')
@@ -298,7 +298,7 @@ describe("PublicInvoicePaymentPage", () => {
         />
       )
 
-      expect(html).toContain("1,5 x 625,00 kr.")
+      expect(html).toContain("1,5\u00a0×\u00a0625,00 kr.")
     })
   })
 

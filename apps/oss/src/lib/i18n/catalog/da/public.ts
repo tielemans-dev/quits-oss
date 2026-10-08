@@ -4,7 +4,7 @@ export const daPublicMessages = {
   "public.document.company": "Virksomhed",
   "public.document.notProvided": "Ikke oplyst",
   "public.document.status": "Status",
-  "public.document.lineQuantity": "{quantity} x {price}",
+  "public.document.lineQuantity": "{quantity}\u00a0×\u00a0{price}",
   "public.invoice.label": "Faktura",
   "public.invoice.from": "Faktura fra {seller}",
   "public.invoice.unavailable.title": "Fakturaen er ikke tilgængelig",
