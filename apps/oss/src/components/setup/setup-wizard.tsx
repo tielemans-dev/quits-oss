@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
+import { forgetInstallationStatus } from "../../lib/installation-cache"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
 import { AdminOrgStep } from "./steps/step-admin-org"
@@ -156,6 +157,8 @@ export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
         window.localStorage.removeItem(WIZARD_STORAGE_KEY)
         window.localStorage.removeItem(LEGACY_WIZARD_STORAGE_KEY)
       }
+      // Setup is done: drop the root route's kept installation answer along with the draft.
+      forgetInstallationStatus()
       onCompleted()
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : t("setup.error.generic")
