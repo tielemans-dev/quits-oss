@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import type { Client } from "pg"
-import { RecoveryError } from "./format"
-import { instant, queryFn, utcNow, utcParam, type QueryFn } from "./pgdb"
+import { RecoveryError } from "../../lib/recovery/format"
+import { instant, queryFn, utcNow, utcParam, type QueryFn } from "../../lib/recovery/pgdb"
 import type { GateName, RestoreReport } from "./restore"
 
 export type PendingWorkReview = {

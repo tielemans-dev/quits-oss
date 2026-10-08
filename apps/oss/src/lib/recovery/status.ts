@@ -1,6 +1,6 @@
 import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
-import type { DocumentArtifactStore } from "../../lib/runtime/services"
-import { readSmtpConfiguration } from "../../lib/email-provider-config"
+import type { DocumentArtifactStore } from "../runtime/services"
+import { readSmtpConfiguration } from "../email-provider-config"
 import { ARTIFACT_OWNERS } from "./format"
 import { instant, quoteIdent, utcParam, type QueryFn } from "./pgdb"
 

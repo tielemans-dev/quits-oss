@@ -7,12 +7,12 @@ import { readProductEnv } from "@quits/shared/runtimeEnv"
 import { localDiskArtifactStore } from "../artifact-store"
 import { createBackup, recordBackup } from "./backup"
 import { verifyBundle, type Finding } from "./bundle"
-import { RecoveryError } from "./format"
+import { RecoveryError } from "../../lib/recovery/format"
 import { configurationInventory } from "./keys"
 import { enableOperations, reviewPendingWork, reviewToken } from "./operations"
-import { queryFn, readAppliedMigrations, readPostgresVersion } from "./pgdb"
+import { queryFn, readAppliedMigrations, readPostgresVersion } from "../../lib/recovery/pgdb"
 import { preflightRestore, restoreBundle, RestoreBlockedError, type GateName } from "./restore"
-import { collectOperationalStatus, environmentHold } from "./status"
+import { collectOperationalStatus, environmentHold } from "../../lib/recovery/status"
 
 type Env = Record<string, string | undefined>
 export type Io = { out: (text: string) => void; err: (text: string) => void }

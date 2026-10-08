@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
 import { readFile, stat } from "node:fs/promises"
 import { isAbsolute, join, relative, resolve } from "node:path"
-import { ARTIFACT_DIRECTORY, MANIFEST_FILE, parseManifest, RecoveryError, type Manifest } from "./format"
+import { ARTIFACT_DIRECTORY, MANIFEST_FILE, parseManifest, RecoveryError, type Manifest } from "../../lib/recovery/format"
 
 export type Finding = {
   severity: "error" | "warning"

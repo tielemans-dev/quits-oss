@@ -18,9 +18,9 @@ import {
   REDACTED_COLUMNS,
   type CurrencyTotals,
   type Manifest,
-} from "./format"
+} from "../../lib/recovery/format"
 import { configurationInventory, keyFingerprints } from "./keys"
-import { quoteIdent, queryFn, readAppliedMigrations, readPostgresVersion, readTables, utcNow, type QueryFn } from "./pgdb"
+import { quoteIdent, queryFn, readAppliedMigrations, readPostgresVersion, readTables, utcNow, type QueryFn } from "../../lib/recovery/pgdb"
 
 const FETCH_ROWS = 500
 

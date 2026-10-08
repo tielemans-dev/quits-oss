@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto"
 import { readFallbackSecret, readProductEnv } from "@quits/shared/runtimeEnv"
 import { decryptSecret } from "../../lib/secrets"
-import { ENCRYPTED_COLUMNS } from "./format"
+import { ENCRYPTED_COLUMNS } from "../../lib/recovery/format"
 
 type Env = Record<string, string | undefined>
 

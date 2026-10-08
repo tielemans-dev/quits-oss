@@ -15,7 +15,7 @@ async function handleStatus(request: Request) {
   const { prisma } = await import("../../../lib/db")
   const { getRuntimeEnv } = await import("../../../lib/runtime/platform")
   const { getDocumentArtifactStore } = await import("../../../lib/runtime/services")
-  const { collectOperationalStatus, environmentHold } = await import("../../../selfhost/recovery/status")
+  const { collectOperationalStatus, environmentHold } = await import("../../../lib/recovery/status")
   const env = getRuntimeEnv()
   const status = await collectOperationalStatus({
     query: async (sql, params = []) => (await prisma.$queryRawUnsafe(sql, ...params)) as Array<Record<string, unknown>>,

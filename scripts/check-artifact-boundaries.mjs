@@ -35,7 +35,7 @@ for (const [file, names] of graph) {
   const path = relative(source, file)
   for (const name of names) {
     const target = local(file, name)
-    if (target && relative(source, target).startsWith("selfhost/") && path !== "server.ts") throw new Error(`${path} imports selfhost: ${name}`)
+    if (target && relative(source, target).startsWith("selfhost/") && path !== "server.ts" && !path.startsWith("selfhost/")) throw new Error(`${path} imports selfhost: ${name}`)
     if (!path.startsWith("selfhost/") && /^(node:)?fs(?:\/|$)/.test(name)) throw new Error(`${path} imports filesystem APIs`)
   }
   if (!path.startsWith("selfhost/") && /\bBun\.|\brenderToBuffer\s*\(|\.toBlob\s*\(/.test(readFileSync(file, "utf8"))) throw new Error(`${path} uses host rendering APIs`)

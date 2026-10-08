@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const collectOperationalStatus = vi.hoisted(() => vi.fn())
-vi.mock("../../selfhost/recovery/status", () => ({ collectOperationalStatus, environmentHold: () => false }))
+vi.mock("../../lib/recovery/status", () => ({ collectOperationalStatus, environmentHold: () => false }))
 vi.mock("../../lib/db", () => ({ prisma: { $queryRawUnsafe: vi.fn(async () => []) } }))
 
 import { Route } from "../api/cron/status"

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { sha256Bytes, verifyBundle } from "../bundle"
-import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, parseManifest, RecoveryError, type Manifest } from "../format"
+import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, parseManifest, RecoveryError, type Manifest } from "../../../lib/recovery/format"
 import { compareKeys, keyFingerprints } from "../keys"
 import { diffTotals } from "../restore"
 
