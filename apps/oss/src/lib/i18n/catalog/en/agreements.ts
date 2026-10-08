@@ -131,7 +131,7 @@ export const enAgreementsMessages = {
   "agreements.allocation.rebillAgreementClosed": "Only an accepted agreement can authorize new billing. This agreement cannot be rebilled.",
   "agreements.allocation.rebillConfirm": "Credit note {creditNote} credited {title} in full. Allowing it to be billed again makes it available for a new draft. The original invoice and credit stay as issued.",
   "agreements.allocation.rebillReason": "Why is this work billed again? (required)",
-  "agreements.allocation.rebillRecord": "Billed again (round {generation}) after credit note {creditNote} on invoice {invoice}: {reason}",
+  "agreements.allocation.rebillRecord": "Rebilling authorized (round {generation}) after credit note {creditNote} on invoice {invoice}: {reason}",
   "agreements.allocation.anInvoice": "an earlier invoice",
   "agreements.allocation.aCreditNote": "a credit note",
   "agreements.allocation.unavailableHeading": "Not available to invoice now",
