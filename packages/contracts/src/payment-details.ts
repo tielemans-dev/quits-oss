@@ -38,6 +38,9 @@ export function isValidIban(value: string): boolean {
   const iban = normalizeIban(value)
   if (iban.length < IBAN_MIN_LENGTH || iban.length > IBAN_MAX_LENGTH) return false
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(iban)) return false
+  // ISO 13616 reserves 00, 01 and 99 as check digits, although some such numbers pass mod-97.
+  const checkDigits = Number(iban.slice(2, 4))
+  if (checkDigits < 2 || checkDigits > 98) return false
   const expectedLength = IBAN_LENGTH_BY_COUNTRY[iban.slice(0, 2)]
   if (expectedLength !== undefined && iban.length !== expectedLength) return false
   // Move the country code and check digits to the end, then read letters as 10..35. The number
@@ -51,8 +54,11 @@ export function isValidIban(value: string): boolean {
   return remainder === 1
 }
 
-/** ISO 9362: 4 letter institution, 2 letter country, 2 character location, optional 3 character branch. */
-const bicPattern = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/
+/**
+ * ISO 9362:2022: 4 character institution code (digits are allowed since the 2022 revision),
+ * 2 letter country, 2 character location, optional 3 character branch.
+ */
+const bicPattern = /^[A-Z0-9]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/
 
 export function isValidBic(value: string): boolean {
   return bicPattern.test(normalizeBic(value))
@@ -88,7 +94,8 @@ function optionalText(options: {
     )
 }
 
-const withoutWhitespace = (value: string) => value.replace(/\s+/g, "")
+/** Danish account numbers are often typed as `3001-1234567` or `3001.1234567`: drop the separators. */
+const withoutSeparators = (value: string) => value.replace(/[\s.-]+/g, "")
 
 export const BANK_ACCOUNT_FIELDS = [
   "accountHolder",
@@ -111,13 +118,13 @@ const bankAccountShape = {
   }),
   /** Danish registreringsnummer: the four digit bank branch number. */
   regNumber: optionalText({
-    normalize: withoutWhitespace,
+    normalize: withoutSeparators,
     pattern: /^\d{4}$/,
     message: "Registration number (reg.nr.) must be exactly 4 digits",
   }),
   /** Danish kontonummer: one to ten digits. */
   accountNumber: optionalText({
-    normalize: withoutWhitespace,
+    normalize: withoutSeparators,
     pattern: /^\d{1,10}$/,
     message: "Account number (kontonr.) must be 1 to 10 digits",
   }),
@@ -139,7 +146,9 @@ const bankAccountShape = {
  *
  * - the Danish reg.nr. and account number only make sense together;
  * - once any field is filled in, the account must say where to pay: an IBAN, or a reg.nr. with an
- *   account number. A bank name on its own is refused.
+ *   account number. A bank name on its own is refused;
+ * - a Danish IBAN (`DK`, 2 check digits, 4 digit reg.nr., 10 digit zero-padded account number)
+ *   must agree with the reg.nr. and account number when both are given.
  *
  * The IBAN and BIC are normalized (no spaces, upper case) and the IBAN's check digits and length
  * are verified.
@@ -166,6 +175,20 @@ export const bankAccountSchema = z.object(bankAccountShape).superRefine((value, 
       code: "custom",
       path: ["iban"],
       message: "Enter an IBAN, or a registration number and account number",
+    })
+  }
+  if (
+    value.iban !== null &&
+    value.regNumber !== null &&
+    value.accountNumber !== null &&
+    value.iban.startsWith("DK") &&
+    value.iban.length === IBAN_LENGTH_BY_COUNTRY.DK &&
+    value.iban.slice(4) !== value.regNumber + value.accountNumber.padStart(10, "0")
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["iban"],
+      message: "The IBAN does not match the registration number and account number",
     })
   }
 })

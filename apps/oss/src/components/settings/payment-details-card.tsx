@@ -108,8 +108,8 @@ function previewDetails(values: Values) {
     bankAccount: {
       accountHolder: text(values.accountHolder),
       bankName: text(values.bankName),
-      regNumber: text(values.regNumber.replace(/\s+/g, "")),
-      accountNumber: text(values.accountNumber.replace(/\s+/g, "")),
+      regNumber: text(values.regNumber.replace(/[\s.-]+/g, "")),
+      accountNumber: text(values.accountNumber.replace(/[\s.-]+/g, "")),
       iban: text(values.iban.replace(/\s+/g, "")),
       bic: text(values.bic.replace(/\s+/g, "").toUpperCase()),
     },

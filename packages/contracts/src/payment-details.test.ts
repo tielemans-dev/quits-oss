@@ -46,6 +46,18 @@ describe("IBAN validation", () => {
     expect(isValidIban("DK5100400440116243")).toBe(false)
   })
 
+  it.each([["DK0000400440116270"], ["DK0100400440116252"], ["DK9900400440116331"]])(
+    "rejects %s: check digits 00, 01 and 99 are reserved even though mod-97 passes",
+    (iban) => {
+      // The numbers are built to pass the mod-97 check, so only the reserved range rejects them.
+      const digits = (iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, (letter) => String(letter.charCodeAt(0) - 55))
+      let remainder = 0
+      for (const digit of digits) remainder = (remainder * 10 + Number(digit)) % 97
+      expect(remainder).toBe(1)
+      expect(isValidIban(iban)).toBe(false)
+    }
+  )
+
   it("accepts spaced and lower case input", () => {
     expect(isValidIban("DK50 0040 0440 1162 43")).toBe(true)
     expect(isValidIban("dk5000400440116243")).toBe(true)
@@ -106,11 +118,11 @@ describe("IBAN validation", () => {
 })
 
 describe("BIC validation", () => {
-  it.each([["DABADKKK"], ["DABADKKKXXX"], ["nykbdkkk"], ["DAB ADK KK"]])("accepts %j", (bic) => {
+  it.each([["DABADKKK"], ["DABADKKKXXX"], ["nykbdkkk"], ["DAB ADK KK"], ["1ABADKKK"], ["A1B2DKKK"]])("accepts %j", (bic) => {
     expect(isValidBic(bic)).toBe(true)
   })
 
-  it.each([[""], ["DABADKK"], ["DABADKKKXX"], ["1ABADKKK"], ["DABADKKKXXXX"], ["DABA-DKKK"]])(
+  it.each([[""], ["DABADKK"], ["DABADKKKXX"], ["DABA1KKK"], ["DABADKKKXXXX"], ["DABA-DKKK"]])(
     "rejects %j",
     (bic) => {
       expect(isValidBic(bic)).toBe(false)
@@ -170,8 +182,16 @@ describe("bank account", () => {
     expect(issuePaths(bankAccountSchema.safeParse({ regNumber, accountNumber: "1234567" }))).toContain("regNumber")
   })
 
-  it.each([["12345678901"], ["12a"], ["1-2"]])("rejects the account number %j", (accountNumber) => {
+  it.each([["12345678901"], ["12a"], ["1/2"], ["0440116243-1"]])("rejects the account number %j", (accountNumber) => {
     expect(issuePaths(bankAccountSchema.safeParse({ regNumber: "0040", accountNumber }))).toContain("accountNumber")
+  })
+
+  it("strips spaces, dashes and dots from the reg.nr. and account number", () => {
+    expect(bankAccountSchema.parse({ regNumber: "00-40", accountNumber: "0440.116-243" })).toMatchObject({
+      regNumber: "0040",
+      accountNumber: "0440116243",
+    })
+    expect(bankAccountSchema.parse({ regNumber: "0040", accountNumber: "0440 1162 43" }).accountNumber).toBe("0440116243")
   })
 
   it("accepts account numbers from one to ten digits", () => {
@@ -207,6 +227,32 @@ describe("bank account", () => {
   it("rejects a corrupted IBAN and a malformed BIC", () => {
     expect(issuePaths(bankAccountSchema.safeParse({ iban: "DK5000400440116244" }))).toEqual(["iban"])
     expect(issuePaths(bankAccountSchema.safeParse({ iban: DANISH_IBAN, bic: "DABADKK" }))).toEqual(["bic"])
+  })
+
+  describe("Danish IBAN cross-check", () => {
+    it("accepts a DK IBAN that agrees with the reg.nr. and account number", () => {
+      expect(bankAccountSchema.safeParse({ iban: DANISH_IBAN, regNumber: "0040", accountNumber: "0440116243" }).success).toBe(true)
+    })
+
+    it("compares the zero-padded account number", () => {
+      const iban = ibanWithCheckDigits("DK", "00400000012345")
+      expect(isValidIban(iban)).toBe(true)
+      expect(bankAccountSchema.safeParse({ iban, regNumber: "0040", accountNumber: "12345" }).success).toBe(true)
+    })
+
+    it.each([
+      ["the reg.nr.", { regNumber: "0041", accountNumber: "0440116243" }],
+      ["the account number", { regNumber: "0040", accountNumber: "0440116244" }],
+    ])("rejects a DK IBAN that disagrees on %s", (_name, numbers) => {
+      const result = bankAccountSchema.safeParse({ iban: DANISH_IBAN, ...numbers })
+      expect(issuePaths(result)).toEqual(["iban"])
+      if (!result.success) expect(result.error.issues[0]?.message).toBe("The IBAN does not match the registration number and account number")
+    })
+
+    it("does not compare an IBAN from another country with the Danish numbers", () => {
+      const iban = ibanWithCheckDigits("DE", "370400440532013000")
+      expect(bankAccountSchema.safeParse({ iban, regNumber: "0040", accountNumber: "0440116243" }).success).toBe(true)
+    })
   })
 
   it("limits the account holder and bank name", () => {
