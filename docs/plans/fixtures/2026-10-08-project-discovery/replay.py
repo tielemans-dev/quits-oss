@@ -3,6 +3,7 @@ import argparse
 import copy
 import hashlib
 import json
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).parent
@@ -25,6 +26,15 @@ def association(protected, reporting, target, expected_revision):
     if target is not None:
         if target["organizationId"] != protected["invoice"]["organizationId"]:
             raise ValueError("project_not_found")
+    # This synthetic ID models corroborated historical identity, not a field in
+    # Quits' BuyerSnapshot contract or an identity inferred from today's contact.
+    snapshot = protected["invoice"].get("issuanceSnapshot")
+    buyer = snapshot.get("buyer") if isinstance(snapshot, dict) else None
+    frozen_id = buyer.get("id") if isinstance(buyer, dict) else None
+    if (not isinstance(frozen_id, str) or not frozen_id.strip() or
+            frozen_id != protected["invoice"]["contactId"]):
+        raise ValueError("historical_buyer_review_required")
+    if target is not None:
         if target["contactId"] != protected["invoice"]["contactId"]:
             raise ValueError("customer_mismatch")
     return {"projectId": target["id"] if target else None,
@@ -178,6 +188,102 @@ def effort(actual, complete, low, high):
             "totalLowHours": actual + low, "totalHighHours": actual + high, "state": "owner_scenario"}
 
 
+def frozen_buyer_replays():
+    results = []
+    for evidence_case in ("changed-link", "missing-snapshot", "missing-buyer",
+                          "missing-identity", "empty-identity", "null-snapshot"):
+        for operation, previous, next_id in (("assign", None, "project-A"),
+                                             ("correct", "project-A", "project-B"),
+                                             ("remove", "project-A", None)):
+            protected = invoice_fixture("paid", "paid", 100000, 0, 100000, 98500, 1500, True)
+            invoice = protected["invoice"]
+            if evidence_case == "changed-link":
+                invoice["contactId"] = "buyer-B"
+            elif evidence_case == "missing-snapshot":
+                del invoice["issuanceSnapshot"]
+            elif evidence_case == "null-snapshot":
+                invoice["issuanceSnapshot"] = None
+            elif evidence_case == "missing-buyer":
+                del invoice["issuanceSnapshot"]["buyer"]
+            elif evidence_case == "missing-identity":
+                del invoice["issuanceSnapshot"]["buyer"]["id"]
+            else:
+                invoice["issuanceSnapshot"]["buyer"]["id"] = ""
+            reporting = {"projectId": previous, "revision": 0}
+            target = {"id": next_id, "organizationId": "org-A", "contactId": invoice["contactId"]} if next_id else None
+            before = copy.deepcopy((protected, reporting, target))
+            try:
+                association(protected, reporting, target, 0)
+            except ValueError as exc:
+                assert str(exc) == "historical_buyer_review_required"
+            else:
+                raise AssertionError("Uncorroborated frozen buyer must require review")
+            assert before == (protected, reporting, target)
+            results.append({"case": evidence_case, "operation": operation,
+                            "expected": "historical_buyer_review_required", "stateUnchanged": True,
+                            "protectedSha256Before": digest(before[0]), "protectedSha256After": digest(protected)})
+    return results
+
+
+def warning_outcome(episode):
+    """Illustrate the proposed dated-evidence rubric; no pilot observations."""
+    def timestamp(value):
+        if value is None:
+            return None
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            raise ValueError("Missing timezone")
+        return parsed
+
+    try:
+        warned = timestamp(episode.get("warningAt"))
+        risk = timestamp(episode.get("riskAt"))
+        action = timestamp(episode.get("correctiveActionAt"))
+    except (ValueError, TypeError, AttributeError):
+        return "unresolved"
+    if warned is None:
+        return "unresolved"
+    known_events = [time for time in (risk, action) if time is not None]
+    if known_events and warned >= min(known_events):
+        return "late"
+    if risk is not None or (action is not None and episode.get("avoidanceEvidenced") is True):
+        return "timely"
+    return "false" if episode.get("confirmedNoRisk") is True else "unresolved"
+
+
+def warning_quality_replays():
+    early = {"warningAt": "2026-10-01T09:00:00Z", "riskAt": "2026-10-02T09:00:00Z"}
+    late = {"warningAt": "2026-10-03T09:00:00Z", "riskAt": "2026-10-02T09:00:00Z"}
+    false = {"warningAt": "2026-10-01T09:00:00Z", "confirmedNoRisk": True}
+    boundary_inputs = [
+        ("before-risk", early, "timely"), ("after-risk", late, "late"),
+        ("at-risk", {**early, "warningAt": early["riskAt"]}, "late"),
+        ("before-evidenced-action", {"warningAt": early["warningAt"], "correctiveActionAt": early["riskAt"], "avoidanceEvidenced": True}, "timely"),
+        ("after-action-before-risk", {**early, "correctiveActionAt": "2026-09-30T09:00:00Z", "avoidanceEvidenced": True}, "late"),
+        ("missing-warning-time", {"riskAt": early["riskAt"]}, "unresolved"),
+        ("undated-action", {"warningAt": early["warningAt"], "avoidanceEvidenced": True}, "unresolved"),
+        ("unverified-avoidance", {"warningAt": early["warningAt"], "correctiveActionAt": early["riskAt"]}, "unresolved"),
+        ("invalid-risk-time", {**early, "riskAt": "unknown"}, "unresolved"),
+        ("no-risk", false, "false"),
+    ]
+    boundaries = []
+    for name, episode, expected in boundary_inputs:
+        outcome = warning_outcome(episode)
+        assert outcome == expected
+        boundaries.append({"case": name, "input": episode, "outcome": outcome})
+    cohorts = []
+    for name, episodes, failures in (("three-early-thirteen-late-four-false", [early]*3 + [late]*13 + [false]*4, 17),
+                                     ("sixteen-early-four-false", [early]*16 + [false]*4, 4)):
+        outcomes = [warning_outcome(episode) for episode in episodes]
+        failed = sum(outcome != "timely" for outcome in outcomes)
+        assert failed == failures
+        cohorts.append({"case": name, "episodes": len(episodes), "failures": failed,
+                        "failureRate": failed / len(episodes), "rateGatePasses": failed / len(episodes) <= .2,
+                        "counts": {state: outcomes.count(state) for state in ("timely", "late", "false", "unresolved")}})
+    return {"boundaries": boundaries, "cohorts": cohorts,
+            "limit": "Synthetic rubric arithmetic only. The rate alone cannot satisfy the study's sample, business, usefulness or other gates."}
+
+
 def economics_replays():
     cases = [
         {"id": "unfinished-overrun", "originalEstimateHours": 10, "actualHours": 12, "complete": False, "low": None, "high": None},
@@ -227,7 +333,8 @@ def economics_replays():
 def replay():
     return {"evidenceClass": "hypothetical metadata and economics fixtures; not application behavior or customer evidence",
             "asOf": "2026-10-08", "association": association_replays(),
-            "draftAssociationRefusals": draft_association_replays(), "economics": economics_replays()}
+            "draftAssociationRefusals": draft_association_replays(), "economics": economics_replays(),
+            "frozenBuyerRefusals": frozen_buyer_replays(), "warningQuality": warning_quality_replays()}
 
 
 if __name__ == "__main__":
@@ -240,4 +347,4 @@ if __name__ == "__main__":
         assert target.read_text() == output, "Committed results differ from deterministic replay"
     else:
         target.write_text(output)
-    print("PASS: 4 financial cases x assign/correct/remove; 12 identity/revision refusals; 4 draft refusals; 6 effort cases; 4 invalid effort inputs; cash/cost invariants")
+    print("PASS: 4 financial cases x assign/correct/remove; 12 identity/revision, 4 draft and 18 frozen-buyer refusals; 6 effort cases; 4 invalid effort inputs; 10 warning timing controls and 2 cohorts; cash/cost invariants")

@@ -2751,5 +2751,266 @@
     ],
     "warning": "Hourly billable value is a separate pricing scenario, not additive to the fixed fee. Contribution is not accounting profit."
   },
-  "evidenceClass": "hypothetical metadata and economics fixtures; not application behavior or customer evidence"
+  "evidenceClass": "hypothetical metadata and economics fixtures; not application behavior or customer evidence",
+  "frozenBuyerRefusals": [
+    {
+      "case": "changed-link",
+      "expected": "historical_buyer_review_required",
+      "operation": "assign",
+      "protectedSha256After": "8d1145ae2edc3752b80a9a628ad9123f92f9f3f3486f9b4e62a4b9702617eb6a",
+      "protectedSha256Before": "8d1145ae2edc3752b80a9a628ad9123f92f9f3f3486f9b4e62a4b9702617eb6a",
+      "stateUnchanged": true
+    },
+    {
+      "case": "changed-link",
+      "expected": "historical_buyer_review_required",
+      "operation": "correct",
+      "protectedSha256After": "8d1145ae2edc3752b80a9a628ad9123f92f9f3f3486f9b4e62a4b9702617eb6a",
+      "protectedSha256Before": "8d1145ae2edc3752b80a9a628ad9123f92f9f3f3486f9b4e62a4b9702617eb6a",
+      "stateUnchanged": true
+    },
+    {
+      "case": "changed-link",
+      "expected": "historical_buyer_review_required",
+      "operation": "remove",
+      "protectedSha256After": "8d1145ae2edc3752b80a9a628ad9123f92f9f3f3486f9b4e62a4b9702617eb6a",
+      "protectedSha256Before": "8d1145ae2edc3752b80a9a628ad9123f92f9f3f3486f9b4e62a4b9702617eb6a",
+      "stateUnchanged": true
+    },
+    {
+      "case": "missing-snapshot",
+      "expected": "historical_buyer_review_required",
+      "operation": "assign",
+      "protectedSha256After": "7290eb4c647f0243dc960a2628c73fd16606f0643708c80513271e35d976467b",
+      "protectedSha256Before": "7290eb4c647f0243dc960a2628c73fd16606f0643708c80513271e35d976467b",
+      "stateUnchanged": true
+    },
+    {
+      "case": "missing-snapshot",
+      "expected": "historical_buyer_review_required",
+      "operation": "correct",
+      "protectedSha256After": "7290eb4c647f0243dc960a2628c73fd16606f0643708c80513271e35d976467b",
+      "protectedSha256Before": "7290eb4c647f0243dc960a2628c73fd16606f0643708c80513271e35d976467b",
+      "stateUnchanged": true
+    },
+    {
+      "case": "missing-snapshot",
+      "expected": "historical_buyer_review_required",
+      "operation": "remove",
+      "protectedSha256After": "7290eb4c647f0243dc960a2628c73fd16606f0643708c80513271e35d976467b",
+      "protectedSha256Before": "7290eb4c647f0243dc960a2628c73fd16606f0643708c80513271e35d976467b",
+      "stateUnchanged": true
+    },
+    {
+      "case": "missing-buyer",
+      "expected": "historical_buyer_review_required",
+      "operation": "assign",
+      "protectedSha256After": "07793b275b9c88c2ab83f5954689c1deea1d8e589dafb2cc2a84d265b50abf87",
+      "protectedSha256Before": "07793b275b9c88c2ab83f5954689c1deea1d8e589dafb2cc2a84d265b50abf87",
+      "stateUnchanged": true
+    },
+    {
+      "case": "missing-buyer",
+      "expected": "historical_buyer_review_required",
+      "operation": "correct",
+      "protectedSha256After": "07793b275b9c88c2ab83f5954689c1deea1d8e589dafb2cc2a84d265b50abf87",
+      "protectedSha256Before": "07793b275b9c88c2ab83f5954689c1deea1d8e589dafb2cc2a84d265b50abf87",
+      "stateUnchanged": true
+    },
+    {
+      "case": "missing-buyer",
+      "expected": "historical_buyer_review_required",
+      "operation": "remove",
+      "protectedSha256After": "07793b275b9c88c2ab83f5954689c1deea1d8e589dafb2cc2a84d265b50abf87",
+      "protectedSha256Before": "07793b275b9c88c2ab83f5954689c1deea1d8e589dafb2cc2a84d265b50abf87",
+      "stateUnchanged": true
+    },
+    {
+      "case": "missing-identity",
+      "expected": "historical_buyer_review_required",
+      "operation": "assign",
+      "protectedSha256After": "8065f75c19c07652affa71d19b2632912b90d54a46fc8e096d066c3b9f274ac0",
+      "protectedSha256Before": "8065f75c19c07652affa71d19b2632912b90d54a46fc8e096d066c3b9f274ac0",
+      "stateUnchanged": true
+    },
+    {
+      "case": "missing-identity",
+      "expected": "historical_buyer_review_required",
+      "operation": "correct",
+      "protectedSha256After": "8065f75c19c07652affa71d19b2632912b90d54a46fc8e096d066c3b9f274ac0",
+      "protectedSha256Before": "8065f75c19c07652affa71d19b2632912b90d54a46fc8e096d066c3b9f274ac0",
+      "stateUnchanged": true
+    },
+    {
+      "case": "missing-identity",
+      "expected": "historical_buyer_review_required",
+      "operation": "remove",
+      "protectedSha256After": "8065f75c19c07652affa71d19b2632912b90d54a46fc8e096d066c3b9f274ac0",
+      "protectedSha256Before": "8065f75c19c07652affa71d19b2632912b90d54a46fc8e096d066c3b9f274ac0",
+      "stateUnchanged": true
+    },
+    {
+      "case": "empty-identity",
+      "expected": "historical_buyer_review_required",
+      "operation": "assign",
+      "protectedSha256After": "96d17faef4e69a66aa8cb45a6ce695b017426ed1e8b0d5f8858d8c4bcbe9972f",
+      "protectedSha256Before": "96d17faef4e69a66aa8cb45a6ce695b017426ed1e8b0d5f8858d8c4bcbe9972f",
+      "stateUnchanged": true
+    },
+    {
+      "case": "empty-identity",
+      "expected": "historical_buyer_review_required",
+      "operation": "correct",
+      "protectedSha256After": "96d17faef4e69a66aa8cb45a6ce695b017426ed1e8b0d5f8858d8c4bcbe9972f",
+      "protectedSha256Before": "96d17faef4e69a66aa8cb45a6ce695b017426ed1e8b0d5f8858d8c4bcbe9972f",
+      "stateUnchanged": true
+    },
+    {
+      "case": "empty-identity",
+      "expected": "historical_buyer_review_required",
+      "operation": "remove",
+      "protectedSha256After": "96d17faef4e69a66aa8cb45a6ce695b017426ed1e8b0d5f8858d8c4bcbe9972f",
+      "protectedSha256Before": "96d17faef4e69a66aa8cb45a6ce695b017426ed1e8b0d5f8858d8c4bcbe9972f",
+      "stateUnchanged": true
+    },
+    {
+      "case": "null-snapshot",
+      "expected": "historical_buyer_review_required",
+      "operation": "assign",
+      "protectedSha256After": "7d492a7aa3c2d72099c5415ae275509149b0df789b53189fb8c297bfcaf58a3c",
+      "protectedSha256Before": "7d492a7aa3c2d72099c5415ae275509149b0df789b53189fb8c297bfcaf58a3c",
+      "stateUnchanged": true
+    },
+    {
+      "case": "null-snapshot",
+      "expected": "historical_buyer_review_required",
+      "operation": "correct",
+      "protectedSha256After": "7d492a7aa3c2d72099c5415ae275509149b0df789b53189fb8c297bfcaf58a3c",
+      "protectedSha256Before": "7d492a7aa3c2d72099c5415ae275509149b0df789b53189fb8c297bfcaf58a3c",
+      "stateUnchanged": true
+    },
+    {
+      "case": "null-snapshot",
+      "expected": "historical_buyer_review_required",
+      "operation": "remove",
+      "protectedSha256After": "7d492a7aa3c2d72099c5415ae275509149b0df789b53189fb8c297bfcaf58a3c",
+      "protectedSha256Before": "7d492a7aa3c2d72099c5415ae275509149b0df789b53189fb8c297bfcaf58a3c",
+      "stateUnchanged": true
+    }
+  ],
+  "warningQuality": {
+    "boundaries": [
+      {
+        "case": "before-risk",
+        "input": {
+          "riskAt": "2026-10-02T09:00:00Z",
+          "warningAt": "2026-10-01T09:00:00Z"
+        },
+        "outcome": "timely"
+      },
+      {
+        "case": "after-risk",
+        "input": {
+          "riskAt": "2026-10-02T09:00:00Z",
+          "warningAt": "2026-10-03T09:00:00Z"
+        },
+        "outcome": "late"
+      },
+      {
+        "case": "at-risk",
+        "input": {
+          "riskAt": "2026-10-02T09:00:00Z",
+          "warningAt": "2026-10-02T09:00:00Z"
+        },
+        "outcome": "late"
+      },
+      {
+        "case": "before-evidenced-action",
+        "input": {
+          "avoidanceEvidenced": true,
+          "correctiveActionAt": "2026-10-02T09:00:00Z",
+          "warningAt": "2026-10-01T09:00:00Z"
+        },
+        "outcome": "timely"
+      },
+      {
+        "case": "after-action-before-risk",
+        "input": {
+          "avoidanceEvidenced": true,
+          "correctiveActionAt": "2026-09-30T09:00:00Z",
+          "riskAt": "2026-10-02T09:00:00Z",
+          "warningAt": "2026-10-01T09:00:00Z"
+        },
+        "outcome": "late"
+      },
+      {
+        "case": "missing-warning-time",
+        "input": {
+          "riskAt": "2026-10-02T09:00:00Z"
+        },
+        "outcome": "unresolved"
+      },
+      {
+        "case": "undated-action",
+        "input": {
+          "avoidanceEvidenced": true,
+          "warningAt": "2026-10-01T09:00:00Z"
+        },
+        "outcome": "unresolved"
+      },
+      {
+        "case": "unverified-avoidance",
+        "input": {
+          "correctiveActionAt": "2026-10-02T09:00:00Z",
+          "warningAt": "2026-10-01T09:00:00Z"
+        },
+        "outcome": "unresolved"
+      },
+      {
+        "case": "invalid-risk-time",
+        "input": {
+          "riskAt": "unknown",
+          "warningAt": "2026-10-01T09:00:00Z"
+        },
+        "outcome": "unresolved"
+      },
+      {
+        "case": "no-risk",
+        "input": {
+          "confirmedNoRisk": true,
+          "warningAt": "2026-10-01T09:00:00Z"
+        },
+        "outcome": "false"
+      }
+    ],
+    "cohorts": [
+      {
+        "case": "three-early-thirteen-late-four-false",
+        "counts": {
+          "false": 4,
+          "late": 13,
+          "timely": 3,
+          "unresolved": 0
+        },
+        "episodes": 20,
+        "failureRate": 0.85,
+        "failures": 17,
+        "rateGatePasses": false
+      },
+      {
+        "case": "sixteen-early-four-false",
+        "counts": {
+          "false": 4,
+          "late": 0,
+          "timely": 16,
+          "unresolved": 0
+        },
+        "episodes": 20,
+        "failureRate": 0.2,
+        "failures": 4,
+        "rateGatePasses": true
+      }
+    ],
+    "limit": "Synthetic rubric arithmetic only. The rate alone cannot satisfy the study's sample, business, usefulness or other gates."
+  }
 }
