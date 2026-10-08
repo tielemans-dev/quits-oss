@@ -53,6 +53,10 @@ export const Route = createRootRoute({
         rel: 'stylesheet',
         href: appCss,
       },
+      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+      { rel: 'icon', href: '/favicon.ico', sizes: '48x48' },
+      { rel: 'apple-touch-icon', href: '/logo192.png' },
+      { rel: 'manifest', href: '/manifest.json' },
     ],
   }),
   shellComponent: RootDocument,
@@ -64,6 +68,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/* Two tags with one name: the router's head() would keep only one of them. */}
+        <meta name="theme-color" content="#fcfcf9" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0d1013" media="(prefers-color-scheme: dark)" />
         {/* After HeadContent so the charset meta stays near the top; the stylesheet blocks first paint anyway. */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
