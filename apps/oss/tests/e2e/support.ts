@@ -29,6 +29,42 @@ type PublicSeed = {
   url: string
 }
 
+type SeedLocale = {
+  locale: string
+  countryCode: string
+  timezone: string
+  currency: string
+}
+
+/** The default seller: a US English organization that bills in dollars. */
+export const usEnglishLocale: SeedLocale = {
+  locale: "en-US",
+  countryCode: "US",
+  timezone: "UTC",
+  currency: "USD",
+}
+
+/** A Danish seller: the organization and the documents it issues are Danish and bill in kroner. */
+export const danishLocale: SeedLocale = {
+  locale: "da-DK",
+  countryCode: "DK",
+  timezone: "Europe/Copenhagen",
+  currency: "DKK",
+}
+
+/** A 1x1 transparent PNG, to stand in for an uploaded company logo. */
+export const tinyLogoDataUrl =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+
+export type PublicSeedOptions = {
+  /** Language, country, timezone and currency of the seller and of the document. */
+  locale?: SeedLocale
+  /** Stored on the seller's settings and shown at the top of the page. */
+  companyLogo?: string
+  /** The document total, with two decimals. Defaults to 100.00 for a quote and 250.00 for an invoice. */
+  total?: string
+}
+
 export async function resetDatabase() {
   const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
     SELECT tablename
@@ -48,7 +84,7 @@ export async function resetDatabase() {
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${names} RESTART IDENTITY CASCADE`)
 }
 
-export async function seedCompletedSetup() {
+export async function seedCompletedSetup(locale: SeedLocale = usEnglishLocale) {
   const slug = `e2e-${Math.random().toString(36).slice(2, 10)}`
   const initialized = await applySetupInitialization({
     instanceProfile: "smb",
@@ -60,12 +96,7 @@ export async function seedCompletedSetup() {
     auth: {
       mode: "local_only",
     },
-    locale: {
-      locale: "en-US",
-      countryCode: "US",
-      timezone: "UTC",
-      currency: "USD",
-    },
+    locale,
   })
 
   await completeSetup()
@@ -73,8 +104,17 @@ export async function seedCompletedSetup() {
   return initialized
 }
 
-export async function seedPublicQuote(): Promise<PublicSeed> {
-  const setup = await seedCompletedSetup()
+export async function seedPublicQuote(options: PublicSeedOptions = {}): Promise<PublicSeed> {
+  const locale = options.locale ?? usEnglishLocale
+  const total = options.total ?? "100.00"
+  const setup = await seedCompletedSetup(locale)
+
+  if (options.companyLogo) {
+    await prisma.orgSettings.update({
+      where: { organizationId: setup.organizationId },
+      data: { companyLogo: options.companyLogo },
+    })
+  }
 
   const contact = await prisma.contact.create({
     data: {
@@ -96,14 +136,14 @@ export async function seedPublicQuote(): Promise<PublicSeed> {
       expiryDate: new Date("2026-03-23T00:00:00.000Z"),
       publicAccessIssuedAt: new Date("2026-03-09T00:00:00.000Z"),
       publicAccessKeyVersion: 1,
-      subtotalNet: "100.00",
+      subtotalNet: total,
       totalTax: "0.00",
-      totalGross: "100.00",
-      currency: "USD",
-      countryCode: "US",
-      locale: "en-US",
-      timezone: "UTC",
-      taxRegime: "us_sales_tax",
+      totalGross: total,
+      currency: locale.currency,
+      countryCode: locale.countryCode,
+      locale: locale.locale,
+      timezone: locale.timezone,
+      taxRegime: locale.countryCode === "US" ? "us_sales_tax" : "eu_vat",
       pricesIncludeTax: false,
       sellerSnapshot: {
         companyName: "E2E Org",
@@ -119,11 +159,11 @@ export async function seedPublicQuote(): Promise<PublicSeed> {
           {
             description: "Strategy session",
             quantity: "1.00",
-            unitPriceNet: "100.00",
-            unitPriceGross: "100.00",
-            lineNet: "100.00",
+            unitPriceNet: total,
+            unitPriceGross: total,
+            lineNet: total,
             lineTax: "0.00",
-            lineGross: "100.00",
+            lineGross: total,
             taxRate: "0.00",
             taxCategory: "standard",
             sortOrder: 0,
@@ -149,8 +189,10 @@ export async function seedPublicQuote(): Promise<PublicSeed> {
   }
 }
 
-export async function seedPublicInvoice(): Promise<PublicSeed> {
-  const setup = await seedCompletedSetup()
+export async function seedPublicInvoice(options: PublicSeedOptions = {}): Promise<PublicSeed> {
+  const locale = options.locale ?? usEnglishLocale
+  const total = options.total ?? "250.00"
+  const setup = await seedCompletedSetup(locale)
 
   await prisma.orgSettings.update({
     where: { organizationId: setup.organizationId },
@@ -158,6 +200,7 @@ export async function seedPublicInvoice(): Promise<PublicSeed> {
       stripePublishableKey: "pk_test_123456789",
       stripeSecretKeyEnc: "sk_test_placeholder",
       stripeWebhookSecretEnc: "whsec_placeholder",
+      ...(options.companyLogo ? { companyLogo: options.companyLogo } : {}),
     },
   })
 
@@ -182,14 +225,14 @@ export async function seedPublicInvoice(): Promise<PublicSeed> {
       dueDate: new Date("2026-03-23T00:00:00.000Z"),
       publicPaymentIssuedAt: new Date("2026-03-09T00:00:00.000Z"),
       publicPaymentKeyVersion: 1,
-      subtotalNet: "250.00",
+      subtotalNet: total,
       totalTax: "0.00",
-      totalGross: "250.00",
-      currency: "USD",
-      countryCode: "US",
-      locale: "en-US",
-      timezone: "UTC",
-      taxRegime: "us_sales_tax",
+      totalGross: total,
+      currency: locale.currency,
+      countryCode: locale.countryCode,
+      locale: locale.locale,
+      timezone: locale.timezone,
+      taxRegime: locale.countryCode === "US" ? "us_sales_tax" : "eu_vat",
       pricesIncludeTax: false,
       sellerSnapshot: {
         companyName: "E2E Org",
@@ -205,11 +248,11 @@ export async function seedPublicInvoice(): Promise<PublicSeed> {
           {
             description: "Implementation sprint",
             quantity: "1.00",
-            unitPriceNet: "250.00",
-            unitPriceGross: "250.00",
-            lineNet: "250.00",
+            unitPriceNet: total,
+            unitPriceGross: total,
+            lineNet: total,
             lineTax: "0.00",
-            lineGross: "250.00",
+            lineGross: total,
             taxRate: "0.00",
             taxCategory: "standard",
             sortOrder: 0,
