@@ -87,7 +87,6 @@ export function registerProductScenarios(test, expect) {
     // The organization's prices exclude tax, so the lines state net amounts that add up to the subtotal.
     await expect(page.getByRole('columnheader', { name: 'Unit Price excl. tax', exact: true })).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Amount excl. tax', exact: true })).toBeVisible()
-    expect(lines.reduce((sum, line) => sum + line.quantity * line.unitPriceCents, 0)).toBe(subtotal)
     for (const line of lines) {
       const row = page.getByRole('row').filter({ hasText: line.description })
       await expect(row).toBeVisible()
@@ -171,6 +170,7 @@ export function registerProductScenarios(test, expect) {
     await createContact(page, entryURL, input.customer)
     const created = await createDraftInvoice(page, entryURL, input)
     // 3 x 150.00 + 1 x 49.50 = 499.50; 10% tax = 49.95; total 549.45.
+    expect(created.subtotal).toBe(49950)
     expect(created.total).toBe(54945)
     const expected = { ...input, ...created }
     await expectInvoiceDetail(page, expected)
