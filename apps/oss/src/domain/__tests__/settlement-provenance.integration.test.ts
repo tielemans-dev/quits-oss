@@ -1038,4 +1038,200 @@ describe.skipIf(!hasTestDatabase)("settlement provenance", () => {
     ])
   })
 
+  it.each(["unmatched", "still_matched"])(
+    "round 3: recovers the mistaken receipt when return arrives %s",
+    async (order) => {
+      const s = await setup()
+      const second = await s.caller.invoices.create({
+        contactId: s.contact.id, currency: "DKK", taxRate: 0, dueDate: "2099-01-01",
+        items: [{ description: "Separate work", quantity: 1, unitPrice: 1000 }],
+      })
+      await s.caller.invoices.send({ id: second.id, allowSendWithoutEmail: true })
+      const wrong = await s.manual()
+      const right = await s.manual()
+      await s.allocate(wrong.receiptId, "1000")
+      const allocation = {
+        requestId: randomUUID(), receiptId: right.receiptId,
+        allocations: [{ invoiceId: second.id, receiptAmount: "1000", invoiceAmount: "1000" }],
+        ...evidence,
+      }
+      const allocationPreview = await s.caller.payments.previewAllocation(allocation)
+      await s.caller.payments.allocateReceipt({ ...allocation, previewToken: allocationPreview.previewToken })
+      const wrongRows = async () => ({
+        receipt: await prisma.settlementReceipt.findUniqueOrThrow({ where: { id: wrong.receiptId } }),
+        invoice: await prisma.invoice.findUniqueOrThrow({ where: { id: s.invoice.id } }),
+        payments: await prisma.payment.findMany({ where: { receiptId: wrong.receiptId } }),
+      })
+      const before = await wrongRows()
+      const bank = await s.record()
+      await s.match(bank.evidenceId, wrong.receiptId, bank.input.transactionReference)
+      const originalMatch = await prisma.settlementEvidenceDecision.findFirstOrThrow({ where: { sourceId: bank.sourceId, action: "match" } })
+      if (order === "unmatched") await unmatch(s, bank.evidenceId, wrong.receiptId)
+      const returned = await s.record({
+        ...bank.input, requestId: randomUUID(), eventReference: randomUUID(),
+        state: "returned", reversesEvidenceId: bank.evidenceId,
+      })
+      const wrongReturn = s.decision({
+        action: "return", evidenceId: returned.evidenceId, receiptId: wrong.receiptId,
+        identity: s.identity(bank.input.transactionReference),
+      })
+      const oldReturn = await s.caller.payments.previewEvidenceDecision(wrongReturn)
+      const reject = s.decision({
+        action: "reject_match", evidenceId: bank.evidenceId, receiptId: wrong.receiptId,
+        reason: "The original match used the wrong manual receipt; the bank reference belongs to the second transfer",
+        evidence: "https://evidence.example.test/correct-transfer-identity",
+      })
+      const preview = await s.caller.payments.previewEvidenceDecision(reject)
+      expect(preview.cashChange).toBe("0.00")
+      expect(preview.invoices).toEqual([{ invoiceId: s.invoice.id, currency: "DKK", before: "0.00", after: "0.00" }])
+      expect(preview.unmatchesReceiptId).toBe(order === "still_matched" ? wrong.receiptId : null)
+      const rejected = await s.caller.payments.decideEvidence({ decision: reject, previewToken: preview.previewToken })
+      expect(await s.caller.payments.decideEvidence({ decision: reject, previewToken: preview.previewToken })).toEqual(rejected)
+      expect(await wrongRows()).toEqual(before)
+      expect((await s.caller.payments.list({ invoiceId: second.id })).balanceDue).toBe(0)
+      const history = (await s.caller.payments.evidenceHistory({ contactId: s.contact.id }))[0]!
+      expect(history).toMatchObject({ state: "returned", receiptId: null, createdReceiptId: null })
+      expect(history.decisions.at(-1)).toMatchObject({
+        action: "reject_match", evidenceId: bank.evidenceId, receiptId: wrong.receiptId,
+        reason: reject.reason, evidence: reject.evidence, actorKey: `user:${s.org.actors.admin.userId}`,
+      })
+      expect(history.decisions.map(row => row.action)).toEqual(["match", "unmatch", "reject_match"])
+      if (order === "still_matched") {
+        expect(history.decisions[1]!.commandId).toBe(history.decisions[2]!.commandId)
+        expect(history.decisions[1]).toMatchObject({ reason: reject.reason, evidence: reject.evidence })
+        const events = await prisma.domainEvent.findMany({ where: { commandId: history.decisions[2]!.commandId }, orderBy: { sequence: "asc" } })
+        expect(events.map(row => row.payload)).toEqual([
+          expect.objectContaining({ action: "unmatch", receiptId: wrong.receiptId }),
+          expect.objectContaining({ action: "reject_match", receiptId: wrong.receiptId }),
+        ])
+      }
+      expect(await prisma.settlementEvidenceDecision.findUnique({ where: { id: originalMatch.id } })).toEqual(originalMatch)
+      await expect(s.caller.payments.decideEvidence({ decision: wrongReturn, previewToken: oldReturn.previewToken })).rejects.toThrow("changed")
+      await expect(s.confirm(bank)).rejects.toThrow("Returned evidence")
+      await expect(s.match(bank.evidenceId, right.receiptId, bank.input.transactionReference)).rejects.toThrow("Returned evidence")
+      await s.act(s.decision({
+        action: "return", evidenceId: returned.evidenceId, receiptId: right.receiptId,
+        identity: s.identity(bank.input.transactionReference),
+      }))
+      expect(await wrongRows()).toEqual(before)
+      expect((await s.caller.payments.list({ invoiceId: s.invoice.id })).balanceDue).toBe(0)
+      expect((await s.caller.payments.list({ invoiceId: second.id })).balanceDue).toBe(1000)
+      expect(await prisma.settlementReceipt.count({ where: { organizationId: s.org.organizationId } })).toBe(2)
+      expect(await prisma.settlementReceipt.findUniqueOrThrow({ where: { id: right.receiptId } })).toMatchObject({ reversedAt: expect.any(Date) })
+      expect(await prisma.payment.count({ where: { receiptId: right.receiptId, voidedAt: null } })).toBe(0)
+      expect(await prisma.settlementEvidenceDecision.count({ where: { sourceId: bank.sourceId, action: "return" } })).toBe(1)
+      await expect(s.act({ ...reject, requestId: randomUUID() })).rejects.toThrow("current receipt match")
+    },
+  )
+
+  it("round 3: requires original match evidence, current void authority, tenant scope and a fresh rejection preview", async () => {
+    const s = await setup()
+    const other = await setup()
+    const bank = await s.record()
+    const receipt = await s.manual()
+    await s.match(bank.evidenceId, receipt.receiptId, bank.input.transactionReference)
+    const returned = await s.record({ ...bank.input, requestId: randomUUID(), eventReference: randomUUID(),
+      state: "returned", reversesEvidenceId: bank.evidenceId })
+    const reject = s.decision({ action: "reject_match", evidenceId: bank.evidenceId, receiptId: receipt.receiptId })
+    const preview = await s.caller.payments.previewEvidenceDecision(reject)
+    const before = await prisma.settlementEvidenceDecision.findMany({ where: { sourceId: bank.sourceId } })
+    await expect(s.caller.payments.previewEvidenceDecision({ ...reject, reason: "" })).rejects.toThrow()
+    await expect(s.caller.payments.previewEvidenceDecision({ ...reject, evidence: "" })).rejects.toThrow()
+    await expect(s.caller.payments.previewEvidenceDecision({ ...reject, evidenceId: returned.evidenceId })).rejects.toThrow("established match")
+    await expect(other.caller.payments.previewEvidenceDecision(reject)).rejects.toThrow("Evidence not found")
+    const otherReceipt = await other.manual()
+    await expect(s.caller.payments.previewEvidenceDecision({ ...reject, action: "reject_match", receiptId: otherReceipt.receiptId })).rejects.toThrow("Receipt not found")
+    const member = callerFor(s.org.organizationId, s.org.actors.member.userId)
+    await expect(member.payments.previewEvidenceDecision(reject)).rejects.toThrow("payment:void")
+    await expect(member.payments.decideEvidence({ decision: reject, previewToken: preview.previewToken })).rejects.toThrow("payment:void")
+    for (const actor of [
+      { kind: "system" as const, organizationId: s.org.organizationId, reason: "customer_link" as const, label: "Customer" },
+      { kind: "agent" as const, organizationId: s.org.organizationId, agentKeyId: "fixture-agent", label: "Fixture",
+        mode: "full_access" as const, ownerRoles: s.org.actors.admin.roles, scopes: ["payment:create" as const, "payment:void" as const] },
+    ]) {
+      expect(await executeCommand(decideSettlementEvidence, { decision: reject, previewToken: preview.previewToken }, { actor }))
+        .toMatchObject({ status: "failed", error: { tag: "Forbidden" } })
+    }
+    await s.record({ ...bank.input, requestId: randomUUID(), eventReference: randomUUID(),
+      state: "returned", reversesEvidenceId: bank.evidenceId })
+    await expect(s.caller.payments.decideEvidence({ decision: reject, previewToken: preview.previewToken })).rejects.toThrow("changed")
+    const fresh = { ...reject, requestId: randomUUID() }
+    const freshPreview = await s.caller.payments.previewEvidenceDecision(fresh)
+    await prisma.member.update({ where: { organizationId_userId: {
+      organizationId: s.org.organizationId, userId: s.org.actors.admin.userId,
+    } }, data: { role: "member" } })
+    expect(await executeCommand(decideSettlementEvidence, { decision: fresh, previewToken: freshPreview.previewToken }, { actor: s.org.actors.admin }))
+      .toMatchObject({ status: "failed", error: { tag: "Forbidden" } })
+    await prisma.member.delete({ where: { organizationId_userId: {
+      organizationId: s.org.organizationId, userId: s.org.actors.admin.userId,
+    } } })
+    expect(await executeCommand(decideSettlementEvidence, { decision: { ...fresh, requestId: randomUUID() }, previewToken: freshPreview.previewToken }, { actor: s.org.actors.admin }))
+      .toMatchObject({ status: "failed", error: { tag: "Forbidden" } })
+    expect(await prisma.settlementEvidenceDecision.findMany({ where: { sourceId: bank.sourceId } })).toEqual(before)
+    expect(await prisma.settlementEvidenceSource.findUniqueOrThrow({ where: { id: bank.sourceId } })).toMatchObject({ receiptId: receipt.receiptId })
+  })
+
+  it("round 3: cannot detach source-created cash or its original replacement identity", async () => {
+    const s = await setup()
+    const a = await s.record()
+    const original = await s.confirm(a)
+    const b = await s.record({ source: "provider" })
+    await s.match(b.evidenceId, original.receiptId, b.input.transactionReference)
+    // Even a later match decision does not make a confirmation withdrawable.
+    await unmatch(s, a.evidenceId, original.receiptId)
+    await s.match(a.evidenceId, original.receiptId, a.input.transactionReference)
+    await expect(s.act(s.decision({ action: "reject_match", evidenceId: a.evidenceId, receiptId: original.receiptId })))
+      .rejects.toThrow("Source-created cash")
+    await reverse(s, original.receiptId)
+    await unmatch(s, a.evidenceId, original.receiptId)
+    await unmatch(s, b.evidenceId, original.receiptId)
+    const correctedA = await correct(s, a)
+    const correctedB = await correct(s, b)
+    const replacement = await s.confirm(correctedB)
+    await unmatch(s, correctedB.evidenceId, replacement.receiptId)
+    await expect(s.act(s.decision({ action: "reject_match", evidenceId: b.evidenceId, receiptId: original.receiptId })))
+      .rejects.toThrow("Source-created cash")
+    await expect(s.confirm(correctedA)).rejects.toThrow(replacement.receiptId)
+    expect(await prisma.settlementReceipt.count({ where: { organizationId: s.org.organizationId, reversedAt: null } })).toBe(1)
+    expect(await prisma.settlementEvidenceDecision.count({ where: { source: { organizationId: s.org.organizationId }, action: "reject_match" } })).toBe(0)
+  })
+
+  it.each(["same_source", "connected_replacement"])(
+    "round 3: refuses identity rejection after an applied %s return, including an older preview",
+    async (route) => {
+      const s = await setup()
+      const a = await s.record()
+      const original = await s.manual()
+      await s.match(a.evidenceId, original.receiptId, a.input.transactionReference)
+      let returning = a
+      let returnedReceiptId = original.receiptId
+      if (route === "connected_replacement") {
+        const b = await s.record({ source: "provider" })
+        await s.match(b.evidenceId, original.receiptId, b.input.transactionReference)
+        await reverse(s, original.receiptId)
+        await unmatch(s, a.evidenceId, original.receiptId)
+        await unmatch(s, b.evidenceId, original.receiptId)
+        const correctedB = await correct(s, b)
+        const replacement = await s.manual("900")
+        await s.match(correctedB.evidenceId, replacement.receiptId, b.input.transactionReference)
+        // The third source reaches A's original receipt only through B's replacement history.
+        returning = await s.record({ netAmount: "900" })
+        await s.match(returning.evidenceId, replacement.receiptId, returning.input.transactionReference)
+        returnedReceiptId = replacement.receiptId
+      }
+      const returned = await s.record({ ...returning.input, requestId: randomUUID(), eventReference: randomUUID(),
+        state: "returned", reversesEvidenceId: returning.evidenceId })
+      const reject = s.decision({ action: "reject_match", evidenceId: a.evidenceId, receiptId: original.receiptId })
+      const preview = await s.caller.payments.previewEvidenceDecision(reject)
+      await s.act(s.decision({ action: "return", evidenceId: returned.evidenceId, receiptId: returnedReceiptId }))
+      const historyBefore = await s.caller.payments.evidenceHistory({ contactId: s.contact.id })
+      await expect(s.caller.payments.decideEvidence({ decision: reject, previewToken: preview.previewToken }))
+        .rejects.toThrow("financial return was already applied")
+      await expect(s.act({ ...reject, requestId: randomUUID() })).rejects.toThrow("financial return was already applied")
+      expect(await s.caller.payments.evidenceHistory({ contactId: s.contact.id })).toEqual(historyBefore)
+      expect(await prisma.settlementEvidenceDecision.count({ where: { source: { organizationId: s.org.organizationId }, action: "return" } })).toBe(1)
+      expect(await prisma.settlementReceipt.count({ where: { organizationId: s.org.organizationId, reversedAt: null } })).toBe(0)
+    },
+  )
+
 })

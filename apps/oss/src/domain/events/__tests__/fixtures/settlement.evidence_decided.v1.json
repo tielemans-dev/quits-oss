@@ -5,7 +5,7 @@
     {
       "source": "commands/settlement-provenance.ts",
       "typeExpression": "\"settlement.evidence_decided\"",
-      "payloadExpression": "{\n          decisionId: recorded.id,\n          sourceId: source.id,\n          evidenceId: observation.id,\n          receiptId,\n          action: decision.action,\n        }",
+      "payloadExpression": "{\n            decisionId: recorded.id,\n            sourceId: source.id,\n            evidenceId: observation.id,\n            receiptId,\n            action,\n          }",
       "variant": "default",
       "payload": {
         "decisionId": "decision-1",
@@ -18,7 +18,7 @@
     {
       "source": "commands/settlement-provenance.ts",
       "typeExpression": "\"settlement.evidence_decided\"",
-      "payloadExpression": "{\n          decisionId: recorded.id,\n          sourceId: source.id,\n          evidenceId: observation.id,\n          receiptId,\n          action: decision.action,\n        }",
+      "payloadExpression": "{\n            decisionId: recorded.id,\n            sourceId: source.id,\n            evidenceId: observation.id,\n            receiptId,\n            action,\n          }",
       "variant": "user",
       "payload": {
         "decisionId": "decision-1",
@@ -31,7 +31,7 @@
     {
       "source": "commands/settlement-provenance.ts",
       "typeExpression": "\"settlement.evidence_decided\"",
-      "payloadExpression": "{\n          decisionId: recorded.id,\n          sourceId: source.id,\n          evidenceId: observation.id,\n          receiptId,\n          action: decision.action,\n        }",
+      "payloadExpression": "{\n            decisionId: recorded.id,\n            sourceId: source.id,\n            evidenceId: observation.id,\n            receiptId,\n            action,\n          }",
       "variant": "decline",
       "payload": {
         "decisionId": "decision-1",
@@ -44,7 +44,7 @@
     {
       "source": "commands/settlement-provenance.ts",
       "typeExpression": "\"settlement.evidence_decided\"",
-      "payloadExpression": "{\n          decisionId: recorded.id,\n          sourceId: source.id,\n          evidenceId: observation.id,\n          receiptId,\n          action: decision.action,\n        }",
+      "payloadExpression": "{\n            decisionId: recorded.id,\n            sourceId: source.id,\n            evidenceId: observation.id,\n            receiptId,\n            action,\n          }",
       "variant": "completed",
       "payload": {
         "decisionId": "decision-1",
@@ -52,6 +52,19 @@
         "evidenceId": "evidence-1",
         "receiptId": "receipt-1",
         "action": "unmatch"
+      }
+    },
+    {
+      "source": "commands/settlement-provenance.ts",
+      "typeExpression": "\"settlement.evidence_decided\"",
+      "payloadExpression": "{\n            decisionId: recorded.id,\n            sourceId: source.id,\n            evidenceId: observation.id,\n            receiptId,\n            action,\n          }",
+      "variant": "in_progress",
+      "payload": {
+        "decisionId": "decision-1",
+        "sourceId": "source-1",
+        "evidenceId": "evidence-1",
+        "receiptId": "receipt-1",
+        "action": "reject_match"
       }
     }
   ]

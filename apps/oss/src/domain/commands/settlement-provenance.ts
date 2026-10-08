@@ -473,14 +473,18 @@ export async function previewEvidenceDecision(
         "This provider transaction is owned by an existing invoice checkout; wait for its payment flow",
       )
   } else if (input.action === "reject_match") {
-    if (source.receiptId)
-      return refuse("evidence_in_use", "Unmatch evidence before correcting its identity")
-    if (returned)
-      return refuse("evidence_returned", "Returned source evidence cannot change identity")
+    if (source.receiptId && source.receiptId !== receiptId)
+      return refuse("match_changed", "Select the current receipt match or unmatch it before correcting an older identity")
+    // Pending return evidence can expose a mistaken identity. Applied financial returns cannot
+    // be detached, including returns reached through other sources and replacement receipts.
+    if (identityState.returned || source.decisions.some((row) => row.action === "return"))
+      return refuse("evidence_return_applied", "A financial return was already applied to this source or its connected receipt history")
     const matches = establishedMatches(source.decisions).filter((row) => row.receiptId === receiptId)
     if (!matches.length || !matches.some((row) => row.evidenceId === observation.id))
       return refuse("match_changed", "Select the evidence and receipt of an established match")
-    if (matches.some((row) => row.action === "confirm"))
+    // A confirmation of a replacement also depends on the earlier match. Withdrawing that
+    // older link would let the other sources confirm the same replacement cash again.
+    if (source.createdReceiptId || source.decisions.some((row) => row.action === "confirm"))
       return refuse(
         "source_receipt_exists",
         "Source-created cash cannot be detached by rejecting a match. Reverse and correct the receipt instead.",
@@ -559,6 +563,7 @@ export async function previewEvidenceDecision(
     revision: source.revision,
     action: input.action,
     receiptId: receipt?.id ?? null,
+    unmatchesReceiptId: input.action === "reject_match" ? source.receiptId : null,
     currency: observation.currency,
     netAmount: observation.netAmount.toFixed(2),
     feeAmount: observation.feeAmount.toFixed(2),
@@ -674,45 +679,55 @@ export const decideSettlementEvidence = defineCommand({
         )
         yield* changeReceipt.handle({ ...change, previewToken: preview.previewToken })
       }
-      const recorded = yield* Effect.promise(() =>
-        db.settlementEvidenceDecision.create({
-          data: {
+      // A current-match rejection records both consequences in this same transaction. Each
+      // immutable row/event retains the operator's reason, evidence and shared command ID.
+      const actions = plan.unmatchesReceiptId
+        ? ["unmatch" as const, decision.action]
+        : [decision.action]
+      let revision = source.revision
+      let decisionId = ""
+      for (const action of actions) {
+        const recorded = yield* Effect.promise(() =>
+          db.settlementEvidenceDecision.create({
+            data: {
+              sourceId: source.id,
+              evidenceId: observation.id,
+              receiptId,
+              revision: ++revision,
+              action,
+              reason: decision.reason,
+              evidence: decision.evidence,
+              ...("identity" in decision && decision.identity ? { identity: decision.identity } : {}),
+              actorKey: actorKey(command.actor),
+              commandId: command.commandId,
+            },
+          }),
+        )
+        decisionId = recorded.id
+        command.emit({
+          aggregateType: "settlement_evidence",
+          aggregateId: source.id,
+          type: "settlement.evidence_decided",
+          payload: {
+            decisionId: recorded.id,
             sourceId: source.id,
             evidenceId: observation.id,
             receiptId,
-            revision: source.revision + 1,
-            action: decision.action,
-            reason: decision.reason,
-            evidence: decision.evidence,
-            ...("identity" in decision && decision.identity ? { identity: decision.identity } : {}),
-            actorKey: actorKey(command.actor),
-            commandId: command.commandId,
+            action,
           },
-        }),
-      )
+        })
+      }
       yield* Effect.promise(() =>
         db.settlementEvidenceSource.update({
           where: { id: source.id },
           data: {
             receiptId: decision.action === "unmatch" || decision.action === "reject_match" ? null : receiptId,
             ...(decision.action === "confirm" ? { createdReceiptId: receiptId } : {}),
-            revision: { increment: 1 },
+            revision,
           },
         }),
       )
-      command.emit({
-        aggregateType: "settlement_evidence",
-        aggregateId: source.id,
-        type: "settlement.evidence_decided",
-        payload: {
-          decisionId: recorded.id,
-          sourceId: source.id,
-          evidenceId: observation.id,
-          receiptId,
-          action: decision.action,
-        },
-      })
-      return { receiptId, decisionId: recorded.id, action: decision.action }
+      return { receiptId, decisionId, action: decision.action }
     }),
 })
 

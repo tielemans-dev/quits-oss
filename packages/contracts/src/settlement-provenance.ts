@@ -89,7 +89,11 @@ export const settlementEvidenceDecisionSchema = z.discriminatedUnion("action", [
     })
     .strict(),
   z.object({ ...decision, action: z.literal("unmatch"), receiptId: id }).strict(),
-  /** Withdraw a mistaken match after unmatching. Never withdraw source-created cash. */
+  /**
+   * Name the originally matched evidence and receipt to withdraw their mistaken identity.
+   * Atomically unmatches that receipt if current. Never detaches source-created cash or an
+   * applied financial return. Pending returned evidence stays terminal for new cash.
+   */
   z.object({ ...decision, action: z.literal("reject_match"), receiptId: id }).strict(),
   z
     .object({

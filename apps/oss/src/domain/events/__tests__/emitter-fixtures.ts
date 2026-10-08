@@ -123,7 +123,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     result: { sourceId: "source-1", evidenceId: "evidence-1" },
     source: { id: "source-1" }, observation: { id: "evidence-1" }, recorded: { id: "decision-1" }, receiptId: "receipt-1",
     input: { state: variant === "user" ? "reported" : variant === "in_progress" ? "processing" : variant === "decline" ? "returned" : "received", correctsEvidenceId: variant === "completed" ? "evidence-old" : undefined, reversesEvidenceId: variant === "decline" ? "evidence-original" : undefined },
-    decision: { action: variant === "user" ? "match" : variant === "decline" ? "return" : variant === "completed" ? "unmatch" : "confirm" },
+    action: variant === "user" ? "match" : variant === "decline" ? "return" : variant === "completed" ? "unmatch" : variant === "in_progress" ? "reject_match" : "confirm",
   } : scope
   return {
     type: runInNewContext(`(${expression.typeExpression})`, executionScope) as string,

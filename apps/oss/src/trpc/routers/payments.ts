@@ -124,7 +124,7 @@ export const paymentsRouter = router({
     .input(settlementEvidenceDecisionSchema)
     .query(async ({ ctx, input }) => {
       if (
-        (input.action === "return" || input.action === "unmatch") &&
+        (input.action === "return" || input.action === "unmatch" || input.action === "reject_match") &&
         !actorCan(ctx.actor, "payment:void")
       )
         throw new TRPCError({ code: "FORBIDDEN", message: "Missing permission payment:void" })
