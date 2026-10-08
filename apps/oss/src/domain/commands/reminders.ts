@@ -23,7 +23,7 @@ import { computeSettlement } from "../documents/settlement"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { reminderSendApproval } from "../approval-contexts"
-import { issuedNumber } from "../documents/numbering"
+import { documentRef, issuedNumber } from "../documents/numbering"
 
 const remindersLogger = appLogger.child("reminders")
 
@@ -447,7 +447,7 @@ export const reminderResumeApproval = (input: { invoiceId: string }) =>
     const { balanceDue } = computeSettlement(invoice)
     const nextText = nextDate ? `next reminder ${nextDate.toISOString().slice(0, 10)}` : "no reminder scheduled"
     return {
-      summary: `Resume automatic payment reminders for invoice ${invoice.number} to ${recipient ?? invoice.contact.name} (${nextText})`,
+      summary: `Resume automatic payment reminders for ${documentRef("invoice", invoice.number)} to ${recipient ?? invoice.contact.name} (${nextText})`,
       version: fingerprint([invoice.number, balanceDue.toString(), invoice.dueDate.toISOString(), recipient]),
       details: {
         number: invoice.number,
