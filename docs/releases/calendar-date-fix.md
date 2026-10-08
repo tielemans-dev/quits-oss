@@ -2,8 +2,8 @@
 
 **Calendar dates shown one day early west of UTC (fixed).** In a timezone west of UTC, such as the Americas, due dates and quote expiry dates were one day early in several places. Organisations at or east of UTC, including every Danish one, were not affected. Reminder emails were always correct. The affected places and the release each started in:
 - the invoice PDF, invoice and quote emails and the invoice detail page, since v0.1.0;
-- the accounting CSV and e-invoice export, since v0.2.0;
-- the record frozen at issuance and the UBL built from it, since v0.3.0;
+- the accounting CSV and the legacy export mapper (v0.2.0);
+- the record frozen at issuance and the snapshot-based UBL (v0.3.0) built from it;
 - the public pay and quote pages, for customers viewing from a western timezone.
 
 After upgrading, everything rendered live shows the correct date, for older invoices too: the detail page, the public pages, new emails and CSV exports. Invoice due dates and quote expiry dates stored with a time of day, including due dates on invoices created from deliverables, are normalised to their calendar day in each document's stored timezone.
