@@ -113,6 +113,10 @@ export async function seedCompletedSetup(locale: SeedLocale = usEnglishLocale) {
   return initialized
 }
 
+// Seeded documents are already sent, so they carry the number they were issued under.
+const publicQuoteNumber = "QTE-E2E-0001"
+const publicInvoiceNumber = "INV-E2E-0001"
+
 export async function seedPublicQuote(options: PublicSeedOptions = {}): Promise<PublicSeed> {
   const locale = options.locale ?? usEnglishLocale
   const total = options.total ?? "100.00"
@@ -139,7 +143,7 @@ export async function seedPublicQuote(options: PublicSeedOptions = {}): Promise<
     data: {
       organizationId: setup.organizationId,
       contactId: contact.id,
-      number: "QTE-E2E-0001",
+      number: publicQuoteNumber,
       status: "sent",
       issueDate: new Date("2026-03-09T00:00:00.000Z"),
       expiryDate: new Date("2026-03-23T00:00:00.000Z"),
@@ -193,7 +197,7 @@ export async function seedPublicQuote(options: PublicSeedOptions = {}): Promise<
 
   return {
     id: quote.id,
-    number: quote.number,
+    number: publicQuoteNumber,
     url: `${appOrigin}/q/${encodeURIComponent(token)}`,
   }
 }
@@ -227,7 +231,7 @@ export async function seedPublicInvoice(options: PublicSeedOptions = {}): Promis
     data: {
       organizationId: setup.organizationId,
       contactId: contact.id,
-      number: "INV-E2E-0001",
+      number: publicInvoiceNumber,
       status: "sent",
       paymentStatus: "unpaid",
       issueDate: new Date("2026-03-09T00:00:00.000Z"),
@@ -282,7 +286,7 @@ export async function seedPublicInvoice(options: PublicSeedOptions = {}): Promis
 
   return {
     id: invoice.id,
-    number: invoice.number,
+    number: publicInvoiceNumber,
     url: `${appOrigin}/pay/${encodeURIComponent(token)}`,
   }
 }

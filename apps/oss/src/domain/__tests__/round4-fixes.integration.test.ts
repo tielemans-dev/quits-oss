@@ -68,7 +68,8 @@ describeIfDatabase("round 4 review fixes", () => {
       where: { invoiceId: draft.result.id },
       orderBy: { sortOrder: "asc" },
     })
-    return { invoiceId: draft.result.id, number: draft.result.number, items }
+    // The number is assigned when the invoice is sent.
+    return { invoiceId: draft.result.id, number: sent.result.number, items }
   }
 
   describe("credit note issue approvals for selected lines", () => {

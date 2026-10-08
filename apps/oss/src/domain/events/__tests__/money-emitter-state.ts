@@ -18,7 +18,7 @@ export function moneyEmitterState(kind: string) {
   }
   const seller = { companyName: "Seller", taxIds: [{ scheme: "VAT", value: "DK12345678" }] }
   const buyer = { name: "Buyer", taxIds: [{ scheme: "VAT", value: "DE123456789" }] }
-  const money = invoiceMoneySnapshot(invoice as never, { issuedAt, baseCurrency: "DKK", exchangeRate: "0.8", rateDate: "2026-10-07", seller, buyer })
+  const money = invoiceMoneySnapshot(invoice as never, { number: invoice.number, issuedAt, baseCurrency: "DKK", exchangeRate: "0.8", rateDate: "2026-10-07", seller, buyer })
   if (kind !== "creditNote") return money
   const valuedInvoice = { ...invoice, issuanceSnapshot: money }
   const built = buildCreditLines({ availability: creditAvailabilityFor(valuedInvoice), selection: { mode: "full" }, taxRate: 25, amountDescription: "Correction" })

@@ -96,7 +96,7 @@ async function issued(id: string) {
   })
   it("records a reviewed historical rate without mutating the old money event or supply date", async () => {
     const context = await setup()
-    await prisma.invoice.update({ where: { id: context.invoice.id }, data: { status: "sent", supplyDate: null } })
+    await prisma.invoice.update({ where: { id: context.invoice.id }, data: { status: "sent", number: "INV-0001", supplyDate: null } })
     expect(await executeCommand(recordBaseValuation, { id: context.invoice.id, exchangeRate: "7.45", rateDate: "2026-10-07", evidenceNote: "Historical invoice and rate reviewed" }, { actor: context.actor })).toMatchObject({ status: "completed" })
     const doc = await prisma.invoice.findUniqueOrThrow({ where: { id: context.invoice.id } })
     expect(doc.supplyDate).toBeNull()

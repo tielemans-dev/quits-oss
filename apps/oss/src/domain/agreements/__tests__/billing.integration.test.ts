@@ -121,7 +121,7 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
     expect((await invoice(id)).vatEvidence).toMatchObject({ statementText: "Frozen classification evidence" })
     await prisma.contact.update({ where: { id: ctx.contact.id }, data: { name: "Changed buyer" } })
     await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { companyName: "Changed seller", companyAddress: "Changed address" } })
-    const render = await prisma.$transaction(tx => runArtifactRead(prospectiveRenderInput({ kind: "invoice", documentId: id, commandInput: { id }, number: original.number, issuedAt: new Date() }), tx, ctx.actor, new Date()))
+    const render = await prisma.$transaction(tx => runArtifactRead(prospectiveRenderInput({ kind: "invoice", documentId: id, commandInput: { id }, number: original.number ?? "INV-0001", issuedAt: new Date() }), tx, ctx.actor, new Date()))
     if (render.kind !== "invoice") throw new Error("Wrong render kind")
     expect(render.pdf.invoice.contact.name).toBe("Customer")
     expect(render.pdf.org.companyName).toBe((ctx.agreement.sellerSnapshot as { companyName: string }).companyName)

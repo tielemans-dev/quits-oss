@@ -33,12 +33,18 @@ test("send invoice, download frozen stored PDF, issue and send credit note, send
   const agreementDraft = await executeCommand(createAgreementDraft, { contactId: contact.id, title: "Artifact agreement",
     termsMarkdown: "Frozen terms", validUntil: "2099-01-01", deliverables: [{ title: "Work", quantity: 1, unitPrice: 100 }] }, { actor })
   if (draft.status !== "completed" || agreementDraft.status !== "completed") throw new Error("Draft setup failed")
+  // Drafts have no number; the invoice takes the next one when it is sent.
+  expect(draft.result.number).toBeNull()
   await loginAsAdmin(page)
   await page.goto(`/invoices/${draft.result.id}`)
   await waitForClientReady(page)
+  await expect(page.getByRole("heading", { name: "Draft invoice" })).toBeVisible()
+  await expect(page.getByText("Numbered INV-0001 when sent. The number is not reserved")).toBeVisible()
   await page.getByRole("button", { name: "Send", exact: true }).click()
   await expect(page.getByRole("button", { name: "Resend email", exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Invoice INV-0001" })).toBeVisible()
   const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
+  expect(invoice.number).toBe("INV-0001")
   expect(invoice.artifactPdfRef).toBeTruthy()
   const original = await page.request.get(`/api/documents/invoice/${invoice.id}/pdf`)
   expect(original.headers()["x-quits-artifact"]).toBe("stored")

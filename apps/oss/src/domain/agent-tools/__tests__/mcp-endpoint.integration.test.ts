@@ -288,6 +288,37 @@ describeIfDatabase("MCP endpoint", () => {
       expect(await admin.agents.pendingCount()).toBe(0)
     })
 
+    it("returns a null number for draft invoices and quotes and the assigned number once sent", async () => {
+      const org = await setup()
+      const scopes = [...drafting, "quote:read", "quote:create", "quote:send"]
+      const client = await connect((await keyFor(org, "full_access", scopes)).secret)
+      const contact = await call(client, "contact_create", { name: "Acme", email: "billing@acme.test", clientRequestId: "numbers-contact" })
+      const contactId = (contact.value as { result: { id: string } }).result.id
+
+      const invoiceDraft = await call(client, "invoice_create_draft", {
+        contactId, dueDate: "2099-12-01", supplyDate: "2099-12-01", taxRate: "0",
+        items: [{ description: "Design", quantity: "1", unitPrice: "100" }], clientRequestId: "numbers-invoice",
+      })
+      expect(invoiceDraft.value).toMatchObject({ status: "completed", result: { status: "draft", number: null } })
+      const invoiceId = invoiceDraft.value.result.id
+      expect((await call(client, "invoice_get", { id: invoiceId })).value).toMatchObject({ number: null, status: "draft" })
+      expect((await call(client, "invoices_list")).value.items).toEqual([expect.objectContaining({ id: invoiceId, number: null })])
+
+      const quoteDraft = await call(client, "quote_create_draft", {
+        contactId, expiryDate: "2099-12-01", taxRate: "0",
+        items: [{ description: "Design", quantity: "1", unitPrice: "100" }], clientRequestId: "numbers-quote",
+      })
+      expect(quoteDraft.value).toMatchObject({ status: "completed", result: { status: "draft", number: null } })
+      const quoteId = quoteDraft.value.result.id
+      expect((await call(client, "quote_get", { id: quoteId })).value).toMatchObject({ number: null })
+
+      const sentInvoice = await call(client, "invoice_send", { id: invoiceId, allowSendWithoutEmail: true, clientRequestId: "numbers-send" })
+      expect(sentInvoice.value).toMatchObject({ status: "completed", result: { number: "INV-0001" } })
+      expect((await call(client, "invoice_get", { id: invoiceId })).value).toMatchObject({ number: "INV-0001" })
+      const sentQuote = await call(client, "quote_send", { id: quoteId, allowSendWithoutEmail: true, clientRequestId: "numbers-quote-send" })
+      expect(sentQuote.value).toMatchObject({ status: "completed", result: { number: "QTE-0001" } })
+    })
+
     it("does not let an agent read another agent's commands", async () => {
       const org = await setup()
       const first = await connect((await keyFor(org, "full_access", drafting, "First")).secret)

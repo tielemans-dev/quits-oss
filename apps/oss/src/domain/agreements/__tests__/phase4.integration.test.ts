@@ -83,7 +83,8 @@ describe.runIf(hasTestDatabase)(
       )
       await prisma.quote.update({
         where: { id: quote.id },
-        data: { status: "accepted", supplyDate: new Date("2099-10-20") },
+        // A quote is numbered when it is sent, so one the customer accepted has a number.
+        data: { status: "accepted", number: "QTE-0001", supplyDate: new Date("2099-10-20") },
       })
       return {
         org,

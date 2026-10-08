@@ -81,7 +81,7 @@ describe.skipIf(!hasTestDatabase)("v2 producer and editor parity", () => {
     const { contactId, options } = await setup()
     const created = await executeIssuanceCommand(createQuoteDraft, { contactId, expiryDate: "2026-12-01", ...fixtures[3], vatEvidence: { statementText: "Health exemption" } }, options)
     if (created.status !== "completed") throw new Error(JSON.stringify(created))
-    await prisma.quote.update({ where: { id: created.result.id }, data: { status: "accepted", calculationVersion: version, totalGross: "999.99" } })
+    await prisma.quote.update({ where: { id: created.result.id }, data: { status: "accepted", number: "QTE-0001", calculationVersion: version, totalGross: "999.99" } })
     const quote = await prisma.quote.findUniqueOrThrow({ where: { id: created.result.id }, include: { items: { orderBy: { sortOrder: "asc" } } } })
     const converted = await executeIssuanceCommand(convertQuoteToInvoice, { id: quote.id }, options)
     if (converted.status !== "completed") throw new Error(JSON.stringify(converted))
