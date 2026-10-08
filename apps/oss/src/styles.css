@@ -91,7 +91,7 @@ code {
   /*
    * Status tones: each is a text colour. A badge fills with the tone mixed into transparent
    * (12% here, 18% in dark mode), see StatusBadge. Every tone reaches 4.5:1 over its own tint on
-   * the card colour. Warning and muted are a little darker than first drawn (L 0.55 and 0.60) so
+   * the card colour. Warning and muted are a little darker than first drawn (L 0.53 and 0.52) so
    * that they do.
    */
   --tone-neutral: oklch(0.5 0.012 260);

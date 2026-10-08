@@ -41,7 +41,7 @@ export const statusTones = {
     overdue: { tone: "danger", labelKey: "status.overdue" },
     credited: { tone: "muted", labelKey: "status.credited" },
   },
-  /** `expired` is not stored: a sent quote past its expiry date reads as expired. */
+  /** `expired` shows only when the server returns it; nothing here derives it from the expiry date. */
   quote: {
     draft: { tone: "neutral", labelKey: "quotes.status.draft" },
     sent: { tone: "info", labelKey: "quotes.status.sent" },
