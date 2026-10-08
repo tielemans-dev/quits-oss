@@ -55,9 +55,16 @@ function uniqueKeys(keys: string[]): string[] {
   })
 }
 
-/** The unit price excluding VAT, from the line's own amounts; null when it cannot be calculated. */
-function unitPriceNetOf(quantity: string, net: string | null, gross: string | null): string | null {
+/**
+ * The unit price excluding VAT. On a tax-exclusive document that is the price as entered, unrounded:
+ * it is the legal unit price. On a tax-inclusive one it is derived from the line's own amounts, at
+ * two decimals. Null when the line has no amounts, or the price cannot be derived.
+ */
+function unitPriceNetOf(
+  pricesIncludeTax: boolean, unitPrice: string, quantity: string, net: string | null, gross: string | null
+): string | null {
   if (net === null || gross === null) return null
+  if (!pricesIncludeTax) return decimalStringSchema.safeParse(unitPrice).success ? unitPrice : null
   try {
     if (!new D(quantity).gt(0)) return null
     return decimalReferencePrices(quantity, net, gross).unitPriceNet
@@ -112,9 +119,9 @@ function notesView(notes: string | null | undefined) {
 const lineVat = (vat: { treatment: VatTreatment; rate: string; reasonCode: VatReasonCode | null; country: string | null }): DocumentViewLineVat =>
   ({ treatment: vat.treatment, rate: canonicalRate(vat.rate), reasonCode: vat.reasonCode, country: vat.country })
 
-function lineAmounts(quantity: string, net: Decimal, tax: Decimal, gross: Decimal, pricesIncludeTax: boolean, exponent: number) {
+function lineAmounts(quantity: string, unitPrice: string, net: Decimal, tax: Decimal, gross: Decimal, pricesIncludeTax: boolean, exponent: number) {
   const amounts = { net: fixed(net, exponent), tax: fixed(tax, exponent), gross: fixed(gross, exponent) }
-  return { ...amounts, unitPriceNet: unitPriceNetOf(quantity, amounts.net, amounts.gross), amount: pricesIncludeTax ? amounts.gross : amounts.net }
+  return { ...amounts, unitPriceNet: unitPriceNetOf(pricesIncludeTax, unitPrice, quantity, amounts.net, amounts.gross), amount: pricesIncludeTax ? amounts.gross : amounts.net }
 }
 
 const noAmounts = { net: null, tax: null, gross: null, amount: null, unitPriceNet: null } as const
@@ -226,13 +233,13 @@ export function buildDraftView(input: DraftViewInput): DocumentView {
     const base = { key, id: line.id || null, description: line.description, quantity, unitPrice: asEntered(line.unitPrice), locked: line.locked ?? false }
     if (stored !== undefined) {
       return stored
-        ? { ...base, vat: lineVat(stored.vat), ...lineAmounts(quantity, stored.net, stored.tax, stored.gross, input.pricesIncludeTax, exponent) }
+        ? { ...base, vat: lineVat(stored.vat), ...lineAmounts(quantity, base.unitPrice, stored.net, stored.tax, stored.gross, input.pricesIncludeTax, exponent) }
         : { ...base, vat: null, ...noAmounts }
     }
     const result = calculated?.lines[nextCalculated++]
     return {
       ...base, vat: result ? lineVat(result.vat) : enteredVat(line, input.taxRate),
-      ...(result ? lineAmounts(quantity, new D(result.net), new D(result.tax), new D(result.gross), input.pricesIncludeTax, exponent) : noAmounts),
+      ...(result ? lineAmounts(quantity, base.unitPrice, new D(result.net), new D(result.tax), new D(result.gross), input.pricesIncludeTax, exponent) : noAmounts),
     }
   })
 
@@ -434,7 +441,7 @@ export function buildIssuedView(snapshot: IssuedMoneySnapshot, extras: IssuedVie
   const lines: DocumentViewLine[] = snapshot.lines.map((line, index) => ({
     key: keys[index]!, id: line.lineId, description: line.description,
     quantity: line.quantityInput, unitPrice: line.unitPriceInput,
-    unitPriceNet: unitPriceNetOf(line.quantityInput, line.net, line.gross),
+    unitPriceNet: unitPriceNetOf(pricesIncludeTax, line.unitPriceInput, line.quantityInput, line.net, line.gross),
     vat: lineVat(line.vat),
     net: line.net, tax: line.tax, gross: line.gross, amount: pricesIncludeTax ? line.gross : line.net,
     locked: true,

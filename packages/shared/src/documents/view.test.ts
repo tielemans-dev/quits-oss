@@ -84,13 +84,30 @@ describe("buildDraftView", () => {
   })
 
   it("gives the unit price excluding VAT on either price basis", () => {
-    // Whole quantities, prices of at most two decimals: exclusive documents show the price as entered.
+    // Exclusive: the price as entered, exactly as typed.
     const exclusive = buildDraftView(draft([line("100.50", { quantity: "3" }), line("40", { vat: exempt })]))
-    expect(exclusive.lines.map((l) => l.unitPriceNet)).toEqual(["100.50", "40.00"])
+    expect(exclusive.lines.map((l) => l.unitPriceNet)).toEqual(["100.50", "40"])
+    // Inclusive: derived from the line's amounts, at two decimals.
     const inclusive = buildDraftView(draft([line("125", { quantity: "2" })], { pricesIncludeTax: true }))
     expect(inclusive.lines[0]).toMatchObject({ unitPrice: "125", net: "200.00", unitPriceNet: "100.00" })
-    expect(buildDraftView(draft([line("100", { quantity: "0" })])).lines[0]!.unitPriceNet).toBeNull()
+    // Nothing calculated, nothing to show.
     expect(buildDraftView(draft([line("")])).lines[0]!.unitPriceNet).toBeNull()
+    expect(buildDraftView(draft([line("1,5")])).lines[0]!.unitPriceNet).toBeNull()
+    expect(buildDraftView(draft([line("100", { quantity: "0" })], { pricesIncludeTax: true })).lines[0]!.unitPriceNet).toBeNull()
+  })
+
+  it("keeps an exclusive unit price of three or four decimals unrounded", () => {
+    for (const unitPrice of ["12.345", "0.1234", "99.9999", "0.005"]) {
+      for (const quantity of ["1", "3", "0.5"]) {
+        const [first] = buildDraftView(draft([line(unitPrice, { quantity })])).lines
+        expect(first).toMatchObject({ unitPrice, unitPriceNet: unitPrice })
+        expect(first!.net).toMatch(/^\d+\.\d{2}$/)
+      }
+    }
+    // The same price on an inclusive document is derived (rounded to cents) from the line's net.
+    const [inclusive] = buildDraftView(draft([line("12.345")], { pricesIncludeTax: true })).lines
+    expect(inclusive).toMatchObject({ unitPrice: "12.345", unitPriceNet: "9.88" })
+    expect(documentViewSchema.parse(buildDraftView(draft([line("12.3456", { quantity: "2" })])))).toBeTruthy()
   })
 
   it("formats money at the currency's exponent", () => {
@@ -401,8 +418,13 @@ describe("buildIssuedView", () => {
   it("gives each line's unit price excluding VAT from its net and quantity", () => {
     expect(buildIssuedView(snapshot(), extras).lines.map((l) => l.unitPriceNet)).toEqual(["33.33", "10.00"])
     const s = snapshot()
-    s.lines = [{ ...s.lines[0]!, quantityInput: "0" }]
+    const [first, second] = s.lines
+    s.lines = [{ ...first!, quantityInput: "0" }]
     expect(buildIssuedView(s, extras).lines[0]!.unitPriceNet).toBeNull()
+    // Tax-exclusive: the frozen entered price, unrounded, whatever the line's net.
+    s.calculation.pricesIncludeTax = false
+    s.lines = [{ ...first!, unitPriceInput: "12.3456", quantityInput: "3" }, { ...second!, unitPriceInput: "10" }]
+    expect(buildIssuedView(s, extras).lines.map((l) => l.unitPriceNet)).toEqual(["12.3456", "10"])
   })
 
   it("takes the amount column from the net on a tax-exclusive document", () => {

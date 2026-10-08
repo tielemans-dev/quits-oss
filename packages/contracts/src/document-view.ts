@@ -80,7 +80,7 @@ export const documentViewLineSchema = z.strictObject({
   /** Quantity and price exactly as entered; on an issued line, the frozen inputs. */
   quantity: z.string().max(40),
   unitPrice: z.string().max(40),
-  /** The unit price excluding VAT, at two decimals. Null when the line cannot be calculated. */
+  /** The unit price excluding VAT: the price as entered, unrounded, on tax-exclusive documents; derived at two decimals on tax-inclusive ones. Null when the line cannot be calculated. */
   unitPriceNet: moneySchema.nullable(),
   /** Null only when a draft's classification cannot be determined. */
   vat: documentViewLineVatSchema.nullable(),
