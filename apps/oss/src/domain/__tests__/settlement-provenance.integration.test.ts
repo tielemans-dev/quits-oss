@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from "vitest"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { prisma } from "../../lib/db"
 import { executeCommand } from "../execute"
+import { recordStripeCheckoutPayment } from "../commands/payments"
+import { deleteContact } from "../commands/contacts"
 import {
   recordSettlementEvidence,
   decideSettlementEvidence,
@@ -16,6 +18,10 @@ import type {
   SettlementEvidenceDecision,
 } from "@quits/contracts/settlement-provenance"
 import { appRouter } from "../../trpc/router"
+
+type DecisionInput<T = SettlementEvidenceDecision> = T extends SettlementEvidenceDecision
+  ? Omit<T, "requestId" | "reason" | "evidence"> & Partial<Pick<T, "reason" | "evidence">>
+  : never
 
 describe.skipIf(!hasTestDatabase)("settlement provenance", () => {
   const cleanups: Array<() => Promise<void>> = []
@@ -74,7 +80,7 @@ describe.skipIf(!hasTestDatabase)("settlement provenance", () => {
     reason: "Reviewed original statement",
     evidence: "https://evidence.example.test/statement/1",
   }
-  async function setup() {
+  async function setup(total = 1000) {
     const org = await createTestOrganization({
       roles: ["admin", "member", "accountant"],
       settings: { currency: "DKK" },
@@ -90,7 +96,7 @@ describe.skipIf(!hasTestDatabase)("settlement provenance", () => {
       currency: "DKK",
       dueDate: "2099-01-01",
       taxRate: 0,
-      items: [{ description: "Work", quantity: 1, unitPrice: 1000 }],
+      items: [{ description: "Work", quantity: 1, unitPrice: total }],
     })
     await caller.invoices.send({ id: invoice.id, allowSendWithoutEmail: true })
     const facts = (extra: Partial<SettlementEvidenceInput> = {}): SettlementEvidenceInput => ({
@@ -118,7 +124,7 @@ describe.skipIf(!hasTestDatabase)("settlement provenance", () => {
       ...evidence,
     })
     const decision = (
-      extra: Omit<SettlementEvidenceDecision, "requestId" | "reason" | "evidence">,
+      extra: DecisionInput,
     ): SettlementEvidenceDecision =>
       ({ requestId: randomUUID(), ...evidence, ...extra }) as SettlementEvidenceDecision
     const act = async (input: SettlementEvidenceDecision) => {
@@ -817,4 +823,219 @@ describe.skipIf(!hasTestDatabase)("settlement provenance", () => {
         .identity,
     ).toEqual(change.identity)
   })
+
+  async function reverse(s: Awaited<ReturnType<typeof setup>>, receiptId: string) {
+    const change = { requestId: randomUUID(), action: "reverse_receipt" as const, receiptId, ...evidence }
+    const preview = await s.caller.payments.previewReceiptChange(change)
+    await s.caller.payments.changeReceipt({ ...change, previewToken: preview.previewToken })
+  }
+  async function unmatch(s: Awaited<ReturnType<typeof setup>>, evidenceId: string, receiptId: string) {
+    await s.act(s.decision({ action: "unmatch", evidenceId, receiptId }))
+  }
+  async function correct(s: Awaited<ReturnType<typeof setup>>, original: Awaited<ReturnType<typeof s.record>>) {
+    return s.record({
+      ...original.input, requestId: randomUUID(), eventReference: randomUUID(),
+      netAmount: "900", correctsEvidenceId: original.evidenceId,
+    })
+  }
+
+  it.each(["bank", "provider"])("round 2: shares corrected replacement identity when %s confirms first", async (first) => {
+    const s = await setup(2000)
+    const bank = await s.record()
+    const provider = await s.record({ source: "provider" })
+    const original = await s.confirm(bank)
+    await s.match(provider.evidenceId, original.receiptId, provider.input.transactionReference)
+    await reverse(s, original.receiptId)
+    await unmatch(s, bank.evidenceId, original.receiptId)
+    await unmatch(s, provider.evidenceId, original.receiptId)
+    const a = await correct(s, bank)
+    const b = await correct(s, provider)
+    const [winner, loser] = first === "bank" ? [a, b] : [b, a]
+    const input = s.decision({ action: "confirm", evidenceId: loser.evidenceId,
+      method: "bank_transfer", identity: s.identity(loser.input.transactionReference) })
+    const preview = await s.caller.payments.previewEvidenceDecision(input)
+    const replacement = await s.confirm(winner)
+    const [result] = await Promise.allSettled([
+      s.caller.payments.decideEvidence({ decision: input, previewToken: preview.previewToken }),
+    ])
+    await s.allocate(replacement.receiptId, "900")
+    if (result.status === "fulfilled") await s.allocate(result.value.receiptId, "900")
+    expect((await s.caller.payments.list({ invoiceId: s.invoice.id })).balanceDue).toBe(1100)
+    expect(result.status).toBe("rejected")
+    await expect(s.confirm(loser)).rejects.toThrow("replacement")
+    await s.match(loser.evidenceId, replacement.receiptId, loser.input.transactionReference)
+    const active = await prisma.settlementReceipt.findMany({
+      where: { organizationId: s.org.organizationId, reversedAt: null },
+    })
+    expect(active.map(row => row.netAmount.toFixed(2))).toEqual(["900.00"])
+    expect(await prisma.settlementEvidenceSource.count({ where: { receiptId: replacement.receiptId } })).toBe(2)
+  })
+
+  it.each([
+    ["evidence_first", "session"], ["webhook_first", "session"],
+    ["evidence_first", "intent"], ["webhook_first", "intent"],
+  ])("round 2: protects known Stripe %s / %s identity through actual commands", async (order, reference) => {
+    const s = await setup()
+    const checkoutSessionId = `cs_${randomUUID()}`
+    const paymentIntentId = `pi_${randomUUID()}`
+    await prisma.invoice.update({ where: { id: s.invoice.id }, data: { stripeCheckoutSessionId: checkoutSessionId, stripePaymentIntentId: paymentIntentId } })
+    const second = await s.caller.invoices.create({ contactId: s.contact.id, currency: "DKK", taxRate: 0,
+      dueDate: "2099-01-01", items: [{ description: "Other work", quantity: 1, unitPrice: 1000 }] })
+    await s.caller.invoices.send({ id: second.id, allowSendWithoutEmail: true })
+    const observed = await s.record({ source: "provider", transactionReference: reference === "session" ? checkoutSessionId : paymentIntentId })
+    const webhook = () => executeCommand(recordStripeCheckoutPayment, {
+      invoiceId: s.invoice.id, checkoutSessionId, paymentIntentId, amount: 1000,
+      currency: "DKK", paidAt: "2026-01-15T12:00:00.000Z",
+    }, { actor: { kind: "system", organizationId: s.org.organizationId, reason: "stripe_webhook", label: "Synthetic checkout command" } })
+    if (order === "webhook_first") expect(await webhook()).toMatchObject({ status: "completed", result: { alreadyApplied: false } })
+    const [confirmation] = await Promise.allSettled([s.confirm(observed)])
+    if (order === "evidence_first") expect(await webhook()).toMatchObject({ status: "completed", result: { alreadyApplied: false } })
+    if (confirmation.status === "fulfilled") {
+      const allocation = { requestId: randomUUID(), receiptId: confirmation.value.receiptId,
+        allocations: [{ invoiceId: second.id, receiptAmount: "1000", invoiceAmount: "1000" }], ...evidence }
+      const preview = await s.caller.payments.previewAllocation(allocation)
+      await s.caller.payments.allocateReceipt({ ...allocation, previewToken: preview.previewToken })
+    }
+    expect((await s.caller.payments.list({ invoiceId: second.id })).balanceDue).toBe(1000)
+    expect(confirmation.status).toBe("rejected")
+    expect(await prisma.settlementReceipt.count({ where: { organizationId: s.org.organizationId } })).toBe(0)
+    expect(await prisma.payment.count({ where: { organizationId: s.org.organizationId } })).toBe(1)
+    expect((await s.caller.payments.list({ invoiceId: s.invoice.id })).balanceDue).toBe(0)
+    expect(await webhook()).toMatchObject({ status: "completed", result: { alreadyApplied: true } })
+  })
+
+  it("round 2: applies a late return to a corrected manual replacement after unmatching", async () => {
+    const s = await setup()
+    const original = await s.record()
+    const first = await s.confirm(original)
+    await reverse(s, first.receiptId)
+    await unmatch(s, original.evidenceId, first.receiptId)
+    const corrected = await correct(s, original)
+    const replacement = await s.manual("900")
+    await s.match(corrected.evidenceId, replacement.receiptId, corrected.input.transactionReference)
+    await s.allocate(replacement.receiptId, "900")
+    await unmatch(s, corrected.evidenceId, replacement.receiptId)
+    const returned = await s.record({ ...corrected.input, requestId: randomUUID(), eventReference: randomUUID(),
+      correctsEvidenceId: undefined, state: "returned", reversesEvidenceId: corrected.evidenceId })
+    await s.act(s.decision({ action: "return", evidenceId: returned.evidenceId, receiptId: replacement.receiptId,
+      identity: s.identity(corrected.input.transactionReference) }))
+    expect((await s.caller.payments.list({ invoiceId: s.invoice.id })).balanceDue).toBe(1000)
+    const history = (await s.caller.payments.evidenceHistory({ contactId: s.contact.id }))[0]!
+    expect(history.createdReceiptId).toBe(first.receiptId)
+    expect(history.receiptId).toBe(replacement.receiptId)
+    expect(history.decisions.map(row => [row.action, row.receiptId])).toEqual([
+      ["confirm", first.receiptId], ["unmatch", first.receiptId], ["match", replacement.receiptId],
+      ["unmatch", replacement.receiptId], ["return", replacement.receiptId],
+    ])
+    expect(await prisma.payment.count({ where: { receiptId: replacement.receiptId, voidedAt: null } })).toBe(0)
+    expect(await prisma.settlementReceipt.count({ where: { organizationId: s.org.organizationId, reversedAt: null } })).toBe(0)
+  })
+
+  it.each(["reported", "processing"] as const)("round 2: refuses deletion of an evidence-only %s contact with contact_in_use", async state => {
+    const s = await setup()
+    const contact = await s.caller.contacts.create({ name: "Evidence only" })
+    const observation = await s.record({ contactId: contact.id, state })
+    expect(await prisma.invoice.count({ where: { contactId: contact.id } })).toBe(0)
+    expect(await prisma.settlementReceipt.count({ where: { contactId: contact.id } })).toBe(0)
+    const outcome = await executeCommand(deleteContact, { id: contact.id }, { actor: s.org.actors.admin })
+    expect(outcome).toMatchObject({ status: "failed", error: { tag: "InvalidState", code: "contact_in_use" } })
+    expect(await prisma.contact.findUnique({ where: { id: contact.id } })).not.toBeNull()
+    expect(await prisma.settlementEvidence.findUnique({ where: { id: observation.evidenceId } })).not.toBeNull()
+  })
+
+
+  it("round 2: explicitly rejects a mistaken past match without detaching source-created cash", async () => {
+    const s = await setup(2000)
+    const bank = await s.record()
+    const provider = await s.record({ source: "provider" })
+    const first = await s.confirm(bank)
+    await s.match(provider.evidenceId, first.receiptId, provider.input.transactionReference)
+    await unmatch(s, provider.evidenceId, first.receiptId)
+    const corrected = await correct(s, provider)
+    await expect(s.confirm(corrected)).rejects.toThrow("replacement")
+    const reject = s.decision({ action: "reject_match", evidenceId: provider.evidenceId, receiptId: first.receiptId,
+      reason: "The provider transfer is a different transaction; the old match was mistaken",
+      evidence: "https://evidence.example.test/corrected-identity" })
+    const preview = await s.caller.payments.previewEvidenceDecision(reject)
+    expect(preview.cashChange).toBe("0.00")
+    const member = callerFor(s.org.organizationId, s.org.actors.member.userId)
+    await expect(member.payments.decideEvidence({ decision: reject, previewToken: preview.previewToken })).rejects.toThrow("payment:void")
+    await s.caller.payments.decideEvidence({ decision: reject, previewToken: preview.previewToken })
+    const second = await s.confirm(corrected)
+    await s.allocate(first.receiptId, "1000")
+    await s.allocate(second.receiptId, "900")
+    expect((await s.caller.payments.list({ invoiceId: s.invoice.id })).balanceDue).toBe(100)
+    const history = (await s.caller.payments.evidenceHistory({ contactId: s.contact.id })).find(row => row.id === provider.sourceId)!
+    expect(history.decisions.map(row => row.action)).toEqual(["match", "unmatch", "reject_match", "confirm"])
+    expect(history.decisions[2]).toMatchObject({ reason: reject.reason, evidence: reject.evidence, receiptId: first.receiptId })
+    await unmatch(s, bank.evidenceId, first.receiptId)
+    await expect(s.act(s.decision({ action: "reject_match", evidenceId: bank.evidenceId, receiptId: first.receiptId }))).rejects.toThrow("Source-created cash")
+    await s.match(bank.evidenceId, first.receiptId, bank.input.transactionReference)
+  })
+
+  it("round 2: binds related source revisions and serializes competing replacement confirmations", async () => {
+    const s = await setup()
+    const a = await s.record()
+    const b = await s.record({ source: "provider" })
+    const original = await s.confirm(a)
+    await s.match(b.evidenceId, original.receiptId, b.input.transactionReference)
+    await reverse(s, original.receiptId)
+    await unmatch(s, a.evidenceId, original.receiptId)
+    await unmatch(s, b.evidenceId, original.receiptId)
+    const correctedA = await correct(s, a)
+    const correctedB = await correct(s, b)
+    const decisionA = s.decision({ action: "confirm", evidenceId: correctedA.evidenceId, method: "bank_transfer", identity: s.identity(a.input.transactionReference) })
+    const oldPreview = await s.caller.payments.previewEvidenceDecision(decisionA)
+    // Same quantities, but a related operator decision now needs to be reviewed.
+    const nextB = await correct(s, correctedB)
+    const newPreview = await s.caller.payments.previewEvidenceDecision(decisionA)
+    expect(newPreview.previewToken).not.toBe(oldPreview.previewToken)
+    await expect(s.caller.payments.decideEvidence({ decision: decisionA, previewToken: oldPreview.previewToken })).rejects.toThrow("changed")
+    const freshA = { ...decisionA, requestId: randomUUID() }
+    const decisionB = s.decision({ action: "confirm", evidenceId: nextB.evidenceId, method: "bank_transfer", identity: s.identity(b.input.transactionReference) })
+    const [previewA, previewB] = await Promise.all([
+      s.caller.payments.previewEvidenceDecision(freshA), s.caller.payments.previewEvidenceDecision(decisionB),
+    ])
+    const outcomes = await Promise.allSettled([
+      s.caller.payments.decideEvidence({ decision: freshA, previewToken: previewA.previewToken }),
+      s.caller.payments.decideEvidence({ decision: decisionB, previewToken: previewB.previewToken }),
+    ])
+    expect(outcomes.filter(row => row.status === "fulfilled")).toHaveLength(1)
+    expect(await prisma.settlementReceipt.count({ where: { organizationId: s.org.organizationId, reversedAt: null } })).toBe(1)
+  })
+
+  it("round 2: recovers mistaken shared identity after reversal and another source's replacement", async () => {
+    const s = await setup(2000)
+    const bank = await s.record()
+    const provider = await s.record({ source: "provider" })
+    const original = await s.confirm(bank)
+    await s.match(provider.evidenceId, original.receiptId, provider.input.transactionReference)
+    await reverse(s, original.receiptId)
+    await unmatch(s, bank.evidenceId, original.receiptId)
+    await unmatch(s, provider.evidenceId, original.receiptId)
+    const correctedBank = await correct(s, bank)
+    const correctedProvider = await correct(s, provider)
+    const bankReplacement = await s.confirm(correctedBank)
+    await expect(s.confirm(correctedProvider)).rejects.toThrow(bankReplacement.receiptId)
+    await s.act(s.decision({
+      action: "reject_match",
+      evidenceId: provider.evidenceId,
+      receiptId: original.receiptId,
+      reason: "The original provider match joined two different receipts",
+      evidence: "https://evidence.example.test/two-distinct-receipts",
+    }))
+    const providerReceipt = await s.confirm(correctedProvider)
+    expect(providerReceipt.receiptId).not.toBe(bankReplacement.receiptId)
+    await s.allocate(bankReplacement.receiptId, "900")
+    await s.allocate(providerReceipt.receiptId, "900")
+    expect((await s.caller.payments.list({ invoiceId: s.invoice.id })).balanceDue).toBe(200)
+    const history = await s.caller.payments.evidenceHistory({ contactId: s.contact.id })
+    expect(history.find((row) => row.id === bank.sourceId)?.receiptId).toBe(bankReplacement.receiptId)
+    const providerHistory = history.find((row) => row.id === provider.sourceId)!
+    expect(providerHistory.receiptId).toBe(providerReceipt.receiptId)
+    expect(providerHistory.decisions.map((row) => row.action)).toEqual([
+      "match", "unmatch", "reject_match", "confirm",
+    ])
+  })
+
 })

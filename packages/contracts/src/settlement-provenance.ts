@@ -89,6 +89,8 @@ export const settlementEvidenceDecisionSchema = z.discriminatedUnion("action", [
     })
     .strict(),
   z.object({ ...decision, action: z.literal("unmatch"), receiptId: id }).strict(),
+  /** Withdraw a mistaken match after unmatching. Never withdraw source-created cash. */
+  z.object({ ...decision, action: z.literal("reject_match"), receiptId: id }).strict(),
   z
     .object({
       ...decision,
@@ -156,7 +158,7 @@ export const settlementProvenanceHistorySchema = z
       z
         .object({
           id,
-          action: z.enum(["match", "confirm", "unmatch", "return"]),
+          action: z.enum(["match", "confirm", "unmatch", "reject_match", "return"]),
           evidenceId: id,
           receiptId: id,
           reason: z.string(),

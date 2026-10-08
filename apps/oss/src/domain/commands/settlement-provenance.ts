@@ -5,7 +5,11 @@ import {
   settlementEvidenceCommitSchema,
   type SettlementEvidenceDecision,
 } from "@quits/contracts/settlement-provenance"
-import { Prisma, type SettlementEvidence } from "../../../generated/prisma/client"
+import {
+  Prisma,
+  type SettlementEvidence,
+  type SettlementEvidenceDecision as RecordedDecision,
+} from "../../../generated/prisma/client"
 import { actorKey } from "../actor"
 import { defineCommand } from "../command"
 import { computeSettlement } from "../documents/settlement"
@@ -103,6 +107,77 @@ function sameAmounts(a: SettlementEvidence, b: SettlementEvidence) {
   return (
     a.currency === b.currency && a.netAmount.equals(b.netAmount) && a.feeAmount.equals(b.feeAmount)
   )
+}
+
+/** Unmatching removes verification; only an explicit rejection withdraws an identity assertion. */
+function establishedMatches(decisions: RecordedDecision[]) {
+  const rejectedAt = new Map<string, number>()
+  for (const row of decisions) {
+    if (row.action === "reject_match") rejectedAt.set(row.receiptId, row.revision)
+  }
+  return decisions.filter(
+    (row) => row.action === "confirm" ||
+      (row.action === "match" && row.revision > (rejectedAt.get(row.receiptId) ?? 0)),
+  )
+}
+
+/**
+ * Resolve only operator-established links, including replacements and transitive corroboration.
+ * The customer-scoped history query avoids one database query per source/receipt edge.
+ */
+async function receiptIdentity(
+  db: Prisma.TransactionClient,
+  organizationId: string,
+  contactId: string,
+  sourceId: string,
+) {
+  const sources = await db.settlementEvidenceSource.findMany({
+    where: { organizationId, contactId },
+    orderBy: { id: "asc" },
+    include: { decisions: { orderBy: { revision: "asc" } } },
+  })
+  const links = new Map(sources.map((source) => [
+    source.id,
+    [...new Set(establishedMatches(source.decisions).map((row) => row.receiptId))].sort(),
+  ]))
+  const byReceipt = new Map<string, string[]>()
+  for (const [id, receipts] of links) {
+    for (const receiptId of receipts) {
+      const linked = byReceipt.get(receiptId) ?? []
+      linked.push(id)
+      byReceipt.set(receiptId, linked)
+    }
+  }
+  const sourceIds = new Set([sourceId])
+  const receiptIds = new Set<string>()
+  const pending = [sourceId]
+  while (pending.length) {
+    for (const receiptId of links.get(pending.pop()!) ?? []) {
+      if (receiptIds.has(receiptId)) continue
+      receiptIds.add(receiptId)
+      for (const id of byReceipt.get(receiptId) ?? []) {
+        if (!sourceIds.has(id)) {
+          sourceIds.add(id)
+          pending.push(id)
+        }
+      }
+    }
+  }
+  const receipts = await db.settlementReceipt.findMany({
+    where: { organizationId, id: { in: [...receiptIds] } },
+    orderBy: { id: "asc" },
+  })
+  return {
+    sources: sources.filter((row) => sourceIds.has(row.id)).map((row) => ({
+      id: row.id,
+      revision: row.revision,
+      receiptIds: links.get(row.id)!,
+    })),
+    receipts: receipts.map((row) => ({ id: row.id, reversedAt: row.reversedAt })),
+    returned: sources.some((row) => row.decisions.some(
+      (decision) => decision.action === "return" && receiptIds.has(decision.receiptId),
+    )),
+  }
 }
 
 export const recordSettlementEvidence = defineCommand({
@@ -294,8 +369,10 @@ export async function previewEvidenceDecision(
   if (receiptId && !receipt) return refuse("receipt_not_found", "Receipt not found")
   if (receipt?.contactId !== undefined && receipt.contactId !== source.contactId)
     return refuse("customer_mismatch", "Evidence and receipt must belong to the same customer")
-  if (receipt?.reversedAt && input.action !== "unmatch")
+  if (receipt?.reversedAt && input.action !== "unmatch" && input.action !== "reject_match")
     return refuse("receipt_reversed", "Receipt was already reversed")
+  const identityState = await receiptIdentity(db, organizationId, source.contactId, source.id)
+  const activeReceipts = identityState.receipts.filter((row) => !row.reversedAt)
   if (input.action === "match" || input.action === "confirm") {
     if (
       source.source === "client" ||
@@ -315,29 +392,28 @@ export async function previewEvidenceDecision(
     )
       return refuse("identity_mismatch", "The identity must name the source transaction")
     if (input.action === "confirm") {
-      const priorMatches = source.decisions.filter(
-        (row) => row.action === "match" || row.action === "confirm",
-      )
+      const priorMatches = establishedMatches(source.decisions)
       const previousIds = [...new Set(priorMatches.map((row) => row.receiptId))]
-      const previousReceipts = await db.settlementReceipt.findMany({
-        where: { id: { in: previousIds }, organizationId },
-      })
-      const returnedReceipt = await db.settlementEvidenceDecision.findFirst({
-        where: { receiptId: { in: previousIds }, action: "return" },
-      })
       const correctedSince = source.observations.some(
         (row) => row.correctsEvidenceId && row.revision > (priorMatches.at(-1)?.revision ?? 0),
       )
       if (
-        returnedReceipt ||
-        previousReceipts.some((row) => !row.reversedAt) ||
+        identityState.returned ||
+        activeReceipts.length > 0 ||
         (previousIds.length > 0 && !correctedSince)
       )
         return refuse(
           "source_receipt_exists",
-          "This evidence already created or verified a receipt. Rematch it, or reverse it and explicitly correct its evidence.",
+          activeReceipts.length
+            ? `This evidence already created or verified a receipt. Match the existing receipt or its replacement (${activeReceipts.map((row) => row.id).join(", ")}).`
+            : "This evidence already created or verified a receipt. Rematch it, or reverse it and explicitly correct its evidence.",
         )
     }
+    if (input.action === "match" && activeReceipts.some((row) => row.id !== receiptId))
+      return refuse(
+        "source_receipt_exists",
+        `Match the established replacement receipt (${activeReceipts.map((row) => row.id).join(", ")}). Correct a mistaken identity separately.`,
+      )
     if (source.createdReceiptId && source.createdReceiptId !== receiptId) {
       const previousReceipt = await db.settlementReceipt.findUniqueOrThrow({
         where: { id: source.createdReceiptId },
@@ -362,7 +438,7 @@ export async function previewEvidenceDecision(
         "receipt_amount_mismatch",
         "Receipt currency, net and fee must each match the evidence",
       )
-    // Never materialize a second cash record for an already handled legacy Stripe payment.
+    // Legacy checkout owns both known session and intent identities, before or after its payment.
     if (
       source.source === "provider" &&
       (await db.payment.findFirst({
@@ -380,6 +456,35 @@ export async function previewEvidenceDecision(
         "legacy_payment_exists",
         "This provider transaction is already recorded as a legacy payment",
       )
+    if (
+      source.source === "provider" && await db.invoice.findFirst({
+        where: {
+          organizationId,
+          OR: [
+            { stripeCheckoutSessionId: source.transactionReference },
+            { stripePaymentIntentId: source.transactionReference },
+          ],
+        },
+        select: { id: true },
+      })
+    )
+      return refuse(
+        "legacy_checkout_exists",
+        "This provider transaction is owned by an existing invoice checkout; wait for its payment flow",
+      )
+  } else if (input.action === "reject_match") {
+    if (source.receiptId)
+      return refuse("evidence_in_use", "Unmatch evidence before correcting its identity")
+    if (returned)
+      return refuse("evidence_returned", "Returned source evidence cannot change identity")
+    const matches = establishedMatches(source.decisions).filter((row) => row.receiptId === receiptId)
+    if (!matches.length || !matches.some((row) => row.evidenceId === observation.id))
+      return refuse("match_changed", "Select the evidence and receipt of an established match")
+    if (matches.some((row) => row.action === "confirm"))
+      return refuse(
+        "source_receipt_exists",
+        "Source-created cash cannot be detached by rejecting a match. Reverse and correct the receipt instead.",
+      )
   } else {
     if (!receipt) return refuse("receipt_not_found", "Receipt not found")
     if (source.receiptId !== receipt.id) {
@@ -393,8 +498,11 @@ export async function previewEvidenceDecision(
         input.identity.value !== source.transactionReference
       )
         return refuse("identity_mismatch", "The identity must name the source transaction")
-      if (source.createdReceiptId && source.createdReceiptId !== receipt.id)
-        return refuse("source_receipt_exists", "Return the original source-created receipt")
+      if (identityState.receipts.length && !activeReceipts.some((row) => row.id === receipt.id))
+        return refuse(
+          "source_receipt_exists",
+          "Return the effective receipt established for this evidence, including its corrected replacement",
+        )
     }
     if (input.action === "return") {
       if (
@@ -489,7 +597,7 @@ export async function previewEvidenceDecision(
       totalGross: row.invoice.totalGross.toFixed(2),
     })),
   }
-  return { ...plan, previewToken: hash({ input, plan }) }
+  return { ...plan, previewToken: hash({ input, plan, identityState }) }
 }
 
 export const decideSettlementEvidence = defineCommand({
@@ -503,7 +611,7 @@ export const decideSettlementEvidence = defineCommand({
     Effect.gen(function* () {
       const decision = input.decision
       yield* authorize(
-        decision.action === "return" || decision.action === "unmatch"
+        decision.action === "return" || decision.action === "unmatch" || decision.action === "reject_match"
           ? "payment:void"
           : "payment:create",
       )
@@ -586,7 +694,7 @@ export const decideSettlementEvidence = defineCommand({
         db.settlementEvidenceSource.update({
           where: { id: source.id },
           data: {
-            receiptId: decision.action === "unmatch" ? null : receiptId,
+            receiptId: decision.action === "unmatch" || decision.action === "reject_match" ? null : receiptId,
             ...(decision.action === "confirm" ? { createdReceiptId: receiptId } : {}),
             revision: { increment: 1 },
           },
