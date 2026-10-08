@@ -8,6 +8,7 @@ import { paymentCommands } from "./payments"
 import { creditNoteCommands } from "./credit-notes"
 import { reminderCommands } from "./reminders"
 import { recurringCommands } from "./recurring"
+import { billingAllocationCommands } from "./billing-allocation"
 
 /**
  * Every command that can be queued for approval must be listed here.
@@ -21,6 +22,7 @@ export const allCommands: readonly AnyCommandDefinition[] = [
   recordBaseValuation,
   ...quoteCommands,
   ...agreementCommands,
+  ...billingAllocationCommands,
   ...paymentCommands,
   ...creditNoteCommands,
   ...reminderCommands,

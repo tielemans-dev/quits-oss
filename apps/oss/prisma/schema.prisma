@@ -361,6 +361,7 @@ model Invoice {
   amountCredited          Decimal           @default(0) @db.Decimal(12, 2)
   remindersPaused         Boolean           @default(false)
   items                   InvoiceItem[]
+  rebills                 DeliverableRebill[]
   payments                Payment[]
   creditNotes             CreditNote[]
   reminders               InvoiceReminder[]
@@ -401,8 +402,14 @@ model Invoice {
 }
 
 model InvoiceItem {
-  deliverableId  String?     @unique
+  deliverableId  String?
   deliverable    Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: Restrict)
+  // Source identity of the billed work. One row per (source, allocation generation), so a source has
+  // at most one active allocation. A new generation exists only after a recorded rebill decision.
+  sourceKind           String?
+  sourceId             String?
+  sourceRevision       String?
+  allocationGeneration Int     @default(0)
   id             String  @id @default(cuid())
   invoiceId      String
   invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
@@ -426,6 +433,8 @@ model InvoiceItem {
   unitPriceInput String?
   inputPrecision String?
 
+  @@unique([deliverableId, allocationGeneration])
+  @@unique([sourceKind, sourceId, allocationGeneration])
   @@index([invoiceId])
   @@map("invoice_item")
 }
@@ -540,6 +549,7 @@ model CreditNote {
   lastEmailAttemptCode    String?
   lastEmailAttemptMessage String?
   items                   CreditNoteItem[]
+  rebills                 DeliverableRebill[]
   artifactPdfRef          String?
   artifactPdfHash         String?
   artifactUblRef          String?
@@ -791,6 +801,7 @@ model Agreement {
   taxRateInput            String?
   offerFormatVersion      Int?
   invoices                Invoice[]
+  rebills                 DeliverableRebill[]
   id                      String             @id @default(cuid())
   organizationId          String
   organization            Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
@@ -862,7 +873,9 @@ model Agreement {
 }
 
 model Deliverable {
-  invoiceItem            InvoiceItem?
+  invoiceItems           InvoiceItem[]
+  billingGeneration      Int       @default(0)
+  rebills                DeliverableRebill[]
   vatRateInput           String?
   id                     String    @id @default(cuid())
   agreementId            String
@@ -901,6 +914,30 @@ model Deliverable {
 
   @@index([agreementId])
   @@map("deliverable")
+}
+
+// An explicit decision to bill a credited deliverable again. It links the new allocation generation
+// to the invoice and credit note that justified it. Nothing is rebilled without a row here.
+model DeliverableRebill {
+  id                String      @id @default(cuid())
+  agreementId       String
+  agreement         Agreement   @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  deliverableId     String
+  deliverable       Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Restrict)
+  generation        Int
+  priorInvoiceId    String
+  priorInvoice      Invoice     @relation(fields: [priorInvoiceId], references: [id], onDelete: Restrict)
+  priorInvoiceItemId String
+  creditNoteId      String
+  creditNote        CreditNote  @relation(fields: [creditNoteId], references: [id], onDelete: Restrict)
+  reason            String
+  decidedBy         String
+  commandId         String
+  createdAt         DateTime    @default(now())
+
+  @@unique([deliverableId, generation])
+  @@index([agreementId])
+  @@map("deliverable_rebill")
 }
 
 model AgreementTemplate {

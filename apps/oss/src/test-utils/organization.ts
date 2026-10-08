@@ -27,6 +27,7 @@ export async function cleanupTestOrganizations({ where }: { where: Prisma.Organi
     await db.artifactStaging.deleteMany({ where: scope })
     await db.approvalRequest.deleteMany({ where: scope })
     await db.agentKey.deleteMany({ where: scope })
+    await db.deliverableRebill.deleteMany({ where: { agreement: scope } })
     await db.creditNoteItem.deleteMany({ where: { creditNote: scope } })
     await db.creditNote.deleteMany({ where: scope })
     await db.payment.deleteMany({ where: scope })

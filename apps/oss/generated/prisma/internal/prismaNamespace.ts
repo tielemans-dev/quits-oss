@@ -415,6 +415,7 @@ export const ModelName = {
   SchedulerScan: 'SchedulerScan',
   Agreement: 'Agreement',
   Deliverable: 'Deliverable',
+  DeliverableRebill: 'DeliverableRebill',
   AgreementTemplate: 'AgreementTemplate',
   PublicLinkAttempt: 'PublicLinkAttempt',
   EventConsumerCursor: 'EventConsumerCursor',
@@ -436,7 +437,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
+    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2734,6 +2735,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    DeliverableRebill: {
+      payload: Prisma.$DeliverableRebillPayload<ExtArgs>
+      fields: Prisma.DeliverableRebillFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DeliverableRebillFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DeliverableRebillFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload>
+        }
+        findFirst: {
+          args: Prisma.DeliverableRebillFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DeliverableRebillFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload>
+        }
+        findMany: {
+          args: Prisma.DeliverableRebillFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload>[]
+        }
+        create: {
+          args: Prisma.DeliverableRebillCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload>
+        }
+        createMany: {
+          args: Prisma.DeliverableRebillCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DeliverableRebillCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload>[]
+        }
+        delete: {
+          args: Prisma.DeliverableRebillDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload>
+        }
+        update: {
+          args: Prisma.DeliverableRebillUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload>
+        }
+        deleteMany: {
+          args: Prisma.DeliverableRebillDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DeliverableRebillUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DeliverableRebillUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload>[]
+        }
+        upsert: {
+          args: Prisma.DeliverableRebillUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DeliverableRebillPayload>
+        }
+        aggregate: {
+          args: Prisma.DeliverableRebillAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDeliverableRebill>
+        }
+        groupBy: {
+          args: Prisma.DeliverableRebillGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DeliverableRebillGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DeliverableRebillCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DeliverableRebillCountAggregateOutputType> | number
+        }
+      }
+    }
     AgreementTemplate: {
       payload: Prisma.$AgreementTemplatePayload<ExtArgs>
       fields: Prisma.AgreementTemplateFieldRefs
@@ -3534,6 +3609,10 @@ export type InvoiceScalarFieldEnum = (typeof InvoiceScalarFieldEnum)[keyof typeo
 
 export const InvoiceItemScalarFieldEnum = {
   deliverableId: 'deliverableId',
+  sourceKind: 'sourceKind',
+  sourceId: 'sourceId',
+  sourceRevision: 'sourceRevision',
+  allocationGeneration: 'allocationGeneration',
   id: 'id',
   invoiceId: 'invoiceId',
   description: 'description',
@@ -3931,6 +4010,7 @@ export type AgreementScalarFieldEnum = (typeof AgreementScalarFieldEnum)[keyof t
 
 
 export const DeliverableScalarFieldEnum = {
+  billingGeneration: 'billingGeneration',
   vatRateInput: 'vatRateInput',
   id: 'id',
   agreementId: 'agreementId',
@@ -3967,6 +4047,23 @@ export const DeliverableScalarFieldEnum = {
 } as const
 
 export type DeliverableScalarFieldEnum = (typeof DeliverableScalarFieldEnum)[keyof typeof DeliverableScalarFieldEnum]
+
+
+export const DeliverableRebillScalarFieldEnum = {
+  id: 'id',
+  agreementId: 'agreementId',
+  deliverableId: 'deliverableId',
+  generation: 'generation',
+  priorInvoiceId: 'priorInvoiceId',
+  priorInvoiceItemId: 'priorInvoiceItemId',
+  creditNoteId: 'creditNoteId',
+  reason: 'reason',
+  decidedBy: 'decidedBy',
+  commandId: 'commandId',
+  createdAt: 'createdAt'
+} as const
+
+export type DeliverableRebillScalarFieldEnum = (typeof DeliverableRebillScalarFieldEnum)[keyof typeof DeliverableRebillScalarFieldEnum]
 
 
 export const AgreementTemplateScalarFieldEnum = {
@@ -4368,6 +4465,7 @@ export type GlobalOmitConfig = {
   schedulerScan?: Prisma.SchedulerScanOmit
   agreement?: Prisma.AgreementOmit
   deliverable?: Prisma.DeliverableOmit
+  deliverableRebill?: Prisma.DeliverableRebillOmit
   agreementTemplate?: Prisma.AgreementTemplateOmit
   publicLinkAttempt?: Prisma.PublicLinkAttemptOmit
   eventConsumerCursor?: Prisma.EventConsumerCursorOmit

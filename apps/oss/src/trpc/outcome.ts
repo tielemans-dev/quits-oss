@@ -26,11 +26,13 @@ export function toTrpcError(error: CommandError) {
 export class DomainRefusal extends Error {
   readonly code: string | undefined
   readonly tag: string
+  readonly details: CommandError["details"]
   constructor(error: CommandError) {
     super(error.message)
     this.name = "DomainRefusal"
     this.tag = error.tag
     this.code = error.code
+    this.details = error.details
   }
 }
 
@@ -48,7 +50,7 @@ export function unwrapOutcome<Result>(outcome: CommandOutcome<Result>): Result {
 /** Maps errors thrown by domain services (tagged errors) to tRPC errors. */
 export function rethrowDomainError(error: unknown): never {
   if (error && typeof error === "object" && "_tag" in error && "message" in error) {
-    throw toTrpcError({ tag: String(error._tag), message: String(error.message), ...("code" in error && typeof error.code === "string" ? { code: error.code } : {}) })
+    throw toTrpcError({ tag: String(error._tag), message: String(error.message), ...("code" in error && typeof error.code === "string" ? { code: error.code } : {}), ...("details" in error && error.details && typeof error.details === "object" ? { details: error.details as NonNullable<CommandError["details"]> } : {}) })
   }
   throw error
 }
