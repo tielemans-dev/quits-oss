@@ -70,6 +70,3 @@ export const updatePaymentDetails = defineCommand({
       return details
     }),
 })
-
-/** Owned by the payment details feature. Commands users may run. */
-export const paymentDetailsCommands = [updatePaymentDetails] as const
