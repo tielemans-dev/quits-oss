@@ -31,7 +31,8 @@ export function dashboardSubtitle(state: DashboardState, summary: Summary | null
 /** The title block, shared by the loaded page, the skeleton and the error. */
 export function DashboardHeader({ subtitle }: { subtitle?: string }) {
   const { t } = useI18n()
-  return <PageHeader title={t("nav.dashboard")} subtitle={subtitle} />
+  // A blank line keeps the height of the subtitle, so the page does not shift when it arrives.
+  return <PageHeader title={t("nav.dashboard")} subtitle={subtitle ?? "\u00a0"} />
 }
 
 /**
