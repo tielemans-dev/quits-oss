@@ -10,14 +10,20 @@ import { applyTheme, useTheme } from "../lib/theme"
  * setting and to other tabs.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const { preference } = useTheme()
+  // The resolved location changes when the new page is shown, not when navigation starts, so the
+  // forced-light rule for public pages does not flip early.
+  const pathname = useRouterState({
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
+  })
+  // Subscribes to the system setting and to other tabs. A preference change is already applied by
+  // the store, so it is not an effect dependency.
+  useTheme()
 
-  // `applyTheme` reads the stored preference itself: during hydration `preference` is still the
-  // server's "system", and applying that would undo what the head script chose.
+  // `applyTheme` reads the stored preference itself: during hydration the hook's preference is still
+  // the server's "system", and applying that would undo what the head script chose.
   useLayoutEffect(() => {
     applyTheme(pathname)
-  }, [pathname, preference])
+  }, [pathname])
 
   return children
 }
