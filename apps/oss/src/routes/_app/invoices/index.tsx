@@ -1,20 +1,28 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
-import {
-  formatCurrency as formatCurrencyIntl,
-  formatDate as formatDateIntl,
-} from "../../../lib/i18n/format"
+import { formatDate as formatDateIntl } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
 import { StatusBadge } from "../../../components/status-badge"
+import { Amount } from "../../../components/kvit/amount"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../../components/ui/table"
+  decimalFromNumber,
+  formatAmountText,
+} from "../../../components/kvit/amount-format"
+import { CustomerMark } from "../../../components/kvit/customer-mark"
+import {
+  ListBody,
+  ListCell,
+  ListEmpty,
+  ListHead,
+  ListHeadCell,
+  ListRow,
+  ListSkeleton,
+  ListTable,
+  listRowLinkClass,
+  rowActionsClass,
+} from "../../../components/kvit/list"
+import { PageHeader } from "../../../components/kvit/page-header"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,9 +34,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../../components/ui/alert-dialog"
-import { Plus, Trash2, FileText } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
+import { cn } from "../../../lib/utils"
 import { useI18n } from "../../../lib/i18n/react"
-import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
+import {
+  invoiceAmountRule,
+  invoiceDisplayStatus,
+} from "../../../lib/payments/invoice-display-status"
 import { loadInvoicesListData } from "./-index.helpers"
 
 export const Route = createFileRoute("/_app/invoices/")({
@@ -49,17 +61,12 @@ type Invoice = {
   contact: { name: string }
 }
 
-function formatCurrency(amount: number, currency: string) {
-  return formatCurrencyIntl(amount, currency)
-}
-
 function formatDate(dateStr: string, locale?: string) {
   return formatDateIntl(dateStr, locale, undefined, { month: "short" })
 }
 
 function InvoicesListPage() {
   const { t, locale } = useI18n()
-  const navigate = useNavigate()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -97,127 +104,169 @@ function InvoicesListPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">{t("invoices.title")}</h1>
-        </div>
-        <p className="text-muted-foreground">{t("invoices.loading")}</p>
+        <PageHeader title={t("invoices.title")} />
+        <ListSkeleton label={t("invoices.loading")} />
       </div>
     )
   }
 
+  const newInvoice = (label: string) => (
+    <Button asChild>
+      <Link to="/invoices/new">
+        <Plus />
+        {label}
+      </Link>
+    </Button>
+  )
+
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">{t("invoices.title")}</h1>
-        <Button asChild>
-          <Link to="/invoices/new">
-            <Plus />
-            {t("invoices.action.new")}
-          </Link>
-        </Button>
-      </div>
+      <PageHeader title={t("invoices.title")} actions={newInvoice(t("invoices.action.new"))} />
 
       {invoices.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <FileText className="size-12 text-muted-foreground mb-4" />
-          <h2 className="text-lg font-semibold mb-1">{t("invoices.empty.title")}</h2>
-          <p className="text-muted-foreground mb-4">
-            {t("invoices.empty.description")}
-          </p>
-          <Button asChild>
-            <Link to="/invoices/new">
-              <Plus />
-              {t("invoices.action.create")}
-            </Link>
-          </Button>
-        </div>
+        <ListEmpty
+          title={t("invoices.empty.title")}
+          description={t("invoices.empty.description")}
+          action={newInvoice(t("invoices.action.create"))}
+        />
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("invoices.table.number")}</TableHead>
-                <TableHead>{t("invoices.table.contact")}</TableHead>
-                <TableHead>{t("invoices.table.issueDate")}</TableHead>
-                <TableHead>{t("invoices.table.dueDate")}</TableHead>
-                <TableHead className="text-right">{t("invoices.table.total")}</TableHead>
-                <TableHead>{t("invoices.table.status")}</TableHead>
-                <TableHead className="w-[60px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoices.map((invoice) => (
-                <TableRow
-                  key={invoice.id}
-                  className="cursor-pointer"
-                  onClick={() =>
-                    navigate({
-                      to: "/invoices/$invoiceId",
-                      params: { invoiceId: invoice.id },
-                      search: { emailWarning: undefined },
-                    })
-                  }
-                >
-                  <TableCell className="font-medium">
+        <ListTable
+          label={t("invoices.title")}
+          columns="minmax(0,2.2fr) 6rem 7rem 7rem minmax(8.5rem,1fr) 8rem 2.25rem"
+          compactColumns="minmax(0,2.2fr) 6rem 7rem minmax(8.5rem,1fr) 8rem 2.25rem"
+        >
+          <ListHead>
+            <ListHeadCell>{t("invoices.table.contact")}</ListHeadCell>
+            <ListHeadCell>{t("invoices.table.number")}</ListHeadCell>
+            <ListHeadCell className="hidden @5xl:block">{t("invoices.table.issueDate")}</ListHeadCell>
+            <ListHeadCell className="hidden @4xl:block">{t("invoices.table.dueDate")}</ListHeadCell>
+            <ListHeadCell align="end">{t("invoices.table.total")}</ListHeadCell>
+            <ListHeadCell>{t("invoices.table.status")}</ListHeadCell>
+            <ListHeadCell />
+          </ListHead>
+          <ListBody>
+            {invoices.map((invoice) => {
+              const { rule, paidFraction } = invoiceAmountRule(invoice)
+              const partlyPaid = invoice.balanceDue > 0 && invoice.balanceDue < invoice.total
+              const dueDate = formatDate(invoice.dueDate, locale)
+              return (
+                <ListRow key={invoice.id}>
+                  <ListCell className="@max-4xl:col-start-1 @max-4xl:row-start-1">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <CustomerMark name={invoice.contact.name} />
+                      <div className="min-w-0">
+                        <Link
+                          to="/invoices/$invoiceId"
+                          params={{ invoiceId: invoice.id }}
+                          search={{ emailWarning: undefined }}
+                          aria-label={
+                            invoice.number
+                              ? t("invoices.row.link", { number: invoice.number, customer: invoice.contact.name })
+                              : t("invoices.row.linkDraft", { customer: invoice.contact.name })
+                          }
+                          className={cn(listRowLinkClass, "block truncate font-semibold")}
+                        >
+                          {invoice.contact.name}
+                        </Link>
+                        <span
+                          className={cn(
+                            "text-muted-foreground block truncate text-xs @4xl:hidden",
+                            invoice.status === "overdue" && "text-tone-danger"
+                          )}
+                        >
+                          {t("invoices.table.dueDate")} {dueDate}
+                        </span>
+                      </div>
+                    </div>
+                  </ListCell>
+                  <ListCell className="font-mono text-[12.5px] tracking-[0.01em] @max-4xl:col-start-1 @max-4xl:row-start-2">
                     {invoice.number ?? (
-                      <span className="font-normal text-muted-foreground" aria-label={t("invoices.number.draft")}>—</span>
+                      <>
+                        <span aria-hidden="true" className="text-muted-foreground">
+                          —
+                        </span>
+                        <span className="sr-only">{t("invoices.number.draft")}</span>
+                      </>
                     )}
-                  </TableCell>
-                  <TableCell>{invoice.contact.name}</TableCell>
-                  <TableCell>{formatDate(invoice.issueDate, locale)}</TableCell>
-                  <TableCell>{formatDate(invoice.dueDate, locale)}</TableCell>
-                  <TableCell className="text-right">
-                    <span className="num">{formatCurrency(invoice.total, invoice.currency)}</span>
-                    {invoice.balanceDue > 0 && invoice.balanceDue < invoice.total ? (
-                      <p className="text-xs text-muted-foreground">
-                        {t("payments.summary.balanceDue")}{" "}
-                        <span className="num">{formatCurrency(invoice.balanceDue, invoice.currency)}</span>
-                      </p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
+                  </ListCell>
+                  <ListCell className="text-muted-foreground hidden @5xl:block">
+                    {formatDate(invoice.issueDate, locale)}
+                  </ListCell>
+                  <ListCell
+                    className={cn(
+                      "text-muted-foreground hidden @4xl:block",
+                      invoice.status === "overdue" && "text-tone-danger"
+                    )}
+                  >
+                    {dueDate}
+                  </ListCell>
+                  <ListCell align="end" className="@max-4xl:col-start-2 @max-4xl:row-start-1">
+                    <div className="flex flex-col items-end">
+                      <Amount
+                        value={decimalFromNumber(invoice.total, invoice.currency)}
+                        currency={invoice.currency}
+                        locale={locale}
+                        rule={rule}
+                        paidFraction={paidFraction}
+                      />
+                      {partlyPaid ? (
+                        <span className="text-muted-foreground num -mt-0.5 text-xs">
+                          {t("payments.summary.balanceDue")}{" "}
+                          {formatAmountText(
+                            decimalFromNumber(invoice.balanceDue, invoice.currency),
+                            invoice.currency,
+                            locale
+                          )}
+                        </span>
+                      ) : null}
+                    </div>
+                  </ListCell>
+                  <ListCell className="@max-4xl:col-start-2 @max-4xl:row-start-2 @max-4xl:justify-self-end">
                     <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
-                  </TableCell>
-                  <TableCell>
+                  </ListCell>
+                  <ListCell className="@max-4xl:col-span-2 @max-4xl:row-start-3 @max-4xl:empty:sr-only">
                     {invoice.status === "draft" && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={(e) => e.stopPropagation()}
-                            disabled={deleting === invoice.id}
-                          >
-                            <Trash2 className="size-4 text-muted-foreground" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{t("invoices.delete.title")}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {invoice.number
-                                ? t("invoices.delete.description", { number: invoice.number })
-                                : t("invoices.delete.descriptionDraft")}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t("invoices.action.cancel")}</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => handleDelete(invoice.id)}
+                      <div className={rowActionsClass}>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="size-7"
+                              aria-label={t("invoices.delete.title")}
+                              disabled={deleting === invoice.id}
                             >
-                              {t("invoices.action.delete")}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 className="text-muted-foreground size-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>{t("invoices.delete.title")}</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {invoice.number
+                                  ? t("invoices.delete.description", { number: invoice.number })
+                                  : t("invoices.delete.descriptionDraft")}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t("invoices.action.cancel")}</AlertDialogCancel>
+                              <AlertDialogAction
+                                variant="destructive"
+                                onClick={() => handleDelete(invoice.id)}
+                              >
+                                {t("invoices.action.delete")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  </ListCell>
+                </ListRow>
+              )
+            })}
+          </ListBody>
+        </ListTable>
       )}
     </div>
   )

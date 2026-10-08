@@ -1,20 +1,25 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
-import {
-  formatCurrency as formatCurrencyIntl,
-  formatDate as formatDateIntl,
-} from "../../../lib/i18n/format"
+import { formatDate as formatDateIntl } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
 import { StatusBadge } from "../../../components/status-badge"
+import { Amount } from "../../../components/kvit/amount"
+import { decimalFromNumber } from "../../../components/kvit/amount-format"
+import { CustomerMark } from "../../../components/kvit/customer-mark"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../../components/ui/table"
+  ListBody,
+  ListCell,
+  ListEmpty,
+  ListHead,
+  ListHeadCell,
+  ListRow,
+  ListSkeleton,
+  ListTable,
+  listRowLinkClass,
+  rowActionsClass,
+} from "../../../components/kvit/list"
+import { PageHeader } from "../../../components/kvit/page-header"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +31,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../../components/ui/alert-dialog"
-import { Plus, Trash2, FileText } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
+import { cn } from "../../../lib/utils"
 import { useI18n } from "../../../lib/i18n/react"
 
 export const Route = createFileRoute("/_app/quotes/")({
@@ -45,17 +51,12 @@ type Quote = {
   contact: { name: string }
 }
 
-function formatCurrency(amount: number, currency: string) {
-  return formatCurrencyIntl(amount, currency)
-}
-
 function formatDate(dateStr: string, locale?: string) {
   return formatDateIntl(dateStr, locale, undefined, { month: "short" })
 }
 
 function QuotesListPage() {
   const { t, locale } = useI18n()
-  const navigate = useNavigate()
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -90,121 +91,142 @@ function QuotesListPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">{t("quotes.title")}</h1>
-        </div>
-        <p className="text-muted-foreground">{t("quotes.loading")}</p>
+        <PageHeader title={t("quotes.title")} />
+        <ListSkeleton label={t("quotes.loading")} />
       </div>
     )
   }
 
+  const newQuote = (label: string) => (
+    <Button asChild>
+      <Link to="/quotes/new">
+        <Plus />
+        {label}
+      </Link>
+    </Button>
+  )
+
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">{t("quotes.title")}</h1>
-        <Button asChild>
-          <Link to="/quotes/new">
-            <Plus />
-            {t("quotes.action.new")}
-          </Link>
-        </Button>
-      </div>
+      <PageHeader title={t("quotes.title")} actions={newQuote(t("quotes.action.new"))} />
 
       {quotes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <FileText className="size-12 text-muted-foreground mb-4" />
-          <h2 className="text-lg font-semibold mb-1">{t("quotes.empty.title")}</h2>
-          <p className="text-muted-foreground mb-4">
-            {t("quotes.empty.description")}
-          </p>
-          <Button asChild>
-            <Link to="/quotes/new">
-              <Plus />
-              {t("quotes.action.create")}
-            </Link>
-          </Button>
-        </div>
+        <ListEmpty
+          title={t("quotes.empty.title")}
+          description={t("quotes.empty.description")}
+          action={newQuote(t("quotes.action.create"))}
+        />
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("quotes.table.number")}</TableHead>
-                <TableHead>{t("quotes.table.contact")}</TableHead>
-                <TableHead>{t("quotes.table.issueDate")}</TableHead>
-                <TableHead>{t("quotes.table.expiryDate")}</TableHead>
-                <TableHead className="text-right">{t("quotes.table.total")}</TableHead>
-                <TableHead>{t("quotes.table.status")}</TableHead>
-                <TableHead className="w-[60px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {quotes.map((quote) => (
-                <TableRow
-                  key={quote.id}
-                  className="cursor-pointer"
-                  onClick={() =>
-                    navigate({
-                      to: "/quotes/$quoteId",
-                      params: { quoteId: quote.id },
-                      search: { emailWarning: undefined },
-                    })
-                  }
-                >
-                  <TableCell className="font-medium">
+        <ListTable
+          label={t("quotes.title")}
+          columns="minmax(0,2.2fr) 6rem 7rem 7rem minmax(8.5rem,1fr) 8rem 2.25rem"
+          compactColumns="minmax(0,2.2fr) 6rem 7rem minmax(8.5rem,1fr) 8rem 2.25rem"
+        >
+          <ListHead>
+            <ListHeadCell>{t("quotes.table.contact")}</ListHeadCell>
+            <ListHeadCell>{t("quotes.table.number")}</ListHeadCell>
+            <ListHeadCell className="hidden @5xl:block">{t("quotes.table.issueDate")}</ListHeadCell>
+            <ListHeadCell className="hidden @4xl:block">{t("quotes.table.expiryDate")}</ListHeadCell>
+            <ListHeadCell align="end">{t("quotes.table.total")}</ListHeadCell>
+            <ListHeadCell>{t("quotes.table.status")}</ListHeadCell>
+            <ListHeadCell />
+          </ListHead>
+          <ListBody>
+            {quotes.map((quote) => {
+              const expiryDate = formatDate(quote.expiryDate, locale)
+              return (
+                <ListRow key={quote.id}>
+                  <ListCell className="@max-4xl:col-start-1 @max-4xl:row-start-1">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <CustomerMark name={quote.contact.name} />
+                      <div className="min-w-0">
+                        <Link
+                          to="/quotes/$quoteId"
+                          params={{ quoteId: quote.id }}
+                          search={{ emailWarning: undefined }}
+                          aria-label={
+                            quote.number
+                              ? t("quotes.row.link", { number: quote.number, customer: quote.contact.name })
+                              : t("quotes.row.linkDraft", { customer: quote.contact.name })
+                          }
+                          className={cn(listRowLinkClass, "block truncate font-semibold")}
+                        >
+                          {quote.contact.name}
+                        </Link>
+                        <span className="text-muted-foreground block truncate text-xs @4xl:hidden">
+                          {t("quotes.table.expiryDate")} {expiryDate}
+                        </span>
+                      </div>
+                    </div>
+                  </ListCell>
+                  <ListCell className="font-mono text-[12.5px] tracking-[0.01em] @max-4xl:col-start-1 @max-4xl:row-start-2">
                     {quote.number ?? (
-                      <span className="font-normal text-muted-foreground" aria-label={t("quotes.number.draft")}>—</span>
+                      <>
+                        <span aria-hidden="true" className="text-muted-foreground">
+                          —
+                        </span>
+                        <span className="sr-only">{t("quotes.number.draft")}</span>
+                      </>
                     )}
-                  </TableCell>
-                  <TableCell>{quote.contact.name}</TableCell>
-                  <TableCell>{formatDate(quote.issueDate, locale)}</TableCell>
-                  <TableCell>{formatDate(quote.expiryDate, locale)}</TableCell>
-                  <TableCell className="text-right num">
-                    {formatCurrency(quote.total, quote.currency)}
-                  </TableCell>
-                  <TableCell>
+                  </ListCell>
+                  <ListCell className="text-muted-foreground hidden @5xl:block">
+                    {formatDate(quote.issueDate, locale)}
+                  </ListCell>
+                  <ListCell className="text-muted-foreground hidden @4xl:block">{expiryDate}</ListCell>
+                  <ListCell align="end" className="@max-4xl:col-start-2 @max-4xl:row-start-1">
+                    {/* The double rule is for money that has arrived; a quote asks for none. */}
+                    <Amount
+                      value={decimalFromNumber(quote.total, quote.currency)}
+                      currency={quote.currency}
+                      locale={locale}
+                    />
+                  </ListCell>
+                  <ListCell className="@max-4xl:col-start-2 @max-4xl:row-start-2 @max-4xl:justify-self-end">
                     <StatusBadge domain="quote" status={quote.status} />
-                  </TableCell>
-                  <TableCell>
+                  </ListCell>
+                  <ListCell className="@max-4xl:col-span-2 @max-4xl:row-start-3 @max-4xl:empty:sr-only">
                     {quote.status === "draft" && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={(e) => e.stopPropagation()}
-                            disabled={deleting === quote.id}
-                          >
-                            <Trash2 className="size-4 text-muted-foreground" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{t("quotes.delete.title")}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {quote.number
-                                ? t("quotes.delete.description", { number: quote.number })
-                                : t("quotes.delete.descriptionDraft")}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t("quotes.action.cancel")}</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => handleDelete(quote.id)}
+                      <div className={rowActionsClass}>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="size-7"
+                              aria-label={t("quotes.delete.title")}
+                              disabled={deleting === quote.id}
                             >
-                              {t("quotes.action.delete")}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 className="text-muted-foreground size-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>{t("quotes.delete.title")}</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {quote.number
+                                  ? t("quotes.delete.description", { number: quote.number })
+                                  : t("quotes.delete.descriptionDraft")}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t("quotes.action.cancel")}</AlertDialogCancel>
+                              <AlertDialogAction
+                                variant="destructive"
+                                onClick={() => handleDelete(quote.id)}
+                              >
+                                {t("quotes.action.delete")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  </ListCell>
+                </ListRow>
+              )
+            })}
+          </ListBody>
+        </ListTable>
       )}
     </div>
   )

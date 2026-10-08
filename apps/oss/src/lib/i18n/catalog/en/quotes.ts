@@ -7,6 +7,8 @@ export const enQuotesMessages = {
   "quotes.empty.description":
     "Create your first quote to start sending proposals to your clients.",
   "quotes.table.number": "Number",
+  "quotes.row.link": "Quote {number}, {customer}",
+  "quotes.row.linkDraft": "Draft quote, {customer}",
   "quotes.number.draft": "Draft",
   "quotes.number.draftHeading": "Draft quote",
   "quotes.number.willBe": "Numbered {number} when sent. The number is not reserved: another quote may be sent first.",

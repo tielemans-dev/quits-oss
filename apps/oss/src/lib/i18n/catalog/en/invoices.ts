@@ -12,6 +12,8 @@ export const enInvoicesMessages = {
   "invoices.empty.description":
     "Create your first invoice to start billing your clients.",
   "invoices.table.number": "Number",
+  "invoices.row.link": "Invoice {number}, {customer}",
+  "invoices.row.linkDraft": "Draft invoice, {customer}",
   "invoices.number.draft": "Draft",
   "invoices.number.draftHeading": "Draft invoice",
   "invoices.number.willBe": "Numbered {number} when sent. The number is not reserved: another invoice may be sent first.",
