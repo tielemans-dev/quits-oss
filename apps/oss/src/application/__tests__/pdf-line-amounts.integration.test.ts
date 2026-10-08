@@ -223,7 +223,8 @@ function printedRows(pdf: { pricesIncludeTax?: boolean; subtotal: number; taxAmo
         // The rows add up to the total, and the stored note says what the PDF says.
         const { totals, sumOfRows } = printedRows(pdf)
         expect(sumOfRows, `${where}: rows`).toBe(new Prisma.Decimal(totals.total.amount).toFixed(2))
-        expect(pdf.rounding, where).toBe(new Prisma.Decimal(note.totalGross.toString()).minus(note.subtotalNet.toString()).minus(note.totalTax.toString()).toFixed(2))
+        // The credit note's own e-invoice carries this rounding, so the PDF must say the same.
+        expect(pdf.rounding, where).toBe((note.issuanceSnapshot as { totals: { payableRounding: string } }).totals.payableRounding)
 
         // The detail page reads the stored items; the PDF reads the credited groups. They agree.
         const page = await caller.creditNotes.get({ id: note.id })
@@ -234,4 +235,25 @@ function printedRows(pdf: { pricesIncludeTax?: boolean; subtotal: number; taxAmo
       }
     })
   }
+
+  it("carries a non-zero rounding onto a credit note, as the e-invoice does", async () => {
+    // 10,12 including 25 % VAT: net 8,10 plus tax 2,03 is a cent over the total, and so is its credit.
+    const { org, invoice } = await issued({ pricesIncludeTax: true, items: [{ description: "Vare", quantity: "1", unitPrice: "10.12" }] })
+    const credit = await issueDocument({ kind: "creditNote", actor: org.actors.admin, commandInput: { invoiceId: invoice.id, mode: "full", reason: "Return" } })
+    expect(credit, JSON.stringify(credit)).toMatchObject({ status: "completed" })
+    const note = await prisma.creditNote.findFirstOrThrow({ where: { invoiceId: invoice.id } })
+    const response = await documentPdf("creditNote", note.id, org.organizationId)
+    const pdf = (JSON.parse(await response.text()) as RenderInput & { kind: "creditNote" }).pdf.creditNote
+
+    expect((note.issuanceSnapshot as { totals: { payableRounding: string } }).totals.payableRounding).toBe("-0.01")
+    expect(pdf).toMatchObject({ subtotal: 8.1, taxAmount: 2.03, total: 10.12, rounding: "-0.01" })
+    const { totals, sumOfRows } = printedRows(pdf)
+    expect(totals.lines.map((line) => line.kind)).toEqual(["subtotal", "tax", "rounding"])
+    expect(sumOfRows).toBe("10.12")
+
+    const caller = appRouter.createCaller({
+      session: { user: { id: org.actors.admin.userId, email: "admin@test.quits.invalid", name: "admin" }, session: { activeOrganizationId: org.organizationId } },
+    } as never)
+    expect(await caller.creditNotes.get({ id: note.id })).toMatchObject({ rounding: "-0.01", vatRows: pdf.vatRows })
+  })
 })

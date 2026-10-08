@@ -79,9 +79,14 @@ describe("invoice PDF lines", () => {
   it("prints one VAT row per rate, each with its taxable amount, and the total after them", () => {
     const text = invoiceText({
       ...danish,
-      subtotal: 1201,
+      subtotal: 1901,
       taxAmount: 310.05,
-      total: 1511.05,
+      total: 2211.05,
+      items: [
+        { description: "Kursus", quantity: 1, unitPrice: 500, total: 500 },
+        { description: "Rådgivning", quantity: 2, unitPrice: 100.5, total: 201 },
+        { description: "Licens", quantity: 1, unitPrice: 1200, total: 1200 },
+      ],
       vatRows: [
         { ratePercent: "0", net: "500.00", tax: "0.00", gross: "500.00" },
         { ratePercent: "5", net: "201.00", tax: "10.05", gross: "211.05" },

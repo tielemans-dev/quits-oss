@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { Prisma } from "../../../../generated/prisma/client"
 import { priceDocumentV2 } from "../../../domain/documents/pricing"
-import { documentVatSummary, payableRoundingOf } from "../../../domain/documents/vat-summary"
+import { documentVatSummary } from "../../../domain/documents/vat-summary"
 import { lineAmounts, priceBasis } from "../line-amounts"
 import { buildTotals } from "../totals"
 
@@ -47,6 +47,8 @@ function generate(random: () => number) {
   const priced = priceDocumentV2({ items: items as never, taxRate: "25", pricesIncludeTax, currency })
   return {
     currency, pricesIncludeTax,
+    // The engine's own rounding for the document, to hold the derived one against.
+    engineRounding: priced.calculation.payableRounding,
     subtotalNet: new D(priced.subtotalNet), totalTax: new D(priced.totalTax), totalGross: new D(priced.totalGross),
     items: priced.itemRows.map((row) => ({
       ...row,
@@ -77,7 +79,7 @@ describe("totals of generated documents", () => {
       expect(summary.vatRows, `${where}: rows`).toBeDefined()
       expect(sum(summary.vatRows!.map((row) => row.net)).toFixed(exponent), `${where}: row bases`).toBe(document.subtotalNet.toFixed(exponent))
       expect(sum(summary.vatRows!.map((row) => row.tax)).toFixed(exponent), `${where}: row tax`).toBe(document.totalTax.toFixed(exponent))
-      expect(summary.rounding, `${where}: rounding`).toBe(payableRoundingOf(document))
+      expect(summary.rounding, `${where}: rounding`).toBe(document.engineRounding)
       expect(new D(summary.rounding).abs().lte(new D(10).pow(-exponent).times(summary.vatRows!.length)), `${where}: rounding is below a unit per rate`).toBe(true)
       if (!new D(summary.rounding).isZero()) rounded++
       if (summary.vatRows!.length > 1) multiple++
