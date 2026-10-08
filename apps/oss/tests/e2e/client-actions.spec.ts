@@ -155,7 +155,7 @@ test("a finance contact sees and can pay only their invoice, on a phone and with
   await tabTo(phone, "View invoice")
   await phone.keyboard.press("Enter")
   await expect(phone.getByText("Implementation sprint")).toBeVisible()
-  await expect(phone).toHaveURL(/item=invoice:/)
+  await expect(phone).toHaveURL(/item=invoice(:|%3A)/)
   await tabTo(phone, "Back to your documents")
   await phone.keyboard.press("Enter")
   await expect(phone.getByRole("heading", { name: "Invoices" })).toBeVisible()
