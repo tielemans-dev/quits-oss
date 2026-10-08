@@ -9,8 +9,8 @@ No database importer, application contract, command, API or screen changes accom
 
 The initial checkout was `c0f23c014d0502c44fab9b7ea8b7a748c6b5eee8`. The source audit also
 inspected local `origin/main` at `5174f983047103473ea09c2e4b4763883f47cbdc`, which includes
-UX's document-view change. This observation does not authorize publication or lift the
-coordinator's requirement for explicit #75 confirmation.
+UX's document-view change. The source audit is pinned to that commit; later changes require
+a fresh integration review before implementation.
 
 Read-only dependency audits used these exact public OSS candidates:
 
