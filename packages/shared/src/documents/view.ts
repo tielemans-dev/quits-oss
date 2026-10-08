@@ -1,7 +1,8 @@
 import Decimal from "decimal.js-light"
+import { documentViewDateSchema } from "@quits/contracts/document-view"
 import type {
-  DocumentKind, DocumentView, DocumentViewBuyer, DocumentViewLine, DocumentViewLineVat,
-  DocumentViewPaymentDetails, DocumentViewSeller, DocumentViewVatGroup,
+  DocumentKind, DocumentView, DocumentViewBankAccount, DocumentViewBuyer, DocumentViewCorrection, DocumentViewLine,
+  DocumentViewLineVat, DocumentViewPaymentDetails, DocumentViewSeller, DocumentViewTaxId, DocumentViewVatGroup, PublicDocumentView,
 } from "@quits/contracts/document-view"
 import type { BuyerSnapshot, DocumentTaxId, SellerSnapshot } from "@quits/contracts/documents"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -9,7 +10,7 @@ import { hasBankAccount, hasPaymentDetails } from "@quits/contracts/payment-deta
 import { decimalStringSchema, draftVatClassificationSchema } from "@quits/contracts/vat"
 import type { DraftVatEvidence, VatEvidence, VatReasonCode, VatTreatment } from "@quits/contracts/vat"
 import { requireCurrencyExponent } from "../currency"
-import { documentVat, previewDraft, vatGroupKey } from "../pricing"
+import { decimalReferencePrices, documentVat, previewDraft, vatGroupKey } from "../pricing"
 
 // Isolated from callers' Decimal configuration, like the pricing engine.
 const D = Decimal.clone({ precision: 1024, rounding: Decimal.ROUND_HALF_UP })
@@ -27,25 +28,57 @@ const byKey = (a: { key: string }, b: { key: string }) => a.key < b.key ? -1 : a
 /** A quantity or price as the user typed it. A number that is not finite is left empty, so it never calculates. */
 const asEntered = (value: string | number) => typeof value === "number" ? (Number.isFinite(value) ? String(value) : "") : value
 
-/** A calendar date as "YYYY-MM-DD", or null: a half-typed date is not a date. */
-const calendarDate = (value: string | null | undefined) => value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
+/** "0.250" and "0.25" are one rate. A rate that is not a number stays as it was entered. */
+function canonicalRate(rate: string) {
+  try { return new D(rate).toFixed() } catch { return rate }
+}
 
-function sellerView(seller: SellerSnapshot | null | undefined, logoUrl: string | null | undefined): DocumentViewSeller {
+/** A real calendar date as "YYYY-MM-DD", or null: a half-typed date, or 2026-02-30, is not a date. */
+const calendarDate = (value: string | null | undefined) => value && documentViewDateSchema.safeParse(value).success ? value : null
+
+/** Empty evidence says nothing, so it is null. */
+function evidenceView<T extends DraftVatEvidence | VatEvidence>(evidence: T | null | undefined): T | null {
+  return evidence && Object.values(evidence).some((value) => value !== undefined) ? evidence : null
+}
+
+/**
+ * Keys must be unique within a document or rows would collide. A repeated key gets a suffix, in order,
+ * so the same lines always get the same keys.
+ */
+function uniqueKeys(keys: string[]): string[] {
+  const taken = new Set<string>()
+  return keys.map((key) => {
+    let candidate = key
+    for (let n = 2; taken.has(candidate); n++) candidate = `${key}~${n}`
+    taken.add(candidate)
+    return candidate
+  })
+}
+
+/** The unit price excluding VAT, from the line's own amounts; null when it cannot be calculated. */
+function unitPriceNetOf(quantity: string, net: string | null, gross: string | null): string | null {
+  if (net === null || gross === null) return null
+  try {
+    if (!new D(quantity).gt(0)) return null
+    return decimalReferencePrices(quantity, net, gross).unitPriceNet
+  } catch {
+    return null
+  }
+}
+
+function taxIdsView(taxIds: readonly DocumentTaxId[] | undefined): DocumentViewTaxId[] {
+  return (taxIds ?? []).map((taxId) => ({ scheme: taxId.scheme ?? null, value: taxId.value, countryCode: taxId.countryCode ?? null }))
+}
+
+function sellerView(seller: SellerSnapshot | null | undefined, phone: string | null | undefined, logoUrl: string | null | undefined): DocumentViewSeller {
   return {
     name: seller?.companyName ?? null,
     email: seller?.companyEmail ?? null,
+    phone: phone ?? null,
     address: seller?.companyAddress ?? null,
     logoUrl: logoUrl ?? null,
     taxIds: taxIdsView(seller?.taxIds),
   }
-}
-
-function taxIdsView(taxIds: readonly DocumentTaxId[] | undefined): DocumentTaxId[] {
-  return (taxIds ?? []).map((taxId) => ({
-    ...(taxId.scheme !== undefined ? { scheme: taxId.scheme } : {}),
-    value: taxId.value,
-    ...(taxId.countryCode !== undefined ? { countryCode: taxId.countryCode } : {}),
-  }))
 }
 
 function buyerView(buyer: BuyerSnapshot | null | undefined, contactId: string | null | undefined): DocumentViewBuyer | null {
@@ -57,30 +90,34 @@ function buyerView(buyer: BuyerSnapshot | null | undefined, contactId: string | 
   }
 }
 
-/**
- * Printed only when the seller has an account or a note, as on the PDF. A credit note is not paid,
- * so it never carries payment details.
- */
+/** Printed only on invoices (quotes, credit notes and agreements take no payments), and only when the seller has an account or a note. */
 function paymentDetailsView(
   seller: SellerSnapshot | null | undefined, reference: string | null, kind: DocumentKind
 ): DocumentViewPaymentDetails | null {
-  const bankAccount = seller?.bankAccount ?? null
+  const account = seller?.bankAccount ?? null
   const note = seller?.paymentNote?.trim() ? seller.paymentNote : null
-  if (kind === "creditNote" || !hasPaymentDetails({ bankAccount, note })) return null
-  return {
-    bankAccount: bankAccount && hasBankAccount(bankAccount) ? {
-      accountHolder: bankAccount.accountHolder ?? null, bankName: bankAccount.bankName ?? null,
-      regNumber: bankAccount.regNumber ?? null, accountNumber: bankAccount.accountNumber ?? null,
-      iban: bankAccount.iban ?? null, bic: bankAccount.bic ?? null,
-    } : null,
-    note,
-    reference,
-  }
+  if (kind !== "invoice" || !hasPaymentDetails({ bankAccount: account, note })) return null
+  const bankAccount: DocumentViewBankAccount | null = account && hasBankAccount(account) ? {
+    accountHolder: account.accountHolder ?? null, bankName: account.bankName ?? null,
+    regNumber: account.regNumber ?? null, accountNumber: account.accountNumber ?? null,
+    iban: account.iban ?? null, bic: account.bic ?? null,
+  } : null
+  return { bankAccount, note, reference }
 }
 
 function notesView(notes: string | null | undefined) {
   return notes?.trim() ? notes : null
 }
+
+const lineVat = (vat: { treatment: VatTreatment; rate: string; reasonCode: VatReasonCode | null; country: string | null }): DocumentViewLineVat =>
+  ({ treatment: vat.treatment, rate: canonicalRate(vat.rate), reasonCode: vat.reasonCode, country: vat.country })
+
+function lineAmounts(quantity: string, net: Decimal, tax: Decimal, gross: Decimal, pricesIncludeTax: boolean, exponent: number) {
+  const amounts = { net: fixed(net, exponent), tax: fixed(tax, exponent), gross: fixed(gross, exponent) }
+  return { ...amounts, unitPriceNet: unitPriceNetOf(quantity, amounts.net, amounts.gross), amount: pricesIncludeTax ? amounts.gross : amounts.net }
+}
+
+const noAmounts = { net: null, tax: null, gross: null, amount: null, unitPriceNet: null } as const
 
 // ---------------------------------------------------------------------------------------------
 // Drafts
@@ -89,19 +126,26 @@ function notesView(notes: string | null | undefined) {
 export type DraftViewLineInput = {
   /** The persisted line id, once the line has one. */
   id?: string | null
-  /** The key the client gave the line. Used when there is no id. */
+  /**
+   * The key the client gave the line. It outlives the id, which changes whenever a save recreates the
+   * line, so a row keeps its identity (and focus) while the draft is edited.
+   */
   clientKey?: string
   description: string
   /** As entered. */
   quantity: string | number
   /** As entered, on the document's price basis. */
   unitPrice: string | number
+  /** Required with `stored`: the line's complete classification. */
   vat?: DocumentLineInput["vat"]
   /**
-   * An agreement-linked line. Its stored amounts stand: it is never repriced, and `vat` must be its
-   * complete classification. Amounts are decimal strings (as stored, at most the currency's exponent).
+   * The amounts the line was stored with. It renders them as they are and is never repriced: an
+   * agreement-linked line, or any line of a draft still on the legacy calculation. Strings at most at
+   * the currency's exponent, as stored.
    */
-  frozen?: { net: string; tax: string; gross: string }
+  stored?: { net: string; tax: string; gross: string }
+  /** The line cannot be edited (agreement-linked). */
+  locked?: boolean
 }
 
 export type DraftViewInput = {
@@ -111,6 +155,11 @@ export type DraftViewInput = {
   timezone: string
   currency: string
   pricesIncludeTax: boolean
+  /**
+   * How the stored draft was priced. A `legacy_per_line` draft is issued from its stored amounts, so
+   * it shows them: every line needs `stored`. Once it is edited it is repriced, and is passed as `v2`.
+   */
+  calculationVersion: "v2" | "legacy_per_line"
   /** The document's VAT rate in percent; lines without their own classification use it. */
   taxRate: string | number
   lines: readonly DraftViewLineInput[]
@@ -122,24 +171,25 @@ export type DraftViewInput = {
   dates?: { issueDate?: string | null; supplyDate?: string | null; dueDate?: string | null; expiryDate?: string | null }
   /** Settings-derived seller details, including the payment details snapshot. */
   seller?: SellerSnapshot | null
+  sellerPhone?: string | null
   logoUrl?: string | null
   buyer?: BuyerSnapshot | null
   contactId?: string | null
   notes?: string | null
   paymentReference?: string | null
-  /** The stored draft was priced by the legacy calculation and has not been repriced yet. */
-  staleLegacy?: boolean
 }
 
-type FrozenAmounts = { net: Decimal; tax: Decimal; gross: Decimal; vat: ReturnType<typeof draftVatClassificationSchema.parse> }
+type StoredLine = { net: Decimal; tax: Decimal; gross: Decimal; vat: ReturnType<typeof draftVatClassificationSchema.parse> }
 
-/** `null` when the frozen line cannot be read exactly; it then stops the document from calculating. */
-function readFrozen(line: DraftViewLineInput, exponent: number): FrozenAmounts | null {
-  if (!line.frozen || !line.vat) return null
-  const vat = draftVatClassificationSchema.safeParse(line.vat)
+/** `null` when the stored line cannot be read exactly; it then stops the document from calculating. */
+function readStored(line: DraftViewLineInput, exponent: number): StoredLine | null {
+  if (!line.stored || !line.vat) return null
+  // A legacy line written without a classification is "standard" at 0 %, which nothing accepts: it is out of scope.
+  const legacyZero = line.vat.treatment === "standard" && line.vat.rate !== undefined && !/[1-9]/.test(line.vat.rate)
+  const vat = draftVatClassificationSchema.safeParse(legacyZero ? { ...line.vat, treatment: "out_of_scope", reasonCode: null } : line.vat)
   if (!vat.success) return null
   const amounts: Decimal[] = []
-  for (const value of [line.frozen.net, line.frozen.tax, line.frozen.gross]) {
+  for (const value of [line.stored.net, line.stored.tax, line.stored.gross]) {
     if (!decimalStringSchema.safeParse(value).success) return null
     const amount = new D(value)
     if (!amount.toDecimalPlaces(exponent, D.ROUND_HALF_UP).eq(amount)) return null
@@ -151,68 +201,59 @@ function readFrozen(line: DraftViewLineInput, exponent: number): FrozenAmounts |
 type GroupSums = { treatment: VatTreatment; rate: string; reasonCode: VatReasonCode | null; country: string | null; net: Decimal; tax: Decimal; gross: Decimal; payableRounding: Decimal }
 
 /**
- * The view of a draft. Amounts come only from `calculateDraft`, and from the stored amounts of
- * agreement-linked lines, which are added with Decimal. A draft that cannot be calculated (an empty
- * price, a decimal comma, too many decimals, mixed out-of-scope) has `totals: null`, no VAT groups and
- * no calculated line amounts. It is never guessed.
+ * The view of a draft. Amounts come only from `calculateDraft` and from stored amounts, which are
+ * added with Decimal. A draft that cannot be calculated (an empty price, a decimal comma, too many
+ * decimals, an unreadable stored line) has `totals: null`, no VAT groups and no amounts on the lines
+ * that did not calculate. It is never guessed.
  *
  * Throws only for a currency without a supported precision.
  */
 export function buildDraftView(input: DraftViewInput): DocumentView {
   const exponent = requireCurrencyExponent(input.currency)
+  const legacy = input.calculationVersion === "legacy_per_line"
+  const keys = uniqueKeys(input.lines.map((line, index) => line.clientKey || line.id || `line-${index}`))
   const prepared = input.lines.map((line, index) => ({
     line,
-    key: line.id || line.clientKey || `line-${index}`,
-    frozen: line.frozen ? readFrozen(line, exponent) : undefined,
+    key: keys[index]!,
+    // undefined: priced from its inputs. null: stored, but unreadable. A legacy draft prices nothing.
+    stored: line.stored || legacy ? readStored(line, exponent) : undefined,
   }))
 
-  const calculated = calculate(input, prepared.map((entry) => entry.frozen), exponent)
+  const calculated = calculate(input, prepared.map((entry) => entry.stored), exponent)
   let nextCalculated = 0
-  const lines: DocumentViewLine[] = prepared.map(({ line, key, frozen }) => {
-    const base = { key, id: line.id || null, description: line.description, quantity: asEntered(line.quantity), unitPrice: asEntered(line.unitPrice) }
-    if (line.frozen) {
-      const vat = frozen ? lineVat(frozen.vat) : null
-      return frozen
-        ? { ...base, vat, ...amountsOf(frozen.net, frozen.tax, frozen.gross, input.pricesIncludeTax, exponent), locked: true }
-        : { ...base, vat: null, ...noAmounts, locked: true }
+  const lines: DocumentViewLine[] = prepared.map(({ line, key, stored }) => {
+    const quantity = asEntered(line.quantity)
+    const base = { key, id: line.id || null, description: line.description, quantity, unitPrice: asEntered(line.unitPrice), locked: line.locked ?? false }
+    if (stored !== undefined) {
+      return stored
+        ? { ...base, vat: lineVat(stored.vat), ...lineAmounts(quantity, stored.net, stored.tax, stored.gross, input.pricesIncludeTax, exponent) }
+        : { ...base, vat: null, ...noAmounts }
     }
     const result = calculated?.lines[nextCalculated++]
     return {
       ...base, vat: result ? lineVat(result.vat) : enteredVat(line, input.taxRate),
-      ...(result ? amountsOf(new D(result.net), new D(result.tax), new D(result.gross), input.pricesIncludeTax, exponent) : noAmounts),
-      locked: false,
+      ...(result ? lineAmounts(quantity, new D(result.net), new D(result.tax), new D(result.gross), input.pricesIncludeTax, exponent) : noAmounts),
     }
   })
 
   const value = input.number ?? null
   const reference = input.paymentReference?.trim() || value
   return {
-    kind: input.kind, state: "draft", status: input.status,
+    version: 1, kind: input.kind, state: "draft", status: input.status,
     number: { value, preview: value === null ? input.previewNumber ?? null : null },
     locale: input.locale, timezone: input.timezone, currency: input.currency, exponent, pricesIncludeTax: input.pricesIncludeTax,
-    seller: sellerView(input.seller, input.logoUrl), buyer: buyerView(input.buyer, input.contactId),
+    seller: sellerView(input.seller, input.sellerPhone, input.logoUrl), buyer: buyerView(input.buyer, input.contactId),
     dates: {
       issueDate: calendarDate(input.dates?.issueDate), supplyDate: calendarDate(input.dates?.supplyDate),
       dueDate: calendarDate(input.dates?.dueDate), expiryDate: calendarDate(input.dates?.expiryDate),
     },
     lines, vatGroups: calculated?.vatGroups ?? [], totals: calculated?.totals ?? null,
-    vatEvidence: input.vatEvidence ?? null, notes: notesView(input.notes),
+    vatEvidence: evidenceView(input.vatEvidence), notes: notesView(input.notes),
     paymentDetails: paymentDetailsView(input.seller, reference || null, input.kind),
-    calculation: { version: "v2", staleLegacy: input.staleLegacy ?? false },
+    correction: null,
+    calculation: { version: input.calculationVersion, staleLegacy: legacy },
   }
 }
-
-const noAmounts = { net: null, tax: null, gross: null, amount: null } as const
-
-function amountsOf(net: Decimal, tax: Decimal, gross: Decimal, pricesIncludeTax: boolean, exponent: number) {
-  return {
-    net: fixed(net, exponent), tax: fixed(tax, exponent), gross: fixed(gross, exponent),
-    amount: fixed(pricesIncludeTax ? gross : net, exponent),
-  }
-}
-
-const lineVat = (vat: { treatment: VatTreatment; rate: string; reasonCode: VatReasonCode | null; country: string | null }): DocumentViewLineVat =>
-  ({ treatment: vat.treatment, rate: vat.rate, reasonCode: vat.reasonCode, country: vat.country })
 
 /** The classification of a line that did not calculate, as far as it can be read without guessing. */
 function enteredVat(line: DraftViewLineInput, taxRate: string | number): DocumentViewLineVat | null {
@@ -220,50 +261,51 @@ function enteredVat(line: DraftViewLineInput, taxRate: string | number): Documen
     return lineVat(documentVat({ description: line.description, quantity: 1, unitPrice: 0, ...(line.vat ? { vat: line.vat } : {}) }, taxRate))
   } catch {
     return line.vat?.rate !== undefined
-      ? { treatment: line.vat.treatment, rate: line.vat.rate, reasonCode: line.vat.reasonCode ?? null, country: line.vat.country ?? null }
+      ? { treatment: line.vat.treatment, rate: canonicalRate(line.vat.rate), reasonCode: line.vat.reasonCode ?? null, country: line.vat.country ?? null }
       : null
   }
 }
 
 type Calculated = {
-  lines: Array<{ vat: DocumentViewLineVat & { reasonCode: VatReasonCode | null }; net: string; tax: string; gross: string }>
+  lines: Array<{ vat: StoredLine["vat"]; net: string; tax: string; gross: string }>
   vatGroups: DocumentViewVatGroup[]
   totals: NonNullable<DocumentView["totals"]>
 }
 
-function calculate(input: DraftViewInput, frozen: Array<FrozenAmounts | null | undefined>, exponent: number): Calculated | null {
-  if (frozen.some((entry) => entry === null)) return null
-  const frozenLines = frozen.filter((entry): entry is FrozenAmounts => entry !== undefined && entry !== null)
-  const editable = input.lines.filter((line) => !line.frozen)
-  const preview = previewDraft({
-    items: editable.map((line) => ({ description: line.description, quantity: line.quantity, unitPrice: line.unitPrice, ...(line.vat ? { vat: line.vat } : {}) })),
-    taxRate: input.taxRate, currency: input.currency, pricesIncludeTax: input.pricesIncludeTax,
-    ...(input.vatEvidence ? { vatEvidence: input.vatEvidence } : {}),
-  })
-  const result = preview.result
-  if (!result) return null
+function calculate(input: DraftViewInput, stored: Array<StoredLine | null | undefined>, exponent: number): Calculated | null {
+  if (stored.some((entry) => entry === null)) return null
+  const storedLines = stored.filter((entry): entry is StoredLine => entry !== undefined && entry !== null)
+  const editable = input.lines.filter((_, index) => stored[index] === undefined)
 
-  // The engine refuses to mix out-of-scope with other treatments among the lines it prices; the frozen lines count too.
-  const treatments = [...result.lines.map((line) => line.vat.treatment), ...frozenLines.map((line) => line.vat.treatment)]
-  if (treatments.includes("out_of_scope") && treatments.some((treatment) => treatment !== "out_of_scope")) return null
-
+  // Only the lines that are not stored are priced, as the server does. Whether the mix of
+  // classifications may be issued is issuance's rule: the view shows what is stored.
+  let priced: Calculated["lines"] = []
   const groups = new Map<string, GroupSums>()
-  for (const group of result.groups) {
-    groups.set(group.key, {
-      treatment: group.treatment, rate: group.rate, reasonCode: group.reasonCode, country: group.country,
-      net: new D(group.net), tax: new D(group.tax), gross: new D(group.gross), payableRounding: new D(group.payableRounding),
+  if (editable.length) {
+    const preview = previewDraft({
+      items: editable.map((line) => ({ description: line.description, quantity: line.quantity, unitPrice: line.unitPrice, ...(line.vat ? { vat: line.vat } : {}) })),
+      taxRate: input.taxRate, currency: input.currency, pricesIncludeTax: input.pricesIncludeTax,
+      ...(input.vatEvidence ? { vatEvidence: input.vatEvidence } : {}),
     })
+    if (!preview.result) return null
+    priced = preview.result.lines.map((line) => ({ vat: line.vat, net: line.net, tax: line.tax, gross: line.gross }))
+    for (const group of preview.result.groups) {
+      groups.set(group.key, {
+        treatment: group.treatment, rate: group.rate, reasonCode: group.reasonCode, country: group.country,
+        net: new D(group.net), tax: new D(group.tax), gross: new D(group.gross), payableRounding: new D(group.payableRounding),
+      })
+    }
   }
-  for (const line of frozenLines) {
+  for (const line of storedLines) {
     const key = vatGroupKey(line.vat)
     const group = groups.get(key) ?? {
-      treatment: line.vat.treatment, rate: new D(line.vat.rate).toFixed(), reasonCode: line.vat.reasonCode, country: line.vat.country,
+      treatment: line.vat.treatment, rate: canonicalRate(line.vat.rate), reasonCode: line.vat.reasonCode, country: line.vat.country,
       net: new D(0), tax: new D(0), gross: new D(0), payableRounding: new D(0),
     }
     group.net = group.net.plus(line.net)
     group.tax = group.tax.plus(line.tax)
     group.gross = group.gross.plus(line.gross)
-    // A frozen line's own residual: what its gross holds beyond its net and tax.
+    // A stored line's own residual: what its gross holds beyond its net and tax.
     group.payableRounding = group.payableRounding.plus(line.gross.minus(line.net).minus(line.tax))
     groups.set(key, group)
   }
@@ -274,14 +316,16 @@ function calculate(input: DraftViewInput, frozen: Array<FrozenAmounts | null | u
   })).sort(byKey)
 
   const all = [...groups.values()]
-  const net = sum(all.map((group) => group.net)), tax = sum(all.map((group) => group.tax))
-  const gross = sum(all.map((group) => group.gross)), payableRounding = sum(all.map((group) => group.payableRounding))
-  if (!net.plus(tax).plus(payableRounding).eq(gross)) return null
-  const payable = gross.minus(result.depositApplicationsGross)
+  const gross = sum(all.map((group) => group.gross))
   return {
-    lines: result.lines.map((line) => ({ vat: line.vat, net: line.net, tax: line.tax, gross: line.gross })),
+    lines: priced,
     vatGroups,
-    totals: { net: fixed(net, exponent), tax: fixed(tax, exponent), gross: fixed(gross, exponent), payableRounding: fixed(payableRounding, exponent), payable: fixed(payable, exponent) },
+    totals: {
+      net: fixed(sum(all.map((group) => group.net)), exponent), tax: fixed(sum(all.map((group) => group.tax)), exponent),
+      gross: fixed(gross, exponent), payableRounding: fixed(sum(all.map((group) => group.payableRounding)), exponent),
+      // A draft has no deposit applications, so everything gross is payable.
+      payable: fixed(gross, exponent),
+    },
   }
 }
 
@@ -290,9 +334,9 @@ function calculate(input: DraftViewInput, frozen: Array<FrozenAmounts | null | u
 // ---------------------------------------------------------------------------------------------
 
 /**
- * The part of the issued money snapshot the view reads (`invoiceIssuedSchema`, `creditNoteIssuedSchema`
- * and `invoiceMoneySnapshot` all satisfy it). It is structural because shared cannot import from the
- * app; the app proves its types are assignable.
+ * The part of the issued money snapshot the view reads (`invoiceIssuedSchema`, the full
+ * `creditNoteIssuedSchema` member and `invoiceMoneySnapshot` all satisfy it). It is structural because
+ * shared cannot import from the app; the app proves its types are assignable.
  */
 export type IssuedMoneySnapshot = {
   number: string
@@ -326,8 +370,16 @@ export type IssuedMoneySnapshot = {
   }>
   totals: { net: string; tax: string; gross: string; payableRounding: string }
   calculation: { version: "v2" | "legacy_per_line"; pricesIncludeTax: boolean }
+  /**
+   * An issued document has none today, so `payable` is its gross. Typed `never[]` so that a schema
+   * which starts carrying deposit applications stops compiling until the view accounts for them.
+   */
+  depositApplications?: readonly never[]
   seller: SellerSnapshot
   buyer: BuyerSnapshot
+  /** A credit note: the invoice it corrects and why. */
+  correctsNumber?: string
+  reason?: string
 }
 
 export type IssuedViewExtras = {
@@ -335,6 +387,7 @@ export type IssuedViewExtras = {
   status: string
   locale: string
   timezone: string
+  sellerPhone?: string | null
   logoUrl?: string | null
   contactId?: string | null
   notes?: string | null
@@ -342,46 +395,80 @@ export type IssuedViewExtras = {
   vatEvidence?: VatEvidence | null
   paymentReference?: string | null
   expiryDate?: string | null
+  /** A credit note: when the invoice it corrects was issued. The snapshot does not record it. */
+  correctsIssueDate?: string | null
+}
+
+/**
+ * Raised for a snapshot that holds no money, such as the sparse credit notes written before issued
+ * snapshots existed (the second member of `creditNoteIssuedSchema`). Stored snapshots are JSON, so the
+ * types cannot rule it out. Callers fall back to the document's own rows.
+ */
+export class DocumentSnapshotIncomplete extends Error {
+  readonly code = "document_snapshot_incomplete"
+  constructor(readonly missing: string) {
+    super(`The issued snapshot has no ${missing}, so it cannot be shown as a document view`)
+    this.name = "DocumentSnapshotIncomplete"
+  }
+}
+
+function assertComplete(snapshot: unknown): asserts snapshot is IssuedMoneySnapshot {
+  const s = (typeof snapshot === "object" && snapshot !== null ? snapshot : {}) as Record<string, unknown>
+  const missing = (["number", "issueDate", "currency"] as const).find((key) => typeof s[key] !== "string")
+    ?? (["lines", "vatGroups"] as const).find((key) => !Array.isArray(s[key]))
+    ?? (["totals", "calculation"] as const).find((key) => typeof s[key] !== "object" || s[key] === null)
+    ?? (typeof s.exponent === "number" ? undefined : "exponent")
+  if (missing) throw new DocumentSnapshotIncomplete(missing)
 }
 
 /**
  * The view of an issued document. Every amount is copied from the frozen snapshot: nothing is
  * calculated or repriced, so the view says what was issued whatever today's rules would give.
+ *
+ * Throws `DocumentSnapshotIncomplete` for a snapshot without money.
  */
 export function buildIssuedView(snapshot: IssuedMoneySnapshot, extras: IssuedViewExtras): DocumentView {
+  assertComplete(snapshot)
   const { pricesIncludeTax } = snapshot.calculation
-  const lines: DocumentViewLine[] = snapshot.lines.map((line) => ({
-    key: line.lineId, id: line.lineId, description: line.description,
+  const keys = uniqueKeys(snapshot.lines.map((line) => line.lineId))
+  const lines: DocumentViewLine[] = snapshot.lines.map((line, index) => ({
+    key: keys[index]!, id: line.lineId, description: line.description,
     quantity: line.quantityInput, unitPrice: line.unitPriceInput,
+    unitPriceNet: unitPriceNetOf(line.quantityInput, line.net, line.gross),
     vat: lineVat(line.vat),
     net: line.net, tax: line.tax, gross: line.gross, amount: pricesIncludeTax ? line.gross : line.net,
     locked: true,
   }))
   const reference = extras.paymentReference?.trim() || snapshot.number
+  const correction: DocumentViewCorrection | null = extras.kind === "creditNote" && snapshot.correctsNumber !== undefined && snapshot.reason !== undefined
+    ? { invoiceNumber: snapshot.correctsNumber, invoiceIssueDate: calendarDate(extras.correctsIssueDate), reason: snapshot.reason }
+    : null
   return {
-    kind: extras.kind, state: "issued", status: extras.status,
+    version: 1, kind: extras.kind, state: "issued", status: extras.status,
     number: { value: snapshot.number, preview: null },
     locale: extras.locale, timezone: extras.timezone, currency: snapshot.currency, exponent: snapshot.exponent, pricesIncludeTax,
-    seller: sellerView(snapshot.seller, extras.logoUrl), buyer: buyerView(snapshot.buyer, extras.contactId),
+    seller: sellerView(snapshot.seller, extras.sellerPhone, extras.logoUrl), buyer: buyerView(snapshot.buyer, extras.contactId),
     dates: {
       issueDate: calendarDate(snapshot.issueDate), supplyDate: calendarDate(snapshot.supplyDate),
       dueDate: calendarDate(snapshot.dueDate), expiryDate: calendarDate(extras.expiryDate),
     },
     lines,
     vatGroups: snapshot.vatGroups.map((group) => ({
-      key: group.key, treatment: group.treatment, rate: group.rate, reasonCode: group.reasonCode, country: group.country,
+      key: group.key, treatment: group.treatment, rate: canonicalRate(group.rate), reasonCode: group.reasonCode, country: group.country,
       net: group.net, tax: group.tax, gross: group.gross, payableRounding: group.payableRounding,
     })),
-    // Issued documents have no deposit applications, so what is payable is the gross as issued.
-    totals: { ...pick(snapshot.totals), payable: snapshot.totals.gross },
-    vatEvidence: extras.vatEvidence !== undefined ? extras.vatEvidence : agreedEvidence(snapshot.vatGroups),
+    // No deposit applications on an issued document (see the snapshot type), so the gross is what is payable.
+    totals: {
+      net: snapshot.totals.net, tax: snapshot.totals.tax, gross: snapshot.totals.gross,
+      payableRounding: snapshot.totals.payableRounding, payable: snapshot.totals.gross,
+    },
+    vatEvidence: evidenceView(extras.vatEvidence !== undefined ? extras.vatEvidence : agreedEvidence(snapshot.vatGroups)),
     notes: notesView(extras.notes),
     paymentDetails: paymentDetailsView(snapshot.seller, reference, extras.kind),
+    correction,
     calculation: { version: snapshot.calculation.version, staleLegacy: false },
   }
 }
-
-const pick = ({ net, tax, gross, payableRounding }: IssuedMoneySnapshot["totals"]) => ({ net, tax, gross, payableRounding })
 
 /** The pricing engine attaches the document's evidence to every group it covers; groups that differ have no single answer. */
 function agreedEvidence(groups: IssuedMoneySnapshot["vatGroups"]): VatEvidence | null {
@@ -389,4 +476,21 @@ function agreedEvidence(groups: IssuedMoneySnapshot["vatGroups"]): VatEvidence |
   const first = evidence[0]
   if (!first || evidence.some((item) => JSON.stringify(item) !== JSON.stringify(first))) return null
   return first
+}
+
+// ---------------------------------------------------------------------------------------------
+// Public view
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * What a customer may see of a view: no contact id and no line ids, and positional line keys
+ * (`line-1`, `line-2`, ...) instead of ones derived from stored ids.
+ */
+export function toPublicDocumentView(view: DocumentView): PublicDocumentView {
+  const { buyer, lines, ...rest } = view
+  return {
+    ...rest,
+    buyer: buyer ? (({ contactId: _contactId, ...visible }) => visible)(buyer) : null,
+    lines: lines.map(({ id: _id, ...line }, index) => ({ ...line, key: `line-${index + 1}` })),
+  }
 }

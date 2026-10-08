@@ -44,8 +44,9 @@ describe("buildIssuedView against the app's issued snapshots", () => {
     const credit = creditNoteIssuedSchema.parse(creditFixture())
     expect("lines" in credit).toBe(true)
     if (!("lines" in credit)) return
-    const view = buildIssuedView(credit, { ...extras, kind: "creditNote", status: "issued" })
+    const view = buildIssuedView(credit, { ...extras, kind: "creditNote", status: "issued", correctsIssueDate: "2026-10-01" })
     expect(documentViewSchema.parse(view)).toEqual(view)
+    expect(view.correction).toEqual({ invoiceNumber: credit.correctsNumber, invoiceIssueDate: "2026-10-01", reason: credit.reason })
     expect(view.vatGroups.map((group) => group.gross)).toEqual(credit.vatGroups.map((group) => group.gross))
     expect(view).toMatchObject({ kind: "creditNote", dates: { dueDate: null }, paymentDetails: null })
   })
