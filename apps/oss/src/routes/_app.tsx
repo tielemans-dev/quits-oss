@@ -13,8 +13,9 @@ import {
 } from '../lib/active-organization'
 import { OrganizationChangedBanner } from '../components/organization-changed-banner'
 import { shouldRedirectToCloudOnboarding } from '../lib/cloud-onboarding'
-import { SidebarProvider, SidebarTrigger } from '../components/ui/sidebar'
+import { SidebarProvider } from '../components/ui/sidebar'
 import { AppSidebar } from '../components/app-sidebar'
+import { AppMain } from '../components/shell/app-main'
 import { useI18n } from '../lib/i18n/react'
 import { trpc } from '../trpc/client'
 
@@ -106,13 +107,9 @@ function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="flex-1 overflow-auto">
-        <div className="flex items-center gap-2 border-b px-4 py-2">
-          <SidebarTrigger />
-        </div>
-        <OrganizationChangedBanner />
+      <AppMain banner={<OrganizationChangedBanner />}>
         {organizationReady ? <Outlet /> : <div aria-busy="true" className="p-6" />}
-      </main>
+      </AppMain>
     </SidebarProvider>
   )
 }

@@ -314,3 +314,14 @@ html[data-document] {
 @utility bg-brand-glow {
   background-image: var(--brand-glow);
 }
+
+/*
+ * The page container (components/shell/app-main.tsx) gives every page one content width and one
+ * padding. Pages still carry their own `p-*` and `max-w-*` from before the shell did, and this
+ * unlayered rule outranks them, so no page needs touching to line up. Remove a page's own values
+ * when you next edit it.
+ */
+[data-slot='app-content'] > * {
+  max-width: none;
+  padding: 0;
+}
