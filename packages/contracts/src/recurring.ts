@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { calendarDateInputSchema, documentLineInputSchema, documentLineV2InputSchema, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
+import { calendarDateInputSchema, documentLineInputSchema, documentLineV2InputSchema, refineDocumentLineKeys, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
 
 import { draftVatEvidenceSchema } from "./vat"
 
@@ -21,7 +21,7 @@ const currencySchema = z.string().trim().regex(/^[A-Z]{3}$/)
 const scheduleFields = {
   name: z.string().trim().min(1).max(200),
   contactId: z.string().trim().min(1),
-  items: z.array(documentLineInputSchema).min(1).max(100),
+  items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
   taxRate: documentTaxRateSchema,
   currency: currencySchema,
   notes: z.string().trim().max(5000),
@@ -69,11 +69,11 @@ export const recurringUpdateInputSchema = z.object({
 
 export const recurringCreateV2InputSchema = recurringCreateInputSchema.extend({
   taxRate: documentTaxRateV2Schema.default("0"),
-  items: z.array(documentLineV2InputSchema).min(1).max(100),
+  items: z.array(documentLineV2InputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
 })
 export const recurringUpdateV2InputSchema = recurringUpdateInputSchema.extend({
   taxRate: documentTaxRateV2Schema.optional(),
-  items: z.array(documentLineV2InputSchema).min(1).max(100).optional(),
+  items: z.array(documentLineV2InputSchema).min(1).max(100).superRefine(refineDocumentLineKeys).optional(),
 })
 
 export const recurringIdInputSchema = z.object({ id: z.string().min(1) })

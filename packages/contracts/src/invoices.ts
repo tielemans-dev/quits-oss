@@ -25,12 +25,22 @@ export const calendarDateInputSchema = dateInputSchema
   .pipe(z.iso.date())
 
 export const documentLineInputSchema = z.object({
-  key: z.string().min(1).max(200).optional(),
+  key: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().min(1).max(500),
   quantity: z.union([z.number().positive().max(1_000_000), quantityDecimalSchema]),
   unitPrice: z.union([z.number().min(0).max(1_000_000_000), unitPriceDecimalSchema]),
   vat: documentVatInputSchema.optional(),
 })
+
+/** Run after each line is parsed, so uniqueness uses the trimmed keys that will be persisted. */
+export function refineDocumentLineKeys(items: readonly { key?: string }[], ctx: z.RefinementCtx) {
+  const seen = new Set<string>()
+  items.forEach((item, index) => {
+    if (item.key === undefined) return
+    if (seen.has(item.key)) ctx.addIssue({ code: "custom", path: [index, "key"], message: "Line keys must be unique within the document" })
+    seen.add(item.key)
+  })
+}
 
 export const documentLineV2InputSchema = documentLineInputSchema.extend({
   quantity: quantityDecimalSchema,
@@ -56,7 +66,7 @@ export const invoiceCreateDraftInputSchema = z.object({
   notes: z.string().trim().max(5000).optional(),
   taxRate: documentTaxRateSchema.default(0),
   vatEvidence: draftVatEvidenceSchema.optional(),
-  items: z.array(documentLineInputSchema).min(1).max(100),
+  items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
 })
 
 export const invoiceUpdateDraftInputSchema = z.object({
@@ -69,17 +79,17 @@ export const invoiceUpdateDraftInputSchema = z.object({
   notes: z.string().trim().max(5000).optional(),
   taxRate: documentTaxRateSchema.optional(),
   vatEvidence: draftVatEvidenceSchema.optional(),
-  items: z.array(invoiceUpdateLineInputSchema).min(1).max(100).optional(),
+  items: z.array(invoiceUpdateLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys).optional(),
 })
 
 export const invoiceCreateDraftV2InputSchema = invoiceCreateDraftInputSchema.extend({
   supplyDate: calendarDateInputSchema,
   taxRate: documentTaxRateV2Schema.default("0"),
-  items: z.array(documentLineV2InputSchema).min(1).max(100),
+  items: z.array(documentLineV2InputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
 })
 export const invoiceUpdateDraftV2InputSchema = invoiceUpdateDraftInputSchema.extend({
   taxRate: documentTaxRateV2Schema.optional(),
-  items: z.array(invoiceUpdateLineV2InputSchema).min(1).max(100).optional(),
+  items: z.array(invoiceUpdateLineV2InputSchema).min(1).max(100).superRefine(refineDocumentLineKeys).optional(),
 })
 
 export const invoiceIdInputSchema = z.object({ id: z.string().min(1) })

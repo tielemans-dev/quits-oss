@@ -271,18 +271,21 @@ schedule to a sale. Pass `expectedRevision` on updates to refuse an outdated sav
 `InvalidState` / `stale_draft`. Omitting it preserves the previous update behavior. A refused save
 changes neither the document nor its revision and emits no draft-update event.
 
-Each input line accepts an optional `key`, a non-empty client-generated string of up to 200
-characters. Reuse it on later saves to retain line identity when database item IDs change. Stored
-rows expose it as `clientKey`; notes-only edits preserve it. Linked rows still require their `id`
+Invoice and quote create/update inputs, and recurring template create/update inputs, accept an
+optional `key` on each line, a trimmed, non-empty client-generated string of up to 200 characters.
+Keys must be unique within an `items` array, including keys inherited from linked invoice rows.
+Reuse each key on later saves to retain line identity when database item IDs change. Stored rows
+expose it as `clientKey`; notes-only edits preserve it. Linked rows still require their `id`
 or `deliverableId` to identify the reserved work. Extra rows keep their keys when the linked writer
 moves them after the reserved rows. Deliverable copies initially use the deliverable ID as their
 key. Accepted quote conversion copies existing keys to the invoice.
 
 The app's `invoices.view`, `quotes.view` and `creditNotes.view` queries return
-`{ view, revision, canEdit, locks: { agreementLinked, emailSending }, historical }`.
+`{ view, revision, canEdit, locks: { agreementLinked, emailSending }, historical, notices }`.
 `revision` is the draft's `editRevision`; credit notes return `0`. `canEdit` requires a draft,
 update permission, and no email in progress. An agreement link locks individual reserved lines,
-not the whole draft.
+not the whole draft. Unreadable stored VAT evidence becomes null in row-based views, with
+`"invalid_vat_evidence"` in `notices`. Reading a view does not change the stored evidence.
 
 Issued invoices and credit notes read their money and parties from `issuanceSnapshot`, with
 branding from the published issuance candidate. If the snapshot is missing, incomplete or corrupt,

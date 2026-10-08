@@ -449,7 +449,7 @@ model Quote {
   organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   contactId               String
   contact                 Contact      @relation(fields: [contactId], references: [id])
-  editRevision            Int               @default(0)
+  editRevision            Int          @default(0)
   number                  String?
   status                  String       @default("draft")
   issueDate               DateTime     @default(now())

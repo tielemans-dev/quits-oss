@@ -22,8 +22,8 @@ function caller(organizationId: string, userId: string) {
     user: { id: userId, email: "test@example.test", name: "Test" }, session: { activeOrganizationId: organizationId },
   } } as never)
 }
-async function setup(currency = "USD") {
-  const org = await createTestOrganization({ roles: ["admin", "accountant"], settings: { currency } })
+async function setup(currency = "USD", timezone = "UTC") {
+  const org = await createTestOrganization({ roles: ["admin", "accountant"], settings: { currency, timezone } })
   cleanups.push(org.cleanup)
   const admin = caller(org.organizationId, org.actors.admin.userId)
   const accountant = caller(org.organizationId, org.actors.accountant.userId)
@@ -44,7 +44,62 @@ async function issue(ctx: Context) {
 }
 
 ;(hasTestDatabase ? describe : describe.skip)("server document views and draft revisions", () => {
+  for (const timezone of ["America/New_York", "Pacific/Auckland"]) {
+    it(`round-trips calendar dates without timezone drift in ${timezone}`, async () => {
+      const ctx = await setup("USD", timezone)
+      const date = "2026-11-07"
+      await ctx.admin.invoices.update({ id: ctx.invoice.id, dueDate: date, supplyDate: date })
+      await ctx.admin.quotes.update({ id: ctx.quote.id, expiryDate: date })
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoice.id } })).dueDate.toISOString()).toBe(`${date}T00:00:00.000Z`)
+      expect((await prisma.quote.findUniqueOrThrow({ where: { id: ctx.quote.id } })).expiryDate.toISOString()).toBe(`${date}T00:00:00.000Z`)
+      for (let round = 0; round < 2; round++) {
+        const invoice = await ctx.admin.invoices.view({ id: ctx.invoice.id })
+        const quote = await ctx.admin.quotes.view({ id: ctx.quote.id })
+        expect(invoice.view.dates).toMatchObject({ dueDate: date, supplyDate: date, issueDate: null })
+        expect(quote.view.dates.expiryDate).toBe(date)
+        await ctx.admin.invoices.update({ id: ctx.invoice.id, dueDate: invoice.view.dates.dueDate!, supplyDate: invoice.view.dates.supplyDate! })
+        await ctx.admin.quotes.update({ id: ctx.quote.id, expiryDate: quote.view.dates.expiryDate! })
+      }
+      expect((await ctx.admin.invoices.view({ id: ctx.invoice.id })).view.dates.dueDate).toBe(date)
+      expect((await ctx.admin.quotes.view({ id: ctx.quote.id })).view.dates.expiryDate).toBe(date)
+      // Issued-row fallbacks keep calendar dates too, but issueDate remains a zoned instant.
+      const issueDate = new Date("2026-11-07T00:00:00.000Z")
+      await prisma.invoice.update({ where: { id: ctx.invoice.id }, data: { status: "sent", number: "INV-1", issueDate } })
+      await prisma.quote.update({ where: { id: ctx.quote.id }, data: { status: "sent", number: "QTE-1", issueDate } })
+      const issuedDay = timezone === "America/New_York" ? "2026-11-06" : date
+      expect((await ctx.admin.invoices.view({ id: ctx.invoice.id })).view.dates).toMatchObject({ dueDate: date, issueDate: issuedDay })
+      expect((await ctx.admin.quotes.view({ id: ctx.quote.id })).view.dates).toMatchObject({ expiryDate: date, issueDate: issuedDay })
+    })
+  }
+
   for (const kind of ["invoice", "quote"] as const) {
+    it(`shows a notice instead of throwing for corrupt ${kind} VAT evidence`, async () => {
+      const ctx = await setup()
+      const id = ctx[kind].id
+      const api = kind === "invoice" ? ctx.admin.invoices : ctx.admin.quotes
+      const before = await api.view({ id })
+      const vatEvidence = { viesCheck: { result: 123 } }
+      if (kind === "invoice") await prisma.invoice.update({ where: { id }, data: { vatEvidence } })
+      else await prisma.quote.update({ where: { id }, data: { vatEvidence } })
+      const after = await api.view({ id })
+      expect(after).toMatchObject({ historical: false, revision: before.revision, notices: ["invalid_vat_evidence"], view: { vatEvidence: null } })
+      expect(after.view.totals).toEqual(before.view.totals)
+      expect(after.view.lines).toEqual(before.view.lines)
+      expect(documentViewSchema.parse(after.view)).toEqual(after.view)
+    })
+
+    it(`refuses duplicate ${kind} keys without saving and persists trimmed keys`, async () => {
+      const ctx = await setup()
+      const id = ctx[kind].id
+      const api = kind === "invoice" ? ctx.admin.invoices : ctx.admin.quotes
+      const before = await api.view({ id })
+      const line = { description: "Work", quantity: "1", unitPrice: "10" }
+      await expect(api.updateV2({ id, items: [{ ...line, key: "a" }, { ...line, key: " a " }] })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+      expect(await api.view({ id })).toEqual(before)
+      await api.updateV2({ id, items: [{ ...line, key: " a " }, { ...line, key: "b" }] })
+      expect((await api.view({ id })).view.lines.map(row => row.key)).toEqual(["a", "b"])
+    })
+
     it(`refuses one of two concurrent ${kind} saves without changing its lines or emitting another event`, async () => {
       const ctx = await setup()
       const id = ctx[kind].id
@@ -180,6 +235,16 @@ async function issue(ctx: Context) {
     expect(before).toMatchObject({ revision: 0, canEdit: true, locks: { agreementLinked: true } })
     expect(before.view.lines[0]?.key).toBe(agreement.deliverables[0]!.id)
     const linked = before.view.lines[0]!
+    const linkedInput = { id: linked.id!, description: linked.description, quantity: linked.quantity, unitPrice: linked.unitPrice }
+    // Only the extra supplies a key. It must not collide with an inherited linked key or id.
+    for (const key of [linked.key, linked.id!]) {
+      await prisma.invoiceItem.update({ where: { id: linked.id! }, data: { clientKey: key === linked.id ? null : linked.key } })
+      await expect(ctx.admin.invoices.updateV2({ id, items: [
+        linkedInput, { key, description: "Collision", quantity: "1", unitPrice: "10" },
+      ] })).rejects.toMatchObject({ cause: { code: "duplicate_line_key" } })
+      expect((await ctx.admin.invoices.view({ id })).revision).toBe(0)
+    }
+
     await ctx.admin.invoices.updateV2({ id, expectedRevision: 0, items: [
       { key: "extra-first", description: "Extra first", quantity: "2", unitPrice: "10" },
       { id: linked.id!, key: "linked-key", description: linked.description, quantity: linked.quantity, unitPrice: linked.unitPrice },
@@ -187,6 +252,13 @@ async function issue(ctx: Context) {
     ] })
     const after = await ctx.admin.invoices.view({ id })
     expect(after.revision).toBe(1)
+    // A renamed linked row must also be checked against an extra's inherited client key.
+    const extra = after.view.lines[1]!
+    await expect(ctx.admin.invoices.updateV2({ id, items: [
+      { ...linkedInput, key: extra.key },
+      { id: extra.id!, description: extra.description, quantity: extra.quantity, unitPrice: extra.unitPrice },
+    ] })).rejects.toMatchObject({ cause: { code: "duplicate_line_key" } })
+    expect(await ctx.admin.invoices.view({ id })).toEqual(after)
     expect(after.view.lines.map(line => [line.description, line.key, line.locked])).toEqual([
       [linked.description, "linked-key", true], ["Extra first", "extra-first", false], ["Extra last", "extra-last", false],
     ])

@@ -132,6 +132,15 @@ const exempt = { treatment: "exempt", rate: "0", reasonCode: "financial" } as co
 const intra = { treatment: "intra_community", rate: "0", reasonCode: "services_b2b", country: "DE" } as const
 
 describe("the draft view against the app's own writers", () => {
+  it("uses the first positive nominal rate after an exempt line", () => {
+    const document = v2Document({ currency: "DKK", taxRate: "25", pricesIncludeTax: false, items: [
+      { description: "Exempt first", quantity: "1", unitPrice: "100", vat: exempt },
+      { description: "Standard second", quantity: "1", unitPrice: "100", vat: standard25 },
+    ] })
+    expect(draftViewInputFromRows("invoice", document).taxRate).toBe(25)
+    expectParity(document, "exempt first")
+  })
+
   for (const pricesIncludeTax of [false, true]) {
     it(`prices a v2 draft as the server stores it (pricesIncludeTax: ${pricesIncludeTax})`, () => {
       const document = v2Document({

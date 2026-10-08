@@ -12,6 +12,7 @@ import { formatIsoDate } from "../../lib/exports/format"
 import { actorCan, type Actor } from "../actor"
 import { Command, Db } from "../services"
 import { peekNextDocumentNumber } from "./numbering"
+import { impliedTaxRate } from "./pricing"
 
 type Row = Omit<InvoiceItem, "invoiceId" | "deliverableId" | "clientKey"> & { deliverableId?: string | null; clientKey?: string | null }
 type DocumentRows = Pick<Invoice,
@@ -33,21 +34,22 @@ export function draftViewInputFromRows(
   options: { branding?: Branding | null; previewNumber?: string | null; lockAll?: boolean } = {}
 ): DraftViewInput {
   const exponent = requireCurrencyExponent(document.currency)
+  const evidence = draftVatEvidenceSchema.safeParse(document.vatEvidence ?? {})
   return {
     kind, status: document.status, locale: document.locale, timezone: document.timezone,
     currency: document.currency, pricesIncludeTax: document.pricesIncludeTax,
     calculationVersion: document.calculationVersion === "v2" ? "v2" : "legacy_per_line",
-    taxRate: document.items[0]?.taxRate.toFixed() ?? "0",
+    taxRate: impliedTaxRate(document),
     number: document.number, previewNumber: options.previewNumber,
     seller: parseSellerSnapshot(document.sellerSnapshot), buyer: parseBuyerSnapshot(document.buyerSnapshot),
     sellerPhone: options.branding?.companyPhone, logoUrl: options.branding?.companyLogo,
     contactId: document.contactId, notes: document.notes, paymentReference: document.paymentReference,
-    vatEvidence: draftVatEvidenceSchema.parse(document.vatEvidence ?? {}),
+    vatEvidence: evidence.success ? evidence.data : null,
     dates: {
       issueDate: document.status === "draft" ? null : formatIsoDate(document.issueDate, document.timezone),
       supplyDate: document.supplyDate?.toISOString().slice(0, 10) ?? null,
-      dueDate: document.dueDate ? formatIsoDate(document.dueDate, document.timezone) : null,
-      expiryDate: document.expiryDate ? formatIsoDate(document.expiryDate, document.timezone) : null,
+      dueDate: document.dueDate?.toISOString().slice(0, 10) ?? null,
+      expiryDate: document.expiryDate?.toISOString().slice(0, 10) ?? null,
     },
     lines: document.items.map(line => ({
       id: line.id, clientKey: line.clientKey || line.id, description: line.description,
@@ -89,10 +91,7 @@ function correctedIssueDate(snapshot: unknown) {
 
 /** Rows are the historical source when no readable money snapshot exists. Never reprice them. */
 function issuedRowsView(kind: DocumentKind, document: DocumentRows, branding: Branding | null): DocumentView {
-  const evidence = draftVatEvidenceSchema.safeParse(document.vatEvidence ?? {})
-  const input = draftViewInputFromRows(kind === "quote" ? "quote" : "invoice", {
-    ...document, vatEvidence: evidence.success ? evidence.data : null,
-  }, { branding, lockAll: true })
+  const input = draftViewInputFromRows(kind === "quote" ? "quote" : "invoice", document, { branding, lockAll: true })
   const view = buildDraftView(input)
   const exponent = view.exponent
   // Some old rows have an incomplete classification. Their stored amounts remain authoritative.
@@ -125,6 +124,8 @@ export type DocumentViewResult = {
   locks: { agreementLinked: boolean; emailSending: boolean }
   /** Show a historical-document notice: money came from rows because the issued snapshot was unreadable. */
   historical: boolean
+  /** Unreadable row evidence was omitted; the stored evidence remains untouched. */
+  notices: Array<"invalid_vat_evidence">
 }
 
 /** One consistent database read, scoped to the authenticated actor's organization throughout. */
@@ -176,7 +177,9 @@ export async function loadDocumentView(actor: Actor, kind: DocumentKind, id: str
     }
     const emailSending = document.lastEmailAttemptOutcome === "sending"
     return {
-      view, historical, revision: "editRevision" in document ? document.editRevision : 0,
+      view, historical,
+      notices: (isDraft || kind === "quote" || historical) && !draftVatEvidenceSchema.safeParse(document.vatEvidence ?? {}).success ? ["invalid_vat_evidence"] : [],
+      revision: "editRevision" in document ? document.editRevision : 0,
       canEdit: isDraft && !emailSending && actorCan(actor, kind === "quote" ? "quote:update" : "invoice:update"),
       locks: { agreementLinked: "agreementId" in document && Boolean(document.agreementId), emailSending },
     }
