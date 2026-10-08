@@ -57,10 +57,10 @@ const field = (label: string) => screen.getByLabelText(label) as HTMLInputElemen
 const saveButton = () => screen.getByRole("button", { name: "settings.paymentDetails.save" }) as HTMLButtonElement
 const type = (label: string, value: string) => fireEvent.change(field(label), { target: { value } })
 
-async function renderAs(state: typeof empty | typeof complete, options: { canUpdate?: boolean } = {}) {
+async function renderAs(state: typeof empty | typeof complete, options: { canUpdate?: boolean; locale?: string } = {}) {
   const canUpdate = options.canUpdate ?? true
   api.get.mockResolvedValue({ ...state, canUpdate })
-  const view = render(<PaymentDetailsCard />)
+  const view = render(<PaymentDetailsCard locale={options.locale} />)
   await waitFor(() => expect(api.get).toHaveBeenCalled())
   await screen.findByText("settings.paymentDetails.title")
   await waitFor(() => expect((field("settings.paymentDetails.iban.label") as HTMLInputElement).disabled).toBe(!canUpdate))
@@ -107,6 +107,19 @@ describe("PaymentDetailsCard", () => {
     expect(within(preview).getByText("MobilePay Box 12345")).toBeTruthy()
     expect(preview.textContent).toContain("Payment reference: INV-0001")
     expect(screen.queryByText("settings.paymentDetails.preview.empty")).toBeNull()
+  })
+
+  it("previews in the organization's language, not the one the app is shown in", async () => {
+    await renderAs(complete, { locale: "da-DK" })
+    const preview = screen.getByTestId("payment-details-preview")
+    expect(within(preview).getByText("Betalingsoplysninger")).toBeTruthy()
+    expect(within(preview).getByText("Kontohaver")).toBeTruthy()
+    expect(preview.textContent).toContain("Betalingsreference: INV-0001")
+    cleanup()
+
+    await renderAs(complete, { locale: "en-US" })
+    expect(within(screen.getByTestId("payment-details-preview")).getByText("Payment details")).toBeTruthy()
+    expect(within(screen.getByTestId("payment-details-preview")).getByText("Account holder")).toBeTruthy()
   })
 
   it("saves the normalized details and reports success", async () => {

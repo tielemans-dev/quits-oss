@@ -156,6 +156,7 @@ function Field({
   )
 }
 
+/** Written like an invoice is: in the organization's language, not the one the app is shown in. */
 function PaymentDetailsPreview({ values, locale }: { values: Values; locale: string | undefined }) {
   const { t } = useI18n()
   const block = buildPaymentDetailsBlock(previewDetails(values), SAMPLE_INVOICE_NUMBER, locale)
@@ -195,8 +196,8 @@ function PaymentDetailsPreview({ values, locale }: { values: Values; locale: str
   )
 }
 
-export function PaymentDetailsCard() {
-  const { t, locale } = useI18n()
+export function PaymentDetailsCard({ locale }: { locale?: string | null }) {
+  const { t } = useI18n()
   const idPrefix = useId()
   const [loaded, setLoaded] = useState(false)
   // Only admins may change the details (settings:update); everyone else sees them read-only.
@@ -410,7 +411,7 @@ export function PaymentDetailsCard() {
           />
         </Field>
 
-        <PaymentDetailsPreview values={values} locale={locale} />
+        <PaymentDetailsPreview values={values} locale={locale ?? undefined} />
 
         {message && (
           <p

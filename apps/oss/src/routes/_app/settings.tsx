@@ -1576,7 +1576,7 @@ function SettingsPage() {
       </Card>
 
       <div className="mt-6 grid gap-6">
-        <PaymentDetailsCard />
+        <PaymentDetailsCard locale={settings?.locale} />
         <ReminderPolicyCard />
         <AgentKeysCard />
         <AuditLogCard />
