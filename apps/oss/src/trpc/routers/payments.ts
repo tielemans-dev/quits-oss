@@ -25,7 +25,7 @@ import { actorCan } from "../../domain/actor"
 import { recordPayment, voidPayment } from "../../domain/commands/payments"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { InvalidState } from "../../domain/errors"
-import { executeCommand } from "../../domain/execute"
+import { executeCommand, type CommandOutcome } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { authorizedProcedure, router } from "../init"
 import { unwrapOutcome } from "../outcome"
@@ -52,6 +52,18 @@ function rethrowPreviewError(error: unknown, message: string): never {
   }
   // Persistence and timeout errors may contain server details. Do not attach their cause.
   throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message })
+}
+
+/** Redact only unexpected executor failures; trusted command refusals keep their public details. */
+async function unwrapReceiptMutation<Result>(pending: Promise<CommandOutcome<Result>>, message: string): Promise<Result> {
+  let outcome: CommandOutcome<Result>
+  try {
+    outcome = await pending
+  } catch {
+    // Never trust a dependency's TRPCError or attach a persistence error as the public cause.
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message })
+  }
+  return unwrapOutcome(outcome)
 }
 
 export function serializePayment(payment: PaymentRow) {
@@ -153,11 +165,12 @@ export const paymentsRouter = router({
   recordReceipt: authorizedProcedure("payment:create")
     .input(receiptRecordInputSchema)
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(
-        await executeCommand(recordReceipt, input, {
+      unwrapReceiptMutation(
+        executeCommand(recordReceipt, input, {
           actor: ctx.actor,
           clientRequestId: `receipt:${input.requestId}`,
         }),
+        "Could not record receipt",
       ),
     ),
   previewAllocation: authorizedProcedure("payment:create")
@@ -175,11 +188,12 @@ export const paymentsRouter = router({
   allocateReceipt: authorizedProcedure("payment:create")
     .input(allocateReceipt.input)
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(
-        await executeCommand(allocateReceipt, input, {
+      unwrapReceiptMutation(
+        executeCommand(allocateReceipt, input, {
           actor: ctx.actor,
           clientRequestId: `allocation:${input.requestId}`,
         }),
+        "Could not allocate receipt",
       ),
     ),
   previewReceiptChange: authorizedProcedure("payment:void")
@@ -197,11 +211,12 @@ export const paymentsRouter = router({
   changeReceipt: authorizedProcedure("payment:void")
     .input(changeReceipt.input)
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(
-        await executeCommand(changeReceipt, input, {
+      unwrapReceiptMutation(
+        executeCommand(changeReceipt, input, {
           actor: ctx.actor,
           clientRequestId: `settlement:${input.requestId}`,
         }),
+        "Could not change receipt",
       ),
     ),
 
