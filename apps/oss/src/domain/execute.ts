@@ -3,6 +3,7 @@ import { Cause, Effect, Exit, Option } from "effect"
 import type { CommandError, CommandRecord } from "@quits/contracts/agent"
 import { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
+import { acquireBoundedAdvisoryLock } from "../lib/transaction-timeouts"
 import { appLogger } from "../lib/observability"
 import { actorCan, actorId, actorKey, type Actor } from "./actor"
 import type { ApprovalContext, CommandDefinition } from "./command"
@@ -269,7 +270,7 @@ export async function executeCommand<Input, Result>(
       if (clientRequestId && !options.resumeReceiptId) {
         // "|" cannot appear in client request ids, so keys of different requests never collide.
         const lockKey = `${organizationId}|${key}|${clientRequestId}`
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
+        await acquireBoundedAdvisoryLock(tx, lockKey)
         const existing = await tx.commandReceipt.findUnique({
           where: {
             organizationId_actorKey_clientRequestId: { organizationId, actorKey: key, clientRequestId },

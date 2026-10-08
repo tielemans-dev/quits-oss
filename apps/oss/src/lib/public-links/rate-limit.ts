@@ -1,4 +1,5 @@
 import { prisma } from "../db"
+import { acquireBoundedAdvisoryLock } from "../transaction-timeouts"
 import { InvalidState } from "../../domain/errors"
 import { canonicalizeOffer } from "../../domain/agreements/snapshot"
 
@@ -14,7 +15,7 @@ export type PublicLinkIdentity = {
 export async function recordPublicLinkAttempt(identity: PublicLinkIdentity, now = new Date()) {
   const count = await prisma.$transaction(async (tx) => {
     const key = canonicalizeOffer(identity)
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`
+    await acquireBoundedAdvisoryLock(tx, key)
     await tx.publicLinkAttempt.create({ data: { ...identity, createdAt: now } })
     return tx.publicLinkAttempt.count({
       where: { ...identity, createdAt: { gte: new Date(now.getTime() - 3600_000), lte: now } },
