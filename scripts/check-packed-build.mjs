@@ -75,6 +75,7 @@ for (const requiredEntry of [
   "package/src/onboarding.ts",
   "package/src/payments.ts",
   "package/src/quotes.ts",
+  "package/src/document-view.ts",
 ]) {
   if (!contractsEntries.includes(requiredEntry)) {
     throw new Error(`packed contracts tarball is missing ${requiredEntry}`)
@@ -92,6 +93,9 @@ for (const requiredEntry of [
   "package/src/http.ts",
   "package/src/logging.ts",
   "package/src/runtimeEnv.ts",
+  "package/src/pricing/index.ts",
+  "package/src/currency.ts",
+  "package/src/documents/view.ts",
 ]) {
   if (!sharedEntries.includes(requiredEntry)) {
     throw new Error(`packed shared tarball is missing ${requiredEntry}`)
