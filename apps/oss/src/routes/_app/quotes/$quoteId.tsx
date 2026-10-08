@@ -980,7 +980,7 @@ function QuoteDetailPage() {
 
           {/* Totals */}
           <div className="flex justify-end">
-            <div className="w-80 grid gap-2 text-sm">
+            <div className="w-full sm:w-80 grid gap-2 text-sm">
               <DocumentTotals priceBasis={quote.priceBasis} subtotal={quote.subtotal} taxAmount={quote.taxAmount} total={quote.total} vatRows={quote.vatRows} rounding={quote.rounding} currency={quote.currency} />
             </div>
           </div>

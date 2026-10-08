@@ -298,7 +298,7 @@ function CreditNoteDetailPage() {
           </div>
 
           <div className="flex justify-end">
-            <div className="w-80 grid gap-2 text-sm">
+            <div className="w-full sm:w-80 grid gap-2 text-sm">
               <DocumentTotals priceBasis={creditNote.priceBasis} subtotal={creditNote.subtotal} taxAmount={creditNote.taxAmount} total={creditNote.total} vatRows={creditNote.vatRows} rounding={creditNote.rounding} currency={creditNote.currency} />
             </div>
           </div>
