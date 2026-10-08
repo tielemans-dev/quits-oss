@@ -32,5 +32,5 @@ export const daEmailMessages = {
   "email.paymentDetailsChanged.after": "Efter",
   "email.paymentDetailsChanged.none": "(ingen)",
   "email.paymentDetailsChanged.warning": "Hvis det ikke var dig, skal du skifte din adgangskode og tjekke dine indstillinger.",
-  "email.paymentDetailsChanged.sentBecause": "Du får denne besked, fordi du er administrator af {organization}.",
+  "email.paymentDetailsChanged.sentBecause": "Du får denne besked, fordi du er ejer eller administrator i {organization}.",
 } as const

@@ -32,5 +32,5 @@ export const enEmailMessages = {
   "email.paymentDetailsChanged.after": "After",
   "email.paymentDetailsChanged.none": "(none)",
   "email.paymentDetailsChanged.warning": "If this wasn't you, change your password and check your settings.",
-  "email.paymentDetailsChanged.sentBecause": "You get this message because you are an admin of {organization}.",
+  "email.paymentDetailsChanged.sentBecause": "You get this message because you are an owner or admin of {organization}.",
 } as const

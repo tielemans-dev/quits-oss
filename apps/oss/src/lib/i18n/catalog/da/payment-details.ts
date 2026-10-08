@@ -13,7 +13,7 @@ export const daPaymentDetailsMessages = {
   "settings.paymentDetails.bic.label": "BIC",
   "settings.paymentDetails.accountHolder.label": "Kontohaver",
   "settings.paymentDetails.bankName.label": "Bank",
-  "settings.paymentDetails.note.label": "Betalingsnote",
+  "settings.paymentDetails.note.label": "Bemærkning til betaling",
   "settings.paymentDetails.note.placeholder": "MobilePay Box 12345",
   "settings.paymentDetails.note.help": "Vises under bankoplysningerne, fx et MobilePay-nummer. {count}/{max}",
   "settings.paymentDetails.preview.title": "Sådan ser det ud på fakturaen",
@@ -21,7 +21,7 @@ export const daPaymentDetailsMessages = {
     "Vises sådan på de fakturaer, du udsteder fra nu af. Fakturaer, der allerede er udstedt, beholder de oplysninger, de blev udstedt med.",
   "settings.paymentDetails.preview.empty":
     "Fakturaerne viser ingen betalingsoplysninger, før du har udfyldt mindst ét felt.",
-  "settings.paymentDetails.readOnly": "Kun administratorer kan ændre betalingsoplysningerne.",
+  "settings.paymentDetails.readOnly": "Kun ejere og administratorer kan ændre betalingsoplysningerne.",
   "settings.paymentDetails.save": "Gem betalingsoplysninger",
   "settings.paymentDetails.saving": "Gemmer…",
   "settings.paymentDetails.saved": "Betalingsoplysningerne er gemt.",

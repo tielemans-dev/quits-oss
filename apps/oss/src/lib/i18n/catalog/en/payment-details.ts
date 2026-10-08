@@ -21,7 +21,7 @@ export const enPaymentDetailsMessages = {
     "Shown like this on invoices you issue from now on. Invoices already issued keep the details they were issued with.",
   "settings.paymentDetails.preview.empty":
     "Invoices show no payment details until you fill in at least one field.",
-  "settings.paymentDetails.readOnly": "Only admins can change payment details.",
+  "settings.paymentDetails.readOnly": "Only owners and admins can change payment details.",
   "settings.paymentDetails.save": "Save payment details",
   "settings.paymentDetails.saving": "Saving…",
   "settings.paymentDetails.saved": "Payment details saved.",
