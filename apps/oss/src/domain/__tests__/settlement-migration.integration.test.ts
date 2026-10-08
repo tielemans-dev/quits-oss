@@ -9,7 +9,7 @@ describe.runIf(hasTestDatabase)("additive receipt migration", () => {
     const client = new Client({ connectionString: process.env.DATABASE_URL })
     const schema = `receipt_${randomUUID().replaceAll("-", "")}`
     const migrations = new URL("../../../prisma/migrations/", import.meta.url)
-    const target = "20261008160000_settlement_receipts"
+    const target = "20261010020000_settlement_receipts"
     await client.connect()
     try {
       await client.query(`CREATE SCHEMA "${schema}"`)
