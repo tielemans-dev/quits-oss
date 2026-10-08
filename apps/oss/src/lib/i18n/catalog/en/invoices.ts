@@ -17,10 +17,6 @@ export const enInvoicesMessages = {
   "invoices.table.dueDate": "Due Date",
   "invoices.table.total": "Total",
   "invoices.table.status": "Status",
-  "invoices.status.draft": "Draft",
-  "invoices.status.sent": "Sent",
-  "invoices.status.paid": "Paid",
-  "invoices.status.overdue": "Overdue",
   "invoices.delete.title": "Delete invoice",
   "invoices.delete.description":
     "Are you sure you want to delete invoice {number}? This action cannot be undone.",

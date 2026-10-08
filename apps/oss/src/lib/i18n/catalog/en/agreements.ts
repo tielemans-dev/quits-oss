@@ -6,7 +6,6 @@ export const enAgreementsMessages = {
   "agreements.back": "Back to agreements",
   "agreements.loading": "Loading agreements...",
   "agreements.empty": "No agreements yet.",
-  "agreements.draft": "Draft",
   "agreements.customer": "Customer",
   "agreements.validUntil": "Valid until",
   "agreements.total": "Total",
