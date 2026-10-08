@@ -45,9 +45,16 @@ vi.mock("../../lib/i18n/react", () => ({
   }),
 }))
 
-vi.mock("../../lib/distribution", () => ({
-  get isCloudDistribution() {
-    return isCloudDistributionMock()
+// The distribution comes from the server's route context; these pages only read the resolved value.
+vi.mock("../../lib/runtime-distribution", () => ({
+  useRuntimeDistribution: () => {
+    const isCloud = isCloudDistributionMock()
+    return {
+      distribution: isCloud ? "cloud" : "selfhost",
+      billingEnabled: isCloud,
+      isCloud,
+      isSelfHost: !isCloud,
+    }
   },
 }))
 

@@ -14,6 +14,7 @@ vi.mock("../auth-client", () => ({
 }))
 vi.mock("../page-navigation", () => ({ loadPage: state.loadPage, reloadPage: vi.fn() }))
 
+import { invalidateAppLayoutSession, reuseAppLayoutSession } from "../app-layout-session"
 import {
   getRequestOrganizationId,
   initializeRequestOrganizationId,
@@ -23,6 +24,7 @@ import {
 } from "../active-organization"
 
 afterEach(() => {
+  invalidateAppLayoutSession()
   resetRequestOrganizationForTesting()
   state.calls = []
   state.setActive.mockReset()
@@ -62,6 +64,17 @@ describe("switching organization", () => {
 
     expect(state.calls).toEqual(["setActive:org_b", "loadPage:/"])
     expect(getRequestOrganizationId()).toBe("org_a")
+  })
+
+  it("drops the layout's cached session, so the new page does not see the previous organization", async () => {
+    recordCalls()
+    const load = vi.fn(async () => ({ user: { id: "u_1" } }))
+    await reuseAppLayoutSession(load)
+
+    await switchActiveOrganization("org_b")
+    await reuseAppLayoutSession(load)
+
+    expect(load).toHaveBeenCalledTimes(2)
   })
 
   it("loads the requested destination", async () => {

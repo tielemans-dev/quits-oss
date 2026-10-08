@@ -1,8 +1,11 @@
-import { HeadContent, Scripts, createRootRoute, Link, redirect } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { HeadContent, Scripts, createRootRoute, Link, redirect, useRouterState } from '@tanstack/react-router'
 import { ThemeProvider } from '../components/theme-provider'
 import { TooltipProvider } from '../components/ui/tooltip'
 import { useI18n, I18nProvider } from '../lib/i18n/react'
 import { getInstallationStatus, normalizeInstallationStatus } from '../lib/installation'
+import type { InstallationStatus } from '../lib/installation-state'
+import { rememberInstallationStatus, reuseInstallationStatus } from '../lib/installation-cache'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
 import { themeInitScript } from '../lib/theme'
 
@@ -24,7 +27,9 @@ function NotFound() {
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
-    const installation = normalizeInstallationStatus(await getInstallationStatus())
+    const installation = await reuseInstallationStatus(async () =>
+      normalizeInstallationStatus(await getInstallationStatus())
+    )
     if (
       shouldRedirectToSetup(
         location.pathname,
@@ -74,6 +79,15 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  // A server-rendered page already holds the installation answer; keep it so the first client
+  // navigation does not ask the server again.
+  const installation = useRouterState({
+    select: (state) => (state.matches[0]?.context as { installation?: InstallationStatus } | undefined)?.installation,
+  })
+  useEffect(() => {
+    rememberInstallationStatus(installation)
+  }, [installation])
+
   return (
     // The head script puts the theme's `dark` class on <html> before React hydrates.
     <html lang="en" suppressHydrationWarning>

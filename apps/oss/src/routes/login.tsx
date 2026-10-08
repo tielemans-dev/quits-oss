@@ -16,7 +16,8 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { z } from 'zod'
 import { useI18n } from '../lib/i18n/react'
-import { isCloudDistribution } from '../lib/distribution'
+import { invalidateAppLayoutSession } from '../lib/app-layout-session'
+import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { getOrganizationAccessState } from '../lib/organization-access'
 import { toInternalRedirectPath } from '../lib/redirect-target'
 
@@ -32,6 +33,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const { t } = useI18n()
+  const { isCloud } = useRuntimeDistribution()
   const { redirect, message } = Route.useSearch()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -55,6 +57,9 @@ function LoginPage() {
     setLoading(false)
 
     if (result.data) {
+      // The next page load must not reuse an answer given before signing in. (Mainly matters for a
+      // back/forward-cache restore; see `invalidateAppLayoutSession`.)
+      invalidateAppLayoutSession()
       // Every way out of here is a new page load, so the app layout sets the organization this
       // tab acts for from the new session and nothing of an earlier session survives.
       const redirectPath = toInternalRedirectPath(redirect) ?? '/'
@@ -66,7 +71,7 @@ function LoginPage() {
 
         if (accessState.kind === 'auto-select') {
           const switched = await switchActiveOrganization(accessState.organizationId, {
-            destination: isCloudDistribution ? '/onboarding' : redirectPath,
+            destination: isCloud ? '/onboarding' : redirectPath,
           })
           if (!switched?.error) return
         }

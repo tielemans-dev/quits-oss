@@ -25,7 +25,7 @@ import {
 } from './ui/sidebar'
 import { QuitsMark } from './brand/quits-mark'
 import { UserMenu } from './user-menu'
-import { billingEnabled } from '../lib/distribution'
+import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { useI18n } from '../lib/i18n/react'
 import type { TranslationKey } from '../lib/i18n/messages'
 
@@ -51,6 +51,7 @@ export function AppSidebar() {
   const { t } = useI18n()
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
+  const { billingEnabled } = useRuntimeDistribution()
   const visibleNavItems = billingEnabled
     ? navItems
     : navItems.filter((item) => item.path !== '/billing')

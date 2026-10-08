@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 import type { InstallationStatus } from "./installation-state"
-import { isCloudDistribution } from "./distribution"
+import { billingEnabled, isCloudDistribution } from "./distribution"
 
 const DEFAULT_SETUP_VERSION = 1
 
@@ -13,6 +13,7 @@ export function normalizeInstallationStatus(
     isSetupComplete: status?.isSetupComplete ?? false,
     distribution: status?.distribution ?? distribution,
     setupVersion: status?.setupVersion ?? DEFAULT_SETUP_VERSION,
+    billingEnabled: status?.billingEnabled ?? (distribution === "cloud" && billingEnabled),
   }
 }
 
@@ -26,6 +27,7 @@ export const getInstallationStatus = createServerFn({ method: "GET" }).handler(
       isSetupComplete: state.isSetupComplete,
       distribution: isCloudDistribution ? "cloud" : "selfhost",
       setupVersion: state.setupVersion,
+      billingEnabled,
     })
   }
 )

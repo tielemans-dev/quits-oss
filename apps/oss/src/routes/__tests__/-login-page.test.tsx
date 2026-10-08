@@ -49,9 +49,16 @@ vi.mock("../../lib/i18n/react", () => ({
   }),
 }))
 
-vi.mock("../../lib/distribution", () => ({
-  get isCloudDistribution() {
-    return isCloudDistributionMock()
+// The distribution comes from the server's route context; these pages only read the resolved value.
+vi.mock("../../lib/runtime-distribution", () => ({
+  useRuntimeDistribution: () => {
+    const isCloud = isCloudDistributionMock()
+    return {
+      distribution: isCloud ? "cloud" : "selfhost",
+      billingEnabled: isCloud,
+      isCloud,
+      isSelfHost: !isCloud,
+    }
   },
 }))
 
@@ -67,6 +74,7 @@ vi.mock("../../lib/auth-client", () => ({
   },
 }))
 
+import { invalidateAppLayoutSession, reuseAppLayoutSession } from "../../lib/app-layout-session"
 import { Route } from "../login"
 import { asMockedRoute } from "../../test-utils/mocked-route"
 
@@ -75,6 +83,7 @@ const RoutePage = route.component
 
 afterEach(() => {
   cleanup()
+  invalidateAppLayoutSession()
   loadPage.mockReset()
   search.value = {}
   signInEmail.mockReset()
@@ -177,5 +186,27 @@ describe("LoginPage", () => {
     await waitFor(() => {
       expect(loadPage).toHaveBeenCalledWith("/onboarding")
     })
+  })
+
+  it("drops the layout's cached session when signing in, so no earlier answer outlives the sign-in", async () => {
+    signInEmail.mockResolvedValue({ data: { user: { id: "user_1" } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    const load = vi.fn(async () => ({ user: null as unknown, n: 1 }))
+    load.mockResolvedValue({ user: { id: "earlier" }, n: 1 })
+    await reuseAppLayoutSession(load)
+
+    render(<RoutePage />)
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } })
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } })
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }))
+    await waitFor(() => {
+      expect(signInEmail).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(loadPage).toHaveBeenCalled()
+    })
+
+    await reuseAppLayoutSession(load)
+    expect(load).toHaveBeenCalledTimes(2)
   })
 })
