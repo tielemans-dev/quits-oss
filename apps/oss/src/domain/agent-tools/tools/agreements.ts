@@ -22,16 +22,14 @@ import {
   deleteAgreementDraft,
   updateDeliverable,
 } from "../../commands/agreements"
-import { listAgreements, getAgreement } from "../../agreements/queries"
-import { describeAllocations } from "../../agreements/allocations"
+import { listAgreements, getAgreementWithAllocations } from "../../agreements/queries"
 import { actorCan, type AgentActor } from "../../actor"
-import { prisma } from "../../../lib/db"
 
 /** Adds each deliverable's billing allocation: its state, the draft or invoice holding it, and rebill decisions. */
-async function withAllocations<Agreement extends { id: string; status: string; deliverables: Array<{ id: string; billingStatus: string; billingGeneration: number }> }>(actor: AgentActor, agreement: Agreement) {
-  const views = await describeAllocations(prisma, actor.organizationId, agreement.id, agreement.deliverables, { invoices: actorCan(actor, "invoice:read"), creditNotes: actorCan(actor, "creditNote:read") }, agreement.status)
-  return { ...agreement, deliverables: agreement.deliverables.map(line => ({ ...line, allocation: views.get(line.id)! })) }
+function withAllocations(actor: AgentActor, agreementId: string) {
+  return getAgreementWithAllocations(actor.organizationId, agreementId, { invoices: actorCan(actor, "invoice:read"), creditNotes: actorCan(actor, "creditNote:read") })
 }
+
 import { listAgreementTemplates } from "../../agreements/templates"
 import { defineQueryTool, defineCommandTool, type AgentTool } from "../define"
 import { z } from "zod"
@@ -113,9 +111,9 @@ export const agreementTools: AgentTool[] = [
     permission: "agreement:read",
     input: agreementIdInputSchema,
     run: async ({ actor }, input) => {
-      const agreement = await getAgreement(actor.organizationId, input.id)
+      const agreement = await withAllocations(actor, input.id)
       return {
-        ...(await withAllocations(actor, agreement)),
+        ...agreement,
         progress: deliverableProgress(agreement.deliverables),
       }
     },
@@ -128,7 +126,7 @@ export const agreementTools: AgentTool[] = [
     permission: "deliverable:read",
     input: z.object({ agreementId: z.string().min(1) }).strict(),
     run: async ({ actor }, input) =>
-      (await withAllocations(actor, await getAgreement(actor.organizationId, input.agreementId))).deliverables,
+      (await withAllocations(actor, input.agreementId)).deliverables,
   }),
   defineQueryTool({
     name: "agreement_template_list",

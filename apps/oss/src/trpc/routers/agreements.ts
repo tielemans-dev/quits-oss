@@ -44,14 +44,13 @@ import {
 import {
   listAgreements,
   getAgreement,
+  getAgreementWithAllocations,
   serializeAgreement,
   serializeAgreementDetail,
   serializeDeliverable,
 } from "../../domain/agreements/queries"
 import { listAgreementTemplates } from "../../domain/agreements/templates"
 import { executeCommand } from "../../domain/execute"
-import { prisma } from "../../lib/db"
-import { describeAllocations } from "../../domain/agreements/allocations"
 import { releaseDeliverableReservation, authorizeDeliverableRebill } from "../../domain/commands/billing-allocation"
 import { deliverableReleaseReservationInputSchema, deliverableAuthorizeRebillInputSchema } from "@quits/contracts/billing"
 import { router, authorizedProcedure } from "../init"
@@ -167,11 +166,10 @@ export const agreementsRouter = router({
   get: authorizedProcedure("agreement:read")
     .input(agreementIdInputSchema)
     .query(async ({ ctx, input }) => {
-      const detail = serializeAgreementDetail(await getAgreement(ctx.organizationId, input.id))
-      const allocations = await describeAllocations(prisma, ctx.organizationId, detail.id, detail.deliverables, {
+      const agreement = await getAgreementWithAllocations(ctx.organizationId, input.id, {
         invoices: actorCan(ctx.actor, "invoice:read"), creditNotes: actorCan(ctx.actor, "creditNote:read"),
-      }, detail.status)
-      return { ...detail, deliverables: detail.deliverables.map(line => ({ ...line, allocation: allocations.get(line.id)! })) }
+      })
+      return { ...serializeAgreementDetail(agreement), deliverables: agreement.deliverables.map(serializeDeliverable) }
     }),
   releaseReservation: authorizedProcedure("invoice:update")
     .input(deliverableReleaseReservationInputSchema)

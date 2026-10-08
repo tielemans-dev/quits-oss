@@ -1,3 +1,5 @@
+import type { PrismaClient } from "../../../generated/prisma/client"
+import { describeAllocations, type AllocationVisibility } from "./allocations"
 import { deliverableProgress } from "./progress"
 import type { z } from "zod"
 import type { agreementListInputSchema } from "@quits/contracts/agreements"
@@ -17,13 +19,22 @@ export function listAgreements(
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   })
 }
-export async function getAgreement(organizationId: string, id: string) {
-  const agreement = await prisma.agreement.findFirst({
+export async function getAgreement(organizationId: string, id: string, db: Pick<PrismaClient, "agreement"> = prisma) {
+  const agreement = await db.agreement.findFirst({
     where: { id, organizationId },
     include: { contact: true, deliverables: { orderBy: { sortOrder: "asc" } } },
   })
   if (!agreement) throw new NotFound({ message: "Agreement not found", entity: "agreement", id })
   return agreement
+}
+
+/** Agreement, current allocation, credits and history must all describe the same committed state. */
+export function getAgreementWithAllocations(organizationId: string, id: string, visible: AllocationVisibility) {
+  return prisma.$transaction(async db => {
+    const agreement = await getAgreement(organizationId, id, db)
+    const allocations = await describeAllocations(db, organizationId, id, agreement.deliverables, visible, agreement.status)
+    return { ...agreement, deliverables: agreement.deliverables.map(line => ({ ...line, allocation: allocations.get(line.id)! })) }
+  }, { isolationLevel: "RepeatableRead" })
 }
 
 export function serializeAgreement<

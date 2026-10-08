@@ -22,6 +22,7 @@ export function DeliverableAllocation({ agreement, line, capabilities, onChanged
   const { allocation } = line
   const [busy, setBusy] = useState(false)
   const [reviewedReservation, setReviewedReservation] = useState<{ holder: NonNullable<Line["allocation"]["holder"]>; generation: number } | null>(null)
+  const [reviewedCredits, setReviewedCredits] = useState<Line["allocation"]["creditNotes"] | null>(null)
   const [reason, setReason] = useState("")
   async function run(action: () => Promise<unknown>) {
     setBusy(true); onError(null)
@@ -32,7 +33,6 @@ export function DeliverableAllocation({ agreement, line, capabilities, onChanged
   const holder = allocation.holder
   const holderName = holder ? (holder.number ?? t("invoices.number.draft")) : null
   const holderLink = holder && <Link className="underline" to="/invoices/$invoiceId" params={{ invoiceId: holder.invoiceId }}>{holderName}</Link>
-  const creditNote = allocation.creditNotes[0]
   return (
     <div className="grid gap-2" data-allocation-state={allocation.state}>
       <StatusBadge domain="billableAllocation" status={allocation.state} />
@@ -63,13 +63,13 @@ export function DeliverableAllocation({ agreement, line, capabilities, onChanged
           {allocation.state !== "invoiced" && <p className="text-muted-foreground">{t("agreements.allocation.creditDoesNotRelease")}</p>}
           {allocation.invoiceHasUntiedCredit && <p className="text-muted-foreground">{t("agreements.allocation.untiedCredit")}</p>}
           {allocation.state === "credited" && allocation.rebill.blocker === "agreement_not_accepted" && <p className="text-muted-foreground">{t("agreements.allocation.rebillAgreementClosed")}</p>}
-          {allocation.rebill.eligible && capabilities.authorizeRebill && creditNote && (
-            <AlertDialog>
+          {allocation.rebill.eligible && capabilities.authorizeRebill && allocation.creditNotes.length > 0 && (
+            <AlertDialog onOpenChange={open => { if (open) setReviewedCredits(allocation.creditNotes.map(note => ({ ...note }))) }}>
               <AlertDialogTrigger asChild><Button variant="outline" size="sm" className="w-fit" disabled={busy}>{t("agreements.allocation.allowRebill")}</Button></AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>{t("agreements.allocation.allowRebill")}</AlertDialogTitle>
-                  <AlertDialogDescription>{t("agreements.allocation.rebillConfirm", { title: line.title, creditNote: creditNote.number })}</AlertDialogDescription>
+                  <AlertDialogDescription>{t("agreements.allocation.rebillConfirm", { title: line.title, creditNotes: reviewedCredits?.map(note => note.number).join(", ") ?? "" })}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <label className="grid gap-1 text-sm">
                   {t("agreements.allocation.rebillReason")}
@@ -77,7 +77,7 @@ export function DeliverableAllocation({ agreement, line, capabilities, onChanged
                 </label>
                 <AlertDialogFooter>
                   <AlertDialogCancel>{t("agreements.cancel")}</AlertDialogCancel>
-                  <AlertDialogAction disabled={reason.trim().length < 3} onClick={() => void run(() => trpc.agreements.authorizeRebill.mutate({ agreementId: agreement.id, deliverableId: line.id, creditNoteId: creditNote.id, reason: reason.trim() }))}>{t("agreements.allocation.allowRebill")}</AlertDialogAction>
+                  <AlertDialogAction disabled={!reviewedCredits?.length || reason.trim().length < 3 || busy} onClick={() => reviewedCredits?.length && void run(() => trpc.agreements.authorizeRebill.mutate({ agreementId: agreement.id, deliverableId: line.id, creditNoteId: reviewedCredits[0]!.id, creditNoteIds: reviewedCredits.map(note => note.id), reason: reason.trim() }))}>{t("agreements.allocation.allowRebill")}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -87,7 +87,7 @@ export function DeliverableAllocation({ agreement, line, capabilities, onChanged
       {allocation.rebills.length > 0 && (
         <ul className="grid gap-1 text-sm text-muted-foreground">
           {allocation.rebills.map(rebill => (
-            <li key={rebill.generation}>{t("agreements.allocation.rebillRecord", { generation: rebill.generation, invoice: rebill.priorInvoiceNumber ?? t("agreements.allocation.anInvoice"), creditNote: rebill.creditNoteNumber ?? t("agreements.allocation.aCreditNote"), reason: rebill.reason })}</li>
+            <li key={rebill.generation}>{t("agreements.allocation.rebillRecord", { generation: rebill.generation, invoice: rebill.priorInvoiceNumber ?? t("agreements.allocation.anInvoice"), creditNote: rebill.creditNotes.map(note => note.number ?? t("agreements.allocation.aCreditNote")).join(", ") || t("agreements.allocation.aCreditNote"), reason: rebill.reason })}</li>
           ))}
         </ul>
       )}

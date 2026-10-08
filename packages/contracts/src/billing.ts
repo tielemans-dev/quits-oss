@@ -52,8 +52,14 @@ export const deliverableReleaseReservationInputSchema = z.strictObject({
 export const deliverableAuthorizeRebillInputSchema = z.strictObject({
   agreementId: z.string().min(1),
   deliverableId: z.string().min(1),
+  /** Primary reference retained for single-note callers. Must belong to the reviewed set. */
   creditNoteId: z.string().min(1),
+  /** Exact notes reviewed together. Omission means only creditNoteId was reviewed. */
+  creditNoteIds: z.array(z.string().min(1)).min(1).max(1000).optional(),
   reason: z.string().trim().min(3).max(1000),
+}).refine(input => !input.creditNoteIds || (new Set(input.creditNoteIds).size === input.creditNoteIds.length && input.creditNoteIds.includes(input.creditNoteId)), {
+  message: "Reviewed credit notes must be unique and include the primary credit note",
+  path: ["creditNoteIds"],
 })
 
 export type BillableSourceRef = z.infer<typeof billableSourceRefSchema>

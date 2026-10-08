@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("../../../lib/email", async () => ({ ...await vi.importActual<typeof import("../../../lib/email")>("../../../lib/email"), deliver: vi.fn() }))
-import { prisma } from "../../../lib/db"
+import { getPrisma, prisma } from "../../../lib/db"
+import { defaultNodePlatform } from "../../../lib/runtime/node-platform"
+import { resetRuntimePlatform, setRuntimePlatform } from "../../../lib/runtime/platform"
+import { appRouter } from "../../../trpc/router"
 import { deliver } from "../../../lib/email"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import { type CommandOutcome } from "../../execute"
@@ -30,7 +33,7 @@ beforeEach(() => {
   vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-allocation-secret-over-32-characters-long")
   vi.mocked(deliver).mockReset().mockResolvedValue({ id: "synthetic" })
 })
-afterEach(async () => { vi.restoreAllMocks(); while (cleanups.length) await cleanups.pop()?.(); vi.unstubAllEnvs() })
+afterEach(async () => { resetRuntimePlatform(); vi.restoreAllMocks(); while (cleanups.length) await cleanups.pop()?.(); vi.unstubAllEnvs() })
 
 async function setup(lineCount = 2) {
   const org = await createTestOrganization({ roles: ["admin", "accountant"] }); cleanups.push(org.cleanup)
@@ -107,6 +110,30 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
     await expectConsistentAllocations(ctx)
   })
 
+  it("refuses the last-line release before an empty draft can reach real issuance", async () => {
+    const ctx = await setup(1)
+    const { saleInvoiceId } = completed(await ctx.reserve([ctx.id()]))
+    const before = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
+    expect(before.number).toBeNull()
+    const providerCallsBefore = vi.mocked(deliver).mock.calls.length
+    const outcome = await executeIssuanceCommand(releaseDeliverableReservation, await ctx.releaseInput(), { actor: ctx.actor })
+    if (outcome.status === "completed") {
+      // Exercise the actual downstream boundary on the broken implementation, not a send mock.
+      const issued = await issueDocument({ kind: "invoice", actor: ctx.actor, commandInput: { id: saleInvoiceId! } })
+      const after = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
+      console.info("last-line release boundary", { issuance: issued.status, status: after.status, number: after.number, itemCount: after.items.length, total: after.totalGross.toString(), providerCalls: vi.mocked(deliver).mock.calls.length - providerCallsBefore })
+    }
+    refused(outcome, "last_invoice_line")
+    expect(outcome).toMatchObject({ error: { message: expect.stringContaining("delete the draft") } })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })).toEqual(before)
+    expect(await events(ctx, "deliverable.released")).toBe(0)
+    expect(await events(ctx, "invoice.draft_updated")).toBe(0)
+    // Deleting the eligible draft is the existing, authorized recovery for its final line.
+    completed(await executeIssuanceCommand(deleteInvoiceDraft, { id: saleInvoiceId! }, { actor: ctx.actor }))
+    expect(await ctx.view()).toMatchObject({ state: "unbilled", holder: null })
+    expect(await events(ctx, "deliverable.released")).toBe(1)
+  })
+
   it("refuses to release work that is already on an issued invoice", async () => {
     const ctx = await setup(1)
     const { saleInvoiceId } = completed(await ctx.reserve([ctx.id(0)]))
@@ -117,8 +144,8 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
   })
 
   it("refuses a release reviewed against A after the work moves to B", async () => {
-    const ctx = await setup(1)
-    const { saleInvoiceId: first } = completed(await ctx.reserve([ctx.id()]))
+    const ctx = await setup(2)
+    const { saleInvoiceId: first } = completed(await ctx.reserve([ctx.id(), ctx.id(1)]))
     const item = await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: first! } })
     const reviewed = { agreementId: ctx.agreement.id, deliverableId: ctx.id(), expectedAllocation: { invoiceId: first!, invoiceItemId: item.id, generation: 0 } }
     completed(await executeIssuanceCommand(releaseDeliverableReservation, reviewed, { actor: ctx.actor }))
@@ -193,8 +220,8 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
   })
 
   it("releases once when two releases race and keeps the work free for one new draft", async () => {
-    const ctx = await setup(1)
-    completed(await ctx.reserve([ctx.id(0)]))
+    const ctx = await setup(2)
+    completed(await ctx.reserve([ctx.id(0), ctx.id(1)]))
     const input = await ctx.releaseInput()
     const results = await Promise.all([1, 2].map(() => executeIssuanceCommand(releaseDeliverableReservation, input, { actor: ctx.actor })))
     expect(results.filter(result => result.status === "completed")).toHaveLength(1)
@@ -239,6 +266,42 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
     expect((await ctx.line()).billingStatus).toBe("invoiced")
     expect((await ctx.line()).billingGeneration).toBe(0)
     expect(await prisma.deliverableRebill.count()).toBe(0)
+    await expectConsistentAllocations(ctx)
+  })
+
+  it("refuses a selected partial note even when another note completes the credit", async () => {
+    const ctx = await setup(1)
+    const { saleInvoiceId } = completed(await ctx.reserve([ctx.id()]))
+    await ctx.issue(saleInvoiceId!)
+    const item = await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: saleInvoiceId! } })
+    const first = completed(await creditLine(ctx, saleInvoiceId!, item.id, "0.4"))
+    completed(await creditLine(ctx, saleInvoiceId!, item.id, "0.6"))
+    refused(await executeIssuanceCommand(authorizeDeliverableRebill, { agreementId: ctx.agreement.id, deliverableId: ctx.id(), creditNoteId: first.id, reason: "Reviewed only the first note" }, { actor: ctx.actor }), "line_not_fully_credited")
+    expect(await ctx.line()).toMatchObject({ billingStatus: "invoiced", billingGeneration: 0 })
+    expect(await prisma.deliverableRebill.count({ where: { agreementId: ctx.agreement.id } })).toBe(0)
+    expect(await events(ctx, "deliverable.rebill_authorized")).toBe(0)
+  })
+
+  it("persists the complete reviewed credit set for cumulative full-credit rebilling", async () => {
+    const ctx = await setup(1)
+    const { saleInvoiceId } = completed(await ctx.reserve([ctx.id()]))
+    await ctx.issue(saleInvoiceId!)
+    const item = await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: saleInvoiceId! } })
+    const first = completed(await creditLine(ctx, saleInvoiceId!, item.id, "0.4"))
+    const second = completed(await creditLine(ctx, saleInvoiceId!, item.id, "0.6"))
+    const before = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true, creditNotes: { include: { items: true } } } })
+    expect(await ctx.view()).toMatchObject({ state: "credited", creditedQuantity: "1", rebill: { eligible: true }, creditNotes: expect.arrayContaining([{ id: first.id, number: first.number }, { id: second.id, number: second.number }]) })
+    const input = { agreementId: ctx.agreement.id, deliverableId: ctx.id(), creditNoteId: first.id, creditNoteIds: [first.id, second.id], reason: "Both corrections reviewed for redelivery" }
+    for (const creditNoteIds of [[first.id, first.id, second.id], [second.id]])
+      expect(await executeIssuanceCommand(authorizeDeliverableRebill, { ...input, creditNoteIds }, { actor: ctx.actor })).toMatchObject({ status: "failed", error: { tag: "ValidationFailed" } })
+    refused(await executeIssuanceCommand(authorizeDeliverableRebill, { ...input, creditNoteIds: [first.id, second.id, "unrelated-credit"] }, { actor: ctx.actor }), "credit_note_mismatch")
+    expect(await prisma.deliverableRebill.count({ where: { agreementId: ctx.agreement.id } })).toBe(0)
+    completed(await executeIssuanceCommand(authorizeDeliverableRebill, input, { actor: ctx.actor }))
+    expect(await prisma.deliverableRebill.findFirstOrThrow({ where: { deliverableId: ctx.id() } })).toMatchObject({ priorInvoiceItemId: item.id, creditNoteIds: [first.id, second.id], reason: input.reason })
+    expect(await ctx.view()).toMatchObject({ state: "unbilled", generation: 1, rebills: [{ creditNotes: [{ id: first.id, number: first.number }, { id: second.id, number: second.number }] }] })
+    expect((await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: ctx.org.organizationId, type: "deliverable.rebill_authorized" } })).payload).toMatchObject({ creditNoteIds: [first.id, second.id] })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true, creditNotes: { include: { items: true } } } })).toEqual(before)
+    completed(await ctx.reserve([ctx.id()]))
     await expectConsistentAllocations(ctx)
   })
 
@@ -298,8 +361,9 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
     const { saleInvoiceId } = completed(await ctx.reserve([ctx.id()]))
     await ctx.issue(saleInvoiceId!)
     const item = await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: saleInvoiceId! } })
-    const credit = completed(await creditLine(ctx, saleInvoiceId!, item.id, "1"))
-    completed(await executeIssuanceCommand(authorizeDeliverableRebill, { agreementId: ctx.agreement.id, deliverableId: ctx.id(), creditNoteId: credit.id, reason: "Rework approved" }, { actor: ctx.actor }))
+    const credit = completed(await creditLine(ctx, saleInvoiceId!, item.id, "0.4"))
+    const second = completed(await creditLine(ctx, saleInvoiceId!, item.id, "0.6"))
+    completed(await executeIssuanceCommand(authorizeDeliverableRebill, { agreementId: ctx.agreement.id, deliverableId: ctx.id(), creditNoteId: credit.id, creditNoteIds: [credit.id, second.id], reason: "Rework approved" }, { actor: ctx.actor }))
     for (const [name, permission, input] of [
       ["agreement_get", "agreement:read", { id: ctx.agreement.id }],
       ["deliverable_list", "deliverable:read", { agreementId: ctx.agreement.id }],
@@ -312,9 +376,9 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
         if (!result.ok) throw new Error(result.error.message)
         const output = result.value as { deliverables: Array<{ allocation: { rebills: unknown[] } }> } | Array<{ allocation: { rebills: unknown[] } }>
         const lines = Array.isArray(output) ? output : output.deliverables
-        expect(lines[0]!.allocation.rebills[0]).toMatchObject({ priorInvoiceId: invoices ? saleInvoiceId : null, priorInvoiceNumber: invoices ? expect.any(String) : null, creditNoteId: credits ? credit.id : null, creditNoteNumber: credits ? expect.any(String) : null })
+        expect(lines[0]!.allocation.rebills[0]).toMatchObject({ priorInvoiceId: invoices ? saleInvoiceId : null, priorInvoiceNumber: invoices ? expect.any(String) : null, creditNoteId: credits ? credit.id : null, creditNoteNumber: credits ? expect.any(String) : null, creditNotes: credits ? [{ id: credit.id, number: credit.number }, { id: second.id, number: second.number }] : [] })
         if (!invoices) expect(JSON.stringify(output)).not.toContain(saleInvoiceId!)
-        if (!credits) expect(JSON.stringify(output)).not.toContain(credit.id)
+        if (!credits) { expect(JSON.stringify(output)).not.toContain(credit.id); expect(JSON.stringify(output)).not.toContain(second.id) }
       }
     }
   })
@@ -329,6 +393,55 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
     await ctx.issue(saleInvoiceId!)
     const issued = await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: saleInvoiceId! } })
     expect(issued).toMatchObject({ description: before.description, lineNet: before.lineNet, sourceRevision: before.sourceRevision })
+  })
+})
+
+describe.runIf(hasTestDatabase)("allocation read snapshots", () => {
+  it.each(["page", "agreement_get", "deliverable_list"] as const)("%s stays consistent across a concurrent release, reservation and rebill", async endpoint => {
+    const ctx = await setup(2)
+    const key = await createAgentKey(ctx.actor, { name: "Snapshot reader", mode: "read_only", scopes: ["agreement:read", "deliverable:read", "invoice:read", "creditNote:read"], expiresInDays: null })
+    const actor = await authenticateAgentSecret(key.secret)
+    const caller = appRouter.createCaller({ session: { user: { id: ctx.actor.userId, name: "Test", email: "test@example.test" }, session: { activeOrganizationId: ctx.org.organizationId } } } as never)
+    const read = async () => {
+      if (endpoint === "page") return (await caller.agreements.get({ id: ctx.agreement.id })).deliverables[0]!
+      const response = await runAgentTool(actor, endpoint, endpoint === "agreement_get" ? { id: ctx.agreement.id } : { agreementId: ctx.agreement.id })
+      if (!response.ok) throw new Error(response.error.message)
+      type Row = { billingStatus: string; billingGeneration: number; allocation: Awaited<ReturnType<Ctx["view"]>> }
+      const result = response.value as { deliverables: Row[] } | Row[]
+      return (Array.isArray(result) ? result : result.deliverables)[0]!
+    }
+    const interleave = async (mutation: () => Promise<unknown>) => {
+      let changed = false
+      // Real PostgreSQL writes commit after the agreement SELECT, before allocation SELECTs.
+      // The extension also intercepts queries inside an interactive transaction.
+      const client = getPrisma().$extends({ query: { agreement: { async findFirst({ args, query }) {
+        const result = await query(args)
+        if (!changed && args.where?.id === ctx.agreement.id) { changed = true; await mutation() }
+        return result
+      } } } })
+      setRuntimePlatform({ ...defaultNodePlatform, getPrisma: () => client })
+      try { const result = await read(); expect(changed).toBe(true); return result }
+      finally { resetRuntimePlatform() }
+    }
+    const { saleInvoiceId } = completed(await ctx.reserve([ctx.id(), ctx.id(1)]))
+    const other = await setup(1)
+    if (endpoint === "page") await expect(caller.agreements.get({ id: other.agreement.id })).rejects.toMatchObject({ message: "Agreement not found" })
+    else expect(await runAgentTool(actor, endpoint, endpoint === "agreement_get" ? { id: other.agreement.id } : { agreementId: other.agreement.id })).toMatchObject({ ok: false })
+    const releaseInput = await ctx.releaseInput()
+    const reserved = await interleave(async () => completed(await executeIssuanceCommand(releaseDeliverableReservation, releaseInput, { actor: ctx.actor })))
+    expect(reserved).toMatchObject({ billingStatus: "reserved", billingGeneration: 0, allocation: { state: "reserved", generation: 0, holder: { invoiceId: saleInvoiceId }, rebills: [] } })
+    expect(await read()).toMatchObject({ billingStatus: "unbilled", allocation: { state: "unbilled", holder: null } })
+
+    const unbilled = await interleave(async () => completed(await executeIssuanceCommand(addInvoiceDeliverables, { id: saleInvoiceId!, agreementId: ctx.agreement.id, deliverableIds: [ctx.id()] }, { actor: ctx.actor })))
+    expect(unbilled).toMatchObject({ billingStatus: "unbilled", allocation: { state: "unbilled", holder: null, rebills: [] } })
+    expect(await read()).toMatchObject({ billingStatus: "reserved", allocation: { state: "reserved", holder: { invoiceId: saleInvoiceId } } })
+
+    await ctx.issue(saleInvoiceId!)
+    const item = await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: saleInvoiceId!, deliverableId: ctx.id() } })
+    const credit = completed(await executeIssuanceCommand(issueCreditNote, { invoiceId: saleInvoiceId!, mode: "lines", lines: [{ invoiceItemId: item.id, quantity: "1" }], reason: "Correction" }, { actor: ctx.actor }))
+    const credited = await interleave(async () => completed(await executeIssuanceCommand(authorizeDeliverableRebill, { agreementId: ctx.agreement.id, deliverableId: ctx.id(), creditNoteId: credit.id, reason: "Reviewed redelivery" }, { actor: ctx.actor })))
+    expect(credited).toMatchObject({ billingStatus: "invoiced", billingGeneration: 0, allocation: { state: "credited", generation: 0, holder: { invoiceId: saleInvoiceId }, rebills: [] } })
+    expect(await read()).toMatchObject({ billingStatus: "unbilled", billingGeneration: 1, allocation: { state: "unbilled", generation: 1, holder: null, rebills: [{ generation: 1 }] } })
   })
 })
 

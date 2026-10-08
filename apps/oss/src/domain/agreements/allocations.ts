@@ -2,7 +2,7 @@ import { Prisma, type PrismaClient } from "../../../generated/prisma/client"
 import type { BillableAllocationState } from "@quits/contracts/billing"
 
 type Reader = Pick<PrismaClient, "invoiceItem" | "deliverableRebill" | "invoice" | "creditNote">
-type Visibility = { invoices: boolean; creditNotes: boolean }
+export type AllocationVisibility = { invoices: boolean; creditNotes: boolean }
 
 /** A draft has no number until it is issued, so `number` is null while the holder is a draft. */
 export type AllocationHolder = { invoiceId: string; invoiceItemId: string; number: string | null; status: string }
@@ -17,7 +17,7 @@ export type AllocationView = {
   invoiceHasUntiedCredit: boolean
   creditNotes: Array<{ id: string; number: string }>
   rebill: { eligible: boolean; blocker: "not_invoiced" | "line_not_fully_credited" | "agreement_not_accepted" | null }
-  rebills: Array<{ generation: number; priorInvoiceId: string | null; priorInvoiceNumber: string | null; creditNoteId: string | null; creditNoteNumber: string | null; reason: string; decidedBy: string; createdAt: string }>
+  rebills: Array<{ generation: number; priorInvoiceId: string | null; priorInvoiceNumber: string | null; creditNoteId: string | null; creditNoteNumber: string | null; creditNotes: Array<{ id: string; number: string | null }>; reason: string; decidedBy: string; createdAt: string }>
 }
 
 /** Billing state of the work behind an agreement, derived from its current allocation and issued credits. */
@@ -26,7 +26,7 @@ export async function describeAllocations(
   organizationId: string,
   agreementId: string,
   lines: Array<{ id: string; billingStatus: string; billingGeneration: number }>,
-  visible: Visibility,
+  visible: AllocationVisibility,
   agreementStatus: string,
 ): Promise<Map<string, AllocationView>> {
   const [items, rebills] = await Promise.all([
@@ -40,7 +40,7 @@ export async function describeAllocations(
   const numbers = new Map<string, string>()
   if (rebills.length) {
     const ids = [...new Set(rebills.map(row => row.priorInvoiceId))]
-    const creditIds = [...new Set(rebills.map(row => row.creditNoteId))]
+    const creditIds = [...new Set(rebills.flatMap(row => [row.creditNoteId, ...row.creditNoteIds]))]
     const [invoices, credits] = await Promise.all([
       visible.invoices ? db.invoice.findMany({ where: { id: { in: ids }, organizationId }, select: { id: true, number: true } }) : Promise.resolve([]),
       visible.creditNotes ? db.creditNote.findMany({ where: { id: { in: creditIds }, organizationId }, select: { id: true, number: true } }) : Promise.resolve([]),
@@ -68,6 +68,7 @@ export async function describeAllocations(
       rebills: rebills.filter(row => row.deliverableId === line.id).map(row => ({
         generation: row.generation, priorInvoiceId: visible.invoices ? row.priorInvoiceId : null, priorInvoiceNumber: visible.invoices ? numbers.get(`invoice:${row.priorInvoiceId}`) ?? null : null,
         creditNoteId: visible.creditNotes ? row.creditNoteId : null, creditNoteNumber: visible.creditNotes ? numbers.get(`credit:${row.creditNoteId}`) ?? null : null,
+        creditNotes: visible.creditNotes ? (row.creditNoteIds.length ? row.creditNoteIds : [row.creditNoteId]).map(id => ({ id, number: numbers.get(`credit:${id}`) ?? null })) : [],
         reason: row.reason, decidedBy: row.decidedBy, createdAt: row.createdAt.toISOString() })),
     })
   }

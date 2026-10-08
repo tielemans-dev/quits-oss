@@ -127,7 +127,7 @@ export const daAgreementsMessages = {
   "agreements.allocation.untiedCredit": "Fakturaen har også en kreditering, der ikke hører til denne linje.",
   "agreements.allocation.allowRebill": "Tillad fakturering igen",
   "agreements.allocation.rebillAgreementClosed": "Kun en accepteret aftale kan tillade ny fakturering. Denne aftale kan ikke faktureres igen.",
-  "agreements.allocation.rebillConfirm": "Kreditnota {creditNote} krediterede hele {title}. Hvis du tillader fakturering igen, kan arbejdet bruges i en ny kladde. Den oprindelige faktura og kreditnota forbliver uændrede.",
+  "agreements.allocation.rebillConfirm": "Kreditnotaerne {creditNotes} krediterede tilsammen hele {title}. Hvis du tillader fakturering igen, kan arbejdet bruges i en ny kladde. Den oprindelige faktura og kreditnotaerne forbliver uændrede.",
   "agreements.allocation.rebillReason": "Hvorfor faktureres arbejdet igen? (påkrævet)",
   "agreements.allocation.rebillRecord": "Genfakturering godkendt (runde {generation}) efter kreditnota {creditNote} på faktura {invoice}: {reason}",
   "agreements.allocation.anInvoice": "en tidligere faktura",

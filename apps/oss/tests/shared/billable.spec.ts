@@ -22,7 +22,7 @@ test.beforeEach(async ({ baseURL }) => {
   await resetDatabase()
 })
 
-async function seedReservedWork() {
+async function seedReservedWork(lineCount = 1) {
   bootstrapQuitsRuntime({})
   const setup = await seedCompletedSetup()
   const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: setup.adminUserId, userName: 'E2E Admin' })
@@ -30,19 +30,19 @@ async function seedReservedWork() {
   const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: 'Billable customer', email: 'customer@example.invalid' } })
   const agreement = completed(await executeCommand(createAgreementDraft, {
     contactId: contact.id, title: 'Billable browser agreement', validUntil: '2099-01-01', taxRate: '0',
-    deliverables: [{ title: 'Reviewed work', description: 'Service work', quantity: '1', unitPrice: '100' }],
+    deliverables: Array.from({ length: lineCount }, (_, index) => ({ title: index === 0 ? 'Reviewed work' : 'Other work', description: index === 0 ? 'Service work' : 'Additional work', quantity: '1', unitPrice: '100' })),
   }, { actor }))
   // Synthetic starting state. Allocation, release, issuance, credit and rebill use real commands.
   await prisma.agreement.update({ where: { id: agreement.id }, data: { status: 'accepted' } })
   const deliverableId = agreement.deliverables[0]!.id
-  await prisma.deliverable.update({ where: { id: deliverableId }, data: { status: 'accepted' } })
+  await prisma.deliverable.updateMany({ where: { agreementId: agreement.id }, data: { status: 'accepted' } })
   const reserve = async () => completed(await executeCommand(createInvoiceFromDeliverables, { agreementId: agreement.id, deliverableIds: [deliverableId] }, { actor })).saleInvoiceId!
-  const first = await reserve()
+  const first = completed(await executeCommand(createInvoiceFromDeliverables, { agreementId: agreement.id, deliverableIds: agreement.deliverables.map(line => line.id) }, { actor })).saleInvoiceId!
   return { actor, agreementId: agreement.id, deliverableId, first, reserve }
 }
 
-test('billable release opens the authorized draft and refuses a stale holder before refreshing to the new draft', async ({ page }, testInfo) => {
-  const ctx = await seedReservedWork()
+test('billable release refuses a stale holder and explains last-line recovery after refresh', async ({ page }, testInfo) => {
+  const ctx = await seedReservedWork(2)
   await loginAsAdmin(page)
   await page.goto(`/agreements/${ctx.agreementId}`)
   const work = page.getByRole('group', { name: 'Reviewed work', exact: true })
@@ -55,7 +55,7 @@ test('billable release opens the authorized draft and refuses a stale holder bef
   await work.getByRole('button', { name: 'Release from draft', exact: true }).click()
   const dialog = page.getByRole('alertdialog')
   await expect(dialog).toContainText('Remove Reviewed work from the draft Draft?')
-  const item = await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: ctx.first } })
+  const item = await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: ctx.first, deliverableId: ctx.deliverableId } })
   completed(await executeCommand(releaseDeliverableReservation, {
     agreementId: ctx.agreementId, deliverableId: ctx.deliverableId,
     expectedAllocation: { invoiceId: ctx.first, invoiceItemId: item.id, generation: 0 },
@@ -70,9 +70,11 @@ test('billable release opens the authorized draft and refuses a stale holder bef
   await expect(work.getByRole('link', { name: 'Draft', exact: true })).toHaveAttribute('href', `/invoices/${second}`)
   await work.getByRole('button', { name: 'Release from draft', exact: true }).click()
   await dialog.getByRole('button', { name: 'Release from draft', exact: true }).click()
-  await expect(work.locator('[data-allocation-state]')).toHaveAttribute('data-allocation-state', 'unbilled')
-  expect((await prisma.deliverable.findUniqueOrThrow({ where: { id: ctx.deliverableId } })).billingStatus).toBe('unbilled')
-  expect(await prisma.invoiceItem.count({ where: { invoiceId: second } })).toBe(0)
+  await expect(page.getByRole('alert')).toContainText('last line')
+  await expect(page.getByRole('alert')).toContainText('delete the draft')
+  await expect(work.locator('[data-allocation-state]')).toHaveAttribute('data-allocation-state', 'reserved')
+  expect((await prisma.deliverable.findUniqueOrThrow({ where: { id: ctx.deliverableId } })).billingStatus).toBe('reserved')
+  expect(await prisma.invoiceItem.count({ where: { invoiceId: second } })).toBe(1)
 })
 
 test('billable rebill confirmation requires a reason and refreshes credited work to unbilled with its history', async ({ page }, testInfo) => {
