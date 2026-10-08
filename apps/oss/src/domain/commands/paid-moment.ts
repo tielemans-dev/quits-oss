@@ -77,7 +77,7 @@ export const markInvoicePaid = defineCommand({
       return yield* new InvalidState({ code: "invoice_not_payable", message: "The invoice cannot receive a payment in its current state" })
     }
     const exponent = getCurrencyExponent(invoice.currency)
-    if (exponent === undefined || exponent > 2 || balanceDue.decimalPlaces() > exponent) {
+    if (exponent === undefined || balanceDue.decimalPlaces() > Math.min(exponent, 2)) {
       return yield* new InvalidState({ code: "currency_precision_unsupported", message: `The remaining balance cannot be recorded exactly in ${invoice.currency}` })
     }
     const settings = yield* Effect.promise(() => db.orgSettings.findUnique({

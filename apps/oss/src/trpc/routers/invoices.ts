@@ -323,13 +323,13 @@ export const invoicesRouter = router({
     .input(markInvoicePaid.input)
     .output(invoicePaidMomentResultSchema)
     .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(markInvoicePaid, input, {
-      actor: ctx.actor, clientRequestId: `invoice.mark_paid:${input.requestId}`,
+      actor: ctx.actor, clientRequestId: `invoice.mark_paid:${input.invoiceId}:${input.requestId}`,
     }))),
 
   undoMarkPaid: authorizedProcedure("payment:void")
     .input(undoInvoiceMarkPaid.input)
     .output(invoicePaidMomentResultSchema)
     .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(undoInvoiceMarkPaid, input, {
-      actor: ctx.actor, clientRequestId: `invoice.undo_mark_paid:${input.requestId}`,
+      actor: ctx.actor, clientRequestId: `invoice.undo_mark_paid:${input.invoiceId}:${input.paymentId}:${input.requestId}`,
     }))),
 })

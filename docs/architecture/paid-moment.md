@@ -41,8 +41,9 @@ e.g. `{ amount: "1000.00", currency: "JPY" }`. `total` is the original invoice g
 `paidFraction` is a decimal string in [0, 1], computed with decimal arithmetic as
 `clamp((total - balance) / total, 0, 1)`, including credits. A zero total yields `"1"`.
 Nonterminating fractions use the Decimal library's precision. Money is never rounded by this
-convenience command. Unknown currencies, exponent-3 currencies, and balances with more decimal
-places than their currency permits refuse with `currency_precision_unsupported`. The legacy
+convenience command. Unknown currencies and balances with more than `min(currency exponent, 2)`
+decimal places refuse with `currency_precision_unsupported`. Existing exponent-3 invoices remain
+payable when their balance fits the two-decimal document storage, e.g. KWD 1000.50. The legacy
 payment panel's existing fractional-balance exception is unchanged.
 
 `undoUntil` is an ISO UTC timestamp exactly ten minutes after the mark command's server time.
@@ -59,11 +60,13 @@ approval registry and MCP tools. Agents keep their existing payment approval flo
 
 ## Retries and errors
 
-The routers pass `invoice.mark_paid:<requestId>` and `invoice.undo_mark_paid:<requestId>` as
-`clientRequestId` to `executeCommand`, whose receipts are also scoped by organization and actor.
+The routers pass `invoice.mark_paid:<invoiceId>:<requestId>` and
+`invoice.undo_mark_paid:<invoiceId>:<paymentId>:<requestId>` as `clientRequestId` to `executeCommand`,
+whose receipts are also scoped by organization and actor. Reusing a request ID for another invoice
+or payment runs a separate command against that target.
 Internal callers must use the same keys. Keep one request ID for each user intent, including a
-retry after an uncertain response. Never reuse it for another invoice or payment. Both concurrent
-and later retries return the first outcome, including its original deadline. Replaying a successful
+retry after an uncertain response. Both concurrent and later retries return the first outcome,
+including its original deadline. Replaying a successful
 mark after undo returns its original result without recording another payment. Replaying a
 successful undo after expiry likewise returns its original result. Refetch the invoice for current
 state after a retry; the receipt is a snapshot of the completed action. A fresh mark request on a

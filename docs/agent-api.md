@@ -259,3 +259,6 @@ zero totals; issuing or sending it receives `empty_invoice` until a line is adde
 The user-only `invoices.markPaid` and `invoices.undoMarkPaid` conveniences are deliberately absent
 from the agent API, MCP tools and approval command registry. Agents use the existing payment
 record/void commands and their approval flows. See [mark paid and undo](architecture/paid-moment.md).
+
+`payment_record` accepts `method: "manual"` for a manually recorded payment, in addition to the
+existing payment methods. Its permissions and approval flow are unchanged.

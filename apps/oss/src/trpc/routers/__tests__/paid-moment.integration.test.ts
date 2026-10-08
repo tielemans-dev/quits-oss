@@ -39,11 +39,11 @@ function caller(actor: Extract<Actor, { kind: "user" }>) {
 }
 const mark = (actor: Actor, invoiceId: string, requestId = randomUUID(), at = now) =>
   executeCommand(markInvoicePaid, { invoiceId, requestId }, {
-    actor, clientRequestId: `invoice.mark_paid:${requestId}`, now: at,
+    actor, clientRequestId: `invoice.mark_paid:${invoiceId}:${requestId}`, now: at,
   })
 const undo = (actor: Actor, invoiceId: string, paymentId: string, requestId = randomUUID(), at = now) =>
   executeCommand(undoInvoiceMarkPaid, { invoiceId, paymentId, requestId }, {
-    actor, clientRequestId: `invoice.undo_mark_paid:${requestId}`, now: at,
+    actor, clientRequestId: `invoice.undo_mark_paid:${invoiceId}:${paymentId}:${requestId}`, now: at,
   })
 
 describe.skipIf(!hasTestDatabase)("paid moment", () => {
@@ -155,6 +155,43 @@ describe.skipIf(!hasTestDatabase)("paid moment", () => {
     expect((await load(invoiceId)).amountPaid.toFixed(2)).toBe("0.00")
   })
 
+  it("reusing a request ID on another invoice records and reverses each payment", async () => {
+    const { actor, invoiceId, contactId } = await setup()
+    const api = caller(actor)
+    const second = await api.invoices.create({
+      contactId, dueDate: "2099-01-01", taxRate: 0,
+      items: [{ description: "Another invoice", quantity: 1, unitPrice: 250 }],
+    })
+    await api.invoices.send({ id: second.id, allowSendWithoutEmail: true })
+    const requestId = randomUUID()
+    const firstPaid = await api.invoices.markPaid({ invoiceId, requestId })
+    const secondPaid = await api.invoices.markPaid({ invoiceId: second.id, requestId })
+    expect(secondPaid.paymentId).not.toBe(firstPaid.paymentId)
+    expect(secondPaid).toMatchObject({ invoiceStatus: "paid", total: { amount: "250.00" }, balance: { amount: "0.00" } })
+    expect((await load(second.id)).amountPaid.toFixed(2)).toBe("250.00")
+    expect(await prisma.payment.findUnique({ where: { id: secondPaid.paymentId } })).toMatchObject({ invoiceId: second.id })
+    const firstUndo = await api.invoices.undoMarkPaid({ invoiceId, paymentId: firstPaid.paymentId, requestId })
+    const secondUndo = await api.invoices.undoMarkPaid({ invoiceId: second.id, paymentId: secondPaid.paymentId, requestId })
+    expect(firstUndo.balance.amount).toBe("1000.00")
+    expect(secondUndo).toMatchObject({ paymentId: secondPaid.paymentId, balance: { amount: "250.00" } })
+    expect((await load(second.id)).amountPaid.toFixed(2)).toBe("0.00")
+  })
+
+  it("reusing an undo request ID for a later payment on the same invoice reverses that payment", async () => {
+    const { actor, invoiceId } = await setup()
+    const api = caller(actor)
+    const requestId = randomUUID()
+    const first = await api.invoices.markPaid({ invoiceId, requestId: randomUUID() })
+    const firstUndo = await api.invoices.undoMarkPaid({ invoiceId, paymentId: first.paymentId, requestId })
+    const second = await api.invoices.markPaid({ invoiceId, requestId: randomUUID() })
+    expect(second.paymentId).not.toBe(first.paymentId)
+    const secondUndo = await api.invoices.undoMarkPaid({ invoiceId, paymentId: second.paymentId, requestId })
+    expect(secondUndo).toMatchObject({ paymentId: second.paymentId, balance: { amount: "1000.00" } })
+    expect(await prisma.payment.count({ where: { invoiceId, voidedAt: null } })).toBe(0)
+    expect(await api.invoices.undoMarkPaid({ invoiceId, paymentId: first.paymentId, requestId })).toEqual(firstUndo)
+    expect(await api.invoices.undoMarkPaid({ invoiceId, paymentId: second.paymentId, requestId })).toEqual(secondUndo)
+  })
+
   it("two different request IDs settle once and refuse the other", async () => {
     const { actor, invoiceId } = await setup()
     const outcomes = await Promise.all([mark(actor, invoiceId), mark(actor, invoiceId)])
@@ -230,7 +267,19 @@ describe.skipIf(!hasTestDatabase)("paid moment", () => {
     expect(completed(await undo(actor, invoiceId, marked.paymentId)).balance.amount).toBe(options.total.toFixed(2))
   })
 
-  it.each(["JPY", "KWD", "ZZZ"])("refuses an unrepresentable or unsupported %s balance without rounding", async currency => {
+  it("settles an existing exponent-3 invoice when its balance fits the two-decimal storage", async () => {
+    const { actor, invoiceId } = await setup()
+    // Current pricing refuses new exponent-3 documents; older invoices can still hold them.
+    await prisma.invoice.update({ where: { id: invoiceId }, data: { currency: "KWD", totalGross: 1000.5 } })
+    const marked = completed(await mark(actor, invoiceId))
+    expect(marked).toMatchObject({ invoiceStatus: "paid", total: { amount: "1000.50", currency: "KWD" }, balance: { amount: "0.00", currency: "KWD" } })
+    const payment = await prisma.payment.findUniqueOrThrow({ where: { id: marked.paymentId } })
+    expect(payment.amount.toFixed(2)).toBe("1000.50")
+    expect(payment.currency).toBe("KWD")
+    expect(completed(await undo(actor, invoiceId, marked.paymentId))).toMatchObject({ balance: { amount: "1000.50", currency: "KWD" } })
+  })
+
+  it.each(["JPY", "ZZZ"])("refuses an unrepresentable or unsupported %s balance without rounding", async currency => {
     const { actor, invoiceId } = await setup()
     await prisma.invoice.update({ where: { id: invoiceId }, data: { currency, totalGross: 1000.5 } })
     expect(await mark(actor, invoiceId)).toMatchObject({ status: "failed", error: { code: "currency_precision_unsupported" } })
