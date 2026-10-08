@@ -384,12 +384,12 @@ model Invoice {
   @@unique([organizationId, number])
   @@unique([recurringInvoiceId, recurringRunDate])
   @@index([agreementId])
-  @@index([organizationId])
   @@index([contactId])
   @@index([organizationId, status])
   @@index([organizationId, paymentStatus])
   @@index([organizationId, publicPaymentIssuedAt])
   @@index([organizationId, dueDate])
+  @@index([organizationId, createdAt, id])
   @@map("invoice")
 }
 
@@ -677,6 +677,7 @@ model DomainEvent {
 
   @@unique([organizationId, sequence])
   @@index([organizationId, aggregateType, aggregateId])
+  @@index([organizationId, type])
   @@map("domain_event")
 }
 
