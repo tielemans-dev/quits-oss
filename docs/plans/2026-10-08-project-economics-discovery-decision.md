@@ -135,4 +135,4 @@ UX owns all user-facing design and Kvit identity. Eventual internal reporting ne
 | Prototype separates cash, invoiced work, billable value, cost and margin | Synthetic definitions/arithmetic complete. No customer-tested or runtime prototype; scoped contribution is explicitly distinct from actual profit. |
 | Documented build/defer/integrate decision and evidence that would change it | Complete as a proposed decision for parent review. No production-design approval implied. |
 
-No containers, ports, install, build, browser or full-suite job is needed for these discovery artifacts. Exact checks and their limits are in the external delivery handoff. Parent review, dependency integration and explicit #75 confirmation still govern delivery publication and merges.
+No containers, ports, install, build, browser or full-suite job is needed for these discovery artifacts. Exact checks and their limits are in the external delivery handoff. Parent review and dependency integration govern publication; the study and implementation limits above remain open.
