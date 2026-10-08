@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 const hash = value => createHash('sha256').update(value).digest('hex');
 const clone = value => structuredClone(value);
+const freeze = value => {
+  if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); }
+  return value;
+};
+const digest = value => hash(JSON.stringify(value) ?? 'undefined');
+const commercialFacts = rate => rate && ({ id: rate.id, customerId: rate.customerId, unit: rate.unit,
+  unitPrice: rate.unitPrice, taxTreatment: rate.taxTreatment, currency: rate.currency,
+  pricesIncludeTax: rate.pricesIncludeTax });
 const fail = code => { throw new Error(code); };
 const exactKeys = (object, keys) => object && typeof object === 'object' && !Array.isArray(object)
   && Object.keys(object).sort().join() === [...keys].sort().join();
@@ -54,6 +62,7 @@ export function validateExtraction(value, text) {
 
 export class WorkLog {
   sources = new Map(); entries = new Map(); allocations = new Map(); sequence = 0;
+  #reviews = new Map(); #holders = new Map(); #allocationSequence = 0;
   constructor(org, customers, rates) { this.org = org; this.customers = customers; this.rates = rates; }
   capture({ org, kind, externalId, text }, extracted) {
     if (org !== this.org || !['text', 'email', 'voice'].includes(kind) || !externalId) fail('invalid_source');
@@ -90,40 +99,69 @@ export class WorkLog {
     entry.history.push({ revision: entry.revision, candidate: clone(entry.candidate), sourceDigest: source.digest });
     entry.candidate = clone(replacement); entry.revision++; entry.confirmed = false;
     entry.customerId = null; entry.rateId = null;
+    this.#reviews.delete(id);
   }
   review(id, revision, { actor, customerId, rateId, billingClass }) {
     const entry = this.entries.get(id);
     if (!entry || entry.revision !== revision) fail('stale_entry');
     if (actor !== 'human' || entry.state !== 'unbilled') fail('review_required');
+    entry.confirmed = false; this.#reviews.delete(id);
     if (entry.duplicateOf) fail('duplicate_review_required');
     if (!this.customers.some(customer => customer.id === customerId)) fail('unknown_customer');
     const candidate = entry.candidate;
     if (!date(candidate.date) || !quantity(candidate.quantity) || !candidate.unit) fail('missing_work_fields');
     const rate = this.rates.find(item => item.id === rateId && item.customerId === customerId && item.unit === candidate.unit);
-    if (billingClass !== 'hourly' || !rate || rate.unitPrice === null || rate.taxTreatment === null
-      || rate.currency === null || typeof rate.pricesIncludeTax !== 'boolean') fail('missing_financial_review');
+    if (billingClass !== 'hourly' || !rate || typeof rate.unitPrice !== 'string'
+      || !/^\d+\.\d{2}$/.test(rate.unitPrice) || Number(rate.unitPrice) <= 0
+      || typeof rate.taxTreatment !== 'string' || !rate.taxTreatment.trim()
+      || typeof rate.currency !== 'string' || !/^[A-Z]{3}$/.test(rate.currency)
+      || typeof rate.pricesIncludeTax !== 'boolean') fail('missing_financial_review');
+    const source = [...this.sources.values()].find(item => item.id === entry.sourceId);
+    this.#reviews.set(id, freeze({ revision, sourceId: entry.sourceId, sourceDigest: source.digest,
+      candidate: clone(candidate), customerId, rateId, billingClass, rate: clone(commercialFacts(rate)) }));
     entry.customerId = customerId; entry.rateId = rateId; entry.confirmed = true;
   }
   reserve(id, revision, draftId, lineId) {
     const entry = this.entries.get(id);
     if (!entry || entry.revision !== revision) fail('stale_entry');
-    if (!entry.confirmed || entry.duplicateOf) fail('review_required');
+    const reviewed = this.#reviews.get(id);
+    if (!entry.confirmed || !reviewed || entry.duplicateOf) fail('review_required');
     if (entry.state !== 'unbilled') fail('already_allocated');
-    const rate = this.rates.find(item => item.id === entry.rateId);
-    const line = { draftId, lineId, number: null, status: 'draft', customerId: entry.customerId,
+    const source = [...this.sources.values()].find(item => item.id === entry.sourceId);
+    if (reviewed.revision !== revision || reviewed.sourceId !== entry.sourceId
+      || reviewed.sourceDigest !== source?.digest || digest(reviewed.candidate) !== digest(entry.candidate)
+      || reviewed.customerId !== entry.customerId || reviewed.rateId !== entry.rateId
+      || !this.customers.some(customer => customer.id === reviewed.customerId)) {
+      entry.confirmed = false; this.#reviews.delete(id); fail('stale_work_review');
+    }
+    const rate = this.rates.find(item => item.id === reviewed.rateId);
+    if (digest(commercialFacts(rate)) !== digest(reviewed.rate)) {
+      entry.confirmed = false; this.#reviews.delete(id); fail('stale_financial_review');
+    }
+    if (typeof draftId !== 'string' || !draftId || typeof lineId !== 'string' || !lineId) fail('invalid_holder');
+    const holder = JSON.stringify([draftId, lineId]);
+    if (this.#holders.has(holder)) fail('holder_already_allocated');
+    // This process-local identity demonstrates the rule. A persisted adapter must retain a
+    // globally unique allocation identity across restarts; generation remains the rebill counter.
+    const allocationId = `allocation-${++this.#allocationSequence}`;
+    const line = freeze({ draftId, lineId, allocationId, number: null, status: 'draft', customerId: reviewed.customerId,
       sourceKind: 'proposed_work_entry', sourceId: entry.id, captureSourceId: entry.sourceId,
       sourceRevision: revision, generation: entry.generation, description: entry.candidate.description,
-      quantity: entry.candidate.quantity, unit: entry.candidate.unit, ...clone(rate) };
+      quantity: entry.candidate.quantity, unit: entry.candidate.unit, ...clone(reviewed.rate) });
+    this.#holders.set(holder, allocationId);
     this.allocations.set(id, line); entry.state = 'reserved'; return clone(line);
   }
   release(id, expected) {
     const entry = this.entries.get(id), line = this.allocations.get(id);
     if (!line || !entry || entry.state !== 'reserved') fail('not_reserved');
     if (line.status !== 'draft') fail('issued_frozen');
-    if (!exactKeys(expected, ['draftId', 'lineId', 'generation'])
+    if (!exactKeys(expected, ['draftId', 'lineId', 'generation', 'allocationId'])
       || expected.draftId !== line.draftId || expected.lineId !== line.lineId
-      || expected.generation !== line.generation) fail('allocation_changed');
+      || expected.generation !== line.generation || expected.allocationId !== line.allocationId
+      || this.#holders.get(JSON.stringify([line.draftId, line.lineId])) !== line.allocationId) fail('allocation_changed');
+    this.#holders.delete(JSON.stringify([line.draftId, line.lineId]));
     this.allocations.delete(id); entry.state = 'unbilled'; entry.confirmed = false;
+    this.#reviews.delete(id);
   }
 }
 
@@ -174,6 +212,8 @@ check('correction retains original and requires fresh confirmation', () => {
   refuses(() => store.review(a, 2, { actor: 'model' }), 'review_required');
 });
 const confirm = () => store.review(a, 2, { actor: 'human', customerId: 'c-a', rateId: 'approved-rate-a', billingClass: 'hourly' });
+const releaseConfirmation = line => ({ draftId: line.draftId, lineId: line.lineId,
+  generation: line.generation, allocationId: line.allocationId });
 let frozen;
 check('confirmed line retains source, revision and null draft number', () => {
   confirm(); frozen = store.reserve(a, 2, 'd1', 'l1');
@@ -186,14 +226,120 @@ check('second reservation loses and correction cannot rewrite reserved line', ()
   assert.deepEqual(store.allocations.get(a), frozen);
 });
 check('release checks reviewed holder and does not permit stale reuse', () => {
-  refuses(() => store.release(a, { draftId: 'd2', lineId: 'l2', generation: 0 }), 'allocation_changed');
-  store.release(a, { draftId: 'd1', lineId: 'l1', generation: 0 });
+  refuses(() => store.release(a, { ...releaseConfirmation(frozen), draftId: 'd2', lineId: 'l2' }), 'allocation_changed');
+  store.release(a, releaseConfirmation(frozen));
   confirm(); store.reserve(a, 2, 'd1', 'l-new');
-  refuses(() => store.release(a, { draftId: 'd1', lineId: 'l1', generation: 0 }), 'allocation_changed');
+  refuses(() => store.release(a, releaseConfirmation(frozen)), 'allocation_changed');
 });
 check('issued state refuses release, using synthetic state only', () => {
-  store.allocations.get(a).status = 'issued';
-  refuses(() => store.release(a, { draftId: 'd1', lineId: 'l-new', generation: 0 }), 'issued_frozen');
+  const current = store.allocations.get(a);
+  store.allocations.set(a, freeze({ ...current, status: 'issued' })); // Synthetic state, no issuance method.
+  refuses(() => store.release(a, releaseConfirmation(current)), 'issued_frozen');
+});
+const fixture = () => {
+  const localRates = clone(rates);
+  const log = new WorkLog('org-example', clone(customers), localRates);
+  const text = 'Alpha | 2026-10-08 | 2 h | Design';
+  const candidates = parseMultiline(text);
+  const id = log.capture({ org: 'org-example', kind: 'text', externalId: 'fixture', text }, candidates).ids[0];
+  const review = (entryId = id, revision = 1) => log.review(entryId, revision,
+    { actor: 'human', customerId: 'c-a', rateId: 'approved-rate-a', billingClass: 'hourly' });
+  return { log, id, localRates, review, text, candidates };
+};
+check('same holder reuse has fresh allocation identity without advancing rebill generation', () => {
+  const f = fixture(); f.review(); const first = f.log.reserve(f.id, 1, 'same-draft', 'same-line');
+  const old = releaseConfirmation(first); f.log.release(f.id, old);
+  refuses(() => f.log.reserve(f.id, 1, 'same-draft', 'same-line'), 'review_required');
+  f.review(); const next = f.log.reserve(f.id, 1, 'same-draft', 'same-line');
+  assert.equal(next.generation, first.generation); assert.notEqual(next.allocationId, first.allocationId);
+  refuses(() => f.log.release(f.id, old), 'allocation_changed');
+  assert.deepEqual(f.log.allocations.get(f.id), next);
+  f.log.release(f.id, releaseConfirmation(next));
+});
+check('distinct holder and new draft refuse previous release identity', () => {
+  const f = fixture(); f.review(); const first = f.log.reserve(f.id, 1, 'd1', 'l1');
+  f.log.release(f.id, releaseConfirmation(first)); f.review();
+  const next = f.log.reserve(f.id, 1, 'd2', 'l2');
+  refuses(() => f.log.release(f.id, releaseConfirmation(first)), 'allocation_changed');
+  refuses(() => f.log.release(f.id, { ...releaseConfirmation(next), generation: 1 }), 'allocation_changed');
+  assert.deepEqual(f.log.allocations.get(f.id), next);
+});
+check('one holder cannot own two work entries and foreign allocation cannot release either', () => {
+  const f = fixture(); const text = f.text.replace('Design', 'Distinct work');
+  const second = f.log.capture({ org: 'org-example', kind: 'text', externalId: 'distinct', text }, parseMultiline(text)).ids[0];
+  f.review(); f.review(second);
+  const first = f.log.reserve(f.id, 1, 'draft', 'line');
+  refuses(() => f.log.reserve(second, 1, 'draft', 'line'), 'holder_already_allocated');
+  assert.equal(f.log.entries.get(second).state, 'unbilled');
+  const next = f.log.reserve(second, 1, 'draft', 'other-line');
+  refuses(() => f.log.release(f.id, releaseConfirmation(next)), 'allocation_changed');
+  f.log.release(f.id, releaseConfirmation(first));
+  assert.deepEqual(f.log.allocations.get(second), next);
+  f.log.release(second, releaseConfirmation(next)); f.review(second);
+  const replacement = f.log.reserve(second, 1, 'draft', 'line');
+  refuses(() => f.log.release(second, releaseConfirmation(first)), 'allocation_changed');
+  assert.deepEqual(f.log.allocations.get(second), replacement);
+});
+check('price mutation after review refuses reservation until new explicit review', () => {
+  const f = fixture(); f.review(); f.localRates[0].unitPrice = '9999.00';
+  refuses(() => f.log.reserve(f.id, 1, 'draft', 'line'), 'stale_financial_review');
+  assert.equal(f.log.allocations.size, 0); assert.equal(f.log.entries.get(f.id).confirmed, false);
+  refuses(() => f.log.reserve(f.id, 1, 'draft', 'line'), 'review_required');
+  f.review(); assert.equal(f.log.reserve(f.id, 1, 'draft', 'line').unitPrice, '9999.00');
+});
+check('removed tax or rate after review refuses reservation and renewed review', () => {
+  for (const remove of [f => { f.localRates[0].taxTreatment = null; }, f => { f.localRates.shift(); }]) {
+    const f = fixture(); f.review(); remove(f);
+    refuses(() => f.log.reserve(f.id, 1, 'draft', 'line'), 'stale_financial_review');
+    refuses(f.review, 'missing_financial_review'); assert.equal(f.log.allocations.size, 0);
+  }
+});
+check('review binds currency price basis tax customer and unit as well as price', () => {
+  for (const patch of [{ currency: 'EUR' }, { pricesIncludeTax: true }, { taxTreatment: 'new-tax' },
+    { customerId: 'c-b' }, { unit: 'stk' }, { unitPrice: undefined }, { taxTreatment: undefined }]) {
+    const f = fixture(); f.review(); Object.assign(f.localRates[0], patch);
+    refuses(() => f.log.reserve(f.id, 1, 'draft', 'line'), 'stale_financial_review');
+    assert.equal(f.log.allocations.size, 0);
+  }
+});
+check('reviewed facts and reserved line do not share mutable rate or returned line references', () => {
+  const f = fixture(); f.review(); const line = f.log.reserve(f.id, 1, 'draft', 'line');
+  f.localRates[0].unitPrice = '9999.00'; f.localRates[0].taxTreatment = null; line.unitPrice = '1.00';
+  assert.equal(f.log.allocations.get(f.id).unitPrice, '800.00');
+  assert.equal(f.log.allocations.get(f.id).taxTreatment, 'synthetic-reviewed-25-percent');
+  assert.ok(Object.isFrozen(f.log.allocations.get(f.id)));
+});
+check('correction after review invalidates confirmation and preserves source evidence', () => {
+  const f = fixture(); f.review(); const before = clone(f.log.entries.get(f.id));
+  f.log.correct(f.id, 1, { ...f.candidates[0], quantity: '4' });
+  assert.equal(f.log.entries.get(f.id).confirmed, false);
+  refuses(() => f.log.reserve(f.id, 1, 'draft', 'line'), 'stale_entry');
+  refuses(() => f.log.reserve(f.id, 2, 'draft', 'line'), 'review_required');
+  f.review(f.id, 2); const line = f.log.reserve(f.id, 2, 'draft', 'line');
+  assert.equal(line.quantity, '4'); assert.equal(line.captureSourceId, before.sourceId);
+  assert.equal(f.log.entries.get(f.id).history[0].candidate.quantity, '2');
+});
+check('changed work or source facts after review refuse reservation', () => {
+  for (const mutate of [f => { f.log.entries.get(f.id).candidate.quantity = '9'; },
+    f => { [...f.log.sources.values()][0].digest = 'changed'; },
+    f => { f.log.entries.get(f.id).customerId = 'c-b'; }]) {
+    const f = fixture(); f.review(); mutate(f);
+    refuses(() => f.log.reserve(f.id, 1, 'draft', 'line'), 'stale_work_review');
+    assert.equal(f.log.allocations.size, 0);
+  }
+});
+check('failed replacement review cannot retain prior commercial confirmation', () => {
+  const f = fixture(); f.review();
+  refuses(() => f.log.review(f.id, 1, { actor: 'human', customerId: 'c-a', rateId: 'missing', billingClass: 'hourly' }), 'missing_financial_review');
+  refuses(() => f.log.reserve(f.id, 1, 'draft', 'line'), 'review_required');
+});
+check('release invalidation and source replay do not restore confirmation or create duplicates', () => {
+  const f = fixture(); f.review(); const first = f.log.reserve(f.id, 1, 'draft', 'line');
+  f.log.release(f.id, releaseConfirmation(first));
+  const replay = f.log.capture({ org: 'org-example', kind: 'text', externalId: 'fixture', text: f.text }, f.candidates);
+  assert.deepEqual(replay, { replay: true, ids: [f.id] });
+  refuses(() => f.log.reserve(f.id, 1, 'draft', 'line'), 'review_required');
+  assert.equal(f.log.allocations.size, 0);
 });
 const mock = { entries: clone(parsed) };
 check('handwritten structured AI fixture shares review-only path', () => assert.deepEqual(validateExtraction(mock, input), parsed));
@@ -218,4 +364,4 @@ check('invalid spans, impossible dates, negative and ambiguous numbers fail clos
 check('bounded parser does not truncate silently', () => refuses(() => parseMultiline('x'.repeat(4001)), 'input_limit'));
 console.log(JSON.stringify({ kind: 'synthetic-offline-proposal', checks, count: checks.length,
   expectedCandidates: parsed, reviewedDraftExample: frozen,
-  limitations: ['No live K5 execution', 'No live model/STT evaluation', 'No SQL race proof', 'No financial totals or issuance', 'Duplicate resolution UI and persistence not implemented'] }, null, 2));
+  limitations: ['No live K5 execution', 'No live model/STT evaluation', 'No SQL race proof', 'No financial totals or issuance', 'No durable allocation identity or protected persistence', 'Duplicate resolution UI and persistence not implemented'] }, null, 2));
