@@ -113,7 +113,22 @@ export type StripeCheckoutSession = z.infer<typeof stripeCheckoutSessionSchema>
 export const settlementAmountSchema = z.string().regex(/^(0|[1-9]\d{0,9})(\.\d{1,2})?$/)
 export const settlementEvidenceSchema = z.object({
   reason: z.string().trim().min(1).max(500),
-  evidence: z.string().trim().url().max(2000).refine(value => /^https?:\/\//.test(value), "Use an HTTP or HTTPS evidence link"),
+  evidence: z.string()
+    // Check the submitted text before trimming or URL parsing can discard controls.
+    .refine(value => ![...value].some(character => {
+      const code = character.charCodeAt(0)
+      return code < 32 || (code >= 127 && code <= 159)
+    }), "Evidence links must not contain control characters")
+    .trim().url().max(2000)
+    .refine(value => /^https?:\/\//.test(value), "Use an HTTP or HTTPS evidence link")
+    .refine(value => {
+      try {
+        const url = new URL(value)
+        return !url.username && !url.password
+      } catch {
+        return false
+      }
+    }, "Evidence links must not contain a username or password"),
 }).strict()
 const settlementRequest = { requestId: z.string().trim().min(1).max(100) }
 export const receiptRecordInputSchema = z.object({

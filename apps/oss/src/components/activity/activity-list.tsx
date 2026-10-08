@@ -1,4 +1,5 @@
 import { Bot, Cog, User } from "lucide-react"
+import { settlementEvidenceSchema } from "@quits/contracts/payments"
 import type { ActivityEntry } from "../../lib/exports/activity"
 import { aggregateLabel, describeActivity } from "../../lib/exports/activity-description"
 import { normalizeLocale } from "../../lib/i18n/locale"
@@ -69,7 +70,7 @@ export function ActivityList({ events, showAggregate = false }: ActivityListProp
               {([['reason', 'evidence'], ['feeReason', 'feeEvidence'], ['exchangeReason', 'exchangeEvidence']] as const).map(([reasonKey, evidenceKey]) => {
                 const reason = event.payload[reasonKey]
                 const evidence = event.payload[evidenceKey]
-                return typeof reason === "string" && typeof evidence === "string" && /^https?:\/\//.test(evidence)
+                return typeof reason === "string" && typeof evidence === "string" && settlementEvidenceSchema.shape.evidence.safeParse(evidence).success
                   ? <a key={evidenceKey} href={evidence} target="_blank" rel="noreferrer" className="break-words underline">{reason}</a> : null
               })}
             </div> : null}

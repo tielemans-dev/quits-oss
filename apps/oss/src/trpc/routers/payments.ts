@@ -12,6 +12,7 @@ import {
   previewReceiptChange,
   receiptBalanceFromTotals,
   recordReceipt,
+  SettlementRefusal,
 } from "../../domain/commands/settlements"
 import { lockArtifactOrganization } from "../../domain/documents/artifacts"
 import { TRPCError } from "@trpc/server"
@@ -23,6 +24,7 @@ import {
 import { actorCan } from "../../domain/actor"
 import { recordPayment, voidPayment } from "../../domain/commands/payments"
 import { computeSettlement } from "../../domain/documents/settlement"
+import { InvalidState } from "../../domain/errors"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { authorizedProcedure, router } from "../init"
@@ -42,6 +44,14 @@ type PaymentRow = {
   voidReason: string | null
   createdAt: Date
   receiptId?: string | null
+}
+
+function rethrowPreviewError(error: unknown, message: string): never {
+  if (error instanceof SettlementRefusal || error instanceof InvalidState) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: error.message })
+  }
+  // Persistence and timeout errors may contain server details. Do not attach their cause.
+  throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message })
 }
 
 export function serializePayment(payment: PaymentRow) {
@@ -159,10 +169,7 @@ export const paymentsRouter = router({
           return previewReceiptAllocation(db, ctx.organizationId, input)
         })
       } catch (error) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: error instanceof Error ? error.message : "Could not preview allocation",
-        })
+        rethrowPreviewError(error, "Could not preview allocation")
       }
     }),
   allocateReceipt: authorizedProcedure("payment:create")
@@ -184,10 +191,7 @@ export const paymentsRouter = router({
           return previewReceiptChange(db, ctx.organizationId, input)
         })
       } catch (error) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: error instanceof Error ? error.message : "Could not preview change",
-        })
+        rethrowPreviewError(error, "Could not preview change")
       }
     }),
   changeReceipt: authorizedProcedure("payment:void")

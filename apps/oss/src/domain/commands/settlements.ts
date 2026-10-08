@@ -17,7 +17,7 @@ import { Forbidden, InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { parsePaidAt } from "./payments"
 
-class SettlementRefusal extends Error {
+export class SettlementRefusal extends Error {
   constructor(
     readonly code: string,
     message: string,

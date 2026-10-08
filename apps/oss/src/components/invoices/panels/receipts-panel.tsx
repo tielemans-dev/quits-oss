@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { settlementEvidenceSchema } from "@quits/contracts/payments"
 import type {
   ReceiptActionInput,
   ReceiptAllocateInput,
@@ -22,6 +23,11 @@ type View = Awaited<ReturnType<typeof trpc.payments.receipts.query>>
 type Receipt = View["receipts"][number]
 type Preview = Awaited<ReturnType<typeof trpc.payments.previewAllocation.query>>
 const id = () => crypto.randomUUID()
+
+function evidenceHref(value: string) {
+  const parsed = settlementEvidenceSchema.shape.evidence.safeParse(value)
+  return parsed.success ? parsed.data : undefined
+}
 
 /** The invoice's customer owns the receipt, including any amount not yet allocated. */
 export function ReceiptsPanel({
@@ -93,7 +99,7 @@ export function ReceiptsPanel({
               refunded: receipt.refunded,
             })}
           </p>
-          <a className="text-sm underline" href={receipt.evidence} target="_blank" rel="noreferrer">
+          <a className="text-sm underline" href={evidenceHref(receipt.evidence)} target="_blank" rel="noreferrer">
             {receipt.reason}
           </a>
           {receipt.customerCredit ? (
@@ -203,7 +209,7 @@ function CustomerCreditPreview({
       <p className="font-medium">{label}</p>
       <p>{classification.reason ?? t("payments.receipts.unclassified")}</p>
       {classification.evidence ? (
-        <a className="underline" href={classification.evidence} target="_blank" rel="noreferrer">
+        <a className="underline" href={evidenceHref(classification.evidence)} target="_blank" rel="noreferrer">
           {classification.evidence}
         </a>
       ) : null}

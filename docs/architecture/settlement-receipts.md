@@ -70,7 +70,11 @@ response and creates another when the operator changes the proposed action.
 
 Reasons and HTTP(S) evidence links are mandatory. Fee and currency-conversion evidence are
 separate from the allocation evidence. Links are references supplied by the operator; Quits does
-not fetch or independently verify their contents. Domain-event envelopes record actor kind, actor
+not fetch or independently verify their contents. Links reject embedded usernames, passwords and
+raw control characters. Signed query links remain allowed when intentionally shared as evidence.
+The full link is retained in events, payment history and accounting exports, so operators must
+choose evidence they intend to share with readers of those records.
+Domain-event envelopes record actor kind, actor
 ID, command ID, occurrence time, sequence and schema version.
 
 ## Accounting export contract
