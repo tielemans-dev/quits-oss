@@ -708,6 +708,15 @@ export async function reconcileDelivery(
   return documentJournal(actor, input)
 }
 
+/** Expected access/missing-record failures are refusals; persistence failures must stay retryable. */
+function readJournalRecord<Value>(work: () => Promise<Value>) {
+  return Effect.tryPromise({ try: work, catch: error => error }).pipe(
+    Effect.catchAll(error => error instanceof Forbidden || error instanceof NotFound
+      ? Effect.fail(error)
+      : Effect.die(error))
+  )
+}
+
 /** This human-only command queues a new communication for the same issued record. It never
  * calls the creation/issuance command or replays financial effects. One manual recovery per source.
  */
@@ -733,23 +742,14 @@ export function manualResendCommand(
             message: "Manual recovery requires an authorized person"
           })
         yield* lockDocument(documentType, input.documentId)
-        const document = yield* Effect.tryPromise({
-          try: () => journalDocument(command.actor, input, true, db),
-          catch: (error) => error as Forbidden | NotFound
-        })
+        const document = yield* readJournalRecord(() => journalDocument(command.actor, input, true, db))
         // Contact edits do not necessarily update the document. Lock and re-read it as part
         // of the reviewed target, so a changed recipient cannot slip into the queued message.
         yield* lockDocument("contact", document.contactId, {
           strength: "no_key_update"
         })
-        const current = yield* Effect.tryPromise({
-          try: () => journalDocument(command.actor, input, true, db),
-          catch: (error) => error as Forbidden | NotFound
-        })
-        const { job, payload } = yield* Effect.tryPromise({
-          try: () => scopedJob(command.actor, input, db),
-          catch: (error) => error as NotFound
-        })
+        const current = yield* readJournalRecord(() => journalDocument(command.actor, input, true, db))
+        const { job, payload } = yield* readJournalRecord(() => scopedJob(command.actor, input, db))
         const previous = yield* Effect.promise(() =>
           db.job.count({
             where: {

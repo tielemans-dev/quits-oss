@@ -1,3 +1,7 @@
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
+import { createRequestContext } from "../../trpc/init"
+import { journalRouter } from "../../trpc/routers/journal"
+import { actorKey, type UserActor } from "../actor"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("../../lib/email", async () => ({
   ...(await vi.importActual<typeof import("../../lib/email")>(
@@ -962,6 +966,10 @@ suite("operation journal and bounded recovery", () => {
     await expect(reconcileDelivery(actor, delivery)).rejects.toThrow(
       "lookup unavailable"
     )
+    const response = await journalHttp(actor, "reconcile", delivery)
+    expect(response.status).toBe(500)
+    expect(response.text).toContain("Could not reconcile delivery")
+    expect(response.text).not.toContain("lookup unavailable")
     expect((await documentJournal(actor, scope)).deliveries[0]?.state).toBe(
       "uncertain"
     )
@@ -1014,5 +1022,107 @@ suite("operation journal and bounded recovery", () => {
     await expect(
       accountant.journal.recover({ ...scope, deliveryId: "private-job" })
     ).rejects.toMatchObject({ code: "FORBIDDEN" })
+  })
+  async function holdLock(lock: (tx: Prisma.TransactionClient) => Promise<unknown>, work: () => Promise<void>) {
+    let release!: () => void
+    let ready!: () => void
+    const released = new Promise<void>(resolve => { release = resolve })
+    const acquired = new Promise<void>(resolve => { ready = resolve })
+    const holder = prisma.$transaction(async tx => {
+      await lock(tx)
+      ready()
+      await released
+    }, { timeout: 20_000 })
+    try {
+      await Promise.race([acquired, holder.then(() => { throw new Error("Lock holder ended early") })])
+      await work()
+    } finally {
+      release()
+      await holder
+    }
+  }
+  async function durableState(organizationId: string) {
+    const where = { organizationId }
+    return {
+      invoices: await prisma.invoice.findMany({ where, orderBy: { id: "asc" } }),
+      jobs: await prisma.job.findMany({ where, orderBy: { id: "asc" } }),
+      events: await prisma.domainEvent.findMany({ where, orderBy: { id: "asc" } }),
+      receipts: await prisma.commandReceipt.findMany({ where, orderBy: { id: "asc" } }),
+      payments: await prisma.payment.findMany({ where, orderBy: { id: "asc" } }),
+    }
+  }
+  async function journalHttp(actor: UserActor, path: "manualResend" | "recover" | "reconcile", input: unknown) {
+    const response = await fetchRequestHandler({
+      endpoint: "/api/trpc", router: journalRouter,
+      req: new Request(`http://localhost/api/trpc/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ json: input }) }),
+      createContext: () => createRequestContext({
+        user: { id: actor.userId, name: "Operator", email: "operator@example.test" },
+        session: { activeOrganizationId: actor.organizationId },
+      } as never, actor.organizationId),
+    })
+    return { status: response.status, text: await response.text() }
+  }
+  it.each(["advisory", "contact"] as const)("rolls back a manual resend blocked on %s, then retries and replays once", async kind => {
+    const { actor, scope, delivery } = await uncertain()
+    const reviewed = (await documentJournal(actor, scope)).deliveries[0]
+    const requestId = `timeout-${kind}`
+    const input = { ...delivery, mode: "stored", reviewedTarget: reviewed.manualTarget, reason: "Recipient requested another copy", acknowledgeDuplicateRisk: true, clientRequestId: requestId }
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
+    const before = await durableState(actor.organizationId)
+    await holdLock(tx => kind === "advisory"
+      ? tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${actor.organizationId}|${actorKey(actor)}|${requestId}`}, 0))`
+      : tx.$queryRaw`SELECT id FROM contact WHERE id = ${invoice.contactId} FOR UPDATE`, async () => {
+      const started = performance.now()
+      const response = await journalHttp(actor, "manualResend", input)
+      expect(response.status).toBe(500)
+      expect(response.text).toContain("Could not resend document")
+      expect(response.text).not.toMatch(/Prisma|55P03|P2010|lock timeout|SELECT|contact/)
+      expect(performance.now() - started).toBeLessThan(10_000)
+      expect(await durableState(actor.organizationId)).toEqual(before)
+    })
+    expect((await journalHttp(actor, "manualResend", input)).status).toBe(200)
+    expect((await journalHttp(actor, "manualResend", input)).status).toBe(200)
+    expect(await prisma.invoice.count({ where: { organizationId: actor.organizationId } })).toBe(1)
+    expect(await prisma.domainEvent.count({ where: { organizationId: actor.organizationId, type: "delivery.manual_resend_requested" } })).toBe(1)
+    expect(await prisma.commandReceipt.count({ where: { organizationId: actor.organizationId, clientRequestId: requestId } })).toBe(1)
+    expect(await prisma.job.count({ where: { organizationId: actor.organizationId, type: EMAIL_DELIVERY_JOB } })).toBe(2)
+    expect(vi.mocked(deliver)).toHaveBeenCalledTimes(2)
+  })
+  it.each(["recover", "reconcile"] as const)("rolls back %s on an organization row timeout and retries only its step", async path => {
+    const { actor, scope, delivery, job } = await uncertain()
+    if (path === "recover") {
+      // Acceptance is durable but completion was interrupted: recovery must never send again.
+      await prisma.job.update({ where: { id: job.id }, data: { payload: { ...(job.payload as Prisma.JsonObject), providerMessageId: "known-accepted" }, result: Prisma.DbNull } })
+    } else {
+      setRuntimeServices({ emailDeliveryStatusProvider: { supports: () => true, lookup: async () => ({ evidenceId: "timeout-evidence", observedAt: new Date("2026-10-09T00:00:00Z"), outcome: "accepted", providerMessageId: "known-accepted" }) } })
+    }
+    const before = await durableState(actor.organizationId)
+    await holdLock(tx => tx.$queryRaw`SELECT id FROM org_settings WHERE "organizationId" = ${actor.organizationId} FOR UPDATE`, async () => {
+      const response = await journalHttp(actor, path, delivery)
+      expect(response.status).toBe(500)
+      expect(response.text).toContain(path === "recover" ? "Could not recover delivery" : "Could not reconcile delivery")
+      expect(response.text).not.toMatch(/Prisma|55P03|P2010|lock timeout|SELECT/)
+      expect(await durableState(actor.organizationId)).toEqual(before)
+    })
+    expect((await journalHttp(actor, path, delivery)).status).toBe(200)
+    expect((await documentJournal(actor, scope)).deliveries[0].state).toBe("delivery_confirmed")
+    expect(await prisma.invoice.count({ where: { organizationId: actor.organizationId } })).toBe(1)
+    expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
+  })
+  it.each(["unkeyed", "resumed"] as const)("preserves %s executor atomicity and receipt semantics under the role row bound", async mode => {
+    const { actor } = await setup()
+    const resumeId = `resumed-${crypto.randomUUID()}`
+    if (mode === "resumed") await prisma.commandReceipt.create({ data: { id: resumeId, organizationId: actor.organizationId, actorKey: actorKey(actor), clientRequestId: resumeId, commandType: "contact.create", status: "awaiting_approval" } })
+    const options = { actor, ...(mode === "resumed" ? { resumeReceiptId: resumeId } : {}) }
+    const before = await durableState(actor.organizationId)
+    await holdLock(tx => tx.$queryRaw`SELECT id FROM org_settings WHERE "organizationId" = ${actor.organizationId} FOR UPDATE`, async () => {
+      await expect(executeCommand(createContact, { name: "Retry once" }, options)).rejects.toThrow()
+      expect(await durableState(actor.organizationId)).toEqual(before)
+      expect(await prisma.contact.count({ where: { organizationId: actor.organizationId, name: "Retry once" } })).toBe(0)
+    })
+    const outcome = await executeCommand(createContact, { name: "Retry once" }, options)
+    expect(outcome.status).toBe("completed")
+    expect(await prisma.commandReceipt.findUnique({ where: { id: outcome.commandId } })).toMatchObject({ status: "completed" })
+    expect(await prisma.contact.count({ where: { organizationId: actor.organizationId, name: "Retry once" } })).toBe(1)
   })
 })

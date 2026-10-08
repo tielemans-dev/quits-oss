@@ -11,24 +11,24 @@ import {
   recoverDelivery
 } from "../../domain/delivery/journal"
 import { executeCommand } from "../../domain/execute"
-import { Forbidden, InvalidState, NotFound } from "../../domain/errors"
+import { Forbidden, InvalidState, NotFound, serializeDomainError } from "../../domain/errors"
 import { orgProcedure, router } from "../init"
-import { unwrapOutcome } from "../outcome"
+import { DomainRefusal, unwrapOutcome } from "../outcome"
 
-async function translate<Value>(work: () => Promise<Value>) {
+async function translate<Value>(work: () => Promise<Value>, message: string) {
   try {
     return await work()
   } catch (error) {
-    if (error instanceof Forbidden)
-      throw new TRPCError({ code: "FORBIDDEN", message: error.message })
-    if (error instanceof NotFound)
-      throw new TRPCError({ code: "NOT_FOUND", message: error.message })
-    if (error instanceof InvalidState)
+    if (error instanceof Forbidden || error instanceof NotFound || error instanceof InvalidState) {
       throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: error.message
+        code: error instanceof Forbidden ? "FORBIDDEN"
+          : error instanceof NotFound ? "NOT_FOUND" : "PRECONDITION_FAILED",
+        message: error.message,
+        cause: new DomainRefusal(serializeDomainError(error))
       })
-    throw error
+    }
+    // Persistence/provider errors can contain private details, including in a TRPCError.
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message })
   }
 }
 
@@ -36,29 +36,29 @@ export const journalRouter = router({
   forDocument: orgProcedure
     .input(journalDocumentInputSchema)
     .query(({ ctx, input }) =>
-      translate(() => documentJournal(ctx.actor, input))
+      translate(() => documentJournal(ctx.actor, input), "Could not load operation history")
     ),
   recover: orgProcedure
     .input(journalDeliveryInputSchema)
     .mutation(({ ctx, input }) =>
-      translate(() => recoverDelivery(ctx.actor, input))
+      translate(() => recoverDelivery(ctx.actor, input), "Could not recover delivery")
     ),
   reconcile: orgProcedure
     .input(journalDeliveryInputSchema)
     .mutation(({ ctx, input }) =>
-      translate(() => reconcileDelivery(ctx.actor, input))
+      translate(() => reconcileDelivery(ctx.actor, input), "Could not reconcile delivery")
     ),
   manualResend: orgProcedure
     .input(journalManualResendInputSchema)
-    .mutation(({ ctx, input }) =>
-      translate(async () => {
-        unwrapOutcome(
-          await executeCommand(manualResendCommand(input.documentType), input, {
-            actor: ctx.actor,
-            clientRequestId: input.clientRequestId
-          })
-        )
-        return documentJournal(ctx.actor, input)
+    .mutation(async ({ ctx, input }) => {
+      // Only returned command outcomes are trusted. A rejected executor promise is unexpected.
+      const outcome = await executeCommand(manualResendCommand(input.documentType), input, {
+        actor: ctx.actor,
+        clientRequestId: input.clientRequestId
+      }).catch(() => {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not resend document" })
       })
-    )
+      unwrapOutcome(outcome)
+      return translate(() => documentJournal(ctx.actor, input), "Could not load operation history")
+    })
 })
