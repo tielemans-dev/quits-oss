@@ -45,7 +45,7 @@ async function openConsent(page: Page, url: string) {
 
 async function screenshot(page: Page, info: TestInfo, name: string) {
   const path = info.outputPath(`${name}.png`)
-  await page.screenshot({ path, fullPage: true })
+  await page.screenshot({ path })
   await info.attach(name, { path, contentType: 'image/png' })
 }
 
