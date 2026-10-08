@@ -5,7 +5,7 @@
     {
       "source": "commands/settlements.ts",
       "typeExpression": "\"settlement.allocated\"",
-      "payloadExpression": "{\n        receiptId: receipt.id, paymentId: payment.id, invoiceId: payment.invoiceId, receiptCurrency: receipt.currency, receiptAmount: allocation.receiptAmount, invoiceCurrency: allocation.currency, invoiceAmount: allocation.invoiceAmount,\n        balanceDue: allocation.after, reason: input.reason, evidence: input.evidence, exchangeReason: allocation.exchangeEvidence?.reason ?? null, exchangeEvidence: allocation.exchangeEvidence?.evidence ?? null,\n      }",
+      "payloadExpression": "{\n            receiptId: receipt.id,\n            paymentId: payment.id,\n            invoiceId: payment.invoiceId,\n            receiptCurrency: receipt.currency,\n            receiptAmount: allocation.receiptAmount,\n            invoiceCurrency: allocation.currency,\n            invoiceAmount: allocation.invoiceAmount,\n            balanceDue: allocation.after,\n            reason: input.reason,\n            evidence: input.evidence,\n            exchangeReason: allocation.exchangeEvidence?.reason ?? null,\n            exchangeEvidence: allocation.exchangeEvidence?.evidence ?? null,\n          }",
       "variant": "default",
       "payload": {
         "receiptId": "receipt-1",

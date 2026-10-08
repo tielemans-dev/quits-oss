@@ -16,7 +16,7 @@
     {
       "source": "commands/settlements.ts",
       "typeExpression": "\"invoice.paid\"",
-      "payloadExpression": "{\n          number: allocation.number, amountPaid: refreshed.settlement.amountPaid.toFixed(2), currency: allocation.currency,\n        }",
+      "payloadExpression": "{\n              number: allocation.number,\n              amountPaid: refreshed.settlement.amountPaid.toFixed(2),\n              currency: allocation.currency,\n            }",
       "variant": "default",
       "payload": {
         "number": "DOC-0001",

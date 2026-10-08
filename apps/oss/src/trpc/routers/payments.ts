@@ -1,6 +1,17 @@
 import { z } from "zod"
-import { receiptRecordInputSchema, receiptAllocateInputSchema, receiptActionInputSchema } from "@quits/contracts/payments"
-import { allocateReceipt, changeReceipt, previewReceiptAllocation, previewReceiptChange, receiptBalance, recordReceipt } from "../../domain/commands/settlements"
+import {
+  receiptRecordInputSchema,
+  receiptAllocateInputSchema,
+  receiptActionInputSchema,
+} from "@quits/contracts/payments"
+import {
+  allocateReceipt,
+  changeReceipt,
+  previewReceiptAllocation,
+  previewReceiptChange,
+  receiptBalance,
+  recordReceipt,
+} from "../../domain/commands/settlements"
 import { lockArtifactOrganization } from "../../domain/documents/artifacts"
 import { TRPCError } from "@trpc/server"
 import {
@@ -52,44 +63,136 @@ export function serializePayment(payment: PaymentRow) {
 
 /** Owned by the payments feature. */
 export const paymentsRouter = router({
-  receipts: authorizedProcedure("payment:read").input(z.object({ invoiceId: z.string().min(1) })).query(async ({ ctx, input }) => {
-    const invoice = await prisma.invoice.findFirst({ where: { id: input.invoiceId, organizationId: ctx.organizationId } })
-    if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" })
-    const [receipts, invoices] = await Promise.all([
-      prisma.settlementReceipt.findMany({ where: { organizationId: ctx.organizationId, contactId: invoice.contactId }, include: { payments: { include: { invoice: { select: { number: true } } } }, refunds: true }, orderBy: { createdAt: "desc" } }),
-      prisma.invoice.findMany({ where: { organizationId: ctx.organizationId, contactId: invoice.contactId, status: { notIn: ["draft", "credited"] } }, orderBy: { number: "asc" } }),
-    ])
-    return {
-      contactId: invoice.contactId,
-      canCreate: actorCan(ctx.actor, "payment:create"), canReverse: actorCan(ctx.actor, "payment:void"),
-      invoices: invoices.map(row => ({ id: row.id, number: row.number, currency: row.currency, balanceDue: computeSettlement(row).balanceDue.toFixed(2) })),
-      receipts: await Promise.all(receipts.map(async row => {
-        const balance = await receiptBalance(prisma, row)
-        return { id: row.id, reference: row.reference, currency: row.currency, gross: row.grossAmount.toFixed(2), fee: row.feeAmount.toFixed(2), net: row.netAmount.toFixed(2), available: balance.available.toFixed(2), allocated: balance.allocated.toFixed(2), refunded: balance.refunded.toFixed(2), reversed: Boolean(row.reversedAt), customerCredit: Boolean(row.creditReason) && balance.available.greaterThan(0), reason: row.reason, evidence: row.evidence,
-          allocations: row.payments.map(payment => ({ id: payment.id, invoiceId: payment.invoiceId, invoiceNumber: payment.invoice.number ?? payment.invoiceId, amount: payment.amount.toFixed(2), currency: payment.currency, reversed: Boolean(payment.voidedAt) })),
-          refunds: row.refunds.map(refund => ({ id: refund.id, amount: refund.amount.toFixed(2), reversed: Boolean(refund.reversedAt) })),
-        }
-      })),
-    }
-  }),
-  recordReceipt: authorizedProcedure("payment:create").input(receiptRecordInputSchema).mutation(async ({ ctx, input }) =>
-    unwrapOutcome(await executeCommand(recordReceipt, input, { actor: ctx.actor, clientRequestId: `receipt:${input.requestId}` }))),
-  previewAllocation: authorizedProcedure("payment:create").input(receiptAllocateInputSchema).query(async ({ ctx, input }) => {
-    try {
-      return await prisma.$transaction(async db => {
-        await lockArtifactOrganization(db, ctx.organizationId)
-        return previewReceiptAllocation(db, ctx.organizationId, input)
+  receipts: authorizedProcedure("payment:read")
+    .input(z.object({ invoiceId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const invoice = await prisma.invoice.findFirst({
+        where: { id: input.invoiceId, organizationId: ctx.organizationId },
       })
-    } catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Could not preview allocation" }) }
-  }),
-  allocateReceipt: authorizedProcedure("payment:create").input(allocateReceipt.input).mutation(async ({ ctx, input }) =>
-    unwrapOutcome(await executeCommand(allocateReceipt, input, { actor: ctx.actor, clientRequestId: `allocation:${input.requestId}` }))),
-  previewReceiptChange: authorizedProcedure("payment:void").input(receiptActionInputSchema).query(async ({ ctx, input }) => {
-    try { return await prisma.$transaction(async db => { await lockArtifactOrganization(db, ctx.organizationId); return previewReceiptChange(db, ctx.organizationId, input) }) }
-    catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Could not preview change" }) }
-  }),
-  changeReceipt: authorizedProcedure("payment:void").input(changeReceipt.input).mutation(async ({ ctx, input }) =>
-    unwrapOutcome(await executeCommand(changeReceipt, input, { actor: ctx.actor, clientRequestId: `settlement:${input.requestId}` }))),
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" })
+      const [receipts, invoices] = await Promise.all([
+        prisma.settlementReceipt.findMany({
+          where: { organizationId: ctx.organizationId, contactId: invoice.contactId },
+          include: {
+            payments: { include: { invoice: { select: { number: true } } } },
+            refunds: true,
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.invoice.findMany({
+          where: {
+            organizationId: ctx.organizationId,
+            contactId: invoice.contactId,
+            status: { notIn: ["draft", "credited"] },
+          },
+          orderBy: { number: "asc" },
+        }),
+      ])
+      return {
+        contactId: invoice.contactId,
+        canCreate: actorCan(ctx.actor, "payment:create"),
+        canReverse: actorCan(ctx.actor, "payment:void"),
+        invoices: invoices.map((row) => ({
+          id: row.id,
+          number: row.number,
+          currency: row.currency,
+          balanceDue: computeSettlement(row).balanceDue.toFixed(2),
+        })),
+        receipts: await Promise.all(
+          receipts.map(async (row) => {
+            const balance = await receiptBalance(prisma, row)
+            return {
+              id: row.id,
+              reference: row.reference,
+              currency: row.currency,
+              gross: row.grossAmount.toFixed(2),
+              fee: row.feeAmount.toFixed(2),
+              net: row.netAmount.toFixed(2),
+              available: balance.available.toFixed(2),
+              allocated: balance.allocated.toFixed(2),
+              refunded: balance.refunded.toFixed(2),
+              reversed: Boolean(row.reversedAt),
+              customerCredit: Boolean(row.creditReason) && balance.available.greaterThan(0),
+              reason: row.reason,
+              evidence: row.evidence,
+              allocations: row.payments.map((payment) => ({
+                id: payment.id,
+                invoiceId: payment.invoiceId,
+                invoiceNumber: payment.invoice.number ?? payment.invoiceId,
+                amount: payment.amount.toFixed(2),
+                currency: payment.currency,
+                reversed: Boolean(payment.voidedAt),
+              })),
+              refunds: row.refunds.map((refund) => ({
+                id: refund.id,
+                amount: refund.amount.toFixed(2),
+                reversed: Boolean(refund.reversedAt),
+              })),
+            }
+          }),
+        ),
+      }
+    }),
+  recordReceipt: authorizedProcedure("payment:create")
+    .input(receiptRecordInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      unwrapOutcome(
+        await executeCommand(recordReceipt, input, {
+          actor: ctx.actor,
+          clientRequestId: `receipt:${input.requestId}`,
+        }),
+      ),
+    ),
+  previewAllocation: authorizedProcedure("payment:create")
+    .input(receiptAllocateInputSchema)
+    .query(async ({ ctx, input }) => {
+      try {
+        return await prisma.$transaction(async (db) => {
+          await lockArtifactOrganization(db, ctx.organizationId)
+          return previewReceiptAllocation(db, ctx.organizationId, input)
+        })
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Could not preview allocation",
+        })
+      }
+    }),
+  allocateReceipt: authorizedProcedure("payment:create")
+    .input(allocateReceipt.input)
+    .mutation(async ({ ctx, input }) =>
+      unwrapOutcome(
+        await executeCommand(allocateReceipt, input, {
+          actor: ctx.actor,
+          clientRequestId: `allocation:${input.requestId}`,
+        }),
+      ),
+    ),
+  previewReceiptChange: authorizedProcedure("payment:void")
+    .input(receiptActionInputSchema)
+    .query(async ({ ctx, input }) => {
+      try {
+        return await prisma.$transaction(async (db) => {
+          await lockArtifactOrganization(db, ctx.organizationId)
+          return previewReceiptChange(db, ctx.organizationId, input)
+        })
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Could not preview change",
+        })
+      }
+    }),
+  changeReceipt: authorizedProcedure("payment:void")
+    .input(changeReceipt.input)
+    .mutation(async ({ ctx, input }) =>
+      unwrapOutcome(
+        await executeCommand(changeReceipt, input, {
+          actor: ctx.actor,
+          clientRequestId: `settlement:${input.requestId}`,
+        }),
+      ),
+    ),
 
   list: authorizedProcedure("payment:read")
     .input(paymentListInputSchema)

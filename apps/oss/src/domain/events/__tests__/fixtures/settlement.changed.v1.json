@@ -5,7 +5,7 @@
     {
       "source": "commands/settlements.ts",
       "typeExpression": "\"settlement.changed\"",
-      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "payloadExpression": "{\n          action: input.action,\n          receiptId: receipt.id,\n          targetId,\n          currency: receipt.currency,\n          amount: amount.toFixed(2),\n          invoiceId,\n          invoiceAmount,\n          invoiceCurrency,\n          reason: input.reason,\n          evidence: input.evidence,\n        }",
       "variant": "default",
       "payload": {
         "action": "refund",
@@ -23,7 +23,7 @@
     {
       "source": "commands/settlements.ts",
       "typeExpression": "\"settlement.changed\"",
-      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "payloadExpression": "{\n          action: input.action,\n          receiptId: receipt.id,\n          targetId,\n          currency: receipt.currency,\n          amount: amount.toFixed(2),\n          invoiceId,\n          invoiceAmount,\n          invoiceCurrency,\n          reason: input.reason,\n          evidence: input.evidence,\n        }",
       "variant": "no_optional",
       "payload": {
         "action": "reverse_refund",
@@ -41,7 +41,7 @@
     {
       "source": "commands/settlements.ts",
       "typeExpression": "\"settlement.changed\"",
-      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "payloadExpression": "{\n          action: input.action,\n          receiptId: receipt.id,\n          targetId,\n          currency: receipt.currency,\n          amount: amount.toFixed(2),\n          invoiceId,\n          invoiceAmount,\n          invoiceCurrency,\n          reason: input.reason,\n          evidence: input.evidence,\n        }",
       "variant": "user",
       "payload": {
         "action": "customer_credit",
@@ -59,7 +59,7 @@
     {
       "source": "commands/settlements.ts",
       "typeExpression": "\"settlement.changed\"",
-      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "payloadExpression": "{\n          action: input.action,\n          receiptId: receipt.id,\n          targetId,\n          currency: receipt.currency,\n          amount: amount.toFixed(2),\n          invoiceId,\n          invoiceAmount,\n          invoiceCurrency,\n          reason: input.reason,\n          evidence: input.evidence,\n        }",
       "variant": "decline",
       "payload": {
         "action": "reverse_allocation",
@@ -77,7 +77,7 @@
     {
       "source": "commands/settlements.ts",
       "typeExpression": "\"settlement.changed\"",
-      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "payloadExpression": "{\n          action: input.action,\n          receiptId: receipt.id,\n          targetId,\n          currency: receipt.currency,\n          amount: amount.toFixed(2),\n          invoiceId,\n          invoiceAmount,\n          invoiceCurrency,\n          reason: input.reason,\n          evidence: input.evidence,\n        }",
       "variant": "completed",
       "payload": {
         "action": "reverse_receipt",

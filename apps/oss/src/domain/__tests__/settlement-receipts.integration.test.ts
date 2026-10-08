@@ -4,6 +4,8 @@ import { executeIssuanceCommand } from "../../application/issuance"
 import { prisma } from "../../lib/db"
 import { exportAccounting } from "../../lib/exports/accounting"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
+import { ensureTestMembership } from "../../test-utils/membership"
+import { resolveUserActor } from "../user-actor"
 import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
 import { issueCreditNote } from "../commands/credit-notes"
@@ -98,6 +100,107 @@ describe.skipIf(!hasTestDatabase)("receipt allocation and correction", () => {
     await executeCommand(allocateReceipt, await plan(s.actor, receipt.id, invoices[1], "1"), { actor: s.actor })
     expect(await executeCommand(allocateReceipt, stale, { actor: s.actor })).toMatchObject({ status: "failed", error: { code: "settlement_preview_changed" } })
   })
+  it.each(["reason", "evidence"] as const)(
+    "rejects old classification, allocation and refund previews after another person changes %s",
+    async (field) => {
+      const s = await setup()
+      const invoiceId = await s.invoice()
+      const receipt = await s.receipt("1000")
+      const otherUserId = randomUUID()
+      await ensureTestMembership(s.org.organizationId, otherUserId, "admin")
+      const otherActor = await resolveUserActor({
+        organizationId: s.org.organizationId,
+        userId: otherUserId,
+      })
+      if (!otherActor) throw new Error("Second person was not created")
+      const retained = {
+        reason: "Retain for order B",
+        evidence: "https://evidence.example.test/order-B",
+      }
+      const classify = (actor: UserActor, decision: typeof retained) =>
+        change(actor, {
+          requestId: randomUUID(),
+          action: "customer_credit",
+          receiptId: receipt.id,
+          ...decision,
+        })
+      expect((await classify(otherActor, retained)).status).toBe("completed")
+      const proposed = receiptActionInputSchema.parse({
+        requestId: randomUUID(),
+        action: "customer_credit",
+        receiptId: receipt.id,
+        reason: "Retain for order A",
+        evidence: "https://evidence.example.test/order-A",
+      })
+      const classification = await prisma.$transaction((db) =>
+        previewReceiptChange(db, s.org.organizationId, proposed),
+      )
+      expect(classification.customerCreditBefore).toEqual(retained)
+      expect(classification.customerCreditAfter).toEqual({
+        reason: proposed.reason,
+        evidence: proposed.evidence,
+      })
+      const allocation = await plan(s.actor, receipt.id, invoiceId, "100")
+      const refundInput = receiptActionInputSchema.parse({
+        requestId: randomUUID(),
+        action: "refund",
+        receiptId: receipt.id,
+        amount: "100",
+        ...evidence,
+      })
+      const refund = await prisma.$transaction((db) =>
+        previewReceiptChange(db, s.org.organizationId, refundInput),
+      )
+      const newer = {
+        ...retained,
+        [field]:
+          field === "reason" ? "Retain for order C" : "https://evidence.example.test/order-C",
+      }
+      expect((await classify(otherActor, newer)).status).toBe("completed")
+
+      const failed = { status: "failed", error: { code: "settlement_preview_changed" } }
+      expect(
+        await executeCommand(
+          changeReceipt,
+          { ...proposed, previewToken: classification.previewToken },
+          { actor: s.actor },
+        ),
+      ).toMatchObject(failed)
+      expect(await executeCommand(allocateReceipt, allocation, { actor: s.actor })).toMatchObject(
+        failed,
+      )
+      expect(
+        await executeCommand(
+          changeReceipt,
+          { ...refundInput, previewToken: refund.previewToken },
+          { actor: s.actor },
+        ),
+      ).toMatchObject(failed)
+      expect(
+        await prisma.settlementReceipt.findUniqueOrThrow({ where: { id: receipt.id } }),
+      ).toMatchObject({ creditReason: newer.reason, creditEvidence: newer.evidence })
+      expect((await balance(receipt.id)).available.toFixed(2)).toBe("1000.00")
+      expect((await load(invoiceId)).amountPaid.toFixed(2)).toBe("0.00")
+      expect(await prisma.payment.count({ where: { receiptId: receipt.id } })).toBe(0)
+      expect(await prisma.settlementRefund.count({ where: { receiptId: receipt.id } })).toBe(0)
+      const events = await prisma.domainEvent.findMany({
+        where: { organizationId: s.org.organizationId, type: "settlement.changed" },
+        orderBy: { sequence: "asc" },
+      })
+      expect(events).toHaveLength(2)
+      expect(
+        events.map((event) => ({ actorId: event.actorId, payload: event.payload })),
+      ).toMatchObject([
+        { actorId: otherActor.userId, payload: retained },
+        { actorId: otherActor.userId, payload: newer },
+      ])
+      expect((await change(s.actor, proposed)).status).toBe("completed")
+      expect(
+        (await prisma.settlementReceipt.findUniqueOrThrow({ where: { id: receipt.id } }))
+          .creditReason,
+      ).toBe(proposed.reason)
+    },
+  )
   it("bounds refunds, keeps overpayments as customer credit, and reverses funds exactly", async () => {
     const s = await setup(); const invoiceId = await s.invoice(); const receipt = await s.receipt("1200")
     const allocated = await executeCommand(allocateReceipt, await plan(s.actor, receipt.id, invoiceId, "1000"), { actor: s.actor })

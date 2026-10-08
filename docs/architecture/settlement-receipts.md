@@ -62,7 +62,10 @@ idempotency key. Internal callers must also pass the same `clientRequestId` on r
 existing command transaction takes the organization row lock; receipt operations also take the
 receipt row lock. This serializes allocation, legacy payments and credits in the organization.
 Allocation and correction commits require the server preview's fingerprint. A changed balance or
-classification refuses the old preview. The UI retains a request ID when retrying an uncertain
+classification refuses the old preview. Both allocation and correction previews bind the current
+customer-credit reason and evidence, even when funds and invoice balances have not changed.
+Correction previews show the classification before and after the change, including any
+classification being replaced or cleared. The UI retains a request ID when retrying an uncertain
 response and creates another when the operator changes the proposed action.
 
 Reasons and HTTP(S) evidence links are mandatory. Fee and currency-conversion evidence are
