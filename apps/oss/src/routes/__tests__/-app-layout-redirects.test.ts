@@ -38,10 +38,7 @@ function layout(
   distribution: "cloud" | "selfhost" = "cloud"
 ) {
   return {
-    session: {
-      session: { activeOrganizationId: organizationId },
-      user: { id: "u_1" },
-    },
+    user: { id: "u_1", name: "U", email: "u@example.com", image: null },
     activeOrganizationId: organizationId,
     runtime: { distribution, billingEnabled: distribution === "cloud" },
     cloudOnboardingComplete,
@@ -68,7 +65,7 @@ afterEach(() => {
 
 describe("app layout redirects on a cloud server", () => {
   it("sends a signed-out visitor to login", async () => {
-    state.getAppLayoutSession.mockResolvedValue({ ...layout(null, null), session: null })
+    state.getAppLayoutSession.mockResolvedValue({ ...layout(null, null), user: null })
     expect(await load("/settings")).toEqual({ to: "/login" })
   })
 
@@ -79,7 +76,7 @@ describe("app layout redirects on a cloud server", () => {
 
   it("lets a user without an active organization stay on onboarding", async () => {
     state.getAppLayoutSession.mockResolvedValue(layout(null, null))
-    expect(await load("/onboarding")).toHaveProperty("session")
+    expect(await load("/onboarding")).toHaveProperty("user")
   })
 
   it("sends an incomplete organization to cloud onboarding from an app page, in the browser", async () => {
@@ -89,7 +86,7 @@ describe("app layout redirects on a cloud server", () => {
 
   it("keeps an incomplete organization on onboarding", async () => {
     state.getAppLayoutSession.mockResolvedValue(layout("org_a", false))
-    expect(await load("/onboarding/company")).toHaveProperty("session")
+    expect(await load("/onboarding/company")).toHaveProperty("user")
   })
 
   it("sends a completed organization away from onboarding", async () => {
@@ -99,7 +96,7 @@ describe("app layout redirects on a cloud server", () => {
 
   it("lets a completed organization use app pages", async () => {
     state.getAppLayoutSession.mockResolvedValue(layout("org_a", true))
-    expect(await load("/invoices")).toHaveProperty("session")
+    expect(await load("/invoices")).toHaveProperty("user")
   })
 
   it("treats a missing onboarding status as incomplete", async () => {
@@ -118,8 +115,8 @@ describe("app layout redirects on a cloud server", () => {
 describe("app layout on a self-host server", () => {
   it("never redirects to cloud onboarding", async () => {
     state.getAppLayoutSession.mockResolvedValue(layout("org_a", null, "selfhost"))
-    expect(await load("/invoices")).toHaveProperty("session")
-    expect(await load("/onboarding")).toHaveProperty("session")
+    expect(await load("/invoices")).toHaveProperty("user")
+    expect(await load("/onboarding")).toHaveProperty("user")
   })
 })
 
@@ -154,6 +151,26 @@ describe("app layout server calls", () => {
     expect(state.getAppLayoutSession).toHaveBeenCalledTimes(1)
   })
 
+  it("shares a rejected preload with the click that follows, then drops it", async () => {
+    let reject: (error: Error) => void = () => undefined
+    state.getAppLayoutSession.mockReturnValueOnce(new Promise((_, r) => (reject = r)))
+
+    const preload = load("/invoices", true)
+    const click = load("/invoices")
+    reject(new Error("offline"))
+    const [preloaded, clicked] = await Promise.all([preload, click])
+
+    // One request failed both of them alike; neither asked twice.
+    expect(preloaded).toEqual(new Error("offline"))
+    expect(clicked).toEqual(new Error("offline"))
+    expect(state.getAppLayoutSession).toHaveBeenCalledTimes(1)
+
+    // The failure was not remembered: the next navigation asks again and succeeds.
+    state.getAppLayoutSession.mockResolvedValueOnce(layout("org_a", true))
+    expect(await load("/invoices")).toHaveProperty("user")
+    expect(state.getAppLayoutSession).toHaveBeenCalledTimes(2)
+  })
+
   it("asks the server again after the window", async () => {
     vi.useFakeTimers()
     state.getAppLayoutSession.mockResolvedValue(layout("org_a", true))
@@ -172,9 +189,9 @@ describe("app layout server calls", () => {
     // Onboarding completed: the next navigation must not be sent back by the earlier answer.
     state.getAppLayoutSession.mockResolvedValueOnce(layout("org_a", true))
     invalidateAppLayoutSession()
-    expect(await load("/invoices")).toHaveProperty("session")
+    expect(await load("/invoices")).toHaveProperty("user")
 
-    state.getAppLayoutSession.mockResolvedValueOnce({ ...layout(null, null), session: null })
+    state.getAppLayoutSession.mockResolvedValueOnce({ ...layout(null, null), user: null })
     invalidateAppLayoutSession()
     expect(await load("/invoices")).toEqual({ to: "/login" })
     expect(state.getAppLayoutSession).toHaveBeenCalledTimes(3)

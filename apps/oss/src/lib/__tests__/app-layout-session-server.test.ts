@@ -22,14 +22,24 @@ vi.mock("../runtime-distribution", () => ({
 import { getAppLayoutSession } from "../auth-session"
 
 const load = getAppLayoutSession as unknown as () => Promise<{
-  session: unknown
+  user: { id: string; name: string | null; email: string | null; image: string | null } | null
   activeOrganizationId: string | null
   runtime: { distribution: string; billingEnabled: boolean }
   cloudOnboardingComplete: boolean | null
 }>
 
 function signedIn(organizationId: string | null) {
-  return { session: { activeOrganizationId: organizationId }, user: { id: "u_1" } }
+  return {
+    session: {
+      id: "sess_1",
+      token: "secret-session-token",
+      ipAddress: "203.0.113.7",
+      userAgent: "Mozilla/5.0",
+      userId: "u_1",
+      activeOrganizationId: organizationId,
+    },
+    user: { id: "u_1", name: "Ada", email: "ada@example.com", image: null, emailVerified: true, role: "admin" },
+  }
 }
 
 beforeEach(() => {
@@ -71,7 +81,7 @@ describe("getAppLayoutSession", () => {
     state.getSession.mockResolvedValue(null)
     const result = await load()
     expect(state.loadCloudOnboardingState).not.toHaveBeenCalled()
-    expect(result.session).toBeNull()
+    expect(result.user).toBeNull()
   })
 
   it("skips the onboarding query on self-host and says so to the browser", async () => {
@@ -83,5 +93,23 @@ describe("getAppLayoutSession", () => {
       cloudOnboardingComplete: null,
       runtime: { distribution: "selfhost", billingEnabled: false },
     })
+  })
+
+  it("hands the browser only display fields, never the session token or client details", async () => {
+    state.getSession.mockResolvedValue(signedIn("org_a"))
+    state.loadCloudOnboardingState.mockResolvedValue({ isComplete: true })
+
+    const result = await load()
+
+    expect(result).toEqual({
+      user: { id: "u_1", name: "Ada", email: "ada@example.com", image: null },
+      activeOrganizationId: "org_a",
+      runtime: { distribution: "cloud", billingEnabled: true },
+      cloudOnboardingComplete: true,
+    })
+    const serialized = JSON.stringify(result)
+    for (const secret of ["secret-session-token", "token", "203.0.113.7", "ipAddress", "Mozilla", "userAgent", "sess_1"]) {
+      expect(serialized).not.toContain(secret)
+    }
   })
 })

@@ -19,7 +19,12 @@ vi.mock("@tanstack/react-router", async () => {
   return {
     createFileRoute: () => (options: Record<string, unknown>) => ({
       ...options,
-      useRouteContext: () => ({ session: { session: { activeOrganizationId: state.loadedOrganizationId } } }),
+      useRouteContext: () => ({
+        user: { id: "u_1" },
+        activeOrganizationId: state.loadedOrganizationId,
+        runtime: { distribution: "selfhost", billingEnabled: false },
+        cloudOnboardingComplete: null,
+      }),
     }),
     redirect: (payload: unknown) => payload,
     // Records the organization the tab acts for whenever a page renders.
@@ -36,7 +41,7 @@ vi.mock("../../lib/auth-session", () => ({ getAppLayoutSession: state.getAppLayo
 vi.mock("../../lib/auth-client", () => ({
   authClient: { organization: { setActive: vi.fn(async () => ({ data: {}, error: null })) } },
   useSession: () => ({
-    data: { session: { activeOrganizationId: state.sessionOrganizationId } },
+    data: { session: { activeOrganizationId: state.sessionOrganizationId }, user: { id: "u_1" } },
     isPending: false,
   }),
 }))
@@ -79,7 +84,7 @@ afterEach(() => {
 
 function layoutFor(organizationId: string) {
   return {
-    session: { session: { activeOrganizationId: organizationId }, user: { id: "u_1" } },
+    user: { id: "u_1", name: "U", email: "u@example.com", image: null },
     activeOrganizationId: organizationId,
     runtime: { distribution: "selfhost", billingEnabled: false },
     cloudOnboardingComplete: null,
@@ -128,6 +133,8 @@ describe("app layout request organization", () => {
 
   it("is not changed by route loaders or preloads after another tab switched organization", async () => {
     render(<route.component />)
+    // The layout seeds the reuse cache from its server-rendered answer; let this load see the server.
+    invalidateAppLayoutSession()
     state.getAppLayoutSession.mockResolvedValue(layoutFor("org_b"))
 
     await route.beforeLoad({ location: { pathname: "/settings" }, preload: true })

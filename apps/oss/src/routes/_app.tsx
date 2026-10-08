@@ -1,7 +1,11 @@
 import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect } from 'react'
 import { getAppLayoutSession } from '../lib/auth-session'
-import { reuseAppLayoutSession } from '../lib/app-layout-session'
+import {
+  invalidateAppLayoutSessionUnlessUser,
+  reuseAppLayoutSession,
+  seedAppLayoutSession,
+} from '../lib/app-layout-session'
 import { useSession } from '../lib/auth-client'
 import {
   initializeRequestOrganizationId,
@@ -18,9 +22,9 @@ export const Route = createFileRoute('/_app')({
   beforeLoad: async ({ location }) => {
     // One server call answers everything the layout needs, and is reused for a few seconds so
     // switching tabs and hovering links do not repeat it.
-    const { session, activeOrganizationId, runtime, cloudOnboardingComplete } =
+    const { user, activeOrganizationId, runtime, cloudOnboardingComplete } =
       await reuseAppLayoutSession(() => getAppLayoutSession())
-    if (!session) {
+    if (!user) {
       throw redirect({ to: '/login' })
     }
     const hasActiveOrg = !!activeOrganizationId
@@ -33,7 +37,8 @@ export const Route = createFileRoute('/_app')({
 
     // The server decides whether this is cloud: the browser has no runtime environment to ask.
     if (runtime.distribution === 'cloud' && hasActiveOrg) {
-      // Fails closed: a missing status is treated as incomplete, which sends the user to onboarding.
+      // On cloud with an active organization the server always answers true or false; anything
+      // else would be treated as incomplete, which sends the user to onboarding.
       const redirectTo = shouldRedirectToCloudOnboarding(
         location.pathname,
         hasActiveOrg,
@@ -44,17 +49,32 @@ export const Route = createFileRoute('/_app')({
       }
     }
 
-    return { session, runtime }
+    // Route context is rendered into the server's HTML, so it holds only what the browser uses.
+    return { user, activeOrganizationId, runtime, cloudOnboardingComplete }
   },
   component: AppLayout,
 })
 
 function AppLayout() {
   const { setLocale } = useI18n()
-  const { data: session } = useSession()
-  const { session: loadedSession } = Route.useRouteContext()
+  const { data: session, isPending } = useSession()
+  const layoutContext = Route.useRouteContext()
   const activeOrgId = session?.session.activeOrganizationId ?? null
-  const loadedOrgId = loadedSession.session.activeOrganizationId ?? null
+  const loadedOrgId = layoutContext.activeOrganizationId ?? null
+  const sessionUserId = session?.user?.id ?? null
+
+  // After a server render the browser already holds the layout's answer: start the reuse cache
+  // from it so the first client navigation does not ask again.
+  useEffect(() => {
+    seedAppLayoutSession(layoutContext)
+    // Once per mount, with the context this layout first committed.
+  }, [])
+
+  // The live session is the nearest the browser gets to the session cookie (which it cannot
+  // read): if it names another user than the cached answer, the cached answer must go.
+  useEffect(() => {
+    if (!isPending) invalidateAppLayoutSessionUnlessUser(sessionUserId)
+  }, [isPending, sessionUserId])
 
   // The organization this tab acts for is set once per page load, here, when the layout first
   // commits; later commits (session refetches after another tab switched organization) keep it,

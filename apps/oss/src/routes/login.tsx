@@ -57,7 +57,8 @@ function LoginPage() {
     setLoading(false)
 
     if (result.data) {
-      // The next page load must not reuse an answer given before signing in.
+      // The next page load must not reuse an answer given before signing in. (Mainly matters for a
+      // back/forward-cache restore; see `invalidateAppLayoutSession`.)
       invalidateAppLayoutSession()
       // Every way out of here is a new page load, so the app layout sets the organization this
       // tab acts for from the new session and nothing of an earlier session survives.

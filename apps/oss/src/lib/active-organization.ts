@@ -125,7 +125,8 @@ export type SwitchOrganizationOptions = {
  */
 export async function switchActiveOrganization(organizationId: string, options: SwitchOrganizationOptions = {}) {
   const result = await authClient.organization.setActive({ organizationId })
-  // The layout's cached answer names the previous organization.
+  // The layout's cached answer names the previous organization. (Mainly matters for a
+  // back/forward-cache restore; see `invalidateAppLayoutSession`.)
   invalidateAppLayoutSession()
   if (!result?.error && !options.isCancelled?.()) loadPage(options.destination ?? "/")
   return result

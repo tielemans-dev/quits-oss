@@ -82,6 +82,7 @@ export function UserMenu() {
 
   async function handleSignOut() {
     await authClient.signOut()
+    // Mainly matters for a back/forward-cache restore; see `invalidateAppLayoutSession`.
     invalidateAppLayoutSession()
     // A new page load, so nothing of this session's organization survives in this tab.
     loadPage('/login')

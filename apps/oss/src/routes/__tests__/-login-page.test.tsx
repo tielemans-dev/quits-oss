@@ -191,8 +191,8 @@ describe("LoginPage", () => {
   it("drops the layout's cached session when signing in, so no earlier answer outlives the sign-in", async () => {
     signInEmail.mockResolvedValue({ data: { user: { id: "user_1" } } })
     listOrganizations.mockResolvedValue({ data: [] })
-    const load = vi.fn(async () => ({ session: null as unknown, n: 1 }))
-    load.mockResolvedValue({ session: { user: "earlier" }, n: 1 })
+    const load = vi.fn(async () => ({ user: null as unknown, n: 1 }))
+    load.mockResolvedValue({ user: { id: "earlier" }, n: 1 })
     await reuseAppLayoutSession(load)
 
     render(<RoutePage />)

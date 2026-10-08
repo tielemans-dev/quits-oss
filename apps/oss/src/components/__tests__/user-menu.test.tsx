@@ -208,7 +208,7 @@ describe("user menu organizations", () => {
   it("drops the layout's cached session when signing out, so no stale identity survives", async () => {
     initializeRequestOrganizationId("org_a")
     state.signOut.mockResolvedValue({ data: {} })
-    const load = vi.fn(async () => ({ session: { user: "u_1" } }))
+    const load = vi.fn(async () => ({ user: { id: "u_1" } }))
     await reuseAppLayoutSession(load)
     render(<UserMenu />)
 

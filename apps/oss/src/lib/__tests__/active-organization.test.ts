@@ -68,7 +68,7 @@ describe("switching organization", () => {
 
   it("drops the layout's cached session, so the new page does not see the previous organization", async () => {
     recordCalls()
-    const load = vi.fn(async () => ({ session: { user: "u_1" } }))
+    const load = vi.fn(async () => ({ user: { id: "u_1" } }))
     await reuseAppLayoutSession(load)
 
     await switchActiveOrganization("org_b")

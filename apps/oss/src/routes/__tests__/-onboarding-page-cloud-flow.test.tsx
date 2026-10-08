@@ -191,7 +191,7 @@ describe("OnboardingPage cloud flow", () => {
     runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
     vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: [] } as never)
     vi.mocked(trpc.onboarding.completeManual.mutate).mockResolvedValue({ isComplete: true } as never)
-    const load = vi.fn(async () => ({ session: { user: "u_1" }, cloudOnboardingComplete: false }))
+    const load = vi.fn(async () => ({ user: { id: "u_1" }, cloudOnboardingComplete: false }))
     await reuseAppLayoutSession(load)
 
     render(<RouteComponent />)
@@ -209,7 +209,7 @@ describe("OnboardingPage cloud flow", () => {
     })
     onboardingStatusQuery.mockResolvedValue({ status: "complete", isComplete: true, missing: [], values: null })
     runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
-    const load = vi.fn(async () => ({ session: { user: "u_1" }, cloudOnboardingComplete: false }))
+    const load = vi.fn(async () => ({ user: { id: "u_1" }, cloudOnboardingComplete: false }))
     await reuseAppLayoutSession(load)
 
     render(<RouteComponent />)
