@@ -195,6 +195,12 @@ Do this when the source installation is gone or you are moving to a new machine.
 
    Decide what to do with the queued jobs. Cancel them if the source may have run them after the
    backup was taken.
+
+   Also decide about work that came due while the installation was down. A recurring schedule
+   generates **every** run it missed on the next tick, not just one: a monthly schedule that was
+   due eight months ago creates eight invoices. Pause schedules you do not want to catch up
+   before enabling operations. Reminders that came due are sent on the next tick if the invoice
+   is still unpaid.
 4. Enable operations:
 
    ```sh

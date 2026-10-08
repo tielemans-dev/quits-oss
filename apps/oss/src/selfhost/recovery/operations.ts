@@ -49,6 +49,14 @@ export async function reviewPendingWork(query: QueryFn): Promise<PendingWorkRevi
     duplicateExecutionControls: CONTROLS,
     warnings: [],
   }
+  if (review.recurringDue > 0) {
+    review.warnings.push(
+      "A recurring schedule that is due generates every run it missed on the next tick (the app's normal catch-up), not just one. Pause schedules you do not want to catch up before enabling operations."
+    )
+  }
+  if (review.remindersDue > 0) {
+    review.warnings.push("Reminders that came due while the installation was down are sent on the next tick, if the invoice is still unpaid.")
+  }
   if (review.jobs.some((job) => job.status === "running")) {
     review.warnings.push("Jobs were running when the backup was taken. The source may have completed them; cancel them unless you are sure it did not.")
   }
