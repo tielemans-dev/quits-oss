@@ -8,7 +8,8 @@ import { spawnSync } from "node:child_process"
 import { pathToFileURL } from "node:url"
 
 const dir = new URL("./", import.meta.url)
-const fixture = JSON.parse(readFileSync(new URL("staging-synthetic.json", dir), "utf8"))
+const stagingBytes = readFileSync(new URL("staging-synthetic.json", dir))
+const fixture = JSON.parse(stagingBytes.toString("utf8"))
 const pinned = "6d9c9fcbd678bf4800ad5c21bea791779acdbab2"
 const economic = resolve(process.argv[2] ?? "../economic")
 function git(...args: string[]) {
@@ -69,12 +70,22 @@ assert.equal(rejectedSource.documents.length, 0)
 assert(rejectedSource.exceptions.some((e: any) => e.code === "duplicate_source_identity"))
 
 assert.equal(fixture.synthetic, true)
-const rows: any[] = []
-for (const kind of ["contacts", "invoices", "credits", "receipts", "allocations"]) {
-  for (const record of fixture[kind]) {
-    rows.push({ key: `${fixture.organization}/${fixture.sourceAccount}/${kind}/${record.id}`, kind, record })
-  }
+assert.match(fixture.asOf, /^\d{4}-\d{2}-\d{2}$/)
+assert.equal(new Date(`${fixture.asOf}T00:00:00Z`).toISOString().slice(0, 10), fixture.asOf)
+function identity(source: any, kind: string, id: string) {
+  const parts = [source.organization, source.provider, source.sourceAccount, kind, id]
+  for (const part of parts) assert(typeof part === "string" && part.trim().length > 0, "source_identity_component_missing")
+  // Encode components so a literal slash cannot alias a different identity tuple.
+  return parts.map(encodeURIComponent).join("/")
 }
+function stageRows(source: any): any[] {
+  const result: any[] = []
+  for (const kind of ["contacts", "invoices", "credits", "receipts", "allocations"]) {
+    for (const record of source[kind]) result.push({ key: identity(source, kind, record.id), kind, record })
+  }
+  return result
+}
+const rows = stageRows(fixture)
 function validateIdentities(input: any[]) {
   const identities = new Set<string>()
   for (const row of input) {
@@ -86,9 +97,27 @@ validateIdentities(rows)
 assert.throws(() => validateIdentities([...rows, rows[0]]))
 assert.throws(() => validateIdentities([...rows, { ...rows[0], record: { id: "changed" } }]))
 
+// Validate every omitted document before reporting exclusions. Draft state takes
+// precedence over date; an issued document is excludable only after the cutoff.
+const excludedRows = fixture.excluded.map((record: any) => {
+  const date = day(record.date)
+  assert.equal(typeof record.issued, "boolean", "excluded_state_missing")
+  if (record.reason === "after_cutover") {
+    assert.equal(record.kind, "invoice")
+    assert.equal(record.issued, true)
+    assert(date > fixture.asOf, "excluded_invoice_not_after_cutover")
+  } else {
+    assert.equal(record.reason, "not_issued", "unknown_exclusion_reason")
+    assert.equal(record.kind, "draft")
+    assert.equal(record.issued, false, "excluded_document_is_issued")
+  }
+  return { key: identity(fixture, "invoices", record.id), record }
+})
+validateIdentities([...rows, ...excludedRows])
+
 const totals: Record<string, any> = {}
 const documentRows = fixture.invoices.map((i: any) => {
-  assert(i.issued)
+  assert.equal(i.issued, true)
   assert(day(i.date) <= fixture.asOf)
   assert(fixture.contacts.some((c: any) => c.id === i.customer))
   const credit = fixture.credits.filter((c: any) => c.invoice === i.id).reduce((n: number, c: any) => {
@@ -126,19 +155,19 @@ assert.deepEqual(totals.EUR, { invoices: 2, invoiced: 30000, credited: 0, paid: 
 // A deliberately in-memory retry example. It does not establish database durability,
 // atomicity, concurrency safety or crash recovery in the application.
 const memory = new Map<string, string>()
-function simulateBatch(input: any[], failAfter = Infinity) {
+function simulateBatch(input: any[], failAfter = Infinity, target = memory) {
   validateIdentities(input)
   // Refuse changed payloads before considering any new row in the batch.
   for (const r of input) {
-    if (memory.has(r.key)) assert.equal(memory.get(r.key), hash(JSON.stringify(r.record)), "source_revision_conflict")
+    if (target.has(r.key)) assert.equal(target.get(r.key), hash(JSON.stringify(r.record)), "source_revision_conflict")
   }
   let added = 0
   for (const r of input) {
-    if (memory.has(r.key)) continue
-    if (added === failAfter) return { outcome: "simulated_failure", added, committedKeys: [...memory.keys()] }
-    memory.set(r.key, hash(JSON.stringify(r.record))); added++
+    if (target.has(r.key)) continue
+    if (added === failAfter) return { outcome: "simulated_failure", added, committedKeys: [...target.keys()] }
+    target.set(r.key, hash(JSON.stringify(r.record))); added++
   }
-  return { outcome: "complete", added, committedKeys: [...memory.keys()] }
+  return { outcome: "complete", added, committedKeys: [...target.keys()] }
 }
 const failure = simulateBatch(rows, 4), resumed = simulateBatch(rows), repeated = simulateBatch(rows)
 assert.equal(failure.added, 4); assert.equal(resumed.added, 12); assert.equal(repeated.added, 0)
@@ -146,18 +175,28 @@ assert.equal(memory.size, 16)
 const beforeConflict = [...memory.entries()]
 assert.throws(() => simulateBatch([{ ...rows[2], record: { ...rows[2].record, gross: "9,00" } }]))
 assert.deepEqual([...memory.entries()], beforeConflict)
+// Same account/object IDs from a second invented provider coexist in one map.
+const otherRows = stageRows({ ...fixture, provider: `${fixture.provider}-other` })
+const isolated = new Map<string, string>()
+const combined = [...rows, ...otherRows]
+assert.equal(simulateBatch(combined, Infinity, isolated).added, 32)
+assert.equal(simulateBatch(combined, Infinity, isolated).added, 0)
+const beforeIsolatedConflict = [...isolated.entries()]
+assert.throws(() => simulateBatch([{ ...rows[2], record: { ...rows[2].record, gross: "9,00" } }], Infinity, isolated))
+assert.deepEqual([...isolated.entries()], beforeIsolatedConflict)
 const collisions = documentRows.filter((i: any) => fixture.targetNumbers.includes(i.originalNumber)).map((i: any) => i.sourceId)
 assert.deepEqual(collisions, ["I1"])
 const report = {
   status: "synthetic analysis only; operational import and cutover are blocked",
-  sourceCheckout: pinned, extractionFixtureSha256: hash(sourceBytes),
+  sourceCheckout: pinned, extractionFixtureSha256: hash(sourceBytes), stagingFixtureSha256: hash(stagingBytes),
   units: "integer minor units; DKK and EUR exponent 2; no cross-currency netting",
   counts: { contacts: 2, invoices: 5, credits: 1, receipts: 4, allocations: 4, staged: rows.length,
     excluded: fixture.excluded.length, availableSyntheticArtifacts: 3, missingArtifacts: 1, failedArtifacts: 1 },
   totals, documents: documentRows, exclusions: fixture.excluded,
   numberingCollisionsBlockingCommit: collisions,
   retrySimulation: { failure, resumed, repeated, changedPayloadRejectedWithoutWrites: true,
-    duplicateIdsRejectWholeBatch: true },
+    duplicateIdsRejectWholeBatch: true,
+    crossProviderIsolation: { providers: [fixture.provider, `${fixture.provider}-other`], identicalAccountAndObjectIds: true, distinctCommittedIdentities: isolated.size, replayAdded: 0, sameProviderConflictRejectedWithoutWrites: true } },
   sideEffects: "No application or provider operations exist in this analysis script. Runtime isolation is untested.",
   extractionScenarios: extraction,
   unmet: ["source page/count controls", "unpaid-total semantics and comparison", "real export columns", "real grant/plan tests", "approved provenance persistence", "database resume/concurrency tests", "consented pilot", "qualified cutover/retention review"],
@@ -165,5 +204,5 @@ const report = {
 const json = JSON.stringify(report, null, 2) + "\n"
 if (process.argv.includes("--check")) {
   assert.equal(json, readFileSync(new URL("worked-report.json", dir), "utf8"))
-  console.log("PASS: 15 accepted extraction scenarios, Danish input rejection checks, per-currency reconciliation, duplicate identities, collision, failure/resume/replay and report equality")
+  console.log("PASS: 15 accepted extraction scenarios, Danish input rejection checks, per-currency reconciliation, provider-scoped identities, validated exclusions, collision, failure/resume/replay and byte-bound report equality")
 } else process.stdout.write(json)

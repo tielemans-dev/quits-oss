@@ -119,7 +119,9 @@ It reads that checkout only; no dependency install is needed.
 The local [synthetic fixture](evidence/2026-10-08-migration-receipts/staging-synthetic.json) is an
 analysis input format, not an e-conomic export or proposed application API. The checked
 [worked-report.json](evidence/2026-10-08-migration-receipts/worked-report.json) contains the exact
-source fixture hash, document rows, counts, exceptions, successful simulated item keys and exclusions.
+local input byte hash as `stagingFixtureSha256` and the separate pinned upstream extraction fixture
+hash as `extractionFixtureSha256`, plus document rows, counts, exceptions, successful simulated item
+keys and exclusions. Changing even an unused input field or whitespace invalidates the saved report.
 Run without `--check` to print a fresh report to stdout. All values below are invented test data.
 
 | Currency | Issued invoices | Invoiced | Applied credits | Applied cash | Outstanding | Gross receipts | Unapplied cash |
@@ -138,8 +140,12 @@ no conversion or inferred FX posting in this report. Open credits need their own
 #29's `credit_allocation` scenario covers them, while this smaller dataset has one fully applied credit.
 
 The worked dataset contains 2 contacts, 5 invoices, 1 credit, 4 funding records and 4 allocations,
-16 staged identities. It excludes a 75 DKK post-cutoff invoice and a 50 DKK draft; neither enters
-the totals. Three artifacts are available synthetic text bytes with computed SHA-256, one is missing
+16 staged identities. It excludes a 75 DKK issued post-cutoff invoice and a 50 DKK draft; neither enters
+the totals. The checker requires explicit issuance state and valid dates, validates the exclusion reason,
+and rejects overlap with included identities. `after_cutover` requires an issued invoice strictly after
+8 October; `not_issued` requires a draft and takes precedence over date. This checks the supplied
+partition, not whether a provider export contains every source record.
+Three artifacts are available synthetic text bytes with computed SHA-256, one is missing
 and one has a fetch error. These text bytes are not PDFs or evidence of a preserved provider original.
 Source IDs, original numbers and dates remain visible in the report. Collision `I1`/`1001` blocks commit.
 
@@ -148,6 +154,11 @@ It refuses mixed punctuation, sub-minor precision, malformed grouping, invalid c
 ambiguous short dates. This establishes a specific synthetic Danish profile, not discovered export syntax.
 The script exercises a failure after 4 simulated successful identities, resume adding 12 and identical
 replay adding zero. Duplicate IDs reject the entire batch and changed payloads refuse without writes.
+Keys contain organization/provider/account/kind/source ID, with escaped components. A separate
+control combines two invented providers sharing all account/object IDs: 32 identities coexist, replay
+adds zero and a same-provider payload conflict refuses without writes. It does not add cash to the
+single-provider financial report. The [regression script](evidence/2026-10-08-migration-receipts/regression.ts)
+also checks raw-byte drift and negative exclusion examples against the actual checker in temporary copies.
 This is an in-memory demonstration, not persisted import or concurrency evidence. The retry exercise
 is independent of the commit gates; the colliding dataset remains ineligible for operational commit.
 

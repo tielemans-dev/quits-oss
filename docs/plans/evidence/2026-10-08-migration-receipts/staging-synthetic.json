@@ -2,6 +2,7 @@
   "synthetic": true,
   "profile": "analysis-only/1; not an e-conomic export",
   "organization": "synthetic-org-A",
+  "provider": "synthetic-provider-A",
   "sourceAccount": "synthetic-source-A",
   "asOf": "2026-10-08",
   "contacts": [
@@ -166,6 +167,7 @@
     {
       "id": "FUTURE1",
       "kind": "invoice",
+      "issued": true,
       "date": "09.10.2026",
       "currency": "DKK",
       "amount": "75,00",
@@ -174,6 +176,7 @@
     {
       "id": "DRAFT1",
       "kind": "draft",
+      "issued": false,
       "date": "01.10.2026",
       "currency": "DKK",
       "amount": "50,00",

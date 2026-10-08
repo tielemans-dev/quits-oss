@@ -2,6 +2,7 @@
   "status": "synthetic analysis only; operational import and cutover are blocked",
   "sourceCheckout": "6d9c9fcbd678bf4800ad5c21bea791779acdbab2",
   "extractionFixtureSha256": "75d91ed190af6cb29a759565b136c71d78ce2579d87598487a00dd0b18b02dce",
+  "stagingFixtureSha256": "4b62c73cb4060f354dd411b64078d2253574f2853b00dee5c70449ec863fb879",
   "units": "integer minor units; DKK and EUR exponent 2; no cross-currency netting",
   "counts": {
     "contacts": 2,
@@ -106,6 +107,7 @@
     {
       "id": "FUTURE1",
       "kind": "invoice",
+      "issued": true,
       "date": "09.10.2026",
       "currency": "DKK",
       "amount": "75,00",
@@ -114,6 +116,7 @@
     {
       "id": "DRAFT1",
       "kind": "draft",
+      "issued": false,
       "date": "01.10.2026",
       "currency": "DKK",
       "amount": "50,00",
@@ -128,58 +131,68 @@
       "outcome": "simulated_failure",
       "added": 4,
       "committedKeys": [
-        "synthetic-org-A/synthetic-source-A/contacts/C1",
-        "synthetic-org-A/synthetic-source-A/contacts/C2",
-        "synthetic-org-A/synthetic-source-A/invoices/I1",
-        "synthetic-org-A/synthetic-source-A/invoices/I2"
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/contacts/C1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/contacts/C2",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I2"
       ]
     },
     "resumed": {
       "outcome": "complete",
       "added": 12,
       "committedKeys": [
-        "synthetic-org-A/synthetic-source-A/contacts/C1",
-        "synthetic-org-A/synthetic-source-A/contacts/C2",
-        "synthetic-org-A/synthetic-source-A/invoices/I1",
-        "synthetic-org-A/synthetic-source-A/invoices/I2",
-        "synthetic-org-A/synthetic-source-A/invoices/I3",
-        "synthetic-org-A/synthetic-source-A/invoices/I4",
-        "synthetic-org-A/synthetic-source-A/invoices/I5",
-        "synthetic-org-A/synthetic-source-A/credits/CR1",
-        "synthetic-org-A/synthetic-source-A/receipts/R1",
-        "synthetic-org-A/synthetic-source-A/receipts/R2",
-        "synthetic-org-A/synthetic-source-A/receipts/R3",
-        "synthetic-org-A/synthetic-source-A/receipts/R4",
-        "synthetic-org-A/synthetic-source-A/allocations/A1",
-        "synthetic-org-A/synthetic-source-A/allocations/A2",
-        "synthetic-org-A/synthetic-source-A/allocations/A3",
-        "synthetic-org-A/synthetic-source-A/allocations/A4"
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/contacts/C1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/contacts/C2",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I2",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I3",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I4",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I5",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/credits/CR1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/receipts/R1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/receipts/R2",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/receipts/R3",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/receipts/R4",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/allocations/A1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/allocations/A2",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/allocations/A3",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/allocations/A4"
       ]
     },
     "repeated": {
       "outcome": "complete",
       "added": 0,
       "committedKeys": [
-        "synthetic-org-A/synthetic-source-A/contacts/C1",
-        "synthetic-org-A/synthetic-source-A/contacts/C2",
-        "synthetic-org-A/synthetic-source-A/invoices/I1",
-        "synthetic-org-A/synthetic-source-A/invoices/I2",
-        "synthetic-org-A/synthetic-source-A/invoices/I3",
-        "synthetic-org-A/synthetic-source-A/invoices/I4",
-        "synthetic-org-A/synthetic-source-A/invoices/I5",
-        "synthetic-org-A/synthetic-source-A/credits/CR1",
-        "synthetic-org-A/synthetic-source-A/receipts/R1",
-        "synthetic-org-A/synthetic-source-A/receipts/R2",
-        "synthetic-org-A/synthetic-source-A/receipts/R3",
-        "synthetic-org-A/synthetic-source-A/receipts/R4",
-        "synthetic-org-A/synthetic-source-A/allocations/A1",
-        "synthetic-org-A/synthetic-source-A/allocations/A2",
-        "synthetic-org-A/synthetic-source-A/allocations/A3",
-        "synthetic-org-A/synthetic-source-A/allocations/A4"
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/contacts/C1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/contacts/C2",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I2",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I3",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I4",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/invoices/I5",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/credits/CR1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/receipts/R1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/receipts/R2",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/receipts/R3",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/receipts/R4",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/allocations/A1",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/allocations/A2",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/allocations/A3",
+        "synthetic-org-A/synthetic-provider-A/synthetic-source-A/allocations/A4"
       ]
     },
     "changedPayloadRejectedWithoutWrites": true,
-    "duplicateIdsRejectWholeBatch": true
+    "duplicateIdsRejectWholeBatch": true,
+    "crossProviderIsolation": {
+      "providers": [
+        "synthetic-provider-A",
+        "synthetic-provider-A-other"
+      ],
+      "identicalAccountAndObjectIds": true,
+      "distinctCommittedIdentities": 32,
+      "replayAdded": 0,
+      "sameProviderConflictRejectedWithoutWrites": true
+    }
   },
   "sideEffects": "No application or provider operations exist in this analysis script. Runtime isolation is untested.",
   "extractionScenarios": [
