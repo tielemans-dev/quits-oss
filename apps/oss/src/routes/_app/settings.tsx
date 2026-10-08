@@ -429,6 +429,11 @@ function SettingsPage() {
     // With no provider the organisation may choose (managed-only distributions), leave the AI
     // settings untouched rather than submitting a provider the server would reject.
     const sendAiSettings = aiProviderOptions.length > 0
+    if (sendAiSettings && aiProvider === "openai_compatible" && !aiBaseUrlInput) {
+      setSaving(false)
+      setError(t("settings.aiBaseUrl.required"))
+      return
+    }
     if (sendAiSettings && aiProvider !== "cli_agent" && !aiModelInput) {
       setSaving(false)
       setError(t("settings.aiModel.required"))

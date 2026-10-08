@@ -116,6 +116,8 @@ export function createOpenAiCompatibleProvider(input: {
         headers,
         body,
         signal: AbortSignal.timeout(options.timeoutMs),
+        // A redirect could lead to a host the operator has not allowed, so none are followed.
+        redirect: "manual",
       })
     } catch (cause) {
       if (cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError")) {
@@ -131,6 +133,14 @@ export function createOpenAiCompatibleProvider(input: {
         providerId: input.id,
         message: `${providerName} ${options.endpoint} request failed`,
         cause,
+      })
+    }
+
+    if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+      throw new AiProviderError({
+        code: "http",
+        providerId: input.id,
+        message: `${providerName} ${options.endpoint} answered with a redirect (${response.status}); redirects are not followed. Use the final URL as the base URL`,
       })
     }
 

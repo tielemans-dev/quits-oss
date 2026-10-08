@@ -235,6 +235,19 @@ describe("settings router AI provider handling", () => {
     ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Choose a model for the new AI provider" })
   })
 
+  it("requires a base URL for an OpenAI-compatible endpoint", async () => {
+    mocks.txFindUnique.mockResolvedValue({
+      countryCode: "DK",
+      aiProvider: "openrouter",
+      aiBaseUrl: null,
+    })
+    const caller = settingsRouter.createCaller(createContext())
+
+    await expect(
+      caller.update({ aiProvider: "openai_compatible", aiModel: "llama3.2" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+  })
+
   it("rejects an AI endpoint host the operator has not allowed", async () => {
     vi.stubEnv("QUITS_AI_CUSTOM_ENDPOINT_HOSTS", "localhost:11434")
     mocks.txFindUnique.mockResolvedValue({

@@ -158,6 +158,7 @@ export const daSettingsMessages = {
     "Gemt nøgle fjernes, når du gemmer indstillinger.",
   "settings.aiApiKey.undo": "Fortryd",
   "settings.aiApiKey.optionalHelp": "Valgfri for lokale endpoints, fx Ollama.",
+  "settings.aiBaseUrl.required": "Angiv basis-URL'en for det OpenAI-kompatible endpoint.",
   "settings.aiModel.required": "Angiv den model, der skal bruges med denne AI-udbyder.",
   "settings.aiModel.customHelp":
     "Skriv et modelnavn, eller vælg et forslag fra endpointet.",

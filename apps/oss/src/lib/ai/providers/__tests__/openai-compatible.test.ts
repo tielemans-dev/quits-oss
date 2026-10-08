@@ -267,6 +267,18 @@ describe("createOpenAiCompatibleProvider", () => {
   })
 })
 
+describe("redirects", () => {
+  it("does not follow redirects, which could leave the allowed hosts", async () => {
+    const mock = vi.fn(async (_url: string, init?: RequestInit) => {
+      expect(init?.redirect).toBe("manual")
+      return new Response(null, { status: 302, headers: { location: "http://169.254.169.254/" } })
+    })
+    global.fetch = mock as unknown as typeof fetch
+
+    await expect(openRouter().complete(completionRequest)).rejects.toMatchObject({ code: "http" })
+  })
+})
+
 describe("response size limits", () => {
   it("rejects a response body larger than the cap", async () => {
     global.fetch = vi.fn(

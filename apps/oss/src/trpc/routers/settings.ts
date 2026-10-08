@@ -281,6 +281,14 @@ export const settingsRouter = router({
           (aiBaseUrl !== undefined && (aiBaseUrl || null) !== (current?.aiBaseUrl ?? null))
         const dropSavedAiKey = clearAiApiKey || (aiDestinationChanged && !aiApiKey)
 
+        const nextAiProvider = settingsInput.aiProvider ?? current?.aiProvider
+        const nextAiBaseUrl = aiBaseUrl !== undefined ? aiBaseUrl || null : current?.aiBaseUrl
+        if (nextAiProvider === "openai_compatible" && !nextAiBaseUrl) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Enter the base URL of the OpenAI-compatible endpoint",
+          })
+        }
         if (aiBaseUrl && !isAiEndpointHostAllowed(aiBaseUrl)) {
           throw new TRPCError({
             code: "BAD_REQUEST",
