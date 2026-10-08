@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+import { createHash } from "node:crypto"
 import { z } from "zod"
 import type {
   JournalDocumentInput,
@@ -16,6 +17,10 @@ import { actorCan, type Actor } from "../actor"
 import { defineCommand } from "../command"
 import { lockArtifactOrganization } from "../documents/artifacts"
 import { lockDocument } from "../documents/locks"
+import { ManualEmailReplacement } from "../documents/document-delivery"
+import { resendInvoiceEmail } from "../commands/invoices"
+import { resendQuoteEmail } from "../commands/quotes"
+import { resendAgreement } from "../commands/agreement-lifecycle"
 import { appendEvents } from "../events"
 import { Forbidden, InvalidState, NotFound } from "../errors"
 import { runJobsNow } from "../jobs"
@@ -86,8 +91,11 @@ export async function journalDocument(
   const where = { id: input.documentId, organizationId: actor.organizationId }
   const select = {
     id: true,
+    contactId: true,
     number: true,
     status: true,
+    updatedAt: true,
+    contact: { select: { email: true, updatedAt: true } },
     lastEmailAttemptAt: true,
     lastEmailAttemptOutcome: true
   }
@@ -106,7 +114,11 @@ export async function journalDocument(
           ? await db.creditNote.findFirst({ where, select })
           : await db.agreement.findFirst({
               where,
-              select: { ...select, publicAccessKeyVersion: true }
+              select: {
+                ...select,
+                publicAccessKeyVersion: true,
+                issuedToEmail: true
+              }
             })
   if (!document)
     throw new NotFound({
@@ -208,11 +220,43 @@ function canRecover(job: DeliveryRow, payload: DeliveryPayload) {
   )
 }
 
+function linkVersion(document: Awaited<ReturnType<typeof journalDocument>>) {
+  return "publicAccessKeyVersion" in document
+    ? String(document.publicAccessKeyVersion)
+    : "publicPaymentKeyVersion" in document
+      ? String(document.publicPaymentKeyVersion)
+      : null
+}
+
+function reviewedTarget(
+  document: Awaited<ReturnType<typeof journalDocument>>,
+  recipient: string
+) {
+  return {
+    revision: createHash("sha256")
+      .update(JSON.stringify(document))
+      .digest("hex"),
+    recipient,
+    publicLinkKeyVersion: linkVersion(document)
+  }
+}
+
+function currentRecipient(
+  document: Awaited<ReturnType<typeof journalDocument>>
+) {
+  return "issuedToEmail" in document
+    ? typeof document.issuedToEmail === "string"
+      ? document.issuedToEmail.trim()
+      : null
+    : (document.contact.email?.trim() ?? null)
+}
+
 function manualEligible(
   document: Awaited<ReturnType<typeof journalDocument>>,
   job: DeliveryRow,
   payload: DeliveryPayload,
-  input: JournalDocumentInput
+  input: JournalDocumentInput,
+  mode: "stored" | "replacement" = "stored"
 ) {
   const version =
     "publicAccessKeyVersion" in document
@@ -228,7 +272,9 @@ function manualEligible(
       ? String(version) === payload.completion.target.publicLinkKeyVersion
       : version === 1)
   return (
-    linkStillValid &&
+    (mode === "stored"
+      ? linkStillValid
+      : !linkStillValid && Boolean(currentRecipient(document))) &&
     resultOutcome(job) === "unconfirmed" &&
     !payload.providerMessageId &&
     /\.(send|email)$/.test(payload.completion.kind) &&
@@ -236,7 +282,9 @@ function manualEligible(
     document.lastEmailAttemptAt?.toISOString() ===
       payload.completion.target.attemptAt &&
     (input.documentType !== "invoice" ||
-      ["sent", "viewed", "overdue"].includes(document.status)) &&
+      ["sent", "overdue"].includes(document.status)) &&
+    (input.documentType !== "quote" ||
+      ["sent", "accepted", "rejected"].includes(document.status)) &&
     (input.documentType !== "agreement" ||
       ["sent", "accepted"].includes(document.status))
   )
@@ -399,6 +447,7 @@ export async function documentJournal(
         evidence: payload.evidence ?? [],
         recoveryOf: payload.recoveryOf ?? null,
         manualReason: payload.manualReason ?? null,
+        manualMode: payload.manualReview?.mode ?? null,
         canRecover: canSend && canRecover(job, payload),
         canReconcile:
           canSend &&
@@ -411,6 +460,14 @@ export async function documentJournal(
           canSend &&
           manualEligible(document, job, payload, input) &&
           !payloads.some((other) => other.recoveryOf === job.id),
+        manualTarget: reviewedTarget(document, payload.message.to),
+        canReplaceEmail:
+          canSend &&
+          manualEligible(document, job, payload, input, "replacement") &&
+          !payloads.some((other) => other.recoveryOf === job.id),
+        replacementTarget: currentRecipient(document)
+          ? reviewedTarget(document, currentRecipient(document)!)
+          : null,
         // Provider failures may contain sensitive response data; show only the settled safe explanation.
         failure:
           resultOutcome(job) === "rejected"
@@ -680,6 +737,15 @@ export function manualResendCommand(
           try: () => journalDocument(command.actor, input, true, db),
           catch: (error) => error as Forbidden | NotFound
         })
+        // Contact edits do not necessarily update the document. Lock and re-read it as part
+        // of the reviewed target, so a changed recipient cannot slip into the queued message.
+        yield* lockDocument("contact", document.contactId, {
+          strength: "no_key_update"
+        })
+        const current = yield* Effect.tryPromise({
+          try: () => journalDocument(command.actor, input, true, db),
+          catch: (error) => error as Forbidden | NotFound
+        })
         const { job, payload } = yield* Effect.tryPromise({
           try: () => scopedJob(command.actor, input, db),
           catch: (error) => error as NotFound
@@ -693,17 +759,74 @@ export function manualResendCommand(
             }
           })
         )
-        if (!manualEligible(document, job, payload, input) || previous > 0)
+        if (
+          !manualEligible(current, job, payload, input, input.mode) ||
+          previous > 0
+        )
           return yield* new InvalidState({
             message:
               "This delivery is no longer eligible for manual resend. Refresh the operation history.",
             code: "manual_resend_unavailable"
+          })
+        const recipient =
+          input.mode === "replacement"
+            ? currentRecipient(current)!
+            : payload.message.to
+        const target = reviewedTarget(current, recipient)
+        if (
+          input.reviewedTarget.revision !== target.revision ||
+          input.reviewedTarget.recipient !== target.recipient ||
+          input.reviewedTarget.publicLinkKeyVersion !==
+            target.publicLinkKeyVersion
+        )
+          return yield* new InvalidState({
+            message:
+              "The reviewed document, recipient or public link changed. Refresh the operation history and verify the new target.",
+            code: "delivery_changed"
           })
         if (!deliveryAvailable())
           return yield* new InvalidState({
             message: "Configure email delivery before resending",
             code: "email_unavailable"
           })
+        if (input.mode === "replacement") {
+          // Reuse the issued-document send checks and current rendering, never issuance.
+          command.emit({
+            aggregateType:
+              documentType === "creditNote" ? "credit_note" : documentType,
+            aggregateId: current.id,
+            type: "delivery.manual_resend_requested",
+            payload: {
+              deliveryId: job.id,
+              reason: input.reason,
+              acknowledgeDuplicateRisk: true,
+              recipient
+            }
+          })
+          const send =
+            documentType === "invoice"
+              ? resendInvoiceEmail
+                  .handle({ id: current.id })
+                  .pipe(Effect.map(({ deliveryKey }) => ({ deliveryKey })))
+              : documentType === "quote"
+                ? resendQuoteEmail
+                    .handle({ id: current.id })
+                    .pipe(Effect.map(({ deliveryKey }) => ({ deliveryKey })))
+                : resendAgreement
+                    .handle({ id: current.id })
+                    .pipe(Effect.map(({ deliveryKey }) => ({ deliveryKey })))
+          const result = yield* send.pipe(
+            Effect.provideService(ManualEmailReplacement, {
+              kind: documentType,
+              documentId: current.id,
+              recipient,
+              recoveryOf: job.id,
+              reason: input.reason,
+              review: { mode: input.mode, ...target }
+            })
+          )
+          return { deliveryKey: result.deliveryKey }
+        }
         const attempt = createEmailDeliveryAttempt({
           at: command.now,
           outcome: "sending",
@@ -740,13 +863,17 @@ export function manualResendCommand(
           idempotencyKey: `manual-recovery:${command.commandId}`,
           recoveryOf: job.id,
           manualReason: input.reason,
+          manualReview: { mode: input.mode, ...target },
           completion: {
             kind: `${documentType}.email`,
             target: {
               documentId: document.id,
               attemptAt: command.now.toISOString(),
               number: document.number ?? "",
-              recipient: payload.message.to
+              recipient: payload.message.to,
+              ...(target.publicLinkKeyVersion
+                ? { publicLinkKeyVersion: target.publicLinkKeyVersion }
+                : {})
             }
           }
         })

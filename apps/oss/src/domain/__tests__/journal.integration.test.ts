@@ -8,6 +8,8 @@ vi.mock("../../lib/email", async () => ({
 import { executeIssuanceCommand } from "../../application/issuance"
 import { getPrisma, prisma } from "../../lib/db"
 import { deliver, EmailSendError } from "../../lib/email"
+import { getPublicInvoicePaymentUrl } from "../../lib/payments/public"
+import { getPublicQuoteUrl } from "../../lib/quotes/public-url"
 import {
   resetRuntimeServices,
   setRuntimeServices
@@ -29,6 +31,7 @@ import {
   resendInvoiceEmail,
   sendInvoice
 } from "../commands/invoices"
+import { createQuoteDraft, sendQuote } from "../commands/quotes"
 import {
   documentJournal,
   manualResendCommand,
@@ -102,8 +105,21 @@ suite("operation journal and bounded recovery", () => {
       where: { organizationId, type: EMAIL_DELIVERY_JOB },
       orderBy: { createdAt: "asc" }
     })
-  async function uncertain() {
+  async function uncertain(paymentLink = false, publicLinkVersion = 1) {
     const context = await setup()
+    await prisma.invoice.update({
+      where: { id: context.scope.documentId },
+      data: { publicPaymentKeyVersion: publicLinkVersion }
+    })
+    if (paymentLink)
+      await prisma.orgSettings.update({
+        where: { organizationId: context.actor.organizationId },
+        data: {
+          stripePublishableKey: "pk_test_fixture",
+          stripeSecretKeyEnc: "synthetic_encrypted_key",
+          stripeWebhookSecretEnc: "synthetic_encrypted_webhook"
+        }
+      })
     vi.stubEnv("EMAIL_PROVIDER", "smtp")
     vi.stubEnv("SMTP_HOST", "relay.example.test")
     vi.mocked(deliver).mockRejectedValueOnce(
@@ -396,7 +412,12 @@ suite("operation journal and bounded recovery", () => {
     })
     const unacknowledged = await executeCommand(
       manualResendCommand("invoice"),
-      { ...delivery, reason: "verified", clientRequestId: "manual-1" },
+      {
+        ...delivery,
+        reviewedTarget: journal.deliveries[0]!.manualTarget,
+        reason: "verified",
+        clientRequestId: "manual-1"
+      },
       { actor }
     )
     expect(unacknowledged.status).toBe("failed")
@@ -409,6 +430,8 @@ suite("operation journal and bounded recovery", () => {
     vi.mocked(deliver).mockResolvedValue({ id: "manual_accepted" })
     const input = {
       ...delivery,
+      reviewedTarget: (await documentJournal(actor, scope)).deliveries[0]!
+        .manualTarget,
       reason: "Recipient checked and requested another copy",
       acknowledgeDuplicateRisk: true as const,
       clientRequestId: "manual-1"
@@ -587,6 +610,8 @@ suite("operation journal and bounded recovery", () => {
       manualResendCommand("invoice"),
       {
         ...delivery,
+        reviewedTarget: (await documentJournal(actor, scope)).deliveries[0]!
+          .manualTarget,
         reason: "Recipient asked",
         acknowledgeDuplicateRisk: true,
         clientRequestId: "revoked-send"
@@ -623,6 +648,306 @@ suite("operation journal and bounded recovery", () => {
       lastEmailAttemptOutcome: "sending"
     })
     expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
+  })
+  it("replaces an uncertain revoked-link email through an audited current-document decision without issuing again", async () => {
+    const { actor, scope, delivery, job } = await uncertain(true)
+    const before = await prisma.invoice.findUniqueOrThrow({
+      where: { id: scope.documentId }
+    })
+    await prisma.invoice.update({
+      where: { id: before.id },
+      data: { publicPaymentKeyVersion: { increment: 1 } }
+    })
+    const reviewed = (await documentJournal(actor, scope)).deliveries[0]!
+    expect(reviewed.canManualResend).toBe(false)
+    expect(reviewed.canReplaceEmail).toBe(true)
+    const input = {
+      ...delivery,
+      mode: "replacement" as const,
+      reviewedTarget: reviewed.replacementTarget!,
+      reason:
+        "Recipient verified the old link was revoked and requested the current copy",
+      acknowledgeDuplicateRisk: true as const,
+      clientRequestId: "replace-revoked"
+    }
+    const normal = await executeCommand(
+      resendInvoiceEmail,
+      { id: before.id },
+      { actor }
+    )
+    expect(normal).toMatchObject({
+      status: "failed",
+      error: { code: "manual_resend_required" }
+    })
+    const decision = manualResendCommand("invoice")
+    const result = await executeCommand(decision, input, {
+      actor,
+      clientRequestId: input.clientRequestId
+    })
+    expect(result.status).toBe("completed")
+    expect(
+      await executeCommand(decision, input, {
+        actor,
+        clientRequestId: input.clientRequestId
+      })
+    ).toEqual(result)
+    expect(vi.mocked(deliver)).toHaveBeenCalledTimes(2)
+    const replacement = await prisma.job.findFirstOrThrow({
+      where: {
+        organizationId: actor.organizationId,
+        payload: { path: ["recoveryOf"], equals: job.id }
+      }
+    })
+    expect(replacement.payload).toMatchObject({
+      recoveryOf: job.id,
+      manualReason: input.reason,
+      completion: {
+        kind: "invoice.email",
+        target: {
+          publicLinkKeyVersion: "2",
+          recipient: input.reviewedTarget.recipient
+        }
+      }
+    })
+    expect(vi.mocked(deliver).mock.calls[1]?.[0]).not.toEqual(
+      (job.payload as { message: unknown }).message
+    )
+    const after = await prisma.invoice.findUniqueOrThrow({
+      where: { id: before.id }
+    })
+    expect(vi.mocked(deliver).mock.calls[1]?.[0].html).toContain(
+      getPublicInvoicePaymentUrl(after)!
+    )
+    expect(vi.mocked(deliver).mock.calls[1]?.[0].html).not.toContain(
+      getPublicInvoicePaymentUrl(before)!
+    )
+    expect(replacement.payload).toMatchObject({
+      manualReview: { mode: "replacement", ...input.reviewedTarget }
+    })
+    expect(
+      await prisma.job.findUniqueOrThrow({ where: { id: job.id } })
+    ).toMatchObject({ result: { outcome: "unconfirmed" } })
+    expect(
+      await prisma.invoice.findUniqueOrThrow({ where: { id: before.id } })
+    ).toMatchObject({
+      number: before.number,
+      issueDate: before.issueDate,
+      status: before.status
+    })
+    expect(
+      await prisma.invoice.count({
+        where: { organizationId: actor.organizationId }
+      })
+    ).toBe(1)
+    expect(
+      await prisma.domainEvent.count({
+        where: { organizationId: actor.organizationId, type: "invoice.issued" }
+      })
+    ).toBe(1)
+    expect(
+      await prisma.domainEvent.count({
+        where: {
+          organizationId: actor.organizationId,
+          type: "delivery.manual_resend_requested"
+        }
+      })
+    ).toBe(1)
+  })
+  it.each(["document", "recipient", "link"] as const)(
+    "refuses a replacement when the reviewed %s changes",
+    async (changed) => {
+      const { actor, scope, delivery } = await uncertain()
+      const document = await prisma.invoice.update({
+        where: { id: scope.documentId },
+        data: { publicPaymentKeyVersion: 2 }
+      })
+      const reviewedTarget = (await documentJournal(actor, scope))
+        .deliveries[0]!.replacementTarget!
+      if (changed === "recipient")
+        await prisma.contact.update({
+          where: { id: document.contactId },
+          data: { email: "changed@example.test" }
+        })
+      else
+        await prisma.invoice.update({
+          where: { id: document.id },
+          data:
+            changed === "link"
+              ? { publicPaymentKeyVersion: 3 }
+              : { notes: "Changed after review" }
+        })
+      const result = await executeCommand(
+        manualResendCommand("invoice"),
+        {
+          ...delivery,
+          mode: "replacement",
+          reviewedTarget,
+          reason: "Recipient checked",
+          acknowledgeDuplicateRisk: true,
+          clientRequestId: "stale-replacement"
+        },
+        { actor }
+      )
+      expect(result).toMatchObject({
+        status: "failed",
+        error: { code: "delivery_changed" }
+      })
+      expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
+      expect(
+        await prisma.job.count({
+          where: {
+            organizationId: actor.organizationId,
+            type: EMAIL_DELIVERY_JOB
+          }
+        })
+      ).toBe(1)
+      expect(
+        await prisma.domainEvent.count({
+          where: {
+            organizationId: actor.organizationId,
+            type: "delivery.manual_resend_requested"
+          }
+        })
+      ).toBe(0)
+    }
+  )
+  it("preserves version 2 on a copied message that becomes uncertain and permits reviewing its own recovery", async () => {
+    const { actor, scope, delivery, job } = await uncertain(true, 2)
+    const target = (await documentJournal(actor, scope)).deliveries[0]!
+      .manualTarget
+    vi.mocked(deliver).mockRejectedValueOnce(
+      new Error("Second response also lost")
+    )
+    const result = await executeCommand(
+      manualResendCommand("invoice"),
+      {
+        ...delivery,
+        reviewedTarget: target,
+        reason: "Recipient verified and requested another copy",
+        acknowledgeDuplicateRisk: true,
+        clientRequestId: "copy-v2"
+      },
+      { actor }
+    )
+    expect(result.status).toBe("completed")
+    const latest = (await documentJournal(actor, scope)).deliveries.find(
+      (item) => item.recoveryOf === job.id
+    )!
+    expect(latest).toMatchObject({
+      state: "uncertain",
+      canManualResend: true,
+      manualTarget: { publicLinkKeyVersion: "2" }
+    })
+    const copied = await prisma.job.findUniqueOrThrow({
+      where: { id: latest.id }
+    })
+    expect(copied.payload).toMatchObject({
+      completion: { target: { publicLinkKeyVersion: "2" } }
+    })
+    expect(vi.mocked(deliver).mock.calls[1]?.[0]).toEqual(
+      (job.payload as { message: unknown }).message
+    )
+    const subsequent = await executeCommand(
+      manualResendCommand("invoice"),
+      {
+        ...scope,
+        deliveryId: latest.id,
+        reviewedTarget: latest.manualTarget,
+        reason: "Recipient verified the second attempt",
+        acknowledgeDuplicateRisk: true,
+        clientRequestId: "copy-v2-again"
+      },
+      { actor }
+    )
+    expect(subsequent.status).toBe("completed")
+    expect(vi.mocked(deliver)).toHaveBeenCalledTimes(3)
+  })
+  it("replaces a revoked uncertain quote link using the normal quote renderer and retains its issuance", async () => {
+    const { actor, input } = await setup()
+    const created = await executeCommand(
+      createQuoteDraft,
+      { ...input, expiryDate: "2099-12-01" },
+      { actor }
+    )
+    if (created.status !== "completed") throw new Error("quote setup failed")
+    const scope = {
+      documentType: "quote" as const,
+      documentId: created.result.id
+    }
+    vi.stubEnv("EMAIL_PROVIDER", "smtp")
+    vi.stubEnv("SMTP_HOST", "relay.example.test")
+    vi.mocked(deliver).mockRejectedValueOnce(
+      new Error("Quote SMTP answer lost")
+    )
+    expect(
+      (
+        await executeIssuanceCommand(
+          sendQuote,
+          { id: scope.documentId },
+          { actor }
+        )
+      ).status
+    ).toBe("completed")
+    const before = await prisma.quote.findUniqueOrThrow({
+      where: { id: scope.documentId }
+    })
+    const document = await prisma.quote.update({
+      where: { id: before.id },
+      data: { publicAccessKeyVersion: { increment: 1 } }
+    })
+    const source = (await documentJournal(actor, scope)).deliveries[0]!
+    expect(source).toMatchObject({
+      state: "uncertain",
+      canManualResend: false,
+      canReplaceEmail: true
+    })
+    const result = await executeCommand(
+      manualResendCommand("quote"),
+      {
+        ...scope,
+        deliveryId: source.id,
+        mode: "replacement",
+        reviewedTarget: source.replacementTarget!,
+        reason: "Recipient verified and requested a valid offer link",
+        acknowledgeDuplicateRisk: true,
+        clientRequestId: "replace-quote"
+      },
+      { actor }
+    )
+    expect(result.status).toBe("completed")
+    expect(vi.mocked(deliver).mock.calls[1]?.[0].html).toContain(
+      getPublicQuoteUrl(document)!
+    )
+    expect(vi.mocked(deliver).mock.calls[1]?.[0].html).not.toContain(
+      getPublicQuoteUrl(before)!
+    )
+    expect(
+      await prisma.quote.findUniqueOrThrow({ where: { id: before.id } })
+    ).toMatchObject({
+      number: before.number,
+      issueDate: before.issueDate,
+      status: before.status
+    })
+    expect(
+      await prisma.quote.count({
+        where: { organizationId: actor.organizationId }
+      })
+    ).toBe(1)
+    expect(
+      await prisma.domainEvent.count({
+        where: {
+          organizationId: actor.organizationId,
+          type: "quote.email_unconfirmed"
+        }
+      })
+    ).toBe(1)
+    expect(
+      (
+        await prisma.orgSettings.findUniqueOrThrow({
+          where: { organizationId: actor.organizationId }
+        })
+      ).quoteNextNum
+    ).toBe(2)
   })
   it("leaves a failed provider lookup unresolved and prevents recovery of a claimed delivery", async () => {
     const { actor, scope, delivery, job } = await uncertain()

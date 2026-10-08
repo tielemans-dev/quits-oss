@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useState } from "react"
 import type {
   JournalDocumentInput,
+  JournalManualResendInput,
   JournalStepState
 } from "@quits/contracts/journal"
 import type { documentJournal } from "../../domain/delivery/journal"
@@ -48,6 +49,8 @@ export function OperationJournal({
   const [manual, setManual] = useState<{
     id: string
     requestId: string
+    mode: "stored" | "replacement"
+    target: JournalManualResendInput["reviewedTarget"]
   } | null>(null)
   const [reason, setReason] = useState("")
   const [acknowledged, setAcknowledged] = useState(false)
@@ -100,6 +103,8 @@ export function OperationJournal({
         action === "manualResend"
           ? await trpc.journal.manualResend.mutate({
               ...input,
+              mode: manual!.mode,
+              reviewedTarget: manual!.target,
               reason,
               acknowledgeDuplicateRisk: true,
               clientRequestId: manual!.requestId
@@ -377,7 +382,9 @@ export function OperationJournal({
                         onClick={() => {
                           setManual({
                             id: delivery.id,
-                            requestId: crypto.randomUUID()
+                            requestId: crypto.randomUUID(),
+                            mode: "stored",
+                            target: delivery.manualTarget
                           })
                           setReason("")
                           setAcknowledged(false)
@@ -385,6 +392,26 @@ export function OperationJournal({
                         }}
                       >
                         {t("journal.manualResend")}
+                      </Button>
+                    )}
+                    {delivery.canReplaceEmail && delivery.replacementTarget && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => {
+                          setManual({
+                            id: delivery.id,
+                            requestId: crypto.randomUUID(),
+                            mode: "replacement",
+                            target: delivery.replacementTarget!
+                          })
+                          setReason("")
+                          setAcknowledged(false)
+                          setActionError(null)
+                        }}
+                      >
+                        {t("journal.replaceEmail")}
                       </Button>
                     )}
                   </div>
@@ -397,7 +424,18 @@ export function OperationJournal({
                           void act(delivery.id, "manualResend")
                       }}
                     >
-                      <p>{t("journal.duplicateWarning")}</p>
+                      <p>
+                        {t(
+                          manual.mode === "replacement"
+                            ? "journal.replacementWarning"
+                            : "journal.duplicateWarning"
+                        )}
+                      </p>
+                      <p>
+                        {t("journal.reviewedRecipient", {
+                          recipient: manual.target.recipient
+                        })}
+                      </p>
                       <div className="grid gap-2">
                         <Label htmlFor={`${formId}-reason`}>
                           {t("journal.reason")}

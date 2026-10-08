@@ -53,6 +53,18 @@ receipt record the decision, reason and original delivery ID. The original uncer
 remains visible. Revoked public links cannot be replayed. Only one manual recovery is permitted per source delivery, and repeating the
 same client request returns the same receipt.
 
+When the earlier email's link has been revoked, the history offers **Review replacement with
+current link**. Verify the uncertain delivery first, review the displayed current recipient,
+record a reason and acknowledge the risk of another email. This renders the same issued
+document through its normal sending checks with the current link. It retains the original
+uncertainty, number, issue date and financial events. It does not create or issue a new document.
+
+Both decisions bind the reviewed document revision, recipient and public-link version. The
+server checks them again under document and contact locks. If any changes, refresh and review
+the new target. A copied email retains its link version even if that new attempt is uncertain.
+The new outbox job stores `manualReview` with the mode and reviewed target alongside its reason,
+original delivery ID and decision command ID. The original decision event shape stays unchanged.
+
 Ordinary send controls refuse a document whose last email is uncertain and direct the operator
 to this documented path. Manual replay of reminders and agreement notifications is not offered;
 use their supported document workflow after verification. Paid or closed invoices are not
@@ -85,6 +97,9 @@ completion time, assistance requests and explanation of duplicate-delivery risk.
    a refusal. Repeat with late acceptance evidence followed by an older unknown result.
 6. Manual resend after recipient verification: provide a reason, acknowledge duplicate risk and
    identify both communication attempts and the single underlying financial record.
+7. Uncertain email followed by link revocation: choose the replacement with the current link,
+   verify the displayed recipient and explain the duplicate risk. Repeat with a recipient or
+   link change during review and check that a new review is required.
 
 Report correct unaided recovery choices and correct risk identification as separate counts,
 with participant count and scenario order. Keep failed or assisted attempts in the results.

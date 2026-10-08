@@ -110,6 +110,7 @@ export const deliveryPayloadSchema = z.object({
   provider: z.enum(["resend", "smtp"]).optional(),
   recoveryOf: z.string().optional(),
   manualReason: z.string().optional(),
+  manualReview: z.object({ mode: z.enum(["stored", "replacement"]), revision: z.string(), recipient: z.string(), publicLinkKeyVersion: z.string().nullable() }).optional(),
   attempts: z.array(z.object({
     startedAt: z.string(),
     outcome: z.enum(["started", "accepted", "rejected", "uncertain"]),
@@ -186,6 +187,7 @@ export const enqueueEmailDelivery = (input: {
   completion: { kind: string; target: Record<string, string> }
   recoveryOf?: string
   manualReason?: string
+  manualReview?: DeliveryPayload["manualReview"]
 }) =>
   Effect.gen(function* () {
     const command = yield* Command
@@ -205,6 +207,7 @@ export const enqueueEmailDelivery = (input: {
       approvedByUserId: command.approvedByUserId,
       requests: 0,
       ...(input.recoveryOf ? { recoveryOf: input.recoveryOf, manualReason: input.manualReason } : {}),
+      ...(input.manualReview ? { manualReview: input.manualReview } : {}),
     }
     const key = deliveryKey(input.idempotencyKey)
     command.enqueue({ type: EMAIL_DELIVERY_JOB, payload, dedupeKey: key })

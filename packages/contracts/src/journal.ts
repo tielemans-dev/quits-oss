@@ -9,6 +9,12 @@ export const journalDeliveryInputSchema = journalDocumentInputSchema.extend({
 })
 export const journalManualResendInputSchema = journalDeliveryInputSchema.extend(
   {
+    mode: z.enum(["stored", "replacement"]).default("stored"),
+    reviewedTarget: z.object({
+      revision: z.string().min(1).max(100),
+      recipient: z.string().email(),
+      publicLinkKeyVersion: z.string().min(1).max(100).nullable()
+    }),
     reason: z.string().trim().min(1).max(1000),
     acknowledgeDuplicateRisk: z.literal(true),
     clientRequestId: z

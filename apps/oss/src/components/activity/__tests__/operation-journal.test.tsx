@@ -69,6 +69,14 @@ function fixture(
         evidence: [],
         recoveryOf: null,
         manualReason: null,
+        manualMode: null,
+        manualTarget: {
+          revision: "reviewed-revision",
+          recipient: "recipient@example.test",
+          publicLinkKeyVersion: "1"
+        },
+        replacementTarget: null,
+        canReplaceEmail: false,
         settlementPending: false,
         canRecover: state === "waiting_prerequisite",
         canReconcile: false,
@@ -128,8 +136,61 @@ describe("operation journal recovery decisions", () => {
       deliveryId: "delivery-1",
       reason: "Recipient requested a second copy after checking",
       acknowledgeDuplicateRisk: true,
-      clientRequestId: expect.any(String)
+      clientRequestId: expect.any(String),
+      mode: "stored",
+      reviewedTarget: {
+        revision: "reviewed-revision",
+        recipient: "recipient@example.test",
+        publicLinkKeyVersion: "1"
+      }
     })
+  })
+  it("shows the replacement recipient and submits the version originally reviewed even after history refresh", async () => {
+    const original = fixture()
+    const delivery = original.deliveries[0]!
+    delivery.canManualResend = false
+    delivery.canReplaceEmail = true
+    delivery.replacementTarget = {
+      revision: "replacement-review",
+      recipient: "current@example.test",
+      publicLinkKeyVersion: "2"
+    }
+    api.query.mockResolvedValue(original)
+    api.manualResend.mockRejectedValue(
+      new Error("The reviewed public link changed")
+    )
+    render(<OperationJournal documentType="invoice" documentId="invoice-1" />)
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Review replacement with current link"
+      })
+    )
+    expect(
+      screen.getByText("Reviewed recipient: current@example.test")
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/earlier email contains a revoked link/)
+    ).toBeTruthy()
+    const refreshed = structuredClone(original)
+    refreshed.deliveries[0]!.replacementTarget!.publicLinkKeyVersion = "3"
+    api.query.mockResolvedValue(refreshed)
+    fireEvent.click(screen.getByRole("button", { name: "Refresh history" }))
+    await waitFor(() => expect(api.query).toHaveBeenCalledTimes(2))
+    fireEvent.change(
+      screen.getByLabelText("Verification and reason for resending"),
+      { target: { value: "Recipient verified and requested a valid link" } }
+    )
+    fireEvent.click(screen.getByRole("checkbox"))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Record decision and resend" })
+    )
+    await screen.findByText("The reviewed public link changed")
+    expect(api.manualResend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "replacement",
+        reviewedTarget: delivery.replacementTarget
+      })
+    )
   })
   it("distinguishes a prerequisite from failed delivery and retains completed effects", async () => {
     api.query.mockResolvedValue(fixture("waiting_prerequisite"))

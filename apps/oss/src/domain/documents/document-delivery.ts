@@ -1,5 +1,5 @@
 import { lockInvoiceForCompletion } from "./locks"
-import { Effect } from "effect"
+import { Context, Effect, Option } from "effect"
 import type { Prisma } from "../../../generated/prisma/client"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import type { StoredEmailMessage } from "../delivery/outbox"
@@ -24,6 +24,12 @@ import { Command, Db } from "../services"
  */
 
 type DocumentKind = "invoice" | "quote" | "creditNote" | "agreement"
+
+/** Supplied only after the journal command checks the reviewed target under document locks. */
+export class ManualEmailReplacement extends Context.Tag("quits/ManualEmailReplacement")<
+  ManualEmailReplacement,
+  { kind: DocumentKind; documentId: string; recipient: string; recoveryOf: string; reason: string; review: NonNullable<import("../delivery/outbox").DeliveryPayload["manualReview"]> }
+>() {}
 
 type Delegate = {
   count(args: { where: Record<string, unknown> }): Promise<number>
@@ -197,10 +203,13 @@ export const queueDocumentEmail = <Row>(input: {
   markSending: (data: ReturnType<typeof createEmailDeliveryAttempt>) => Promise<Row>
 }) =>
   Effect.gen(function* () {
-    const { now, issuance } = yield* Command
+    const { now, issuance, actor } = yield* Command
     const db = yield* Db
+    const recovery = Option.getOrUndefined(yield* Effect.serviceOption(ManualEmailReplacement))
+    if (recovery && (actor.kind !== "user" || input.mode !== "email" || recovery.kind !== input.kind || recovery.documentId !== input.document.id || recovery.recipient !== input.recipient))
+      return yield* new InvalidState({ message: "The reviewed replacement target changed. Refresh the operation history.", code: "delivery_changed" })
     const ambiguous = yield* Effect.promise(() => delegate(db, input.kind).count({ where: { id: input.document.id, lastEmailAttemptOutcome: "unconfirmed" } }))
-    if (ambiguous) return yield* new InvalidState({
+    if (ambiguous && !recovery) return yield* new InvalidState({
       message: "The previous email may already have arrived. Verify it with the recipient, then use the operation history to record a manual resend decision and its reason.",
       code: "manual_resend_required",
     })
@@ -217,6 +226,7 @@ export const queueDocumentEmail = <Row>(input: {
     const { deliveryKey } = yield* enqueueEmailDelivery({
       message: input.message,
       idempotencyKey: input.idempotencyKey,
+      ...(recovery ? { recoveryOf: recovery.recoveryOf, manualReason: recovery.reason, manualReview: recovery.review } : {}),
       completion: {
         kind: completionKind(input.kind, input.mode),
         target: {

@@ -8,7 +8,7 @@ import { resetDatabase, seedPublicInvoice, loginAsAdmin } from "../e2e/support"
 test("uncertain SMTP journal preserves one record and requires an explicit manual decision", async ({
   page,
   baseURL
-}) => {
+}, testInfo) => {
   const database = new URL(process.env.DATABASE_URL!)
   if (
     !baseURL ||
@@ -18,6 +18,12 @@ test("uncertain SMTP journal preserves one record and requires an explicit manua
     throw new Error(
       "Journal browser check requires the disposable shared harness"
     )
+  console.info(
+    "Journal shared database",
+    database.hostname,
+    database.port,
+    database.pathname
+  )
   await resetDatabase()
   const invoice = await seedPublicInvoice()
   const row = await prisma.invoice.findUniqueOrThrow({
@@ -116,7 +122,8 @@ test("uncertain SMTP journal preserves one record and requires an explicit manua
               documentId: row.id,
               attemptAt: attemptedAt.toISOString(),
               recipient,
-              number: row.number
+              number: row.number,
+              publicLinkKeyVersion: String(row.publicPaymentKeyVersion)
             }
           },
           attempts: [
@@ -172,4 +179,60 @@ test("uncertain SMTP journal preserves one record and requires an explicit manua
       where: { type: "delivery.manual_resend_requested" }
     })
   ).toBe(0)
+  // The stored email becomes unusable after revocation, but an audited current-link
+  // replacement is offered. A second revocation while reviewing must invalidate it.
+  await prisma.invoice.update({
+    where: { id: row.id },
+    data: { publicPaymentKeyVersion: { increment: 1 } }
+  })
+  await history.getByRole("button", { name: "Refresh history" }).click()
+  await expect(
+    history.getByRole("button", { name: "Review manual resend" })
+  ).toHaveCount(0)
+  await history
+    .getByRole("button", { name: "Review replacement with current link" })
+    .click()
+  await expect(
+    history.getByText(`Reviewed recipient: ${recipient}`, { exact: true })
+  ).toBeVisible()
+  await expect(
+    history.getByText(/earlier email contains a revoked link/)
+  ).toBeVisible()
+  const replacementSubmit = history.getByRole("button", {
+    name: "Record decision and resend"
+  })
+  await expect(replacementSubmit).toBeDisabled()
+  await history
+    .getByLabel("Verification and reason for resending")
+    .fill("Recipient verified the revoked link and requested the current copy")
+  await expect(replacementSubmit).toBeDisabled()
+  await history.getByRole("checkbox").check()
+  await expect(replacementSubmit).toBeEnabled()
+  await testInfo.attach("journal-replacement-desktop", {
+    body: await history.screenshot(),
+    contentType: "image/png"
+  })
+  await prisma.invoice.update({
+    where: { id: row.id },
+    data: { publicPaymentKeyVersion: { increment: 1 } }
+  })
+  await replacementSubmit.click()
+  await expect(history.getByRole("alert")).toHaveText(
+    "The reviewed document, recipient or public link changed. Refresh the operation history and verify the new target."
+  )
+  await expect(
+    history.getByText("External outcome uncertain", { exact: true })
+  ).toBeVisible()
+  expect(await prisma.invoice.count()).toBe(1)
+  expect(await prisma.job.count({ where: { type: "email.deliver" } })).toBe(1)
+  expect(
+    await prisma.domainEvent.count({
+      where: { type: "delivery.manual_resend_requested" }
+    })
+  ).toBe(0)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await testInfo.attach("journal-replacement-mobile", {
+    body: await history.screenshot(),
+    contentType: "image/png"
+  })
 })
