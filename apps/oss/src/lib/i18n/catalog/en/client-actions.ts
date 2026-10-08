@@ -116,6 +116,7 @@ export const enClientActionsMessages = {
   "clientLinks.preset.approver": "Project approver",
   "clientLinks.preset.approverHint": "Review and approve work",
   "clientLinks.records": "Records on this page",
+  "clientLinks.loadingRecords": "Loading records...",
   "clientLinks.noRecords": "None of this contact's records can be shared yet.",
   "clientLinks.records.agreement": "Agreements",
   "clientLinks.records.deliverable": "Deliveries",

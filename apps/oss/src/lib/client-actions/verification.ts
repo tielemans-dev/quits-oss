@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto"
+import type { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../db"
 import { CLIENT_ACTION_CODE_MINUTES, sendClientActionCodeEmail } from "../emails/client-action-code-email"
 import type { ActiveClientActionLink } from "./access"
@@ -18,6 +19,12 @@ export const VERIFIED_SESSION_HOURS = 12
 
 export type CodeRequestOutcome = "sent" | "rate_limited" | "unavailable"
 
+/** Issuing and checking share a lock: a superseded challenge cannot win a concurrent check. */
+async function lockChallenges(tx: Prisma.TransactionClient, linkId: string) {
+  const key = `client-action-verification:${linkId}`
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`
+}
+
 export async function requestVerificationCode(
   link: ActiveClientActionLink,
   context: { sellerName: string | null; locale: string },
@@ -25,18 +32,30 @@ export async function requestVerificationCode(
   send: typeof sendClientActionCodeEmail = sendClientActionCodeEmail,
 ): Promise<CodeRequestOutcome> {
   if (link.verification !== "email_code" || !link.recipientEmail) return "unavailable"
-  const recent = await prisma.clientActionVerification.count({
-    where: { linkId: link.id, createdAt: { gte: new Date(now.getTime() - 3_600_000) } },
-  })
-  if (recent >= MAX_CODES_PER_HOUR) return "rate_limited"
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0")
-  const record = await prisma.clientActionVerification.create({
-    data: {
-      linkId: link.id,
-      codeHash: hashVerificationCode(link.id, code),
-      expiresAt: new Date(now.getTime() + CLIENT_ACTION_CODE_MINUTES * 60_000),
-    },
+  const record = await prisma.$transaction(async (tx) => {
+    await lockChallenges(tx, link.id)
+    const recent = await tx.clientActionVerification.count({
+      where: { linkId: link.id, createdAt: { gte: new Date(now.getTime() - 3_600_000) } },
+    })
+    if (recent >= MAX_CODES_PER_HOUR) return null
+    // Retire predecessors in the same transaction, including if the new delivery later fails.
+    // Do not rely on timestamp ordering: two requests can have the same createdAt.
+    await tx.clientActionVerification.updateMany({
+      where: { linkId: link.id, consumedAt: null },
+      data: { consumedAt: now },
+    })
+    return tx.clientActionVerification.create({
+      data: {
+        linkId: link.id,
+        codeHash: hashVerificationCode(link.id, code),
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + CLIENT_ACTION_CODE_MINUTES * 60_000),
+      },
+    })
   })
+  if (!record) return "rate_limited"
+  // Reserve before sending, but never hold a database transaction during network delivery.
   try {
     await send({
       to: link.recipientEmail,
@@ -46,7 +65,7 @@ export async function requestVerificationCode(
       locale: context.locale,
     })
   } catch {
-    // A code nobody received must not count against the hourly limit or stay valid.
+    // Refund only this failed send. Older challenges stay retired; a newer one stays current.
     await prisma.clientActionVerification.delete({ where: { id: record.id } }).catch(() => undefined)
     return "unavailable"
   }
@@ -61,22 +80,21 @@ export async function checkVerificationCode(
   code: string,
   now = new Date(),
 ): Promise<CodeCheckOutcome> {
-  const latest = await prisma.clientActionVerification.findFirst({
-    where: { linkId: link.id, consumedAt: null },
-    orderBy: { createdAt: "desc" },
+  return prisma.$transaction(async (tx) => {
+    await lockChallenges(tx, link.id)
+    const latest = await tx.clientActionVerification.findFirst({
+      where: { linkId: link.id, consumedAt: null },
+      orderBy: { createdAt: "desc" },
+    })
+    if (!latest || now >= latest.expiresAt) return "expired"
+    if (latest.attempts >= MAX_CODE_ATTEMPTS) return "locked"
+    const matches = codesMatch(latest.codeHash, link.id, code)
+    // Consume and count under the same lock as replacement. At most one caller verifies.
+    const claimed = await tx.clientActionVerification.updateMany({
+      where: { id: latest.id, consumedAt: null, attempts: latest.attempts },
+      data: { attempts: { increment: 1 }, ...(matches ? { consumedAt: now } : {}) },
+    })
+    if (claimed.count !== 1) return "expired"
+    return matches ? "verified" : "wrong"
   })
-  if (!latest || now >= latest.expiresAt) return "expired"
-  if (latest.attempts >= MAX_CODE_ATTEMPTS) return "locked"
-  // Count the attempt before comparing, so concurrent guesses cannot exceed the limit.
-  const claimed = await prisma.clientActionVerification.updateMany({
-    where: { id: latest.id, attempts: latest.attempts },
-    data: { attempts: { increment: 1 } },
-  })
-  if (claimed.count !== 1) return "locked"
-  if (!codesMatch(latest.codeHash, link.id, code)) return "wrong"
-  const consumed = await prisma.clientActionVerification.updateMany({
-    where: { id: latest.id, consumedAt: null },
-    data: { consumedAt: now },
-  })
-  return consumed.count === 1 ? "verified" : "expired"
 }

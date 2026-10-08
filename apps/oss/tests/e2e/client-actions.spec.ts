@@ -1,5 +1,5 @@
 import { createServer, type Server } from "node:http"
-import { expect, test, type Browser, type Page } from "@playwright/test"
+import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test"
 import { executeIssuanceCommand } from "../../src/application/issuance"
 import { createAgreementDraft } from "../../src/domain/commands/agreements"
 import { issueAgreement, recordAgreementAcceptance } from "../../src/domain/commands/agreement-lifecycle"
@@ -16,6 +16,17 @@ import { adminCredentials, loginAsAdmin, resetDatabase, seedCompletedSetup, wait
  * recipients use them on a phone and with the keyboard. A fake mail provider receives the
  * verification codes.
  */
+const browserErrors: string[] = []
+function observePage(page: Page) {
+  page.on("crash", () => browserErrors.push("Page crashed"))
+  page.on("pageerror", (error) => browserErrors.push(error.message))
+}
+async function screenshot(page: Page, name: string, info: TestInfo = test.info()) {
+  const path = info.outputPath(`${name}.png`)
+  await page.screenshot({ path, fullPage: true })
+  await info.attach(name, { path, contentType: "image/png" })
+}
+
 let provider: Server
 const messages: Array<{ to: string; subject: string; html: string }> = []
 test.beforeAll(async () => {
@@ -107,7 +118,9 @@ async function createLinkAsSeller(page: Page, contactId: string, preset: "Financ
 
 async function visitor(browser: Browser, width = 1280, height = 900) {
   const context = await browser.newContext({ viewport: { width, height } })
-  return { context, page: await context.newPage() }
+  const page = await context.newPage()
+  observePage(page)
+  return { context, page }
 }
 
 async function tabTo(page: Page, name: string, limit = 25) {
@@ -122,8 +135,13 @@ async function tabTo(page: Page, name: string, limit = 25) {
   throw new Error(`Could not reach "${name}" with the keyboard`)
 }
 
-test.beforeEach(async () => {
+test.beforeEach(async ({ page }) => {
+  browserErrors.length = 0
+  observePage(page)
   await resetDatabase()
+})
+test.afterEach(() => {
+  expect(browserErrors, "Browser runtime errors").toEqual([])
 })
 
 test("a finance contact sees and can pay only their invoice, on a phone and with the keyboard", async ({ page, browser }) => {
@@ -149,6 +167,7 @@ test("a finance contact sees and can pay only their invoice, on a phone and with
   await expect(pay).toBeEnabled()
   expect((await pay.boundingBox())!.height).toBeGreaterThanOrEqual(36)
   expect((await pay.boundingBox())!.width).toBeGreaterThan(300)
+  await screenshot(phone, "finance-mobile")
 
   // The whole task is reachable from the keyboard, and the detail opens and closes without a mouse.
   await tabTo(phone, "Pay $100.00")
@@ -175,6 +194,7 @@ test("a finance contact sees and can pay only their invoice, on a phone and with
   await expect(preview.getByText("Preview. This is exactly what Client Customer sees.")).toBeVisible()
   await expect(preview.getByRole("button", { name: /^Pay \$100\.00$/ })).toBeDisabled()
   await expect(preview.getByText("Open offer")).toHaveCount(0)
+  await screenshot(page, "seller-preview")
 })
 
 test("a project approver verifies their email, then signs off the delivery and accepts the agreement", async ({ page, browser }) => {
@@ -193,6 +213,7 @@ test("a project approver verifies their email, then signs off the delivery and a
 
   // Nothing can be decided before the recipient proves they hold the address.
   await expect(approver.getByRole("heading", { name: "Confirm it is you before approving" })).toBeVisible()
+  await screenshot(approver, "approver-verification")
   await approver.getByRole("link", { name: "Review and sign off" }).click()
   await expect(approver.getByRole("button", { name: "Accept delivery" })).toHaveCount(0)
   await expect(approver.getByText("Verify your email address to decide.")).toBeVisible()
@@ -267,10 +288,12 @@ test("a revoked or expired link shows no records and says whom to ask", async ({
   await guest.goto(approverUrl)
   await waitForClientReady(guest)
   await expect(guest.getByRole("heading", { name: "This link has expired" })).toBeVisible()
+  await screenshot(guest, "expired-link")
   await expect(guest.getByText("Signed offer")).toHaveCount(0)
 
   // A mistyped address is simply invalid.
   const stranger = await context.newPage()
+  observePage(stranger)
   await stranger.goto(`${approverUrl.slice(0, -4)}abcd`)
   await waitForClientReady(stranger)
   await expect(stranger.getByRole("heading", { name: "This link is not valid" })).toBeVisible()

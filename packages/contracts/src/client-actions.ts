@@ -69,7 +69,7 @@ export type ClientActionGrantInput = z.infer<typeof clientActionGrantInputSchema
 
 /** An agreement decision names a signer, so it needs a recipient whose email is verified. */
 export function clientActionNeedsVerification(
-  grants: readonly Pick<ClientActionGrantInput, "kind" | "capabilities">[],
+  grants: readonly { kind: ClientActionRecordKind; capabilities: readonly ClientActionCapability[] }[],
 ) {
   return grants.some((grant) => grant.kind === "agreement" && grant.capabilities.includes("approve"))
 }

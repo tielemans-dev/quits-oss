@@ -318,17 +318,18 @@ function CreateForm({
         </div>
       </div>
 
-      <fieldset className="grid gap-3">
+      <fieldset className="grid gap-3" aria-busy={!candidates && !error}>
         <legend className="mb-1 font-medium">{t("clientLinks.records")}</legend>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground">{t("clientLinks.presets")}</span>
-          <Button type="button" variant="outline" size="sm" onClick={() => applyPreset("finance")} title={t("clientLinks.preset.financeHint")}>
+          <Button type="button" variant="outline" size="sm" disabled={!candidates || busy} onClick={() => applyPreset("finance")} title={t("clientLinks.preset.financeHint")}>
             {t("clientLinks.preset.finance")}
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => applyPreset("approver")} title={t("clientLinks.preset.approverHint")}>
+          <Button type="button" variant="outline" size="sm" disabled={!candidates || busy} onClick={() => applyPreset("approver")} title={t("clientLinks.preset.approverHint")}>
             {t("clientLinks.preset.approver")}
           </Button>
         </div>
+        {!candidates && !error ? <p role="status" className="text-sm text-muted-foreground">{t("clientLinks.loadingRecords")}</p> : null}
         {candidates && records.length === 0 ? <p className="text-sm text-muted-foreground">{t("clientLinks.noRecords")}</p> : null}
         {(["agreement", "deliverable", "invoice"] as const).map((kind) => {
           const rows = records.filter((record) => record.kind === kind)
@@ -386,7 +387,7 @@ function CreateForm({
       ) : null}
 
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-      {grants.length === 0 ? <p className="text-sm text-muted-foreground">{t("clientLinks.noGrant")}</p> : null}
+      {candidates && grants.length === 0 ? <p className="text-sm text-muted-foreground">{t("clientLinks.noGrant")}</p> : null}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy || grants.length === 0}>
           {busy ? t("clientLinks.submitting") : t("clientLinks.submit")}

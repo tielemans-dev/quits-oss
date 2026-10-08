@@ -80,7 +80,10 @@ Approving is stronger:
   link can approve anything) it needs the code too; with it off, sign-off is a bearer action, as
   the existing delivery sign-off link is.
 - Codes expire after 10 minutes, allow five attempts and are limited to five per hour per link.
-  Only a digest is stored. Verification needs email sending to be set up; a link that needs it
+  Requesting a new code permanently retires earlier challenges, even if sending the new code
+  fails. Concurrent requests reserve the five available sends in database transactions. A failed
+  send releases only its own reservation. Concurrent checks cannot exceed the attempt limit or
+  verify the same challenge twice. Only a digest is stored. Verification needs email sending to be set up; a link that needs it
   cannot be created otherwise.
 
 The acceptance record keeps what the existing public links keep (typed signer name, time, the
@@ -105,3 +108,61 @@ refused, and a second payment click reuses and replaces the single open Checkout
   `BETTER_AUTH_SECRET` as the other public links do. Changing it invalidates every client link.
 - Client links reuse the agreement and payment secrets of the underlying public commands
   internally and never put those links in the browser.
+
+## Integration contracts
+
+### Recovery
+
+The key inventory must include `QUITS_PUBLIC_CLIENT_ACTION_SECRET`, its supported legacy name
+`YAIP_PUBLIC_CLIENT_ACTION_SECRET`, and `BETTER_AUTH_SECRET` when it supplies the fallback.
+The current variable takes precedence when defined; the legacy variable is read only when the
+current one is absent. A missing or shorter-than-16-character selected value falls back to the
+auth secret, which also needs at least 16 characters. The effective key signs three separate
+purposes: link references, verification-code digests and verified-browser cookies. Rotating it
+invalidates all three. Restoring the same key preserves their signatures and does not reverse
+expiry checks. Link and grant rows contain authority; the signature alone contains none.
+
+Recovery should discard `client_action_verification` rows. They are short-lived challenges, not
+business evidence. Deleting them refuses every outstanding code but leaves the explicit link
+grants intact so recipients can request a new code. It also resets the hourly challenge count.
+Deleting challenges does **not** invalidate already verified cookies. A recovery that must
+invalidate browser sessions needs to rotate the effective key or revoke the affected link rows.
+Restoring a snapshot can restore an earlier `revokedAt` or grant key version; the recovery owner
+must choose whether to revoke restored links before serving traffic. Never refresh grants to
+current versions or add capabilities automatically during restore.
+
+These are requirements for the recovery integration. This page does not implement a backup or
+restore workflow. Token tests cover key precedence and rotation; database tests cover challenge
+purging, refusal and re-verification. No recovery candidate has been imported here.
+
+### Public actions and consequence previews
+
+The authenticated seller preview is a read-only projection. It grants no visitor credentials.
+A future consequence preview must use the same record, contact, organization, capability and
+verification checks as the submission, then recheck them on submission. It must identify the
+revision the visitor saw. Preview output must use the public projection and omit internal notes,
+cost rates and other records.
+
+| Client request | Existing execution path | Required authority |
+| --- | --- | --- |
+| `agreement.accept`, `agreement.decline` | `decidePublicAgreementByToken` | Agreement `approve`, verified email, matching offer revision and key version |
+| `deliverable.accept`, `deliverable.request_changes` | `decidePublicDeliverableByToken` | Deliverable `approve`, link's verification requirement, matching delivery revision and agreement key version |
+| `invoice.pay` | `resolvePublicInvoiceCheckout` | Invoice `pay`, matching payment key version; collect the current outstanding balance |
+
+The adapter mints the scoped underlying token only after authorization. No caller may pass an
+underlying token, organization override, extra capability or buyer-selected amount. Existing
+database tests execute these command paths and refuse payer approval, foreign records, stale
+revisions and unverified signatures. Payment tests cover outstanding balance and the client-page
+return URL. They use a captured Stripe adapter and do not establish provider sandbox completion.
+Consequence-preview integration remains pending in its owning stream.
+
+### Editable documents
+
+This change adds only contact/organization back-relations and the three client-action models.
+Its migration is independent of Invoice/Quote `editRevision`. The document-view contracts,
+invoice/quote commands and PDF renderers remain owned by the editable-document work. Adapt this
+page to those contracts after they merge; preserve document locale, payment details, public
+projections, nullable draft numbers and invoice balances. The payment seams are
+`loadPublicInvoice`, `serializePublicInvoiceSession`'s optional logo path, and
+`resolvePublicInvoiceCheckout`'s optional return URL. Embedded document components retain their
+standalone defaults.

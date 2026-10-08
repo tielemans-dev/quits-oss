@@ -116,6 +116,7 @@ export const daClientActionsMessages = {
   "clientLinks.preset.approver": "Projektgodkender",
   "clientLinks.preset.approverHint": "Gennemse og godkende arbejde",
   "clientLinks.records": "Poster på siden",
+  "clientLinks.loadingRecords": "Henter dokumenter...",
   "clientLinks.noRecords": "Ingen af kontaktens poster kan deles endnu.",
   "clientLinks.records.agreement": "Aftaler",
   "clientLinks.records.deliverable": "Leverancer",

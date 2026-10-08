@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   codesMatch,
+  getClientActionSecret,
   hashVerificationCode,
   mintClientActionToken,
   mintVerifiedSession,
@@ -11,6 +12,31 @@ import {
 
 const secret = "client-action-test-secret-over-32-characters"
 const now = new Date("2026-10-08T12:00:00Z")
+
+afterEach(() => vi.unstubAllEnvs())
+
+describe("recovery key contract", () => {
+  it("resolves the current name, legacy name, then auth fallback", () => {
+    vi.stubEnv("BETTER_AUTH_SECRET", "auth-fallback-secret")
+    vi.stubEnv("YAIP_PUBLIC_CLIENT_ACTION_SECRET", "legacy-secret-key")
+    vi.stubEnv("QUITS_PUBLIC_CLIENT_ACTION_SECRET", "current-secret-key")
+    expect(getClientActionSecret()).toBe("current-secret-key")
+    vi.stubEnv("QUITS_PUBLIC_CLIENT_ACTION_SECRET", "")
+    expect(getClientActionSecret()).toBe("auth-fallback-secret")
+    vi.stubEnv("QUITS_PUBLIC_CLIENT_ACTION_SECRET", undefined)
+    expect(getClientActionSecret()).toBe("legacy-secret-key")
+    vi.stubEnv("YAIP_PUBLIC_CLIENT_ACTION_SECRET", undefined)
+    expect(getClientActionSecret()).toBe("auth-fallback-secret")
+  })
+
+  it("invalidates links, pending codes and browser sessions when the effective key changes", () => {
+    const rotated = "replacement-recovery-key"
+    const session = mintVerifiedSession("link_1", new Date(now.getTime() + 60_000), secret)
+    expect(verifyClientActionToken(mintClientActionToken("link_1", secret), rotated)).toBeNull()
+    expect(codesMatch(hashVerificationCode("link_1", "123456", secret), "link_1", "123456", rotated)).toBe(false)
+    expect(readVerifiedSession(session, "link_1", now, rotated)).toBe(false)
+  })
+})
 
 describe("client action tokens", () => {
   it("names the link and rejects any other signature or secret", () => {

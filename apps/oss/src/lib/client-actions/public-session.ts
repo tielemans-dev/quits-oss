@@ -15,14 +15,14 @@ export type ClientActionState =
   | { kind: "inactive"; reason: "expired" | "revoked"; seller: { name: string | null }; locale: string }
   | { kind: "ready"; page: ClientActionPage; detail: ClientActionDetail | null }
 
-export function parseItem(item: string | undefined | null) {
+function parseItem(item: string | undefined | null) {
   if (!item || !itemSchema.safeParse(item).success) return null
   const [kind, recordId] = item.split(":") as ["agreement" | "deliverable" | "invoice", string]
   return { kind, recordId }
 }
 
 /** Everything the page needs for one visit, decided from the link row on this request. */
-export async function loadClientActionState(token: string, item: string | null | undefined): Promise<ClientActionState> {
+async function loadClientActionState(token: string, item: string | null | undefined): Promise<ClientActionState> {
   const [{ resolveClientActionAccess, touchClientActionLink }, { buildClientActionDetail, buildClientActionPage }, tokens] =
     await Promise.all([import("./access"), import("./page"), import("./tokens")])
   // A page reached through a secret address, in any state, is never stored by a cache.
