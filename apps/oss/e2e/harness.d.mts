@@ -10,3 +10,8 @@ export function createHarness(options: { cwd: string; logDir: string }): Promise
   }): Promise<void>
   close(): Promise<void>
 }>
+export const READY_DEADLINE_MS: number
+export const READY_PROBE_TIMEOUT_MS: number
+export function waitForReady(url: string, options?: {
+  deadlineMs?: number; probeTimeoutMs?: number; intervalMs?: number; signal?: AbortSignal
+}): Promise<void>
