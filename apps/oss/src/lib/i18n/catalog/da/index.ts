@@ -17,6 +17,7 @@ import { daInvoicesMessages } from "./invoices"
 import { daInvitationMessages } from "./invitation"
 import { daNavMessages } from "./nav"
 import { daPdfMessages } from "./pdf"
+import { daPublicMessages } from "./public"
 import { daQuotesMessages } from "./quotes"
 import { daRootMessages } from "./root"
 import { daSettingsMessages } from "./settings"
@@ -45,6 +46,7 @@ export const daCatalog = {
   ...daInvitationMessages,
   ...daNavMessages,
   ...daPdfMessages,
+  ...daPublicMessages,
   ...daQuotesMessages,
   ...daRootMessages,
   ...daSettingsMessages,

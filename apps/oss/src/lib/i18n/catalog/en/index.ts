@@ -17,6 +17,7 @@ import { enInvoicesMessages } from "./invoices"
 import { enInvitationMessages } from "./invitation"
 import { enNavMessages } from "./nav"
 import { enPdfMessages } from "./pdf"
+import { enPublicMessages } from "./public"
 import { enQuotesMessages } from "./quotes"
 import { enRootMessages } from "./root"
 import { enSettingsMessages } from "./settings"
@@ -45,6 +46,7 @@ export const enCatalog = {
   ...enInvitationMessages,
   ...enNavMessages,
   ...enPdfMessages,
+  ...enPublicMessages,
   ...enQuotesMessages,
   ...enRootMessages,
   ...enSettingsMessages,
