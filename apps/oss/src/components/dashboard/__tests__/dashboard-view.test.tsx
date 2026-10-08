@@ -72,7 +72,7 @@ describe("getting started", () => {
     expect(container.querySelector("[data-slot=dashboard-hero]")).toBeNull()
     expect(container.querySelector("[data-slot=amount]")).toBeNull()
     expect(screen.getAllByText("Fakturakladde oprettet")).toHaveLength(2)
-    expect(screen.getByText("· Fjord & Co")).toBeTruthy()
+    expect(screen.getByText("Fjord & Co")).toBeTruthy()
   })
 })
 
@@ -438,6 +438,6 @@ describe("activity lines", () => {
   it("names the document and the customer", () => {
     renderView(activeSummary())
     expect(screen.getByText("Faktura 2026-148 betalt").getAttribute("href")).toBe("/invoices/inv-paid")
-    expect(screen.getByText("· Nordlys Studio")).toBeTruthy()
+    expect(screen.getByText("Nordlys Studio")).toBeTruthy()
   })
 })

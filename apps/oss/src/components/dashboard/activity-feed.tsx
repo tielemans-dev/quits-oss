@@ -13,18 +13,18 @@ function ActivityLabel({ line, label }: { line: ActivityLine; label: string }) {
   const target = targetKind(line.target)
   if (target) {
     return (
-      <DocLink kind={target.kind} id={target.id} className="hover:text-foreground min-w-0 truncate transition-colors">
+      <DocLink kind={target.kind} id={target.id} className="hover:text-foreground block truncate transition-colors">
         {label}
       </DocLink>
     )
   }
-  return <span className="min-w-0 truncate">{label}</span>
+  return <span className="block truncate">{label}</span>
 }
 
 /**
  * A short, quiet feed of what happened to documents: one line each, a relative time, no avatars.
- * A line says what happened to which document and for whom ("Faktura 2026-148 betalt · Nordlys
- * Studio"), and links to the document.
+ * A line says what happened to which document and for whom ("Faktura 2026-148 betalt" with "Nordlys
+ * Studio" under it), and links to the document.
  */
 export function ActivityFeed({
   events,
@@ -45,20 +45,22 @@ export function ActivityFeed({
       ) : (
         <ul className="px-4 pt-1 pb-3">
           {lines.map((line) => (
-            <li key={line.id} className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
-              <span className="text-muted-foreground flex min-w-0 items-baseline gap-x-2 gap-y-0 sm:gap-x-2.5">
-                <span aria-hidden="true" className="bg-foreground/25 size-1.5 shrink-0 translate-y-[-1px] rounded-full" />
-                <ActivityLabel
-                  line={line}
-                  label={t(activityLabelKey(line.kind, line.number !== null), { number: line.number ?? "" })}
-                />
-                {line.customerName ? (
-                  <span className="text-muted-foreground/70 min-w-0 truncate">· {line.customerName}</span>
-                ) : null}
+            <li key={line.id} className="flex items-start justify-between gap-3 py-1.5 text-sm">
+              <span className="text-muted-foreground flex min-w-0 items-start gap-2.5">
+                <span aria-hidden="true" className="bg-foreground/25 mt-[7px] size-1.5 shrink-0 rounded-full" />
+                <span className="min-w-0">
+                  <ActivityLabel
+                    line={line}
+                    label={t(activityLabelKey(line.kind, line.number !== null), { number: line.number ?? "" })}
+                  />
+                  {line.customerName ? (
+                    <span className="text-muted-foreground/70 block truncate text-xs">{line.customerName}</span>
+                  ) : null}
+                </span>
               </span>
               <time
                 dateTime={line.occurredAt}
-                className="text-muted-foreground/80 shrink-0 text-xs"
+                className="text-muted-foreground/80 shrink-0 pt-0.5 text-xs"
               >
                 {formatRelativeTime(line.occurredAt, asOf, locale, timezone)}
               </time>
