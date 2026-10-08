@@ -1,11 +1,19 @@
 # Calendar dates west of UTC
 
-Self-hosted organisations west of UTC that issued invoices on v0.6.0 or v0.7.0
-are affected by an issuance bug: the frozen due date and the UBL due date are
-one day earlier than the date entered. This release preserves the calendar date
-for newly issued invoices and fixes related date displays and exports.
-Already-issued snapshots and stored PDF/UBL artifacts are immutable evidence
-and are not rewritten or backfilled by this fix.
+**Calendar dates shown one day early west of UTC (fixed).** In a timezone west of UTC, such as the Americas, due dates and quote expiry dates were one day early in several places. Organisations at or east of UTC, including every Danish one, were not affected. Reminder emails were always correct. The affected places and the release each started in:
+- the invoice PDF, invoice and quote emails and the invoice detail page, since v0.1.0;
+- the accounting CSV and e-invoice export, since v0.2.0;
+- the record frozen at issuance and the UBL built from it, since v0.3.0;
+- the public pay and quote pages, for customers viewing from a western timezone.
+
+After upgrading, everything rendered live shows the correct date, for older invoices too: the detail page, the public pages, new emails and CSV exports. Invoice due dates and quote expiry dates stored with a time of day, including due dates on invoices created from deliverables, are normalised to their calendar day in each document's stored timezone.
+
+The invoice's `dueDate` is the authoritative due date. Records frozen at issuance are evidence and are not rewritten. So for invoices issued before the upgrade, these keep the earlier date:
+- the stored PDF and UBL;
+- `issuanceSnapshot.dueDate`, which agents also see;
+- the `invoice.issued` event.
+
+Issued PDFs are never regenerated. If a customer needs a corrected document, issue a credit note and a new invoice.
 
 ## Sweep
 
@@ -14,7 +22,7 @@ checks the command writers. All paths are relative to `apps/oss/src`.
 
 | Field | Place | Verdict |
 | --- | --- | --- |
-| Invoice `dueDate` | Invoice commands, quote conversion, recurring generation, deliverable invoice writer | Calendar date. Date-only input becomes UTC midnight. The deliverable writer's default can retain a time component; this patch preserves its UTC calendar day. |
+| Invoice `dueDate` | Invoice commands, quote conversion, recurring generation, deliverable invoice writer | Calendar date. All datetime inputs now retain their written day and become UTC midnight. The deliverable default now adds calendar days to the agreement's local issue day, stored at UTC midnight. |
 | Invoice `dueDate` | `domain/documents/money-snapshot.ts` | Fixed: freeze `toISOString().slice(0, 10)`, like supply date. |
 | Invoice `dueDate` | `domain/documents/render-input.ts`, `einvoice-input.ts` | PDF input preserves the stored ISO date; UBL input takes the corrected money snapshot. No second timezone conversion. |
 | Invoice `dueDate` | `lib/invoice-pdf.tsx`, invoice detail route | Fixed: display in UTC. Issue timestamp still uses the organisation timezone. |
@@ -48,3 +56,36 @@ cases failed with a one-day-early frozen due date; all four Copenhagen cases pas
 Additional tests exercise PDF text, send-email subjects and bodies, public pay
 and quote rendering, and accounting CSV. They also verify that issue instants
 still use the organisation timezone.
+
+## Writer and migration follow-up
+
+`20261014000000_normalize_calendar_dates` changes only non-midnight live
+`invoice.dueDate` and `quote.expiryDate` values. Each row's own `timezone` column
+is matched case-insensitively against PostgreSQL's `pg_timezone_names`, with
+surrounding whitespace trimmed; current organisation settings
+are not used. Blank or unrecognised timezone values are left unchanged, as are
+all values already at UTC midnight. The conversion explicitly interprets the old
+stored timestamp as UTC before finding the document's local day, regardless of
+the database session timezone. No snapshot, event, artifact reference, hash or
+`updatedAt` is rewritten.
+
+The migration fixture has 16 live rows. It changes 10 rows, five invoices and five
+quotes. Two UTC-midnight rows and four rows with blank/unknown timezones remain
+unchanged. Running it again changes zero rows. The test compares every column and
+the issuance event before and after, with organisation and database timezones that
+differ from the documents.
+
+The writer sweep covered invoice create/update, linked-invoice updates, issuance
+supply-date overrides, quote create/update/conversion, recurring generation and
+invoices created from deliverables. Only the deliverable due-date default used
+instant arithmetic. Invoice due-date and quote expiry inputs also allowed stored
+instants. Supply dates already had date-only schemas and writers; recurring dates
+use UTC calendar helpers and agreement/deliverable dates use `@db.Date`, so none
+need a data migration. All calendar inputs now share datetime normalization,
+including supply, rate, recurring and agreement dates. Explicit invoice issue dates
+and payment timestamps remain instants.
+
+Writer tests cover Copenhagen just after midnight, New York in the evening and
+New York across spring DST. API tests verify datetime inputs through create,
+update and send. Independent soft assertions let the original issuance matrix
+report snapshot, legacy mapper, PDF input and UBL input failures together.

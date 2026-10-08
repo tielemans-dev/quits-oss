@@ -69,6 +69,15 @@ Outward-facing commands are the ones that leave Quits or move money: sending and
 issuing credit notes, recording or voiding payments, and activating recurring schedules. Every
 command tool's description says whether it is outward-facing.
 
+## Invoice dates and frozen evidence
+
+The invoice's top-level `dueDate` is authoritative. It is a calendar date stored
+at UTC midnight; read its UTC date without converting it to a local timezone.
+`issuanceSnapshot` is the frozen issuance record, not the current invoice state.
+For invoices affected by the historical timezone bug, `issuanceSnapshot.dueDate`
+may be one day earlier than the authoritative `dueDate`. The snapshot, the
+`invoice.issued` event and stored PDF/UBL artifacts remain unchanged as evidence.
+
 ## Commands, idempotency, and approvals
 
 Every command tool requires a `clientRequestId` that the agent chooses (a UUID works). Quits stores a
