@@ -65,7 +65,8 @@ function uniqueModelIds(ids: Array<string | null | undefined>) {
 /**
  * Maps a provider failure to the tRPC error the client shows. Setup problems carry our own
  * messages. Upstream failures can embed endpoint responses or agent stderr, so those details are
- * logged on the server and the client gets a generic message.
+ * logged on the server and the client gets a generic message. The client translates by tRPC code,
+ * so each kind of failure keeps its own code.
  */
 function toTrpcAiError(error: AiProviderError) {
   if (error.code === "disabled" || error.code === "not_configured") {
@@ -79,12 +80,25 @@ function toTrpcAiError(error: AiProviderError) {
       cause: error,
     })
   }
+  if (error.code === "invalid_response") {
+    // The provider answered; what it wrote was not an invoice.
+    return new TRPCError({
+      code: "UNPROCESSABLE_CONTENT",
+      message:
+        "The AI couldn't turn that into an invoice. Try describing the customer, items and prices.",
+      cause: error,
+    })
+  }
+  if (error.code === "timeout") {
+    return new TRPCError({
+      code: "GATEWAY_TIMEOUT",
+      message: "The AI provider did not respond in time",
+      cause: error,
+    })
+  }
   return new TRPCError({
     code: "BAD_GATEWAY",
-    message:
-      error.code === "timeout"
-        ? "The AI provider did not respond in time"
-        : "The AI provider request failed",
+    message: "The AI provider request failed",
     cause: error,
   })
 }
@@ -239,6 +253,13 @@ export const aiRouter = router({
       } catch (error) {
         if (error instanceof AiProviderError) throw toTrpcAiError(error)
         throw error
+      }
+
+      if (draft.items.length === 0) {
+        // Not an error, but worth seeing when a real sale comes back empty. No prompt text.
+        console.warn(
+          `[ai] ${provider.id} drafted no items with model ${model} (reason given: ${draft.reason ? "yes" : "no"})`
+        )
       }
 
       const resolvedContactId = resolveContactId({

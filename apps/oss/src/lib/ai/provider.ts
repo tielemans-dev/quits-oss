@@ -14,10 +14,24 @@ export type AiChatMessage = {
   content: string
 }
 
+/**
+ * Asks for a JSON answer, optionally matching a JSON schema. A provider with structured output
+ * should honour it; one without may ignore it, so the caller still parses the text leniently.
+ */
+export type AiResponseFormat = {
+  type: "json"
+  /** Short identifier for the schema, such as "invoice_draft". */
+  name?: string
+  /** JSON Schema the answer should match. Every key required and nullable, for strict modes. */
+  schema?: Record<string, unknown>
+}
+
 export type AiCompletionRequest = {
   model: string
   messages: AiChatMessage[]
+  /** A provider may leave it out for models that do not take a temperature. */
   temperature?: number
+  responseFormat?: AiResponseFormat
 }
 
 export type AiProvider = {

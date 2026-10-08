@@ -33,6 +33,7 @@ import {
 } from "../../../components/ui/card"
 import { Plus, Sparkles, Trash2 } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { aiDraftErrorMessageKey } from "../../../lib/ai-draft-error"
 
 export const Route = createFileRoute("/_app/invoices/new")({
   component: NewInvoicePage,
@@ -161,6 +162,11 @@ function NewInvoicePage() {
         mode: aiInvoiceDraft?.byok || aiInvoiceDraft?.localAgent ? "byok" : "managed",
       })
       const draft = result.draft
+      // The prompt described nothing that was sold; the model says why, in the user's language.
+      if (draft.items.length === 0) {
+        setAiError(draft.reason ?? t("invoices.new.ai.error.notAnInvoice"))
+        return
+      }
 
       if (draft.dueDate) {
         setDueDate(draft.dueDate)
@@ -209,10 +215,13 @@ function NewInvoicePage() {
         }
       }
     } catch (err) {
+      const messageKey = aiDraftErrorMessageKey(err)
       setAiError(
-        err instanceof Error
-          ? err.message
-          : t("invoices.new.ai.error.generateFailed")
+        messageKey
+          ? t(messageKey)
+          : err instanceof Error
+            ? err.message
+            : t("invoices.new.ai.error.generateFailed")
       )
     } finally {
       setAiGenerating(false)

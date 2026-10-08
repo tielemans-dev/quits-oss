@@ -4,6 +4,7 @@ import {
   extractJsonObjectFromText,
   generateInvoiceDraft,
   parseInvoiceDraftFromModelOutput,
+  readModelNumber,
 } from "../invoice-draft"
 
 function fakeProvider(complete: AiProvider["complete"]): AiProvider {
@@ -58,7 +59,130 @@ describe("invoice draft parsing", () => {
   })
 
   it("throws when model output has no parseable invoice items", () => {
-    expect(() => parseInvoiceDraftFromModelOutput("not-json")).toThrow()
+    expect(() => parseInvoiceDraftFromModelOutput("not-json")).toThrow("not JSON")
+    expect(() => parseInvoiceDraftFromModelOutput('{"notes":"no items"}')).toThrow("items")
+    expect(() => parseInvoiceDraftFromModelOutput('{"items":[{}, {"foo":1}]}')).toThrow("none of the items")
+  })
+
+  it("returns no items with the model's reason when nothing was sold", () => {
+    expect(
+      parseInvoiceDraftFromModelOutput('{"items":[],"reason":"Der står ikke, hvad der er solgt.","notes":null}')
+    ).toEqual({ items: [], reason: "Der står ikke, hvad der er solgt." })
+    // A reason next to real items is not shown.
+    expect(parseInvoiceDraftFromModelOutput('{"items":[{"quantity":1,"description":"A"}],"reason":"x"}')).toEqual({
+      items: [{ quantity: 1, description: "A" }],
+    })
+  })
+
+  it("drops an item whose quantity or price is present but unusable, instead of guessing", () => {
+    const draft = parseInvoiceDraftFromModelOutput(
+      JSON.stringify({
+        items: [
+          { description: "Return", quantity: -2, unitPrice: 100 },
+          { description: "Zero", quantity: 0, unitPrice: 100 },
+          { description: "Huge", quantity: 2_000_000, unitPrice: 100 },
+          { description: "Range", quantity: "5-10", unitPrice: 100 },
+          { description: "Vague price", quantity: 1, unitPrice: "about a lot" },
+          { description: "Kept", quantity: 2, unitPrice: 100 },
+        ],
+      })
+    )
+
+    expect(draft.items).toEqual([{ description: "Kept", quantity: 2, unitPrice: 100 }])
+  })
+
+  it("treats null and unusable optional fields as absent", () => {
+    // gpt-4o-mini writes null for keys it has no value for, such as the contact of an
+    // organisation with no contacts.
+    const draft = parseInvoiceDraftFromModelOutput(
+      JSON.stringify({
+        contactId: null,
+        contactName: null,
+        dueDate: "in 14 days",
+        taxRate: null,
+        notes: "",
+        items: [{ description: null, quantity: 5, unitPrice: 5000, catalogItemId: null }],
+      })
+    )
+
+    expect(draft).toEqual({ items: [{ quantity: 5, unitPrice: 5000 }] })
+  })
+
+  it("reads numbers written as text, including Danish thousands separators", () => {
+    const draft = parseInvoiceDraftFromModelOutput(
+      '{"taxRate":"25%","items":[{"description":"Produkt","quantity":"5","unitPrice":"5.000 kr"}]}'
+    )
+
+    expect(draft).toEqual({
+      taxRate: 25,
+      items: [{ description: "Produkt", quantity: 5, unitPrice: 5000 }],
+    })
+  })
+
+  it("defaults a missing quantity to one and accepts name and price for an item", () => {
+    const draft = parseInvoiceDraftFromModelOutput('{"items":[{"name":"Produkt","price":5000}]}')
+
+    expect(draft.items).toEqual([{ description: "Produkt", quantity: 1, unitPrice: 5000 }])
+  })
+
+  it("unwraps a draft the model nested in another object", () => {
+    const draft = parseInvoiceDraftFromModelOutput('{"invoice":{"items":[{"quantity":2,"description":"A"}]}}')
+
+    expect(draft.items).toEqual([{ quantity: 2, description: "A" }])
+  })
+
+  it("keeps the usable items and truncates over-long text", () => {
+    const draft = parseInvoiceDraftFromModelOutput(
+      JSON.stringify({ items: ["junk", {}, { quantity: 1, description: "x".repeat(600) }] })
+    )
+
+    expect(draft.items).toEqual([{ quantity: 1, description: "x".repeat(500) }])
+  })
+})
+
+describe("readModelNumber", () => {
+  it.each([
+    [5000, 5000],
+    ["5000", 5000],
+    ["5.000", 5000],
+    ["5,000", 5000],
+    ["1.234.567", 1234567],
+    ["1.234,50", 1234.5],
+    ["1,234.50", 1234.5],
+    ["12,5", 12.5],
+    ["12.5", 12.5],
+    ["0.250", 0.25],
+    ["5000.00", 5000],
+    ["DKK 5.000,-", 5000],
+    ["kr. 1.500", 1500],
+    ["5.000 kroner", 5000],
+    ["5000 DKK", 5000],
+    ["25%", 25],
+    ["5 000", 5000],
+    ["1234.567", 1234.567],
+    ["-3", -3],
+    ["\u22125", -5],
+  ])("reads %j as %d", (input, expected) => {
+    expect(readModelNumber(input)).toBe(expected)
+  })
+
+  it.each([
+    [null],
+    [undefined],
+    ["about"],
+    [Number.NaN],
+    [{}],
+    ["5-10"],
+    ["3 x 500"],
+    ["5 stk à 1000"],
+    ["2026-10-08"],
+    ["1e3"],
+    ["5k"],
+    ["1,5 mio"],
+    [".5"],
+    ["1.234.5"],
+  ])("reads %j as undefined", (input) => {
+    expect(readModelNumber(input)).toBeUndefined()
   })
 })
 
@@ -92,6 +216,27 @@ describe("generateInvoiceDraft", () => {
     )
   })
 
+  it("drafts five products at about 5,000 kroner from the user's Danish prompt", async () => {
+    const prompt =
+      "La la la. Jeg kan godt lide kage. Jeg har solgt et produkt til omkring 5.000 kroner. Jeg har faktisk solgt fem af dem."
+    let received: { messages: Array<{ role: string; content: string }> } | null = null
+    // What gpt-4o-mini answered for an organisation with no contacts or catalog items.
+    const provider = fakeProvider(async (request) => {
+      received = request
+      return '```json\n{"contactId":null,"contactName":null,"dueDate":null,"taxRate":null,"notes":null,"items":[{"catalogItemId":null,"description":"Produkt","quantity":5,"unitPrice":5000}]}\n```'
+    })
+
+    const draft = await generateInvoiceDraft({ ...draftInput, provider, prompt })
+
+    expect(draft).toEqual({ items: [{ description: "Produkt", quantity: 5, unitPrice: 5000 }] })
+    expect(received).toMatchObject({
+      responseFormat: { type: "json", name: "invoice_draft", schema: { type: "object" } },
+    })
+    const system = received!.messages[0]!.content
+    expect(system).toContain('"5.000 kroner" is 5000')
+    expect(received!.messages[2]).toEqual({ role: "user", content: prompt })
+  })
+
   it("throws invalid_response with the provider id when the model output cannot be parsed", async () => {
     const provider = fakeProvider(async () => "I cannot help with that")
 
@@ -99,7 +244,19 @@ describe("generateInvoiceDraft", () => {
       name: "AiProviderError",
       code: "invalid_response",
       providerId: "openrouter",
+      message: expect.stringContaining("the output is not JSON"),
     })
+  })
+
+  it("names the failing part without quoting the model output", async () => {
+    const provider = fakeProvider(async () => '{"items":[{"description":"Secret customer"}],"x":1}')
+    const draft = await generateInvoiceDraft({ ...draftInput, provider })
+    expect(draft.items).toEqual([{ description: "Secret customer", quantity: 1 }])
+
+    const failing = fakeProvider(async () => '{"items":[{"quantity":"lots","description":"Secret"}]}')
+    const error = await generateInvoiceDraft({ ...draftInput, provider: failing }).catch((e: Error) => e)
+    expect(error).toMatchObject({ code: "invalid_response" })
+    expect((error as Error).message).not.toContain("Secret")
   })
 
   it("passes provider errors through unchanged", async () => {
