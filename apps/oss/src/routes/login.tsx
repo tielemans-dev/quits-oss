@@ -124,7 +124,7 @@ function LoginPage() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="password">{t('auth.password')}</Label>
-                <Link to="/forgot-password" className="text-sm text-primary underline underline-offset-4">
+                <Link to="/forgot-password" className="text-sm text-brand-text underline underline-offset-4">
                   {t('auth.login.forgotPassword')}
                 </Link>
               </div>
@@ -144,7 +144,7 @@ function LoginPage() {
             </Button>
             <p className="text-sm text-muted-foreground">
               {t('auth.login.noAccount')}{' '}
-              <Link to="/signup" className="text-primary underline">
+              <Link to="/signup" className="text-brand-text underline">
                 {t('auth.login.toSignup')}
               </Link>
             </p>

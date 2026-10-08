@@ -861,7 +861,7 @@ function QuoteDetailPage() {
                     to="/invoices/$invoiceId"
                     params={{ invoiceId: inv.id }}
                     search={{ emailWarning: undefined }}
-                    className="text-primary underline underline-offset-4 hover:text-primary/80"
+                    className="text-brand-text underline underline-offset-4 hover:text-brand-text/90"
                   >
                     {inv.number ?? t("invoices.number.draft")}
                   </Link>

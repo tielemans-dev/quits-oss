@@ -107,7 +107,7 @@ function SignupPage() {
             </Button>
             <p className="text-sm text-muted-foreground">
               {t('auth.signup.hasAccount')}{' '}
-              <Link to="/login" className="text-primary underline">
+              <Link to="/login" className="text-brand-text underline">
                 {t('auth.signup.toLogin')}
               </Link>
             </p>
