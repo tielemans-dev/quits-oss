@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+import { formatDocumentNumber } from "@quits/shared/documents"
 import type { OrgSettings } from "../../../generated/prisma/client"
 import { InvalidState } from "../errors"
 import { Command, Db, type PendingEvent } from "../services"
@@ -21,9 +22,8 @@ export const NUMBER_SETTINGS_SELECT = {
 } as const
 export type NumberSettings = Pick<OrgSettings, keyof typeof NUMBER_SETTINGS_SELECT>
 
-export function formatDocumentNumber(prefix: string, value: number) {
-  return `${prefix}-${String(value).padStart(4, "0")}`
-}
+// Lives in shared so the client can format the number it previews.
+export { formatDocumentNumber }
 
 /**
  * The number the next document of this kind receives, read from the organization's settings.
