@@ -39,6 +39,13 @@ describe("new menu", () => {
     ])
   })
 
+  it("gives every entry its own icon", () => {
+    render(<NewMenu open onOpenChange={() => undefined} can={() => true} ready />)
+    const icons = screen.getAllByRole("link").map((link) => link.querySelector("svg")?.getAttribute("class"))
+    expect(icons.every(Boolean)).toBe(true)
+    expect(new Set(icons.map((icon) => icon?.match(/lucide-[a-z0-9-]+/)?.[0])).size).toBe(4)
+  })
+
   it("leaves out what the member may not create", () => {
     render(<NewMenu open onOpenChange={() => undefined} can={(action) => action === "quote:create"} ready />)
     expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/quotes/new"])

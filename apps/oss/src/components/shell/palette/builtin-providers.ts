@@ -1,4 +1,4 @@
-import { FilePlus2, CornerDownRight } from 'lucide-react'
+import { CornerDownRight, FilePen, FilePlus2, Handshake, UserPlus, type LucideIcon } from 'lucide-react'
 
 import { visibleNavGroups } from '../nav-model'
 import { matchItems } from './match'
@@ -9,6 +9,7 @@ export type CreateAction = {
   id: 'invoice' | 'quote' | 'contact' | 'agreement'
   to: '/invoices/new' | '/quotes/new' | '/contacts/new' | '/agreements/new'
   capability: PaletteCapability
+  icon: LucideIcon
   /** The label in the "+ Ny" menu. */
   menuKey: TranslationKey
   /** The label in the palette, which names the whole action. */
@@ -22,6 +23,7 @@ export const createActions: CreateAction[] = [
     id: 'invoice',
     to: '/invoices/new',
     capability: 'invoice:create',
+    icon: FilePlus2,
     menuKey: 'shell.new.invoice',
     paletteKey: 'shell.palette.create.invoice',
     keywords: ['faktura', 'invoice', 'ny', 'new', 'opret'],
@@ -30,6 +32,7 @@ export const createActions: CreateAction[] = [
     id: 'quote',
     to: '/quotes/new',
     capability: 'quote:create',
+    icon: FilePen,
     menuKey: 'shell.new.quote',
     paletteKey: 'shell.palette.create.quote',
     keywords: ['tilbud', 'quote', 'ny', 'new', 'opret'],
@@ -38,6 +41,7 @@ export const createActions: CreateAction[] = [
     id: 'contact',
     to: '/contacts/new',
     capability: 'contact:create',
+    icon: UserPlus,
     menuKey: 'shell.new.contact',
     paletteKey: 'shell.palette.create.contact',
     keywords: ['kunde', 'kontakt', 'contact', 'customer', 'ny', 'new', 'opret'],
@@ -46,6 +50,7 @@ export const createActions: CreateAction[] = [
     id: 'agreement',
     to: '/agreements/new',
     capability: 'agreement:create',
+    icon: Handshake,
     menuKey: 'shell.new.agreement',
     paletteKey: 'shell.palette.create.agreement',
     keywords: ['aftale', 'agreement', 'ny', 'new', 'opret'],
@@ -86,7 +91,7 @@ export const createProvider: PaletteProvider = {
       .map((action) => ({
         id: `create:${action.id}`,
         label: context.t(action.paletteKey),
-        icon: FilePlus2,
+        icon: action.icon,
         keywords: action.keywords,
         perform: ({ navigate }: { navigate: (to: string) => void }) => navigate(action.to),
       }))
@@ -96,3 +101,6 @@ export const createProvider: PaletteProvider = {
 }
 
 export const builtinPaletteProviders: PaletteProvider[] = [createProvider, navigationProvider]
+
+/** Ids an extension may not take: its sections would duplicate the built-in ones. */
+export const reservedProviderIds: ReadonlySet<string> = new Set(builtinPaletteProviders.map((provider) => provider.id))

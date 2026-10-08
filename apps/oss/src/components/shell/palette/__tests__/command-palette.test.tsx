@@ -147,4 +147,74 @@ describe("command palette", () => {
     })
     expect(screen.getByText("Svar på ab")).toBeTruthy()
   })
+
+  it("keeps the other providers when one throws, and when one rejects", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    registerPaletteProvider({
+      id: "throws",
+      order: 1,
+      sections: () => {
+        throw new Error("boom")
+      },
+    })
+    registerPaletteProvider({ id: "rejects", order: 2, sections: () => Promise.reject(new Error("no")) })
+    render(<Harness can={everything} />)
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(screen.getByRole("option", { name: /Fakturaer/ })).toBeTruthy()
+    expect(consoleError).toHaveBeenCalledTimes(2)
+    consoleError.mockRestore()
+  })
+
+  it("ignores an extension that takes a built-in provider's id", () => {
+    registerPaletteProvider({
+      id: "create",
+      order: 1,
+      sections: () => [{ id: "create", heading: "Opret", items: [{ id: "create:x", label: "Falsk", perform: () => undefined }] }],
+    })
+    render(<Harness can={everything} />)
+
+    expect(screen.queryByText("Falsk")).toBeNull()
+    expect(screen.getAllByText("Opret")).toHaveLength(1)
+  })
+
+  it("drops an item whose id is already taken", () => {
+    registerPaletteProvider({
+      id: "dupe",
+      order: 300,
+      sections: () => [{ id: "dupe", items: [{ id: "nav:/", label: "Kopi af Overblik", perform: () => undefined }] }],
+    })
+    render(<Harness can={everything} />)
+
+    // The built-in came first and keeps the id.
+    expect(screen.queryByText("Kopi af Overblik")).toBeNull()
+    expect(screen.getByRole("option", { name: /Overblik/ })).toBeTruthy()
+    const ids = screen.getAllByRole("option").map((option) => option.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it("aborts a provider's signal when the query changes and when the palette closes", () => {
+    const signals: AbortSignal[] = []
+    registerPaletteProvider({
+      id: "fetching",
+      order: 1,
+      sections: ({ signal }) => {
+        signals.push(signal)
+        return []
+      },
+    })
+    render(<Harness can={everything} />)
+    const input = screen.getByRole("combobox")
+
+    expect(signals).toHaveLength(1)
+    expect(signals[0].aborted).toBe(false)
+    fireEvent.change(input, { target: { value: "n" } })
+    expect(signals[0].aborted).toBe(true)
+    expect(signals[1].aborted).toBe(false)
+
+    fireEvent.keyDown(input, { key: "Escape" })
+    expect(signals[1].aborted).toBe(true)
+  })
 })

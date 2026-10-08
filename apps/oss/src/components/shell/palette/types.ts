@@ -30,6 +30,13 @@ export type PaletteContext = {
   can: (action: PaletteCapability) => boolean
   /** Whether this deployment has billing, which decides whether Billing is offered. */
   billingEnabled: boolean
+  /**
+   * Aborted when the query changes and when the palette closes. A provider that fetches (the
+   * draft-from-text one will, on every keystroke) must pass it on, for instance to `fetch` or to a
+   * tRPC call's `signal`, so superseded requests stop instead of piling up. An answer that
+   * arrives after the abort is dropped either way, and a rejection caused by it is ignored.
+   */
+  signal: AbortSignal
   /** Translates a catalogue key in the current language. */
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string
 }
@@ -66,7 +73,10 @@ export type PaletteProvider = {
   order: number
   /**
    * Sections for the current query. May be async; a result for a query that has since changed is
-   * dropped. Return an empty array to offer nothing.
+   * dropped (see `PaletteContext.signal` for stopping the work itself). Return an empty array to
+   * offer nothing. A provider that throws or rejects offers nothing and does not affect the others.
+   * The id must be unique: ids of the built-in providers are taken, and a provider that uses one is
+   * ignored. Item ids must be unique too; a repeated one is dropped.
    */
   sections: (context: PaletteContext) => PaletteSection[] | Promise<PaletteSection[]>
 }

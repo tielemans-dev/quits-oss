@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import { cn } from '../../../lib/utils'
 import { useI18n } from '../../../lib/i18n/react'
-import { builtinPaletteProviders } from './builtin-providers'
+import { builtinPaletteProviders, reservedProviderIds } from './builtin-providers'
 import { useRegisteredPaletteProviders } from './registry'
 import type { PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
 
@@ -15,52 +15,62 @@ type Props = {
   billingEnabled: boolean
 }
 
-/** Sections of every provider for `query`, in provider order. Async providers fill in when they resolve. */
+/**
+ * Sections of every provider for `query`, in provider order. Async providers fill in when they
+ * resolve. A provider that throws offers nothing; the rest carry on.
+ */
 function useSections(
   providers: readonly PaletteProvider[],
-  context: PaletteContext,
+  context: Omit<PaletteContext, 'signal'>,
   active: boolean
 ): PaletteSection[] {
   const [resolved, setResolved] = useState<Record<string, PaletteSection[]>>({})
-  const latest = useRef(0)
 
   useEffect(() => {
     if (!active) return
-    const request = ++latest.current
+    // Closing, a new query and unmounting all end this run: its answers are stale and its
+    // requests are told to stop.
+    const run = new AbortController()
     const next: Record<string, PaletteSection[]> = {}
-    const pending: Array<Promise<void>> = []
     for (const provider of providers) {
-      const result = provider.sections(context)
+      let result: PaletteSection[] | Promise<PaletteSection[]>
+      try {
+        result = provider.sections({ ...context, signal: run.signal })
+      } catch (error) {
+        console.error(`Command palette provider "${provider.id}" failed`, error)
+        continue
+      }
       if (Array.isArray(result)) {
         next[provider.id] = result
       } else {
-        pending.push(
-          result.then(
-            (sections) => {
-              if (latest.current !== request) return
-              setResolved((current) => ({ ...current, [provider.id]: sections }))
-            },
-            () => undefined
-          )
+        result.then(
+          (sections) => {
+            if (run.signal.aborted) return
+            setResolved((current) => ({ ...current, [provider.id]: sections }))
+          },
+          (error) => {
+            if (!run.signal.aborted) console.error(`Command palette provider "${provider.id}" failed`, error)
+          }
         )
       }
     }
     setResolved(next)
-    return () => {
-      // A newer query (or closing) makes this request's late answers stale.
-      latest.current++
-    }
+    return () => run.abort()
     // `context` is rebuilt every render; its parts that matter are listed.
   }, [providers, context.query, context.billingEnabled, context.can, context.t, active])
 
-  return useMemo(
-    () =>
-      [...providers]
-        .sort((a, b) => a.order - b.order)
-        .flatMap((provider) => resolved[provider.id] ?? [])
-        .filter((section) => section.items.length > 0),
-    [providers, resolved]
-  )
+  return useMemo(() => {
+    const seen = new Set<string>()
+    return [...providers]
+      .sort((a, b) => a.order - b.order)
+      .flatMap((provider) => resolved[provider.id] ?? [])
+      .map((section) => ({
+        ...section,
+        // Item ids are DOM ids and the keyboard's handle on an item: the first one keeps it.
+        items: section.items.filter((item) => !seen.has(item.id) && seen.add(item.id)),
+      }))
+      .filter((section) => section.items.length > 0)
+  }, [providers, resolved])
 }
 
 /**
@@ -78,8 +88,12 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled }: Prop
   const returnFocusTo = useRef<HTMLElement | null>(null)
 
   const registered = useRegisteredPaletteProviders()
-  const providers = useMemo(() => [...builtinPaletteProviders, ...registered], [registered])
-  const context = useMemo<PaletteContext>(
+  // An extension cannot take a built-in's id: both would render under the same section.
+  const providers = useMemo(
+    () => [...builtinPaletteProviders, ...registered.filter((provider) => !reservedProviderIds.has(provider.id))],
+    [registered]
+  )
+  const context = useMemo<Omit<PaletteContext, 'signal'>>(
     () => ({ query, can, billingEnabled, t }),
     [query, can, billingEnabled, t]
   )
