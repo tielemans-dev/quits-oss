@@ -1,0 +1,35 @@
+{
+  "readDate": "2026-10-08",
+  "evidence": "Public official documentation only; no authenticated account or demo API requests. HTTP test fixtures are invented.",
+  "versions": {
+    "rest": "unversioned",
+    "bookedEntries": "6.0.0",
+    "documents": "4.0.1"
+  },
+  "sources": [
+    {
+      "name": "rest",
+      "url": "https://restdocs.e-conomic.com/?connector-foundation=1",
+      "status": 200,
+      "bytes": 1447524,
+      "sha256": "93a24634bc1f0b5c209313d48a2e8901b64d482e171ce795544898d819779398"
+    },
+    {
+      "name": "entries",
+      "url": "https://apis.e-conomic.com/bookedentriesapi/redoc.html?connector-foundation=1",
+      "status": 200,
+      "bytes": 310363,
+      "sha256": "60aad1b51e1d617f71ea01869b1ba0883cec46db2716b1ba31c9d7b7b8ff5872"
+    },
+    {
+      "name": "documents",
+      "url": "https://apis.e-conomic.com/documentsapi/redoc.html?connector-foundation=1",
+      "status": 200,
+      "bytes": 324093,
+      "sha256": "0a2ea918c1bd7ac5eedfe11c73be848c7d9eb2de28707a1758e25c007901f929"
+    }
+  ],
+  "acceptedDiscovery": "../migration/economic/api-snapshot.json",
+  "documentsCursorEvidence": "AttachedDocumentCursorResults.items: max 1000; cursor absent when complete. Does not use /paged pageSize limits.",
+  "receiptEvidence": "../plans/evidence/2026-10-08-migration-receipts/provider-sources.json"
+}
