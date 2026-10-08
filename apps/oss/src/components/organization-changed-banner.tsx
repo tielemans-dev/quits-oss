@@ -1,4 +1,4 @@
-import { RotateCw } from "lucide-react"
+import { AlertTriangle, RotateCw } from "lucide-react"
 import { useOrganizationChanged } from "../lib/active-organization"
 import { useI18n } from "../lib/i18n/react"
 import { reloadPage } from "../lib/page-navigation"
@@ -15,9 +15,12 @@ export function OrganizationChangedBanner() {
   return (
     <div
       role="alert"
-      className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+      className="flex flex-wrap items-center justify-between gap-3 border-b border-tone-warning/30 bg-tone-warning/14 px-4 py-3 text-sm text-foreground"
     >
-      <p>{t("ui.organizationChanged.message")}</p>
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-tone-warning" aria-hidden="true" />
+        <p>{t("ui.organizationChanged.message")}</p>
+      </div>
       <Button type="button" variant="outline" size="sm" onClick={() => reloadPage()}>
         <RotateCw className="mr-2 h-4 w-4" />
         {t("ui.organizationChanged.action")}

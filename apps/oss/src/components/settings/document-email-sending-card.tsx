@@ -1,5 +1,5 @@
 import { useI18n } from "../../lib/i18n/react"
-import { Badge } from "../ui/badge"
+import { StatusBadge } from "../status-badge"
 import { Button } from "../ui/button"
 import {
   Card,
@@ -45,19 +45,6 @@ export type DocumentSendingState = {
   lastSyncSource: DocumentSendingSyncSource | null
   sharedSender: DocumentSenderPreview
   effectiveSender: DocumentSenderPreview
-}
-
-const statusClassNames: Record<DocumentSendingStatus, string> = {
-  not_configured:
-    "bg-muted text-muted-foreground",
-  pending_dns:
-    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  verifying:
-    "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  verified:
-    "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  failed:
-    "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
 }
 
 function SenderPreview({
@@ -121,12 +108,7 @@ export function DocumentEmailSendingCard({
               {t("settings.section.documentSending.description")}
             </CardDescription>
           </div>
-          <Badge
-            variant="outline"
-            className={statusClassNames[documentSending.status]}
-          >
-            {t(`settings.documentSending.status.${documentSending.status}`)}
-          </Badge>
+          <StatusBadge domain="documentSending" status={documentSending.status} />
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -251,8 +233,8 @@ export function DocumentEmailSendingCard({
           </>
         )}
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {success ? <p className="text-sm text-green-600">{success}</p> : null}
+        {error ? <p className="text-sm text-tone-danger">{error}</p> : null}
+        {success ? <p className="text-sm text-tone-success">{success}</p> : null}
       </CardContent>
     </Card>
   )

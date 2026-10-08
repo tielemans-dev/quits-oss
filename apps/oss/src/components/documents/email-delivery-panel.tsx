@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
-import { Badge } from "../ui/badge"
+import { getStatusTone } from "../../lib/status-tones"
+import { ToneBadge } from "../status-badge"
 import { Button } from "../ui/button"
 import {
   Card,
@@ -20,11 +21,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../ui/alert-dialog"
-import { cn } from "../../lib/utils"
 
 export type EmailDeliveryPanelStatus = {
-  /** `unconfirmed`: the provider never confirmed delivery, shown as a warning. */
-  tone: "sent" | "skipped" | "failed" | "sending" | "unconfirmed"
+  /** The outcome of the last attempt; its tone comes from `statusTones.emailDelivery`. */
+  outcome: "sent" | "skipped" | "failed" | "sending" | "unconfirmed"
   label: string
   detail: string
   message?: string | null
@@ -95,19 +95,9 @@ export function EmailDeliveryPanel({
             <CardDescription>{description}</CardDescription>
           </div>
           {status ? (
-            <Badge
-              variant="outline"
-              className={cn(
-                "w-fit",
-                status.tone === "sent" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-                status.tone === "skipped" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-                status.tone === "failed" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-                status.tone === "sending" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-                status.tone === "unconfirmed" && "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
-              )}
-            >
+            <ToneBadge tone={getStatusTone("emailDelivery", status.outcome)}>
               {status.label}
-            </Badge>
+            </ToneBadge>
           ) : null}
         </div>
       </CardHeader>

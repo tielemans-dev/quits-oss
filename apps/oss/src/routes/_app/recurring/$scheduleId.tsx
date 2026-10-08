@@ -95,7 +95,7 @@ function RecurringSchedulePage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{schedule.name}</h1>
-            <RecurringStatusBadge status={schedule.status} t={t} />
+            <RecurringStatusBadge status={schedule.status} />
             {schedule.autoSend && <Badge variant="outline">{t("recurring.autoSendBadge")}</Badge>}
           </div>
           <p className="text-sm text-muted-foreground">
@@ -121,8 +121,8 @@ function RecurringSchedulePage() {
       )}
 
       {schedule.lastProblem && (
-        <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-          <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-tone-warning/30 bg-tone-warning/14 p-3 text-sm text-foreground">
+          <AlertTriangle className="size-4 mt-0.5 shrink-0 text-tone-warning" aria-hidden="true" />
           <span>
             {formatRunDate(schedule.lastProblem.occurredAt, locale)}:{" "}
             {t(
@@ -171,18 +171,18 @@ function RecurringSchedulePage() {
             {schedule.items.map((item, index) => (
               <div key={index} className="flex justify-between gap-4">
                 <span>
-                  {item.quantity} × {item.description}
+                  <span className="num">{item.quantity}</span> × {item.description}
                 </span>
-                <span>{formatCurrency(schedule.lineTotals[index] ?? 0, schedule.currency, locale)}</span>
+                <span className="num">{formatCurrency(schedule.lineTotals[index] ?? 0, schedule.currency, locale)}</span>
               </div>
             ))}
             <div className="flex justify-between text-muted-foreground border-t pt-2">
               <span>{t("recurring.detail.taxRate", { rate: schedule.taxRate })}</span>
-              <span>{formatCurrency(taxAmount, schedule.currency, locale)}</span>
+              <span className="num">{formatCurrency(taxAmount, schedule.currency, locale)}</span>
             </div>
             <div className="flex justify-between font-semibold">
               <span>{t("docForm.summary.total")}</span>
-              <span>{formatCurrency(schedule.subtotal + taxAmount, schedule.currency, locale)}</span>
+              <span className="num">{formatCurrency(schedule.subtotal + taxAmount, schedule.currency, locale)}</span>
             </div>
             {schedule.notes && <p className="text-muted-foreground whitespace-pre-line">{schedule.notes}</p>}
           </CardContent>
@@ -221,7 +221,7 @@ function RecurringSchedulePage() {
                     {invoice.recurringRunDate ? formatRunDate(invoice.recurringRunDate, locale) : "—"}
                   </TableCell>
                   <TableCell>{formatRunDate(invoice.dueDate, locale)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right num">
                     {formatCurrency(invoice.total, invoice.currency, locale)}
                   </TableCell>
                   <TableCell>

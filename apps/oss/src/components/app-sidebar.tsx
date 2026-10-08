@@ -23,6 +23,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from './ui/sidebar'
+import { QuitsMark } from './brand/quits-mark'
 import { UserMenu } from './user-menu'
 import { billingEnabled } from '../lib/distribution'
 import { useI18n } from '../lib/i18n/react'
@@ -58,7 +59,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1">
-          <span className="text-lg font-bold tracking-tight">Quits</span>
+          <QuitsMark className="size-7" />
+          <span className="text-lg font-heading tracking-heading">Quits</span>
         </div>
       </SidebarHeader>
       <SidebarContent>

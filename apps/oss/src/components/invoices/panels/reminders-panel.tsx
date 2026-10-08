@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react"
 import { BellRing } from "lucide-react"
-import type { InvoiceReminderRecord, ReminderStatus } from "@quits/contracts/reminders"
+import type { InvoiceReminderRecord } from "@quits/contracts/reminders"
 import { useActiveOrganizationId } from "../../../lib/active-organization"
 import { formatDate } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
 import { trpc } from "../../../trpc/client"
 import { describeReminderOffset } from "../../settings/reminder-policy-card"
-import { Badge } from "../../ui/badge"
+import { StatusBadge } from "../../status-badge"
 import { Button } from "../../ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card"
 import {
@@ -39,21 +39,7 @@ const messageClassName: Record<PanelMessage["kind"], string> = {
   error: "text-sm text-destructive",
   success: "text-sm text-muted-foreground",
   info: "text-sm text-muted-foreground",
-  warning: "text-sm text-amber-700 dark:text-amber-300",
-}
-
-const statusVariant: Record<ReminderStatus, "default" | "secondary" | "destructive" | "outline"> = {
-  upcoming: "outline",
-  scheduled: "secondary",
-  sent: "default",
-  unconfirmed: "outline",
-  failed: "destructive",
-  skipped: "outline",
-}
-
-/** Extra badge styling: an unconfirmed delivery is a warning, not a plain success. */
-const statusClassName: Partial<Record<ReminderStatus, string>> = {
-  unconfirmed: "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  warning: "text-sm text-tone-warning",
 }
 
 /** Owned by the reminders feature. */
@@ -230,9 +216,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
                           : describeReminderOffset(reminder.offsetDays, t)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusVariant[reminder.status]} className={statusClassName[reminder.status]}>
-                          {t(`reminders.status.${reminder.status}`)}
-                        </Badge>
+                        <StatusBadge domain="reminder" status={reminder.status} />
                       </TableCell>
                       <TableCell className="text-muted-foreground">{reminder.message ?? ""}</TableCell>
                     </TableRow>

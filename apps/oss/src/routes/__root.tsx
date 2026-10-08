@@ -1,10 +1,14 @@
 import { HeadContent, Scripts, createRootRoute, Link, redirect } from '@tanstack/react-router'
+import { ThemeProvider } from '../components/theme-provider'
 import { TooltipProvider } from '../components/ui/tooltip'
 import { useI18n, I18nProvider } from '../lib/i18n/react'
 import { getInstallationStatus, normalizeInstallationStatus } from '../lib/installation'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
+import { themeInitScript } from '../lib/theme'
 
 import appCss from '../styles.css?url'
+import schibstedFontUrl from '@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2?url'
+import geistFontUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url'
 
 function NotFound() {
   const { t } = useI18n()
@@ -47,10 +51,23 @@ export const Route = createRootRoute({
       },
     ],
     links: [
+      // The latin subsets that the @font-face rules in styles.css load first, so text does not
+      // swap fonts after first paint. Fonts need `crossOrigin` even when same-origin.
+      ...[schibstedFontUrl, geistFontUrl].map((href) => ({
+        rel: 'preload',
+        as: 'font',
+        type: 'font/woff2',
+        href,
+        crossOrigin: 'anonymous' as const,
+      })),
       {
         rel: 'stylesheet',
         href: appCss,
       },
+      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+      { rel: 'icon', href: '/favicon.ico', sizes: '48x48' },
+      { rel: 'apple-touch-icon', href: '/logo192.png' },
+      { rel: 'manifest', href: '/manifest.json' },
     ],
   }),
   shellComponent: RootDocument,
@@ -58,15 +75,25 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // The head script puts the theme's `dark` class on <html> before React hydrates.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/*
+          The head script creates the one theme-color meta from the resolved theme, and applyTheme
+          keeps it current. React does not render it: React 19 hoists <meta> elements, so on
+          hydration it would add a second tag next to the one the script changed.
+          After HeadContent so the charset meta stays near the top; the stylesheet blocks first paint anyway.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
         <I18nProvider>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
+          <ThemeProvider>
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
+          </ThemeProvider>
         </I18nProvider>
         <Scripts />
       </body>

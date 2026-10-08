@@ -224,7 +224,7 @@ function CreditNoteDetailPage() {
       {notice && (
         <p
           className={
-            notice.kind === "warning" ? "text-sm text-amber-700 dark:text-amber-300" : "text-sm text-muted-foreground"
+            notice.kind === "warning" ? "text-sm text-tone-warning" : "text-sm text-muted-foreground"
           }
           role="status"
         >
@@ -286,9 +286,9 @@ function CreditNoteDetailPage() {
                 {creditNote.items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.description}</TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right">{money(item.unitPrice)}</TableCell>
-                    <TableCell className="text-right">{money(item.total)}</TableCell>
+                    <TableCell className="text-right num">{item.quantity}</TableCell>
+                    <TableCell className="text-right num">{money(item.unitPrice)}</TableCell>
+                    <TableCell className="text-right num">{money(item.total)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -299,17 +299,17 @@ function CreditNoteDetailPage() {
             <div className="w-64 grid gap-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("pdf.subtotal")}</span>
-                <span>{money(creditNote.subtotal)}</span>
+                <span className="num">{money(creditNote.subtotal)}</span>
               </div>
               {creditNote.taxAmount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("pdf.tax")}</span>
-                  <span>{money(creditNote.taxAmount)}</span>
+                  <span className="num">{money(creditNote.taxAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between font-semibold text-base border-t pt-2">
                 <span>{t("pdf.total")}</span>
-                <span>{money(creditNote.total)}</span>
+                <span className="num">{money(creditNote.total)}</span>
               </div>
             </div>
           </div>

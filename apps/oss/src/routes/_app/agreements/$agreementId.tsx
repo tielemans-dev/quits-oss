@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
 import { Badge } from "../../../components/ui/badge"
+import { StatusBadge } from "../../../components/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import {
   AlertDialog,
@@ -139,9 +140,7 @@ function AgreementDetail() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{agreement.title}</h1>
-          <Badge variant="secondary">
-            {agreement.status === "draft" ? t("agreements.draft") : agreement.status}
-          </Badge>
+          <StatusBadge domain="agreement" status={agreement.status} />
         </div>
         <div className="flex gap-2 flex-wrap">
           {agreement.status === "draft" && capabilities?.update && (
@@ -278,8 +277,8 @@ function AgreementDetail() {
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {line.description}
               </p>
-              <p>{formatCurrency(line.lineGross, agreement.currency, locale)}</p>
-              <Badge variant="outline">{t(line.billingStatus === "invoiced" ? "agreements.billing.invoiced" : line.billingStatus === "reserved" ? "agreements.billing.reserved" : "agreements.billing.unbilled")}</Badge>
+              <p className="num">{formatCurrency(line.lineGross, agreement.currency, locale)}</p>
+              <StatusBadge domain="deliverableBilling" status={line.billingStatus} />
               {line.agreedDate && (
                 <p className="text-sm">
                   {t("agreements.agreedDate")}: {formatDate(line.agreedDate, locale, "UTC")}
@@ -292,11 +291,7 @@ function AgreementDetail() {
               )}
               <div className="flex flex-wrap gap-2">
                 {line.isDeposit && <Badge variant="outline">{t(agreement.offerFormatVersion === 2 ? "agreements.scheduleLine" : "agreements.deposit")}</Badge>}
-                <Badge variant="secondary">
-                  {t(
-                    `agreements.fulfillment.${line.status as "planned" | "in_progress" | "delivered" | "accepted" | "changes_requested" | "cancelled"}`,
-                  )}
-                </Badge>
+                <StatusBadge domain="deliverable" status={line.status} />
               </div>
               {!line.isDeposit && (
                 <p className="text-sm">

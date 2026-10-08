@@ -6,7 +6,7 @@ import {
   formatDate as formatDateIntl,
 } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
-import { Badge } from "../../../components/ui/badge"
+import { StatusBadge } from "../../../components/status-badge"
 import {
   Table,
   TableBody,
@@ -48,45 +48,12 @@ type Invoice = {
   contact: { name: string }
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
-  sent: { label: "Sent", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  paid: { label: "Paid", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-  overdue: { label: "Overdue", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-  partially_paid: {
-    label: "Partially paid",
-    className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  },
-  credited: {
-    label: "Credited",
-    className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  },
-}
-
 function formatCurrency(amount: number, currency: string) {
   return formatCurrencyIntl(amount, currency)
 }
 
 function formatDate(dateStr: string, locale?: string) {
   return formatDateIntl(dateStr, locale, undefined, { month: "short" })
-}
-
-function getInvoiceStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"]) {
-  if (status === "sent") return t("invoices.status.sent")
-  if (status === "paid") return t("invoices.status.paid")
-  if (status === "overdue") return t("invoices.status.overdue")
-  if (status === "partially_paid") return t("status.partially_paid")
-  if (status === "credited") return t("status.credited")
-  return t("invoices.status.draft")
-}
-
-function StatusBadge({ status, label }: { status: string; label: string }) {
-  const config = statusConfig[status] ?? statusConfig.draft
-  return (
-    <Badge variant="outline" className={config.className}>
-      {label}
-    </Badge>
-  )
 }
 
 function InvoicesListPage() {
@@ -195,19 +162,16 @@ function InvoicesListPage() {
                   <TableCell>{formatDate(invoice.issueDate, locale)}</TableCell>
                   <TableCell>{formatDate(invoice.dueDate, locale)}</TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(invoice.total, invoice.currency)}
+                    <span className="num">{formatCurrency(invoice.total, invoice.currency)}</span>
                     {invoice.balanceDue > 0 && invoice.balanceDue < invoice.total ? (
                       <p className="text-xs text-muted-foreground">
                         {t("payments.summary.balanceDue")}{" "}
-                        {formatCurrency(invoice.balanceDue, invoice.currency)}
+                        <span className="num">{formatCurrency(invoice.balanceDue, invoice.currency)}</span>
                       </p>
                     ) : null}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge
-                      status={invoiceDisplayStatus(invoice)}
-                      label={getInvoiceStatusLabel(invoiceDisplayStatus(invoice), t)}
-                    />
+                    <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
                   </TableCell>
                   <TableCell>
                     {invoice.status === "draft" && (

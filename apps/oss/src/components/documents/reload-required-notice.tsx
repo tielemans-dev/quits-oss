@@ -1,4 +1,4 @@
-import { RotateCw } from "lucide-react"
+import { AlertTriangle, RotateCw } from "lucide-react"
 import type { PollFailure } from "../../hooks/use-poll-while"
 import { useI18n } from "../../lib/i18n/react"
 import { Button } from "../ui/button"
@@ -13,11 +13,14 @@ export function ReloadRequiredNotice({ failure }: { failure: PollFailure | null 
   return (
     <div
       role="alert"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-tone-warning/30 bg-tone-warning/14 px-4 py-3 text-sm text-foreground"
     >
-      <div>
-        <p className="font-medium">{t("ui.reloadRequired.title")}</p>
-        <p>{failure.message}</p>
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-tone-warning" aria-hidden="true" />
+        <div>
+          <p className="font-medium">{t("ui.reloadRequired.title")}</p>
+          <p>{failure.message}</p>
+        </div>
       </div>
       <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()}>
         <RotateCw className="mr-2 h-4 w-4" />

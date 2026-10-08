@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
-import { Badge } from "../../../components/ui/badge"
+import { StatusBadge } from "../../../components/status-badge"
 import {
   Table,
   TableBody,
@@ -83,13 +83,11 @@ function AgreementsPage() {
                   >
                     {agreement.title}
                   </Link>{" "}
-                  <Badge variant="secondary">
-                    {agreement.status === "draft" ? t("agreements.draft") : agreement.status}
-                  </Badge>
+                  <StatusBadge domain="agreement" status={agreement.status} />
                 </TableCell>
                 <TableCell>{agreement.contact.name}</TableCell>
                 <TableCell>{formatDate(agreement.validUntil, locale, "UTC")}</TableCell>
-                <TableCell>{formatCurrency(agreement.total, agreement.currency, locale)}</TableCell>
+                <TableCell className="num">{formatCurrency(agreement.total, agreement.currency, locale)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

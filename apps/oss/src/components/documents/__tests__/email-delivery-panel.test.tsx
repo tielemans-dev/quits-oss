@@ -49,7 +49,7 @@ describe("EmailDeliveryPanel", () => {
         title="Email delivery"
         description="Send or resend the customer email for this document."
         status={{
-          tone: "failed",
+          outcome: "failed",
           label: "Failed",
           detail: "Last attempt: Failed on March 6, 2026",
           message: "Email delivery failed.",

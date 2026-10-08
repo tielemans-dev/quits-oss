@@ -21,7 +21,7 @@ import {
   formatDate as formatDateIntl,
 } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
-import { Badge } from "../../../components/ui/badge"
+import { StatusBadge } from "../../../components/status-badge"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Textarea } from "../../../components/ui/textarea"
@@ -152,21 +152,6 @@ type EditItem = {
   vat?: DocumentLineInput["vat"]
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
-  sent: { label: "Sent", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  paid: { label: "Paid", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-  overdue: { label: "Overdue", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-  partially_paid: {
-    label: "Partially paid",
-    className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  },
-  credited: {
-    label: "Credited",
-    className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  },
-}
-
 function formatCurrency(amount: number, currency: string, locale?: string | null) {
   return formatCurrencyIntl(amount, currency, locale)
 }
@@ -182,24 +167,6 @@ function isValidEmailAddress(email: string | null) {
 
 function toDateString(value: string | Date) {
   return value instanceof Date ? value.toISOString() : value
-}
-
-function getInvoiceStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"]) {
-  if (status === "sent") return t("invoices.status.sent")
-  if (status === "paid") return t("invoices.status.paid")
-  if (status === "overdue") return t("invoices.status.overdue")
-  if (status === "partially_paid") return t("status.partially_paid")
-  if (status === "credited") return t("status.credited")
-  return t("invoices.status.draft")
-}
-
-function StatusBadge({ status, label }: { status: string; label: string }) {
-  const config = statusConfig[status] ?? statusConfig.draft
-  return (
-    <Badge variant="outline" className={config.className}>
-      {label}
-    </Badge>
-  )
 }
 
 async function downloadInvoicePdfFile(invoice: Invoice, _orgSettings: unknown) {
@@ -642,7 +609,7 @@ function InvoiceDetailPage() {
                         updateEditItem(index, "unitPrice", e.target.value)
                       }
                     />
-                    <span className="text-sm text-right pr-2">
+                    <span className="num text-sm text-right pr-2">
                       {preview.result ? formatCurrency(item.deliverableId ? (invoice.pricesIncludeTax ? item.frozenGross ?? 0 : item.frozenNet ?? 0) : Number(preview.result.lines[editItems.slice(0, index + 1).filter(line => !line.deliverableId).length - 1]?.[invoice.pricesIncludeTax ? "gross" : "net"] ?? "0"), invoice.currency, locale) : "—"}
                     </span>
                     <Button
@@ -676,7 +643,7 @@ function InvoiceDetailPage() {
               <div className="w-64 grid gap-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                  <span>{preview.result ? formatCurrency(editSubtotal, invoice.currency, locale) : "—"}</span>
+                  <span className="num">{preview.result ? formatCurrency(editSubtotal, invoice.currency, locale) : "—"}</span>
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
@@ -692,12 +659,12 @@ function InvoiceDetailPage() {
                       className="w-16 h-7 text-xs"
                     />
                     <span className="text-muted-foreground text-xs">%</span>
-                    <span className="ml-auto">{preview.result ? formatCurrency(editTaxAmount, invoice.currency, locale) : "—"}</span>
+                    <span className="ml-auto num">{preview.result ? formatCurrency(editTaxAmount, invoice.currency, locale) : "—"}</span>
                   </div>
                 </div>
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
-                  <span>{preview.result ? formatCurrency(editTotal, invoice.currency, locale) : "—"}</span>
+                  <span className="num">{preview.result ? formatCurrency(editTotal, invoice.currency, locale) : "—"}</span>
                 </div>
               </div>
             </div>
@@ -752,7 +719,7 @@ function InvoiceDetailPage() {
     invoice.purpose !== "prepayment" && invoice.status === "draft" && recipientEmailValid && emailDelivery && !emailDelivery.available
   const deliveryStatus = emailAttempt
     ? {
-        tone: emailAttempt.lastEmailAttemptOutcome,
+        outcome: emailAttempt.lastEmailAttemptOutcome,
         label: t(`invoices.detail.email.status.${emailAttempt.lastEmailAttemptOutcome}`),
         detail: t("invoices.detail.email.lastAttempt", {
           status: t(`invoices.detail.email.status.${emailAttempt.lastEmailAttemptOutcome}`),
@@ -1005,10 +972,7 @@ function InvoiceDetailPage() {
                   {t("pdf.invoice")} {invoice.number}
                 </h1>
                 <div className="mt-1">
-                  <StatusBadge
-                    status={invoiceDisplayStatus(invoice)}
-                    label={getInvoiceStatusLabel(invoiceDisplayStatus(invoice), t)}
-                  />
+                  <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
                 </div>
               </div>
               <div className="text-right text-sm text-muted-foreground">
@@ -1068,11 +1032,11 @@ function InvoiceDetailPage() {
                   {invoice.items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>{item.description}</TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right num">{item.quantity}</TableCell>
+                      <TableCell className="text-right num">
                         {formatCurrency(item.unitPrice, invoice.currency, locale)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right num">
                         {formatCurrency(item.total, invoice.currency, locale)}
                       </TableCell>
                     </TableRow>
@@ -1086,35 +1050,35 @@ function InvoiceDetailPage() {
               <div className="w-64 grid gap-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("pdf.subtotal")}</span>
-                  <span>{formatCurrency(invoice.subtotal, invoice.currency, locale)}</span>
+                  <span className="num">{formatCurrency(invoice.subtotal, invoice.currency, locale)}</span>
                 </div>
                 {invoice.taxAmount > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t("pdf.tax")}</span>
-                    <span>{formatCurrency(invoice.taxAmount, invoice.currency, locale)}</span>
+                    <span className="num">{formatCurrency(invoice.taxAmount, invoice.currency, locale)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-semibold text-base border-t pt-2">
                   <span>{t("pdf.total")}</span>
-                  <span>{formatCurrency(invoice.total, invoice.currency, locale)}</span>
+                  <span className="num">{formatCurrency(invoice.total, invoice.currency, locale)}</span>
                 </div>
                 {invoice.status !== "draft" && (invoice.amountPaid > 0 || invoice.amountCredited > 0) && (
                   <>
                     {invoice.amountPaid > 0 && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">{t("payments.summary.paid")}</span>
-                        <span>-{formatCurrency(invoice.amountPaid, invoice.currency, locale)}</span>
+                        <span className="num">-{formatCurrency(invoice.amountPaid, invoice.currency, locale)}</span>
                       </div>
                     )}
                     {invoice.amountCredited > 0 && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">{t("payments.summary.credited")}</span>
-                        <span>-{formatCurrency(invoice.amountCredited, invoice.currency, locale)}</span>
+                        <span className="num">-{formatCurrency(invoice.amountCredited, invoice.currency, locale)}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-semibold border-t pt-2">
                       <span>{t("payments.summary.balanceDue")}</span>
-                      <span>{formatCurrency(invoice.balanceDue, invoice.currency, locale)}</span>
+                      <span className="num">{formatCurrency(invoice.balanceDue, invoice.currency, locale)}</span>
                     </div>
                   </>
                 )}

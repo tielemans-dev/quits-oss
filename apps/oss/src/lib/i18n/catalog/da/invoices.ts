@@ -17,10 +17,6 @@ export const daInvoicesMessages = {
   "invoices.table.dueDate": "Forfaldsdato",
   "invoices.table.total": "Total",
   "invoices.table.status": "Status",
-  "invoices.status.draft": "Kladde",
-  "invoices.status.sent": "Sendt",
-  "invoices.status.paid": "Betalt",
-  "invoices.status.overdue": "Forfalden",
   "invoices.delete.title": "Slet faktura",
   "invoices.delete.description":
     "Er du sikker på, at du vil slette faktura {number}? Denne handling kan ikke fortrydes.",

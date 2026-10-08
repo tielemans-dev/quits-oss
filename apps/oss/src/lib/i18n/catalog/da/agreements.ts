@@ -6,7 +6,6 @@ export const daAgreementsMessages = {
   "agreements.back": "Tilbage til aftaler",
   "agreements.loading": "Indlæser aftaler...",
   "agreements.empty": "Ingen aftaler endnu.",
-  "agreements.draft": "Kladde",
   "agreements.customer": "Kunde",
   "agreements.validUntil": "Gyldig til",
   "agreements.total": "I alt",

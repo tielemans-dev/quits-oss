@@ -20,7 +20,7 @@ import {
   formatDate as formatDateIntl,
 } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
-import { Badge } from "../../../components/ui/badge"
+import { StatusBadge } from "../../../components/status-badge"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Textarea } from "../../../components/ui/textarea"
@@ -133,14 +133,6 @@ type EditItem = {
   vat?: DocumentLineInput["vat"]
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
-  sent: { label: "Sent", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  accepted: { label: "Accepted", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-  rejected: { label: "Rejected", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-  expired: { label: "Expired", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
-}
-
 function formatCurrency(amount: number, currency: string, locale?: string | null) {
   return formatCurrencyIntl(amount, currency, locale)
 }
@@ -156,23 +148,6 @@ function isValidEmailAddress(email: string | null) {
 
 function toDateString(value: string | Date) {
   return value instanceof Date ? value.toISOString() : value
-}
-
-function getQuoteStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"]) {
-  if (status === "sent") return t("quotes.status.sent")
-  if (status === "accepted") return t("quotes.status.accepted")
-  if (status === "rejected") return t("quotes.status.rejected")
-  if (status === "expired") return t("quotes.status.expired")
-  return t("quotes.status.draft")
-}
-
-function StatusBadge({ status, label }: { status: string; label: string }) {
-  const config = statusConfig[status] ?? statusConfig.draft
-  return (
-    <Badge variant="outline" className={config.className}>
-      {label}
-    </Badge>
-  )
 }
 
 function QuoteDetailPage() {
@@ -578,7 +553,7 @@ function QuoteDetailPage() {
                         updateEditItem(index, "unitPrice", e.target.value)
                       }
                     />
-                    <span className="text-sm text-right pr-2">
+                    <span className="num text-sm text-right pr-2">
                       {preview.result ? formatCurrency(Number(preview.result?.lines[index]?.[quote.pricesIncludeTax ? "gross" : "net"] ?? "0"), quote.currency, locale) : "—"}
                     </span>
                     <Button
@@ -612,7 +587,7 @@ function QuoteDetailPage() {
               <div className="w-64 grid gap-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                  <span>{preview.result ? formatCurrency(editSubtotal, quote.currency, locale) : "—"}</span>
+                  <span className="num">{preview.result ? formatCurrency(editSubtotal, quote.currency, locale) : "—"}</span>
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
@@ -627,12 +602,12 @@ function QuoteDetailPage() {
                       className="w-16 h-7 text-xs"
                     />
                     <span className="text-muted-foreground text-xs">%</span>
-                    <span className="ml-auto">{preview.result ? formatCurrency(editTaxAmount, quote.currency, locale) : "—"}</span>
+                    <span className="ml-auto num">{preview.result ? formatCurrency(editTaxAmount, quote.currency, locale) : "—"}</span>
                   </div>
                 </div>
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
-                  <span>{preview.result ? formatCurrency(editTotal, quote.currency, locale) : "—"}</span>
+                  <span className="num">{preview.result ? formatCurrency(editTotal, quote.currency, locale) : "—"}</span>
                 </div>
               </div>
             </div>
@@ -686,7 +661,7 @@ function QuoteDetailPage() {
     quote.status === "draft" && recipientEmailValid && emailDelivery && !emailDelivery.available
   const deliveryStatus = emailAttempt
     ? {
-        tone: emailAttempt.lastEmailAttemptOutcome,
+        outcome: emailAttempt.lastEmailAttemptOutcome,
         label: t(`quotes.detail.email.status.${emailAttempt.lastEmailAttemptOutcome}`),
         detail: t("quotes.detail.email.lastAttempt", {
           status: t(`quotes.detail.email.status.${emailAttempt.lastEmailAttemptOutcome}`),
@@ -836,10 +811,7 @@ function QuoteDetailPage() {
                 {t("quotes.detail.title")} {quote.number}
               </h1>
               <div className="mt-1">
-                <StatusBadge
-                  status={quote.status}
-                  label={getQuoteStatusLabel(quote.status, t)}
-                />
+                <StatusBadge domain="quote" status={quote.status} />
               </div>
             </div>
             <div className="text-right text-sm text-muted-foreground">
@@ -860,7 +832,7 @@ function QuoteDetailPage() {
 
           {/* Linked invoice(s) for accepted quotes */}
           {quote.status === "accepted" && quote.invoices.length > 0 && (
-            <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-3">
+            <div className="rounded-md border border-tone-success/30 bg-tone-success/10 p-3">
               <p className="text-sm font-medium">
                 {t("quotes.detail.convertedToInvoice")}{" "}
                 {quote.invoices.map((inv) => (
@@ -973,11 +945,11 @@ function QuoteDetailPage() {
                 {quote.items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.description}</TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right num">{item.quantity}</TableCell>
+                    <TableCell className="text-right num">
                       {formatCurrency(item.unitPrice, quote.currency, locale)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right num">
                       {formatCurrency(item.total, quote.currency, locale)}
                     </TableCell>
                   </TableRow>
@@ -991,17 +963,17 @@ function QuoteDetailPage() {
             <div className="w-64 grid gap-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                <span>{formatCurrency(quote.subtotal, quote.currency, locale)}</span>
+                <span className="num">{formatCurrency(quote.subtotal, quote.currency, locale)}</span>
               </div>
               {quote.taxAmount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
-                  <span>{formatCurrency(quote.taxAmount, quote.currency, locale)}</span>
+                  <span className="num">{formatCurrency(quote.taxAmount, quote.currency, locale)}</span>
                 </div>
               )}
               <div className="flex justify-between font-semibold text-base border-t pt-2">
                 <span>{t("docForm.summary.total")}</span>
-                <span>{formatCurrency(quote.total, quote.currency, locale)}</span>
+                <span className="num">{formatCurrency(quote.total, quote.currency, locale)}</span>
               </div>
             </div>
           </div>

@@ -285,7 +285,7 @@ function NewQuotePage() {
                       updateItem(index, "unitPrice", e.target.value)
                     }
                   />
-                  <span className="text-sm text-right pr-2">
+                  <span className="num text-sm text-right pr-2">
                     {preview.result ? formatCurrencyIntl(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—"}
                   </span>
                   <Button
@@ -313,7 +313,7 @@ function NewQuotePage() {
             <div className="w-64 grid gap-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                <span>{preview.result ? formatCurrencyIntl(subtotal, currency, locale) : "—"}</span>
+                <span className="num">{preview.result ? formatCurrencyIntl(subtotal, currency, locale) : "—"}</span>
               </div>
               <div className="flex justify-between items-center gap-2">
                 <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
@@ -328,12 +328,12 @@ function NewQuotePage() {
                     className="w-16 h-7 text-xs"
                   />
                   <span className="text-muted-foreground text-xs">%</span>
-                  <span className="ml-auto">{preview.result ? formatCurrencyIntl(taxAmount, currency, locale) : "—"}</span>
+                  <span className="ml-auto num">{preview.result ? formatCurrencyIntl(taxAmount, currency, locale) : "—"}</span>
                 </div>
               </div>
               <div className="flex justify-between font-semibold border-t pt-2">
                 <span>{t("docForm.summary.total")}</span>
-                <span>{preview.result ? formatCurrencyIntl(total, currency, locale) : "—"}</span>
+                <span className="num">{preview.result ? formatCurrencyIntl(total, currency, locale) : "—"}</span>
               </div>
             </div>
           </div>

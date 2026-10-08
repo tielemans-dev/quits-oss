@@ -52,7 +52,7 @@ export function CreditNotesTable({
                   {creditNote.reason}
                 </TableCell>
               )}
-              <TableCell className="text-right">
+              <TableCell className="text-right num">
                 -{formatCurrency(creditNote.total, creditNote.currency, locale)}
               </TableCell>
             </TableRow>

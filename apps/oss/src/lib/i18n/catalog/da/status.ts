@@ -6,4 +6,10 @@ export const daStatusMessages = {
   "status.overdue": "Forfalden",
   "status.partially_paid": "Delvist betalt",
   "status.credited": "Krediteret",
+  "status.issued": "Udstedt",
+  "status.accepted": "Accepteret",
+  "status.declined": "Afslået",
+  "status.expired": "Udløbet",
+  "status.completed": "Afsluttet",
+  "status.cancelled": "Annulleret",
 } as const

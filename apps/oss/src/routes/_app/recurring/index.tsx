@@ -122,14 +122,14 @@ function RecurringInvoicesPage() {
                   </TableCell>
                   <TableCell>{schedule.contact.name}</TableCell>
                   <TableCell>{formatCadence(t, schedule.intervalCount, schedule.intervalUnit)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right num">
                     {formatCurrency(schedule.subtotal, schedule.currency, locale)}
                   </TableCell>
                   <TableCell>
                     {schedule.status === "ended" ? "—" : formatRunDate(schedule.nextRunAt, locale)}
                   </TableCell>
                   <TableCell>
-                    <RecurringStatusBadge status={schedule.status} t={t} />
+                    <RecurringStatusBadge status={schedule.status} />
                   </TableCell>
                   <TableCell>
                     {schedule.lastInvoice ? (

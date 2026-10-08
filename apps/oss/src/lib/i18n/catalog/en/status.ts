@@ -6,4 +6,10 @@ export const enStatusMessages = {
   "status.overdue": "Overdue",
   "status.partially_paid": "Partially paid",
   "status.credited": "Credited",
+  "status.issued": "Issued",
+  "status.accepted": "Accepted",
+  "status.declined": "Declined",
+  "status.expired": "Expired",
+  "status.completed": "Completed",
+  "status.cancelled": "Cancelled",
 } as const

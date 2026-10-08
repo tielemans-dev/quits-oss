@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
-import type { ReactNode } from "react"
+import { createContext, useContext, type ReactNode } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const state = vi.hoisted(() => ({
@@ -41,12 +41,43 @@ vi.mock("../ui/sidebar", () => ({
   SidebarMenuButton: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   useSidebar: () => ({ isMobile: false }),
 }))
+const RadioGroupContext = createContext<(value: string) => void>(() => undefined)
+
 vi.mock("../ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuSeparator: () => <hr />,
+  DropdownMenuRadioGroup: ({
+    children,
+    value,
+    onValueChange,
+  }: {
+    children: ReactNode
+    value: string
+    onValueChange: (value: string) => void
+  }) => (
+    <RadioGroupContext.Provider value={onValueChange}>
+      <div role="radiogroup" data-value={value}>
+        {children}
+      </div>
+    </RadioGroupContext.Provider>
+  ),
+  DropdownMenuRadioItem: function RadioItem({
+    children,
+    value,
+  }: {
+    children: ReactNode
+    value: string
+  }) {
+    const select = useContext(RadioGroupContext)
+    return (
+      <button type="button" role="radio" data-value={value} onClick={() => select(value)}>
+        {children}
+      </button>
+    )
+  },
   DropdownMenuItem: ({
     children,
     disabled,
@@ -62,6 +93,7 @@ vi.mock("../ui/dropdown-menu", () => ({
   ),
 }))
 
+import { THEME_STORAGE_KEY, resetThemeForTesting } from "../../lib/theme"
 import {
   getRequestOrganizationId,
   initializeRequestOrganizationId,
@@ -71,6 +103,9 @@ import { UserMenu } from "../user-menu"
 
 afterEach(() => {
   cleanup()
+  window.localStorage.clear()
+  document.documentElement.classList.remove("dark")
+  resetThemeForTesting()
   resetRequestOrganizationForTesting()
   state.sessionOrganizationId = "org_a"
   state.setActive.mockReset()
@@ -137,5 +172,34 @@ describe("user menu organizations", () => {
 
     expect(state.signOut).toHaveBeenCalled()
     expect(state.loadPage).toHaveBeenCalledWith("/login")
+  })
+
+  it("offers system, light and dark, and applies the choice", async () => {
+    initializeRequestOrganizationId("org_a")
+    render(<UserMenu />)
+
+    const group = await screen.findByRole("radiogroup")
+    expect(group.dataset.value).toBe("system")
+    expect(screen.getByText("user.theme")).toBeTruthy()
+    expect(screen.getAllByRole("radio").map((radio) => radio.dataset.value)).toEqual([
+      "system",
+      "light",
+      "dark",
+    ])
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("user.theme.dark"))
+    })
+
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark")
+    expect(document.documentElement.classList.contains("dark")).toBe(true)
+    expect(screen.getByRole("radiogroup").dataset.value).toBe("dark")
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("user.theme.light"))
+    })
+
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light")
+    expect(document.documentElement.classList.contains("dark")).toBe(false)
   })
 })
