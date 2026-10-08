@@ -1,0 +1,19 @@
+{
+  "type": "client_link.action_taken",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/client-links.ts",
+      "typeExpression": "\"client_link.action_taken\"",
+      "payloadExpression": "{\n          linkId: link.id,\n          recipientName: link.recipientName,\n          kind: input.recordKind,\n          recordId: input.recordId,\n          action: input.action,\n        }",
+      "variant": "default",
+      "payload": {
+        "linkId": "link-1",
+        "recipientName": "Pia Payer",
+        "kind": "invoice",
+        "recordId": "invoice-1",
+        "action": "start_payment"
+      }
+    }
+  ]
+}

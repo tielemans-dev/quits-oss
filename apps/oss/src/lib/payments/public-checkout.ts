@@ -28,9 +28,19 @@ const MAX_CHECKOUT_ATTEMPTS = 3
  * to the balance due expires it too (see `domain/documents/checkout-sessions.ts`), so a session
  * never charges a balance that is no longer owed.
  */
-export async function resolvePublicInvoiceCheckout(token: string) {
+export async function resolvePublicInvoiceCheckout(
+  token: string,
+  options: {
+    /**
+     * Where Stripe sends the customer after paying or cancelling. Defaults to the payment page of
+     * `token`; the client action page passes its own address so the payment link never leaves the
+     * server.
+     */
+    returnUrl?: string
+  } = {},
+) {
   for (let attempt = 1; attempt <= MAX_CHECKOUT_ATTEMPTS; attempt += 1) {
-    const outcome = await openCheckoutSession(token)
+    const outcome = await openCheckoutSession(token, options.returnUrl)
     if (outcome.status !== "retry") {
       return outcome
     }
@@ -39,7 +49,7 @@ export async function resolvePublicInvoiceCheckout(token: string) {
   return { url: null, status: "unavailable" } as const
 }
 
-async function openCheckoutSession(token: string) {
+async function openCheckoutSession(token: string, returnUrl?: string) {
   const session = await loadPublicInvoiceByToken(token, getPublicInvoicePaymentSecret())
   if (!session) {
     paymentsLogger.warn("invoice.checkout.invalid", {
@@ -119,7 +129,7 @@ async function openCheckoutSession(token: string) {
     }
   }
 
-  const publicUrl = buildAbsoluteUrl(
+  const publicUrl = returnUrl ?? buildAbsoluteUrl(
     resolveAppOrigin(
       [
         readProductEnv(process.env, "APP_ORIGIN"),

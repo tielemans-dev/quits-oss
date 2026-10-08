@@ -10,6 +10,7 @@ import { daActivityMessages } from "./activity"
 import { daAuthMessages } from "./auth"
 import { daBillingMessages } from "./billing"
 import { daCatalogMessages } from "./catalog"
+import { daClientActionsMessages } from "./client-actions"
 import { daContactsMessages } from "./contacts"
 import { daDashboardMessages } from "./dashboard"
 import { daDocFormMessages } from "./doc-form"
@@ -40,6 +41,7 @@ export const daCatalog = {
   ...daAuthMessages,
   ...daBillingMessages,
   ...daCatalogMessages,
+  ...daClientActionsMessages,
   ...daContactsMessages,
   ...daDashboardMessages,
   ...daDocFormMessages,

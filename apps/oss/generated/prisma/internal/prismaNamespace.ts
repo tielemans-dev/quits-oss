@@ -421,7 +421,10 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  ClientActionLink: 'ClientActionLink',
+  ClientActionGrant: 'ClientActionGrant',
+  ClientActionVerification: 'ClientActionVerification'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -437,7 +440,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
+    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate" | "clientActionLink" | "clientActionGrant" | "clientActionVerification"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3253,6 +3256,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ClientActionLink: {
+      payload: Prisma.$ClientActionLinkPayload<ExtArgs>
+      fields: Prisma.ClientActionLinkFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ClientActionLinkFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ClientActionLinkFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload>
+        }
+        findFirst: {
+          args: Prisma.ClientActionLinkFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ClientActionLinkFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload>
+        }
+        findMany: {
+          args: Prisma.ClientActionLinkFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload>[]
+        }
+        create: {
+          args: Prisma.ClientActionLinkCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload>
+        }
+        createMany: {
+          args: Prisma.ClientActionLinkCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ClientActionLinkCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload>[]
+        }
+        delete: {
+          args: Prisma.ClientActionLinkDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload>
+        }
+        update: {
+          args: Prisma.ClientActionLinkUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload>
+        }
+        deleteMany: {
+          args: Prisma.ClientActionLinkDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ClientActionLinkUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ClientActionLinkUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload>[]
+        }
+        upsert: {
+          args: Prisma.ClientActionLinkUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionLinkPayload>
+        }
+        aggregate: {
+          args: Prisma.ClientActionLinkAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateClientActionLink>
+        }
+        groupBy: {
+          args: Prisma.ClientActionLinkGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientActionLinkGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ClientActionLinkCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientActionLinkCountAggregateOutputType> | number
+        }
+      }
+    }
+    ClientActionGrant: {
+      payload: Prisma.$ClientActionGrantPayload<ExtArgs>
+      fields: Prisma.ClientActionGrantFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ClientActionGrantFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ClientActionGrantFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload>
+        }
+        findFirst: {
+          args: Prisma.ClientActionGrantFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ClientActionGrantFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload>
+        }
+        findMany: {
+          args: Prisma.ClientActionGrantFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload>[]
+        }
+        create: {
+          args: Prisma.ClientActionGrantCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload>
+        }
+        createMany: {
+          args: Prisma.ClientActionGrantCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ClientActionGrantCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload>[]
+        }
+        delete: {
+          args: Prisma.ClientActionGrantDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload>
+        }
+        update: {
+          args: Prisma.ClientActionGrantUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload>
+        }
+        deleteMany: {
+          args: Prisma.ClientActionGrantDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ClientActionGrantUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ClientActionGrantUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload>[]
+        }
+        upsert: {
+          args: Prisma.ClientActionGrantUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionGrantPayload>
+        }
+        aggregate: {
+          args: Prisma.ClientActionGrantAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateClientActionGrant>
+        }
+        groupBy: {
+          args: Prisma.ClientActionGrantGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientActionGrantGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ClientActionGrantCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientActionGrantCountAggregateOutputType> | number
+        }
+      }
+    }
+    ClientActionVerification: {
+      payload: Prisma.$ClientActionVerificationPayload<ExtArgs>
+      fields: Prisma.ClientActionVerificationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ClientActionVerificationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ClientActionVerificationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload>
+        }
+        findFirst: {
+          args: Prisma.ClientActionVerificationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ClientActionVerificationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload>
+        }
+        findMany: {
+          args: Prisma.ClientActionVerificationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload>[]
+        }
+        create: {
+          args: Prisma.ClientActionVerificationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload>
+        }
+        createMany: {
+          args: Prisma.ClientActionVerificationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ClientActionVerificationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload>[]
+        }
+        delete: {
+          args: Prisma.ClientActionVerificationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload>
+        }
+        update: {
+          args: Prisma.ClientActionVerificationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload>
+        }
+        deleteMany: {
+          args: Prisma.ClientActionVerificationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ClientActionVerificationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ClientActionVerificationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload>[]
+        }
+        upsert: {
+          args: Prisma.ClientActionVerificationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClientActionVerificationPayload>
+        }
+        aggregate: {
+          args: Prisma.ClientActionVerificationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateClientActionVerification>
+        }
+        groupBy: {
+          args: Prisma.ClientActionVerificationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientActionVerificationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ClientActionVerificationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClientActionVerificationCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -4167,6 +4392,50 @@ export const IssuanceCandidateScalarFieldEnum = {
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
 
 
+export const ClientActionLinkScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  contactId: 'contactId',
+  recipientName: 'recipientName',
+  recipientEmail: 'recipientEmail',
+  verification: 'verification',
+  expiresAt: 'expiresAt',
+  revokedAt: 'revokedAt',
+  lastOpenedAt: 'lastOpenedAt',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ClientActionLinkScalarFieldEnum = (typeof ClientActionLinkScalarFieldEnum)[keyof typeof ClientActionLinkScalarFieldEnum]
+
+
+export const ClientActionGrantScalarFieldEnum = {
+  id: 'id',
+  linkId: 'linkId',
+  recordKind: 'recordKind',
+  recordId: 'recordId',
+  capabilities: 'capabilities',
+  keyVersion: 'keyVersion',
+  createdAt: 'createdAt'
+} as const
+
+export type ClientActionGrantScalarFieldEnum = (typeof ClientActionGrantScalarFieldEnum)[keyof typeof ClientActionGrantScalarFieldEnum]
+
+
+export const ClientActionVerificationScalarFieldEnum = {
+  id: 'id',
+  linkId: 'linkId',
+  codeHash: 'codeHash',
+  attempts: 'attempts',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ClientActionVerificationScalarFieldEnum = (typeof ClientActionVerificationScalarFieldEnum)[keyof typeof ClientActionVerificationScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -4472,6 +4741,9 @@ export type GlobalOmitConfig = {
   eventConsumerDelivery?: Prisma.EventConsumerDeliveryOmit
   artifactStaging?: Prisma.ArtifactStagingOmit
   issuanceCandidate?: Prisma.IssuanceCandidateOmit
+  clientActionLink?: Prisma.ClientActionLinkOmit
+  clientActionGrant?: Prisma.ClientActionGrantOmit
+  clientActionVerification?: Prisma.ClientActionVerificationOmit
 }
 
 /* Types for Logging */

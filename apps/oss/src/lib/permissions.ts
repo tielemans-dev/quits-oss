@@ -20,6 +20,7 @@ const statement = {
   agent: ["create", "read", "revoke"],
   export: ["read"],
   audit: ["read"],
+  clientLink: ["create", "read", "revoke"],
 } as const
 
 export const ac = createAccessControl(statement)
@@ -38,6 +39,7 @@ export const adminGrants = {
   agent: ["create", "read", "revoke"],
   export: ["read"],
   audit: ["read"],
+  clientLink: ["create", "read", "revoke"],
 } as const
 
 export const memberGrants = {
@@ -51,6 +53,8 @@ export const memberGrants = {
   catalog: ["create", "read", "update"],
   contact: ["create", "read", "update"],
   settings: ["read"],
+  // A client link is a working credential, so the read-only accountant role has none.
+  clientLink: ["create", "read", "revoke"],
 } as const
 
 export const accountantGrants = {

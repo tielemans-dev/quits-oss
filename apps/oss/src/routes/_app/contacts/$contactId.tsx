@@ -15,6 +15,7 @@ import {
 import { useI18n } from "../../../lib/i18n/react"
 import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
 import { readPeppolEndpoint } from "./-peppol-endpoint"
+import { ClientLinksCard } from "../../../components/client-actions/client-links-card"
 
 export const Route = createFileRoute("/_app/contacts/$contactId")({
   component: EditContactPage,
@@ -122,7 +123,7 @@ function EditContactPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-6 max-w-2xl grid gap-6">
       <Card>
         <CardHeader>
           <CardTitle>{t("contacts.edit.title")}</CardTitle>
@@ -301,6 +302,7 @@ function EditContactPage() {
           </CardFooter>
         </form>
       </Card>
+      <ClientLinksCard contactId={contact.id} contactName={contact.name} contactEmail={contact.email} />
     </div>
   )
 }

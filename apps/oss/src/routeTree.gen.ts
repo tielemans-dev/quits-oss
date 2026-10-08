@@ -18,6 +18,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as QTokenRouteImport } from './routes/q.$token'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
+import { Route as CTokenRouteImport } from './routes/c.$token'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as ATokenRouteImport } from './routes/a.$token'
@@ -36,6 +37,7 @@ import { Route as AppAgreementsIndexRouteImport } from './routes/_app/agreements
 import { Route as QTokenLogoRouteImport } from './routes/q.$token_.logo'
 import { Route as PayTokenPdfRouteImport } from './routes/pay.$token_.pdf'
 import { Route as PayTokenLogoRouteImport } from './routes/pay.$token_.logo'
+import { Route as CTokenLogoRouteImport } from './routes/c.$token_.logo'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe-webhook'
 import { Route as ApiCronTickRouteImport } from './routes/api/cron/tick'
@@ -56,6 +58,7 @@ import { Route as AppAgreementsAgreementIdRouteImport } from './routes/_app/agre
 import { Route as AppApprovalsApprovalIdPreviewDotpdfRouteImport } from './routes/app.approvals.$approvalId.preview[.]pdf'
 import { Route as ApiAgreementsAgreementIdPdfRouteImport } from './routes/api/agreements/$agreementId.pdf'
 import { Route as AppAgreementsAgreementIdEditRouteImport } from './routes/_app/agreements/$agreementId_.edit'
+import { Route as CTokenDownloadKindRecordIdRouteImport } from './routes/c.$token_.download.$kind.$recordId'
 import { Route as ApiDocumentsKindDocumentIdPdfRouteImport } from './routes/api/documents/$kind/$documentId.pdf'
 
 const SignupRoute = SignupRouteImport.update({
@@ -100,6 +103,11 @@ const QTokenRoute = QTokenRouteImport.update({
 const PayTokenRoute = PayTokenRouteImport.update({
   id: '/pay/$token',
   path: '/pay/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CTokenRoute = CTokenRouteImport.update({
+  id: '/c/$token',
+  path: '/c/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMcpRoute = ApiMcpRouteImport.update({
@@ -191,6 +199,11 @@ const PayTokenPdfRoute = PayTokenPdfRouteImport.update({
 const PayTokenLogoRoute = PayTokenLogoRouteImport.update({
   id: '/pay/$token_/logo',
   path: '/pay/$token/logo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CTokenLogoRoute = CTokenLogoRouteImport.update({
+  id: '/c/$token_/logo',
+  path: '/c/$token/logo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
@@ -299,6 +312,12 @@ const AppAgreementsAgreementIdEditRoute =
     path: '/agreements/$agreementId/edit',
     getParentRoute: () => AppRoute,
   } as any)
+const CTokenDownloadKindRecordIdRoute =
+  CTokenDownloadKindRecordIdRouteImport.update({
+    id: '/c/$token_/download/$kind/$recordId',
+    path: '/c/$token/download/$kind/$recordId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiDocumentsKindDocumentIdPdfRoute =
   ApiDocumentsKindDocumentIdPdfRouteImport.update({
     id: '/api/documents/$kind/$documentId/pdf',
@@ -322,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/c/$token': typeof CTokenRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
@@ -341,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/c/$token/logo': typeof CTokenLogoRoute
   '/pay/$token/logo': typeof PayTokenLogoRoute
   '/pay/$token/pdf': typeof PayTokenPdfRoute
   '/q/$token/logo': typeof QTokenLogoRoute
@@ -354,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
   '/api/documents/$kind/$documentId/pdf': typeof ApiDocumentsKindDocumentIdPdfRoute
+  '/c/$token/download/$kind/$recordId': typeof CTokenDownloadKindRecordIdRoute
 }
 export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
@@ -370,6 +392,7 @@ export interface FileRoutesByTo {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/c/$token': typeof CTokenRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/': typeof AppIndexRoute
@@ -390,6 +413,7 @@ export interface FileRoutesByTo {
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/c/$token/logo': typeof CTokenLogoRoute
   '/pay/$token/logo': typeof PayTokenLogoRoute
   '/pay/$token/pdf': typeof PayTokenPdfRoute
   '/q/$token/logo': typeof QTokenLogoRoute
@@ -403,6 +427,7 @@ export interface FileRoutesByTo {
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
   '/api/documents/$kind/$documentId/pdf': typeof ApiDocumentsKindDocumentIdPdfRoute
+  '/c/$token/download/$kind/$recordId': typeof CTokenDownloadKindRecordIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -421,6 +446,7 @@ export interface FileRoutesById {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/c/$token': typeof CTokenRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/_app/': typeof AppIndexRoute
@@ -441,6 +467,7 @@ export interface FileRoutesById {
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/c/$token_/logo': typeof CTokenLogoRoute
   '/pay/$token_/logo': typeof PayTokenLogoRoute
   '/pay/$token_/pdf': typeof PayTokenPdfRoute
   '/q/$token_/logo': typeof QTokenLogoRoute
@@ -454,6 +481,7 @@ export interface FileRoutesById {
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
   '/api/documents/$kind/$documentId/pdf': typeof ApiDocumentsKindDocumentIdPdfRoute
+  '/c/$token_/download/$kind/$recordId': typeof CTokenDownloadKindRecordIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -473,6 +501,7 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/c/$token'
     | '/pay/$token'
     | '/q/$token'
     | '/agreements/$agreementId'
@@ -492,6 +521,7 @@ export interface FileRouteTypes {
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/c/$token/logo'
     | '/pay/$token/logo'
     | '/pay/$token/pdf'
     | '/q/$token/logo'
@@ -505,6 +535,7 @@ export interface FileRouteTypes {
     | '/api/agreements/$agreementId/pdf'
     | '/app/approvals/$approvalId/preview.pdf'
     | '/api/documents/$kind/$documentId/pdf'
+    | '/c/$token/download/$kind/$recordId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/forgot-password'
@@ -521,6 +552,7 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/c/$token'
     | '/pay/$token'
     | '/q/$token'
     | '/'
@@ -541,6 +573,7 @@ export interface FileRouteTypes {
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/c/$token/logo'
     | '/pay/$token/logo'
     | '/pay/$token/pdf'
     | '/q/$token/logo'
@@ -554,6 +587,7 @@ export interface FileRouteTypes {
     | '/api/agreements/$agreementId/pdf'
     | '/app/approvals/$approvalId/preview.pdf'
     | '/api/documents/$kind/$documentId/pdf'
+    | '/c/$token/download/$kind/$recordId'
   id:
     | '__root__'
     | '/_app'
@@ -571,6 +605,7 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/c/$token'
     | '/pay/$token'
     | '/q/$token'
     | '/_app/'
@@ -591,6 +626,7 @@ export interface FileRouteTypes {
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/c/$token_/logo'
     | '/pay/$token_/logo'
     | '/pay/$token_/pdf'
     | '/q/$token_/logo'
@@ -604,6 +640,7 @@ export interface FileRouteTypes {
     | '/api/agreements/$agreementId/pdf'
     | '/app/approvals/$approvalId/preview.pdf'
     | '/api/documents/$kind/$documentId/pdf'
+    | '/c/$token_/download/$kind/$recordId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -616,6 +653,7 @@ export interface RootRouteChildren {
   ATokenRoute: typeof ATokenRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiMcpRoute: typeof ApiMcpRoute
+  CTokenRoute: typeof CTokenRoute
   PayTokenRoute: typeof PayTokenRoute
   QTokenRoute: typeof QTokenRoute
   ATokenLogoRoute: typeof ATokenLogoRoute
@@ -625,12 +663,14 @@ export interface RootRouteChildren {
   ApiCronTickRoute: typeof ApiCronTickRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
+  CTokenLogoRoute: typeof CTokenLogoRoute
   PayTokenLogoRoute: typeof PayTokenLogoRoute
   PayTokenPdfRoute: typeof PayTokenPdfRoute
   QTokenLogoRoute: typeof QTokenLogoRoute
   ApiAgreementsAgreementIdPdfRoute: typeof ApiAgreementsAgreementIdPdfRoute
   AppApprovalsApprovalIdPreviewDotpdfRoute: typeof AppApprovalsApprovalIdPreviewDotpdfRoute
   ApiDocumentsKindDocumentIdPdfRoute: typeof ApiDocumentsKindDocumentIdPdfRoute
+  CTokenDownloadKindRecordIdRoute: typeof CTokenDownloadKindRecordIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -696,6 +736,13 @@ declare module '@tanstack/react-router' {
       path: '/pay/$token'
       fullPath: '/pay/$token'
       preLoaderRoute: typeof PayTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$token': {
+      id: '/c/$token'
+      path: '/c/$token'
+      fullPath: '/c/$token'
+      preLoaderRoute: typeof CTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/mcp': {
@@ -822,6 +869,13 @@ declare module '@tanstack/react-router' {
       path: '/pay/$token/logo'
       fullPath: '/pay/$token/logo'
       preLoaderRoute: typeof PayTokenLogoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$token_/logo': {
+      id: '/c/$token_/logo'
+      path: '/c/$token/logo'
+      fullPath: '/c/$token/logo'
+      preLoaderRoute: typeof CTokenLogoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/trpc/$': {
@@ -964,6 +1018,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgreementsAgreementIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/c/$token_/download/$kind/$recordId': {
+      id: '/c/$token_/download/$kind/$recordId'
+      path: '/c/$token/download/$kind/$recordId'
+      fullPath: '/c/$token/download/$kind/$recordId'
+      preLoaderRoute: typeof CTokenDownloadKindRecordIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/documents/$kind/$documentId/pdf': {
       id: '/api/documents/$kind/$documentId/pdf'
       path: '/api/documents/$kind/$documentId/pdf'
@@ -1040,6 +1101,7 @@ const rootRouteChildren: RootRouteChildren = {
   ATokenRoute: ATokenRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiMcpRoute: ApiMcpRoute,
+  CTokenRoute: CTokenRoute,
   PayTokenRoute: PayTokenRoute,
   QTokenRoute: QTokenRoute,
   ATokenLogoRoute: ATokenLogoRoute,
@@ -1049,6 +1111,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronTickRoute: ApiCronTickRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
+  CTokenLogoRoute: CTokenLogoRoute,
   PayTokenLogoRoute: PayTokenLogoRoute,
   PayTokenPdfRoute: PayTokenPdfRoute,
   QTokenLogoRoute: QTokenLogoRoute,
@@ -1056,6 +1119,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppApprovalsApprovalIdPreviewDotpdfRoute:
     AppApprovalsApprovalIdPreviewDotpdfRoute,
   ApiDocumentsKindDocumentIdPdfRoute: ApiDocumentsKindDocumentIdPdfRoute,
+  CTokenDownloadKindRecordIdRoute: CTokenDownloadKindRecordIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
