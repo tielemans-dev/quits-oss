@@ -2,7 +2,8 @@ import type { inferRouterOutputs } from "@trpc/server"
 import type { AppRouter } from "../../trpc/router"
 import { formatDate } from "../../lib/i18n/format"
 import type { useI18n } from "../../lib/i18n/react"
-import { Badge } from "../ui/badge"
+import { getStatusLabel } from "../../lib/status-tones"
+import { StatusBadge } from "../status-badge"
 
 type RouterOutputs = inferRouterOutputs<AppRouter>
 export type RecurringScheduleListItem = RouterOutputs["recurring"]["list"][number]
@@ -28,23 +29,11 @@ export function toCalendarDate(date: Date | string) {
   return new Date(date).toISOString().slice(0, 10)
 }
 
-const statusClassName: Record<RecurringStatus, string> = {
-  active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  paused: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  ended: "bg-muted text-muted-foreground",
+export function RecurringStatusBadge({ status }: { status: RecurringStatus }) {
+  return <StatusBadge domain="recurring" status={status} />
 }
 
-export function RecurringStatusBadge({ status, t }: { status: RecurringStatus; t: Translate }) {
-  return (
-    <Badge variant="outline" className={statusClassName[status]}>
-      {t(`recurring.status.${status}`)}
-    </Badge>
-  )
-}
-
+/** The label of an invoice status, for the invoices a schedule has made. */
 export function invoiceStatusLabel(t: Translate, status: string) {
-  if (status === "sent") return t("invoices.status.sent")
-  if (status === "paid") return t("invoices.status.paid")
-  if (status === "overdue") return t("invoices.status.overdue")
-  return t("invoices.status.draft")
+  return getStatusLabel(t, "invoice", status)
 }

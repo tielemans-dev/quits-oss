@@ -6,7 +6,7 @@ import {
   formatDate as formatDateIntl,
 } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
-import { Badge } from "../../../components/ui/badge"
+import { StatusBadge } from "../../../components/status-badge"
 import {
   Table,
   TableBody,
@@ -44,37 +44,12 @@ type Quote = {
   contact: { name: string }
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
-  sent: { label: "Sent", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  accepted: { label: "Accepted", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-  rejected: { label: "Rejected", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-  expired: { label: "Expired", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
-}
-
 function formatCurrency(amount: number, currency: string) {
   return formatCurrencyIntl(amount, currency)
 }
 
 function formatDate(dateStr: string, locale?: string) {
   return formatDateIntl(dateStr, locale, undefined, { month: "short" })
-}
-
-function getQuoteStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"]) {
-  if (status === "sent") return t("quotes.status.sent")
-  if (status === "accepted") return t("quotes.status.accepted")
-  if (status === "rejected") return t("quotes.status.rejected")
-  if (status === "expired") return t("quotes.status.expired")
-  return t("quotes.status.draft")
-}
-
-function StatusBadge({ status, label }: { status: string; label: string }) {
-  const config = statusConfig[status] ?? statusConfig.draft
-  return (
-    <Badge variant="outline" className={config.className}>
-      {label}
-    </Badge>
-  )
 }
 
 function QuotesListPage() {
@@ -179,14 +154,11 @@ function QuotesListPage() {
                   <TableCell>{quote.contact.name}</TableCell>
                   <TableCell>{formatDate(quote.issueDate, locale)}</TableCell>
                   <TableCell>{formatDate(quote.expiryDate, locale)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right num">
                     {formatCurrency(quote.total, quote.currency)}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge
-                      status={quote.status}
-                      label={getQuoteStatusLabel(quote.status, t)}
-                    />
+                    <StatusBadge domain="quote" status={quote.status} />
                   </TableCell>
                   <TableCell>
                     {quote.status === "draft" && (

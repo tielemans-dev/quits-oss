@@ -129,7 +129,7 @@ function RecurringInvoicesPage() {
                     {schedule.status === "ended" ? "—" : formatRunDate(schedule.nextRunAt, locale)}
                   </TableCell>
                   <TableCell>
-                    <RecurringStatusBadge status={schedule.status} t={t} />
+                    <RecurringStatusBadge status={schedule.status} />
                   </TableCell>
                   <TableCell>
                     {schedule.lastInvoice ? (

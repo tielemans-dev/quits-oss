@@ -13,7 +13,7 @@ export function ReloadRequiredNotice({ failure }: { failure: PollFailure | null 
   return (
     <div
       role="alert"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-tone-warning/30 bg-tone-warning/10 px-4 py-3 text-sm text-foreground"
     >
       <div>
         <p className="font-medium">{t("ui.reloadRequired.title")}</p>

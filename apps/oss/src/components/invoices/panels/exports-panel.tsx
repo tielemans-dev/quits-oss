@@ -60,7 +60,7 @@ export function InvoiceExportsPanel({ invoice }: InvoicePanelProps) {
           </p>
         ) : null}
         {missing.length > 0 ? (
-          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="alert">
+          <div className="rounded-md border border-tone-warning/30 bg-tone-warning/10 p-3 text-sm text-foreground" role="alert">
             <p className="font-medium">{t("exports.einvoice.missing.title")}</p>
             <ul className="mt-2 list-disc pl-5 grid gap-1">
               {missing.map((field) => (

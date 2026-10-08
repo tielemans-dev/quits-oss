@@ -1,6 +1,6 @@
 import type { EmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
 import { useI18n } from "../../lib/i18n/react"
-import { Badge } from "../ui/badge"
+import { StatusBadge } from "../status-badge"
 import {
   Card,
   CardContent,
@@ -8,15 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card"
-
-const statusClassNames: Record<EmailDeliveryRuntimeStatus["status"], string> = {
-  configured: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  missing_configuration:
-    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  managed: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  managed_unavailable:
-    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-}
 
 export function EmailDeliveryCard({
   emailDelivery,
@@ -35,12 +26,7 @@ export function EmailDeliveryCard({
               {t("settings.section.emailDelivery.description")}
             </CardDescription>
           </div>
-          <Badge
-            variant="outline"
-            className={statusClassNames[emailDelivery.status]}
-          >
-            {t(`settings.emailDelivery.status.${emailDelivery.status}`)}
-          </Badge>
+          <StatusBadge domain="emailSetup" status={emailDelivery.status} />
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">

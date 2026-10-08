@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card"
-import { Badge } from "../../components/ui/badge"
+import { StatusBadge } from "../../components/status-badge"
 import {
   Table,
   TableBody,
@@ -23,7 +23,6 @@ import {
 } from "../../components/ui/table"
 import { DollarSign, Clock, AlertTriangle, Users } from "lucide-react"
 import { useI18n } from "../../lib/i18n/react"
-import type { TranslationKey } from "../../lib/i18n/messages"
 
 export const Route = createFileRoute("/_app/")({
   component: DashboardPage,
@@ -48,43 +47,12 @@ type DashboardStats = {
   recentInvoices: RecentInvoice[]
 }
 
-const statusConfig: Record<string, { key: TranslationKey; className: string }> = {
-  draft: { key: "status.draft", className: "bg-muted text-muted-foreground" },
-  sent: {
-    key: "status.sent",
-    className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  },
-  viewed: {
-    key: "status.viewed",
-    className:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  },
-  paid: {
-    key: "status.paid",
-    className:
-      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  },
-  overdue: {
-    key: "status.overdue",
-    className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-  },
-}
-
 function formatCurrency(amount: number, currency: string, locale: string) {
   return formatCurrencyIntl(amount, currency, locale)
 }
 
 function formatDate(dateStr: string, locale: string) {
   return formatDateIntl(dateStr, locale, undefined, { month: "short" })
-}
-
-function StatusBadge({ status, t }: { status: string; t: (key: TranslationKey) => string }) {
-  const config = statusConfig[status] ?? statusConfig.draft
-  return (
-    <Badge variant="outline" className={config.className}>
-      {t(config.key)}
-    </Badge>
-  )
 }
 
 function DashboardPage() {
@@ -253,11 +221,11 @@ function DashboardPage() {
                       <TableCell>{invoice.contactName}</TableCell>
                       <TableCell>{formatDate(invoice.issueDate, locale)}</TableCell>
                       <TableCell>{formatDate(invoice.dueDate, locale)}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right num">
                         {formatCurrency(invoice.total, invoice.currency, locale)}
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={invoice.status} t={t} />
+                        <StatusBadge domain="invoice" status={invoice.status} />
                       </TableCell>
                     </TableRow>
                   ))}

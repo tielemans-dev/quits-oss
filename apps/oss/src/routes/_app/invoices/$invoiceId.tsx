@@ -21,7 +21,7 @@ import {
   formatDate as formatDateIntl,
 } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
-import { Badge } from "../../../components/ui/badge"
+import { StatusBadge } from "../../../components/status-badge"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Textarea } from "../../../components/ui/textarea"
@@ -152,21 +152,6 @@ type EditItem = {
   vat?: DocumentLineInput["vat"]
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
-  sent: { label: "Sent", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  paid: { label: "Paid", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-  overdue: { label: "Overdue", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-  partially_paid: {
-    label: "Partially paid",
-    className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  },
-  credited: {
-    label: "Credited",
-    className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  },
-}
-
 function formatCurrency(amount: number, currency: string, locale?: string | null) {
   return formatCurrencyIntl(amount, currency, locale)
 }
@@ -182,24 +167,6 @@ function isValidEmailAddress(email: string | null) {
 
 function toDateString(value: string | Date) {
   return value instanceof Date ? value.toISOString() : value
-}
-
-function getInvoiceStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"]) {
-  if (status === "sent") return t("invoices.status.sent")
-  if (status === "paid") return t("invoices.status.paid")
-  if (status === "overdue") return t("invoices.status.overdue")
-  if (status === "partially_paid") return t("status.partially_paid")
-  if (status === "credited") return t("status.credited")
-  return t("invoices.status.draft")
-}
-
-function StatusBadge({ status, label }: { status: string; label: string }) {
-  const config = statusConfig[status] ?? statusConfig.draft
-  return (
-    <Badge variant="outline" className={config.className}>
-      {label}
-    </Badge>
-  )
 }
 
 async function downloadInvoicePdfFile(invoice: Invoice, _orgSettings: unknown) {
@@ -673,7 +640,7 @@ function InvoiceDetailPage() {
             <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} />
             {!invoice.agreementId && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
-              <div className="w-64 grid gap-2 text-sm">
+              <div className="w-64 grid gap-2 text-sm num">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
                   <span>{preview.result ? formatCurrency(editSubtotal, invoice.currency, locale) : "—"}</span>
@@ -752,7 +719,7 @@ function InvoiceDetailPage() {
     invoice.purpose !== "prepayment" && invoice.status === "draft" && recipientEmailValid && emailDelivery && !emailDelivery.available
   const deliveryStatus = emailAttempt
     ? {
-        tone: emailAttempt.lastEmailAttemptOutcome,
+        outcome: emailAttempt.lastEmailAttemptOutcome,
         label: t(`invoices.detail.email.status.${emailAttempt.lastEmailAttemptOutcome}`),
         detail: t("invoices.detail.email.lastAttempt", {
           status: t(`invoices.detail.email.status.${emailAttempt.lastEmailAttemptOutcome}`),
@@ -1005,10 +972,7 @@ function InvoiceDetailPage() {
                   {t("pdf.invoice")} {invoice.number}
                 </h1>
                 <div className="mt-1">
-                  <StatusBadge
-                    status={invoiceDisplayStatus(invoice)}
-                    label={getInvoiceStatusLabel(invoiceDisplayStatus(invoice), t)}
-                  />
+                  <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
                 </div>
               </div>
               <div className="text-right text-sm text-muted-foreground">
@@ -1068,11 +1032,11 @@ function InvoiceDetailPage() {
                   {invoice.items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>{item.description}</TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right num">{item.quantity}</TableCell>
+                      <TableCell className="text-right num">
                         {formatCurrency(item.unitPrice, invoice.currency, locale)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right num">
                         {formatCurrency(item.total, invoice.currency, locale)}
                       </TableCell>
                     </TableRow>
@@ -1083,7 +1047,7 @@ function InvoiceDetailPage() {
 
             {/* Totals */}
             <div className="flex justify-end">
-              <div className="w-64 grid gap-2 text-sm">
+              <div className="w-64 grid gap-2 text-sm num">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("pdf.subtotal")}</span>
                   <span>{formatCurrency(invoice.subtotal, invoice.currency, locale)}</span>

@@ -95,7 +95,7 @@ function RecurringSchedulePage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{schedule.name}</h1>
-            <RecurringStatusBadge status={schedule.status} t={t} />
+            <RecurringStatusBadge status={schedule.status} />
             {schedule.autoSend && <Badge variant="outline">{t("recurring.autoSendBadge")}</Badge>}
           </div>
           <p className="text-sm text-muted-foreground">
@@ -121,7 +121,7 @@ function RecurringSchedulePage() {
       )}
 
       {schedule.lastProblem && (
-        <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-tone-warning/30 bg-tone-warning/10 p-3 text-sm text-foreground">
           <AlertTriangle className="size-4 mt-0.5 shrink-0" />
           <span>
             {formatRunDate(schedule.lastProblem.occurredAt, locale)}:{" "}

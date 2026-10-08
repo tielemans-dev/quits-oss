@@ -224,7 +224,7 @@ function CreditNoteDetailPage() {
       {notice && (
         <p
           className={
-            notice.kind === "warning" ? "text-sm text-amber-700 dark:text-amber-300" : "text-sm text-muted-foreground"
+            notice.kind === "warning" ? "text-sm text-tone-warning" : "text-sm text-muted-foreground"
           }
           role="status"
         >

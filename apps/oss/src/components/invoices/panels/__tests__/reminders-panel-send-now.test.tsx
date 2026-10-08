@@ -124,7 +124,7 @@ describe("InvoiceRemindersPanel history", () => {
     render(<InvoiceRemindersPanel invoice={invoice} onChanged={onChanged} />)
 
     const badge = await screen.findByText("reminders.status.unconfirmed")
-    expect(badge.className).toContain("amber")
+    expect(badge.dataset.tone).toBe("warning")
     expect(screen.queryByText("reminders.status.sent")).toBeNull()
   })
 
