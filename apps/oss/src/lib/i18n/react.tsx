@@ -12,9 +12,11 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null)
 
-function detectInitialLocale() {
-  if (typeof window === "undefined") return "en-US"
-  return window.navigator.language || "en-US"
+/** What the server renders with, and so what the browser's first render must start from. */
+const SERVER_LOCALE = "en-US"
+
+function detectBrowserLocale() {
+  return window.navigator.language || SERVER_LOCALE
 }
 
 /**
@@ -31,9 +33,19 @@ export function I18nProvider({
   children: React.ReactNode
   locale?: string
 }) {
-  const [detectedLocale, setLocale] = useState<string>(detectInitialLocale)
+  // The first render, on the server and in the browser, must produce the same text, so it cannot
+  // read the browser's language: that would make every translated string of a non-English browser
+  // differ from the server's HTML and fail hydration. The browser's language is taken right
+  // after hydration instead.
+  const [detectedLocale, setLocale] = useState<string>(SERVER_LOCALE)
   const locale = fixedLocale ?? detectedLocale
   const isFixed = fixedLocale !== undefined
+
+  useEffect(() => {
+    if (isFixed) return
+    // Keep a language that was set meanwhile (the organization's), which wins over the browser's.
+    setLocale((current) => (current === SERVER_LOCALE ? detectBrowserLocale() : current))
+  }, [isFixed])
 
   useEffect(() => {
     if (isFixed) return
