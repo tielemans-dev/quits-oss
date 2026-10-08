@@ -261,7 +261,7 @@ function CreateForm({
     ? [
         ...candidates.agreements.map((a) => ({ kind: "agreement" as const, id: a.id, label: [a.number, a.title].filter(Boolean).join(" · ") })),
         ...candidates.deliverables.map((d) => ({ kind: "deliverable" as const, id: d.id, label: [d.agreementNumber, d.title].filter(Boolean).join(" · ") })),
-        ...candidates.invoices.map((i) => ({ kind: "invoice" as const, id: i.id, label: i.number })),
+        ...candidates.invoices.map((i) => ({ kind: "invoice" as const, id: i.id, label: i.number ?? "" })),
       ]
     : []
 

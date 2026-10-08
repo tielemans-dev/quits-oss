@@ -223,7 +223,8 @@ export async function buildClientActionPage(
         kind,
         recordId: grant.recordId,
         locale: invoice.locale,
-        number: invoice.number,
+        // An invoice with a public payment link has been issued, so it has its number.
+        number: invoice.number ?? "",
         state: credited
           ? "credited"
           : paymentState === "paid"
