@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start"
-import { getRequestHeader } from "@tanstack/react-start/server"
 import {
   parseBuyerSnapshot,
   parseSellerSnapshot,
@@ -9,7 +8,7 @@ import {
   publicInvoiceTokenInputSchema,
 } from "@quits/contracts/payments"
 import { resolvePublicPresentation } from "../documents/public-presentation"
-import { localeFromAcceptLanguage } from "../i18n/accept-language"
+import { invalidLinkLocale } from "../documents/public-invalid-link"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -129,10 +128,7 @@ export const getPublicInvoiceSession = createServerFn({ method: "GET" })
     const session = await loadPublicInvoiceByToken(data.token, getPublicInvoicePaymentSecret())
     if (!session) {
       // No document to take a language from: answer in the visitor's.
-      return {
-        kind: "invalid",
-        locale: localeFromAcceptLanguage(getRequestHeader("accept-language")),
-      } as const
+      return { kind: "invalid", locale: invalidLinkLocale() } as const
     }
 
     return {

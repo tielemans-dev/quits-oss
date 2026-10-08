@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
-import { getRequestHeader, getRequestHeaders } from "@tanstack/react-start/server"
+import { getRequestHeaders } from "@tanstack/react-start/server"
 import { z } from "zod"
-import { localeFromAcceptLanguage } from "../i18n/accept-language"
+import { invalidLinkLocale } from "../documents/public-invalid-link"
 import { publicAgreementDto, publicDeliverableDto } from "./public"
 
 export const getPublicAgreementSession = createServerFn({ method: "GET" })
@@ -11,10 +11,7 @@ export const getPublicAgreementSession = createServerFn({ method: "GET" })
     const session = await loadPublicAgreementByToken(data.token)
     // No document to take a language from: answer in the visitor's.
     if (!session) {
-      return {
-        kind: "invalid",
-        locale: localeFromAcceptLanguage(getRequestHeader("accept-language")),
-      } as const
+      return { kind: "invalid", locale: invalidLinkLocale() } as const
     }
     if (session.payload.scope === "sign_off") {
       const deliverableId = session.payload.deliverableId
