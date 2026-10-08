@@ -30,7 +30,7 @@ vi.mock("@tanstack/react-router", () => ({
 import { I18nProvider } from "../../../lib/i18n/react"
 import { DashboardView } from "../dashboard-view"
 import type { Summary } from "../summary-model"
-import { activeSummary, bucket, emptySummary, emptyTotal, MONTHS, total } from "./fixtures"
+import { activeSummary, activityEvent, bucket, emptySummary, emptyTotal, money, MONTHS, quoteAttention, total } from "./fixtures"
 
 afterEach(cleanup)
 
@@ -61,16 +61,18 @@ describe("first run", () => {
 describe("getting started", () => {
   it("shows a next step instead of a zero, and the events that exist", () => {
     const summary = emptySummary({
+      drafts: { count: 2, newestId: "b", newestKind: "invoice" },
       activity: [
-        { id: "e1", sequence: 1, type: "invoice.draft_created", aggregateType: "invoice", aggregateId: "a", occurredAt: "2026-10-07T10:00:00.000Z" },
-        { id: "e2", sequence: 2, type: "invoice.draft_created", aggregateType: "invoice", aggregateId: "b", occurredAt: "2026-10-07T11:00:00.000Z" },
+        activityEvent({ id: "e2", type: "invoice.draft_created", aggregateId: "b", customerName: "Fjord & Co" }),
+        activityEvent({ id: "e1", type: "invoice.draft_created", aggregateId: "a", customerName: "Nordlys ApS" }),
       ],
     })
     const { container } = renderView(summary)
     expect(container.querySelector("[data-slot=dashboard-getting-started]")).not.toBeNull()
     expect(container.querySelector("[data-slot=dashboard-hero]")).toBeNull()
     expect(container.querySelector("[data-slot=amount]")).toBeNull()
-    expect(screen.getByText("2 fakturakladder oprettet")).toBeTruthy()
+    expect(screen.getAllByText("Fakturakladde oprettet")).toHaveLength(2)
+    expect(screen.getByText("· Fjord & Co")).toBeTruthy()
   })
 })
 
@@ -116,7 +118,7 @@ describe("with money", () => {
     expect(container.querySelectorAll("[data-month]")).toHaveLength(12)
     expect(container.querySelectorAll("[data-current]")).toHaveLength(1)
     expect(container.querySelector("[data-month='2026-10']")!.getAttribute("aria-label")).toBe("oktober 2026: 10.000,00\u00a0kr.")
-    expect(screen.getByText("Betalinger i andre valutaer vises ikke her.")).toBeTruthy()
+    expect(screen.getByText("Beløb i andre valutaer vises ikke her.")).toBeTruthy()
   })
 
   it("says when nobody has paid in the base currency, rather than drawing zeros", () => {
@@ -152,33 +154,49 @@ describe("incoming list", () => {
 })
 
 describe("attention reasons and actions", () => {
-  const reasons: Array<[Summary["attention"][number]["reason"], string, string]> = [
-    ["invoice_overdue", "Faktura 2026-9 er forfalden", "Åbn faktura"],
-    ["draft_older_than_7_days", "Fakturakladde, der ikke er sendt", "Åbn kladde"],
-    ["quote_expiring", "Tilbud 2026-9 udløber snart", "Følg op"],
-    ["email_failed", "E-mailen med faktura 2026-9 blev ikke leveret", "Se levering"],
-    ["email_unconfirmed", "Levering af faktura 2026-9 er ikke bekræftet", "Se levering"],
+  const item = (overrides: Partial<Summary["attention"][number]>): Summary["attention"][number] => ({
+    documentId: "doc-1",
+    number: "2026-9",
+    customerName: "Kunde",
+    amount: money("DKK", "100.00"),
+    kind: "invoice",
+    dueDate: null,
+    daysOverdue: null,
+    isOverdue: false,
+    expiresOn: null,
+    reason: "invoice_overdue",
+    canRemind: false,
+    ...overrides,
+  })
+  const reasons: Array<[string, Partial<Summary["attention"][number]>, string, string]> = [
+    ["overdue by days", { reason: "invoice_overdue", isOverdue: true, daysOverdue: 5, dueDate: "2026-10-03" }, "Faktura 2026-9 er 5 dage over tid", "Åbn faktura"],
+    ["overdue today", { reason: "invoice_overdue", isOverdue: true, daysOverdue: 0, dueDate: "2026-10-08" }, "Faktura 2026-9 forfaldt i dag", "Åbn faktura"],
+    ["a draft", { reason: "draft_older_than_7_days" }, "Fakturakladde, der ikke er sendt", "Åbn kladde"],
+    ["a quote with an expiry date", { reason: "quote_expiring", kind: "quote", expiresOn: "2026-10-12" }, "Tilbud 2026-9 udløber 12. okt.", "Følg op"],
+    ["a quote without one", { reason: "quote_expiring", kind: "quote" }, "Tilbud 2026-9 udløber snart", "Følg op"],
+    ["a failed email", { reason: "email_failed" }, "E-mailen med faktura 2026-9 blev ikke leveret", "Se levering"],
+    ["an unconfirmed email", { reason: "email_unconfirmed" }, "Levering af faktura 2026-9 er ikke bekræftet", "Se levering"],
   ]
 
-  it.each(reasons)("%s says why and offers one action that opens the document", (reason, sentence, action) => {
-    const summary = emptySummary({
-      outstanding: total(bucket("DKK", "100.00")),
-      attention: [
-        {
-          documentId: "doc-1",
-          number: "2026-9",
-          customerName: "Kunde",
-          amount: { currency: "DKK", amount: "100.00", exponent: 2 },
-          kind: reason === "quote_expiring" ? "quote" : "invoice",
-          reason,
-          canRemind: false,
-        },
-      ],
-    })
-    renderView(summary)
+  it.each(reasons)("%s says why and offers one action that opens the document", (_name, overrides, sentence, action) => {
+    renderView(emptySummary({ outstanding: total(bucket("DKK", "100.00")), attention: [item(overrides)] }))
     expect(screen.getByText(sentence)).toBeTruthy()
     const link = screen.getAllByRole("link", { name: action })[0]!
-    expect(link.getAttribute("href")).toBe(reason === "quote_expiring" ? "/quotes/doc-1" : "/invoices/doc-1")
+    expect(link.getAttribute("href")).toBe(overrides.kind === "quote" ? "/quotes/doc-1" : "/invoices/doc-1")
+  })
+
+  it("colours a row red by isOverdue, not by the reason or the day count", () => {
+    const icons = (attention: Summary["attention"]) => {
+      const { container } = renderView(emptySummary({ outstanding: total(bucket("DKK", "100.00")), attention }))
+      return Array.from(container.querySelectorAll("[data-slot=dashboard-attention] li > span")).map((el) =>
+        el.className.includes("text-tone-danger")
+      )
+    }
+    // Overdue since this morning: zero days, still red.
+    expect(icons([item({ isOverdue: true, daysOverdue: 0 })])).toEqual([true])
+    cleanup()
+    // Not overdue, but a failed email: not red by overdue (it has its own tone).
+    expect(icons([item({ reason: "email_unconfirmed" })])).toEqual([false])
   })
 })
 
@@ -213,7 +231,7 @@ describe("reminder action", () => {
   it.each([
     [{ reason: "already_reminded", code: "BAD_REQUEST" }, "Der er allerede sendt en påmindelse i dag"],
     [{ reason: "missing_recipient", code: "BAD_REQUEST" }, "Kunden har ingen e-mailadresse"],
-    [{ reason: "email_unavailable", code: "BAD_REQUEST" }, "E-mail er ikke sat op endnu"],
+    [{ reason: "email_unavailable", code: "BAD_REQUEST" }, "E-mail er ikke sat op endnu. Åbn indstillinger"],
     [{ reason: "not_remindable", code: "BAD_REQUEST" }, "Fakturaen er ikke åben længere"],
     [{ code: "FORBIDDEN" }, "Din rolle må ikke sende påmindelser"],
     [{ code: "NOT_FOUND" }, "Fakturaen findes ikke længere"],
@@ -329,15 +347,7 @@ describe("page subtitle", () => {
 describe("attention rules", () => {
   it("gives only invoices that are asked for a rule: not drafts, not quotes", () => {
     const base = activeSummary()
-    const quote = {
-      documentId: "quote-1",
-      number: "T-2026-014",
-      customerName: "Nordlys ApS",
-      amount: { currency: "DKK", amount: "56000.00", exponent: 2 },
-      kind: "quote" as const,
-      reason: "quote_expiring" as const,
-      canRemind: false,
-    }
+    const quote = quoteAttention()
     const failed = { ...base.attention[0]!, documentId: "inv-failed", reason: "email_failed" as const, canRemind: false }
     const { container } = renderView({ ...base, attention: [...base.attention, quote, failed] })
     const rules = Array.from(
@@ -349,46 +359,85 @@ describe("attention rules", () => {
 })
 
 describe("getting started actions", () => {
-  const drafted = (ids: string[]) =>
-    emptySummary({
-      activity: ids.map((id, index) => ({
-        id: `e${index}`,
-        sequence: ids.length - index,
-        type: "invoice.draft_created",
-        aggregateType: "invoice",
-        aggregateId: id,
-        occurredAt: "2026-10-07T10:00:00.000Z",
-      })),
-    })
+  const drafted = (count: number, newestId: string | null, newestKind: "invoice" | "quote" | null) =>
+    emptySummary({ drafts: { count, newestId, newestKind } })
 
   it("continues the one draft, with the invoice list second and no second 'new'", () => {
-    renderView(drafted(["d1"]))
+    renderView(drafted(1, "d1", "invoice"))
     expect(screen.getByRole("link", { name: "Fortsæt kladden" }).getAttribute("href")).toBe("/invoices/d1")
     expect(screen.getByRole("link", { name: "Se fakturaer" }).getAttribute("href")).toBe("/invoices")
     expect(screen.queryByRole("link", { name: "Ny faktura" })).toBeNull()
   })
 
-  it("continues the newest draft when only one is open", () => {
-    // d2 was created, then deleted; d1 is the one left.
-    const summary = drafted(["d1"])
-    summary.activity.unshift({ id: "x2", sequence: 9, type: "invoice.draft_deleted", aggregateType: "invoice", aggregateId: "d2", occurredAt: "2026-10-07T12:00:00.000Z" })
-    summary.activity.push({ id: "x1", sequence: 0, type: "invoice.draft_created", aggregateType: "invoice", aggregateId: "d2", occurredAt: "2026-10-06T12:00:00.000Z" })
-    renderView(summary)
-    expect(screen.getByRole("link", { name: "Fortsæt kladden" }).getAttribute("href")).toBe("/invoices/d1")
+  it("opens a quote draft as a quote", () => {
+    renderView(drafted(1, "q1", "quote"))
+    expect(screen.getByRole("link", { name: "Fortsæt kladden" }).getAttribute("href")).toBe("/quotes/q1")
   })
 
-  it("sends several drafts to the list", () => {
-    renderView(drafted(["d1", "d2"]))
-    expect(screen.getByRole("link", { name: "Se kladder" }).getAttribute("href")).toBe("/invoices")
+  it("sends several drafts to the list, with their number", () => {
+    renderView(drafted(3, "d1", "invoice"))
+    expect(screen.getByRole("link", { name: "Se kladder (3)" }).getAttribute("href")).toBe("/invoices")
     expect(screen.queryByRole("link", { name: "Fortsæt kladden" })).toBeNull()
   })
 
-  it("points at the invoices when no draft is known", () => {
-    const summary = emptySummary({
-      activity: [{ id: "e1", sequence: 1, type: "quote.sent", aggregateType: "quote", aggregateId: "q", occurredAt: "2026-10-07T10:00:00.000Z" }],
-    })
-    renderView(summary)
+  it("points at the invoices when there is no draft but something else has happened", () => {
+    renderView(emptySummary({ activity: [activityEvent({ id: "e1", type: "quote.sent", aggregateId: "q" })] }))
     expect(screen.getByRole("link", { name: "Se fakturaer" }).getAttribute("href")).toBe("/invoices")
     expect(screen.queryByRole("link", { name: "Fortsæt kladden" })).toBeNull()
+  })
+})
+
+describe("incoming rules and days", () => {
+  it("draws the second rule as far as a partly paid invoice is settled", () => {
+    const summary = activeSummary()
+    summary.incoming[0] = { ...summary.incoming[0]!, amount: money("DKK", "6000.00"), total: money("DKK", "18000.00") }
+    const { container } = renderView(summary)
+    const [first, second] = Array.from(
+      container.querySelectorAll("[data-slot=dashboard-incoming] [data-slot=amount]")
+    ) as HTMLElement[]
+    expect(first!.getAttribute("data-rule")).toBe("double")
+    expect(first!.querySelectorAll("line")[1]!.getAttribute("stroke-dasharray")).toBe(`${12000 / 18000} 1`)
+    expect(second!.getAttribute("data-rule")).toBe("single")
+  })
+
+  it("says overdue today for a zero-day arrear", () => {
+    const summary = activeSummary()
+    summary.incoming[0] = { ...summary.incoming[0]!, daysOverdue: 0, isOverdue: true }
+    renderView(summary)
+    expect(screen.getByText("Forfaldt i dag")).toBeTruthy()
+  })
+})
+
+describe("reminder refusals from the email provider", () => {
+  const refusal = (reason: string) => Object.assign(new Error("Provider English"), { data: { reason, code: "PRECONDITION_FAILED" } })
+
+  it.each([
+    ["email_provider_refused", "Din e-mailudbyder afviste påmindelsen. Tjek e-mailindstillingerne."],
+    ["email_provider_unreachable", "Vi kunne ikke nå din e-mailudbyder. Prøv igen om lidt, eller tjek e-mailindstillingerne."],
+  ])("%s is worded in the catalogue, with a way to the settings", async (reason, text) => {
+    renderView(activeSummary(), async () => {
+      throw refusal(reason)
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Send påmindelse" }))
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain(text))
+    expect(screen.queryByText(/Provider English/)).toBeNull()
+    expect(within(screen.getByRole("alert")).getByRole("link", { name: "Åbn indstillinger" }).getAttribute("href")).toBe("/settings")
+  })
+
+  it("offers no settings link for a refusal settings cannot fix", async () => {
+    renderView(activeSummary(), async () => {
+      throw refusal("already_reminded")
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Send påmindelse" }))
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy())
+    expect(within(screen.getByRole("alert")).queryByRole("link")).toBeNull()
+  })
+})
+
+describe("activity lines", () => {
+  it("names the document and the customer", () => {
+    renderView(activeSummary())
+    expect(screen.getByText("Faktura 2026-148 betalt").getAttribute("href")).toBe("/invoices/inv-paid")
+    expect(screen.getByText("· Nordlys Studio")).toBeTruthy()
   })
 })

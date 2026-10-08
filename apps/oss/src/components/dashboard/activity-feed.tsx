@@ -1,10 +1,7 @@
-import { Link } from "@tanstack/react-router"
-
 import { useI18n } from "../../lib/i18n/react"
 import { Panel } from "../kvit/panel"
 import {
   activityLabelKey,
-  activityListFor,
   describeActivity,
   type ActivityLine,
 } from "./activity-events"
@@ -13,21 +10,12 @@ import { formatRelativeTime } from "./format-relative"
 import type { ActivityEvent } from "./summary-model"
 
 function ActivityLabel({ line, label }: { line: ActivityLine; label: string }) {
-  const className = "hover:text-foreground min-w-0 truncate transition-colors"
   const target = targetKind(line.target)
   if (target) {
     return (
-      <DocLink kind={target.kind} id={target.id} className={className}>
+      <DocLink kind={target.kind} id={target.id} className="hover:text-foreground min-w-0 truncate transition-colors">
         {label}
       </DocLink>
-    )
-  }
-  const list = line.count > 1 ? activityListFor(line.kind) : null
-  if (list) {
-    return (
-      <Link to={`/${list}`} className={className}>
-        {label}
-      </Link>
     )
   }
   return <span className="min-w-0 truncate">{label}</span>
@@ -35,8 +23,8 @@ function ActivityLabel({ line, label }: { line: ActivityLine; label: string }) {
 
 /**
  * A short, quiet feed of what happened to documents: one line each, a relative time, no avatars.
- * The events carry only a type and the document they are about, so a line names what happened and
- * links to the document; neighbouring events of one kind are merged into a count.
+ * A line says what happened to which document and for whom ("Faktura 2026-148 betalt · Nordlys
+ * Studio"), and links to the document.
  */
 export function ActivityFeed({
   events,
@@ -58,12 +46,15 @@ export function ActivityFeed({
         <ul className="px-4 pt-1 pb-3">
           {lines.map((line) => (
             <li key={line.id} className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
-              <span className="text-muted-foreground flex min-w-0 items-baseline gap-2.5">
+              <span className="text-muted-foreground flex min-w-0 items-baseline gap-x-2 gap-y-0 sm:gap-x-2.5">
                 <span aria-hidden="true" className="bg-foreground/25 size-1.5 shrink-0 translate-y-[-1px] rounded-full" />
                 <ActivityLabel
                   line={line}
-                  label={t(activityLabelKey(line.kind, line.count), { count: line.count })}
+                  label={t(activityLabelKey(line.kind, line.number !== null), { number: line.number ?? "" })}
                 />
+                {line.customerName ? (
+                  <span className="text-muted-foreground/70 min-w-0 truncate">· {line.customerName}</span>
+                ) : null}
               </span>
               <time
                 dateTime={line.occurredAt}

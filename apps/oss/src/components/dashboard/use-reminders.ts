@@ -8,6 +8,8 @@ export type ReminderFailure =
   | "alreadyReminded"
   | "noRecipient"
   | "emailUnavailable"
+  | "emailProviderRefused"
+  | "emailProviderUnreachable"
   | "notRemindable"
   | "forbidden"
   | "notFound"
@@ -22,6 +24,8 @@ const FAILURE_BY_REASON: Record<string, ReminderFailure> = {
   already_reminded: "alreadyReminded",
   missing_recipient: "noRecipient",
   email_unavailable: "emailUnavailable",
+  email_provider_refused: "emailProviderRefused",
+  email_provider_unreachable: "emailProviderUnreachable",
   not_remindable: "notRemindable",
 }
 
@@ -33,8 +37,7 @@ const FAILURE_BY_CODE: Record<string, ReminderFailure> = {
 /**
  * Reads a refusal by its codes and never by its text, since the text is the server's English. A
  * domain refusal carries `data.reason` (`already_reminded`, `missing_recipient`, `email_unavailable`,
- * `not_remindable`), and every tRPC error carries `data.code`. A failure with neither, such as the
- * email provider refusing the message, is `unknown` and gets the generic line.
+ * `not_remindable`, `email_provider_refused`, `email_provider_unreachable`), and every tRPC error carries `data.code`. A failure with neither is `unknown` and gets the generic line.
  */
 export function reminderFailure(error: unknown): ReminderFailure {
   const data = (error as { data?: { reason?: unknown; code?: unknown } } | null)?.data

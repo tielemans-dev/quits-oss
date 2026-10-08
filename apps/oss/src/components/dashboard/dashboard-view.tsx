@@ -10,7 +10,6 @@ import { IncomingList } from "./incoming-list"
 import { ReceivedChart } from "./received-chart"
 import {
   classifyDashboard,
-  openInvoiceDrafts,
   localToday,
   presentChart,
   presentHero,
@@ -61,7 +60,6 @@ export function DashboardView({
 
   const hero = useMemo(() => presentHero(summary), [summary])
   const chart = useMemo(() => presentChart(summary), [summary])
-  const drafts = useMemo(() => openInvoiceDrafts(summary), [summary])
   const today = localToday(summary.asOf, summary.timezone)
   const monthName = formatMonthName(summary.asOf, locale, summary.timezone)
   const inAttention = useMemo(
@@ -89,7 +87,7 @@ export function DashboardView({
             <div className="contents @4xl:flex @4xl:flex-col @4xl:gap-4">
               {state === "getting-started" ? (
                 <GettingStarted
-                  drafts={drafts}
+                  drafts={summary.drafts}
                   className="@2xl:col-span-2 @4xl:col-span-1"
                 />
               ) : (
@@ -103,7 +101,6 @@ export function DashboardView({
               {state !== "getting-started" || summary.attention.length > 0 ? (
                 <AttentionList
                   items={summary.attention}
-                  incoming={summary.incoming}
                   reminders={reminders}
                   onRemind={remind}
                 />

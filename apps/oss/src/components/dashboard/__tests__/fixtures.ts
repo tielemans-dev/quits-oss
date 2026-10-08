@@ -1,10 +1,11 @@
 import type { Summary } from "../summary-model"
 
-export const bucket = (currency: string, amount: string, count = 1) => ({
+export const bucket = (currency: string, amount: string, count = 1, oldestDaysOverdue?: number) => ({
   currency,
   amount,
   count,
   exponent: currency === "JPY" ? 0 : 2,
+  ...(oldestDaysOverdue === undefined ? {} : { oldestDaysOverdue }),
 })
 
 export const total = (...buckets: ReturnType<typeof bucket>[]) => ({
@@ -20,6 +21,34 @@ export const MONTHS = Array.from({ length: 12 }, (_, index) => {
   return date.toISOString().slice(0, 7)
 })
 
+type Summary_ = Summary
+export const activityEvent = (
+  overrides: Partial<Summary_["activity"][number]> & Pick<Summary_["activity"][number], "id" | "type" | "aggregateId">
+): Summary_["activity"][number] => ({
+  sequence: 1,
+  aggregateType: overrides.type.split(".")[0] === "credit_note" ? "credit_note" : "invoice",
+  occurredAt: "2026-10-07T10:00:00.000Z",
+  documentKind: overrides.type.startsWith("quote") ? "quote" : "invoice",
+  documentNumber: null,
+  customerName: null,
+  ...overrides,
+})
+
+/** A quote that is about to lapse, as the attention list carries it. */
+export const quoteAttention = (): Summary_["attention"][number] => ({
+  documentId: "quote-1",
+  number: "T-2026-014",
+  customerName: "Nordlys ApS",
+  amount: money("DKK", "56000.00"),
+  kind: "quote",
+  dueDate: null,
+  daysOverdue: null,
+  isOverdue: false,
+  expiresOn: "2026-10-12",
+  reason: "quote_expiring",
+  canRemind: false,
+})
+
 /** An organization with nothing in it: the API's own empty summary. */
 export function emptySummary(overrides: Partial<Summary> = {}): Summary {
   return {
@@ -27,6 +56,8 @@ export function emptySummary(overrides: Partial<Summary> = {}): Summary {
     timezone: "Europe/Copenhagen",
     baseCurrency: "DKK",
     currencyMode: "per_currency",
+    hasOtherCurrencies: false,
+    drafts: { count: 0, newestId: null, newestKind: null },
     outstanding: emptyTotal(),
     overdue: { ...emptyTotal(), oldestDaysOverdue: 0 },
     paidThisMonth: emptyTotal(),
@@ -49,7 +80,8 @@ export const money = (currency: string, amount: string) => ({
 export function activeSummary(overrides: Partial<Summary> = {}): Summary {
   return emptySummary({
     outstanding: total(bucket("DKK", "20000.00", 3), bucket("EUR", "1800.00", 1)),
-    overdue: { ...total(bucket("DKK", "8750.00", 1)), oldestDaysOverdue: 14 },
+    hasOtherCurrencies: true,
+    overdue: { ...total(bucket("DKK", "8750.00", 1, 14)), oldestDaysOverdue: 14 },
     paidThisMonth: total(bucket("DKK", "10000.00", 2)),
     receivedByMonth: MONTHS.map((month, index) => ({
       month,
@@ -63,6 +95,10 @@ export function activeSummary(overrides: Partial<Summary> = {}): Summary {
         customerName: "Havn Studio",
         amount: money("DKK", "8750.00"),
         kind: "invoice",
+        dueDate: "2026-09-24",
+        daysOverdue: 14,
+        isOverdue: true,
+        expiresOn: null,
         reason: "invoice_overdue",
         canRemind: true,
       },
@@ -72,6 +108,10 @@ export function activeSummary(overrides: Partial<Summary> = {}): Summary {
         customerName: "Bølge Bryg",
         amount: money("DKK", "14500.00"),
         kind: "invoice",
+        dueDate: "2026-10-22",
+        daysOverdue: null,
+        isOverdue: false,
+        expiresOn: null,
         reason: "draft_older_than_7_days",
         canRemind: false,
       },
@@ -82,6 +122,8 @@ export function activeSummary(overrides: Partial<Summary> = {}): Summary {
         number: "2026-115",
         customerName: "Havn Studio",
         amount: money("DKK", "8750.00"),
+        total: money("DKK", "8750.00"),
+        isOverdue: true,
         dueDate: "2026-09-24",
         daysOverdue: 14,
         canRemind: true,
@@ -91,13 +133,15 @@ export function activeSummary(overrides: Partial<Summary> = {}): Summary {
         number: "2026-117",
         customerName: "Nordlys ApS",
         amount: money("DKK", "11250.00"),
+        total: money("DKK", "11250.00"),
+        isOverdue: false,
         dueDate: "2026-10-11",
         daysOverdue: 0,
         canRemind: false,
       },
     ],
     activity: [
-      { id: "e1", sequence: 3, type: "invoice.paid", aggregateType: "invoice", aggregateId: "inv-paid", occurredAt: "2026-10-07T10:00:00.000Z" },
+      activityEvent({ id: "e1", type: "invoice.paid", aggregateId: "inv-paid", documentNumber: "2026-148", customerName: "Nordlys Studio" }),
     ],
     ...overrides,
   })

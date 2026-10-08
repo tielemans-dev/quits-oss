@@ -53,6 +53,15 @@ export function formatLongDate(
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
+/** A calendar date (YYYY-MM-DD) as "12. okt." / "12 Oct": a date without a time has no zone to move it. */
+export function formatShortDate(isoDate: string, locale: string | null | undefined): string {
+  return new Intl.DateTimeFormat(normalizeLocale(locale), {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(`${isoDate}T00:00:00Z`))
+}
+
 /** "oktober", for the month the summary was taken in. */
 export function formatMonthName(
   iso: string,

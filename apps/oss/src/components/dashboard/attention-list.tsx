@@ -7,9 +7,10 @@ import { listRowLinkClass } from "../kvit/list"
 import { Panel } from "../kvit/panel"
 import { Button } from "../ui/button"
 import { DocLink } from "./doc-link"
+import { formatShortDate } from "./format-relative"
 import { tCount, type Translate } from "./i18n"
 import { ReminderFailureNote, RemindAction } from "./remind-action"
-import { attentionAction, overdueDaysFor, type AttentionItem, type IncomingItem } from "./summary-model"
+import { attentionAction, type AttentionItem } from "./summary-model"
 import type { ReminderState } from "./use-reminders"
 
 const reasonStyle: Record<AttentionItem["reason"], { icon: LucideIcon; tone: string }> = {
@@ -28,18 +29,23 @@ export function attentionRule(item: AttentionItem): "none" | "single" {
   return item.kind === "invoice" && item.reason !== "draft_older_than_7_days" ? "single" : "none"
 }
 
-/** The sentence under the customer: why this row is here. */
-export function attentionReason(item: AttentionItem, daysOverdue: number | null, t: Translate): string {
+/**
+ * The sentence under the customer: why this row is here. The days and the expiry date are the
+ * server's (`daysOverdue`, `expiresOn`), not worked out here.
+ */
+export function attentionReason(item: AttentionItem, locale: string, t: Translate): string {
   const number = item.number ?? ""
   switch (item.reason) {
     case "invoice_overdue":
-      return daysOverdue !== null && daysOverdue > 0
-        ? tCount(t, "dashboard.attention.overdue.days", daysOverdue, { number, days: daysOverdue })
-        : t("dashboard.attention.overdue", { number })
+      return item.daysOverdue !== null && item.daysOverdue > 0
+        ? tCount(t, "dashboard.attention.overdue.days", item.daysOverdue, { number, days: item.daysOverdue })
+        : t("dashboard.attention.overdue.today", { number })
     case "draft_older_than_7_days":
       return item.kind === "quote" ? t("dashboard.attention.draftQuote") : t("dashboard.attention.draftInvoice")
     case "quote_expiring":
-      return t("dashboard.attention.quoteExpiring", { number })
+      return item.expiresOn
+        ? t("dashboard.attention.quoteExpiresOn", { number, date: formatShortDate(item.expiresOn, locale) })
+        : t("dashboard.attention.quoteExpiring", { number })
     case "email_failed":
       return t("dashboard.attention.emailFailed", { number })
     case "email_unconfirmed":
@@ -69,12 +75,10 @@ export function attentionOpenLabel(item: AttentionItem, t: Translate): string {
  */
 export function AttentionList({
   items,
-  incoming,
   reminders,
   onRemind,
 }: {
   items: AttentionItem[]
-  incoming: IncomingItem[]
   reminders: Record<string, ReminderState>
   onRemind: (invoiceId: string) => void
 }) {
@@ -87,7 +91,8 @@ export function AttentionList({
       ) : (
         <ul>
           {items.map((item) => {
-            const style = reasonStyle[item.reason]
+            // Red is the server's `isOverdue`, whatever the reason that put the row here.
+            const style = item.isOverdue ? reasonStyle.invoice_overdue : reasonStyle[item.reason]
             const Icon = style.icon
             const action = attentionAction(item)
             const refusal = reminders[item.documentId]
@@ -121,7 +126,7 @@ export function AttentionList({
                     />
                   </div>
                   <p className="text-muted-foreground mt-0.5 text-xs">
-                    {attentionReason(item, overdueDaysFor(item, incoming), t)}
+                    {attentionReason(item, locale, t)}
                   </p>
                   <div className="relative z-10 mt-2">
                     {action === "remind" || reminders[item.documentId]?.status === "sent" ? (

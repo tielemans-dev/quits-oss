@@ -5,8 +5,7 @@ import {
   classifyDashboard,
   dueLabel,
   localToday,
-  openInvoiceDrafts,
-  overdueDaysFor,
+  incomingRule,
   presentChart,
   presentHero,
   streakVisible,
@@ -24,6 +23,10 @@ describe("classifyDashboard", () => {
     const attention = activeSummary().attention.slice(1)
     expect(classifyDashboard(emptySummary({ attention }))).toBe("getting-started")
     expect(classifyDashboard(emptySummary({ activity: activeSummary().activity }))).toBe("getting-started")
+  })
+
+  it("is getting-started when only drafts exist", () => {
+    expect(classifyDashboard(emptySummary({ drafts: { count: 1, newestId: "d", newestKind: "invoice" } }))).toBe("getting-started")
   })
 
   it("is active while money is owed, and kvit once money has moved and none is owed", () => {
@@ -57,13 +60,19 @@ describe("presentHero money", () => {
 
   it("keeps a non-base overdue amount with its own currency line", () => {
     const summary = activeSummary({
-      overdue: { ...total(bucket("DKK", "8750.00"), bucket("EUR", "300.00")), oldestDaysOverdue: 14 },
+      overdue: { ...total(bucket("DKK", "8750.00", 1, 14), bucket("EUR", "300.00", 1, 40)), oldestDaysOverdue: 40 },
     })
     const hero = presentHero(summary)
     expect(hero.others[0]?.overdue?.amount).toBe("300.00")
     expect(hero.overdue?.bucket.amount).toBe("8750.00")
-    // The oldest age is one number for all currencies, so it is not claimed for the DKK figure.
-    expect(hero.overdue?.oldestDaysOverdue).toBeNull()
+  })
+
+  it("reads the oldest age from the hero currency's own bucket, even with other currencies overdue", () => {
+    const summary = activeSummary({
+      overdue: { ...total(bucket("DKK", "8750.00", 1, 14), bucket("EUR", "300.00", 1, 40)), oldestDaysOverdue: 40 },
+    })
+    // 40 belongs to the EUR invoice; the DKK figure must say 14.
+    expect(presentHero(summary).overdue?.oldestDaysOverdue).toBe(14)
   })
 
   it("never reads the unvalued subset: it is part of the buckets, not extra money", () => {
@@ -101,13 +110,14 @@ describe("presentHero money", () => {
     expect(presentHero(emptySummary()).segments).toBeNull()
   })
 
-  it("trusts the oldest overdue age when overdue money is in one currency", () => {
-    expect(presentHero(activeSummary()).overdue?.oldestDaysOverdue).toBe(14)
+  it("has no age when the bucket carries none", () => {
+    const summary = activeSummary({ overdue: { ...total(bucket("DKK", "8750.00")), oldestDaysOverdue: 14 } })
+    expect(presentHero(summary).overdue?.oldestDaysOverdue).toBeNull()
   })
 })
 
 describe("presentChart", () => {
-  it("draws the base currency only and says when other currencies were left out", () => {
+  it("draws the base currency only and passes on the summary's other-currency flag", () => {
     const chart = presentChart(activeSummary())
     expect(chart.currency).toBe("DKK")
     expect(chart.months).toHaveLength(12)
@@ -115,6 +125,7 @@ describe("presentChart", () => {
     // The EUR month is not drawn as DKK.
     expect(chart.months[5]).toMatchObject({ amount: null, value: 0 })
     expect(chart.hasOtherCurrencies).toBe(true)
+    expect(presentChart({ ...activeSummary(), hasOtherCurrencies: false }).hasOtherCurrencies).toBe(false)
     expect(chart.total).toBe("10000.00")
   })
 
@@ -156,21 +167,41 @@ describe("due dates", () => {
   })
 
   it("labels late, today, tomorrow and later", () => {
-    expect(dueLabel({ dueDate: "2026-09-24", daysOverdue: 14 }, today)).toEqual({ kind: "overdue", days: 14 })
-    expect(dueLabel({ dueDate: "2026-10-08", daysOverdue: 0 }, today)).toEqual({ kind: "today" })
-    expect(dueLabel({ dueDate: "2026-10-09", daysOverdue: 0 }, today)).toEqual({ kind: "tomorrow" })
-    expect(dueLabel({ dueDate: "2026-10-18", daysOverdue: 0 }, today)).toEqual({ kind: "later", days: 10 })
+    const at = (dueDate: string, daysOverdue: number, isOverdue: boolean) => dueLabel({ dueDate, daysOverdue, isOverdue }, today)
+    expect(at("2026-09-24", 14, true)).toEqual({ kind: "overdue", days: 14 })
+    expect(at("2026-10-08", 0, false)).toEqual({ kind: "today" })
+    expect(at("2026-10-09", 0, false)).toEqual({ kind: "tomorrow" })
+    expect(at("2026-10-18", 0, false)).toEqual({ kind: "later", days: 10 })
+  })
+
+  it("calls a same-day arrear overdue, from isOverdue and not from the day count", () => {
+    expect(dueLabel({ dueDate: "2026-10-08", daysOverdue: 0, isOverdue: true }, today)).toEqual({ kind: "overdue", days: 0 })
+  })
+})
+
+describe("incomingRule", () => {
+  const rule = (balance: string, totalAmount: string) => incomingRule({ amount: money("DKK", balance), total: money("DKK", totalAmount) })
+
+  it("is a single rule while nothing is settled", () => {
+    expect(rule("1000.00", "1000.00")).toEqual({ rule: "single" })
+  })
+
+  it("draws the second rule as far as it is paid or credited: 1 - balance/total", () => {
+    expect(rule("6000.00", "18000.00")).toEqual({ rule: "double", paidFraction: 12000 / 18000 })
+    expect(rule("250.00", "1000.00")).toEqual({ rule: "double", paidFraction: 0.75 })
+  })
+
+  it("never draws past the total, and treats a balance above it as nothing settled", () => {
+    expect(rule("1200.00", "1000.00")).toEqual({ rule: "single" })
+  })
+
+  it("is exact on small cents", () => {
+    expect(rule("0.10", "0.30")).toEqual({ rule: "double", paidFraction: 20 / 30 })
   })
 })
 
 describe("attention", () => {
   const [overdue, draft] = activeSummary().attention
-
-  it("finds how late an overdue invoice is from the incoming list", () => {
-    expect(overdueDaysFor(overdue!, activeSummary().incoming)).toBe(14)
-    expect(overdueDaysFor(draft!, activeSummary().incoming)).toBeNull()
-    expect(overdueDaysFor(overdue!, [])).toBeNull()
-  })
 
   it("offers a reminder only where the server says one can be sent", () => {
     expect(attentionAction(overdue!)).toBe("remind")
@@ -184,45 +215,12 @@ describe("attention", () => {
   })
 })
 
-describe("openInvoiceDrafts", () => {
-  const ev = (id: string, type: string, aggregateId: string) => ({
-    id,
-    sequence: 0,
-    type,
-    aggregateType: "invoice",
-    aggregateId,
-    occurredAt: "2026-10-07T10:00:00.000Z",
-  })
-
-  it("finds drafts from newest to oldest, without the ones deleted or sent since", () => {
-    const activity = [
-      ev("5", "invoice.draft_deleted", "b"),
-      ev("4", "invoice.draft_created", "c"),
-      ev("3", "invoice.sent", "a"),
-      ev("2", "invoice.draft_created", "b"),
-      ev("1", "invoice.draft_created", "a"),
-    ]
-    expect(openInvoiceDrafts({ activity, attention: [] })).toEqual(["c"])
-  })
-
-  it("adds drafts older than a week from the attention list, after the newer ones", () => {
-    const [, draft] = activeSummary().attention
-    expect(openInvoiceDrafts({ activity: [ev("1", "invoice.draft_created", "n")], attention: [draft!] })).toEqual([
-      "n",
-      "inv-draft",
-    ])
-  })
-
-  it("does not take a draft quote for an invoice draft", () => {
-    const [, draft] = activeSummary().attention
-    expect(openInvoiceDrafts({ activity: [], attention: [{ ...draft!, kind: "quote" }] })).toEqual([])
-  })
-})
-
 describe("reminderFailure", () => {
   it("reads a domain refusal by its reason and any other error by its code", () => {
     expect(reminderFailure({ data: { reason: "already_reminded", code: "BAD_REQUEST" } })).toBe("alreadyReminded")
     expect(reminderFailure({ data: { reason: "missing_recipient" } })).toBe("noRecipient")
+    expect(reminderFailure({ data: { reason: "email_provider_refused", code: "PRECONDITION_FAILED" } })).toBe("emailProviderRefused")
+    expect(reminderFailure({ data: { reason: "email_provider_unreachable" } })).toBe("emailProviderUnreachable")
     expect(reminderFailure({ data: { code: "FORBIDDEN" } })).toBe("forbidden")
     expect(reminderFailure({ data: { code: "NOT_FOUND" } })).toBe("notFound")
   })

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router"
 import { Check, Loader2 } from "lucide-react"
 
 import { Button } from "../ui/button"
@@ -10,11 +11,20 @@ const FAILURE_KEY = {
   alreadyReminded: "dashboard.remind.error.alreadyReminded",
   noRecipient: "dashboard.remind.error.noRecipient",
   emailUnavailable: "dashboard.remind.error.emailUnavailable",
+  emailProviderRefused: "dashboard.remind.error.emailProviderRefused",
+  emailProviderUnreachable: "dashboard.remind.error.emailProviderUnreachable",
   notRemindable: "dashboard.remind.error.notRemindable",
   forbidden: "dashboard.remind.error.forbidden",
   notFound: "dashboard.remind.error.notFound",
   unknown: "dashboard.remind.error",
 } as const satisfies Record<ReminderFailure, TranslationKey>
+
+/** Refusals that the email settings can fix. */
+const SETTINGS_FIXES: ReadonlySet<ReminderFailure> = new Set([
+  "emailUnavailable",
+  "emailProviderRefused",
+  "emailProviderUnreachable",
+])
 
 /** The refusal in words, from the catalogue: the server's own text is never shown. */
 export function ReminderFailureNote({ failure, className }: { failure: ReminderFailure; className?: string }) {
@@ -22,6 +32,14 @@ export function ReminderFailureNote({ failure, className }: { failure: ReminderF
   return (
     <span role="alert" className={cn("text-tone-danger text-xs", className)}>
       {t(FAILURE_KEY[failure])}
+      {SETTINGS_FIXES.has(failure) ? (
+        <>
+          {" "}
+          <Link to="/settings" className="font-semibold underline underline-offset-2">
+            {t("dashboard.remind.settingsLink")}
+          </Link>
+        </>
+      ) : null}
     </span>
   )
 }

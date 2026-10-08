@@ -10,13 +10,15 @@ import { Panel } from "../kvit/panel"
 import { DocLink } from "./doc-link"
 import { tCount, type Translate } from "./i18n"
 import { RemindAction } from "./remind-action"
-import { dueLabel, type DueLabel, type IncomingItem } from "./summary-model"
+import { dueLabel, incomingRule, type DueLabel, type IncomingItem } from "./summary-model"
 import type { ReminderState } from "./use-reminders"
 
 export function dueText(due: DueLabel, t: Translate): string {
   switch (due.kind) {
     case "overdue":
-      return tCount(t, "dashboard.incoming.overdue", due.days, { days: due.days })
+      return due.days === 0
+        ? t("dashboard.incoming.overdueToday")
+        : tCount(t, "dashboard.incoming.overdue", due.days, { days: due.days })
     case "today":
       return t("dashboard.incoming.today")
     case "tomorrow":
@@ -28,7 +30,7 @@ export function dueText(due: DueLabel, t: Translate): string {
 
 /**
  * Invoices that are due soon or already late, earliest first, each with what is still owed on a
- * single rule (the money is asked for, not yet settled). The reminder action shows on hover and
+ * single rule, or a second one drawn as far as it has been paid or credited. The reminder action shows on hover and
  * focus where there is a pointer, and always on touch, like the row actions of the lists. An
  * invoice that is already in the attention list gets its reminder there, not twice.
  */
@@ -122,7 +124,7 @@ export function IncomingList({
                   currency={item.amount.currency}
                   locale={locale}
                   size="sm"
-                  rule="single"
+                  {...incomingRule(item)}
                   className="-mt-0.5"
                 />
               </li>

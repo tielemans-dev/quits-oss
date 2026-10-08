@@ -33,7 +33,10 @@ export function classifyDashboard(summary: Summary): DashboardState {
     summary.receivedByMonth.some((month) => month.count > 0)
   if (hasMoney) return summary.outstanding.count > 0 ? "active" : "kvit"
   const hasSomething =
-    summary.attention.length > 0 || summary.incoming.length > 0 || summary.activity.length > 0
+    summary.drafts.count > 0 ||
+    summary.attention.length > 0 ||
+    summary.incoming.length > 0 ||
+    summary.activity.length > 0
   return hasSomething ? "getting-started" : "first-run"
 }
 
@@ -56,6 +59,7 @@ export type HeroModel = {
   currency: string
   /** null when nothing is owed in `currency`. */
   outstanding: Bucket | null
+  /** `oldestDaysOverdue` is the oldest age within this currency; null when the bucket has none. */
   overdue: { bucket: Bucket; oldestDaysOverdue: number | null } | null
   /** Received this month, in `currency`. */
   paid: Bucket | null
@@ -87,12 +91,7 @@ export function presentHero(summary: Summary): HeroModel {
     currency,
     outstanding: owedBucket,
     overdue: overdueBucket
-      ? {
-          bucket: overdueBucket,
-          // The oldest age is one number for all currencies; only trust it when overdue money is
-          // in a single currency, so it cannot belong to an invoice in another one.
-          oldestDaysOverdue: overdue.buckets.length === 1 ? overdue.oldestDaysOverdue : null,
-        }
+      ? { bucket: overdueBucket, oldestDaysOverdue: overdueBucket.oldestDaysOverdue ?? null }
       : null,
     paid: paidBucket,
     segments:
@@ -119,7 +118,7 @@ export type ChartModel = {
   /** The twelve months added up, in `currency`: one currency, so the sum is honest. */
   total: string
   hasData: boolean
-  /** True when money was also received in another currency, which this chart does not draw. */
+  /** The summary's own flag: some amount is in another currency, which this chart does not draw. */
   hasOtherCurrencies: boolean
 }
 
@@ -130,10 +129,8 @@ export function presentChart(summary: Summary): ChartModel {
     summary.receivedByMonth.flatMap((month) => month.buckets.filter((b) => b.currency === currency))
   )
   let sum = 0n
-  let hasOtherCurrencies = false
   const months = summary.receivedByMonth.map((entry, index, all) => {
     const bucket = bucketFor(entry, currency)
-    if (entry.buckets.some((other) => other.currency !== currency)) hasOtherCurrencies = true
     if (bucket) sum += toMinor(bucket)
     return {
       month: entry.month,
@@ -147,32 +144,8 @@ export function presentChart(summary: Summary): ChartModel {
     months,
     total: minorToDecimal(sum, exponent),
     hasData: months.some((month) => month.amount !== null),
-    hasOtherCurrencies,
+    hasOtherCurrencies: summary.hasOtherCurrencies,
   }
-}
-
-/**
- * The invoice drafts that are still drafts, newest first, as far as the summary can tell. It has
- * no list of drafts, so they are found in the activity (a draft created and not since deleted or
- * sent) and in the attention list (drafts older than a week). Activity holds the latest eight
- * events, so a long-forgotten draft may be missing; the page never claims a count it cannot know.
- */
-export function openInvoiceDrafts(summary: Pick<Summary, "activity" | "attention">): string[] {
-  const gone = new Set<string>()
-  const drafts: string[] = []
-  for (const event of summary.activity) {
-    if (event.aggregateType !== "invoice") continue
-    if (["invoice.draft_deleted", "invoice.issued", "invoice.sent"].includes(event.type)) gone.add(event.aggregateId)
-    if (event.type === "invoice.draft_created" && !gone.has(event.aggregateId) && !drafts.includes(event.aggregateId)) {
-      drafts.push(event.aggregateId)
-    }
-  }
-  for (const item of summary.attention) {
-    if (item.kind === "invoice" && item.reason === "draft_older_than_7_days" && !drafts.includes(item.documentId)) {
-      drafts.push(item.documentId)
-    }
-  }
-  return drafts
 }
 
 /** Streaks of one are just an invoice that was paid; only a run is worth a line. */
@@ -205,11 +178,15 @@ export type DueLabel =
   | { kind: "later"; days: number }
 
 /**
- * When an incoming invoice is due. `daysOverdue` is 0 both for "due today" and for "past its due
- * time today", so a zero is read as today.
+ * When an incoming invoice is due. Overdue is the server's `isOverdue`, never `daysOverdue > 0`: an
+ * invoice that went overdue earlier today has 0 days and is still overdue. Otherwise the days to
+ * the due date are counted from the organization's today.
  */
-export function dueLabel(item: Pick<IncomingItem, "dueDate" | "daysOverdue">, today: string): DueLabel {
-  if (item.daysOverdue > 0) return { kind: "overdue", days: item.daysOverdue }
+export function dueLabel(
+  item: Pick<IncomingItem, "dueDate" | "daysOverdue" | "isOverdue">,
+  today: string
+): DueLabel {
+  if (item.isOverdue) return { kind: "overdue", days: item.daysOverdue }
   const days = daysBetween(today, item.dueDate)
   if (days <= 0) return { kind: "today" }
   if (days === 1) return { kind: "tomorrow" }
@@ -217,12 +194,19 @@ export function dueLabel(item: Pick<IncomingItem, "dueDate" | "daysOverdue">, to
 }
 
 /**
- * How late an overdue invoice in the attention list is. The attention list carries no due date,
- * but it is a prefix of the incoming list (both sort by due date), so the days are found there.
+ * How much of an incoming invoice is settled, for the second rule: `1 - balance/total` from exact
+ * minor units, so payments and credits both count, as in the lists. The share only draws the
+ * rule; it never feeds an amount. Nothing settled is a single rule.
  */
-export function overdueDaysFor(item: AttentionItem, incoming: IncomingItem[]): number | null {
-  if (item.reason !== "invoice_overdue") return null
-  return incoming.find((candidate) => candidate.documentId === item.documentId)?.daysOverdue ?? null
+export function incomingRule(item: Pick<IncomingItem, "amount" | "total">): {
+  rule: "single" | "double"
+  paidFraction?: number
+} {
+  const total = toMinor(item.total)
+  const balance = toMinor(item.amount)
+  if (total <= 0n || balance >= total) return { rule: "single" }
+  if (balance <= 0n) return { rule: "double" }
+  return { rule: "double", paidFraction: Number(total - balance) / Number(total) }
 }
 
 /** Whether an attention row's one action is "send a reminder", the only one that is not a link. */

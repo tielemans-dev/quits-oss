@@ -1,14 +1,16 @@
+import { DASHBOARD_ACTIVITY_EVENT_TYPES, type DashboardActivityEventType } from "@quits/contracts/dashboard"
+
 import type { TranslationKey } from "../../lib/i18n/messages"
 import type { ActivityEvent } from "./summary-model"
 
 /**
- * The dashboard's activity feed shows what happened to documents, in a few words. Event types
- * come from the domain event log (see `src/domain`); the log holds many more than a person wants
- * to read, so only the types below are shown and the rest are left out on purpose: edits of a
- * draft, deleted drafts, voided numbers, valuations, stored artifacts, paused reminders and
- * settings. Unknown types are left out too, so a new event never shows up as raw text.
+ * The dashboard's activity feed shows what happened to documents, in a few words. The server has
+ * already left out what a person has no use for (draft edits, voided numbers, valuations, stored
+ * artifacts, settings), so every event that arrives has a label. `Record<DashboardActivityEventType, ...>`
+ * makes a type added to the contract's allowlist a compile error here until it is labelled.
  *
- * Each kind has a singular and a plural label (`dashboard.activity.<kind>.one|other`).
+ * Each kind has two labels in the catalogue, `dashboard.activity.<kind>` and
+ * `dashboard.activity.<kind>.numbered` (with `{number}`), since a draft has no number yet.
  */
 export const ACTIVITY_KINDS = [
   "invoiceDraft",
@@ -32,7 +34,7 @@ export const ACTIVITY_KINDS = [
 
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number]
 
-const KIND_BY_TYPE: Record<string, ActivityKind> = {
+const KIND_BY_TYPE: Record<DashboardActivityEventType, ActivityKind> = {
   "invoice.draft_created": "invoiceDraft",
   "invoice.issued": "invoiceSent",
   "invoice.sent": "invoiceSent",
@@ -45,15 +47,16 @@ const KIND_BY_TYPE: Record<string, ActivityKind> = {
   "invoice.email_failed": "deliveryFailed",
   "quote.email_failed": "deliveryFailed",
   "credit_note.email_failed": "deliveryFailed",
+  "agreement.email_failed": "deliveryFailed",
   "invoice.email_unconfirmed": "deliveryUnconfirmed",
   "invoice.reminder_unconfirmed": "deliveryUnconfirmed",
   "quote.email_unconfirmed": "deliveryUnconfirmed",
   "credit_note.email_unconfirmed": "deliveryUnconfirmed",
+  "agreement.email_unconfirmed": "deliveryUnconfirmed",
   "invoice.became_overdue": "invoiceOverdue",
   "credit_note.issued": "creditNoteIssued",
   "quote.draft_created": "quoteDraft",
   "quote.sent": "quoteSent",
-  "quote.email_resent": "quoteSent",
   "quote.accepted": "quoteAccepted",
   "quote.rejected": "quoteRejected",
   "quote.converted": "quoteConverted",
@@ -62,8 +65,11 @@ const KIND_BY_TYPE: Record<string, ActivityKind> = {
   "agreement.accepted": "agreementAccepted",
 }
 
+/** The kind of an event type, or null for one outside the allowlist (a newer server). */
 export function activityKind(type: string): ActivityKind | null {
-  return KIND_BY_TYPE[type] ?? null
+  return (DASHBOARD_ACTIVITY_EVENT_TYPES as readonly string[]).includes(type)
+    ? KIND_BY_TYPE[type as DashboardActivityEventType]
+    : null
 }
 
 export type ActivityTarget =
@@ -73,15 +79,14 @@ export type ActivityTarget =
   | { to: "agreement"; id: string }
   | { to: "none" }
 
-/** The document an event is about. A payment event has no page of its own. */
-export function activityTarget(event: Pick<ActivityEvent, "aggregateType" | "aggregateId">): ActivityTarget {
-  switch (event.aggregateType) {
+/** The document an event is about, by the server's `documentKind`. */
+export function activityTarget(event: Pick<ActivityEvent, "documentKind" | "aggregateId">): ActivityTarget {
+  switch (event.documentKind) {
     case "invoice":
       return { to: "invoice", id: event.aggregateId }
     case "quote":
       return { to: "quote", id: event.aggregateId }
     case "credit_note":
-    case "creditNote":
       return { to: "creditNote", id: event.aggregateId }
     case "agreement":
       return { to: "agreement", id: event.aggregateId }
@@ -93,59 +98,42 @@ export function activityTarget(event: Pick<ActivityEvent, "aggregateType" | "agg
 export type ActivityLine = {
   id: string
   kind: ActivityKind
-  /** How many documents the line stands for: neighbours of the same kind are merged. */
-  count: number
+  number: string | null
+  customerName: string | null
   occurredAt: string
-  /** The document, when the line is about exactly one. */
   target: ActivityTarget
 }
 
 /**
- * Turns the newest-first event list into the lines of the feed:
- * - types without a label are dropped;
- * - a payment that settled an invoice is dropped when that invoice also says it is paid, since
- *   one fact should not be told twice;
- * - neighbours of the same kind merge ("3 fakturaer sendt"), counting each document once.
+ * The lines of the feed, newest first. Two things are left out because they would tell one fact
+ * twice, not because of what they are: a payment that settled an invoice that is also reported
+ * paid, and a repeat of the same kind for the same document (an invoice both issued and sent).
  */
 export function describeActivity(events: ActivityEvent[]): ActivityLine[] {
   const paidInvoices = new Set(
     events.filter((event) => event.type === "invoice.paid").map((event) => event.aggregateId)
   )
-  const lines: Array<ActivityLine & { documents: Set<string> }> = []
+  const lines: ActivityLine[] = []
+  const seen = new Set<string>()
   for (const event of events) {
     const kind = activityKind(event.type)
     if (!kind) continue
     if (event.type === "payment.recorded" && paidInvoices.has(event.aggregateId)) continue
-    const previous = lines[lines.length - 1]
-    if (previous && previous.kind === kind) {
-      previous.documents.add(event.aggregateId)
-      previous.count = previous.documents.size
-      if (previous.count > 1) previous.target = { to: "none" }
-      continue
-    }
+    const once = `${kind}:${event.aggregateId}`
+    if (seen.has(once)) continue
+    seen.add(once)
     lines.push({
       id: event.id,
       kind,
-      count: 1,
+      number: event.documentNumber,
+      customerName: event.customerName,
       occurredAt: event.occurredAt,
       target: activityTarget(event),
-      documents: new Set([event.aggregateId]),
     })
   }
-  return lines.map(({ documents: _documents, ...line }) => line)
+  return lines
 }
 
-export function activityLabelKey(kind: ActivityKind, count: number): TranslationKey {
-  return `dashboard.activity.${kind}.${count === 1 ? "one" : "other"}` as TranslationKey
-}
-
-/** The list a merged line leads to, since it stands for more than one document. */
-export function activityListFor(kind: ActivityKind): "invoices" | "quotes" | "credit-notes" | "agreements" | null {
-  if (kind.startsWith("invoice") || kind === "paymentRecorded" || kind === "paymentVoided" || kind === "reminderSent") {
-    return "invoices"
-  }
-  if (kind.startsWith("quote")) return "quotes"
-  if (kind === "creditNoteIssued") return "credit-notes"
-  if (kind.startsWith("agreement")) return "agreements"
-  return null
+export function activityLabelKey(kind: ActivityKind, numbered: boolean): TranslationKey {
+  return `dashboard.activity.${kind}${numbered ? ".numbered" : ""}` as TranslationKey
 }

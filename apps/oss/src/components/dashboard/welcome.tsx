@@ -6,6 +6,7 @@ import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
 import { Panel } from "../kvit/panel"
 import { DocLink } from "./doc-link"
+import type { Summary } from "./summary-model"
 import { DoubleRule } from "./double-rule"
 
 /** The same two buttons on both start states, so the first action is never a hunt. */
@@ -113,10 +114,10 @@ export function FirstRun() {
 /**
  * In between: drafts or other first steps exist, but nothing has been sent, so no money is owed
  * and a "0,00 kr." would say nothing. It stands where the hero will be and points at the next step:
- * with one draft, to carry on with it; with several, to the list of them; with none known, to the
- * invoices. The top bar already has "Ny", so this card does not offer it again.
+ * with one draft (an invoice or a quote), to carry on with it; with several, to the list of them
+ * with their number; with none, to the invoices. The top bar already has "Ny", so this card does not offer it again.
  */
-export function GettingStarted({ drafts, className }: { drafts: string[]; className?: string }) {
+export function GettingStarted({ drafts, className }: { drafts: Summary["drafts"]; className?: string }) {
   const { t } = useI18n()
   return (
     <Panel data-slot="dashboard-getting-started" className={cn("flex flex-col justify-center p-5 sm:p-6", className)}>
@@ -126,10 +127,10 @@ export function GettingStarted({ drafts, className }: { drafts: string[]; classN
       <h2 className="text-lg font-bold tracking-[-0.02em] sm:text-xl">{t("dashboard.start.title")}</h2>
       <p className="text-muted-foreground mt-1.5 max-w-md text-sm">{t("dashboard.start.description")}</p>
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        {drafts.length === 1 ? (
+        {drafts.count === 1 && drafts.newestId && drafts.newestKind ? (
           <>
             <Button asChild>
-              <DocLink kind="invoice" id={drafts[0]!}>
+              <DocLink kind={drafts.newestKind} id={drafts.newestId}>
                 {t("dashboard.start.action.continue")}
               </DocLink>
             </Button>
@@ -140,7 +141,7 @@ export function GettingStarted({ drafts, className }: { drafts: string[]; classN
         ) : (
           <Button asChild>
             <Link to="/invoices">
-              {drafts.length > 1 ? t("dashboard.start.action.drafts") : t("dashboard.start.action.invoices")}
+              {drafts.count > 1 ? t("dashboard.start.action.drafts", { count: drafts.count }) : t("dashboard.start.action.invoices")}
             </Link>
           </Button>
         )}
