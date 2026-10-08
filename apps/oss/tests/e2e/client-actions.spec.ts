@@ -270,8 +270,9 @@ test("a revoked or expired link shows no records and says whom to ask", async ({
   await expect(guest.getByText("Signed offer")).toHaveCount(0)
 
   // A mistyped address is simply invalid.
-  await guest.goto(`${approverUrl.slice(0, -4)}abcd`)
-  await waitForClientReady(guest)
-  await expect(guest.getByRole("heading", { name: "This link is not valid" })).toBeVisible()
+  const stranger = await context.newPage()
+  await stranger.goto(`${approverUrl.slice(0, -4)}abcd`)
+  await waitForClientReady(stranger)
+  await expect(stranger.getByRole("heading", { name: "This link is not valid" })).toBeVisible()
   await context.close()
 })
