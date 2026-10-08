@@ -55,6 +55,77 @@ export function organizationChangedLink<TRouter extends AnyRouter>(): TRPCLink<T
       )
 }
 
+/** The settled-state callbacks of one subscriber to a shared query. */
+type QuerySubscriber = {
+  next: (value: unknown) => void
+  error: (error: unknown) => void
+  complete: () => void
+}
+
+/**
+ * Shares one in-flight request between identical concurrent queries. Layouts and pages each fetch
+ * the same data on mount (for example the organization settings), so without this every page load
+ * sent the same query several times. Only operations still in flight are shared: once a query has
+ * completed, the next one is sent as usual, so results are never reused across mutations.
+ * Operations are keyed by procedure, input and organization, so different organizations never share.
+ */
+export function dedupeQueriesLink<TRouter extends AnyRouter>(): TRPCLink<TRouter> {
+  const inFlight = new Map<string, { subscribers: Set<QuerySubscriber>; unsubscribe?: () => void }>()
+
+  return () =>
+    ({ op, next }) =>
+      observable((observer) => {
+        if (op.type !== "query") {
+          return next(op).subscribe(observer)
+        }
+
+        const key = JSON.stringify([
+          op.path,
+          superjson.stringify(op.input),
+          operationOrganizationId(op.context),
+        ])
+        const subscriber: QuerySubscriber = {
+          next: (value) => observer.next(value as Parameters<typeof observer.next>[0]),
+          error: (error) => observer.error(error as Parameters<typeof observer.error>[0]),
+          complete: () => observer.complete(),
+        }
+
+        const existing = inFlight.get(key)
+        if (existing) {
+          existing.subscribers.add(subscriber)
+          return () => {
+            existing.subscribers.delete(subscriber)
+            if (existing.subscribers.size === 0) {
+              existing.unsubscribe?.()
+              if (inFlight.get(key) === existing) inFlight.delete(key)
+            }
+          }
+        }
+
+        const shared = { subscribers: new Set([subscriber]), unsubscribe: undefined as (() => void) | undefined }
+        inFlight.set(key, shared)
+        const settle = (notify: (subscriber: QuerySubscriber) => void) => {
+          if (inFlight.get(key) === shared) inFlight.delete(key)
+          for (const subscriber of shared.subscribers) notify(subscriber)
+        }
+        const subscription = next(op).subscribe({
+          next: (value) => {
+            for (const subscriber of shared.subscribers) subscriber.next(value)
+          },
+          error: (error) => settle((subscriber) => subscriber.error(error)),
+          complete: () => settle((subscriber) => subscriber.complete()),
+        })
+        shared.unsubscribe = () => subscription.unsubscribe()
+        return () => {
+          shared.subscribers.delete(subscriber)
+          if (shared.subscribers.size === 0) {
+            shared.unsubscribe?.()
+            if (inFlight.get(key) === shared) inFlight.delete(key)
+          }
+        }
+      })
+}
+
 export type TrpcClientOptions = {
   url?: string
   fetch?: typeof fetch
@@ -65,6 +136,7 @@ export function createAppTrpcClient(options: TrpcClientOptions = {}) {
     links: [
       organizationChangedLink<AppRouter>(),
       organizationStampLink<AppRouter>(),
+      dedupeQueriesLink<AppRouter>(),
       httpBatchLink({
         url: options.url ?? `${getBaseUrl()}/api/trpc`,
         transformer: superjson,

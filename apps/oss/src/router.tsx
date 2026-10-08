@@ -7,7 +7,8 @@ export function getRouter() {
 
     scrollRestoration: true,
     defaultPreload: 'intent',
-    defaultPreloadStaleTime: 0,
+    // Hovering a link preloads its route; a 0 stale time re-ran every preload on each hover.
+    defaultPreloadStaleTime: 30_000,
   })
 
   return router
