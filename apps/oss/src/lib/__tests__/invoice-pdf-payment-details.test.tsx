@@ -98,6 +98,14 @@ describe("payment details block", () => {
   })
 })
 
+describe("payment details block reference", () => {
+  it("has no reference row for a null or blank reference", () => {
+    expect(buildPaymentDetailsBlock(details, null, "en")?.reference).toBeNull()
+    expect(buildPaymentDetailsBlock(details, "  ", "en")?.reference).toBeNull()
+    expect(buildPaymentDetailsBlock(details, " KID 123 ", "en")?.reference).toEqual({ label: "Payment reference", value: "KID 123" })
+  })
+})
+
 describe("invoice PDF payment details", () => {
   it("shows the block after the totals and before the notes", () => {
     const text = renderedText({ ...invoice, notes: "Thank you", ...payment }, "en-US")
@@ -113,6 +121,19 @@ describe("invoice PDF payment details", () => {
   it("prints the payment reference as one line", () => {
     expect(renderedText({ ...invoice, ...payment }, "en-US").split("\n")).toContain("Payment reference: INV-0042")
     expect(renderedText({ ...invoice, ...payment }, "da-DK").split("\n")).toContain("Betalingsreference: INV-0042")
+  })
+
+  it("prints the invoice's own payment reference instead of the number", () => {
+    const text = renderedText({ ...invoice, ...payment, paymentReference: "+71 1234 5678" }, "en-US")
+    expect(text.split("\n")).toContain("Payment reference: +71 1234 5678")
+    expect(text).not.toContain("Payment reference: INV-0042")
+  })
+
+  it("leaves the reference row out of a draft, which has no reference yet", () => {
+    const text = renderedText({ ...invoice, number: "draft", status: "draft", ...payment, paymentReference: null }, "en-US")
+    expect(text).toContain("Payment details")
+    expect(text).not.toContain("Payment reference")
+    expect(text).not.toContain(": draft")
   })
 
   it("is localized", () => {
