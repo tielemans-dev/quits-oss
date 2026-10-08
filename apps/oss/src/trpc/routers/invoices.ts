@@ -128,7 +128,8 @@ export const invoicesRouter = router({
           publicPaymentKeyVersion: true,
           contact: { select: { name: true } },
         },
-        orderBy: { createdAt: "desc" },
+        // id breaks createdAt ties so the order is stable; invoice(organizationId, createdAt, id) serves it.
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       })
 
       return invoices.map((inv) => ({

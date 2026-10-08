@@ -1,5 +1,6 @@
 import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { InvalidState } from "../../domain/errors"
+import { isUniqueViolation } from "../../domain/execute"
 import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
@@ -132,9 +133,29 @@ const orgSettingsReadSelect = {
   documentSendingLastSyncSource: true,
 } satisfies Prisma.OrgSettingsSelect
 
+/**
+ * Creates the default settings row on first read. A concurrent first read may create it
+ * first; the unique organizationId then rejects this insert and the existing row is read.
+ */
+async function createDefaultOrgSettings(organizationId: string) {
+  try {
+    return await prisma.orgSettings.create({
+      data: { organizationId },
+      select: orgSettingsReadSelect,
+    })
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error
+    return prisma.orgSettings.findUniqueOrThrow({
+      where: { organizationId },
+      select: orgSettingsReadSelect,
+    })
+  }
+}
+
 export const settingsRouter = router({
   get: authorizedProcedure("settings:read").query(async ({ ctx }) => {
-    // Independent reads run concurrently: each is a database round trip on hosted runtimes.
+    // Three independent reads run concurrently: each is a database round trip on hosted
+    // runtimes. Keep this fan-out small; hosted runtimes cap simultaneous connections.
     const [primaryTaxId, existingSettings, baseCurrencyLocked] = await Promise.all([
       prisma.organizationTaxId.findFirst({
         where: { organizationId: ctx.organizationId },
@@ -147,12 +168,7 @@ export const settingsRouter = router({
       }),
       hasIssuedDocuments(prisma, ctx.organizationId),
     ])
-    const settings =
-      existingSettings ??
-      (await prisma.orgSettings.create({
-        data: { organizationId: ctx.organizationId },
-        select: orgSettingsReadSelect,
-      }))
+    const settings = existingSettings ?? (await createDefaultOrgSettings(ctx.organizationId))
     const stripeState = getStripePaymentConfigurationState({
       stripePublishableKey: settings.stripePublishableKey,
       stripeSecretKeyEnc: settings.stripeSecretKeyEnc,

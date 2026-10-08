@@ -38,7 +38,7 @@ export const dashboardRouter = router({
           dueDate: true,
           contact: { select: { name: true } },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 10,
       }),
       prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { baseCurrency: true } }),

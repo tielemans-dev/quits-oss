@@ -58,7 +58,7 @@ class HandlerFailed extends Error {
   }
 }
 
-function isUniqueViolation(error: unknown) {
+export function isUniqueViolation(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
 }
 
