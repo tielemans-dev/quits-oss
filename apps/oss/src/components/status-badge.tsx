@@ -9,15 +9,15 @@ import {
   type StatusTone,
 } from "../lib/status-tones"
 
-/** Text and dot in the tone colour, on the tone at 12% (18% in dark mode); see styles.css. */
+/** A soft pill: the label and dot in the tone colour at full strength, on the tone at 14%; see styles.css. */
 const toneClassName: Record<StatusTone, string> = {
-  neutral: "text-tone-neutral bg-tone-neutral/12 dark:bg-tone-neutral/18",
-  info: "text-tone-info bg-tone-info/12 dark:bg-tone-info/18",
-  progress: "text-tone-progress bg-tone-progress/12 dark:bg-tone-progress/18",
-  success: "text-tone-success bg-tone-success/12 dark:bg-tone-success/18",
-  warning: "text-tone-warning bg-tone-warning/12 dark:bg-tone-warning/18",
-  danger: "text-tone-danger bg-tone-danger/12 dark:bg-tone-danger/18",
-  muted: "text-tone-muted bg-tone-muted/12 dark:bg-tone-muted/18",
+  neutral: "text-tone-neutral bg-tone-neutral/14",
+  info: "text-tone-info bg-tone-info/14",
+  progress: "text-tone-progress bg-tone-progress/14",
+  success: "text-tone-success bg-tone-success/14",
+  warning: "text-tone-warning bg-tone-warning/14",
+  danger: "text-tone-danger bg-tone-danger/14",
+  muted: "text-tone-muted bg-tone-muted/14",
 }
 
 /** A badge for a tone with a label the caller has already translated. */
@@ -35,7 +35,7 @@ export function ToneBadge({
       data-slot="status-badge"
       data-tone={tone}
       className={cn(
-        "inline-flex h-5.5 w-fit shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium whitespace-nowrap",
+        "inline-flex h-5.5 w-fit shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold whitespace-nowrap",
         toneClassName[tone],
         className
       )}
@@ -43,7 +43,7 @@ export function ToneBadge({
       <span
         aria-hidden
         className={cn(
-          "size-2 shrink-0 rounded-full",
+          "size-1.5 shrink-0 rounded-full",
           // Muted and neutral differ in shape, not colour: muted is a ring, neutral a solid dot.
           tone === "muted" ? "border-[1.5px] border-current" : "bg-current"
         )}

@@ -2,7 +2,8 @@ import type { TranslationKey } from "./i18n/messages"
 
 /**
  * One status system. Every status a Quits screen shows maps to a tone (how it reads at a glance)
- * and an i18n label key. Colour carries meaning only here: the rest of the interface is monochrome.
+ * and an i18n label key. The tone colours are defined in styles.css and drawn as soft pills (a 14%
+ * tint with the label at full strength) by StatusBadge. Kvit-blå, the brand colour, is the "info" tone.
  *
  * - neutral: not started or not yet decided (draft, planned)
  * - info: out with the customer, waiting on them (sent, open)
