@@ -127,7 +127,8 @@ export function CreateCreditNoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      {/* The description mounts once the data is loaded; until then say there is none, or Radix warns. */}
+      <DialogContent className="sm:max-w-2xl" {...(data ? {} : { "aria-describedby": undefined })}>
         <DialogHeader>
           <DialogTitle>
             {t("creditNotes.dialog.title", { number: data?.invoiceNumber ?? "" })}

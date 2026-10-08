@@ -48,7 +48,7 @@ export const enRemindersMessages = {
   "reminders.panel.unconfirmed": "The email provider never confirmed delivery of the reminder. The customer may or may not have received it.",
   "reminders.panel.empty": "No reminders yet.",
   "reminders.panel.notEligible": "Reminders are only sent for issued invoices with an outstanding balance.",
-  "reminders.panel.noEmail": "Add an email address to the contact to send reminders.",
+  "reminders.panel.noEmail": "Add an email address to the customer to send reminders.",
   "reminders.panel.error.load": "Could not load reminders.",
   "reminders.panel.error.action": "The reminder action failed.",
   "reminders.panel.column.when": "When",

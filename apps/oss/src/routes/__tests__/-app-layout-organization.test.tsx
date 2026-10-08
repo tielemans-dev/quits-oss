@@ -51,6 +51,14 @@ vi.mock("../../components/ui/sidebar", () => ({
   SidebarTrigger: () => null,
 }))
 vi.mock("../../components/app-sidebar", () => ({ AppSidebar: () => null }))
+vi.mock("../../components/shell/app-main", () => ({
+  AppMain: ({ banner, children }: { banner?: unknown; children: unknown }) => (
+    <>
+      {banner as never}
+      {children as never}
+    </>
+  ),
+}))
 vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ setLocale: vi.fn(), t: (key: string) => key }) }))
 vi.mock("../../trpc/client", () => ({
   trpc: { settings: { get: { query: () => new Promise(() => undefined) } } },

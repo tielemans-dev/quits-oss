@@ -24,7 +24,7 @@ export function registerProductScenarios(test, expect) {
     await page.goto(new URL('/contacts/new', entryURL).href)
     await page.getByLabel('Name *', { exact: true }).fill(name)
     await page.getByLabel('Email', { exact: true }).fill('customer@example.invalid')
-    await page.getByRole('button', { name: 'Create Contact', exact: true }).click()
+    await page.getByRole('button', { name: 'Create Customer', exact: true }).click()
     await expect(page).toHaveURL(new URL('/contacts', entryURL).href)
     await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible()
   }
@@ -49,8 +49,8 @@ export function registerProductScenarios(test, expect) {
    */
   async function createDraftInvoice(page, entryURL, { customer, lines, taxPercent, notes }) {
     await page.goto(new URL('/invoices/new', entryURL).href)
-    const contactSelect = page.getByRole('combobox').filter({ hasText: 'Select a contact' })
-    // Contacts load after hydration, so a visible select means the form is interactive.
+    const contactSelect = page.getByRole('combobox').filter({ hasText: 'Select a customer' })
+    // Customers load after hydration, so a visible select means the form is interactive.
     await expect(contactSelect).toBeVisible()
     await contactSelect.click()
     await page.getByRole('option', { name: customer, exact: true }).click()
@@ -131,23 +131,23 @@ export function registerProductScenarios(test, expect) {
       await new Promise(resolve => setTimeout(resolve, Math.ceil(seconds * 1000) + 100))
     }
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
-    await expect(page.getByText('Total Contacts', { exact: true })).toBeVisible()
+    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
     // Re-enter through the consumer's entry point after authenticating. This also
     // exercises gateways that redirect login to a separate origin.
     await page.goto(entryURL)
     await expect(page).toHaveURL(entryURL)
-    await expect(page.getByText('Total Contacts', { exact: true })).toBeVisible()
+    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
   })
 
   test('authenticated dashboard survives a reload', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
-    await expect(page.getByText('Total Contacts', { exact: true })).toBeVisible()
+    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
-    await expect(page.getByText('Total Contacts', { exact: true })).toBeVisible()
+    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
   })
 
@@ -156,7 +156,7 @@ export function registerProductScenarios(test, expect) {
     await page.goto(new URL('/contacts/new', entryURL).href)
     await page.getByLabel('Name *', { exact: true }).fill(name)
     await page.getByLabel('Email', { exact: true }).fill('customer@example.invalid')
-    await page.getByRole('button', { name: 'Create Contact', exact: true }).click()
+    await page.getByRole('button', { name: 'Create Customer', exact: true }).click()
     await expect(page).toHaveURL(new URL('/contacts', entryURL).href)
     await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible()
     await page.reload()
@@ -189,7 +189,7 @@ export function registerProductScenarios(test, expect) {
     await expect(row).toContainText(usd(created.total))
     await expect(row).toContainText('Draft')
     await page.goto(entryURL)
-    await expect(page.getByText('Total Contacts', { exact: true })).toBeVisible()
+    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toHaveCount(0)
   })
 

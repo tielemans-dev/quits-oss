@@ -9,7 +9,7 @@ describe("i18n translate", () => {
   })
 
   it("returns danish translation when locale is da", () => {
-    expect(translate("nav.dashboard", "da-DK")).toBe("Oversigt")
+    expect(translate("nav.dashboard", "da-DK")).toBe("Overblik")
   })
 
   it("falls back to english translation", () => {
@@ -23,8 +23,8 @@ describe("i18n translate", () => {
   })
 
   it("returns localized contacts labels", () => {
-    expect(translate("contacts.title", "en-US")).toBe("Contacts")
-    expect(translate("contacts.title", "da-DK")).toBe("Kontakter")
+    expect(translate("contacts.title", "en-US")).toBe("Customers")
+    expect(translate("contacts.title", "da-DK")).toBe("Kunder")
   })
 
   it("interpolates contact delete confirmation", () => {
@@ -73,8 +73,8 @@ describe("i18n translate", () => {
   })
 
   it("returns localized shared document form labels", () => {
-    expect(translate("docForm.contact", "en-US")).toBe("Contact")
-    expect(translate("docForm.contact", "da-DK")).toBe("Kontakt")
+    expect(translate("docForm.contact", "en-US")).toBe("Customer")
+    expect(translate("docForm.contact", "da-DK")).toBe("Kunde")
   })
 
   it("returns localized invoice ai action labels", () => {

@@ -18,7 +18,7 @@ export const enInvoicesMessages = {
   "invoices.number.draftHeading": "Draft invoice",
   "invoices.number.willBe": "Numbered {number} when sent. The number is not reserved: another invoice may be sent first.",
   "invoices.number.assignedOnSend": "Gets its number when sent.",
-  "invoices.table.contact": "Contact",
+  "invoices.table.contact": "Customer",
   "invoices.table.issueDate": "Issue Date",
   "invoices.table.dueDate": "Due Date",
   "invoices.table.total": "Total",
@@ -55,7 +55,7 @@ export const enInvoicesMessages = {
   "invoices.new.ai.error.providerFailed":
     "The AI service could not be reached. Try again in a moment.",
   "invoices.new.ai.info.contactNotMatched":
-    "Draft generated. Contact \"{name}\" was not matched automatically.",
+    "Draft generated. Customer \"{name}\" was not matched automatically.",
   "invoices.detail.editTitle": "Edit Invoice",
   "invoices.detail.companyLogoAlt": "Company logo",
   "invoices.detail.warning.emailSkipped":
@@ -101,7 +101,7 @@ export const enInvoicesMessages = {
     "Add a valid customer email address before sending, or share the payment link manually.",
   "invoices.detail.email.fallback.invalidRecipient.descriptionNoLink":
     "Add a valid customer email address before sending this invoice.",
-  "invoices.detail.email.fallback.invalidRecipient.fix": "Fix contact",
+  "invoices.detail.email.fallback.invalidRecipient.fix": "Fix customer",
   "invoices.detail.email.fallback.providerMissing.title":
     "Email delivery is not configured",
   "invoices.detail.email.fallback.providerMissing.description":
