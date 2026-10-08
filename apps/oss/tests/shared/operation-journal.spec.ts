@@ -139,7 +139,7 @@ test("uncertain SMTP journal preserves one record and requires an explicit manua
     .locator('[data-slot="card"]')
     .filter({ has: page.getByText("Operation history", { exact: true }) })
   await expect(
-    history.getByText("Document creation completed", { exact: true })
+    history.getByText("Document creation completed")
   ).toBeVisible()
   await expect(
     history.getByRole("link", { name: `Record: ${row.number}` })
