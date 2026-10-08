@@ -34,7 +34,10 @@ function publicSellerSnapshot(seller: SellerSnapshot | null): Omit<SellerSnapsho
   return publicSeller
 }
 
-/** `token` is the link the page was opened with: an uploaded logo is served from its logo route. */
+/**
+ * `token` is the link the page was opened with: an uploaded logo is served from its logo route,
+ * the payment link's unless the caller says otherwise.
+ */
 export function serializePublicInvoiceSession(session: {
   invoice: {
     id: string
@@ -80,7 +83,7 @@ export function serializePublicInvoiceSession(session: {
   }
   paymentState: "unpaid" | "paid"
   stripeEnabled: boolean
-}, token: string) {
+}, token: string, logoPath = publicLogoPath("pay", token)) {
   const { invoice } = session
   const totalGross = toNumber(invoice.totalGross)
   const amountPaid = toNumber(invoice.amountPaid)
@@ -94,7 +97,7 @@ export function serializePublicInvoiceSession(session: {
   const presentation = resolvePublicPresentation({
     document: { locale: invoice.locale, timezone: invoice.timezone, sellerSnapshot },
     settings: invoice.organization?.settings,
-    logoPath: publicLogoPath("pay", token),
+    logoPath,
   })
 
   return {

@@ -23,6 +23,7 @@ export async function cleanupTestOrganizations({ where }: { where: Prisma.Organi
       { documentKind: "quote", documentId: { in: quotes.map(({ id }) => id) } },
       { documentKind: "agreement", documentId: { in: agreements.map(({ id }) => id) } },
     ] } })
+    await db.clientActionLink.deleteMany({ where: scope })
     await db.issuanceCandidate.deleteMany({ where: scope })
     await db.artifactStaging.deleteMany({ where: scope })
     await db.approvalRequest.deleteMany({ where: scope })

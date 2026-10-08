@@ -1,0 +1,16 @@
+{
+  "type": "client_link.revoked",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/client-links.ts",
+      "typeExpression": "\"client_link.revoked\"",
+      "payloadExpression": "{ linkId: link.id, recipientName: link.recipientName }",
+      "variant": "default",
+      "payload": {
+        "linkId": "link-1",
+        "recipientName": "Pia Payer"
+      }
+    }
+  ]
+}

@@ -88,7 +88,10 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  ClientActionLink: 'ClientActionLink',
+  ClientActionGrant: 'ClientActionGrant',
+  ClientActionVerification: 'ClientActionVerification'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -980,6 +983,50 @@ export const IssuanceCandidateScalarFieldEnum = {
 } as const
 
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
+
+
+export const ClientActionLinkScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  contactId: 'contactId',
+  recipientName: 'recipientName',
+  recipientEmail: 'recipientEmail',
+  verification: 'verification',
+  expiresAt: 'expiresAt',
+  revokedAt: 'revokedAt',
+  lastOpenedAt: 'lastOpenedAt',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ClientActionLinkScalarFieldEnum = (typeof ClientActionLinkScalarFieldEnum)[keyof typeof ClientActionLinkScalarFieldEnum]
+
+
+export const ClientActionGrantScalarFieldEnum = {
+  id: 'id',
+  linkId: 'linkId',
+  recordKind: 'recordKind',
+  recordId: 'recordId',
+  capabilities: 'capabilities',
+  keyVersion: 'keyVersion',
+  createdAt: 'createdAt'
+} as const
+
+export type ClientActionGrantScalarFieldEnum = (typeof ClientActionGrantScalarFieldEnum)[keyof typeof ClientActionGrantScalarFieldEnum]
+
+
+export const ClientActionVerificationScalarFieldEnum = {
+  id: 'id',
+  linkId: 'linkId',
+  codeHash: 'codeHash',
+  attempts: 'attempts',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ClientActionVerificationScalarFieldEnum = (typeof ClientActionVerificationScalarFieldEnum)[keyof typeof ClientActionVerificationScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -12,7 +12,7 @@ import { canRenderLogo } from "./logo"
  * which must not request addresses a user has typed in.
  */
 
-export type PublicLogoKind = "pay" | "q" | "a"
+export type PublicLogoKind = "pay" | "q" | "a" | "c"
 
 const PUBLIC_LOGO_DATA_URL =
   /^data:(image\/(?:png|jpeg|webp|gif|svg\+xml))((?:;[a-z0-9-]+=[^;,]*)*)(;base64)?,/i

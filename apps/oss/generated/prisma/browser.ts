@@ -209,3 +209,18 @@ export type ArtifactStaging = Prisma.ArtifactStagingModel
  * 
  */
 export type IssuanceCandidate = Prisma.IssuanceCandidateModel
+/**
+ * Model ClientActionLink
+ * 
+ */
+export type ClientActionLink = Prisma.ClientActionLinkModel
+/**
+ * Model ClientActionGrant
+ * 
+ */
+export type ClientActionGrant = Prisma.ClientActionGrantModel
+/**
+ * Model ClientActionVerification
+ * 
+ */
+export type ClientActionVerification = Prisma.ClientActionVerificationModel

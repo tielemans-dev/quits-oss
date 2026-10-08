@@ -1,0 +1,18 @@
+{
+  "type": "client_link.renewed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/client-links.ts",
+      "typeExpression": "\"client_link.renewed\"",
+      "payloadExpression": "{ linkId: link.id, recipientName: link.recipientName, expiresAt: expiresAt.toISOString(), droppedGrants: dropped.length }",
+      "variant": "default",
+      "payload": {
+        "linkId": "link-1",
+        "recipientName": "Pia Payer",
+        "expiresAt": "2026-01-15T12:00:00.000Z",
+        "droppedGrants": 0
+      }
+    }
+  ]
+}

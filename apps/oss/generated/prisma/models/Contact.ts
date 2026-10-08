@@ -285,6 +285,7 @@ export type ContactWhereInput = {
   quotes?: Prisma.QuoteListRelationFilter
   creditNotes?: Prisma.CreditNoteListRelationFilter
   recurringInvoices?: Prisma.RecurringInvoiceListRelationFilter
+  clientActionLinks?: Prisma.ClientActionLinkListRelationFilter
 }
 
 export type ContactOrderByWithRelationInput = {
@@ -312,6 +313,7 @@ export type ContactOrderByWithRelationInput = {
   quotes?: Prisma.QuoteOrderByRelationAggregateInput
   creditNotes?: Prisma.CreditNoteOrderByRelationAggregateInput
   recurringInvoices?: Prisma.RecurringInvoiceOrderByRelationAggregateInput
+  clientActionLinks?: Prisma.ClientActionLinkOrderByRelationAggregateInput
 }
 
 export type ContactWhereUniqueInput = Prisma.AtLeast<{
@@ -342,6 +344,7 @@ export type ContactWhereUniqueInput = Prisma.AtLeast<{
   quotes?: Prisma.QuoteListRelationFilter
   creditNotes?: Prisma.CreditNoteListRelationFilter
   recurringInvoices?: Prisma.RecurringInvoiceListRelationFilter
+  clientActionLinks?: Prisma.ClientActionLinkListRelationFilter
 }, "id">
 
 export type ContactOrderByWithAggregationInput = {
@@ -414,6 +417,7 @@ export type ContactCreateInput = {
   quotes?: Prisma.QuoteCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkCreateNestedManyWithoutContactInput
 }
 
 export type ContactUncheckedCreateInput = {
@@ -440,6 +444,7 @@ export type ContactUncheckedCreateInput = {
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedCreateNestedManyWithoutContactInput
 }
 
 export type ContactUpdateInput = {
@@ -466,6 +471,7 @@ export type ContactUpdateInput = {
   quotes?: Prisma.QuoteUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUpdateManyWithoutContactNestedInput
 }
 
 export type ContactUncheckedUpdateInput = {
@@ -492,6 +498,7 @@ export type ContactUncheckedUpdateInput = {
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedUpdateManyWithoutContactNestedInput
 }
 
 export type ContactCreateManyInput = {
@@ -754,6 +761,20 @@ export type ContactUpdateOneRequiredWithoutAgreementsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ContactUpdateToOneWithWhereWithoutAgreementsInput, Prisma.ContactUpdateWithoutAgreementsInput>, Prisma.ContactUncheckedUpdateWithoutAgreementsInput>
 }
 
+export type ContactCreateNestedOneWithoutClientActionLinksInput = {
+  create?: Prisma.XOR<Prisma.ContactCreateWithoutClientActionLinksInput, Prisma.ContactUncheckedCreateWithoutClientActionLinksInput>
+  connectOrCreate?: Prisma.ContactCreateOrConnectWithoutClientActionLinksInput
+  connect?: Prisma.ContactWhereUniqueInput
+}
+
+export type ContactUpdateOneRequiredWithoutClientActionLinksNestedInput = {
+  create?: Prisma.XOR<Prisma.ContactCreateWithoutClientActionLinksInput, Prisma.ContactUncheckedCreateWithoutClientActionLinksInput>
+  connectOrCreate?: Prisma.ContactCreateOrConnectWithoutClientActionLinksInput
+  upsert?: Prisma.ContactUpsertWithoutClientActionLinksInput
+  connect?: Prisma.ContactWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ContactUpdateToOneWithWhereWithoutClientActionLinksInput, Prisma.ContactUpdateWithoutClientActionLinksInput>, Prisma.ContactUncheckedUpdateWithoutClientActionLinksInput>
+}
+
 export type ContactCreateWithoutOrganizationInput = {
   id?: string
   name: string
@@ -777,6 +798,7 @@ export type ContactCreateWithoutOrganizationInput = {
   quotes?: Prisma.QuoteCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkCreateNestedManyWithoutContactInput
 }
 
 export type ContactUncheckedCreateWithoutOrganizationInput = {
@@ -802,6 +824,7 @@ export type ContactUncheckedCreateWithoutOrganizationInput = {
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedCreateNestedManyWithoutContactInput
 }
 
 export type ContactCreateOrConnectWithoutOrganizationInput = {
@@ -876,6 +899,7 @@ export type ContactCreateWithoutTaxIdsInput = {
   quotes?: Prisma.QuoteCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkCreateNestedManyWithoutContactInput
 }
 
 export type ContactUncheckedCreateWithoutTaxIdsInput = {
@@ -901,6 +925,7 @@ export type ContactUncheckedCreateWithoutTaxIdsInput = {
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedCreateNestedManyWithoutContactInput
 }
 
 export type ContactCreateOrConnectWithoutTaxIdsInput = {
@@ -942,6 +967,7 @@ export type ContactUpdateWithoutTaxIdsInput = {
   quotes?: Prisma.QuoteUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUpdateManyWithoutContactNestedInput
 }
 
 export type ContactUncheckedUpdateWithoutTaxIdsInput = {
@@ -967,6 +993,7 @@ export type ContactUncheckedUpdateWithoutTaxIdsInput = {
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedUpdateManyWithoutContactNestedInput
 }
 
 export type ContactCreateWithoutInvoicesInput = {
@@ -992,6 +1019,7 @@ export type ContactCreateWithoutInvoicesInput = {
   quotes?: Prisma.QuoteCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkCreateNestedManyWithoutContactInput
 }
 
 export type ContactUncheckedCreateWithoutInvoicesInput = {
@@ -1017,6 +1045,7 @@ export type ContactUncheckedCreateWithoutInvoicesInput = {
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedCreateNestedManyWithoutContactInput
 }
 
 export type ContactCreateOrConnectWithoutInvoicesInput = {
@@ -1058,6 +1087,7 @@ export type ContactUpdateWithoutInvoicesInput = {
   quotes?: Prisma.QuoteUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUpdateManyWithoutContactNestedInput
 }
 
 export type ContactUncheckedUpdateWithoutInvoicesInput = {
@@ -1083,6 +1113,7 @@ export type ContactUncheckedUpdateWithoutInvoicesInput = {
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedUpdateManyWithoutContactNestedInput
 }
 
 export type ContactCreateWithoutQuotesInput = {
@@ -1108,6 +1139,7 @@ export type ContactCreateWithoutQuotesInput = {
   agreements?: Prisma.AgreementCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkCreateNestedManyWithoutContactInput
 }
 
 export type ContactUncheckedCreateWithoutQuotesInput = {
@@ -1133,6 +1165,7 @@ export type ContactUncheckedCreateWithoutQuotesInput = {
   agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedCreateNestedManyWithoutContactInput
 }
 
 export type ContactCreateOrConnectWithoutQuotesInput = {
@@ -1174,6 +1207,7 @@ export type ContactUpdateWithoutQuotesInput = {
   agreements?: Prisma.AgreementUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUpdateManyWithoutContactNestedInput
 }
 
 export type ContactUncheckedUpdateWithoutQuotesInput = {
@@ -1199,6 +1233,7 @@ export type ContactUncheckedUpdateWithoutQuotesInput = {
   agreements?: Prisma.AgreementUncheckedUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedUpdateManyWithoutContactNestedInput
 }
 
 export type ContactCreateWithoutCreditNotesInput = {
@@ -1224,6 +1259,7 @@ export type ContactCreateWithoutCreditNotesInput = {
   agreements?: Prisma.AgreementCreateNestedManyWithoutContactInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkCreateNestedManyWithoutContactInput
 }
 
 export type ContactUncheckedCreateWithoutCreditNotesInput = {
@@ -1249,6 +1285,7 @@ export type ContactUncheckedCreateWithoutCreditNotesInput = {
   agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutContactInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedCreateNestedManyWithoutContactInput
 }
 
 export type ContactCreateOrConnectWithoutCreditNotesInput = {
@@ -1290,6 +1327,7 @@ export type ContactUpdateWithoutCreditNotesInput = {
   agreements?: Prisma.AgreementUpdateManyWithoutContactNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUpdateManyWithoutContactNestedInput
 }
 
 export type ContactUncheckedUpdateWithoutCreditNotesInput = {
@@ -1315,6 +1353,7 @@ export type ContactUncheckedUpdateWithoutCreditNotesInput = {
   agreements?: Prisma.AgreementUncheckedUpdateManyWithoutContactNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedUpdateManyWithoutContactNestedInput
 }
 
 export type ContactCreateWithoutRecurringInvoicesInput = {
@@ -1340,6 +1379,7 @@ export type ContactCreateWithoutRecurringInvoicesInput = {
   agreements?: Prisma.AgreementCreateNestedManyWithoutContactInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkCreateNestedManyWithoutContactInput
 }
 
 export type ContactUncheckedCreateWithoutRecurringInvoicesInput = {
@@ -1365,6 +1405,7 @@ export type ContactUncheckedCreateWithoutRecurringInvoicesInput = {
   agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutContactInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedCreateNestedManyWithoutContactInput
 }
 
 export type ContactCreateOrConnectWithoutRecurringInvoicesInput = {
@@ -1406,6 +1447,7 @@ export type ContactUpdateWithoutRecurringInvoicesInput = {
   agreements?: Prisma.AgreementUpdateManyWithoutContactNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUpdateManyWithoutContactNestedInput
 }
 
 export type ContactUncheckedUpdateWithoutRecurringInvoicesInput = {
@@ -1431,6 +1473,7 @@ export type ContactUncheckedUpdateWithoutRecurringInvoicesInput = {
   agreements?: Prisma.AgreementUncheckedUpdateManyWithoutContactNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedUpdateManyWithoutContactNestedInput
 }
 
 export type ContactCreateWithoutAgreementsInput = {
@@ -1456,6 +1499,7 @@ export type ContactCreateWithoutAgreementsInput = {
   quotes?: Prisma.QuoteCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkCreateNestedManyWithoutContactInput
 }
 
 export type ContactUncheckedCreateWithoutAgreementsInput = {
@@ -1481,6 +1525,7 @@ export type ContactUncheckedCreateWithoutAgreementsInput = {
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutContactInput
   creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutContactInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutContactInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedCreateNestedManyWithoutContactInput
 }
 
 export type ContactCreateOrConnectWithoutAgreementsInput = {
@@ -1522,6 +1567,7 @@ export type ContactUpdateWithoutAgreementsInput = {
   quotes?: Prisma.QuoteUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUpdateManyWithoutContactNestedInput
 }
 
 export type ContactUncheckedUpdateWithoutAgreementsInput = {
@@ -1544,6 +1590,127 @@ export type ContactUncheckedUpdateWithoutAgreementsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   taxIds?: Prisma.ContactTaxIdUncheckedUpdateManyWithoutContactNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutContactNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutContactNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutContactNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedUpdateManyWithoutContactNestedInput
+}
+
+export type ContactCreateWithoutClientActionLinksInput = {
+  id?: string
+  name: string
+  email?: string | null
+  phone?: string | null
+  company?: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  zip?: string | null
+  country?: string | null
+  taxId?: string | null
+  peppolEndpointId?: string | null
+  peppolEndpointScheme?: string | null
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  organization: Prisma.OrganizationCreateNestedOneWithoutContactsInput
+  taxIds?: Prisma.ContactTaxIdCreateNestedManyWithoutContactInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutContactInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutContactInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutContactInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutContactInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutContactInput
+}
+
+export type ContactUncheckedCreateWithoutClientActionLinksInput = {
+  id?: string
+  organizationId: string
+  name: string
+  email?: string | null
+  phone?: string | null
+  company?: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  zip?: string | null
+  country?: string | null
+  taxId?: string | null
+  peppolEndpointId?: string | null
+  peppolEndpointScheme?: string | null
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  taxIds?: Prisma.ContactTaxIdUncheckedCreateNestedManyWithoutContactInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutContactInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutContactInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutContactInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutContactInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutContactInput
+}
+
+export type ContactCreateOrConnectWithoutClientActionLinksInput = {
+  where: Prisma.ContactWhereUniqueInput
+  create: Prisma.XOR<Prisma.ContactCreateWithoutClientActionLinksInput, Prisma.ContactUncheckedCreateWithoutClientActionLinksInput>
+}
+
+export type ContactUpsertWithoutClientActionLinksInput = {
+  update: Prisma.XOR<Prisma.ContactUpdateWithoutClientActionLinksInput, Prisma.ContactUncheckedUpdateWithoutClientActionLinksInput>
+  create: Prisma.XOR<Prisma.ContactCreateWithoutClientActionLinksInput, Prisma.ContactUncheckedCreateWithoutClientActionLinksInput>
+  where?: Prisma.ContactWhereInput
+}
+
+export type ContactUpdateToOneWithWhereWithoutClientActionLinksInput = {
+  where?: Prisma.ContactWhereInput
+  data: Prisma.XOR<Prisma.ContactUpdateWithoutClientActionLinksInput, Prisma.ContactUncheckedUpdateWithoutClientActionLinksInput>
+}
+
+export type ContactUpdateWithoutClientActionLinksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  company?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  state?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  zip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  country?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  taxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  peppolEndpointId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  peppolEndpointScheme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutContactsNestedInput
+  taxIds?: Prisma.ContactTaxIdUpdateManyWithoutContactNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutContactNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutContactNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutContactNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutContactNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutContactNestedInput
+}
+
+export type ContactUncheckedUpdateWithoutClientActionLinksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  company?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  state?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  zip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  country?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  taxId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  peppolEndpointId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  peppolEndpointScheme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  taxIds?: Prisma.ContactTaxIdUncheckedUpdateManyWithoutContactNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutContactNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutContactNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutContactNestedInput
@@ -1591,6 +1758,7 @@ export type ContactUpdateWithoutOrganizationInput = {
   quotes?: Prisma.QuoteUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUpdateManyWithoutContactNestedInput
 }
 
 export type ContactUncheckedUpdateWithoutOrganizationInput = {
@@ -1616,6 +1784,7 @@ export type ContactUncheckedUpdateWithoutOrganizationInput = {
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutContactNestedInput
   creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutContactNestedInput
   recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutContactNestedInput
+  clientActionLinks?: Prisma.ClientActionLinkUncheckedUpdateManyWithoutContactNestedInput
 }
 
 export type ContactUncheckedUpdateManyWithoutOrganizationInput = {
@@ -1649,6 +1818,7 @@ export type ContactCountOutputType = {
   quotes: number
   creditNotes: number
   recurringInvoices: number
+  clientActionLinks: number
 }
 
 export type ContactCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1658,6 +1828,7 @@ export type ContactCountOutputTypeSelect<ExtArgs extends runtime.Types.Extension
   quotes?: boolean | ContactCountOutputTypeCountQuotesArgs
   creditNotes?: boolean | ContactCountOutputTypeCountCreditNotesArgs
   recurringInvoices?: boolean | ContactCountOutputTypeCountRecurringInvoicesArgs
+  clientActionLinks?: boolean | ContactCountOutputTypeCountClientActionLinksArgs
 }
 
 /**
@@ -1712,6 +1883,13 @@ export type ContactCountOutputTypeCountRecurringInvoicesArgs<ExtArgs extends run
   where?: Prisma.RecurringInvoiceWhereInput
 }
 
+/**
+ * ContactCountOutputType without action
+ */
+export type ContactCountOutputTypeCountClientActionLinksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ClientActionLinkWhereInput
+}
+
 
 export type ContactSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1738,6 +1916,7 @@ export type ContactSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   quotes?: boolean | Prisma.Contact$quotesArgs<ExtArgs>
   creditNotes?: boolean | Prisma.Contact$creditNotesArgs<ExtArgs>
   recurringInvoices?: boolean | Prisma.Contact$recurringInvoicesArgs<ExtArgs>
+  clientActionLinks?: boolean | Prisma.Contact$clientActionLinksArgs<ExtArgs>
   _count?: boolean | Prisma.ContactCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["contact"]>
 
@@ -1812,6 +1991,7 @@ export type ContactInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
   quotes?: boolean | Prisma.Contact$quotesArgs<ExtArgs>
   creditNotes?: boolean | Prisma.Contact$creditNotesArgs<ExtArgs>
   recurringInvoices?: boolean | Prisma.Contact$recurringInvoicesArgs<ExtArgs>
+  clientActionLinks?: boolean | Prisma.Contact$clientActionLinksArgs<ExtArgs>
   _count?: boolean | Prisma.ContactCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ContactIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1831,6 +2011,7 @@ export type $ContactPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     quotes: Prisma.$QuotePayload<ExtArgs>[]
     creditNotes: Prisma.$CreditNotePayload<ExtArgs>[]
     recurringInvoices: Prisma.$RecurringInvoicePayload<ExtArgs>[]
+    clientActionLinks: Prisma.$ClientActionLinkPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2251,6 +2432,7 @@ export interface Prisma__ContactClient<T, Null = never, ExtArgs extends runtime.
   quotes<T extends Prisma.Contact$quotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Contact$quotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   creditNotes<T extends Prisma.Contact$creditNotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Contact$creditNotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreditNotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   recurringInvoices<T extends Prisma.Contact$recurringInvoicesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Contact$recurringInvoicesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RecurringInvoicePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  clientActionLinks<T extends Prisma.Contact$clientActionLinksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Contact$clientActionLinksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ClientActionLinkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2834,6 +3016,30 @@ export type Contact$recurringInvoicesArgs<ExtArgs extends runtime.Types.Extensio
   take?: number
   skip?: number
   distinct?: Prisma.RecurringInvoiceScalarFieldEnum | Prisma.RecurringInvoiceScalarFieldEnum[]
+}
+
+/**
+ * Contact.clientActionLinks
+ */
+export type Contact$clientActionLinksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ClientActionLink
+   */
+  select?: Prisma.ClientActionLinkSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ClientActionLink
+   */
+  omit?: Prisma.ClientActionLinkOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ClientActionLinkInclude<ExtArgs> | null
+  where?: Prisma.ClientActionLinkWhereInput
+  orderBy?: Prisma.ClientActionLinkOrderByWithRelationInput | Prisma.ClientActionLinkOrderByWithRelationInput[]
+  cursor?: Prisma.ClientActionLinkWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ClientActionLinkScalarFieldEnum | Prisma.ClientActionLinkScalarFieldEnum[]
 }
 
 /**

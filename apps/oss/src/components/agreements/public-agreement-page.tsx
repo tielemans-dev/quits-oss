@@ -27,6 +27,8 @@ export function PublicAgreementPage({
   onDecision,
   busy,
   error,
+  embedded = false,
+  pdfHref,
 }: {
   seller: PublicSeller
   document: PublicAgreementDto
@@ -41,6 +43,10 @@ export function PublicAgreementPage({
   onDecision: (verb: "accept" | "decline") => void
   busy: boolean
   error: string | null
+  /** Shown inside another page (the client action page), which supplies the seller header and landmark. */
+  embedded?: boolean
+  /** Where the PDF is served from; defaults to the agreement link's own PDF route. */
+  pdfHref?: string
 }) {
   const { t, locale } = useI18n()
   const { snapshot } = document
@@ -50,9 +56,10 @@ export function PublicAgreementPage({
   const money = (amount: string) => formatCurrency(Number(amount), snapshot.currency, locale)
   // Validity, agreed and expected dates are calendar dates: shown as stored, not shifted by a timezone.
   const calendarDate = (value: string) => formatDate(value, locale, "UTC")
+  const Container = embedded ? "div" : "main"
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-12 grid min-w-0 gap-6 [overflow-wrap:anywhere]">
-      <PublicSellerHeader seller={seller} />
+    <Container className={embedded ? "grid min-w-0 gap-6 [overflow-wrap:anywhere]" : "mx-auto w-full max-w-3xl px-4 py-12 grid min-w-0 gap-6 [overflow-wrap:anywhere]"}>
+      {embedded ? null : <PublicSellerHeader seller={seller} />}
       <header>
         <p className="text-sm text-muted-foreground">
           {t("agreements.document")} {document.number}
@@ -138,7 +145,7 @@ export function PublicAgreementPage({
       </section>
       <AcceptanceRecord record={document.acceptance} />
       <a
-        href={`/a/${encodeURIComponent(token)}/pdf`}
+        href={pdfHref ?? `/a/${encodeURIComponent(token)}/pdf`}
         target="_blank"
         rel="noreferrer"
         className="underline"
@@ -186,7 +193,7 @@ export function PublicAgreementPage({
           {error}
         </p>
       )}
-    </main>
+    </Container>
   )
 }
 

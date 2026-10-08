@@ -31,3 +31,10 @@ export async function publicAgreementLogo(token: string) {
   if (!session) return logoNotFound()
   return logoResponse(session.companyLogo)
 }
+
+export async function publicClientActionLogo(token: string) {
+  const { resolveClientActionAccess } = await import("../client-actions/access")
+  const access = await resolveClientActionAccess(token)
+  if (access.status !== "active") return logoNotFound()
+  return logoResponse(access.link.organization.settings?.companyLogo)
+}

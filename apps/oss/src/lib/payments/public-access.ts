@@ -12,10 +12,26 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
     return null
   }
 
+  return loadPublicInvoice({ id: payload.invoiceId, keyVersion: payload.keyVersion })
+}
+
+/**
+ * An invoice as its public page shows it, once whoever asks is known to be entitled to it. The
+ * payment link checks its signature first; the client action page checks its grant, and narrows
+ * the lookup to the organization and contact that grant belongs to.
+ */
+export async function loadPublicInvoice(input: {
+  id: string
+  keyVersion: number
+  organizationId?: string
+  contactId?: string
+}) {
   const invoice = await prisma.invoice.findFirst({
     where: {
-      id: payload.invoiceId,
-      publicPaymentKeyVersion: payload.keyVersion,
+      id: input.id,
+      ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+      ...(input.contactId ? { contactId: input.contactId } : {}),
+      publicPaymentKeyVersion: input.keyVersion,
       publicPaymentIssuedAt: {
         not: null,
       },

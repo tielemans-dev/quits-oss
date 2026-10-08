@@ -10,6 +10,7 @@ import { enActivityMessages } from "./activity"
 import { enAuthMessages } from "./auth"
 import { enBillingMessages } from "./billing"
 import { enCatalogMessages } from "./catalog"
+import { enClientActionsMessages } from "./client-actions"
 import { enContactsMessages } from "./contacts"
 import { enDashboardMessages } from "./dashboard"
 import { enDocFormMessages } from "./doc-form"
@@ -40,6 +41,7 @@ export const enCatalog = {
   ...enAuthMessages,
   ...enBillingMessages,
   ...enCatalogMessages,
+  ...enClientActionsMessages,
   ...enContactsMessages,
   ...enDashboardMessages,
   ...enDocFormMessages,

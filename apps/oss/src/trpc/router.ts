@@ -11,6 +11,7 @@ import { activityRouter } from "./routers/activity"
 import { aiRouter } from "./routers/ai"
 import { billingRouter } from "./routers/billing"
 import { catalogRouter } from "./routers/catalog"
+import { clientLinksRouter } from "./routers/client-links"
 import { contactsRouter } from "./routers/contacts"
 import { dashboardRouter } from "./routers/dashboard"
 import { invoicesRouter } from "./routers/invoices"
@@ -33,6 +34,7 @@ export const appRouter = router({
   ai: aiRouter,
   billing: billingRouter,
   catalog: catalogRouter,
+  clientLinks: clientLinksRouter,
   contacts: contactsRouter,
   dashboard: dashboardRouter,
   invoices: invoicesRouter,

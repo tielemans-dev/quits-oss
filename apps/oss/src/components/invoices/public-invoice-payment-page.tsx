@@ -72,12 +72,15 @@ export function PublicInvoicePaymentPage({
   onPay,
   submitting = false,
   error,
+  embedded = false,
 }: {
   token: string
   state: PublicInvoicePaymentPageState
   onPay?: () => void
   submitting?: boolean
   error?: string | null
+  /** Shown inside another page, which supplies the seller header and the page frame. */
+  embedded?: boolean
 }) {
   const { t } = useI18n()
 
@@ -94,7 +97,7 @@ export function PublicInvoicePaymentPage({
     )
   }
 
-  return <PublicInvoiceDocument state={state} onPay={onPay} submitting={submitting} error={error} />
+  return <PublicInvoiceDocument state={state} onPay={onPay} submitting={submitting} error={error} embedded={embedded} />
 }
 
 function PublicInvoiceDocument({
@@ -102,11 +105,13 @@ function PublicInvoiceDocument({
   onPay,
   submitting,
   error,
+  embedded,
 }: {
   state: Extract<PublicInvoicePaymentPageState, { kind: "ready" }>
   onPay?: () => void
   submitting: boolean
   error?: string | null
+  embedded: boolean
 }) {
   const { t } = useI18n()
   const { invoice, paymentState, seller } = state
@@ -128,8 +133,8 @@ function PublicInvoiceDocument({
         : t("public.invoice.status.open")
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center gap-6 px-4 py-12">
-      <PublicSellerHeader seller={seller} />
+    <div className={embedded ? "flex flex-col gap-6" : "mx-auto flex min-h-screen max-w-5xl flex-col justify-center gap-6 px-4 py-12"}>
+      {embedded ? null : <PublicSellerHeader seller={seller} />}
       <div className="grid w-full gap-6 lg:grid-cols-[1.35fr_0.9fr]">
         <Card>
           <CardHeader>
