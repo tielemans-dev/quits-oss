@@ -1,7 +1,8 @@
 import { frozenVatGroupSchema, type FrozenVatGroup } from "@quits/contracts/pricing"
-import { vatGroupKey, percentageToFraction } from "@quits/shared/pricing"
+import { vatGroupKey, percentageToFraction, fractionToPercentage } from "@quits/shared/pricing"
 import { toDecimal } from "../../lib/exports/format"
 import { documentFractionDigits } from "./pricing"
+import type { VatRow } from "../../lib/documents/line-amounts"
 
 /** Issued lines and evidence are frozen. Recover groups by summing them, never reprice inputs. */
 export function frozenVatGroups(document: {
@@ -39,3 +40,29 @@ export function frozenVatGroups(document: {
   }
   return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key))
 }
+
+/**
+ * VAT groups collapsed to one row per rate, for display. Groups that differ only in treatment,
+ * country or reason (a standard 0 % and an exempt line, say) share a rate and so one row. Sums are
+ * exact decimals of the stored group amounts; nothing is repriced.
+ */
+export function vatRowsByRate(
+  groups: ReadonlyArray<{ rate: string; net: string; tax: string; gross: string }>,
+  currency: string
+): VatRow[] {
+  const exponent = documentFractionDigits(currency)
+  const rows = new Map<string, VatRow>()
+  for (const group of groups) {
+    const ratePercent = fractionToPercentage(group.rate)
+    const row = rows.get(ratePercent) ?? { ratePercent, net: "0", tax: "0", gross: "0" }
+    row.net = toDecimal(row.net).plus(group.net).toFixed(exponent)
+    row.tax = toDecimal(row.tax).plus(group.tax).toFixed(exponent)
+    row.gross = toDecimal(row.gross).plus(group.gross).toFixed(exponent)
+    rows.set(ratePercent, row)
+  }
+  return [...rows.values()].sort((a, b) => toDecimal(a.ratePercent).comparedTo(b.ratePercent))
+}
+
+/** The VAT of an issued or draft document by rate, from its stored lines. */
+export const frozenVatRows = (document: Parameters<typeof frozenVatGroups>[0]) =>
+  vatRowsByRate(frozenVatGroups(document), document.currency)
