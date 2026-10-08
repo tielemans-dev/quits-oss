@@ -12,7 +12,7 @@ import { hashBytes } from "../domain/documents/render-input"
 import type { ArtifactMeta, DocumentArtifactStore, DocumentRenderer, RuntimeServices } from "../lib/runtime/services"
 
 export const selfhostDocumentRenderer: DocumentRenderer = {
-  version: "quits-documents-v2",
+  version: "quits-documents-v3",
   async renderUbl(input) {
     if (!input.ubl || validateEinvoice(input.ubl).length) return null
     return new TextEncoder().encode(buildUblDocument(input.ubl))

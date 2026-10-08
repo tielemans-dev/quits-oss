@@ -9,6 +9,7 @@ import {
   totalsBlock,
 } from "../email"
 import { formatCurrency, formatDate } from "../i18n/format"
+import type { PriceBasis, VatRow } from "../documents/line-amounts"
 
 export type SendCreditNoteEmailParams = {
   to: string
@@ -23,6 +24,10 @@ export type SendCreditNoteEmailParams = {
     taxAmount: number
     total: number
     currency: string
+    /** The basis `items` state their amounts on. Absent, the headers stay plain. */
+    priceBasis?: PriceBasis
+    vatRows?: VatRow[]
+    rounding?: string
     items: { description: string; quantity: number; unitPrice: number; total: number }[]
   }
   invoice: { number: string; issueDate: Date | string }
@@ -72,8 +77,8 @@ export function buildCreditNoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(creditNote.items, creditNote.currency, locale)}
-    ${totalsBlock(creditNote.subtotal, creditNote.taxAmount, creditNote.total, creditNote.currency, locale)}
+    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis)}
+    ${totalsBlock(creditNote, locale)}
 
     <div style="margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;">
       <div style="${label}">${t("creditNotes.email.reason", locale)}</div>

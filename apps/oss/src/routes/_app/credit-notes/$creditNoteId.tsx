@@ -21,6 +21,8 @@ import {
   TableRow,
 } from "../../../components/ui/table"
 import type { CreditNoteDetail } from "../../../components/credit-notes/types"
+import { DocumentTotals } from "../../../components/documents/document-totals"
+import { lineColumnKeys } from "../../../lib/documents/line-amounts"
 
 /** Owned by the credit notes feature. */
 export const Route = createFileRoute("/_app/credit-notes/$creditNoteId")({
@@ -278,8 +280,8 @@ function CreditNoteDetailPage() {
                 <TableRow>
                   <TableHead>{t("pdf.description")}</TableHead>
                   <TableHead className="text-right w-[80px]">{t("pdf.qty")}</TableHead>
-                  <TableHead className="text-right w-[120px]">{t("pdf.unitPrice")}</TableHead>
-                  <TableHead className="text-right w-[120px]">{t("pdf.total")}</TableHead>
+                  <TableHead className="text-right w-[140px]">{t(lineColumnKeys(creditNote.priceBasis).unitPrice)}</TableHead>
+                  <TableHead className="text-right w-[140px]">{t(lineColumnKeys(creditNote.priceBasis).amount)}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -287,8 +289,8 @@ function CreditNoteDetailPage() {
                   <TableRow key={item.id}>
                     <TableCell>{item.description}</TableCell>
                     <TableCell className="text-right num">{item.quantity}</TableCell>
-                    <TableCell className="text-right num">{money(item.unitPrice)}</TableCell>
-                    <TableCell className="text-right num">{money(item.total)}</TableCell>
+                    <TableCell className="text-right num">{money(item.displayUnitPrice ?? item.unitPrice)}</TableCell>
+                    <TableCell className="text-right num">{money(item.displayAmount ?? item.total)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -296,21 +298,8 @@ function CreditNoteDetailPage() {
           </div>
 
           <div className="flex justify-end">
-            <div className="w-64 grid gap-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("pdf.subtotal")}</span>
-                <span className="num">{money(creditNote.subtotal)}</span>
-              </div>
-              {creditNote.taxAmount > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("pdf.tax")}</span>
-                  <span className="num">{money(creditNote.taxAmount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-semibold text-base border-t pt-2">
-                <span>{t("pdf.total")}</span>
-                <span className="num">{money(creditNote.total)}</span>
-              </div>
+            <div className="w-full sm:w-80 grid gap-2 text-sm">
+              <DocumentTotals priceBasis={creditNote.priceBasis} subtotal={creditNote.subtotal} taxAmount={creditNote.taxAmount} total={creditNote.total} vatRows={creditNote.vatRows} rounding={creditNote.rounding} currency={creditNote.currency} />
             </div>
           </div>
 

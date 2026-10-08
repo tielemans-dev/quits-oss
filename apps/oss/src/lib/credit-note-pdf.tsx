@@ -2,6 +2,8 @@ import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/render
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import type { OrgSettingsForPdf } from "./invoice-pdf"
+import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
+import { buildTotals } from "./documents/totals"
 import { creditNotePdfParties, type CreditNotePdfContact } from "./credit-notes/pdf-parties"
 
 const styles = StyleSheet.create({
@@ -39,14 +41,14 @@ const styles = StyleSheet.create({
   },
   colDescription: { flex: 1 },
   colQty: { width: 60, textAlign: "right" },
-  colPrice: { width: 80, textAlign: "right" },
-  colTotal: { width: 80, textAlign: "right" },
+  colPrice: { width: 110, textAlign: "right" },
+  colTotal: { width: 110, textAlign: "right" },
   headerText: { fontFamily: "Helvetica-Bold", fontSize: 9, color: "#6b7280" },
   totalsContainer: { alignItems: "flex-end", marginTop: 16 },
-  totalsRow: { flexDirection: "row", width: 200, justifyContent: "space-between", paddingVertical: 3 },
+  totalsRow: { flexDirection: "row", width: 270, justifyContent: "space-between", paddingVertical: 3 },
   totalsFinal: {
     flexDirection: "row",
-    width: 200,
+    width: 270,
     justifyContent: "space-between",
     paddingVertical: 6,
     borderTopWidth: 1,
@@ -76,6 +78,17 @@ export type CreditNoteForPdf = {
   buyerSnapshot?: unknown
   /** The contact as it is now; only used when no buyer snapshot was stored. */
   contact: CreditNotePdfContact
+  /**
+   * Which side of the VAT the item amounts are on, the basis of the invoice credited: net when
+   * false, gross when true. Absent on inputs frozen before credit notes stated it, whose items are
+   * gross; those keep their plain column headers.
+   */
+  pricesIncludeTax?: boolean
+  /** The credited VAT by rate. Absent on inputs frozen before they carried it. */
+  vatRows?: VatRow[]
+  /** The stored total minus the stored subtotal and tax, as a decimal string; printed when non-zero. */
+  rounding?: string
+  /** Unit price and total are the stored amounts on the document's price basis. */
   items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>
 }
 
@@ -92,6 +105,12 @@ export function CreditNotePdfDocument({
   const { seller, buyer } = creditNotePdfParties(creditNote, org)
   const logo = seller.logo
   const money = (amount: number) => formatCurrency(amount, creditNote.currency, locale)
+  const columns = lineColumnKeys(creditNote.pricesIncludeTax === undefined ? undefined : priceBasis(creditNote.pricesIncludeTax))
+  const totals = buildTotals({
+    basis: creditNote.pricesIncludeTax === undefined ? undefined : priceBasis(creditNote.pricesIncludeTax),
+    subtotal: creditNote.subtotal, taxAmount: creditNote.taxAmount, total: creditNote.total,
+    vatRows: creditNote.vatRows, rounding: creditNote.rounding, currency: creditNote.currency, locale,
+  })
 
   return (
     <Document creationDate={new Date(creditNote.issueDate)} modificationDate={new Date(creditNote.issueDate)}>
@@ -157,8 +176,8 @@ export function CreditNotePdfDocument({
               {translate("pdf.description", locale)}
             </Text>
             <Text style={[styles.headerText, styles.colQty]}>{translate("pdf.qty", locale)}</Text>
-            <Text style={[styles.headerText, styles.colPrice]}>{translate("pdf.unitPrice", locale)}</Text>
-            <Text style={[styles.headerText, styles.colTotal]}>{translate("pdf.total", locale)}</Text>
+            <Text style={[styles.headerText, styles.colPrice]}>{translate(columns.unitPrice, locale)}</Text>
+            <Text style={[styles.headerText, styles.colTotal]}>{translate(columns.amount, locale)}</Text>
           </View>
           {creditNote.items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
@@ -171,19 +190,15 @@ export function CreditNotePdfDocument({
         </View>
 
         <View style={styles.totalsContainer}>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalLabel}>{translate("pdf.subtotal", locale)}</Text>
-            <Text>{money(creditNote.subtotal)}</Text>
-          </View>
-          {creditNote.taxAmount > 0 && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalLabel}>{translate("pdf.tax", locale)}</Text>
-              <Text>{money(creditNote.taxAmount)}</Text>
+          {totals.lines.map((row, index) => (
+            <View key={index} style={styles.totalsRow}>
+              <Text style={styles.totalLabel}>{row.label}</Text>
+              <Text>{money(Number(row.amount))}</Text>
             </View>
-          )}
+          ))}
           <View style={styles.totalsFinal}>
-            <Text style={styles.totalFinal}>{translate("pdf.total", locale)}</Text>
-            <Text style={styles.totalFinal}>{money(creditNote.total)}</Text>
+            <Text style={styles.totalFinal}>{totals.total.label}</Text>
+            <Text style={styles.totalFinal}>{money(Number(totals.total.amount))}</Text>
           </View>
         </View>
 

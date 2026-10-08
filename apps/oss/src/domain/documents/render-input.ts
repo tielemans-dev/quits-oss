@@ -1,4 +1,7 @@
 import { frozenEinvoiceInput } from "./einvoice-input"
+import { vatRowsByRate } from "./frozen-vat-groups"
+import { documentVatSummary } from "./vat-summary"
+import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { formatIsoDate } from "../../lib/exports/format"
 import { requireVatIssuance } from "./vat-issuance"
 import { toDecimal } from "../../lib/exports/format"
@@ -87,6 +90,10 @@ export const prospectiveRenderInput = (input: {
     const money = input.preview ? undefined : yield* Effect.try({ try: () => invoiceMoneySnapshot(invoice, { ...(input.commandInput as { supplyDate?: string; exchangeRate?: string; rateDate?: string }), number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, seller: seller ?? buildSellerSnapshot(settings, sellerTaxIds), buyer }), catch: error => error instanceof InvalidState ? error : new InvalidState({ code: "money_snapshot_unavailable", message: "The document's currency or frozen money components cannot be valued" }) })
     // The reference a bank transfer is matched by: the invoice's own, else its number. A draft preview has no number yet.
     const paymentReference = invoice.paymentReference?.trim() || (input.preview ? null : input.number)
+    // An issued invoice's rows are its frozen money groups, the ones the e-invoice carries; a draft's are grouped from its lines.
+    const { vatRows, rounding } = documentVatSummary(invoice, money ? vatRowsByRate(money.vatGroups, invoice.currency) : undefined)
+    // The date the issued invoice carries, which the issuing command may have set; else the draft's.
+    const supplyDate = money ? money.supplyDate : invoice.supplyDate?.toISOString().slice(0, 10) ?? null
     // All PDF fields, including branding and the intended customer, are frozen here.
     const pdfInvoice: InvoiceForPdf = {
       number: input.number, status: "sent", issueDate: base.issuedAt, dueDate: invoice.dueDate.toISOString(),
@@ -96,8 +103,13 @@ export const prospectiveRenderInput = (input: {
       // organization without payment details is unchanged. A draft preview has no number yet.
       ...(seller.bankAccount || seller.paymentNote ? { paymentReference } : {}),
       contact: { ...buyer, name: buyer?.name ?? invoice.contact.name },
-      items: invoice.items.map(line => ({ description: line.description, quantity: num(line.quantity),
-        unitPrice: num(line.unitPriceGross), total: num(line.lineGross) })),
+      // The lines state amounts on the document's own price basis, so prices excluding VAT add up to the subtotal.
+      pricesIncludeTax: invoice.pricesIncludeTax,
+      ...(supplyDate ? { supplyDate } : {}),
+      ...(vatRows ? { vatRows } : {}),
+      rounding,
+      items: invoice.items.map(line => { const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), line)
+        return { description: line.description, quantity: num(line.quantity), unitPrice: num(shown.unitPrice), total: num(shown.amount) } }),
     }
     return { ...base, kind: "invoice" as const, recipient: invoice.contact.email?.trim() || null,
       ...(money ? { ubl: frozenEinvoiceInput({ kind: "invoice", money, contact: invoice.contact, countryCode: invoice.countryCode, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
@@ -122,14 +134,21 @@ export const prospectiveRenderInput = (input: {
     const sellerSnapshot = withoutPaymentDetails(invoice.sellerSnapshot) ?? buildSellerSnapshot(settings, sellerTaxIds)
     const buyerSnapshot = invoice.buyerSnapshot ?? buildBuyerSnapshot(invoice.contact)
     const money = creditMoneySnapshot(invoice, { id: input.documentId, number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, reason: selection.reason, mode: selection.mode, built, hasPayments: invoice.payments.length > 0, paid: invoice.payments.reduce((sum, payment) => sum.plus(payment.amount), toDecimal(0)).toString(), priorCredits: invoice.creditNotes.reduce((sum, credit) => sum.plus(credit.totalGross), toDecimal(0)).toString(), seller: parseSellerSnapshot(sellerSnapshot) ?? {}, buyer: parseBuyerSnapshot(buyerSnapshot) ?? {} })
+    // The credited groups, validated against the credit note's own stored totals.
+    const creditSummary = documentVatSummary({ currency: invoice.currency, subtotalNet: String(built.subtotalNet), totalTax: String(built.totalTax), totalGross: String(built.totalGross) },
+      vatRowsByRate((built.creditedGroups ?? []).map(group => ({ rate: group.original.rate, net: group.creditedNet, tax: group.creditedTax, gross: group.creditedGross })), invoice.currency))
+    const creditVatSummary = { ...(creditSummary.vatRows ? { vatRows: creditSummary.vatRows } : {}), rounding: creditSummary.rounding }
     const creditNote: CreditNoteForPdf = {
       number: input.number, issueDate: base.issuedAt, reason: selection.reason,
       subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
       currency: invoice.currency, locale: invoice.locale, timezone: invoice.timezone,
       sellerSnapshot, buyerSnapshot, contact: { ...buildBuyerSnapshot(invoice.contact), name: invoice.contact.name },
       invoice: { number: issuedNumber(invoice), issueDate: invoice.issueDate.toISOString() },
-      items: built.lines.map(line => ({ description: line.description, quantity: line.quantity,
-        unitPrice: line.unitPriceGross, total: line.lineGross })),
+      // Credit notes mirror the basis of the invoice they credit.
+      pricesIncludeTax: invoice.pricesIncludeTax,
+      ...creditVatSummary,
+      items: built.lines.map(line => { const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), line)
+        return { description: line.description, quantity: line.quantity, unitPrice: shown.unitPrice, total: shown.amount } }),
     }
     return { ...base, kind: "creditNote" as const, recipient: null,
       selectionFingerprint: createHash("sha256").update(canonicalizeOffer(selection)).digest("hex"),

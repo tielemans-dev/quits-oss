@@ -2,6 +2,8 @@ import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import type { TranslationKey } from "./i18n/messages"
+import { lineColumnKeys, type PriceBasis, type VatRow } from "./documents/line-amounts"
+import { buildTotals } from "./documents/totals"
 import { selectedEmailProvider, readSmtpConfiguration, type EmailProvider, type EmailEnvironment } from "./email-provider-config"
 import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
 
@@ -136,11 +138,14 @@ export function t(
   return translate(key, locale, vars)
 }
 
+/** Item unit prices and totals are the stored amounts on the document's price basis, named in the headers. */
 export function itemsTable(
   items: { description: string; quantity: number; unitPrice: number; total: number }[],
   currency: string,
-  locale?: string | null
+  locale?: string | null,
+  basis?: PriceBasis
 ) {
+  const columns = lineColumnKeys(basis)
   const rows = items.map((item) => `
     <tr>
       <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;">${escapeHtml(item.description)}</td>
@@ -155,35 +160,39 @@ export function itemsTable(
         <tr style="border-bottom:2px solid #e5e7eb;">
           <th style="padding:8px 0;text-align:left;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.description", locale)}</th>
           <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.qty", locale)}</th>
-          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.unitPrice", locale)}</th>
-          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.total", locale)}</th>
+          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t(columns.unitPrice, locale)}</th>
+          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t(columns.amount, locale)}</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>`
 }
 
+/** The rows under the items, from the same builder as the PDFs and pages: subtotal, VAT by rate, rounding, total. */
 export function totalsBlock(
-  subtotal: number,
-  taxAmount: number,
-  total: number,
-  currency: string,
+  document: {
+    subtotal: number
+    taxAmount: number
+    total: number
+    currency: string
+    priceBasis?: PriceBasis
+    vatRows?: readonly VatRow[] | null
+    rounding?: string | null
+  },
   locale?: string | null
 ) {
+  const totals = buildTotals({ basis: document.priceBasis, ...document, locale })
+  const money = (amount: string) => formatCurrency(Number(amount), document.currency, locale)
+  const row = (label: string, amount: string) => `
+      <tr>
+        <td style="padding:4px 0;color:#6b7280;">${escapeHtml(label)}</td>
+        <td style="padding:4px 0;text-align:right;">${money(amount)}</td>
+      </tr>`
   return `
-    <table style="width:100%;border-collapse:collapse;margin-top:8px;">
-      <tr>
-        <td style="padding:4px 0;color:#6b7280;">${t("pdf.subtotal", locale)}</td>
-        <td style="padding:4px 0;text-align:right;">${formatCurrency(subtotal, currency, locale)}</td>
-      </tr>
-      ${taxAmount > 0 ? `
-      <tr>
-        <td style="padding:4px 0;color:#6b7280;">${t("pdf.tax", locale)}</td>
-        <td style="padding:4px 0;text-align:right;">${formatCurrency(taxAmount, currency, locale)}</td>
-      </tr>` : ""}
+    <table style="width:100%;border-collapse:collapse;margin-top:8px;">${totals.lines.map((line) => row(line.label, line.amount)).join("")}
       <tr style="border-top:2px solid #e5e7eb;">
-        <td style="padding:8px 0;font-weight:bold;">${t("pdf.total", locale)}</td>
-        <td style="padding:8px 0;text-align:right;font-weight:bold;font-size:18px;">${formatCurrency(total, currency, locale)}</td>
+        <td style="padding:8px 0;font-weight:bold;">${escapeHtml(totals.total.label)}</td>
+        <td style="padding:8px 0;text-align:right;font-weight:bold;font-size:18px;">${money(totals.total.amount)}</td>
       </tr>
     </table>`
 }
@@ -243,6 +252,11 @@ export type SendInvoiceEmailParams = {
     total: number
     currency: string
     notes?: string | null
+    /** The basis `items` state their amounts on. Absent, the headers stay plain. */
+    priceBasis?: PriceBasis
+    /** VAT by rate and the rounding between net plus tax and the total; absent, the single tax amount is printed. */
+    vatRows?: VatRow[]
+    rounding?: string
     items: { description: string; quantity: number; unitPrice: number; total: number }[]
   }
   org: {
@@ -287,8 +301,8 @@ export function buildInvoiceEmailContent({
       </div>
     </div>
 
-    ${itemsTable(invoice.items, invoice.currency, locale)}
-    ${totalsBlock(invoice.subtotal, invoice.taxAmount, invoice.total, invoice.currency, locale)}
+    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis)}
+    ${totalsBlock(invoice, locale)}
 
     ${invoice.notes ? `<p style="margin-top:24px;color:#6b7280;font-size:14px;border-top:1px solid #e5e7eb;padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
     ${publicPaymentUrl
@@ -333,6 +347,11 @@ export type SendQuoteEmailParams = {
     total: number
     currency: string
     notes?: string | null
+    /** The basis `items` state their amounts on. Absent, the headers stay plain. */
+    priceBasis?: PriceBasis
+    /** VAT by rate and the rounding between net plus tax and the total; absent, the single tax amount is printed. */
+    vatRows?: VatRow[]
+    rounding?: string
     items: { description: string; quantity: number; unitPrice: number; total: number }[]
   }
   org: {
@@ -377,8 +396,8 @@ export function buildQuoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(quote.items, quote.currency, locale)}
-    ${totalsBlock(quote.subtotal, quote.taxAmount, quote.total, quote.currency, locale)}
+    ${itemsTable(quote.items, quote.currency, locale, quote.priceBasis)}
+    ${totalsBlock(quote, locale)}
 
     ${quote.notes ? `<p style="margin-top:24px;color:#6b7280;font-size:14px;border-top:1px solid #e5e7eb;padding-top:16px;">${formatMultilineHtml(quote.notes)}</p>` : ""}
     ${publicQuoteUrl

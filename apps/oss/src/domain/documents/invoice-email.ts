@@ -10,6 +10,8 @@ import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { InvalidState } from "../errors"
+import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
+import { documentVatSummary } from "./vat-summary"
 
 type Decimalish = { toNumber(): number }
 
@@ -36,12 +38,21 @@ export type InvoiceForEmail = {
   subtotalNet: Decimalish
   totalTax: Decimalish
   totalGross: Decimalish
+  pricesIncludeTax: boolean
   contact: { name: string; email: string | null }
   items: Array<{
     description: string
     quantity: Decimalish
+    unitPriceNet: Decimalish
     unitPriceGross: Decimalish
+    lineNet: Decimalish
+    lineTax: Decimalish
     lineGross: Decimalish
+    taxRate: Decimalish
+    vatTreatment: string
+    vatReasonCode: string | null
+    vatCountry: string | null
+    vatRateInput: string | null
   }>
 }
 
@@ -104,6 +115,7 @@ export function composeInvoiceEmail(input: {
 }) {
   const { envelope } = resolveInvoiceEmailContext(input.settings)
   const { invoice } = input
+  const vatSummary = documentVatSummary(invoice)
   const content = buildInvoiceEmailContent({
     fromName: envelope.fromName,
     fromEmail: envelope.fromEmail,
@@ -113,12 +125,17 @@ export function composeInvoiceEmail(input: {
       subtotal: invoice.subtotalNet.toNumber(),
       taxAmount: invoice.totalTax.toNumber(),
       total: invoice.totalGross.toNumber(),
-      items: invoice.items.map((item) => ({
-        description: item.description,
-        quantity: item.quantity.toNumber(),
-        unitPrice: item.unitPriceGross.toNumber(),
-        total: item.lineGross.toNumber(),
-      })),
+      priceBasis: priceBasis(invoice.pricesIncludeTax),
+      ...vatSummary,
+      items: invoice.items.map((item) => {
+        const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), item)
+        return {
+          description: item.description,
+          quantity: item.quantity.toNumber(),
+          unitPrice: shown.unitPrice.toNumber(),
+          total: shown.amount.toNumber(),
+        }
+      }),
     },
     org: documentEmailOrg(invoice, input.settings),
     contactName: invoice.contact.name,

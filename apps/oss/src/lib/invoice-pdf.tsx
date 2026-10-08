@@ -12,6 +12,8 @@ import { translate } from "./i18n/translate"
 import { canRenderLogo } from "./documents/logo"
 import type { TranslationKey } from "./i18n/messages"
 import { buildPaymentDetailsBlock } from "./payment-details-block"
+import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
+import { buildTotals } from "./documents/totals"
 
 const styles = StyleSheet.create({
   page: {
@@ -92,8 +94,8 @@ const styles = StyleSheet.create({
   },
   colDescription: { flex: 1 },
   colQty: { width: 60, textAlign: "right" },
-  colPrice: { width: 80, textAlign: "right" },
-  colTotal: { width: 80, textAlign: "right" },
+  colPrice: { width: 110, textAlign: "right" },
+  colTotal: { width: 110, textAlign: "right" },
   headerText: {
     fontFamily: "Helvetica-Bold",
     fontSize: 9,
@@ -105,13 +107,13 @@ const styles = StyleSheet.create({
   },
   totalsRow: {
     flexDirection: "row",
-    width: 200,
+    width: 270,
     justifyContent: "space-between",
     paddingVertical: 3,
   },
   totalsFinal: {
     flexDirection: "row",
-    width: 200,
+    width: 270,
     justifyContent: "space-between",
     paddingVertical: 6,
     borderTopWidth: 1,
@@ -202,6 +204,18 @@ export type InvoiceForPdf = {
   currency: string
   notes: string | null
   /**
+   * Which side of the VAT the item prices are on: the item unit prices and totals below are net
+   * when false and gross when true. Absent on inputs frozen before documents stated their basis,
+   * whose items are gross; those keep their plain column headers.
+   */
+  pricesIncludeTax?: boolean
+  /** The date of supply, as `YYYY-MM-DD`. Absent when the invoice has none. */
+  supplyDate?: string | null
+  /** VAT by rate. Absent on inputs frozen before they carried it; the VAT row is then the single `taxAmount`. */
+  vatRows?: VatRow[]
+  /** The stored total minus the stored subtotal and tax, as a decimal string; printed when non-zero. */
+  rounding?: string
+  /**
    * Where to pay. An issued invoice carries the account and note frozen when it was issued; a
    * draft preview carries the organization's current ones. Documents issued earlier have none.
    */
@@ -222,6 +236,7 @@ export type InvoiceForPdf = {
     zip?: string | null
     country?: string | null
   }
+  /** Unit price and total are the stored amounts on the document's price basis; never derive one from the other. */
   items: Array<{
     description: string
     quantity: number
@@ -271,6 +286,12 @@ export function InvoicePdfDocument({
   const locale = org.locale
   const timezone = org.timezone
   const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null
+  const columns = lineColumnKeys(invoice.pricesIncludeTax === undefined ? undefined : priceBasis(invoice.pricesIncludeTax))
+  const totals = buildTotals({
+    basis: invoice.pricesIncludeTax === undefined ? undefined : priceBasis(invoice.pricesIncludeTax),
+    subtotal: invoice.subtotal, taxAmount: invoice.taxAmount, total: invoice.total,
+    vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale,
+  })
   const paymentDetails = buildPaymentDetailsBlock(
     { bankAccount: invoice.bankAccount, note: invoice.paymentNote },
     invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference,
@@ -307,6 +328,15 @@ export function InvoicePdfDocument({
               {translate("pdf.dueDate", locale)}
             </Text>
             <Text>{formatDate(invoice.dueDate, locale, timezone)}</Text>
+            {invoice.supplyDate && (
+              <>
+                <Text style={[styles.label, { marginTop: 6 }]}>
+                  {translate("pdf.supplyDate", locale)}
+                </Text>
+                {/* A calendar date, not an instant: formatting it in the organization's zone could move it a day. */}
+                <Text>{formatDate(invoice.supplyDate, locale, "UTC")}</Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -342,10 +372,10 @@ export function InvoicePdfDocument({
             </Text>
             <Text style={[styles.headerText, styles.colQty]}>{translate("pdf.qty", locale)}</Text>
             <Text style={[styles.headerText, styles.colPrice]}>
-              {translate("pdf.unitPrice", locale)}
+              {translate(columns.unitPrice, locale)}
             </Text>
             <Text style={[styles.headerText, styles.colTotal]}>
-              {translate("pdf.total", locale)}
+              {translate(columns.amount, locale)}
             </Text>
           </View>
           {invoice.items.map((item, i) => (
@@ -364,20 +394,16 @@ export function InvoicePdfDocument({
 
         {/* Totals */}
         <View style={styles.totalsContainer}>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalLabel}>{translate("pdf.subtotal", locale)}</Text>
-            <Text>{formatCurrency(invoice.subtotal, invoice.currency, locale)}</Text>
-          </View>
-          {invoice.taxAmount > 0 && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalLabel}>{translate("pdf.tax", locale)}</Text>
-              <Text>{formatCurrency(invoice.taxAmount, invoice.currency, locale)}</Text>
+          {totals.lines.map((row, index) => (
+            <View key={index} style={styles.totalsRow}>
+              <Text style={styles.totalLabel}>{row.label}</Text>
+              <Text>{formatCurrency(Number(row.amount), invoice.currency, locale)}</Text>
             </View>
-          )}
+          ))}
           <View style={styles.totalsFinal}>
-            <Text style={styles.totalFinalLabel}>{translate("pdf.total", locale)}</Text>
+            <Text style={styles.totalFinalLabel}>{totals.total.label}</Text>
             <Text style={styles.totalFinalValue}>
-              {formatCurrency(invoice.total, invoice.currency, locale)}
+              {formatCurrency(Number(totals.total.amount), invoice.currency, locale)}
             </Text>
           </View>
         </View>

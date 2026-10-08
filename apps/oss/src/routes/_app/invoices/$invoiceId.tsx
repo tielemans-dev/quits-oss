@@ -60,6 +60,8 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Printer, CheckCircle, Pencil, Trash2, Plus, ArrowLeft, Download } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { DocumentTotals } from "../../../components/documents/document-totals"
+import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/documents/line-amounts"
 import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
 
@@ -94,6 +96,9 @@ type InvoiceItem = {
   quantity: number
   unitPrice: number
   total: number
+  /** The unit price and amount on the invoice's price basis; absent in older responses. */
+  displayUnitPrice?: number
+  displayAmount?: number
   sortOrder: number
   quantityInput?: string | null
   unitPriceInput?: string | null
@@ -139,6 +144,9 @@ type Invoice = {
   contact: Contact
   items: InvoiceItem[]
   pricesIncludeTax?: boolean
+  priceBasis?: PriceBasis
+  vatRows?: VatRow[]
+  rounding?: string
   vatEvidence?: unknown
 }
 
@@ -1005,6 +1013,15 @@ function InvoiceDetailPage() {
                   </span>{" "}
                   {formatDate(invoice.dueDate, locale, orgSettings.timezone)}
                 </p>
+                {invoice.supplyDate && (
+                  <p>
+                    <span className="font-medium text-foreground">
+                      {t("pdf.supplyDate")}:
+                    </span>{" "}
+                    {/* A calendar date, not an instant: the organization's time zone must not move it a day. */}
+                    {formatDate(new Date(invoice.supplyDate).toISOString(), locale, "UTC")}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1034,8 +1051,8 @@ function InvoiceDetailPage() {
                   <TableRow>
                     <TableHead>{t("pdf.description")}</TableHead>
                     <TableHead className="text-right w-[80px]">{t("pdf.qty")}</TableHead>
-                    <TableHead className="text-right w-[120px]">{t("pdf.unitPrice")}</TableHead>
-                    <TableHead className="text-right w-[120px]">{t("pdf.total")}</TableHead>
+                    <TableHead className="text-right w-[140px]">{t(lineColumnKeys(invoice.priceBasis).unitPrice)}</TableHead>
+                    <TableHead className="text-right w-[140px]">{t(lineColumnKeys(invoice.priceBasis).amount)}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1044,10 +1061,10 @@ function InvoiceDetailPage() {
                       <TableCell>{item.description}</TableCell>
                       <TableCell className="text-right num">{item.quantity}</TableCell>
                       <TableCell className="text-right num">
-                        {formatCurrency(item.unitPrice, invoice.currency, locale)}
+                        {formatCurrency(item.displayUnitPrice ?? item.unitPrice, invoice.currency, locale)}
                       </TableCell>
                       <TableCell className="text-right num">
-                        {formatCurrency(item.total, invoice.currency, locale)}
+                        {formatCurrency(item.displayAmount ?? item.total, invoice.currency, locale)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1057,21 +1074,8 @@ function InvoiceDetailPage() {
 
             {/* Totals */}
             <div className="flex justify-end">
-              <div className="w-64 grid gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("pdf.subtotal")}</span>
-                  <span className="num">{formatCurrency(invoice.subtotal, invoice.currency, locale)}</span>
-                </div>
-                {invoice.taxAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t("pdf.tax")}</span>
-                    <span className="num">{formatCurrency(invoice.taxAmount, invoice.currency, locale)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-semibold text-base border-t pt-2">
-                  <span>{t("pdf.total")}</span>
-                  <span className="num">{formatCurrency(invoice.total, invoice.currency, locale)}</span>
-                </div>
+              <div className="w-full sm:w-80 grid gap-2 text-sm">
+                <DocumentTotals priceBasis={invoice.priceBasis} subtotal={invoice.subtotal} taxAmount={invoice.taxAmount} total={invoice.total} vatRows={invoice.vatRows} rounding={invoice.rounding} currency={invoice.currency} />
                 {invoice.status !== "draft" && (invoice.amountPaid > 0 || invoice.amountCredited > 0) && (
                   <>
                     {invoice.amountPaid > 0 && (

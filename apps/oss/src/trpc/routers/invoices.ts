@@ -31,25 +31,32 @@ import { computeSettlement } from "../../domain/documents/settlement"
 import { executeCommand } from "../../domain/execute"
 import { markOrganizationInvoicesOverdue } from "../../domain/features/overdue"
 import { router, authorizedProcedure } from "../init"
+import { documentDisplayForUi, lineDisplayForUi } from "./document-display"
 import { settleEmailResult } from "../email-delivery-result"
 import { unwrapOutcome } from "../outcome"
 
 const invoiceLogger = appLogger.child("invoices")
 
-function mapInvoiceItemForUi(item: {
-  quantity: { toNumber: () => number }
-  unitPriceGross: { toNumber: () => number }
-  unitPriceNet: { toNumber: () => number }
-  taxRate: { toNumber: () => number }
-  lineGross: { toNumber: () => number }
-}) {
+function mapInvoiceItemForUi(
+  item: {
+    quantity: { toNumber: () => number }
+    unitPriceGross: { toNumber: () => number }
+    unitPriceNet: { toNumber: () => number }
+    taxRate: { toNumber: () => number }
+    lineNet: { toNumber: () => number }
+    lineGross: { toNumber: () => number }
+  },
+  invoice: { pricesIncludeTax: boolean }
+) {
   return {
     quantity: item.quantity.toNumber(),
+    // Gross, as ever. The line table prints displayUnitPrice and displayAmount, on the invoice's price basis.
     unitPrice: item.unitPriceGross.toNumber(),
     unitPriceGross: item.unitPriceGross.toNumber(),
     unitPriceNet: item.unitPriceNet.toNumber(),
     taxRate: item.taxRate.toNumber(),
     total: item.lineGross.toNumber(),
+    ...lineDisplayForUi(invoice, item),
   }
 }
 
@@ -58,15 +65,18 @@ function serializeInvoiceForUi<
     subtotalNet: { toNumber: () => number }
     totalTax: { toNumber: () => number }
     totalGross: { toNumber: () => number }
-    items: Array<Parameters<typeof mapInvoiceItemForUi>[0]>
+    pricesIncludeTax: boolean
+    currency: string
+    items: Array<Parameters<typeof mapInvoiceItemForUi>[0] & Parameters<typeof documentDisplayForUi>[0]["items"][number]>
   },
 >(invoice: Invoice) {
   return {
     ...invoice,
+    ...documentDisplayForUi(invoice),
     subtotal: invoice.subtotalNet.toNumber(),
     taxAmount: invoice.totalTax.toNumber(),
     total: invoice.totalGross.toNumber(),
-    items: invoice.items.map((item) => ({ ...item, ...mapInvoiceItemForUi(item) })),
+    items: invoice.items.map((item) => ({ ...item, ...mapInvoiceItemForUi(item, invoice) })),
   }
 }
 
@@ -151,9 +161,10 @@ export const invoicesRouter = router({
         total: invoice.totalGross.toNumber(),
         ...settlementForUi(invoice),
         publicPaymentUrl: getPublicInvoicePaymentUrl(invoice),
+        ...documentDisplayForUi(invoice),
         items: invoice.items.map((item) => ({
           ...item,
-          ...mapInvoiceItemForUi(item),
+          ...mapInvoiceItemForUi(item, invoice),
         })),
       }
     }),

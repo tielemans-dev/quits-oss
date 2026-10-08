@@ -28,8 +28,10 @@ Add those as browser journeys using the same fixture contract.
 
 The scenarios assume an English-language organization that invoices in US dollars, and
 require the browser context's `timezoneId` to be `UTC`, and select the 15th of next
-month as the due date. The detail page prints line prices with tax applied, so the scenarios assert line
-quantities and the document totals but not per-line prices.
+month as the due date. The organization's prices exclude tax. The detail page therefore prints
+each line's net unit price and net amount under "excl. tax" headers, the lines add up to the
+subtotal, and the scenarios assert the per-line prices, the line amounts, the subtotal, the tax row
+for the rate and the total.
 
 `scenarios.mjs` accepts the consumer's Playwright `test` and `expect`, avoiding a
 second Playwright runtime. Consumers provide an `account` fixture with email and

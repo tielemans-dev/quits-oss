@@ -1,5 +1,7 @@
 import { buildQuoteEmailContent, composeMessage } from "../../lib/email"
 import { documentEmailOrg, resolveInvoiceEmailContext } from "./invoice-email"
+import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
+import { documentVatSummary } from "./vat-summary"
 
 export { requireRecipientEmail } from "./invoice-email"
 
@@ -20,12 +22,21 @@ export type QuoteForEmail = {
   subtotalNet: Decimalish
   totalTax: Decimalish
   totalGross: Decimalish
+  pricesIncludeTax: boolean
   contact: { name: string; email: string | null }
   items: Array<{
     description: string
     quantity: Decimalish
+    unitPriceNet: Decimalish
     unitPriceGross: Decimalish
+    lineNet: Decimalish
+    lineTax: Decimalish
     lineGross: Decimalish
+    taxRate: Decimalish
+    vatTreatment: string
+    vatReasonCode: string | null
+    vatCountry: string | null
+    vatRateInput: string | null
   }>
 }
 
@@ -44,6 +55,7 @@ export function composeQuoteEmail(input: {
 }) {
   const { envelope } = resolveQuoteEmailContext(input.settings)
   const { quote } = input
+  const vatSummary = documentVatSummary(quote)
   const content = buildQuoteEmailContent({
     fromName: envelope.fromName,
     fromEmail: envelope.fromEmail,
@@ -53,12 +65,17 @@ export function composeQuoteEmail(input: {
       subtotal: quote.subtotalNet.toNumber(),
       taxAmount: quote.totalTax.toNumber(),
       total: quote.totalGross.toNumber(),
-      items: quote.items.map((item) => ({
-        description: item.description,
-        quantity: item.quantity.toNumber(),
-        unitPrice: item.unitPriceGross.toNumber(),
-        total: item.lineGross.toNumber(),
-      })),
+      priceBasis: priceBasis(quote.pricesIncludeTax),
+      ...vatSummary,
+      items: quote.items.map((item) => {
+        const shown = lineAmounts(priceBasis(quote.pricesIncludeTax), item)
+        return {
+          description: item.description,
+          quantity: item.quantity.toNumber(),
+          unitPrice: shown.unitPrice.toNumber(),
+          total: shown.amount.toNumber(),
+        }
+      }),
     },
     org: documentEmailOrg(quote, input.settings),
     contactName: quote.contact.name,

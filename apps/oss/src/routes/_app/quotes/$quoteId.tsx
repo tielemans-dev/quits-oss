@@ -59,6 +59,8 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { DocumentTotals } from "../../../components/documents/document-totals"
+import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/documents/line-amounts"
 
 export const Route = createFileRoute("/_app/quotes/$quoteId")({
   validateSearch: (search: Record<string, unknown>): { emailWarning?: string; sendError?: string } => ({
@@ -87,6 +89,9 @@ type QuoteItem = {
   quantity: number
   unitPrice: number
   total: number
+  /** The unit price and amount on the quote's price basis; absent in older responses. */
+  displayUnitPrice?: number
+  displayAmount?: number
   sortOrder: number
   quantityInput?: string | null
   unitPriceInput?: string | null
@@ -125,6 +130,9 @@ type Quote = {
   agreement: { id: string; title: string } | null
   invoices: { id: string; number: string | null }[]
   pricesIncludeTax?: boolean
+  priceBasis?: PriceBasis
+  vatRows?: VatRow[]
+  rounding?: string
   vatEvidence?: unknown
 }
 
@@ -949,8 +957,8 @@ function QuoteDetailPage() {
                 <TableRow>
                   <TableHead>{t("docForm.column.description")}</TableHead>
                   <TableHead className="text-right w-[80px]">{t("docForm.column.qty")}</TableHead>
-                  <TableHead className="text-right w-[120px]">{t("docForm.column.unitPrice")}</TableHead>
-                  <TableHead className="text-right w-[120px]">{t("docForm.column.total")}</TableHead>
+                  <TableHead className="text-right w-[140px]">{t(lineColumnKeys(quote.priceBasis).unitPrice)}</TableHead>
+                  <TableHead className="text-right w-[140px]">{t(lineColumnKeys(quote.priceBasis).amount)}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -959,10 +967,10 @@ function QuoteDetailPage() {
                     <TableCell>{item.description}</TableCell>
                     <TableCell className="text-right num">{item.quantity}</TableCell>
                     <TableCell className="text-right num">
-                      {formatCurrency(item.unitPrice, quote.currency, locale)}
+                      {formatCurrency(item.displayUnitPrice ?? item.unitPrice, quote.currency, locale)}
                     </TableCell>
                     <TableCell className="text-right num">
-                      {formatCurrency(item.total, quote.currency, locale)}
+                      {formatCurrency(item.displayAmount ?? item.total, quote.currency, locale)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -972,21 +980,8 @@ function QuoteDetailPage() {
 
           {/* Totals */}
           <div className="flex justify-end">
-            <div className="w-64 grid gap-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                <span className="num">{formatCurrency(quote.subtotal, quote.currency, locale)}</span>
-              </div>
-              {quote.taxAmount > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
-                  <span className="num">{formatCurrency(quote.taxAmount, quote.currency, locale)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-semibold text-base border-t pt-2">
-                <span>{t("docForm.summary.total")}</span>
-                <span className="num">{formatCurrency(quote.total, quote.currency, locale)}</span>
-              </div>
+            <div className="w-full sm:w-80 grid gap-2 text-sm">
+              <DocumentTotals priceBasis={quote.priceBasis} subtotal={quote.subtotal} taxAmount={quote.taxAmount} total={quote.total} vatRows={quote.vatRows} rounding={quote.rounding} currency={quote.currency} />
             </div>
           </div>
 
