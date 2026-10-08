@@ -10,7 +10,12 @@
     "prisma",
     "src",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "e2e/scenarios.mjs",
+    "e2e/scenarios.d.mts",
+    "e2e/harness.mjs",
+    "e2e/README.md",
+    "e2e/harness.d.mts"
   ],
   "exports": {
     ".": "./src/router.tsx",
@@ -29,7 +34,9 @@
     "./runtime/platform": "./src/lib/runtime/platform.ts",
     "./runtime/services": "./src/lib/runtime/services.ts",
     "./styles.css": "./src/styles.css",
-    "./emails/password-reset-email": "./src/lib/emails/password-reset-email.ts"
+    "./emails/password-reset-email": "./src/lib/emails/password-reset-email.ts",
+    "./e2e": "./e2e/scenarios.mjs",
+    "./e2e/harness": "./e2e/harness.mjs"
   },
   "imports": {
     "#/*": "./src/*"
@@ -54,7 +61,8 @@
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
     "test": "bun run i18n:check && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.config.ts && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.global.config.ts",
     "test:integration": "node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.config.ts src/trpc/routers/__tests__/*.integration.test.ts && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.global.config.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:shared": "node e2e/run.mjs"
   },
   "dependencies": {
     "ipaddr.js": "^1.9.1",
@@ -126,5 +134,13 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependencies": {
+    "@playwright/test": "^1.56.0"
+  },
+  "peerDependenciesMeta": {
+    "@playwright/test": {
+      "optional": true
+    }
   }
 }

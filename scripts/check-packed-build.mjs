@@ -45,6 +45,10 @@ const appTarball = packPackage(appDir, "quits-oss-pack-")
 const appEntries = listEntries(appTarball)
 
 for (const requiredEntry of [
+  "package/e2e/scenarios.mjs",
+  "package/e2e/scenarios.d.mts",
+  "package/e2e/harness.mjs",
+  "package/e2e/harness.d.mts",
   "package/build/index.mjs",
   "package/build/resolve-app-paths.mjs",
   "package/src/routes/__root.tsx",

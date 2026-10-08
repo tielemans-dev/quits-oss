@@ -28,7 +28,8 @@
     "prisma:migrate": "bun --filter @quits/oss prisma:migrate",
     "migrate": "bun --filter @quits/oss migrate",
     "i18n:check": "bun --filter @quits/oss i18n:check",
-    "i18n:update-tm-allowlist": "bun --filter @quits/oss i18n:update-tm-allowlist"
+    "i18n:update-tm-allowlist": "bun --filter @quits/oss i18n:update-tm-allowlist",
+    "test:e2e:shared": "bun --filter @quits/oss test:e2e:shared"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
