@@ -60,7 +60,7 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Printer, CheckCircle, Pencil, Trash2, Plus, ArrowLeft, Download } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
-import { VatSummaryRows } from "../../../components/documents/vat-summary-rows"
+import { DocumentTotals } from "../../../components/documents/document-totals"
 import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/documents/line-amounts"
 import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
@@ -146,6 +146,7 @@ type Invoice = {
   pricesIncludeTax?: boolean
   priceBasis?: PriceBasis
   vatRows?: VatRow[]
+  rounding?: string
   vatEvidence?: unknown
 }
 
@@ -1073,16 +1074,8 @@ function InvoiceDetailPage() {
 
             {/* Totals */}
             <div className="flex justify-end">
-              <div className="w-64 grid gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("pdf.subtotal")}</span>
-                  <span className="num">{formatCurrency(invoice.subtotal, invoice.currency, locale)}</span>
-                </div>
-                <VatSummaryRows rows={invoice.vatRows} taxAmount={invoice.taxAmount} currency={invoice.currency} />
-                <div className="flex justify-between font-semibold text-base border-t pt-2">
-                  <span>{t("pdf.total")}</span>
-                  <span className="num">{formatCurrency(invoice.total, invoice.currency, locale)}</span>
-                </div>
+              <div className="w-80 grid gap-2 text-sm">
+                <DocumentTotals priceBasis={invoice.priceBasis} subtotal={invoice.subtotal} taxAmount={invoice.taxAmount} total={invoice.total} vatRows={invoice.vatRows} rounding={invoice.rounding} currency={invoice.currency} />
                 {invoice.status !== "draft" && (invoice.amountPaid > 0 || invoice.amountCredited > 0) && (
                   <>
                     {invoice.amountPaid > 0 && (

@@ -7,12 +7,13 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer"
 import type { BankAccountSnapshot } from "@quits/contracts/payment-details"
-import { formatCurrency, formatDate, formatNumber } from "./i18n/format"
+import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import { canRenderLogo } from "./documents/logo"
 import type { TranslationKey } from "./i18n/messages"
 import { buildPaymentDetailsBlock } from "./payment-details-block"
-import { lineColumnKeys, priceBasis, printableVatRows, type VatRow } from "./documents/line-amounts"
+import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
+import { buildTotals } from "./documents/totals"
 
 const styles = StyleSheet.create({
   page: {
@@ -93,8 +94,8 @@ const styles = StyleSheet.create({
   },
   colDescription: { flex: 1 },
   colQty: { width: 60, textAlign: "right" },
-  colPrice: { width: 96, textAlign: "right" },
-  colTotal: { width: 96, textAlign: "right" },
+  colPrice: { width: 110, textAlign: "right" },
+  colTotal: { width: 110, textAlign: "right" },
   headerText: {
     fontFamily: "Helvetica-Bold",
     fontSize: 9,
@@ -106,13 +107,13 @@ const styles = StyleSheet.create({
   },
   totalsRow: {
     flexDirection: "row",
-    width: 220,
+    width: 270,
     justifyContent: "space-between",
     paddingVertical: 3,
   },
   totalsFinal: {
     flexDirection: "row",
-    width: 220,
+    width: 270,
     justifyContent: "space-between",
     paddingVertical: 6,
     borderTopWidth: 1,
@@ -212,6 +213,8 @@ export type InvoiceForPdf = {
   supplyDate?: string | null
   /** VAT by rate. Absent on inputs frozen before they carried it; the VAT row is then the single `taxAmount`. */
   vatRows?: VatRow[]
+  /** The stored total minus the stored subtotal and tax, as a decimal string; printed when non-zero. */
+  rounding?: string
   /**
    * Where to pay. An issued invoice carries the account and note frozen when it was issued; a
    * draft preview carries the organization's current ones. Documents issued earlier have none.
@@ -284,7 +287,11 @@ export function InvoicePdfDocument({
   const timezone = org.timezone
   const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null
   const columns = lineColumnKeys(invoice.pricesIncludeTax === undefined ? undefined : priceBasis(invoice.pricesIncludeTax))
-  const vatRows = invoice.vatRows?.length ? printableVatRows(invoice.vatRows) : null
+  const totals = buildTotals({
+    basis: invoice.pricesIncludeTax === undefined ? undefined : priceBasis(invoice.pricesIncludeTax),
+    subtotal: invoice.subtotal, taxAmount: invoice.taxAmount, total: invoice.total,
+    vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale,
+  })
   const paymentDetails = buildPaymentDetailsBlock(
     { bankAccount: invoice.bankAccount, note: invoice.paymentNote },
     invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference,
@@ -387,29 +394,16 @@ export function InvoicePdfDocument({
 
         {/* Totals */}
         <View style={styles.totalsContainer}>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalLabel}>{translate("pdf.subtotal", locale)}</Text>
-            <Text>{formatCurrency(invoice.subtotal, invoice.currency, locale)}</Text>
-          </View>
-          {vatRows
-            ? vatRows.map((row) => (
-                <View key={row.ratePercent} style={styles.totalsRow}>
-                  <Text style={styles.totalLabel}>
-                    {translate("pdf.taxRate", locale, { rate: formatNumber(Number(row.ratePercent), locale) })}
-                  </Text>
-                  <Text>{formatCurrency(Number(row.tax), invoice.currency, locale)}</Text>
-                </View>
-              ))
-            : invoice.taxAmount > 0 && (
-                <View style={styles.totalsRow}>
-                  <Text style={styles.totalLabel}>{translate("pdf.tax", locale)}</Text>
-                  <Text>{formatCurrency(invoice.taxAmount, invoice.currency, locale)}</Text>
-                </View>
-              )}
+          {totals.lines.map((row, index) => (
+            <View key={index} style={styles.totalsRow}>
+              <Text style={styles.totalLabel}>{row.label}</Text>
+              <Text>{formatCurrency(Number(row.amount), invoice.currency, locale)}</Text>
+            </View>
+          ))}
           <View style={styles.totalsFinal}>
-            <Text style={styles.totalFinalLabel}>{translate("pdf.total", locale)}</Text>
+            <Text style={styles.totalFinalLabel}>{totals.total.label}</Text>
             <Text style={styles.totalFinalValue}>
-              {formatCurrency(invoice.total, invoice.currency, locale)}
+              {formatCurrency(Number(totals.total.amount), invoice.currency, locale)}
             </Text>
           </View>
         </View>

@@ -1,4 +1,5 @@
-import { frozenVatRowsOrUndefined } from "../../domain/documents/frozen-vat-groups"
+import type { frozenVatRowsOrUndefined } from "../../domain/documents/frozen-vat-groups"
+import { documentVatSummary } from "../../domain/documents/vat-summary"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 
 type Amount = { toNumber: () => number }
@@ -17,8 +18,8 @@ export function lineDisplayForUi(
 }
 
 export function documentDisplayForUi(
-  document: Parameters<typeof frozenVatRowsOrUndefined>[0] & { pricesIncludeTax: boolean }
+  document: Parameters<typeof frozenVatRowsOrUndefined>[0] & { pricesIncludeTax: boolean; totalGross: { toString(): string } }
 ) {
-  return { priceBasis: priceBasis(document.pricesIncludeTax), vatRows: frozenVatRowsOrUndefined(document) }
+  return { priceBasis: priceBasis(document.pricesIncludeTax), ...documentVatSummary(document) }
 }
 

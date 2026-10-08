@@ -11,6 +11,7 @@ import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { InvalidState } from "../errors"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
+import { documentVatSummary } from "./vat-summary"
 
 type Decimalish = { toNumber(): number }
 
@@ -45,7 +46,13 @@ export type InvoiceForEmail = {
     unitPriceNet: Decimalish
     unitPriceGross: Decimalish
     lineNet: Decimalish
+    lineTax: Decimalish
     lineGross: Decimalish
+    taxRate: Decimalish
+    vatTreatment: string
+    vatReasonCode: string | null
+    vatCountry: string | null
+    vatRateInput: string | null
   }>
 }
 
@@ -108,6 +115,7 @@ export function composeInvoiceEmail(input: {
 }) {
   const { envelope } = resolveInvoiceEmailContext(input.settings)
   const { invoice } = input
+  const vatSummary = documentVatSummary(invoice)
   const content = buildInvoiceEmailContent({
     fromName: envelope.fromName,
     fromEmail: envelope.fromEmail,
@@ -118,6 +126,7 @@ export function composeInvoiceEmail(input: {
       taxAmount: invoice.totalTax.toNumber(),
       total: invoice.totalGross.toNumber(),
       priceBasis: priceBasis(invoice.pricesIncludeTax),
+      ...vatSummary,
       items: invoice.items.map((item) => {
         const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), item)
         return {

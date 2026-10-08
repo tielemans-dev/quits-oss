@@ -56,3 +56,10 @@ export function printableVatRows(rows: readonly VatRow[]): VatRow[] {
   if (rows.length === 1 && isZero(rows[0]!.tax)) return []
   return [...rows]
 }
+
+/** The labels of the subtotal and total rows. Only a gross document says which side of the VAT they are on. */
+export function totalsLabelKeys(basis: PriceBasis | undefined): { subtotal: TranslationKey; total: TranslationKey } {
+  return basis === "gross"
+    ? { subtotal: "pdf.subtotalExclTax", total: "pdf.totalInclTax" }
+    : { subtotal: "pdf.subtotal", total: "pdf.total" }
+}

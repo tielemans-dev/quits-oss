@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "../../../components/ui/table"
 import type { CreditNoteDetail } from "../../../components/credit-notes/types"
-import { VatSummaryRows } from "../../../components/documents/vat-summary-rows"
+import { DocumentTotals } from "../../../components/documents/document-totals"
 import { lineColumnKeys } from "../../../lib/documents/line-amounts"
 
 /** Owned by the credit notes feature. */
@@ -298,16 +298,8 @@ function CreditNoteDetailPage() {
           </div>
 
           <div className="flex justify-end">
-            <div className="w-64 grid gap-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("pdf.subtotal")}</span>
-                <span className="num">{money(creditNote.subtotal)}</span>
-              </div>
-              <VatSummaryRows rows={creditNote.vatRows} taxAmount={creditNote.taxAmount} currency={creditNote.currency} />
-              <div className="flex justify-between font-semibold text-base border-t pt-2">
-                <span>{t("pdf.total")}</span>
-                <span className="num">{money(creditNote.total)}</span>
-              </div>
+            <div className="w-80 grid gap-2 text-sm">
+              <DocumentTotals priceBasis={creditNote.priceBasis} subtotal={creditNote.subtotal} taxAmount={creditNote.taxAmount} total={creditNote.total} vatRows={creditNote.vatRows} rounding={creditNote.rounding} currency={creditNote.currency} />
             </div>
           </div>
 

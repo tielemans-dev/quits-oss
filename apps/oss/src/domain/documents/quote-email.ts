@@ -1,6 +1,7 @@
 import { buildQuoteEmailContent, composeMessage } from "../../lib/email"
 import { documentEmailOrg, resolveInvoiceEmailContext } from "./invoice-email"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
+import { documentVatSummary } from "./vat-summary"
 
 export { requireRecipientEmail } from "./invoice-email"
 
@@ -29,7 +30,13 @@ export type QuoteForEmail = {
     unitPriceNet: Decimalish
     unitPriceGross: Decimalish
     lineNet: Decimalish
+    lineTax: Decimalish
     lineGross: Decimalish
+    taxRate: Decimalish
+    vatTreatment: string
+    vatReasonCode: string | null
+    vatCountry: string | null
+    vatRateInput: string | null
   }>
 }
 
@@ -48,6 +55,7 @@ export function composeQuoteEmail(input: {
 }) {
   const { envelope } = resolveQuoteEmailContext(input.settings)
   const { quote } = input
+  const vatSummary = documentVatSummary(quote)
   const content = buildQuoteEmailContent({
     fromName: envelope.fromName,
     fromEmail: envelope.fromEmail,
@@ -58,6 +66,7 @@ export function composeQuoteEmail(input: {
       taxAmount: quote.totalTax.toNumber(),
       total: quote.totalGross.toNumber(),
       priceBasis: priceBasis(quote.pricesIncludeTax),
+      ...vatSummary,
       items: quote.items.map((item) => {
         const shown = lineAmounts(priceBasis(quote.pricesIncludeTax), item)
         return {

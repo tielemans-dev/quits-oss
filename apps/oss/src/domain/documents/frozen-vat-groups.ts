@@ -1,3 +1,4 @@
+import { ZodError } from "zod"
 import { frozenVatGroupSchema, type FrozenVatGroup } from "@quits/contracts/pricing"
 import { vatGroupKey, percentageToFraction, fractionToPercentage } from "@quits/shared/pricing"
 import { toDecimal } from "../../lib/exports/format"
@@ -67,15 +68,32 @@ export function vatRowsByRate(
 export const frozenVatRows = (document: Parameters<typeof frozenVatGroups>[0]) =>
   vatRowsByRate(frozenVatGroups(document), document.currency)
 
+type StoredTotals = { currency: string; subtotalNet: { toString(): string }; totalTax: { toString(): string } }
+
 /**
- * The same for a document that may not group: a draft with an unfinished VAT classification fails
- * the group schema. It then has no rows, and the reader sees the single tax amount instead.
+ * The rows only when they account for the document: their net sums to the stored subtotal and
+ * their tax to the stored total tax. Legacy lines may carry no tax of their own while the header
+ * keeps it, and rows that disagree with the totals would print a document that does not add up.
  */
-export function frozenVatRowsOrUndefined(document: Parameters<typeof frozenVatGroups>[0]) {
+export function rowsMatchingTotals(rows: readonly VatRow[] | undefined, document: StoredTotals): VatRow[] | undefined {
+  if (!rows?.length) return undefined
+  const sum = (field: "net" | "tax") => rows.reduce((total, row) => total.plus(row[field]), toDecimal(0))
+  return sum("net").eq(document.subtotalNet.toString()) && sum("tax").eq(document.totalTax.toString()) ? [...rows] : undefined
+}
+
+/**
+ * The VAT rows of a document from its stored lines, or none when it cannot show them: a draft
+ * with an unfinished VAT classification fails the group schema, and a legacy document's lines may
+ * not add up to its totals. The reader then sees the single tax amount instead.
+ */
+export function frozenVatRowsOrUndefined(document: Parameters<typeof frozenVatGroups>[0] & StoredTotals) {
+  let rows: VatRow[]
   try {
-    const rows = frozenVatRows(document)
-    return rows.length ? rows : undefined
-  } catch {
-    return undefined
+    rows = frozenVatRows(document)
+  } catch (error) {
+    // Only an unclassifiable draft is expected here; any other failure is a defect to surface.
+    if (error instanceof ZodError) return undefined
+    throw error
   }
+  return rowsMatchingTotals(rows, document)
 }
