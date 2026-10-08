@@ -351,7 +351,9 @@ export const settingsRouter = router({
             message: "Enter the base URL of the OpenAI-compatible endpoint",
           })
         }
-        if (aiBaseUrl && !isAiEndpointHostAllowed(aiBaseUrl)) {
+        // Only a new destination is checked, so tightening the allowlist does not block saving
+        // unrelated settings. A disallowed saved endpoint is still refused when drafting.
+        if (aiDestinationChanged && aiBaseUrl && !isAiEndpointHostAllowed(aiBaseUrl)) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "This AI endpoint's host is not allowed on this server",

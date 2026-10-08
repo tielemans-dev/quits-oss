@@ -252,8 +252,10 @@ function collectAgentOutput(input: {
       settle(() => reject(startFailure(input.executable, error)))
     })
 
-    child.once("close", (code: number | null, signal: NodeJS.Signals | null) => {
-      // Anything the agent left running in its group goes with it.
+    // Anything the agent leaves running in its group goes with it. This runs on `exit`, not
+    // `close`: a leftover process holding the agent's stdout open would otherwise delay `close`
+    // until the timeout.
+    child.once("exit", () => {
       if (USE_PROCESS_GROUP && child.pid !== undefined) {
         try {
           process.kill(-child.pid, "SIGKILL")
@@ -261,6 +263,9 @@ function collectAgentOutput(input: {
           // No process left in the group.
         }
       }
+    })
+
+    child.once("close", (code: number | null, signal: NodeJS.Signals | null) => {
       settle(() => {
         if (code !== 0) {
           const status = code !== null ? `code ${code}` : `signal ${signal ?? "unknown"}`

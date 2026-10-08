@@ -284,6 +284,22 @@ describe("settings router AI provider handling", () => {
     vi.unstubAllEnvs()
   })
 
+  it("does not re-check an unchanged saved endpoint when unrelated settings are saved", async () => {
+    vi.stubEnv("QUITS_AI_CUSTOM_ENDPOINT_HOSTS", "llm.internal")
+    mocks.txFindUnique.mockResolvedValue({
+      countryCode: "DK",
+      aiProvider: "openai_compatible",
+      aiBaseUrl: "http://old-host:11434/v1",
+    })
+    const caller = settingsRouter.createCaller(createContext())
+
+    // Fails later, at the mocked write, rather than at the host check.
+    await expect(
+      caller.update({ companyName: "Acme", aiBaseUrl: "http://old-host:11434/v1" })
+    ).rejects.not.toMatchObject({ message: "This AI endpoint's host is not allowed on this server" })
+    vi.unstubAllEnvs()
+  })
+
   it("rejects switching to the local agent when the runtime does not enable it", async () => {
     mocks.txFindUnique.mockResolvedValue({
       countryCode: "DK",

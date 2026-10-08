@@ -15,6 +15,7 @@
   "exports": {
     ".": "./src/router.tsx",
     "./auth-client": "./src/lib/auth-client.ts",
+    "./ai/provider": "./src/lib/ai/provider.ts",
     "./auth/providers": "./src/lib/auth/providers.ts",
     "./build": "./build/index.mjs",
     "./document-email-sending": "./src/lib/document-email-sending.ts",
