@@ -183,7 +183,7 @@ function DashboardPage() {
               {t("dashboard.noInvoices")}{" "}
               <Link
                 to="/invoices/new"
-                className="text-primary underline underline-offset-4"
+                className="text-brand-text underline underline-offset-4"
               >
                 {t("dashboard.createFirstInvoice")}
               </Link>{" "}

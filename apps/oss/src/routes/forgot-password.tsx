@@ -62,7 +62,7 @@ function ForgotPasswordPage() {
             {!sent ? <Button type="submit" className="w-full" disabled={loading}>
               {t(loading ? 'auth.forgotPassword.submitting' : 'auth.forgotPassword.submit')}
             </Button> : null}
-            <Link to="/login" className="text-sm text-primary underline underline-offset-4">{t('auth.recovery.backToLogin')}</Link>
+            <Link to="/login" className="text-sm text-brand-text underline underline-offset-4">{t('auth.recovery.backToLogin')}</Link>
           </CardFooter>
         </form>
       </Card>

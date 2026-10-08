@@ -90,10 +90,10 @@ function ResetPasswordPage() {
             {!success && !invalidToken ? <Button type="submit" className="w-full" disabled={loading}>
               {t(loading ? 'auth.resetPassword.submitting' : 'auth.resetPassword.submit')}
             </Button> : null}
-            {!success && invalidToken ? <Link to="/forgot-password" className="text-sm text-primary underline underline-offset-4">
+            {!success && invalidToken ? <Link to="/forgot-password" className="text-sm text-brand-text underline underline-offset-4">
               {t('auth.resetPassword.requestNew')}
             </Link> : null}
-            <Link to="/login" className="text-sm text-primary underline underline-offset-4">{t('auth.recovery.backToLogin')}</Link>
+            <Link to="/login" className="text-sm text-brand-text underline underline-offset-4">{t('auth.recovery.backToLogin')}</Link>
           </CardFooter>
         </form>
       </Card>

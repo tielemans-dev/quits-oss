@@ -733,7 +733,7 @@ function SettingsPage() {
           </p>
         )}
         {success && (
-          <p className="text-sm text-green-600" role="status">
+          <p className="text-sm text-tone-success" role="status">
             {t("settings.success.saved")}
           </p>
         )}

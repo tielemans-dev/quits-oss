@@ -41,6 +41,7 @@ const themeColors = () =>
 beforeEach(() => {
   window.localStorage.clear()
   document.documentElement.className = ""
+  document.documentElement.removeAttribute("data-document")
   document.head.querySelectorAll('meta[name="theme-color"]').forEach((meta) => meta.remove())
   window.history.pushState({}, "", "/")
   resetThemeForTesting()
@@ -143,7 +144,7 @@ describe("themeInitScript", () => {
   })
 
   it("sets one theme-color meta from the resolved theme, not from the system", () => {
-    document.head.innerHTML = '<meta name="theme-color" content="#fcfcf9">'
+    document.head.innerHTML = '<meta name="theme-color" content="#f5f4f0">'
 
     stubSystemTheme(false)
     window.localStorage.setItem(THEME_STORAGE_KEY, "dark")
@@ -159,6 +160,21 @@ describe("themeInitScript", () => {
     window.history.pushState({}, "", "/q/some-token")
     runInitScript()
     expect(themeColors()).toEqual([THEME_COLORS.light])
+  })
+
+  it("marks public document pages with data-document, and only those", () => {
+    stubSystemTheme(false)
+    for (const [pathname, marked] of [
+      ["/", false],
+      ["/invoices", false],
+      ["/pay/t", true],
+      ["/q/t", true],
+      ["/a/t", true],
+    ] as const) {
+      window.history.pushState({}, "", pathname)
+      runInitScript()
+      expect(document.documentElement.hasAttribute("data-document")).toBe(marked)
+    }
   })
 
   it("creates the theme-color meta when the document has none", () => {
@@ -191,9 +207,18 @@ describe("themeInitScript", () => {
 })
 
 describe("applyTheme", () => {
+  it("marks the document on public pages so the brand colour stays off it", () => {
+    stubSystemTheme(false)
+    applyTheme("/pay/token", "dark")
+    expect(document.documentElement.hasAttribute("data-document")).toBe(true)
+
+    applyTheme("/invoices", "dark")
+    expect(document.documentElement.hasAttribute("data-document")).toBe(false)
+  })
+
   it("keeps the theme-color meta in step with the resolved theme", () => {
     stubSystemTheme(false)
-    document.head.innerHTML = '<meta name="theme-color" content="#fcfcf9">'
+    document.head.innerHTML = '<meta name="theme-color" content="#f5f4f0">'
 
     applyTheme("/invoices", "dark")
     expect(themeColors()).toEqual([THEME_COLORS.dark])

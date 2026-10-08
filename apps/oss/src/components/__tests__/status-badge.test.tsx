@@ -29,8 +29,9 @@ describe("StatusBadge", () => {
     const badge = screen.getByText("Overdue")
     expect(badge.dataset.tone).toBe("danger")
     expect(badge.className).toContain("text-tone-danger")
-    expect(badge.className).toContain("bg-tone-danger/12")
-    expect(badge.className).toContain("dark:bg-tone-danger/18")
+    // A soft pill: the same 14% tint in light and dark, the label at full strength.
+    expect(badge.className).toContain("bg-tone-danger/14")
+    expect(badge.className).not.toContain("dark:")
     expect(badge.className).toContain("rounded-full")
   })
 
