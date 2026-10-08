@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start"
+import { getRequestHeader } from "@tanstack/react-start/server"
 import {
   parseBuyerSnapshot,
   parseSellerSnapshot,
@@ -7,6 +8,8 @@ import {
   publicInvoiceCheckoutResultSchema,
   publicInvoiceTokenInputSchema,
 } from "@quits/contracts/payments"
+import { resolvePublicPresentation } from "../documents/public-presentation"
+import { localeFromAcceptLanguage } from "../i18n/accept-language"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -32,9 +35,21 @@ export function serializePublicInvoiceSession(session: {
     totalTax: Decimalish
     subtotalNet: Decimalish
     currency: string
+    /** The document's own language and timezone, the ones its PDF is rendered with. */
+    locale?: string | null
+    timezone?: string | null
     notes: string | null
     sellerSnapshot: unknown
     buyerSnapshot: unknown
+    /** Only the presentation fields are read; the settings row also carries secrets. */
+    organization?: {
+      settings?: {
+        locale?: string | null
+        timezone?: string | null
+        companyName?: string | null
+        companyLogo?: string | null
+      } | null
+    } | null
     contact: {
       name: string
       email: string | null
@@ -61,7 +76,16 @@ export function serializePublicInvoiceSession(session: {
       ? 0
       : Math.max(Math.round((totalGross - amountCredited - amountPaid) * 100) / 100, 0)
 
+  const sellerSnapshot = parseSellerSnapshot(invoice.sellerSnapshot)
+  const presentation = resolvePublicPresentation({
+    document: { locale: invoice.locale, timezone: invoice.timezone, sellerSnapshot },
+    settings: invoice.organization?.settings,
+  })
+
   return {
+    /** The language the page is shown in. */
+    locale: presentation.locale,
+    seller: presentation.seller,
     paymentState: session.paymentState,
     stripeEnabled: session.stripeEnabled,
     invoice: {
@@ -78,8 +102,9 @@ export function serializePublicInvoiceSession(session: {
       totalTax: toNumber(invoice.totalTax),
       subtotalNet: toNumber(invoice.subtotalNet),
       currency: invoice.currency,
+      timezone: presentation.timezone,
       notes: invoice.notes,
-      sellerSnapshot: parseSellerSnapshot(invoice.sellerSnapshot),
+      sellerSnapshot,
       buyerSnapshot: parseBuyerSnapshot(invoice.buyerSnapshot),
       contact: invoice.contact,
       items: invoice.items.map((item) => ({
@@ -103,7 +128,11 @@ export const getPublicInvoiceSession = createServerFn({ method: "GET" })
     ])
     const session = await loadPublicInvoiceByToken(data.token, getPublicInvoicePaymentSecret())
     if (!session) {
-      return { kind: "invalid" } as const
+      // No document to take a language from: answer in the visitor's.
+      return {
+        kind: "invalid",
+        locale: localeFromAcceptLanguage(getRequestHeader("accept-language")),
+      } as const
     }
 
     return {

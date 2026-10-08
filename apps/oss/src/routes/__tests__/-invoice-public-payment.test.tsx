@@ -1,6 +1,11 @@
+import type { ReactNode } from "react"
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { PublicInvoicePaymentPage } from "../../components/invoices/public-invoice-payment-page"
+import { LocalizedDocument } from "../../components/documents/localized-document"
+
+const tinyLogoDataUrl =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 
 const baseInvoice = {
   id: "invoice-1",
@@ -13,6 +18,7 @@ const baseInvoice = {
   totalTax: { toNumber: () => 250 },
   subtotalNet: { toNumber: () => 1000 },
   currency: "USD",
+  timezone: "UTC",
   notes: "Net 14",
   sellerSnapshot: {
     companyName: "Acme Studio",
@@ -41,15 +47,23 @@ const baseInvoice = {
   ],
 }
 
+const seller = { name: "Acme Studio", logo: null }
+
+function page(locale: string, children: ReactNode) {
+  return renderToStaticMarkup(<LocalizedDocument locale={locale}>{children}</LocalizedDocument>)
+}
+
 describe("PublicInvoicePaymentPage", () => {
   it("renders a pay action while an invoice is unpaid", () => {
-    const html = renderToStaticMarkup(
+    const html = page(
+      "en-US",
       <PublicInvoicePaymentPage
         token="signed-token"
         state={{
           kind: "ready",
           paymentState: "unpaid",
           invoice: baseInvoice,
+          seller,
           stripeEnabled: true,
         }}
       />
@@ -57,10 +71,16 @@ describe("PublicInvoicePaymentPage", () => {
 
     expect(html).toContain("Pay now")
     expect(html).toContain("INV-0001")
+    expect(html).toContain("Invoice from Acme Studio")
+    expect(html).toContain("$1,250.00")
+    expect(html).toContain("Mar 1, 2026")
+    expect(html).toContain("Mar 15, 2026")
+    expect(html).toContain('lang="en"')
   })
 
   it("shows the balance due after a partial payment", () => {
-    const html = renderToStaticMarkup(
+    const html = page(
+      "en-US",
       <PublicInvoicePaymentPage
         token="signed-token"
         state={{
@@ -73,6 +93,7 @@ describe("PublicInvoicePaymentPage", () => {
             amountCredited: 0,
             balanceDue: 750,
           },
+          seller,
           stripeEnabled: true,
         }}
       />
@@ -85,7 +106,8 @@ describe("PublicInvoicePaymentPage", () => {
   })
 
   it("renders a read-only confirmation once an invoice is paid", () => {
-    const html = renderToStaticMarkup(
+    const html = page(
+      "en-US",
       <PublicInvoicePaymentPage
         token="signed-token"
         state={{
@@ -96,6 +118,7 @@ describe("PublicInvoicePaymentPage", () => {
             status: "paid",
             paymentStatus: "paid",
           },
+          seller,
           stripeEnabled: true,
         }}
       />
@@ -106,7 +129,8 @@ describe("PublicInvoicePaymentPage", () => {
   })
 
   it("shows an invoice credited in full as credited, with nothing to pay", () => {
-    const html = renderToStaticMarkup(
+    const html = page(
+      "en-US",
       <PublicInvoicePaymentPage
         token="signed-token"
         state={{
@@ -120,6 +144,7 @@ describe("PublicInvoicePaymentPage", () => {
             amountCredited: 1250,
             balanceDue: 0,
           },
+          seller,
           stripeEnabled: true,
         }}
       />
@@ -133,7 +158,8 @@ describe("PublicInvoicePaymentPage", () => {
   })
 
   it("renders an invalid-link state", () => {
-    const html = renderToStaticMarkup(
+    const html = page(
+      "en-US",
       <PublicInvoicePaymentPage
         token="signed-token"
         state={{
@@ -143,5 +169,183 @@ describe("PublicInvoicePaymentPage", () => {
     )
 
     expect(html).toContain("This invoice payment link is invalid or has expired.")
+  })
+
+  describe("in Danish", () => {
+    const danishInvoice = { ...baseInvoice, currency: "DKK", timezone: "Europe/Copenhagen" }
+
+    it("shows Danish labels and da-DK money and dates", () => {
+      const html = page(
+        "da-DK",
+        <PublicInvoicePaymentPage
+          token="signed-token"
+          state={{
+            kind: "ready",
+            paymentState: "unpaid",
+            invoice: danishInvoice,
+            seller,
+            stripeEnabled: true,
+          }}
+        />
+      )
+
+      expect(html).toContain("Faktura fra Acme Studio")
+      expect(html).toContain("Betal denne faktura")
+      expect(html).toContain("Betal nu")
+      expect(html).toContain("Afventer betaling")
+      expect(html).toContain("Fakturaoversigt")
+      expect(html).toContain("Fakturadato")
+      expect(html).toContain("Forfaldsdato")
+      expect(html).toContain("Til betaling")
+      expect(html).toContain("Kunde")
+      expect(html).toContain("Virksomhed")
+      expect(html).toContain("1.250,00 kr.")
+      expect(html).toContain("2 x 625,00 kr.")
+      expect(html).toContain("1. mar. 2026")
+      expect(html).toContain("15. mar. 2026")
+      expect(html).toContain('lang="da"')
+      expect(html).not.toContain("Pay now")
+      expect(html).not.toContain("Invoice from")
+      expect(html).not.toContain("$")
+    })
+
+    it("shows the settled and credited states in Danish", () => {
+      const paid = page(
+        "da-DK",
+        <PublicInvoicePaymentPage
+          token="signed-token"
+          state={{
+            kind: "ready",
+            paymentState: "paid",
+            invoice: { ...danishInvoice, status: "paid", paymentStatus: "paid" },
+            seller,
+            stripeEnabled: true,
+          }}
+        />
+      )
+      const credited = page(
+        "da-DK",
+        <PublicInvoicePaymentPage
+          token="signed-token"
+          state={{
+            kind: "ready",
+            paymentState: "paid",
+            invoice: {
+              ...danishInvoice,
+              status: "credited",
+              amountCredited: 1250,
+              balanceDue: 0,
+            },
+            seller,
+            stripeEnabled: true,
+          }}
+        />
+      )
+
+      expect(paid).toContain("Betaling modtaget")
+      expect(paid).toContain("Denne faktura er allerede betalt.")
+      expect(credited).toContain("Faktura krediteret")
+      expect(credited).toContain("Denne faktura er krediteret fuldt ud. Der er intet at betale.")
+      expect(credited).toContain("0,00 kr.")
+    })
+
+    it("shows the partial payment and the offline notice in Danish", () => {
+      const partial = page(
+        "da-DK",
+        <PublicInvoicePaymentPage
+          token="signed-token"
+          state={{
+            kind: "ready",
+            paymentState: "unpaid",
+            invoice: { ...danishInvoice, amountPaid: 500, amountCredited: 0, balanceDue: 750 },
+            seller,
+            stripeEnabled: false,
+          }}
+        />
+      )
+
+      expect(partial).toContain("Delvist betalt")
+      expect(partial).toContain("Betalt")
+      expect(partial).toContain("750,00 kr.")
+      expect(partial).toContain("Onlinebetaling er ikke tilgængelig for denne faktura.")
+    })
+
+    it("shows the invalid-link state in Danish", () => {
+      const html = page(
+        "da-DK",
+        <PublicInvoicePaymentPage token="signed-token" state={{ kind: "invalid" }} />
+      )
+
+      expect(html).toContain("Fakturaen er ikke tilgængelig")
+      expect(html).toContain("Dette betalingslink er ugyldigt eller udløbet.")
+    })
+
+    it("formats a decimal quantity with the Danish decimal comma", () => {
+      const html = page(
+        "da-DK",
+        <PublicInvoicePaymentPage
+          token="signed-token"
+          state={{
+            kind: "ready",
+            paymentState: "unpaid",
+            invoice: {
+              ...danishInvoice,
+              items: [{ ...danishInvoice.items[0]!, quantity: { toNumber: () => 1.5 } }],
+            },
+            seller,
+            stripeEnabled: true,
+          }}
+        />
+      )
+
+      expect(html).toContain("1,5 x 625,00 kr.")
+    })
+  })
+
+  describe("seller identity", () => {
+    const ready = (sellerValue: { name: string | null; logo: string | null }) => ({
+      kind: "ready" as const,
+      paymentState: "unpaid" as const,
+      invoice: baseInvoice,
+      seller: sellerValue,
+      stripeEnabled: true,
+    })
+
+    it("shows the seller's logo and name at the top", () => {
+      const html = page(
+        "en-US",
+        <PublicInvoicePaymentPage
+          token="signed-token"
+          state={ready({ name: "Acme Studio", logo: tinyLogoDataUrl })}
+        />
+      )
+
+      expect(html).toContain(`src="${tinyLogoDataUrl}"`)
+      expect(html).toContain('referrerPolicy="no-referrer"')
+      expect(html.indexOf("<header")).toBeLessThan(html.indexOf("INV-0001"))
+    })
+
+    it("never falls back to the product name when the seller has no name", () => {
+      const html = page(
+        "en-US",
+        <PublicInvoicePaymentPage token="signed-token" state={ready({ name: null, logo: null })} />
+      )
+
+      expect(html).not.toContain("Quits")
+      expect(html).not.toContain("<header")
+      expect(html).not.toContain("Invoice from")
+    })
+
+    it("describes the logo when there is no name beside it", () => {
+      const html = page(
+        "da-DK",
+        <PublicInvoicePaymentPage
+          token="signed-token"
+          state={ready({ name: null, logo: tinyLogoDataUrl })}
+        />
+      )
+
+      expect(html).toContain('alt="Virksomhedslogo"')
+    })
   })
 })

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start"
+import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import {
   parseBuyerSnapshot,
@@ -7,6 +8,8 @@ import {
 import {
   publicQuoteTokenInputSchema,
 } from "@quits/contracts/quotes"
+import { resolvePublicPresentation } from "../documents/public-presentation"
+import { localeFromAcceptLanguage } from "../i18n/accept-language"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -33,9 +36,21 @@ export function serializePublicQuoteSession(session: {
     totalTax: Decimalish
     subtotalNet: Decimalish
     currency: string
+    /** The document's own language and timezone, the ones its PDF and email use. */
+    locale?: string | null
+    timezone?: string | null
     notes: string | null
     sellerSnapshot: unknown
     buyerSnapshot: unknown
+    /** Only the presentation fields are read from the seller's settings. */
+    organization?: {
+      settings?: {
+        locale?: string | null
+        timezone?: string | null
+        companyName?: string | null
+        companyLogo?: string | null
+      } | null
+    } | null
     publicDecisionAt: Date | string | null
     publicRejectionReason: string | null
     contact: {
@@ -60,8 +75,16 @@ export function serializePublicQuoteSession(session: {
   decisionState: "pending" | "accepted" | "rejected"
 }) {
   const { quote } = session
+  const sellerSnapshot = parseSellerSnapshot(quote.sellerSnapshot)
+  const presentation = resolvePublicPresentation({
+    document: { locale: quote.locale, timezone: quote.timezone, sellerSnapshot },
+    settings: quote.organization?.settings,
+  })
 
   return {
+    /** The language the page is shown in. */
+    locale: presentation.locale,
+    seller: presentation.seller,
     decisionState: session.decisionState,
     quote: {
       id: quote.id,
@@ -73,8 +96,9 @@ export function serializePublicQuoteSession(session: {
       totalTax: toNumber(quote.totalTax),
       subtotalNet: toNumber(quote.subtotalNet),
       currency: quote.currency,
+      timezone: presentation.timezone,
       notes: quote.notes,
-      sellerSnapshot: parseSellerSnapshot(quote.sellerSnapshot),
+      sellerSnapshot,
       buyerSnapshot: parseBuyerSnapshot(quote.buyerSnapshot),
       publicDecisionAt: toDateString(quote.publicDecisionAt),
       publicRejectionReason: quote.publicRejectionReason,
@@ -101,7 +125,11 @@ export const getPublicQuoteSession = createServerFn({ method: "GET" })
     ])
     const session = await loadPublicQuoteByToken(data.token, getPublicQuoteSecret())
     if (!session) {
-      return { kind: "invalid" } as const
+      // No document to take a language from: answer in the visitor's.
+      return {
+        kind: "invalid",
+        locale: localeFromAcceptLanguage(getRequestHeader("accept-language")),
+      } as const
     }
 
     return {
