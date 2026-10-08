@@ -11,4 +11,12 @@ export const enPdfMessages = {
   "pdf.subtotal": "Subtotal",
   "pdf.tax": "Tax",
   "pdf.notes": "Notes",
+  "pdf.paymentDetails": "Payment details",
+  "pdf.regNumber": "Reg. no.",
+  "pdf.accountNumber": "Account no.",
+  "pdf.iban": "IBAN",
+  "pdf.bic": "BIC",
+  "pdf.accountHolder": "Account holder",
+  "pdf.bankName": "Bank",
+  "pdf.paymentReference": "Payment reference",
 } as const

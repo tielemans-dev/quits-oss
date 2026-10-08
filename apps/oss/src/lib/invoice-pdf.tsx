@@ -6,10 +6,12 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer"
+import type { BankDetailsSnapshot } from "@quits/contracts/payment-details"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import { canRenderLogo } from "./documents/logo"
 import type { TranslationKey } from "./i18n/messages"
+import { buildPaymentDetailsBlock } from "./payment-details-block"
 
 const styles = StyleSheet.create({
   page: {
@@ -141,6 +143,41 @@ const styles = StyleSheet.create({
     color: "#374151",
     lineHeight: 1.5,
   },
+  paymentBox: {
+    marginTop: 24,
+    padding: 12,
+    backgroundColor: "#f9fafb",
+    borderRadius: 4,
+  },
+  paymentRow: {
+    flexDirection: "row",
+    marginBottom: 2,
+  },
+  paymentLabel: {
+    width: 90,
+    color: "#6b7280",
+    fontSize: 9,
+  },
+  paymentValue: {
+    flex: 1,
+    fontSize: 10,
+  },
+  paymentNote: {
+    marginTop: 4,
+    fontSize: 9,
+    color: "#374151",
+    lineHeight: 1.5,
+  },
+  paymentReference: {
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    fontSize: 10,
+  },
+  paymentReferenceValue: {
+    fontFamily: "Helvetica-Bold",
+  },
 })
 
 export type OrgSettingsForPdf = {
@@ -163,6 +200,11 @@ export type InvoiceForPdf = {
   total: number
   currency: string
   notes: string | null
+  /**
+   * Where to pay. An issued invoice carries the details frozen when it was issued; a draft
+   * preview carries the organization's current ones. Documents issued earlier have none.
+   */
+  bankDetails?: BankDetailsSnapshot | null
   contact: {
     name: string
     email?: string | null
@@ -222,6 +264,7 @@ export function InvoicePdfDocument({
   const locale = org.locale
   const timezone = org.timezone
   const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null
+  const paymentDetails = buildPaymentDetailsBlock(invoice.bankDetails, invoice.number, locale)
 
   return (
     <Document creationDate={new Date(invoice.issueDate)} modificationDate={new Date(invoice.issueDate)}>
@@ -327,6 +370,24 @@ export function InvoicePdfDocument({
             </Text>
           </View>
         </View>
+
+        {/* Payment details */}
+        {paymentDetails && (
+          <View style={styles.paymentBox} wrap={false}>
+            <Text style={styles.sectionTitle}>{paymentDetails.title}</Text>
+            {paymentDetails.rows.map((row) => (
+              <View key={row.label} style={styles.paymentRow}>
+                <Text style={styles.paymentLabel}>{row.label}</Text>
+                <Text style={styles.paymentValue}>{row.value}</Text>
+              </View>
+            ))}
+            {paymentDetails.note && <Text style={styles.paymentNote}>{paymentDetails.note}</Text>}
+            <Text style={styles.paymentReference}>
+              {paymentDetails.reference.label}:{" "}
+              <Text style={styles.paymentReferenceValue}>{paymentDetails.reference.value}</Text>
+            </Text>
+          </View>
+        )}
 
         {/* Notes */}
         {invoice.notes && (
