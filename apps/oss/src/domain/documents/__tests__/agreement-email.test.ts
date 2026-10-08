@@ -55,6 +55,37 @@ describe("agreement email language", () => {
   })
 })
 
+describe("agreement email total", () => {
+  // A v2 offer states its own service total, with payable rounding in `gross`: the one the page
+  // shows. The flat `totalGross` beside it is not what the customer is told.
+  const v2Snapshot = {
+    ...snapshot,
+    offerFormatVersion: 2,
+    totalGross: "1250.00",
+    subtotalNet: "1000.00",
+    totalTax: "250.00",
+    serviceTotal: { net: "1000.00", tax: "250.00", gross: "1249.99", payableRounding: "-0.01", vatBasis: "gross" },
+  }
+
+  it("shows a v2 offer's service total, as the agreement page does", () => {
+    const email = composeAgreementEmail({
+      snapshot: v2Snapshot as never,
+      number: "AGR-1",
+      locale: "da-DK",
+      settings: settings as never,
+      recipient: "buyer@example.com",
+      url: "https://app.example.test/a/token",
+    })
+
+    expect(email.html).toContain("1.249,99\u00a0kr.")
+    expect(email.html).not.toContain("1.250,00")
+  })
+
+  it("shows the flat total of an older offer", () => {
+    expect(compose("da-DK").html).toContain("1.250,50\u00a0kr.")
+  })
+})
+
 describe("documentEmailOrg", () => {
   it("prefers the document's language and timezone", () => {
     expect(documentEmailOrg({ locale: "da-DK", timezone: "Europe/Copenhagen" }, settings)).toMatchObject({
