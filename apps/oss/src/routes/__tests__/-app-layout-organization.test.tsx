@@ -7,7 +7,7 @@ import { renderToString } from "react-dom/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const state = vi.hoisted(() => ({
-  getSession: vi.fn(),
+  getAppLayoutSession: vi.fn(),
   loadedOrganizationId: "org_a" as string | null,
   sessionOrganizationId: "org_a" as string | null,
   outletRenders: [] as Array<string | null>,
@@ -32,7 +32,7 @@ vi.mock("@tanstack/react-router", async () => {
   }
 })
 
-vi.mock("../../lib/auth-session", () => ({ getSession: state.getSession }))
+vi.mock("../../lib/auth-session", () => ({ getAppLayoutSession: state.getAppLayoutSession }))
 vi.mock("../../lib/auth-client", () => ({
   authClient: { organization: { setActive: vi.fn(async () => ({ data: {}, error: null })) } },
   useSession: () => ({
@@ -41,8 +41,6 @@ vi.mock("../../lib/auth-client", () => ({
   }),
 }))
 vi.mock("../../lib/page-navigation", () => ({ loadPage: vi.fn(), reloadPage: state.reloadPage }))
-vi.mock("../../lib/cloud-onboarding-session", () => ({ getActiveOrgCloudOnboardingStatus: vi.fn() }))
-vi.mock("../../lib/distribution", () => ({ isCloudDistribution: false }))
 vi.mock("../../components/ui/sidebar", () => ({
   SidebarProvider: ({ children }: { children: unknown }) => children,
   SidebarTrigger: () => null,
@@ -53,6 +51,7 @@ vi.mock("../../trpc/client", () => ({
   trpc: { settings: { get: { query: () => new Promise(() => undefined) } } },
 }))
 
+import { invalidateAppLayoutSession } from "../../lib/app-layout-session"
 import {
   getRequestOrganizationId,
   isRequestOrganizationInitialized,
@@ -68,6 +67,8 @@ const route = Route as unknown as {
 
 afterEach(() => {
   cleanup()
+  invalidateAppLayoutSession()
+  state.getAppLayoutSession.mockReset()
   resetRequestOrganizationForTesting()
   state.loadedOrganizationId = "org_a"
   state.sessionOrganizationId = "org_a"
@@ -76,8 +77,13 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function sessionFor(organizationId: string) {
-  return { session: { activeOrganizationId: organizationId }, user: { id: "u_1" } }
+function layoutFor(organizationId: string) {
+  return {
+    session: { session: { activeOrganizationId: organizationId }, user: { id: "u_1" } },
+    activeOrganizationId: organizationId,
+    runtime: { distribution: "selfhost", billingEnabled: false },
+    cloudOnboardingComplete: null,
+  }
 }
 
 describe("app layout request organization", () => {
@@ -122,7 +128,7 @@ describe("app layout request organization", () => {
 
   it("is not changed by route loaders or preloads after another tab switched organization", async () => {
     render(<route.component />)
-    state.getSession.mockResolvedValue(sessionFor("org_b"))
+    state.getAppLayoutSession.mockResolvedValue(layoutFor("org_b"))
 
     await route.beforeLoad({ location: { pathname: "/settings" }, preload: true })
     await route.beforeLoad({ location: { pathname: "/settings" }, preload: false })

@@ -1,57 +1,48 @@
-import { createServerFn } from "@tanstack/react-start"
-import { getRequestHeaders } from "@tanstack/react-start/server"
-import { getCloudOnboardingState } from "./cloud-onboarding"
+import { getCloudOnboardingState, type CloudOnboardingState } from "./cloud-onboarding"
 
-export const getActiveOrgCloudOnboardingStatus = createServerFn({
-  method: "GET",
-}).handler(async () => {
-  const [{ auth }, { prisma }] = await Promise.all([
-    import("./auth"),
-    import("./db"),
-  ])
-  const headers = getRequestHeaders()
-  const session = await auth.api.getSession({ headers })
-  const organizationId =
-    session?.session &&
-    "activeOrganizationId" in session.session &&
-    typeof session.session.activeOrganizationId === "string"
-      ? session.session.activeOrganizationId
-      : null
-
+/**
+ * Onboarding state of an organization, read from the database. The caller has already resolved
+ * the session, so this never reads it again. The two independent queries run concurrently.
+ */
+export async function loadCloudOnboardingState(
+  organizationId: string | null
+): Promise<CloudOnboardingState> {
   if (!organizationId) {
     return getCloudOnboardingState(null)
   }
 
-  const settings = await prisma.orgSettings.findUnique({
-    where: { organizationId },
-    select: {
-      onboardingStatus: true,
-      onboardingMethod: true,
-      onboardingProfile: true,
-      onboardingInvoicingIdentity: true,
-      onboardingVersion: true,
-      onboardingCompletedAt: true,
-      countryCode: true,
-      locale: true,
-      timezone: true,
-      defaultCurrency: true,
-      taxRegime: true,
-      pricesIncludeTax: true,
-      companyName: true,
-      companyAddress: true,
-      companyEmail: true,
-      invoicePrefix: true,
-      invoiceNextNum: true,
-      quotePrefix: true,
-      quoteNextNum: true,
-    },
-  })
-
-  const primaryTaxId = await prisma.organizationTaxId.findFirst({
-    where: { organizationId },
-    orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-    select: { value: true },
-  })
+  const { prisma } = await import("./db")
+  const [settings, primaryTaxId] = await Promise.all([
+    prisma.orgSettings.findUnique({
+      where: { organizationId },
+      select: {
+        onboardingStatus: true,
+        onboardingMethod: true,
+        onboardingProfile: true,
+        onboardingInvoicingIdentity: true,
+        onboardingVersion: true,
+        onboardingCompletedAt: true,
+        countryCode: true,
+        locale: true,
+        timezone: true,
+        defaultCurrency: true,
+        taxRegime: true,
+        pricesIncludeTax: true,
+        companyName: true,
+        companyAddress: true,
+        companyEmail: true,
+        invoicePrefix: true,
+        invoiceNextNum: true,
+        quotePrefix: true,
+        quoteNextNum: true,
+      },
+    }),
+    prisma.organizationTaxId.findFirst({
+      where: { organizationId },
+      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+      select: { value: true },
+    }),
+  ])
 
   return getCloudOnboardingState(
     settings
@@ -61,4 +52,4 @@ export const getActiveOrgCloudOnboardingStatus = createServerFn({
         }
       : null
   )
-})
+}

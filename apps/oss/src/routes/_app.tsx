@@ -1,15 +1,14 @@
-import { createFileRoute, redirect, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect } from 'react'
-import { getSession } from '../lib/auth-session'
+import { getAppLayoutSession } from '../lib/auth-session'
+import { reuseAppLayoutSession } from '../lib/app-layout-session'
 import { useSession } from '../lib/auth-client'
 import {
   initializeRequestOrganizationId,
   useRequestOrganizationInitialized,
 } from '../lib/active-organization'
 import { OrganizationChangedBanner } from '../components/organization-changed-banner'
-import { getActiveOrgCloudOnboardingStatus } from '../lib/cloud-onboarding-session'
 import { shouldRedirectToCloudOnboarding } from '../lib/cloud-onboarding'
-import { isCloudDistribution } from '../lib/distribution'
 import { SidebarProvider, SidebarTrigger } from '../components/ui/sidebar'
 import { AppSidebar } from '../components/app-sidebar'
 import { useI18n } from '../lib/i18n/react'
@@ -17,11 +16,14 @@ import { trpc } from '../trpc/client'
 
 export const Route = createFileRoute('/_app')({
   beforeLoad: async ({ location }) => {
-    const session = await getSession()
+    // One server call answers everything the layout needs, and is reused for a few seconds so
+    // switching tabs and hovering links do not repeat it.
+    const { session, activeOrganizationId, runtime, cloudOnboardingComplete } =
+      await reuseAppLayoutSession(() => getAppLayoutSession())
     if (!session) {
       throw redirect({ to: '/login' })
     }
-    const hasActiveOrg = !!session.session.activeOrganizationId
+    const hasActiveOrg = !!activeOrganizationId
     // Deliberately does not set the organization this tab acts for: this also runs when a link is
     // preloaded or after another tab switched organization. The layout sets it once per page load.
     const isOnboarding = location.pathname === '/onboarding' || location.pathname.startsWith('/onboarding/')
@@ -29,29 +31,28 @@ export const Route = createFileRoute('/_app')({
       throw redirect({ to: '/onboarding' })
     }
 
-    if (isCloudDistribution && hasActiveOrg) {
-      const onboarding = await getActiveOrgCloudOnboardingStatus()
+    // The server decides whether this is cloud: the browser has no runtime environment to ask.
+    if (runtime.distribution === 'cloud' && hasActiveOrg) {
+      // Fails closed: a missing status is treated as incomplete, which sends the user to onboarding.
       const redirectTo = shouldRedirectToCloudOnboarding(
         location.pathname,
         hasActiveOrg,
-        onboarding.isComplete
+        cloudOnboardingComplete === true
       )
       if (redirectTo) {
         throw redirect({ to: redirectTo })
       }
     }
 
-    return { session }
+    return { session, runtime }
   },
   component: AppLayout,
 })
 
 function AppLayout() {
   const { setLocale } = useI18n()
-  const navigate = useNavigate()
   const { data: session } = useSession()
   const { session: loadedSession } = Route.useRouteContext()
-  const { location } = useRouterState()
   const activeOrgId = session?.session.activeOrganizationId ?? null
   const loadedOrgId = loadedSession.session.activeOrganizationId ?? null
 
@@ -81,40 +82,6 @@ function AppLayout() {
       cancelled = true
     }
   }, [setLocale, activeOrgId])
-
-  useEffect(() => {
-    if (!isCloudDistribution || !activeOrgId) {
-      return
-    }
-
-    let cancelled = false
-    const currentPath = location.pathname
-
-    trpc.onboarding.getStatus
-      .query()
-      .then((status) => {
-        if (cancelled) {
-          return
-        }
-
-        const redirectTo = shouldRedirectToCloudOnboarding(
-          currentPath,
-          true,
-          status.isComplete
-        )
-
-        if (redirectTo && redirectTo !== currentPath) {
-          navigate({ to: redirectTo, replace: true })
-        }
-      })
-      .catch(() => {
-        // Ignore transient onboarding status failures in the client guard.
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [activeOrgId, location.pathname, navigate])
 
   return (
     <SidebarProvider>
