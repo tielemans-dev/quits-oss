@@ -78,8 +78,10 @@ export type OrgSettingsMinAggregateOutputType = {
   onboardingInvoicingIdentity: string | null
   onboardingVersion: number | null
   onboardingCompletedAt: Date | null
-  aiOpenRouterApiKeyEnc: string | null
-  aiOpenRouterModel: string | null
+  aiProvider: string | null
+  aiBaseUrl: string | null
+  aiApiKeyEnc: string | null
+  aiModel: string | null
   stripePublishableKey: string | null
   stripeSecretKeyEnc: string | null
   stripeWebhookSecretEnc: string | null
@@ -126,8 +128,10 @@ export type OrgSettingsMaxAggregateOutputType = {
   onboardingInvoicingIdentity: string | null
   onboardingVersion: number | null
   onboardingCompletedAt: Date | null
-  aiOpenRouterApiKeyEnc: string | null
-  aiOpenRouterModel: string | null
+  aiProvider: string | null
+  aiBaseUrl: string | null
+  aiApiKeyEnc: string | null
+  aiModel: string | null
   stripePublishableKey: string | null
   stripeSecretKeyEnc: string | null
   stripeWebhookSecretEnc: string | null
@@ -175,8 +179,10 @@ export type OrgSettingsCountAggregateOutputType = {
   onboardingInvoicingIdentity: number
   onboardingVersion: number
   onboardingCompletedAt: number
-  aiOpenRouterApiKeyEnc: number
-  aiOpenRouterModel: number
+  aiProvider: number
+  aiBaseUrl: number
+  aiApiKeyEnc: number
+  aiModel: number
   stripePublishableKey: number
   stripeSecretKeyEnc: number
   stripeWebhookSecretEnc: number
@@ -246,8 +252,10 @@ export type OrgSettingsMinAggregateInputType = {
   onboardingInvoicingIdentity?: true
   onboardingVersion?: true
   onboardingCompletedAt?: true
-  aiOpenRouterApiKeyEnc?: true
-  aiOpenRouterModel?: true
+  aiProvider?: true
+  aiBaseUrl?: true
+  aiApiKeyEnc?: true
+  aiModel?: true
   stripePublishableKey?: true
   stripeSecretKeyEnc?: true
   stripeWebhookSecretEnc?: true
@@ -294,8 +302,10 @@ export type OrgSettingsMaxAggregateInputType = {
   onboardingInvoicingIdentity?: true
   onboardingVersion?: true
   onboardingCompletedAt?: true
-  aiOpenRouterApiKeyEnc?: true
-  aiOpenRouterModel?: true
+  aiProvider?: true
+  aiBaseUrl?: true
+  aiApiKeyEnc?: true
+  aiModel?: true
   stripePublishableKey?: true
   stripeSecretKeyEnc?: true
   stripeWebhookSecretEnc?: true
@@ -343,8 +353,10 @@ export type OrgSettingsCountAggregateInputType = {
   onboardingInvoicingIdentity?: true
   onboardingVersion?: true
   onboardingCompletedAt?: true
-  aiOpenRouterApiKeyEnc?: true
-  aiOpenRouterModel?: true
+  aiProvider?: true
+  aiBaseUrl?: true
+  aiApiKeyEnc?: true
+  aiModel?: true
   stripePublishableKey?: true
   stripeSecretKeyEnc?: true
   stripeWebhookSecretEnc?: true
@@ -480,8 +492,10 @@ export type OrgSettingsGroupByOutputType = {
   onboardingInvoicingIdentity: string | null
   onboardingVersion: number | null
   onboardingCompletedAt: Date | null
-  aiOpenRouterApiKeyEnc: string | null
-  aiOpenRouterModel: string
+  aiProvider: string
+  aiBaseUrl: string | null
+  aiApiKeyEnc: string | null
+  aiModel: string
   stripePublishableKey: string | null
   stripeSecretKeyEnc: string | null
   stripeWebhookSecretEnc: string | null
@@ -553,8 +567,10 @@ export type OrgSettingsWhereInput = {
   onboardingInvoicingIdentity?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   onboardingVersion?: Prisma.IntNullableFilter<"OrgSettings"> | number | null
   onboardingCompletedAt?: Prisma.DateTimeNullableFilter<"OrgSettings"> | Date | string | null
-  aiOpenRouterApiKeyEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
-  aiOpenRouterModel?: Prisma.StringFilter<"OrgSettings"> | string
+  aiProvider?: Prisma.StringFilter<"OrgSettings"> | string
+  aiBaseUrl?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  aiApiKeyEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  aiModel?: Prisma.StringFilter<"OrgSettings"> | string
   stripePublishableKey?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   stripeSecretKeyEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   stripeWebhookSecretEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
@@ -604,8 +620,10 @@ export type OrgSettingsOrderByWithRelationInput = {
   onboardingInvoicingIdentity?: Prisma.SortOrderInput | Prisma.SortOrder
   onboardingVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   onboardingCompletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
-  aiOpenRouterApiKeyEnc?: Prisma.SortOrderInput | Prisma.SortOrder
-  aiOpenRouterModel?: Prisma.SortOrder
+  aiProvider?: Prisma.SortOrder
+  aiBaseUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  aiApiKeyEnc?: Prisma.SortOrderInput | Prisma.SortOrder
+  aiModel?: Prisma.SortOrder
   stripePublishableKey?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -658,8 +676,10 @@ export type OrgSettingsWhereUniqueInput = Prisma.AtLeast<{
   onboardingInvoicingIdentity?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   onboardingVersion?: Prisma.IntNullableFilter<"OrgSettings"> | number | null
   onboardingCompletedAt?: Prisma.DateTimeNullableFilter<"OrgSettings"> | Date | string | null
-  aiOpenRouterApiKeyEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
-  aiOpenRouterModel?: Prisma.StringFilter<"OrgSettings"> | string
+  aiProvider?: Prisma.StringFilter<"OrgSettings"> | string
+  aiBaseUrl?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  aiApiKeyEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  aiModel?: Prisma.StringFilter<"OrgSettings"> | string
   stripePublishableKey?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   stripeSecretKeyEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   stripeWebhookSecretEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
@@ -709,8 +729,10 @@ export type OrgSettingsOrderByWithAggregationInput = {
   onboardingInvoicingIdentity?: Prisma.SortOrderInput | Prisma.SortOrder
   onboardingVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   onboardingCompletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
-  aiOpenRouterApiKeyEnc?: Prisma.SortOrderInput | Prisma.SortOrder
-  aiOpenRouterModel?: Prisma.SortOrder
+  aiProvider?: Prisma.SortOrder
+  aiBaseUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  aiApiKeyEnc?: Prisma.SortOrderInput | Prisma.SortOrder
+  aiModel?: Prisma.SortOrder
   stripePublishableKey?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -767,8 +789,10 @@ export type OrgSettingsScalarWhereWithAggregatesInput = {
   onboardingInvoicingIdentity?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   onboardingVersion?: Prisma.IntNullableWithAggregatesFilter<"OrgSettings"> | number | null
   onboardingCompletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"OrgSettings"> | Date | string | null
-  aiOpenRouterApiKeyEnc?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
-  aiOpenRouterModel?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
+  aiProvider?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
+  aiBaseUrl?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  aiApiKeyEnc?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  aiModel?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   stripePublishableKey?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   stripeSecretKeyEnc?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   stripeWebhookSecretEnc?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
@@ -816,8 +840,10 @@ export type OrgSettingsCreateInput = {
   onboardingInvoicingIdentity?: string | null
   onboardingVersion?: number | null
   onboardingCompletedAt?: Date | string | null
-  aiOpenRouterApiKeyEnc?: string | null
-  aiOpenRouterModel?: string
+  aiProvider?: string
+  aiBaseUrl?: string | null
+  aiApiKeyEnc?: string | null
+  aiModel?: string
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
@@ -867,8 +893,10 @@ export type OrgSettingsUncheckedCreateInput = {
   onboardingInvoicingIdentity?: string | null
   onboardingVersion?: number | null
   onboardingCompletedAt?: Date | string | null
-  aiOpenRouterApiKeyEnc?: string | null
-  aiOpenRouterModel?: string
+  aiProvider?: string
+  aiBaseUrl?: string | null
+  aiApiKeyEnc?: string | null
+  aiModel?: string
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
@@ -916,8 +944,10 @@ export type OrgSettingsUpdateInput = {
   onboardingInvoicingIdentity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   onboardingCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  aiOpenRouterApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  aiOpenRouterModel?: Prisma.StringFieldUpdateOperationsInput | string
+  aiProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  aiBaseUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.StringFieldUpdateOperationsInput | string
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -967,8 +997,10 @@ export type OrgSettingsUncheckedUpdateInput = {
   onboardingInvoicingIdentity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   onboardingCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  aiOpenRouterApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  aiOpenRouterModel?: Prisma.StringFieldUpdateOperationsInput | string
+  aiProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  aiBaseUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.StringFieldUpdateOperationsInput | string
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1017,8 +1049,10 @@ export type OrgSettingsCreateManyInput = {
   onboardingInvoicingIdentity?: string | null
   onboardingVersion?: number | null
   onboardingCompletedAt?: Date | string | null
-  aiOpenRouterApiKeyEnc?: string | null
-  aiOpenRouterModel?: string
+  aiProvider?: string
+  aiBaseUrl?: string | null
+  aiApiKeyEnc?: string | null
+  aiModel?: string
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
@@ -1066,8 +1100,10 @@ export type OrgSettingsUpdateManyMutationInput = {
   onboardingInvoicingIdentity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   onboardingCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  aiOpenRouterApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  aiOpenRouterModel?: Prisma.StringFieldUpdateOperationsInput | string
+  aiProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  aiBaseUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.StringFieldUpdateOperationsInput | string
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1116,8 +1152,10 @@ export type OrgSettingsUncheckedUpdateManyInput = {
   onboardingInvoicingIdentity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   onboardingCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  aiOpenRouterApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  aiOpenRouterModel?: Prisma.StringFieldUpdateOperationsInput | string
+  aiProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  aiBaseUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.StringFieldUpdateOperationsInput | string
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1171,8 +1209,10 @@ export type OrgSettingsCountOrderByAggregateInput = {
   onboardingInvoicingIdentity?: Prisma.SortOrder
   onboardingVersion?: Prisma.SortOrder
   onboardingCompletedAt?: Prisma.SortOrder
-  aiOpenRouterApiKeyEnc?: Prisma.SortOrder
-  aiOpenRouterModel?: Prisma.SortOrder
+  aiProvider?: Prisma.SortOrder
+  aiBaseUrl?: Prisma.SortOrder
+  aiApiKeyEnc?: Prisma.SortOrder
+  aiModel?: Prisma.SortOrder
   stripePublishableKey?: Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrder
@@ -1230,8 +1270,10 @@ export type OrgSettingsMaxOrderByAggregateInput = {
   onboardingInvoicingIdentity?: Prisma.SortOrder
   onboardingVersion?: Prisma.SortOrder
   onboardingCompletedAt?: Prisma.SortOrder
-  aiOpenRouterApiKeyEnc?: Prisma.SortOrder
-  aiOpenRouterModel?: Prisma.SortOrder
+  aiProvider?: Prisma.SortOrder
+  aiBaseUrl?: Prisma.SortOrder
+  aiApiKeyEnc?: Prisma.SortOrder
+  aiModel?: Prisma.SortOrder
   stripePublishableKey?: Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrder
@@ -1278,8 +1320,10 @@ export type OrgSettingsMinOrderByAggregateInput = {
   onboardingInvoicingIdentity?: Prisma.SortOrder
   onboardingVersion?: Prisma.SortOrder
   onboardingCompletedAt?: Prisma.SortOrder
-  aiOpenRouterApiKeyEnc?: Prisma.SortOrder
-  aiOpenRouterModel?: Prisma.SortOrder
+  aiProvider?: Prisma.SortOrder
+  aiBaseUrl?: Prisma.SortOrder
+  aiApiKeyEnc?: Prisma.SortOrder
+  aiModel?: Prisma.SortOrder
   stripePublishableKey?: Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrder
@@ -1384,8 +1428,10 @@ export type OrgSettingsCreateWithoutOrganizationInput = {
   onboardingInvoicingIdentity?: string | null
   onboardingVersion?: number | null
   onboardingCompletedAt?: Date | string | null
-  aiOpenRouterApiKeyEnc?: string | null
-  aiOpenRouterModel?: string
+  aiProvider?: string
+  aiBaseUrl?: string | null
+  aiApiKeyEnc?: string | null
+  aiModel?: string
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
@@ -1433,8 +1479,10 @@ export type OrgSettingsUncheckedCreateWithoutOrganizationInput = {
   onboardingInvoicingIdentity?: string | null
   onboardingVersion?: number | null
   onboardingCompletedAt?: Date | string | null
-  aiOpenRouterApiKeyEnc?: string | null
-  aiOpenRouterModel?: string
+  aiProvider?: string
+  aiBaseUrl?: string | null
+  aiApiKeyEnc?: string | null
+  aiModel?: string
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
@@ -1498,8 +1546,10 @@ export type OrgSettingsUpdateWithoutOrganizationInput = {
   onboardingInvoicingIdentity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   onboardingCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  aiOpenRouterApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  aiOpenRouterModel?: Prisma.StringFieldUpdateOperationsInput | string
+  aiProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  aiBaseUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.StringFieldUpdateOperationsInput | string
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1547,8 +1597,10 @@ export type OrgSettingsUncheckedUpdateWithoutOrganizationInput = {
   onboardingInvoicingIdentity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   onboardingVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   onboardingCompletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  aiOpenRouterApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  aiOpenRouterModel?: Prisma.StringFieldUpdateOperationsInput | string
+  aiProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  aiBaseUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiApiKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.StringFieldUpdateOperationsInput | string
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1599,8 +1651,10 @@ export type OrgSettingsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   onboardingInvoicingIdentity?: boolean
   onboardingVersion?: boolean
   onboardingCompletedAt?: boolean
-  aiOpenRouterApiKeyEnc?: boolean
-  aiOpenRouterModel?: boolean
+  aiProvider?: boolean
+  aiBaseUrl?: boolean
+  aiApiKeyEnc?: boolean
+  aiModel?: boolean
   stripePublishableKey?: boolean
   stripeSecretKeyEnc?: boolean
   stripeWebhookSecretEnc?: boolean
@@ -1650,8 +1704,10 @@ export type OrgSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   onboardingInvoicingIdentity?: boolean
   onboardingVersion?: boolean
   onboardingCompletedAt?: boolean
-  aiOpenRouterApiKeyEnc?: boolean
-  aiOpenRouterModel?: boolean
+  aiProvider?: boolean
+  aiBaseUrl?: boolean
+  aiApiKeyEnc?: boolean
+  aiModel?: boolean
   stripePublishableKey?: boolean
   stripeSecretKeyEnc?: boolean
   stripeWebhookSecretEnc?: boolean
@@ -1701,8 +1757,10 @@ export type OrgSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   onboardingInvoicingIdentity?: boolean
   onboardingVersion?: boolean
   onboardingCompletedAt?: boolean
-  aiOpenRouterApiKeyEnc?: boolean
-  aiOpenRouterModel?: boolean
+  aiProvider?: boolean
+  aiBaseUrl?: boolean
+  aiApiKeyEnc?: boolean
+  aiModel?: boolean
   stripePublishableKey?: boolean
   stripeSecretKeyEnc?: boolean
   stripeWebhookSecretEnc?: boolean
@@ -1752,8 +1810,10 @@ export type OrgSettingsSelectScalar = {
   onboardingInvoicingIdentity?: boolean
   onboardingVersion?: boolean
   onboardingCompletedAt?: boolean
-  aiOpenRouterApiKeyEnc?: boolean
-  aiOpenRouterModel?: boolean
+  aiProvider?: boolean
+  aiBaseUrl?: boolean
+  aiApiKeyEnc?: boolean
+  aiModel?: boolean
   stripePublishableKey?: boolean
   stripeSecretKeyEnc?: boolean
   stripeWebhookSecretEnc?: boolean
@@ -1769,7 +1829,7 @@ export type OrgSettingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "baseCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiOpenRouterApiKeyEnc" | "aiOpenRouterModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
+export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "baseCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiProvider" | "aiBaseUrl" | "aiApiKeyEnc" | "aiModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
 export type OrgSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }
@@ -1818,8 +1878,10 @@ export type $OrgSettingsPayload<ExtArgs extends runtime.Types.Extensions.Interna
     onboardingInvoicingIdentity: string | null
     onboardingVersion: number | null
     onboardingCompletedAt: Date | null
-    aiOpenRouterApiKeyEnc: string | null
-    aiOpenRouterModel: string
+    aiProvider: string
+    aiBaseUrl: string | null
+    aiApiKeyEnc: string | null
+    aiModel: string
     stripePublishableKey: string | null
     stripeSecretKeyEnc: string | null
     stripeWebhookSecretEnc: string | null
@@ -2289,8 +2351,10 @@ export interface OrgSettingsFieldRefs {
   readonly onboardingInvoicingIdentity: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly onboardingVersion: Prisma.FieldRef<"OrgSettings", 'Int'>
   readonly onboardingCompletedAt: Prisma.FieldRef<"OrgSettings", 'DateTime'>
-  readonly aiOpenRouterApiKeyEnc: Prisma.FieldRef<"OrgSettings", 'String'>
-  readonly aiOpenRouterModel: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly aiProvider: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly aiBaseUrl: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly aiApiKeyEnc: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly aiModel: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly stripePublishableKey: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly stripeSecretKeyEnc: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly stripeWebhookSecretEnc: Prisma.FieldRef<"OrgSettings", 'String'>

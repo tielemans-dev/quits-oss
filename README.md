@@ -231,6 +231,15 @@ Long-running Node processes keep reset email delivery in the background. Runtime
 | `QUITS_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
 | `QUITS_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
 | `QUITS_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
+| `QUITS_AI_CUSTOM_ENDPOINT_ENABLED` | Lets organisations point invoice drafting at any OpenAI-compatible endpoint | No (`true` self-hosted, `false` cloud) |
+| `QUITS_AI_LOCAL_AGENT_ENABLED` | Lets organisations draft invoices with a CLI agent on the server; needs `QUITS_AI_LOCAL_AGENT_COMMAND` | No (defaults to `false`, self-hosted only) |
+| `QUITS_AI_LOCAL_AGENT_COMMAND` | Command that runs the agent, e.g. `claude -p --output-format text` or `codex exec`. The prompt is sent on stdin; the command is split on whitespace with simple quotes and run without a shell | Only when `QUITS_AI_LOCAL_AGENT_ENABLED=true` |
+| `QUITS_AI_LOCAL_AGENT_TIMEOUT_MS` | Time limit for one agent call in milliseconds, clamped to 5000–600000 | No (defaults to `120000`) |
+
+The local agent runs the CLI as the user the server process runs as, so that agent must be installed
+and logged in for that user. It uses the operator's own agent subscription, not a per-organisation
+key. It generally does not work inside the stock Docker image, because the image has no agent CLI and
+no login for it.
 
 ## Contributing
 

@@ -5,8 +5,7 @@ export const daSettingsMessages = {
   "settings.loading": "Indlæser...",
   "settings.success.saved": "Indstillinger gemt.",
   "settings.error.loadFailed": "Kunne ikke indlæse indstillinger",
-  "settings.error.loadModelsFailed":
-    "Kunne ikke hente modellisten fra OpenRouter. Bruger fallback-liste.",
+  "settings.error.loadModelsFailed": "Kunne ikke hente modellisten.",
   "settings.error.inviteFailed": "Kunne ikke sende invitation",
   "settings.error.logoInvalid":
     "Virksomhedslogo skal være en billed-URL eller uploadet billeddata.",
@@ -144,13 +143,13 @@ export const daSettingsMessages = {
   "settings.payments.removeSecret": "Fjern gemt secret key",
   "settings.payments.removeWebhook": "Fjern gemt webhook-secret",
   "settings.payments.undo": "Fortryd",
-  "settings.section.ai.title": "AI fakturakladde (BYOK)",
+  "settings.section.ai.title": "AI-fakturakladning",
   "settings.section.ai.description":
-    "Brug OpenRouter med din egen API-nøgle og valgte model.",
-  "settings.aiModel.label": "OpenRouter-model",
+    "Vælg hvordan AI-fakturakladder genereres, og konfigurer forbindelsen.",
+  "settings.aiModel.label": "AI-model",
   "settings.aiModel.refreshing": "Opdaterer...",
   "settings.aiModel.refresh": "Opdater modeller",
-  "settings.aiApiKey.label": "OpenRouter API-nøgle",
+  "settings.aiApiKey.label": "API-nøgle",
   "settings.aiApiKey.configuredHelp":
     "En nøgle er allerede konfigureret. Indtast kun en ny nøgle, hvis du vil udskifte den.",
   "settings.aiApiKey.notConfiguredHelp": "Ingen nøgle er konfigureret endnu.",
@@ -158,6 +157,20 @@ export const daSettingsMessages = {
   "settings.aiApiKey.removePending":
     "Gemt nøgle fjernes, når du gemmer indstillinger.",
   "settings.aiApiKey.undo": "Fortryd",
+  "settings.aiApiKey.optionalHelp": "Valgfri for lokale endpoints, fx Ollama.",
+  "settings.aiModel.customHelp":
+    "Skriv et modelnavn, eller vælg et forslag fra endpointet.",
+  "settings.aiProvider.label": "Udbyder",
+  "settings.aiProvider.checking": "Tjekker AI-tilgængelighed...",
+  "settings.aiProvider.unavailable": "AI-fakturakladning er ikke tilgængelig på denne server.",
+  "settings.aiProvider.openrouter": "OpenRouter",
+  "settings.aiProvider.openaiCompatible": "OpenAI-kompatibelt endpoint",
+  "settings.aiProvider.cliAgent": "Lokal agent på denne server",
+  "settings.aiProvider.localAgent.help":
+    "Forespørgsler sendes til den agent, serverens driftsansvarlige har konfigureret (Claude Code eller Codex). Der kræves ingen API-nøgle eller model her. Svar kan tage lang tid.",
+  "settings.aiBaseUrl.label": "Base-URL",
+  "settings.aiBaseUrl.help":
+    "Roden af en OpenAI-kompatibel API, inklusive versionsstien. Til Ollama bruges http://localhost:11434/v1.",
   "settings.action.saving": "Gemmer...",
   "settings.action.save": "Gem indstillinger",
   "settings.section.team.title": "Teammedlemmer",

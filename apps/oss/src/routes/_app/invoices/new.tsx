@@ -78,6 +78,11 @@ function NewInvoicePage() {
   const [aiGenerating, setAiGenerating] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiInfo, setAiInfo] = useState<string | null>(null)
+  const aiInvoiceDraft = aiCapabilities?.aiInvoiceDraft
+  const aiDraftAvailable = Boolean(
+    aiInvoiceDraft?.enabled &&
+      (aiInvoiceDraft.byok || aiInvoiceDraft.localAgent || aiInvoiceDraft.managed)
+  )
 
   useEffect(() => {
     trpc.contacts.list
@@ -295,12 +300,7 @@ function NewInvoicePage() {
                 type="button"
                 variant="outline"
                 onClick={handleGenerateInvoiceDraftFromAi}
-                disabled={
-                  aiGenerating ||
-                  loadingAiCapabilities ||
-                  !aiCapabilities?.aiInvoiceDraft.enabled ||
-                  !aiCapabilities?.aiInvoiceDraft.byok
-                }
+                disabled={aiGenerating || loadingAiCapabilities || !aiDraftAvailable}
               >
                 <Sparkles className="size-4" />
                 {aiGenerating
@@ -313,7 +313,7 @@ function NewInvoicePage() {
                 </p>
               )}
               {!loadingAiCapabilities &&
-                (!aiCapabilities?.aiInvoiceDraft.enabled || !aiCapabilities?.aiInvoiceDraft.byok) && (
+                !aiDraftAvailable && (
                   <p className="text-xs text-muted-foreground">
                     {t("invoices.new.ai.availability.disabled")}
                   </p>

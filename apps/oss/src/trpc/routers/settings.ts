@@ -14,6 +14,11 @@ import {
   validateDocumentSendingDomain,
 } from "../../lib/document-email-sending"
 import { getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
+import {
+  AI_PROVIDER_KINDS,
+  isAiProviderKind,
+  type AiProviderKind,
+} from "../../lib/ai/provider"
 import { encryptSecret } from "../../lib/secrets"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
@@ -29,6 +34,44 @@ import {
 
 const taxRegimeSchema = z.enum(["us_sales_tax", "eu_vat", "custom"])
 const httpUrlRegex = /^https?:\/\/.+/i
+
+/** An http(s) base URL for an AI endpoint. An empty string means "no endpoint" and clears it. */
+const aiBaseUrlSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((value) => {
+    if (!value) return true
+    try {
+      const protocol = new URL(value).protocol
+      return protocol === "http:" || protocol === "https:"
+    } catch {
+      return false
+    }
+  }, "AI endpoint must be an http or https URL")
+
+const aiProviderLabels: Record<AiProviderKind, string> = {
+  openrouter: "OpenRouter",
+  openai_compatible: "custom endpoint",
+  cli_agent: "local agent",
+}
+
+/** Rejects saving a provider the distribution does not allow, so Settings cannot store a dead end. */
+function assertAiProviderAllowed(kind: AiProviderKind) {
+  const capabilities = getRuntimeCapabilities().aiInvoiceDraft
+  const allowed =
+    kind === "cli_agent"
+      ? capabilities.localAgent
+      : kind === "openai_compatible"
+        ? capabilities.byok && capabilities.customEndpoint
+        : capabilities.byok
+  if (!allowed) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `The ${aiProviderLabels[kind]} AI provider is not available on this server`,
+    })
+  }
+}
 
 const companyLogoSchema = z
   .string()
@@ -67,9 +110,12 @@ export const settingsUpdateSchema = z.object({
   invoicePrefix: z.string().trim().regex(/^[A-Z0-9-]{1,10}$/).optional(),
   quotePrefix: z.string().trim().regex(/^[A-Z0-9-]{1,10}$/).optional(),
   creditNotePrefix: z.string().trim().regex(/^[A-Z0-9-]{1,10}$/).optional(),
-  aiOpenRouterModel: z.string().trim().min(1).max(120).optional(),
-  aiOpenRouterApiKey: z.string().trim().min(16).max(500).optional(),
-  clearAiOpenRouterApiKey: z.boolean().optional(),
+  aiProvider: z.enum(AI_PROVIDER_KINDS).optional(),
+  aiBaseUrl: aiBaseUrlSchema.nullable().optional(),
+  aiModel: z.string().trim().min(1).max(120).optional(),
+  // Local endpoints (Ollama, LM Studio, ...) may use short or placeholder keys, so no long minimum.
+  aiApiKey: z.string().trim().min(1).max(500).optional(),
+  clearAiApiKey: z.boolean().optional(),
   stripePublishableKey: z.string().trim().min(8).max(255).optional(),
   stripeSecretKey: z.string().trim().min(16).max(500).optional(),
   stripeWebhookSecret: z.string().trim().min(16).max(500).optional(),
@@ -154,8 +200,10 @@ export const settingsRouter = router({
       quoteNextNum: settings.quoteNextNum,
       creditNotePrefix: settings.creditNotePrefix,
       creditNoteNextNum: settings.creditNoteNextNum,
-      aiByokConfigured: Boolean(settings.aiOpenRouterApiKeyEnc),
-      aiOpenRouterModel: settings.aiOpenRouterModel,
+      aiByokConfigured: Boolean(settings.aiApiKeyEnc),
+      aiProvider: isAiProviderKind(settings.aiProvider) ? settings.aiProvider : "openrouter",
+      aiBaseUrl: settings.aiBaseUrl,
+      aiModel: settings.aiModel,
       stripeByokConfigured: stripeState.configured,
       stripePublishableKey: settings.stripePublishableKey,
       primaryTaxId: primaryTaxId?.value ?? null,
@@ -171,8 +219,9 @@ export const settingsRouter = router({
       const {
         primaryTaxId,
         primaryTaxIdScheme,
-        aiOpenRouterApiKey,
-        clearAiOpenRouterApiKey,
+        aiApiKey,
+        clearAiApiKey,
+        aiBaseUrl,
         stripePublishableKey,
         stripeSecretKey,
         stripeWebhookSecret,
@@ -180,6 +229,10 @@ export const settingsRouter = router({
         clearStripeWebhookSecret,
         ...settingsInput
       } = input
+
+      if (settingsInput.aiProvider) {
+        assertAiProviderAllowed(settingsInput.aiProvider)
+      }
 
       assertSettingsCurrency(settingsInput.currency)
       assertSettingsCurrency(settingsInput.defaultCurrency)
@@ -210,10 +263,9 @@ export const settingsRouter = router({
         const settingsUpdateData = {
           ...settingsInput,
           baseCurrency,
-          ...(aiOpenRouterApiKey
-            ? { aiOpenRouterApiKeyEnc: encryptSecret(aiOpenRouterApiKey) }
-            : {}),
-          ...(clearAiOpenRouterApiKey ? { aiOpenRouterApiKeyEnc: null } : {}),
+          ...(aiBaseUrl !== undefined ? { aiBaseUrl: aiBaseUrl || null } : {}),
+          ...(aiApiKey ? { aiApiKeyEnc: encryptSecret(aiApiKey) } : {}),
+          ...(clearAiApiKey ? { aiApiKeyEnc: null } : {}),
           ...(stripePublishableKey !== undefined
             ? { stripePublishableKey: stripePublishableKey || null }
             : {}),

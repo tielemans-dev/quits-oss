@@ -50,7 +50,8 @@ import {
 import { Settings, UserPlus, X, Crown, User, Eye } from "lucide-react"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
-import { shouldAutoLoadOpenRouterModels } from "./-settings.helpers"
+import type { RuntimeCapabilities } from "@quits/contracts/runtime"
+import { shouldAutoLoadAiModels, type AiProviderId } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
 import { AgentKeysCard } from "../../components/settings/agent-keys-card"
 import { AuditLogCard } from "../../components/settings/audit-log-card"
@@ -131,8 +132,10 @@ type SettingsData = {
   quoteNextNum: number
   creditNotePrefix: string
   creditNoteNextNum: number
+  aiProvider: AiProviderId
+  aiBaseUrl: string | null
+  aiModel: string
   aiByokConfigured: boolean
-  aiOpenRouterModel: string
   stripeByokConfigured: boolean
   stripePublishableKey: string | null
   emailDelivery: {
@@ -157,12 +160,19 @@ const CURRENCIES = [
   { value: "AUD", label: "AUD - Australian Dollar" },
 ]
 
-const OPENROUTER_FALLBACK_MODELS = [
+const DEFAULT_AI_MODEL = "openai/gpt-4o-mini"
+
+// Built-in OpenRouter model suggestions, used until the server returns a live list.
+const AI_FALLBACK_MODELS = [
   "openai/gpt-4o-mini",
   "openai/gpt-4.1-mini",
   "anthropic/claude-3.5-sonnet",
   "google/gemini-2.0-flash-001",
 ]
+
+function fallbackAiModelsFor(provider: AiProviderId) {
+  return provider === "openrouter" ? AI_FALLBACK_MODELS : []
+}
 
 const LOGO_MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024
 const LOGO_FILE_ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml"
@@ -197,13 +207,19 @@ function SettingsPage() {
   const [companyLogo, setCompanyLogo] = useState("")
   const [companyLogoUrlInput, setCompanyLogoUrlInput] = useState("")
   const [logoError, setLogoError] = useState<string | null>(null)
-  const [aiOpenRouterModel, setAiOpenRouterModel] = useState("openai/gpt-4o-mini")
-  const [clearAiOpenRouterApiKey, setClearAiOpenRouterApiKey] = useState(false)
+  const [aiCapabilities, setAiCapabilities] = useState<
+    RuntimeCapabilities["aiInvoiceDraft"] | null
+  >(null)
+  const [loadingAiCapabilities, setLoadingAiCapabilities] = useState(true)
+  const [aiProvider, setAiProvider] = useState<AiProviderId>("openrouter")
+  const [aiBaseUrl, setAiBaseUrl] = useState("")
+  const [aiModel, setAiModel] = useState(DEFAULT_AI_MODEL)
+  const [clearAiApiKey, setClearAiApiKey] = useState(false)
   const [clearStripeSecretKey, setClearStripeSecretKey] = useState(false)
   const [clearStripeWebhookSecret, setClearStripeWebhookSecret] = useState(false)
-  const [openRouterModels, setOpenRouterModels] = useState<string[]>(OPENROUTER_FALLBACK_MODELS)
-  const [loadingOpenRouterModels, setLoadingOpenRouterModels] = useState(false)
-  const [openRouterModelsError, setOpenRouterModelsError] = useState<string | null>(null)
+  const [aiModels, setAiModels] = useState<string[]>(AI_FALLBACK_MODELS)
+  const [loadingAiModels, setLoadingAiModels] = useState(false)
+  const [aiModelsError, setAiModelsError] = useState<string | null>(null)
   const [documentSendingDomainInput, setDocumentSendingDomainInput] = useState("")
   const [documentSendingBusy, setDocumentSendingBusy] = useState(false)
   const [documentSendingError, setDocumentSendingError] = useState<string | null>(null)
@@ -257,20 +273,26 @@ function SettingsPage() {
         const existingLogo = nextSettings.companyLogo ?? ""
         setCompanyLogo(existingLogo)
         setCompanyLogoUrlInput(isDataImageLogo(existingLogo) ? "" : existingLogo)
-        const nextAiOpenRouterModel =
-          nextSettings.aiOpenRouterModel || "openai/gpt-4o-mini"
-        setAiOpenRouterModel(nextAiOpenRouterModel)
+        setAiProvider(nextSettings.aiProvider)
+        setAiBaseUrl(nextSettings.aiBaseUrl ?? "")
+        const nextAiModel = nextSettings.aiModel || DEFAULT_AI_MODEL
+        setAiModel(nextAiModel)
+        setAiModels(fallbackAiModelsFor(nextSettings.aiProvider))
         setDocumentSendingDomainInput(
           nextSettings.documentSending.requestedDomain ?? ""
         )
 
         if (
-          shouldAutoLoadOpenRouterModels(
-            nextAiOpenRouterModel,
-            OPENROUTER_FALLBACK_MODELS
+          shouldAutoLoadAiModels(
+            {
+              provider: nextSettings.aiProvider,
+              baseUrl: nextSettings.aiBaseUrl,
+              currentModel: nextAiModel,
+            },
+            AI_FALLBACK_MODELS
           )
         ) {
-          void loadOpenRouterModels()
+          void loadAiModels()
         }
       })
       .catch(() =>
@@ -279,9 +301,34 @@ function SettingsPage() {
       .finally(() => setLoading(false))
   }, [t])
 
-  async function loadOpenRouterModels() {
-    setLoadingOpenRouterModels(true)
-    setOpenRouterModelsError(null)
+  useEffect(() => {
+    trpc.runtime.capabilities
+      .query()
+      .then((data) =>
+        setAiCapabilities((data as Pick<RuntimeCapabilities, "aiInvoiceDraft">).aiInvoiceDraft)
+      )
+      .catch(() => {})
+      .finally(() => setLoadingAiCapabilities(false))
+  }, [])
+
+  // Only providers the server's runtime capabilities allow are offered.
+  const aiProviderOptions: Array<{ value: AiProviderId; label: string }> = aiCapabilities?.enabled
+    ? [
+        ...(aiCapabilities.byok
+          ? [{ value: "openrouter" as const, label: t("settings.aiProvider.openrouter") }]
+          : []),
+        ...(aiCapabilities.byok && aiCapabilities.customEndpoint
+          ? [{ value: "openai_compatible" as const, label: t("settings.aiProvider.openaiCompatible") }]
+          : []),
+        ...(aiCapabilities.localAgent
+          ? [{ value: "cli_agent" as const, label: t("settings.aiProvider.cliAgent") }]
+          : []),
+      ]
+    : []
+
+  async function loadAiModels() {
+    setLoadingAiModels(true)
+    setAiModelsError(null)
     try {
       const result = await trpc.ai.listModels.query()
       const nextModels: string[] = Array.isArray(result.models)
@@ -291,14 +338,12 @@ function SettingsPage() {
         : []
 
       if (nextModels.length > 0) {
-        setOpenRouterModels(nextModels)
+        setAiModels(nextModels)
       }
     } catch {
-      setOpenRouterModelsError(
-        t("settings.error.loadModelsFailed")
-      )
+      setAiModelsError(t("settings.error.loadModelsFailed"))
     } finally {
-      setLoadingOpenRouterModels(false)
+      setLoadingAiModels(false)
     }
   }
 
@@ -364,8 +409,9 @@ function SettingsPage() {
     const invoicePrefixInput = ((form.get("invoicePrefix") as string) || "").trim()
     const quotePrefixInput = ((form.get("quotePrefix") as string) || "").trim()
     const creditNotePrefixInput = ((form.get("creditNotePrefix") as string) || "").trim()
-    const aiOpenRouterModelInput = aiOpenRouterModel.trim()
-    const aiOpenRouterApiKeyInput = ((form.get("aiOpenRouterApiKey") as string) || "").trim()
+    const aiModelInput = aiModel.trim()
+    const aiBaseUrlInput = aiBaseUrl.trim()
+    const aiApiKeyInput = ((form.get("aiApiKey") as string) || "").trim()
     const stripePublishableKeyInput = ((form.get("stripePublishableKey") as string) || "").trim()
     const stripeSecretKeyInput = ((form.get("stripeSecretKey") as string) || "").trim()
     const stripeWebhookSecretInput = ((form.get("stripeWebhookSecret") as string) || "").trim()
@@ -419,9 +465,11 @@ function SettingsPage() {
         quotePrefix: quotePrefixInput || undefined,
         creditNotePrefix: creditNotePrefixInput || undefined,
         onboardingInvoicingIdentity: invoicingIdentity,
-        aiOpenRouterModel: aiOpenRouterModelInput || undefined,
-        aiOpenRouterApiKey: aiOpenRouterApiKeyInput || undefined,
-        clearAiOpenRouterApiKey,
+        aiProvider,
+        aiBaseUrl: aiProvider === "openai_compatible" ? aiBaseUrlInput || null : undefined,
+        aiModel: aiModelInput || undefined,
+        aiApiKey: aiApiKeyInput || undefined,
+        clearAiApiKey,
         stripePublishableKey: stripePublishableKeyInput || undefined,
         stripeSecretKey: stripeSecretKeyInput || undefined,
         stripeWebhookSecret: stripeWebhookSecretInput || undefined,
@@ -429,11 +477,35 @@ function SettingsPage() {
         clearStripeWebhookSecret,
       })
       setTimezone(timezoneInput)
-      setClearAiOpenRouterApiKey(false)
+      const savedBaseUrl = aiProvider === "openai_compatible" ? aiBaseUrlInput || null : settings?.aiBaseUrl ?? null
+      setSettings((prev) =>
+        prev
+          ? {
+              ...prev,
+              aiProvider,
+              aiBaseUrl: savedBaseUrl,
+              aiModel: aiModelInput || prev.aiModel,
+              aiByokConfigured: clearAiApiKey
+                ? false
+                : aiApiKeyInput
+                  ? true
+                  : prev.aiByokConfigured,
+            }
+          : prev
+      )
+      setClearAiApiKey(false)
       setClearStripeSecretKey(false)
       setClearStripeWebhookSecret(false)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
+      if (
+        shouldAutoLoadAiModels(
+          { provider: aiProvider, baseUrl: savedBaseUrl, currentModel: aiModelInput },
+          AI_FALLBACK_MODELS
+        )
+      ) {
+        void loadAiModels()
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -1101,7 +1173,7 @@ function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* AI BYOK */}
+        {/* AI invoice drafting */}
         <Card>
           <CardHeader>
             <CardTitle>{t("settings.section.ai.title")}</CardTitle>
@@ -1110,82 +1182,173 @@ function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="aiOpenRouterModel">{t("settings.aiModel.label")}</Label>
-              <Select value={aiOpenRouterModel} onValueChange={setAiOpenRouterModel}>
-                <SelectTrigger id="aiOpenRouterModel">
-                  <SelectValue placeholder="openai/gpt-4o-mini" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from(new Set([aiOpenRouterModel, ...openRouterModels])).map((model) => (
-                    <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={loadOpenRouterModels}
-                  disabled={loadingOpenRouterModels}
-                >
-                  {loadingOpenRouterModels
-                    ? t("settings.aiModel.refreshing")
-                    : t("settings.aiModel.refresh")}
-                </Button>
-              </div>
-              {openRouterModelsError && (
-                <p className="text-xs text-destructive">{openRouterModelsError}</p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="aiOpenRouterApiKey">{t("settings.aiApiKey.label")}</Label>
-              <Input
-                id="aiOpenRouterApiKey"
-                name="aiOpenRouterApiKey"
-                type="password"
-                autoComplete="off"
-                placeholder="sk-or-v1-..."
-                onChange={() => setClearAiOpenRouterApiKey(false)}
-              />
-              <p className="text-xs text-muted-foreground">
-                {settings.aiByokConfigured
-                  ? t("settings.aiApiKey.configuredHelp")
-                  : t("settings.aiApiKey.notConfiguredHelp")}
+            {loadingAiCapabilities ? (
+              <p className="text-sm text-muted-foreground">
+                {t("settings.aiProvider.checking")}
               </p>
-            </div>
-
-            {settings.aiByokConfigured && (
-              <div className="flex flex-wrap items-center gap-2">
-                {!clearAiOpenRouterApiKey ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setClearAiOpenRouterApiKey(true)}
+            ) : aiProviderOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("settings.aiProvider.unavailable")}
+              </p>
+            ) : (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="aiProvider">{t("settings.aiProvider.label")}</Label>
+                  <Select
+                    value={aiProvider}
+                    onValueChange={(value) => setAiProvider(value as AiProviderId)}
                   >
-                    {t("settings.aiApiKey.remove")}
-                  </Button>
-                ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground">
-                      {t("settings.aiApiKey.removePending")}
+                    <SelectTrigger id="aiProvider">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {aiProviderOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {aiProvider === "cli_agent" && (
+                  <p className="text-sm text-muted-foreground">
+                    {t("settings.aiProvider.localAgent.help")}
+                  </p>
+                )}
+
+                {aiProvider === "openai_compatible" && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="aiBaseUrl">{t("settings.aiBaseUrl.label")}</Label>
+                    <Input
+                      id="aiBaseUrl"
+                      name="aiBaseUrl"
+                      type="url"
+                      autoComplete="off"
+                      placeholder="http://localhost:11434/v1"
+                      value={aiBaseUrl}
+                      onChange={(e) => setAiBaseUrl(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("settings.aiBaseUrl.help")}
                     </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setClearAiOpenRouterApiKey(false)}
-                    >
-                      {t("settings.aiApiKey.undo")}
-                    </Button>
+                  </div>
+                )}
+
+                {aiProvider !== "cli_agent" && (
+                  <>
+                    <div className="grid gap-2">
+                      <Label htmlFor="aiModel">{t("settings.aiModel.label")}</Label>
+                      {aiProvider === "openrouter" ? (
+                        <Select value={aiModel} onValueChange={setAiModel}>
+                          <SelectTrigger id="aiModel">
+                            <SelectValue placeholder={DEFAULT_AI_MODEL} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from(new Set([aiModel, ...aiModels])).map((model) => (
+                              <SelectItem key={model} value={model}>
+                                {model}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <>
+                          <Input
+                            id="aiModel"
+                            name="aiModel"
+                            autoComplete="off"
+                            list="aiModelSuggestions"
+                            placeholder="llama3.2"
+                            value={aiModel}
+                            onChange={(e) => setAiModel(e.target.value)}
+                          />
+                          <datalist id="aiModelSuggestions">
+                            {aiModels.map((model) => (
+                              <option key={model} value={model} />
+                            ))}
+                          </datalist>
+                          <p className="text-xs text-muted-foreground">
+                            {t("settings.aiModel.customHelp")}
+                          </p>
+                        </>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={loadAiModels}
+                          disabled={
+                            loadingAiModels ||
+                            (aiProvider === "openai_compatible" && !settings.aiBaseUrl)
+                          }
+                        >
+                          {loadingAiModels
+                            ? t("settings.aiModel.refreshing")
+                            : t("settings.aiModel.refresh")}
+                        </Button>
+                      </div>
+                      {aiModelsError && (
+                        <p className="text-xs text-destructive">{aiModelsError}</p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="aiApiKey">{t("settings.aiApiKey.label")}</Label>
+                      <Input
+                        id="aiApiKey"
+                        name="aiApiKey"
+                        type="password"
+                        autoComplete="off"
+                        placeholder={aiProvider === "openrouter" ? "sk-or-v1-..." : undefined}
+                        onChange={() => setClearAiApiKey(false)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {aiProvider === "openai_compatible"
+                          ? t("settings.aiApiKey.optionalHelp")
+                          : settings.aiByokConfigured
+                            ? t("settings.aiApiKey.configuredHelp")
+                            : t("settings.aiApiKey.notConfiguredHelp")}
+                      </p>
+                      {aiProvider === "openai_compatible" && settings.aiByokConfigured && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("settings.aiApiKey.configuredHelp")}
+                        </p>
+                      )}
+                    </div>
+
+                    {settings.aiByokConfigured && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!clearAiApiKey ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setClearAiApiKey(true)}
+                          >
+                            {t("settings.aiApiKey.remove")}
+                          </Button>
+                        ) : (
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                              {t("settings.aiApiKey.removePending")}
+                            </p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setClearAiApiKey(false)}
+                            >
+                              {t("settings.aiApiKey.undo")}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
-              </div>
+              </>
             )}
           </CardContent>
         </Card>

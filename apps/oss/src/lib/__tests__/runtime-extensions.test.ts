@@ -87,4 +87,39 @@ describe("runtime extension capabilities", () => {
     expect(caps.aiInvoiceDraft.managed).toBe(true)
     expect(caps.aiInvoiceDraft.enabled).toBe(true)
   })
+
+  it("allows custom endpoints on self-host and not on cloud", async () => {
+    const mod = await import("../runtime/extensions")
+
+    expect(mod.getRuntimeCapabilities({}).aiInvoiceDraft.customEndpoint).toBe(true)
+    expect(
+      mod.getRuntimeCapabilities({ QUITS_DISTRIBUTION: "cloud" }).aiInvoiceDraft.customEndpoint
+    ).toBe(false)
+  })
+
+  it("enables the local agent only with both the flag and a command, never on cloud", async () => {
+    const mod = await import("../runtime/extensions")
+
+    expect(mod.getRuntimeCapabilities({}).aiInvoiceDraft.localAgent).toBe(false)
+    expect(
+      mod.getRuntimeCapabilities({ QUITS_AI_LOCAL_AGENT_ENABLED: "true" }).aiInvoiceDraft.localAgent
+    ).toBe(false)
+    expect(
+      mod.getRuntimeCapabilities({ QUITS_AI_LOCAL_AGENT_COMMAND: "claude -p" }).aiInvoiceDraft
+        .localAgent
+    ).toBe(false)
+    expect(
+      mod.getRuntimeCapabilities({
+        QUITS_AI_LOCAL_AGENT_ENABLED: "true",
+        QUITS_AI_LOCAL_AGENT_COMMAND: "claude -p",
+      }).aiInvoiceDraft.localAgent
+    ).toBe(true)
+    expect(
+      mod.getRuntimeCapabilities({
+        QUITS_DISTRIBUTION: "cloud",
+        QUITS_AI_LOCAL_AGENT_ENABLED: "true",
+        QUITS_AI_LOCAL_AGENT_COMMAND: "claude -p",
+      }).aiInvoiceDraft.localAgent
+    ).toBe(false)
+  })
 })
