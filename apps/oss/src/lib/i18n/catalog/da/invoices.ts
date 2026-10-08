@@ -48,6 +48,14 @@ export const daInvoicesMessages = {
     "Beskriv først fakturaen.",
   "invoices.new.ai.error.generateFailed":
     "Kunne ikke generere kladde med AI.",
+  "invoices.new.ai.error.notAnInvoice":
+    "AI'en kunne ikke lave en faktura ud fra det. Prøv at beskrive kunden, varerne og priserne.",
+  "invoices.new.ai.error.busy":
+    "AI'en har travlt lige nu. Prøv igen om lidt.",
+  "invoices.new.ai.error.timeout":
+    "AI'en var for længe om at svare. Prøv igen.",
+  "invoices.new.ai.error.providerFailed":
+    "AI-tjenesten kunne ikke nås. Prøv igen om lidt.",
   "invoices.new.ai.info.contactNotMatched":
     "Kladde genereret. Kontakt \"{name}\" blev ikke matchet automatisk.",
   "invoices.detail.editTitle": "Rediger faktura",

@@ -44,6 +44,14 @@ export const enInvoicesMessages = {
   "invoices.new.ai.error.promptRequired":
     "Please describe the invoice first.",
   "invoices.new.ai.error.generateFailed": "Failed to generate draft from AI.",
+  "invoices.new.ai.error.notAnInvoice":
+    "The AI couldn't turn that into an invoice. Try describing the customer, items and prices.",
+  "invoices.new.ai.error.busy":
+    "The AI is busy right now. Try again in a moment.",
+  "invoices.new.ai.error.timeout":
+    "The AI took too long to answer. Try again.",
+  "invoices.new.ai.error.providerFailed":
+    "The AI service could not be reached. Try again in a moment.",
   "invoices.new.ai.info.contactNotMatched":
     "Draft generated. Contact \"{name}\" was not matched automatically.",
   "invoices.detail.editTitle": "Edit Invoice",

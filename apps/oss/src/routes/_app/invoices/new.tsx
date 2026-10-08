@@ -33,6 +33,7 @@ import {
 } from "../../../components/ui/card"
 import { Plus, Sparkles, Trash2 } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import type { TranslationKey } from "../../../lib/i18n/catalog"
 
 export const Route = createFileRoute("/_app/invoices/new")({
   component: NewInvoicePage,
@@ -46,6 +47,18 @@ type LineItem = {
   unitPrice: string
   vat?: DocumentLineInput["vat"]
   catalogItemId?: string
+}
+
+/** Translated messages for AI drafting failures, by tRPC error code. */
+const aiErrorMessageKeys: Record<string, TranslationKey> = {
+  UNPROCESSABLE_CONTENT: "invoices.new.ai.error.notAnInvoice",
+  TOO_MANY_REQUESTS: "invoices.new.ai.error.busy",
+  GATEWAY_TIMEOUT: "invoices.new.ai.error.timeout",
+  BAD_GATEWAY: "invoices.new.ai.error.providerFailed",
+}
+
+function aiErrorCode(error: unknown) {
+  return (error as { data?: { code?: string } } | null)?.data?.code
 }
 
 function NewInvoicePage() {
@@ -209,10 +222,13 @@ function NewInvoicePage() {
         }
       }
     } catch (err) {
+      const messageKey = aiErrorMessageKeys[aiErrorCode(err) ?? ""]
       setAiError(
-        err instanceof Error
-          ? err.message
-          : t("invoices.new.ai.error.generateFailed")
+        messageKey
+          ? t(messageKey)
+          : err instanceof Error
+            ? err.message
+            : t("invoices.new.ai.error.generateFailed")
       )
     } finally {
       setAiGenerating(false)

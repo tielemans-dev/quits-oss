@@ -235,6 +235,30 @@ describe("provider fallbacks and errors", () => {
     expect(error).toMatchObject({ code: "BAD_GATEWAY", message: "The AI provider request failed" })
     resetRuntimeServices()
   })
+
+  it.each([
+    ["invalid_response", "UNPROCESSABLE_CONTENT", "The AI couldn't turn that into an invoice"],
+    ["timeout", "GATEWAY_TIMEOUT", "The AI provider did not respond in time"],
+    ["busy", "TOO_MANY_REQUESTS", "The AI provider is busy"],
+  ] as const)("reports a %s failure as %s", async (providerCode, trpcCode, message) => {
+    const { AiProviderError } = await import("../../../lib/ai/provider")
+    const complete = vi.fn(async () => {
+      throw new AiProviderError({ code: providerCode, providerId: "managed", message: "upstream" })
+    })
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    mocks.aiCapabilities = { ...defaultAiCapabilities, byok: false, managed: true }
+    mocks.findMany.mockResolvedValue([])
+    mocks.findUnique.mockResolvedValue({ aiModel: null })
+    setRuntimeServices({ managedAiProvider: { id: "managed", complete } })
+
+    const caller = aiRouter.createCaller(createContext())
+    const error = await caller
+      .generateInvoiceDraft({ prompt: "Invoice Acme for three hours", mode: "managed" })
+      .catch((caught: unknown) => caught)
+
+    expect(error).toMatchObject({ code: trpcCode, message: expect.stringContaining(message) })
+    resetRuntimeServices()
+  })
 })
 
 describe("settings router AI provider handling", () => {
