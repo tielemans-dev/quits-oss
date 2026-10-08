@@ -70,6 +70,7 @@ export type DeliverableRebillCountAggregateOutputType = {
   priorInvoiceId: number
   priorInvoiceItemId: number
   creditNoteId: number
+  creditNoteIds: number
   reason: number
   decidedBy: number
   commandId: number
@@ -122,6 +123,7 @@ export type DeliverableRebillCountAggregateInputType = {
   priorInvoiceId?: true
   priorInvoiceItemId?: true
   creditNoteId?: true
+  creditNoteIds?: true
   reason?: true
   decidedBy?: true
   commandId?: true
@@ -223,6 +225,7 @@ export type DeliverableRebillGroupByOutputType = {
   priorInvoiceId: string
   priorInvoiceItemId: string
   creditNoteId: string
+  creditNoteIds: string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -260,6 +263,7 @@ export type DeliverableRebillWhereInput = {
   priorInvoiceId?: Prisma.StringFilter<"DeliverableRebill"> | string
   priorInvoiceItemId?: Prisma.StringFilter<"DeliverableRebill"> | string
   creditNoteId?: Prisma.StringFilter<"DeliverableRebill"> | string
+  creditNoteIds?: Prisma.StringNullableListFilter<"DeliverableRebill">
   reason?: Prisma.StringFilter<"DeliverableRebill"> | string
   decidedBy?: Prisma.StringFilter<"DeliverableRebill"> | string
   commandId?: Prisma.StringFilter<"DeliverableRebill"> | string
@@ -278,6 +282,7 @@ export type DeliverableRebillOrderByWithRelationInput = {
   priorInvoiceId?: Prisma.SortOrder
   priorInvoiceItemId?: Prisma.SortOrder
   creditNoteId?: Prisma.SortOrder
+  creditNoteIds?: Prisma.SortOrder
   reason?: Prisma.SortOrder
   decidedBy?: Prisma.SortOrder
   commandId?: Prisma.SortOrder
@@ -300,6 +305,7 @@ export type DeliverableRebillWhereUniqueInput = Prisma.AtLeast<{
   priorInvoiceId?: Prisma.StringFilter<"DeliverableRebill"> | string
   priorInvoiceItemId?: Prisma.StringFilter<"DeliverableRebill"> | string
   creditNoteId?: Prisma.StringFilter<"DeliverableRebill"> | string
+  creditNoteIds?: Prisma.StringNullableListFilter<"DeliverableRebill">
   reason?: Prisma.StringFilter<"DeliverableRebill"> | string
   decidedBy?: Prisma.StringFilter<"DeliverableRebill"> | string
   commandId?: Prisma.StringFilter<"DeliverableRebill"> | string
@@ -318,6 +324,7 @@ export type DeliverableRebillOrderByWithAggregationInput = {
   priorInvoiceId?: Prisma.SortOrder
   priorInvoiceItemId?: Prisma.SortOrder
   creditNoteId?: Prisma.SortOrder
+  creditNoteIds?: Prisma.SortOrder
   reason?: Prisma.SortOrder
   decidedBy?: Prisma.SortOrder
   commandId?: Prisma.SortOrder
@@ -340,6 +347,7 @@ export type DeliverableRebillScalarWhereWithAggregatesInput = {
   priorInvoiceId?: Prisma.StringWithAggregatesFilter<"DeliverableRebill"> | string
   priorInvoiceItemId?: Prisma.StringWithAggregatesFilter<"DeliverableRebill"> | string
   creditNoteId?: Prisma.StringWithAggregatesFilter<"DeliverableRebill"> | string
+  creditNoteIds?: Prisma.StringNullableListFilter<"DeliverableRebill">
   reason?: Prisma.StringWithAggregatesFilter<"DeliverableRebill"> | string
   decidedBy?: Prisma.StringWithAggregatesFilter<"DeliverableRebill"> | string
   commandId?: Prisma.StringWithAggregatesFilter<"DeliverableRebill"> | string
@@ -350,6 +358,7 @@ export type DeliverableRebillCreateInput = {
   id?: string
   generation: number
   priorInvoiceItemId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -368,6 +377,7 @@ export type DeliverableRebillUncheckedCreateInput = {
   priorInvoiceId: string
   priorInvoiceItemId: string
   creditNoteId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -378,6 +388,7 @@ export type DeliverableRebillUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -396,6 +407,7 @@ export type DeliverableRebillUncheckedUpdateInput = {
   priorInvoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
   creditNoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -410,6 +422,7 @@ export type DeliverableRebillCreateManyInput = {
   priorInvoiceId: string
   priorInvoiceItemId: string
   creditNoteId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -420,6 +433,7 @@ export type DeliverableRebillUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -434,6 +448,7 @@ export type DeliverableRebillUncheckedUpdateManyInput = {
   priorInvoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
   creditNoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -463,6 +478,7 @@ export type DeliverableRebillCountOrderByAggregateInput = {
   priorInvoiceId?: Prisma.SortOrder
   priorInvoiceItemId?: Prisma.SortOrder
   creditNoteId?: Prisma.SortOrder
+  creditNoteIds?: Prisma.SortOrder
   reason?: Prisma.SortOrder
   decidedBy?: Prisma.SortOrder
   commandId?: Prisma.SortOrder
@@ -673,10 +689,20 @@ export type DeliverableRebillUncheckedUpdateManyWithoutDeliverableNestedInput = 
   deleteMany?: Prisma.DeliverableRebillScalarWhereInput | Prisma.DeliverableRebillScalarWhereInput[]
 }
 
+export type DeliverableRebillCreatecreditNoteIdsInput = {
+  set: string[]
+}
+
+export type DeliverableRebillUpdatecreditNoteIdsInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
 export type DeliverableRebillCreateWithoutPriorInvoiceInput = {
   id?: string
   generation: number
   priorInvoiceItemId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -693,6 +719,7 @@ export type DeliverableRebillUncheckedCreateWithoutPriorInvoiceInput = {
   generation: number
   priorInvoiceItemId: string
   creditNoteId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -736,6 +763,7 @@ export type DeliverableRebillScalarWhereInput = {
   priorInvoiceId?: Prisma.StringFilter<"DeliverableRebill"> | string
   priorInvoiceItemId?: Prisma.StringFilter<"DeliverableRebill"> | string
   creditNoteId?: Prisma.StringFilter<"DeliverableRebill"> | string
+  creditNoteIds?: Prisma.StringNullableListFilter<"DeliverableRebill">
   reason?: Prisma.StringFilter<"DeliverableRebill"> | string
   decidedBy?: Prisma.StringFilter<"DeliverableRebill"> | string
   commandId?: Prisma.StringFilter<"DeliverableRebill"> | string
@@ -746,6 +774,7 @@ export type DeliverableRebillCreateWithoutCreditNoteInput = {
   id?: string
   generation: number
   priorInvoiceItemId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -762,6 +791,7 @@ export type DeliverableRebillUncheckedCreateWithoutCreditNoteInput = {
   generation: number
   priorInvoiceId: string
   priorInvoiceItemId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -798,6 +828,7 @@ export type DeliverableRebillCreateWithoutAgreementInput = {
   id?: string
   generation: number
   priorInvoiceItemId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -814,6 +845,7 @@ export type DeliverableRebillUncheckedCreateWithoutAgreementInput = {
   priorInvoiceId: string
   priorInvoiceItemId: string
   creditNoteId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -850,6 +882,7 @@ export type DeliverableRebillCreateWithoutDeliverableInput = {
   id?: string
   generation: number
   priorInvoiceItemId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -866,6 +899,7 @@ export type DeliverableRebillUncheckedCreateWithoutDeliverableInput = {
   priorInvoiceId: string
   priorInvoiceItemId: string
   creditNoteId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -905,6 +939,7 @@ export type DeliverableRebillCreateManyPriorInvoiceInput = {
   generation: number
   priorInvoiceItemId: string
   creditNoteId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -915,6 +950,7 @@ export type DeliverableRebillUpdateWithoutPriorInvoiceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -931,6 +967,7 @@ export type DeliverableRebillUncheckedUpdateWithoutPriorInvoiceInput = {
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
   creditNoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -944,6 +981,7 @@ export type DeliverableRebillUncheckedUpdateManyWithoutPriorInvoiceInput = {
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
   creditNoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -957,6 +995,7 @@ export type DeliverableRebillCreateManyCreditNoteInput = {
   generation: number
   priorInvoiceId: string
   priorInvoiceItemId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -967,6 +1006,7 @@ export type DeliverableRebillUpdateWithoutCreditNoteInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -983,6 +1023,7 @@ export type DeliverableRebillUncheckedUpdateWithoutCreditNoteInput = {
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -996,6 +1037,7 @@ export type DeliverableRebillUncheckedUpdateManyWithoutCreditNoteInput = {
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1009,6 +1051,7 @@ export type DeliverableRebillCreateManyAgreementInput = {
   priorInvoiceId: string
   priorInvoiceItemId: string
   creditNoteId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -1019,6 +1062,7 @@ export type DeliverableRebillUpdateWithoutAgreementInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1035,6 +1079,7 @@ export type DeliverableRebillUncheckedUpdateWithoutAgreementInput = {
   priorInvoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
   creditNoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1048,6 +1093,7 @@ export type DeliverableRebillUncheckedUpdateManyWithoutAgreementInput = {
   priorInvoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
   creditNoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1061,6 +1107,7 @@ export type DeliverableRebillCreateManyDeliverableInput = {
   priorInvoiceId: string
   priorInvoiceItemId: string
   creditNoteId: string
+  creditNoteIds?: Prisma.DeliverableRebillCreatecreditNoteIdsInput | string[]
   reason: string
   decidedBy: string
   commandId: string
@@ -1071,6 +1118,7 @@ export type DeliverableRebillUpdateWithoutDeliverableInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   generation?: Prisma.IntFieldUpdateOperationsInput | number
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1087,6 +1135,7 @@ export type DeliverableRebillUncheckedUpdateWithoutDeliverableInput = {
   priorInvoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
   creditNoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1100,6 +1149,7 @@ export type DeliverableRebillUncheckedUpdateManyWithoutDeliverableInput = {
   priorInvoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   priorInvoiceItemId?: Prisma.StringFieldUpdateOperationsInput | string
   creditNoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditNoteIds?: Prisma.DeliverableRebillUpdatecreditNoteIdsInput | string[]
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   decidedBy?: Prisma.StringFieldUpdateOperationsInput | string
   commandId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1116,6 +1166,7 @@ export type DeliverableRebillSelect<ExtArgs extends runtime.Types.Extensions.Int
   priorInvoiceId?: boolean
   priorInvoiceItemId?: boolean
   creditNoteId?: boolean
+  creditNoteIds?: boolean
   reason?: boolean
   decidedBy?: boolean
   commandId?: boolean
@@ -1134,6 +1185,7 @@ export type DeliverableRebillSelectCreateManyAndReturn<ExtArgs extends runtime.T
   priorInvoiceId?: boolean
   priorInvoiceItemId?: boolean
   creditNoteId?: boolean
+  creditNoteIds?: boolean
   reason?: boolean
   decidedBy?: boolean
   commandId?: boolean
@@ -1152,6 +1204,7 @@ export type DeliverableRebillSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   priorInvoiceId?: boolean
   priorInvoiceItemId?: boolean
   creditNoteId?: boolean
+  creditNoteIds?: boolean
   reason?: boolean
   decidedBy?: boolean
   commandId?: boolean
@@ -1170,13 +1223,14 @@ export type DeliverableRebillSelectScalar = {
   priorInvoiceId?: boolean
   priorInvoiceItemId?: boolean
   creditNoteId?: boolean
+  creditNoteIds?: boolean
   reason?: boolean
   decidedBy?: boolean
   commandId?: boolean
   createdAt?: boolean
 }
 
-export type DeliverableRebillOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "agreementId" | "deliverableId" | "generation" | "priorInvoiceId" | "priorInvoiceItemId" | "creditNoteId" | "reason" | "decidedBy" | "commandId" | "createdAt", ExtArgs["result"]["deliverableRebill"]>
+export type DeliverableRebillOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "agreementId" | "deliverableId" | "generation" | "priorInvoiceId" | "priorInvoiceItemId" | "creditNoteId" | "creditNoteIds" | "reason" | "decidedBy" | "commandId" | "createdAt", ExtArgs["result"]["deliverableRebill"]>
 export type DeliverableRebillInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   agreement?: boolean | Prisma.AgreementDefaultArgs<ExtArgs>
   deliverable?: boolean | Prisma.DeliverableDefaultArgs<ExtArgs>
@@ -1212,6 +1266,10 @@ export type $DeliverableRebillPayload<ExtArgs extends runtime.Types.Extensions.I
     priorInvoiceId: string
     priorInvoiceItemId: string
     creditNoteId: string
+    /**
+     * Complete reviewed evidence for new decisions. Empty for legacy decisions with unknown sets.
+     */
+    creditNoteIds: string[]
     reason: string
     decidedBy: string
     commandId: string
@@ -1650,6 +1708,7 @@ export interface DeliverableRebillFieldRefs {
   readonly priorInvoiceId: Prisma.FieldRef<"DeliverableRebill", 'String'>
   readonly priorInvoiceItemId: Prisma.FieldRef<"DeliverableRebill", 'String'>
   readonly creditNoteId: Prisma.FieldRef<"DeliverableRebill", 'String'>
+  readonly creditNoteIds: Prisma.FieldRef<"DeliverableRebill", 'String[]'>
   readonly reason: Prisma.FieldRef<"DeliverableRebill", 'String'>
   readonly decidedBy: Prisma.FieldRef<"DeliverableRebill", 'String'>
   readonly commandId: Prisma.FieldRef<"DeliverableRebill", 'String'>

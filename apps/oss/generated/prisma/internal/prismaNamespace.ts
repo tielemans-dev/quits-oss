@@ -4057,6 +4057,7 @@ export const DeliverableRebillScalarFieldEnum = {
   priorInvoiceId: 'priorInvoiceId',
   priorInvoiceItemId: 'priorInvoiceItemId',
   creditNoteId: 'creditNoteId',
+  creditNoteIds: 'creditNoteIds',
   reason: 'reason',
   decidedBy: 'decidedBy',
   commandId: 'commandId',

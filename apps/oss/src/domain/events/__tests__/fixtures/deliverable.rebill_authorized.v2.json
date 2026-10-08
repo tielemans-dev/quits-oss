@@ -1,0 +1,21 @@
+{
+  "type": "deliverable.rebill_authorized",
+  "schemaVersion": 2,
+  "cases": [
+    {
+      "source": "commands/billing-allocation.ts",
+      "typeExpression": "\"deliverable.rebill_authorized\"",
+      "payloadExpression": "{ deliverableId: line.id, invoiceId: item.invoiceId, creditNoteId: input.creditNoteId, creditNoteIds, generation }",
+      "variant": "default",
+      "payload": {
+        "deliverableId": "document-1",
+        "invoiceId": "invoice-1",
+        "creditNoteId": "credit-note-1",
+        "creditNoteIds": [
+          "credit-note-1"
+        ],
+        "generation": 1
+      }
+    }
+  ]
+}

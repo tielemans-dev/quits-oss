@@ -51,14 +51,14 @@ export const releaseDeliverableReservation = defineCommand({
 
 /**
  * Lets credited work be billed again. A credit note alone never does this: a person records the
- * decision, naming the credit note that justifies it, and only for a line the credit covered in
- * full. The prior invoice and its line stay exactly as issued; the next allocation is a new
+ * decision, naming every reviewed credit note that justifies it, and only for a line those credits
+ * cover in full. The prior invoice and its line stay exactly as issued; the next allocation is a new
  * generation that points back at them.
  */
 export const authorizeDeliverableRebill = defineCommand({
   type: "deliverable.authorize_rebill", permission: "invoice:create", outwardFacing: false,
   input: deliverableAuthorizeRebillInputSchema,
-  summarize: input => `Allow deliverable ${input.deliverableId} to be billed again after credit note ${input.creditNoteId}`,
+  summarize: input => `Allow deliverable ${input.deliverableId} to be billed again after credit notes ${(input.creditNoteIds ?? [input.creditNoteId]).join(", ")}`,
   handle: input => Effect.gen(function* () {
     const db = yield* Db, command = yield* Command
     if (command.actor.kind !== "user") return yield* new InvalidState({ code: "human_review_required", message: "A person must decide whether credited work is billed again" })
@@ -69,21 +69,23 @@ export const authorizeDeliverableRebill = defineCommand({
     if (line.billingStatus !== "invoiced") return yield* new InvalidState({ code: "rebill_not_invoiced", message: "Only work on an issued invoice can be rebilled" })
     const item = yield* Effect.promise(() => db.invoiceItem.findFirst({ where: { deliverableId: line.id, allocationGeneration: line.billingGeneration }, include: { invoice: { include: { creditNotes: { where: { status: "issued" }, include: { items: true } } } } } }))
     if (!item) return yield* new InvalidState({ code: "rebill_not_invoiced", message: "This work has no issued invoice line" })
-    const credit = item.invoice.creditNotes.find(row => row.id === input.creditNoteId)
-    if (!credit || !credit.items.some(row => row.invoiceItemId === item.id))
-      return yield* new InvalidState({ code: "credit_note_mismatch", message: "The credit note must be an issued credit of this work's invoice line" })
-    const credited = item.invoice.creditNotes.flatMap(row => row.items).filter(row => row.invoiceItemId === item.id).reduce((sum, row) => sum.plus(row.quantity), new Prisma.Decimal(0))
+    // Legacy callers review one note. Never silently add credits the person did not review.
+    const creditNoteIds = input.creditNoteIds ?? [input.creditNoteId]
+    const credits = creditNoteIds.map(id => item.invoice.creditNotes.find(note => note.id === id))
+    if (credits.some(credit => !credit || !credit.items.some(row => row.invoiceItemId === item.id)))
+      return yield* new InvalidState({ code: "credit_note_mismatch", message: "Every reviewed credit note must be an issued credit of this work's invoice line" })
+    const credited = credits.flatMap(credit => credit!.items).filter(row => row.invoiceItemId === item.id).reduce((sum, row) => sum.plus(row.quantity), new Prisma.Decimal(0))
     if (credited.lt(item.quantity))
-      return yield* new InvalidState({ code: "line_not_fully_credited", message: `Only ${credited.toString()} of ${item.quantity.toString()} was credited. Credit the rest of the line first; a partial credit does not release the work.`, details: { credited: credited.toString(), quantity: item.quantity.toString() } })
+      return yield* new InvalidState({ code: "line_not_fully_credited", message: `The reviewed credit notes cover only ${credited.toString()} of ${item.quantity.toString()}. Review all line credits that together credit the work in full before authorizing rebilling.`, details: { credited: credited.toString(), quantity: item.quantity.toString() } })
     const moved = yield* Effect.promise(() => db.deliverable.updateMany({ where: { id: line.id, agreementId: agreement.id, billingStatus: "invoiced", billingGeneration: line.billingGeneration }, data: { billingStatus: "unbilled", billingGeneration: { increment: 1 } } }))
     if (moved.count !== 1) return yield* new InvalidState({ code: "rebill_not_invoiced", message: "This work changed while you were deciding" })
     const generation = line.billingGeneration + 1
     yield* Effect.promise(() => db.deliverableRebill.create({ data: {
       agreementId: agreement.id, deliverableId: line.id, generation, priorInvoiceId: item.invoiceId, priorInvoiceItemId: item.id,
-      creditNoteId: credit.id, reason: input.reason, decidedBy: actorKey(command.actor), commandId: command.commandId,
+      creditNoteId: input.creditNoteId, creditNoteIds, reason: input.reason, decidedBy: actorKey(command.actor), commandId: command.commandId,
     } }))
-    command.emit({ aggregateType: "agreement", aggregateId: agreement.id, type: "deliverable.rebill_authorized", payload: { deliverableId: line.id, invoiceId: item.invoiceId, creditNoteId: credit.id, generation } })
-    return { deliverableId: line.id, generation, priorInvoiceId: item.invoiceId, creditNoteId: credit.id }
+    command.emit({ aggregateType: "agreement", aggregateId: agreement.id, type: "deliverable.rebill_authorized", payload: { deliverableId: line.id, invoiceId: item.invoiceId, creditNoteId: input.creditNoteId, creditNoteIds, generation } })
+    return { deliverableId: line.id, generation, priorInvoiceId: item.invoiceId, creditNoteId: input.creditNoteId, creditNoteIds }
   }),
 })
 

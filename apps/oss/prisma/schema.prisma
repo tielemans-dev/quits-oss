@@ -929,6 +929,8 @@ model DeliverableRebill {
   priorInvoice      Invoice     @relation(fields: [priorInvoiceId], references: [id], onDelete: Restrict)
   priorInvoiceItemId String
   creditNoteId      String
+  /// Complete reviewed evidence for new decisions. Empty for legacy decisions with unknown sets.
+  creditNoteIds     String[]    @default([])
   creditNote        CreditNote  @relation(fields: [creditNoteId], references: [id], onDelete: Restrict)
   reason            String
   decidedBy         String

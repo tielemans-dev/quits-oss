@@ -9,8 +9,10 @@ ALTER TABLE "invoice_item"
   ADD COLUMN "sourceRevision" TEXT,
   ADD COLUMN "allocationGeneration" INTEGER NOT NULL DEFAULT 0;
 
+-- Legacy lines have no immutable record of the delivery revision billed. The deliverable may
+-- have been redelivered since invoicing, so leave sourceRevision NULL rather than guess.
 UPDATE "invoice_item" AS item
-SET "sourceKind" = 'deliverable', "sourceId" = item."deliverableId", "sourceRevision" = line."deliveryRevision"::text
+SET "sourceKind" = 'deliverable', "sourceId" = item."deliverableId"
 FROM "deliverable" AS line
 WHERE item."deliverableId" = line."id";
 
