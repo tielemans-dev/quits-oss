@@ -45,7 +45,7 @@ const danish: InvoiceForPdf = {
 describe("invoice PDF lines", () => {
   it("prints net unit prices and amounts that add up to the subtotal when prices exclude VAT", () => {
     const text = invoiceText(danish, { locale: "da-DK" })
-    expect(text).toContain("Pris ekskl. moms")
+    expect(text).toContain("Enhedspris ekskl. moms")
     expect(text).toContain("Beløb ekskl. moms")
     expect(text).toEqual(expect.arrayContaining(["4.000,00 kr.", "8.000,00 kr.", "6.500,00 kr."]))
     expect(text).not.toContain("10.000,00 kr.")
@@ -55,7 +55,7 @@ describe("invoice PDF lines", () => {
 
   it("names a gross basis in the headers", () => {
     const text = invoiceText({ ...danish, pricesIncludeTax: true }, { locale: "da-DK" })
-    expect(text).toContain("Pris inkl. moms")
+    expect(text).toContain("Enhedspris inkl. moms")
     expect(text).toContain("Beløb inkl. moms")
   })
 
@@ -71,12 +71,12 @@ describe("invoice PDF lines", () => {
     const { pricesIncludeTax: _basis, supplyDate: _supply, vatRows: _rows, ...legacy } = danish
     const text = invoiceText(legacy, { locale: "da-DK" })
     expect(text).toContain("Enhedspris")
-    expect(text).not.toContain("Pris ekskl. moms")
+    expect(text).not.toContain("Enhedspris ekskl. moms")
     expect(text).toEqual(expect.arrayContaining(["Moms", "3.625,00 kr."]))
     expect(text).not.toContain("Leveringsdato")
   })
 
-  it("prints one VAT row per rate, in the order given, with the total after them", () => {
+  it("prints one VAT row per rate, each with its taxable amount, and the total after them", () => {
     const text = invoiceText({
       ...danish,
       subtotal: 1201,
@@ -88,9 +88,9 @@ describe("invoice PDF lines", () => {
         { ratePercent: "25", net: "1200.00", tax: "300.00", gross: "1500.00" },
       ],
     }, { locale: "da-DK" })
-    const labels = text.filter((entry) => entry.startsWith("Moms ("))
-    expect(labels).toEqual(["Moms (0 %)", "Moms (5 %)", "Moms (25 %)"])
-    expect(text.indexOf("Moms (25 %)")).toBeLessThan(text.lastIndexOf("Total"))
+    const labels = text.filter((entry) => entry.startsWith("Moms "))
+    expect(labels).toEqual(["Moms 0 % af 500,00 kr.", "Moms 5 % af 201,00 kr.", "Moms 25 % af 1.200,00 kr."])
+    expect(text.indexOf("Moms 25 % af 1.200,00 kr.")).toBeLessThan(text.lastIndexOf("Total"))
   })
 
   it("falls back to the single tax amount when the rows are empty", () => {
@@ -123,6 +123,49 @@ describe("invoice PDF lines", () => {
   })
 })
 
+describe("invoice PDF totals", () => {
+  /** 10,12 kr including 25 % VAT: net 8,10 and tax 2,03 round to 10,13, a cent over the total. */
+  const rounded: InvoiceForPdf = {
+    ...danish,
+    subtotal: 8.1,
+    taxAmount: 2.03,
+    total: 10.12,
+    pricesIncludeTax: true,
+    rounding: "-0.01",
+    vatRows: [{ ratePercent: "25", net: "8.10", tax: "2.03", gross: "10.12" }],
+    items: [{ description: "Vare", quantity: 1, unitPrice: 10.12, total: 10.12 }],
+  }
+
+  it("prints the rounding between the VAT and the total so the rows add up", () => {
+    const text = invoiceText(rounded, { locale: "da-DK" })
+    const subtotal = text.indexOf("Subtotal ekskl. moms")
+    expect(text.slice(subtotal, subtotal + 8)).toEqual(["Subtotal ekskl. moms", "8,10 kr.", "Moms (25 %)", "2,03 kr.", "Afrunding", "-0,01 kr.", "Total inkl. moms", "10,12 kr."])
+  })
+
+  it("prints no rounding row when there is none", () => {
+    expect(invoiceText({ ...rounded, rounding: "0.00" }, { locale: "da-DK" })).not.toContain("Afrunding")
+    expect(invoiceText({ ...danish, rounding: "0.00" }, { locale: "da-DK" })).not.toContain("Afrunding")
+  })
+
+  it("labels the subtotal and total of a gross document, and leaves a net document's plain", () => {
+    const gross = invoiceText(rounded, { locale: "da-DK" })
+    expect(gross).toEqual(expect.arrayContaining(["Subtotal ekskl. moms", "Total inkl. moms"]))
+    const net = invoiceText(danish, { locale: "da-DK" })
+    expect(net).toEqual(expect.arrayContaining(["Subtotal", "Total"]))
+    expect(net).not.toContain("Total inkl. moms")
+    const english = invoiceText({ ...rounded, currency: "USD" }, { locale: "en-US" })
+    expect(english).toEqual(expect.arrayContaining(["Subtotal excl. tax", "Rounding", "Total incl. tax"]))
+  })
+
+  it("names each rate's taxable amount in English when there are several", () => {
+    const text = invoiceText({
+      ...danish, currency: "USD",
+      vatRows: [{ ratePercent: "5", net: "201.00", tax: "10.05", gross: "211.05" }, { ratePercent: "10", net: "100.00", tax: "10.00", gross: "110.00" }],
+    }, { locale: "en-US" })
+    expect(text).toEqual(expect.arrayContaining(["Tax 5% of $201.00", "Tax 10% of $100.00"]))
+  })
+})
+
 describe("credit note PDF lines", () => {
   const credit: CreditNoteForPdf = {
     number: "K-0001",
@@ -143,15 +186,25 @@ describe("credit note PDF lines", () => {
 
   it("mirrors the net basis of the invoice it credits", () => {
     const text = creditText(credit)
-    expect(text).toContain("Pris ekskl. moms")
+    expect(text).toContain("Enhedspris ekskl. moms")
     expect(text).toContain("Beløb ekskl. moms")
     expect(text).toEqual(expect.arrayContaining(["Moms (25 %)", "1.625,00 kr.", "8.125,00 kr."]))
   })
 
   it("mirrors a gross basis", () => {
     const text = creditText({ ...credit, pricesIncludeTax: true, items: [{ description: "Licens", quantity: 1, unitPrice: 8125, total: 8125 }] })
-    expect(text).toContain("Pris inkl. moms")
+    expect(text).toContain("Enhedspris inkl. moms")
     expect(text).toContain("Beløb inkl. moms")
+  })
+
+  it("prints a rounding row and labels a gross credit note's subtotal and total", () => {
+    const text = creditText({
+      ...credit, pricesIncludeTax: true, subtotal: 8.1, taxAmount: 2.03, total: 10.12, rounding: "-0.01",
+      vatRows: [{ ratePercent: "25", net: "8.10", tax: "2.03", gross: "10.12" }],
+      items: [{ description: "Vare", quantity: 1, unitPrice: 10.12, total: 10.12 }],
+    })
+    const subtotal = text.indexOf("Subtotal ekskl. moms")
+    expect(text.slice(subtotal, subtotal + 8)).toEqual(["Subtotal ekskl. moms", "8,10 kr.", "Moms (25 %)", "2,03 kr.", "Afrunding", "-0,01 kr.", "Total inkl. moms", "10,12 kr."])
   })
 
   it("keeps the plain headers for a render input frozen before credit notes stated their basis", () => {

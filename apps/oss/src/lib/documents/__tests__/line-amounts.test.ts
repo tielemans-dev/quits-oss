@@ -208,19 +208,33 @@ describe("frozenVatRows", () => {
 
 describe("frozenVatRowsOrUndefined", () => {
   const line = { vatTreatment: "exempt", vatReasonCode: null, vatCountry: null, vatRateInput: "0", taxRate: "0", lineNet: "10.00", lineTax: "0.00", lineGross: "10.00" }
+  const totals = { currency: "DKK", subtotalNet: "10.00", totalTax: "0.00" }
 
   it("has no rows for a draft whose VAT classification is unfinished, instead of throwing", () => {
-    expect(() => frozenVatRows({ currency: "DKK", items: [line] })).toThrow()
-    expect(frozenVatRowsOrUndefined({ currency: "DKK", items: [line] })).toBeUndefined()
+    expect(() => frozenVatRows({ ...totals, items: [line] })).toThrow()
+    expect(frozenVatRowsOrUndefined({ ...totals, items: [line] })).toBeUndefined()
   })
 
   it("has no rows for a document without lines", () => {
-    expect(frozenVatRowsOrUndefined({ currency: "DKK", items: [] })).toBeUndefined()
+    expect(frozenVatRowsOrUndefined({ ...totals, items: [] })).toBeUndefined()
   })
 
   it("has the rows of a finished one", () => {
-    expect(frozenVatRowsOrUndefined({ currency: "DKK", items: [{ ...line, vatReasonCode: "other" }] }))
+    expect(frozenVatRowsOrUndefined({ ...totals, items: [{ ...line, vatReasonCode: "other" }] }))
       .toEqual([{ ratePercent: "0", net: "10.00", tax: "0.00", gross: "10.00" }])
   })
-})
 
+  it("has no rows when the lines do not carry the stored tax, as with legacy lines whose tax is zero", () => {
+    const standard = { ...line, vatTreatment: "standard", vatRateInput: "0.25", taxRate: "25", lineNet: "100.00", lineTax: "0.00", lineGross: "100.00" }
+    expect(frozenVatRowsOrUndefined({ currency: "DKK", subtotalNet: "100.00", totalTax: "25.00", items: [standard] })).toBeUndefined()
+    expect(frozenVatRowsOrUndefined({ currency: "DKK", subtotalNet: "100.00", totalTax: "0.00", items: [standard] })).toHaveLength(1)
+  })
+
+  it("has no rows when their net is not the stored subtotal", () => {
+    expect(frozenVatRowsOrUndefined({ currency: "DKK", subtotalNet: "99.00", totalTax: "0.00", items: [{ ...line, vatReasonCode: "other" }] })).toBeUndefined()
+  })
+
+  it("lets an error that is not a validation failure through", () => {
+    expect(() => frozenVatRowsOrUndefined({ ...totals, items: [{ ...line, vatReasonCode: "other", lineNet: "not a number" }] })).toThrow()
+  })
+})

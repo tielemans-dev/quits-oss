@@ -8,6 +8,10 @@ import { appRouter } from "../../trpc/router"
 import { executeCommand } from "../../domain/execute"
 import { issueDocument } from "../issuance"
 import { documentPdf } from "../../lib/documents/pdf-access"
+import { buildTotals } from "../../lib/documents/totals"
+import { priceBasis } from "../../lib/documents/line-amounts"
+import { vatRowsByRate } from "../../domain/documents/frozen-vat-groups"
+import { composeInvoiceEmail } from "../../domain/documents/invoice-email"
 import type { RenderInput } from "../../domain/documents/render-input"
 
 const cleanups: Array<() => Promise<void>> = []
@@ -79,6 +83,9 @@ async function issued(options: { pricesIncludeTax: boolean; currency?: string; i
     ])
     expect(sum(pdf.items.map((line) => line.total))).toBe(invoice.subtotalNet.toFixed(2))
     expect(sum(pdf.vatRows!.map((row) => Number(row.tax)))).toBe(invoice.totalTax.toFixed(2))
+    // The rows are the frozen money groups the e-invoice is built from, by rate.
+    const frozen = (invoice.issuanceSnapshot as { vatGroups: Array<{ rate: string; net: string; tax: string; gross: string }> }).vatGroups
+    expect(pdf.vatRows).toEqual(vatRowsByRate(frozen, "DKK"))
   })
 
   it("freezes whole units for a currency without minor units", async () => {
@@ -146,4 +153,85 @@ async function issued(options: { pricesIncludeTax: boolean; currency?: string; i
     expect(page.priceBasis).toBe("gross")
     expect(page.items.map((item) => [item.displayUnitPrice, item.displayAmount])).toEqual([[4000, 8000], [6500, 6500]])
   })
+
+  it("prints the rounding of a gross-priced document on the PDF input, the detail payload and the email", async () => {
+    // 10,12 including 25 % VAT: net 8,10 and tax 2,03 add up to a cent over the total.
+    const { org, invoice, pdf } = await issued({ pricesIncludeTax: true, items: [{ description: "Vare", quantity: "1", unitPrice: "10.12" }] })
+    expect(pdf).toMatchObject({ subtotal: 8.1, taxAmount: 2.03, total: 10.12, rounding: "-0.01" })
+    // The issued money snapshot says the same, which is what the e-invoice carries as PayableRoundingAmount.
+    expect((invoice.issuanceSnapshot as { totals: { payableRounding: string } }).totals.payableRounding).toBe("-0.01")
+
+    const caller = appRouter.createCaller({
+      session: { user: { id: org.actors.admin.userId, email: "admin@test.quits.invalid", name: "admin" }, session: { activeOrganizationId: org.organizationId } },
+    } as never)
+    const page = await caller.invoices.get({ id: invoice.id })
+    expect(page).toMatchObject({ priceBasis: "gross", rounding: "-0.01", vatRows: pdf.vatRows })
+
+    const full = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id }, include: { contact: true, items: { orderBy: { sortOrder: "asc" } } } })
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })
+    const html = composeInvoiceEmail({ invoice: { ...full, number: full.number! }, settings, to: "customer@example.test", publicPaymentUrl: null }).message.html ?? ""
+    const text = html.replace(/<[^>]+>/g, " ").replace(/[\u00a0\u202f]/g, " ").replace(/\s+/g, " ")
+    expect(text).toContain("Subtotal excl. tax")
+    expect(text).toContain("Rounding -DKK 0.01")
+    expect(text).toContain("Total incl. tax")
+  })
+})
+
+/** What the printed rows of a render input add up to, as exact decimals. */
+function printedRows(pdf: { pricesIncludeTax?: boolean; subtotal: number; taxAmount: number; total: number; currency: string; vatRows?: Array<{ ratePercent: string; net: string; tax: string; gross: string }>; rounding?: string }) {
+  const totals = buildTotals({ basis: priceBasis(pdf.pricesIncludeTax), ...pdf, locale: "en-US" })
+  const sumOfRows = totals.lines.reduce((total, line) => total.plus(line.amount), new Prisma.Decimal(0))
+  return { totals, sumOfRows: sumOfRows.toFixed(2) }
+}
+
+;(hasTestDatabase ? describe : describe.skip)("credit notes mirror the invoice's basis and add up", () => {
+  const items = [
+    { description: "Rådgivning", quantity: "3", unitPrice: "1333.33" },
+    { description: "Kursus", quantity: "2", unitPrice: "250.50", vat: { treatment: "standard" as const, rate: "0.05" } },
+    { description: "Licens", quantity: "1", unitPrice: "6500.07" },
+  ]
+
+  for (const pricesIncludeTax of [false, true]) {
+    it(`credits part of the lines and an amount on a ${pricesIncludeTax ? "gross" : "net"} invoice`, async () => {
+      const { org, invoice } = await issued({ pricesIncludeTax, items })
+      const stored = await prisma.invoiceItem.findMany({ where: { invoiceId: invoice.id }, orderBy: { sortOrder: "asc" } })
+      const caller = appRouter.createCaller({
+        session: { user: { id: org.actors.admin.userId, email: "admin@test.quits.invalid", name: "admin" }, session: { activeOrganizationId: org.organizationId } },
+      } as never)
+
+      const selections = [
+        { mode: "lines", lines: [{ invoiceItemId: stored[0]!.id, quantity: 1 }, { invoiceItemId: stored[1]!.id, quantity: 1 }], reason: "Partial" },
+        { mode: "amount", amount: 123.45, reason: "Goodwill" },
+      ]
+      for (const selection of selections) {
+        const credit = await issueDocument({ kind: "creditNote", actor: org.actors.admin, commandInput: { invoiceId: invoice.id, ...selection } })
+        expect(credit, JSON.stringify(credit)).toMatchObject({ status: "completed" })
+      }
+      const notes = await prisma.creditNote.findMany({ where: { invoiceId: invoice.id }, orderBy: { issueDate: "asc" } })
+      expect(notes).toHaveLength(2)
+
+      for (const note of notes) {
+        const response = await documentPdf("creditNote", note.id, org.organizationId)
+        const pdf = (JSON.parse(await response.text()) as RenderInput & { kind: "creditNote" }).pdf.creditNote
+        const where = `${note.reason} on a ${pricesIncludeTax ? "gross" : "net"} invoice`
+        expect(pdf.pricesIncludeTax, where).toBe(pricesIncludeTax)
+
+        // The printed lines add up to the credit's subtotal (net) or total (gross).
+        const lines = pdf.items.reduce((total, line) => total.plus(line.total.toFixed(2)), new Prisma.Decimal(0)).toFixed(2)
+        expect(lines, `${where}: lines`).toBe((pricesIncludeTax ? pdf.total : pdf.subtotal).toFixed(2))
+
+        // The rows add up to the total, and the stored note says what the PDF says.
+        const { totals, sumOfRows } = printedRows(pdf)
+        expect(sumOfRows, `${where}: rows`).toBe(new Prisma.Decimal(totals.total.amount).toFixed(2))
+        expect(pdf.rounding, where).toBe(new Prisma.Decimal(note.totalGross.toString()).minus(note.subtotalNet.toString()).minus(note.totalTax.toString()).toFixed(2))
+
+        // The detail page reads the stored items; the PDF reads the credited groups. They agree.
+        const page = await caller.creditNotes.get({ id: note.id })
+        expect(page.priceBasis, where).toBe(pricesIncludeTax ? "gross" : "net")
+        expect(page.rounding, where).toBe(pdf.rounding)
+        expect(page.vatRows, where).toEqual(pdf.vatRows)
+        expect(page.items.map((item) => item.displayAmount), where).toEqual(pdf.items.map((item) => item.total))
+      }
+    })
+  }
 })
