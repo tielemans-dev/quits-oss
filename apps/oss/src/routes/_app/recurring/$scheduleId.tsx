@@ -171,18 +171,18 @@ function RecurringSchedulePage() {
             {schedule.items.map((item, index) => (
               <div key={index} className="flex justify-between gap-4">
                 <span>
-                  {item.quantity} × {item.description}
+                  <span className="num">{item.quantity}</span> × {item.description}
                 </span>
-                <span>{formatCurrency(schedule.lineTotals[index] ?? 0, schedule.currency, locale)}</span>
+                <span className="num">{formatCurrency(schedule.lineTotals[index] ?? 0, schedule.currency, locale)}</span>
               </div>
             ))}
             <div className="flex justify-between text-muted-foreground border-t pt-2">
               <span>{t("recurring.detail.taxRate", { rate: schedule.taxRate })}</span>
-              <span>{formatCurrency(taxAmount, schedule.currency, locale)}</span>
+              <span className="num">{formatCurrency(taxAmount, schedule.currency, locale)}</span>
             </div>
             <div className="flex justify-between font-semibold">
               <span>{t("docForm.summary.total")}</span>
-              <span>{formatCurrency(schedule.subtotal + taxAmount, schedule.currency, locale)}</span>
+              <span className="num">{formatCurrency(schedule.subtotal + taxAmount, schedule.currency, locale)}</span>
             </div>
             {schedule.notes && <p className="text-muted-foreground whitespace-pre-line">{schedule.notes}</p>}
           </CardContent>
@@ -221,7 +221,7 @@ function RecurringSchedulePage() {
                     {invoice.recurringRunDate ? formatRunDate(invoice.recurringRunDate, locale) : "—"}
                   </TableCell>
                   <TableCell>{formatRunDate(invoice.dueDate, locale)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right num">
                     {formatCurrency(invoice.total, invoice.currency, locale)}
                   </TableCell>
                   <TableCell>

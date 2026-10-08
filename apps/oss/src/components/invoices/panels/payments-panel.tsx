@@ -189,7 +189,7 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
                           </p>
                         ) : null}
                       </TableCell>
-                      <TableCell className={`text-right tabular-nums ${voided ? "line-through" : ""}`}>
+                      <TableCell className={`num text-right ${voided ? "line-through" : ""}`}>
                         {formatCurrency(payment.amount, payment.currency, locale)}
                       </TableCell>
                       {view.canVoid ? (
@@ -247,7 +247,7 @@ function SummaryItem({
   return (
     <div className="grid gap-1">
       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className={emphasis ? "text-base font-semibold tabular-nums" : "text-sm font-medium tabular-nums"}>
+      <dd className={emphasis ? "num text-base font-semibold" : "num text-sm font-medium"}>
         {value}
       </dd>
     </div>

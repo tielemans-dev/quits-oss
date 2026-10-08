@@ -161,12 +161,12 @@ function InvoicesListPage() {
                   <TableCell>{invoice.contact.name}</TableCell>
                   <TableCell>{formatDate(invoice.issueDate, locale)}</TableCell>
                   <TableCell>{formatDate(invoice.dueDate, locale)}</TableCell>
-                  <TableCell className="text-right num">
-                    {formatCurrency(invoice.total, invoice.currency)}
+                  <TableCell className="text-right">
+                    <span className="num">{formatCurrency(invoice.total, invoice.currency)}</span>
                     {invoice.balanceDue > 0 && invoice.balanceDue < invoice.total ? (
                       <p className="text-xs text-muted-foreground">
                         {t("payments.summary.balanceDue")}{" "}
-                        {formatCurrency(invoice.balanceDue, invoice.currency)}
+                        <span className="num">{formatCurrency(invoice.balanceDue, invoice.currency)}</span>
                       </p>
                     ) : null}
                   </TableCell>

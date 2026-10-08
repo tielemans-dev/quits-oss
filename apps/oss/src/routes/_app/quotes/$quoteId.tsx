@@ -553,7 +553,7 @@ function QuoteDetailPage() {
                         updateEditItem(index, "unitPrice", e.target.value)
                       }
                     />
-                    <span className="text-sm text-right pr-2">
+                    <span className="num text-sm text-right pr-2">
                       {preview.result ? formatCurrency(Number(preview.result?.lines[index]?.[quote.pricesIncludeTax ? "gross" : "net"] ?? "0"), quote.currency, locale) : "—"}
                     </span>
                     <Button
@@ -584,10 +584,10 @@ function QuoteDetailPage() {
             <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} />
             <VatGroupPreview {...preview} />
             <div className="flex justify-end">
-              <div className="w-64 grid gap-2 text-sm num">
+              <div className="w-64 grid gap-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                  <span>{preview.result ? formatCurrency(editSubtotal, quote.currency, locale) : "—"}</span>
+                  <span className="num">{preview.result ? formatCurrency(editSubtotal, quote.currency, locale) : "—"}</span>
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
@@ -602,12 +602,12 @@ function QuoteDetailPage() {
                       className="w-16 h-7 text-xs"
                     />
                     <span className="text-muted-foreground text-xs">%</span>
-                    <span className="ml-auto">{preview.result ? formatCurrency(editTaxAmount, quote.currency, locale) : "—"}</span>
+                    <span className="ml-auto num">{preview.result ? formatCurrency(editTaxAmount, quote.currency, locale) : "—"}</span>
                   </div>
                 </div>
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
-                  <span>{preview.result ? formatCurrency(editTotal, quote.currency, locale) : "—"}</span>
+                  <span className="num">{preview.result ? formatCurrency(editTotal, quote.currency, locale) : "—"}</span>
                 </div>
               </div>
             </div>
@@ -960,20 +960,20 @@ function QuoteDetailPage() {
 
           {/* Totals */}
           <div className="flex justify-end">
-            <div className="w-64 grid gap-2 text-sm num">
+            <div className="w-64 grid gap-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                <span>{formatCurrency(quote.subtotal, quote.currency, locale)}</span>
+                <span className="num">{formatCurrency(quote.subtotal, quote.currency, locale)}</span>
               </div>
               {quote.taxAmount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
-                  <span>{formatCurrency(quote.taxAmount, quote.currency, locale)}</span>
+                  <span className="num">{formatCurrency(quote.taxAmount, quote.currency, locale)}</span>
                 </div>
               )}
               <div className="flex justify-between font-semibold text-base border-t pt-2">
                 <span>{t("docForm.summary.total")}</span>
-                <span>{formatCurrency(quote.total, quote.currency, locale)}</span>
+                <span className="num">{formatCurrency(quote.total, quote.currency, locale)}</span>
               </div>
             </div>
           </div>

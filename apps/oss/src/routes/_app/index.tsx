@@ -112,7 +112,7 @@ function DashboardPage() {
             <DollarSign className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="num text-2xl font-bold">
               {stats.currencyBuckets.map(bucket => <div key={bucket.currency}>{formatCurrency(Number(bucket.totalRevenue), bucket.currency, locale)}</div>)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -127,7 +127,7 @@ function DashboardPage() {
             <Clock className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="num text-2xl font-bold">
               {stats.currencyBuckets.map(bucket => <div key={bucket.currency}>{formatCurrency(Number(bucket.outstanding), bucket.currency, locale)}</div>)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -142,7 +142,7 @@ function DashboardPage() {
             <AlertTriangle className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.overdueCount}</div>
+            <div className="num text-2xl font-bold">{stats.overdueCount}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {stats.overdueCount === 1
                 ? t("dashboard.overdueSingle")
@@ -159,7 +159,7 @@ function DashboardPage() {
             <Users className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalContacts}</div>
+            <div className="num text-2xl font-bold">{stats.totalContacts}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {stats.totalContacts === 1
                 ? t("dashboard.totalContactsSingle")

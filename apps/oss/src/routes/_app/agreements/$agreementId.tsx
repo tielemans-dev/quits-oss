@@ -277,7 +277,7 @@ function AgreementDetail() {
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {line.description}
               </p>
-              <p>{formatCurrency(line.lineGross, agreement.currency, locale)}</p>
+              <p className="num">{formatCurrency(line.lineGross, agreement.currency, locale)}</p>
               <StatusBadge domain="deliverableBilling" status={line.billingStatus} />
               {line.agreedDate && (
                 <p className="text-sm">

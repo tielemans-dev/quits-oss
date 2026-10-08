@@ -239,7 +239,7 @@ function CatalogPage() {
                           item.description || "-"
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right num">
                         {isEditing ? (
                           <Input
                             className="ml-auto max-w-[140px]"
