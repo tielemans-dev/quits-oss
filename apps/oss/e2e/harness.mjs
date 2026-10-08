@@ -25,9 +25,9 @@ export function assertNoEnvFiles(directories) {
 }
 
 // The overall startup deadline is fixed and independent of the per-probe timeout: a probe is
-// capped by the time remaining, so slow probes can never extend the wait. The deadline equals
-// the original budget of 120 attempts sleeping 500ms between them.
-export const READY_DEADLINE_MS = 60_000
+// capped by the time remaining, so slow probes can never extend the wait. Preserve the original
+// maximum of 120 attempts, each with a 1s probe and 500ms sleep.
+export const READY_DEADLINE_MS = 180_000
 // A first render on a busy host can take several seconds, so one probe may wait this long.
 export const READY_PROBE_TIMEOUT_MS = 5_000
 
@@ -35,9 +35,11 @@ export const READY_PROBE_TIMEOUT_MS = 5_000
 export async function waitForReady(url, { deadlineMs = READY_DEADLINE_MS, probeTimeoutMs = READY_PROBE_TIMEOUT_MS, intervalMs = 500, signal } = {}) {
   const started = performance.now()
   const remaining = () => deadlineMs - (performance.now() - started)
-  while (remaining() > 0) {
+  while (true) {
     if (signal?.aborted) return
-    const timeout = AbortSignal.timeout(Math.ceil(Math.min(probeTimeoutMs, remaining())))
+    const budget = remaining()
+    if (budget <= 0) break
+    const timeout = AbortSignal.timeout(Math.ceil(Math.min(probeTimeoutMs, budget)))
     try {
       const response = await fetch(url, { redirect: 'manual', signal: signal ? AbortSignal.any([timeout, signal]) : timeout })
       if (response.status >= 200 && response.status < 400) return
