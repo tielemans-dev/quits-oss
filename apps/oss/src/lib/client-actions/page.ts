@@ -72,9 +72,6 @@ export type ClientActionItem =
    */
   | { kind: "inactive"; recordKind: "agreement" | "deliverable" | "invoice"; recordId: string; state: "withdrawn" | "unavailable" }
 
-/** The kind of record an item stands for, including one that can no longer be shown. */
-export const itemRecordKind = (item: ClientActionItem) => (item.kind === "inactive" ? item.recordKind : item.kind)
-
 export type ClientActionPage = {
   kind: "ready"
   locale: string

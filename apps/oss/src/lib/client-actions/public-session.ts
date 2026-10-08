@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start"
-import { getCookie, getRequestHeaders, setCookie } from "@tanstack/react-start/server"
+import { getCookie, getRequestHeaders, setCookie, setResponseHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { clientActionCodeSchema, clientActionRequestSchema } from "@quits/contracts/client-actions"
 import { invalidLinkLocale } from "../documents/public-invalid-link"
@@ -25,6 +25,8 @@ export function parseItem(item: string | undefined | null) {
 export async function loadClientActionState(token: string, item: string | null | undefined): Promise<ClientActionState> {
   const [{ resolveClientActionAccess, touchClientActionLink }, { buildClientActionDetail, buildClientActionPage }, tokens] =
     await Promise.all([import("./access"), import("./page"), import("./tokens")])
+  // A page reached through a secret address, in any state, is never stored by a cache.
+  setResponseHeader("Cache-Control", "private, no-store")
   const now = new Date()
   const access = await resolveClientActionAccess(token, now)
   if (access.status === "invalid") return { kind: "invalid", locale: invalidLinkLocale() }

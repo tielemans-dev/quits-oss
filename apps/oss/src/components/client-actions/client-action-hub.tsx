@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
-import { itemRecordKind, type ClientActionItem, type ClientActionPage } from "../../lib/client-actions/page"
+import type { ClientActionItem, ClientActionPage } from "../../lib/client-actions/page"
+import { itemRecordKind } from "../../lib/client-actions/item-kind"
 import { formatCurrency, formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { LocalizedDocument } from "../documents/localized-document"
