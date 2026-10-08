@@ -55,6 +55,7 @@ export function activityMessageKey(event: DescribableEvent): TranslationKey | nu
     if (event.payload.emailSent === false) key = `${key}.noEmail`
     else if (typeof event.payload.recipient === "string" && event.payload.recipient) key = `${key}.recipient`
   }
+  if (event.type === "document.number_voided" && event.payload.reason === "draft_deleted") key = `${key}.draftDeleted`
   return isTranslationKey(key) ? key : null
 }
 

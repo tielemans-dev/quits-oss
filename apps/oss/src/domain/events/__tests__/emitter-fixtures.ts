@@ -8,7 +8,7 @@ import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
   ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "payment-details"].map((name) => `commands/${name}.ts`),
-  "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
+  "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "documents/numbering.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
 

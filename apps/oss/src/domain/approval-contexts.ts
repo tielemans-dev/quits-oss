@@ -7,6 +7,7 @@ import { lockDocument } from "./documents/locks"
 import { priceCreditNote } from "./documents/credit-pricing"
 import { computeSettlement } from "./documents/settlement"
 import { NotFound, type DomainError } from "./errors"
+import { documentRef } from "./documents/numbering"
 import { Command, Db } from "./services"
 
 /**
@@ -42,7 +43,8 @@ type Line = {
  */
 export function documentFingerprint(
   document: {
-    number: string
+    /** Null for a draft that has not been numbered yet. */
+    number: string | null
     currency: string
     issueDate: Date
     subtotalNet: { toString(): string }
@@ -137,7 +139,7 @@ export const paymentRecordApproval = (input: {
     const invoice = yield* loadInvoice(input.invoiceId)
     const { balanceDue } = computeSettlement(invoice)
     return {
-      summary: `Record a ${money(input.amount, invoice.currency)} ${input.method.replaceAll("_", " ")} payment on invoice ${invoice.number}`,
+      summary: `Record a ${money(input.amount, invoice.currency)} ${input.method.replaceAll("_", " ")} payment on ${documentRef("invoice", invoice.number)}`,
       version: fingerprint([invoice.currency, invoice.totalGross.toString(), balanceDue.toString()]),
       details: {
         number: invoice.number,
@@ -171,7 +173,7 @@ export const paymentVoidApproval = (input: {
       return yield* new NotFound({ message: "Payment not found", entity: "payment", id: input.paymentId })
     }
     return {
-      summary: `Void the ${money(payment.amount, payment.currency)} payment on invoice ${payment.invoice.number}`,
+      summary: `Void the ${money(payment.amount, payment.currency)} payment on ${documentRef("invoice", payment.invoice.number)}`,
       version: fingerprint([payment.amount.toString(), payment.currency, payment.voidedAt?.toISOString() ?? null]),
       details: {
         number: payment.invoice.number,
@@ -215,10 +217,10 @@ export const creditNoteIssueApproval = (
         : creditedLines.join(", ")
     const scope =
       input.mode === "full"
-        ? `everything still uncredited on invoice ${invoice.number} (${amount})`
+        ? `everything still uncredited on ${documentRef("invoice", invoice.number)} (${amount})`
         : input.mode === "amount"
-          ? `${amount} of invoice ${invoice.number}`
-          : `${named} on invoice ${invoice.number} (${amount})`
+          ? `${amount} of ${documentRef("invoice", invoice.number)}`
+          : `${named} on ${documentRef("invoice", invoice.number)} (${amount})`
     return {
       summary: `Issue a credit note for ${scope}: ${input.reason}`,
       version: fingerprint([
@@ -282,7 +284,7 @@ export const reminderSendApproval = (input: {
     const recipient = invoice.contact.email?.trim() || null
     const { balanceDue } = computeSettlement(invoice)
     return {
-      summary: `Send a payment reminder for invoice ${invoice.number} (${money(balanceDue, invoice.currency)} due) to ${recipient ?? invoice.contact.name}`,
+      summary: `Send a payment reminder for ${documentRef("invoice", invoice.number)} (${money(balanceDue, invoice.currency)} due) to ${recipient ?? invoice.contact.name}`,
       version: fingerprint([invoice.number, balanceDue.toString(), invoice.dueDate.toISOString(), recipient]),
       details: {
         number: invoice.number,

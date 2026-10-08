@@ -101,7 +101,10 @@ type QuoteItem = {
 
 type Quote = {
   id: string
-  number: string
+  /** Null until the quote is sent. */
+  number: string | null
+  /** The number a draft would take if sent now; not reserved. */
+  nextNumber?: string | null
   status: string
   issueDate: string
   expiryDate: string
@@ -120,7 +123,7 @@ type Quote = {
   contact: Contact
   items: QuoteItem[]
   agreement: { id: string; title: string } | null
-  invoices: { id: string; number: string }[]
+  invoices: { id: string; number: string | null }[]
   pricesIncludeTax?: boolean
   vatEvidence?: unknown
 }
@@ -453,7 +456,7 @@ function QuoteDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {t("quotes.detail.editTitle")} {quote.number}
+              {[t("quotes.detail.editTitle"), quote.number].filter(Boolean).join(" ")}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-6">
@@ -746,7 +749,9 @@ function QuoteDetailPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>{t("quotes.delete.title")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {t("quotes.delete.description", { number: quote.number })}
+                      {quote.number
+                        ? t("quotes.delete.description", { number: quote.number })
+                        : t("quotes.delete.descriptionDraft")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -808,8 +813,15 @@ function QuoteDetailPage() {
             <div className="flex items-start justify-between">
               <div>
               <h1 className="text-2xl font-bold">
-                {t("quotes.detail.title")} {quote.number}
+                {quote.number ? `${t("quotes.detail.title")} ${quote.number}` : t("quotes.number.draftHeading")}
               </h1>
+              {quote.number === null && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {quote.nextNumber
+                    ? t("quotes.number.willBe", { number: quote.nextNumber })
+                    : t("quotes.number.assignedOnSend")}
+                </p>
+              )}
               <div className="mt-1">
                 <StatusBadge domain="quote" status={quote.status} />
               </div>
@@ -843,7 +855,7 @@ function QuoteDetailPage() {
                     search={{ emailWarning: undefined }}
                     className="text-primary underline underline-offset-4 hover:text-primary/80"
                   >
-                    {inv.number}
+                    {inv.number ?? t("invoices.number.draft")}
                   </Link>
                 ))}
               </p>

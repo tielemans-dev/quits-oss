@@ -20,7 +20,7 @@ import { defineCommand, type AnyCommandDefinition } from "../command"
 import { lockDocument } from "../documents/locks"
 import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { executeCommand } from "../execute"
-import { registerJobHandler, TerminalJobError } from "../jobs"
+import { MAX_JOB_ATTEMPTS, registerJobHandler, TerminalJobError } from "../jobs"
 import { Command, Db, type CommandScope } from "../services"
 import {
   addUtcDays,
@@ -31,6 +31,7 @@ import {
   parseCalendarDate,
   type IntervalUnit,
 } from "../features/recurring-dates"
+import { NUMBER_CHANGED } from "../documents/numbering"
 import { buildInvoiceDraft, sendInvoice } from "./invoices"
 import { recurringApproval } from "../approval-contexts"
 
@@ -721,6 +722,16 @@ registerJobHandler(AUTO_SEND_JOB, async (job) => {
     outcome.error.tag === "NotFound"
   ) {
     return
+  }
+
+  // Other issuances kept taking the number this one was prepared with. Nothing is wrong with the
+  // draft; the job runner tries again. On the last attempt nobody will, so leave the failure on
+  // the draft, where a person looks.
+  if (outcome.error.code === NUMBER_CHANGED) {
+    if (job.attempts >= MAX_JOB_ATTEMPTS) {
+      await executeCommand(recordRecurringAutoSendFailure, { ...payload, error: outcome.error }, { actor })
+    }
+    throw new Error(outcome.error.message)
   }
 
   await executeCommand(recordRecurringAutoSendFailure, { ...payload, error: outcome.error }, { actor })

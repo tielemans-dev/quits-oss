@@ -7,6 +7,10 @@ export const daQuotesMessages = {
   "quotes.empty.description":
     "Opret dit første tilbud for at sende forslag til dine kunder.",
   "quotes.table.number": "Nummer",
+  "quotes.number.draft": "Kladde",
+  "quotes.number.draftHeading": "Tilbudskladde",
+  "quotes.number.willBe": "Får nummer {number}, når det sendes. Nummeret er ikke reserveret: et andet tilbud kan blive sendt først.",
+  "quotes.number.assignedOnSend": "Får sit nummer, når det sendes.",
   "quotes.table.contact": "Kontakt",
   "quotes.table.issueDate": "Udstedelsesdato",
   "quotes.table.expiryDate": "Udløbsdato",
@@ -20,6 +24,8 @@ export const daQuotesMessages = {
   "quotes.delete.title": "Slet tilbud",
   "quotes.delete.description":
     "Er du sikker på, at du vil slette tilbud {number}? Denne handling kan ikke fortrydes.",
+  "quotes.delete.descriptionDraft":
+    "Er du sikker på, at du vil slette denne tilbudskladde? Det har endnu intet nummer, så tilbudsnummereringen påvirkes ikke. Denne handling kan ikke fortrydes.",
   "quotes.action.cancel": "Annuller",
   "quotes.action.delete": "Slet",
   "quotes.new.title": "Nyt tilbud",

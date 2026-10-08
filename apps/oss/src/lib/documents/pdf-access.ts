@@ -22,7 +22,7 @@ export async function renderPdfResponse(input: RenderInput, issued: boolean) {
   const renderer = getDocumentRenderer()
   if (!renderer) return new Response("Document renderer unavailable", { status: 503 })
   return new Response(new Uint8Array(await renderer.renderPdf(input)), {
-    headers: headers(issued ? "reconstructed" : "live", input.number),
+    headers: headers(issued ? "reconstructed" : "live", input.number || "draft"),
   })
 }
 export async function documentPdf(kind: ArtifactDocumentKind, id: string, organizationId: string) {
@@ -42,7 +42,9 @@ export async function documentPdf(kind: ArtifactDocumentKind, id: string, organi
   const issued = doc.status !== "draft" || (kind === "agreement" && "offerSnapshot" in doc && !!doc.offerSnapshot)
   if (issued) return await storedPdfResponse(doc) ?? new Response("Stored artifact unavailable", { status: 503 })
   const renderInput = await runArtifactRead(prospectiveRenderInput({ kind, commandInput: { id }, documentId: id,
-    preview: true, number: doc.number ?? "draft", issuedAt: doc.issueDate ?? new Date() }), prisma, schedulerActor(organizationId), new Date())
+    preview: true,
+    // A draft invoice has no number yet: its PDF shows the "Draft" badge and no number.
+    number: doc.number ?? (kind === "invoice" ? "" : "draft"), issuedAt: doc.issueDate ?? new Date() }), prisma, schedulerActor(organizationId), new Date())
   if (renderInput.kind === "invoice" && !issued) renderInput.pdf.invoice.status = "draft"
   return renderPdfResponse(renderInput, issued)
 }

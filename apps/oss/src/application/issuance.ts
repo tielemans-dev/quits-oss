@@ -10,10 +10,11 @@ import type { CommandDefinition } from "../domain/command"
 import { sendInvoice } from "../domain/commands/invoices"
 import { issueCreditNote } from "../domain/commands/credit-notes"
 import { sendAgreement, issueAgreement } from "../domain/commands/agreement-lifecycle"
-import { allocateDocumentNumber } from "../domain/documents/numbering"
+import { allocateDocumentNumber, peekNextDocumentNumber, NUMBER_CHANGED } from "../domain/documents/numbering"
 import { prospectiveRenderInput, hashBytes, hashRenderInput, type ArtifactDocumentKind, type RenderInput } from "../domain/documents/render-input"
 import { artifactsJson, lockArtifactOrganization, type StoredArtifacts } from "../domain/documents/artifacts"
-import { InvalidState } from "../domain/errors"
+import { ExternalFailure, InvalidState, serializeDomainError } from "../domain/errors"
+import { appLogger } from "../lib/observability"
 import { Command, Db } from "../domain/services"
 
 export const RESERVATION_LEASE_MS = 15 * 60_000
@@ -44,7 +45,6 @@ export async function reserveDocument(input: {
     await lockArtifactOrganization(tx, organizationId)
     const existing = await tx.artifactStaging.findFirst({ where: { organizationId,
       OR: [{ requestKey }, { requestKeys: { has: requestKey } }] } })
-    if (existing) return existing
     const documentId = (input.commandInput as { id?: string }).id ?? `doc_${randomUUID().replaceAll("-", "")}`
     let number: string | null = null
     if (input.kind === "invoice") {
@@ -54,12 +54,29 @@ export async function reserveDocument(input: {
       const doc = await tx.agreement.findFirst({ where: { id: documentId, organizationId }, select: { number: true } })
       number = doc?.number ?? null
     }
+    // An invoice is numbered by the issuing transaction, not here. A numberless one is rendered with
+    // the number it would receive now, without taking it; the transaction refuses a reservation
+    // whose number has moved on, so an issuance that fails here or later consumes nothing.
+    // Credit notes and agreements are still numbered by this reservation.
+    const provisionalNumber = input.kind === "invoice" && !number
+      ? await runArtifactRead(peekNextDocumentNumber("invoice"), tx, input.actor, now) : null
+    if (existing) {
+      const stale = provisionalNumber !== null && existing.documentKind === "invoice" &&
+        ["reserved", "stored", "missing"].includes(existing.status) && existing.reservedNumber !== provisionalNumber
+      if (!stale) return existing
+      // Free the request key so the retry can prepare the document again with the current number.
+      await tx.artifactStaging.update({ where: { id: existing.id }, data: { status: "abandoned", prepToken: null,
+        requestKey: existing.requestKey === requestKey ? `${existing.requestKey}#superseded:${existing.id}` : existing.requestKey,
+        requestKeys: existing.requestKeys.filter(key => key !== requestKey) } })
+    }
+    number ??= provisionalNumber
     // Try an unchanged retry with the old timestamp before allocating any new number.
     const prior = await tx.artifactStaging.findMany({ where: {
       organizationId, documentKind: input.kind, documentId, leaseUntil: { gt: now },
       status: { not: "abandoned" },
     }, orderBy: { createdAt: "desc" } })
     for (const row of prior) {
+      if (provisionalNumber !== null && row.reservedNumber !== number) continue
       const renderInput = row.renderInput as unknown as RenderInput
       const current = await runArtifactRead(prospectiveRenderInput({ ...input, documentId,
         number: row.reservedNumber!, issuedAt: new Date(renderInput.issuedAt) }), tx, input.actor, now)
@@ -67,6 +84,8 @@ export async function reserveDocument(input: {
         return tx.artifactStaging.update({ where: { id: row.id }, data: { requestKeys: { push: requestKey } } })
       }
     }
+    // True only for the kinds numbered here (credit notes, agreements); an invoice always has its own
+    // or the provisional number, so a lapsed invoice reservation never has a number to void.
     const numberWasAllocated = !number
     // Read before allocation so invalid document/credit selection does not consume a number.
     await runArtifactRead(prospectiveRenderInput({ ...input, documentId, number: number ?? "preview", issuedAt: now }), tx, input.actor, now)
@@ -133,26 +152,65 @@ export async function prepareDocument(stagingId: string): Promise<ArtifactStagin
   }
 }
 
+/**
+ * An issuance renders the document before its transaction, with the number it would receive. If
+ * another document of that kind is issued first, the transaction refuses the stale number without
+ * consuming anything and the document is prepared again. Each round is lost only to an issuance
+ * that succeeded, so concurrent issuances all finish with distinct consecutive numbers.
+ *
+ * A short, jittered pause between rounds keeps a crowd of issuances from re-rendering in lockstep.
+ */
+export const MAX_NUMBER_ATTEMPTS = 25
+const NUMBER_BACKOFF_MIN_MS = 20
+const NUMBER_BACKOFF_MAX_MS = 100
+const issuanceLogger = appLogger.child("issuance")
+
+/** 20-30 ms after the first lost round, widening to 20-100 ms. */
+export function numberRetryDelayMs(attempt: number, random = Math.random) {
+  const ceiling = Math.min(NUMBER_BACKOFF_MAX_MS, NUMBER_BACKOFF_MIN_MS + 10 * attempt)
+  return NUMBER_BACKOFF_MIN_MS + random() * (ceiling - NUMBER_BACKOFF_MIN_MS)
+}
+
+/** Code of the retryable failure returned when every round was lost to another issuance. */
+export const NUMBER_CONTENTION = "number_contention"
 type IssuanceOptions = Omit<ExecuteOptions, "actor" | "prepareIssuance"> & { method?: "email" | "manual" }
 type IssuanceArgs = { commandInput: unknown; actor: Actor; clientRequestId?: string; options?: IssuanceOptions }
 export function issueDocument(input: IssuanceArgs & { kind: "invoice" }): ReturnType<typeof executeCommand<Parameters<typeof sendInvoice.handle>[0], Effect.Effect.Success<ReturnType<typeof sendInvoice.handle>>>>
 export function issueDocument(input: IssuanceArgs & { kind: "creditNote" }): ReturnType<typeof executeCommand<Parameters<typeof issueCreditNote.handle>[0], Effect.Effect.Success<ReturnType<typeof issueCreditNote.handle>>>>
 export function issueDocument(input: IssuanceArgs & { kind: "agreement" }): Promise<CommandOutcome<any>>
 export function issueDocument(input: IssuanceArgs & { kind: ArtifactDocumentKind }): Promise<CommandOutcome<any>>
-export function issueDocument(input: IssuanceArgs & { kind: ArtifactDocumentKind }): Promise<CommandOutcome<any>> {
+export async function issueDocument(input: IssuanceArgs & { kind: ArtifactDocumentKind }): Promise<CommandOutcome<any>> {
   const definition = input.kind === "invoice" ? sendInvoice : input.kind === "creditNote" ? issueCreditNote
     : input.options?.method === "manual" ? issueAgreement : sendAgreement
   const clientRequestId = input.clientRequestId ?? input.options?.clientRequestId ?? randomUUID()
-  return executeCommand(definition as CommandDefinition<any, any>, input.commandInput, {
-    ...input.options, actor: input.actor, clientRequestId,
-    prepareIssuance: async (parsedInput, now) => {
-      if (!getDocumentRenderer() || !getDocumentArtifactStore()) throw new InvalidState({ code: "renderer_unavailable", message: "Document renderer and artifact store required" })
-      const staging = await reserveDocument({ ...input, commandInput: parsedInput, clientRequestId,
-        now, method: input.options?.method })
-      await prepareDocument(staging.id)
-      return staging.id
-    },
-  })
+  const logContext = { kind: input.kind, organizationId: input.actor.organizationId, clientRequestId }
+  for (let attempt = 1; ; attempt++) {
+    const outcome = await executeCommand(definition as CommandDefinition<any, any>, input.commandInput, {
+      ...input.options, actor: input.actor, clientRequestId,
+      prepareIssuance: async (parsedInput, now) => {
+        if (!getDocumentRenderer() || !getDocumentArtifactStore()) throw new InvalidState({ code: "renderer_unavailable", message: "Document renderer and artifact store required" })
+        const staging = await reserveDocument({ ...input, commandInput: parsedInput, clientRequestId,
+          now, method: input.options?.method })
+        await prepareDocument(staging.id)
+        return staging.id
+      },
+    })
+    if (outcome.status !== "failed" || outcome.error.code !== NUMBER_CHANGED) {
+      if (attempt > 1) issuanceLogger.info("number.retried", { ...logContext, attempts: attempt, completed: outcome.status === "completed" })
+      return outcome
+    }
+    if (attempt >= MAX_NUMBER_ATTEMPTS) {
+      issuanceLogger.warn("number.attempts_exhausted", { ...logContext, attempts: attempt })
+      // Retryable like a provider outage: an external failure leaves no receipt under this request
+      // id, and the same call can simply be made again. Nothing was consumed.
+      return {
+        status: "failed", commandId: outcome.commandId,
+        error: serializeDomainError(new ExternalFailure({ service: "document_numbering", code: NUMBER_CONTENTION,
+          message: "Many documents are being issued at once, so this one could not be numbered. Nothing was changed. Try again." })),
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, numberRetryDelayMs(attempt)))
+  }
 }
 
 /** Typed adapter shared by UI, MCP and approval execution. Re-emails use the ordinary pipeline. */

@@ -214,7 +214,7 @@ function RecurringSchedulePage() {
                       search={{ emailWarning: undefined }}
                       className="hover:underline"
                     >
-                      {invoice.number}
+                      {invoice.number ?? t("invoices.number.draft")}
                     </Link>
                   </TableCell>
                   <TableCell>

@@ -4,6 +4,7 @@ import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { creditNotesCsv, invoicesCsv, paymentsCsv } from "./accounting-csv"
 import { dateRangeInTimeZone } from "./format"
+import { issuedNumber } from "../../domain/documents/numbering"
 
 const FILE_PREFIX = {
   invoices: "invoices",
@@ -43,7 +44,7 @@ export async function exportAccounting(
       })
       const csv = invoicesCsv(
         invoices.map((invoice) => ({
-          number: invoice.number,
+          number: issuedNumber(invoice),
           issueDate: invoice.issueDate,
           dueDate: invoice.dueDate,
           customer: customerName(invoice.buyerSnapshot, invoice.contact),
@@ -69,7 +70,7 @@ export async function exportAccounting(
       const csv = creditNotesCsv(
         creditNotes.map((creditNote) => ({
           number: creditNote.number,
-          invoiceNumber: creditNote.invoice.number,
+          invoiceNumber: issuedNumber(creditNote.invoice),
           issueDate: creditNote.issueDate,
           customer: customerName(creditNote.buyerSnapshot, creditNote.contact),
           currency: creditNote.currency,
@@ -93,7 +94,7 @@ export async function exportAccounting(
       const csv = paymentsCsv(
         payments.map((payment) => ({
           paidAt: payment.paidAt,
-          invoiceNumber: payment.invoice.number,
+          invoiceNumber: issuedNumber(payment.invoice),
           customer: customerName(payment.invoice.buyerSnapshot, payment.invoice.contact),
           currency: payment.currency,
           amount: payment.amount,

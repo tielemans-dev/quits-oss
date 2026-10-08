@@ -245,7 +245,7 @@ function CreditNoteDetailPage() {
                 search={{ emailWarning: undefined }}
                 className="text-sm text-muted-foreground underline-offset-4 hover:underline"
               >
-                {t("creditNotes.detail.reference", { number: creditNote.invoice.number })}
+                {t("creditNotes.detail.reference", { number: creditNote.invoice.number ?? "" })}
               </Link>
             </div>
             <div className="text-right text-sm text-muted-foreground">

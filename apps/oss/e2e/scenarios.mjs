@@ -75,14 +75,13 @@ export function registerProductScenarios(test, expect) {
     if (notes) await page.getByLabel('Notes', { exact: true }).fill(notes)
 
     await page.getByRole('button', { name: 'Save as Draft', exact: true }).click()
-    const heading = page.getByRole('heading', { level: 1, name: /^Invoice\s+\S+/ })
-    await expect(heading).toBeVisible()
-    const number = (await heading.innerText()).replace(/^Invoice\s+/, '').trim()
-    return { number, url: page.url(), due, ...totals }
+    // A draft has no number yet: it is numbered when it is sent. The page names it a draft invoice.
+    await expect(page.getByRole('heading', { level: 1, name: 'Draft invoice', exact: true })).toBeVisible()
+    return { url: page.url(), due, ...totals }
   }
 
-  async function expectInvoiceDetail(page, { number, customer, lines, total, subtotal, tax, status = 'Draft' }) {
-    await expect(page.getByRole('heading', { level: 1, name: `Invoice ${number}`, exact: true })).toBeVisible()
+  async function expectInvoiceDetail(page, { customer, lines, total, subtotal, tax, status = 'Draft' }) {
+    await expect(page.getByRole('heading', { level: 1, name: 'Draft invoice', exact: true })).toBeVisible()
     await expect(page.getByText(status, { exact: true })).toBeVisible()
     await expect(page.getByText(customer, { exact: true })).toBeVisible()
     for (const line of lines) {
@@ -179,7 +178,8 @@ export function registerProductScenarios(test, expect) {
     await expect(page.getByText('Due Date:', { exact: true }).locator('xpath=..')).toContainText(created.due.detailText)
 
     await page.goto(new URL('/invoices', entryURL).href)
-    const row = page.getByRole('row').filter({ hasText: created.number })
+    // The list names a draft by its customer: it has no number to find it by.
+    const row = page.getByRole('row').filter({ hasText: input.customer })
     await expect(row).toContainText(input.customer)
     await expect(row).toContainText(usd(created.total))
     await expect(row).toContainText('Draft')
@@ -191,10 +191,10 @@ export function registerProductScenarios(test, expect) {
   test('edits a draft invoice and persists the recalculated total', async ({ page, entryURL }) => {
     const input = draft(Date.now())
     await createContact(page, entryURL, input.customer)
-    const created = await createDraftInvoice(page, entryURL, input)
+    await createDraftInvoice(page, entryURL, input)
 
     await page.getByRole('button', { name: 'Edit', exact: true }).click()
-    await expect(page.getByText(`Edit Invoice ${created.number}`, { exact: true })).toBeVisible()
+    await expect(page.getByText('Edit Invoice', { exact: true })).toBeVisible()
     const first = lineRow(page, 0)
     await expect(first.getByPlaceholder('Description', { exact: true })).toHaveValue(input.lines[0].description)
     await first.getByRole('spinbutton').nth(0).fill('4')
@@ -204,7 +204,7 @@ export function registerProductScenarios(test, expect) {
     await page.getByRole('button', { name: 'Save Changes', exact: true }).click()
 
     const lines = [{ ...input.lines[0], quantity: 4 }, input.lines[1]]
-    const expected = { ...input, ...edited, number: created.number, lines }
+    const expected = { ...input, ...edited, lines }
     await expectInvoiceDetail(page, expected)
     await page.reload()
     await expectInvoiceDetail(page, expected)
@@ -213,12 +213,13 @@ export function registerProductScenarios(test, expect) {
   test('downloads a draft invoice PDF', async ({ page, entryURL }) => {
     const input = draft(Date.now())
     await createContact(page, entryURL, input.customer)
-    const created = await createDraftInvoice(page, entryURL, input)
+    await createDraftInvoice(page, entryURL, input)
 
     const download = page.waitForEvent('download')
     await page.getByRole('button', { name: 'PDF', exact: true }).click()
     const file = await download
-    expect(file.suggestedFilename()).toBe(`${created.number}.pdf`)
+    // A draft has no number to name the file after.
+    expect(file.suggestedFilename()).toBe('draft.pdf')
     const bytes = await readFile(await file.path())
     expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-')
     expect(bytes.byteLength).toBeGreaterThan(1000)

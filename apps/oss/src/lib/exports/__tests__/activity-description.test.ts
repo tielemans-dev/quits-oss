@@ -42,6 +42,14 @@ describe("activity descriptions", () => {
     expect(aggregateLabel("organization", da)).toBe("Organisation")
   })
 
+  it("explains the gap a deleted draft leaves, and any other voided number", () => {
+    const voided = (reason: string) => ({ type: "document.number_voided", aggregateType: "document", payload: { number: "INV-0007", documentKind: "invoice", reason } })
+    expect(describeActivity(voided("draft_deleted"), en)).toBe("Number INV-0007 left unused: its draft was deleted")
+    expect(describeActivity(voided("draft_deleted"), da)).toBe("Nummer INV-0007 er ubrugt: kladden blev slettet")
+    expect(describeActivity(voided("reservation_expired"), en)).toBe("Number INV-0007 was not used")
+    expect(aggregateLabel("document", da)).toBe("Dokument")
+  })
+
   it("tolerates missing payload values and unknown event types", () => {
     expect(describeActivity({ type: "invoice.sent", aggregateType: "invoice", payload: {} }, en)).toBe("Invoice sent")
     expect(describeActivity({ type: "payment.recorded", aggregateType: "payment", payload: {} }, en)).toBe(

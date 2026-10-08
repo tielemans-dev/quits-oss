@@ -12,6 +12,10 @@ export const enInvoicesMessages = {
   "invoices.empty.description":
     "Create your first invoice to start billing your clients.",
   "invoices.table.number": "Number",
+  "invoices.number.draft": "Draft",
+  "invoices.number.draftHeading": "Draft invoice",
+  "invoices.number.willBe": "Numbered {number} when sent. The number is not reserved: another invoice may be sent first.",
+  "invoices.number.assignedOnSend": "Gets its number when sent.",
   "invoices.table.contact": "Contact",
   "invoices.table.issueDate": "Issue Date",
   "invoices.table.dueDate": "Due Date",
@@ -20,6 +24,8 @@ export const enInvoicesMessages = {
   "invoices.delete.title": "Delete invoice",
   "invoices.delete.description":
     "Are you sure you want to delete invoice {number}? This action cannot be undone.",
+  "invoices.delete.descriptionDraft":
+    "Are you sure you want to delete this draft invoice? It has no number yet, so the invoice numbering is not affected. This action cannot be undone.",
   "invoices.action.cancel": "Cancel",
   "invoices.action.delete": "Delete",
   "invoices.new.title": "New Invoice",

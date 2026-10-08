@@ -1,3 +1,4 @@
+import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
 import { z } from "zod"
 import {
   quoteCreateDraftInputSchema,
@@ -101,6 +102,11 @@ export const quotesRouter = router({
 
       return {
         ...quote,
+        // A draft has no number yet. This is the number it would take if sent now; it is not reserved.
+        nextNumber:
+          quote.status === "draft" && quote.number === null
+            ? await previewNextDocumentNumber(ctx.organizationId, "quote")
+            : null,
         subtotal: quote.subtotalNet.toNumber(),
         taxAmount: quote.totalTax.toNumber(),
         total: quote.totalGross.toNumber(),

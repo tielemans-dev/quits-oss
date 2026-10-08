@@ -76,6 +76,8 @@ describeIfDatabase("credit note commands", () => {
         { actor: context.org.actors.admin }
       )
       if (sent.status !== "completed") throw new Error(JSON.stringify(sent))
+      // The number is assigned when the invoice is sent.
+      return { ...created.result, number: sent.result.number }
     }
     return created.result
   }

@@ -73,7 +73,7 @@ export const daSettingsMessages = {
   "settings.taxRate.label": "Standard momssats (%)",
   "settings.section.numbering.title": "Nummerering af dokumenter",
   "settings.section.numbering.description":
-    "Præfikser og løbenumre for genererede dokumenter.",
+    "Præfikser og løbenumre for genererede dokumenter. Fakturaer og tilbud får det næste nummer, når de sendes, så kladder har intet nummer.",
   "settings.invoicePrefix.label": "Fakturapræfiks",
   "settings.prefix.title":
     "Brug 1-10 store bogstaver, tal eller bindestreger",

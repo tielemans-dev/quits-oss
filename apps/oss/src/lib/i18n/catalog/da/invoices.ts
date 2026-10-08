@@ -11,6 +11,10 @@ export const daInvoicesMessages = {
   "invoices.empty.title": "Ingen fakturaer endnu",
   "invoices.empty.description":
     "Opret din første faktura for at begynde at fakturere dine kunder.",
+  "invoices.number.draft": "Kladde",
+  "invoices.number.draftHeading": "Fakturakladde",
+  "invoices.number.willBe": "Får nummer {number}, når den sendes. Nummeret er ikke reserveret: en anden faktura kan blive sendt først.",
+  "invoices.number.assignedOnSend": "Får sit nummer, når den sendes.",
   "invoices.table.number": "Nummer",
   "invoices.table.contact": "Kontakt",
   "invoices.table.issueDate": "Udstedelsesdato",
@@ -20,6 +24,8 @@ export const daInvoicesMessages = {
   "invoices.delete.title": "Slet faktura",
   "invoices.delete.description":
     "Er du sikker på, at du vil slette faktura {number}? Denne handling kan ikke fortrydes.",
+  "invoices.delete.descriptionDraft":
+    "Er du sikker på, at du vil slette denne fakturakladde? Den har endnu intet nummer, så fakturanummereringen påvirkes ikke. Denne handling kan ikke fortrydes.",
   "invoices.action.cancel": "Annuller",
   "invoices.action.delete": "Slet",
   "invoices.new.title": "Ny faktura",

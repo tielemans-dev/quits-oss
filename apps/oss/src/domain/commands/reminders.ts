@@ -23,6 +23,7 @@ import { computeSettlement } from "../documents/settlement"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { reminderSendApproval } from "../approval-contexts"
+import { documentRef, issuedNumber } from "../documents/numbering"
 
 const remindersLogger = appLogger.child("reminders")
 
@@ -312,7 +313,7 @@ const queueReminderEmail = (input: {
       replyTo: emailContext.envelope.replyTo,
       stage: reminderStage(invoice.dueDate, now),
       invoice: {
-        number: invoice.number,
+        number: issuedNumber(invoice),
         dueDate: invoice.dueDate,
         currency: invoice.currency,
         balanceDue: balanceDue.toNumber(),
@@ -330,7 +331,7 @@ const queueReminderEmail = (input: {
           reminderId: input.reminder.id,
           invoiceId: invoice.id,
           attemptAt: now.toISOString(),
-          number: invoice.number,
+          number: issuedNumber(invoice),
           recipient: input.recipient,
           offsetDays: String(input.reminder.offsetDays),
           balanceDue: balanceDue.toString(),
@@ -446,7 +447,7 @@ export const reminderResumeApproval = (input: { invoiceId: string }) =>
     const { balanceDue } = computeSettlement(invoice)
     const nextText = nextDate ? `next reminder ${nextDate.toISOString().slice(0, 10)}` : "no reminder scheduled"
     return {
-      summary: `Resume automatic payment reminders for invoice ${invoice.number} to ${recipient ?? invoice.contact.name} (${nextText})`,
+      summary: `Resume automatic payment reminders for ${documentRef("invoice", invoice.number)} to ${recipient ?? invoice.contact.name} (${nextText})`,
       version: fingerprint([invoice.number, balanceDue.toString(), invoice.dueDate.toISOString(), recipient]),
       details: {
         number: invoice.number,

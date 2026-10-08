@@ -84,7 +84,11 @@ export function RecurringScheduleActions({
   const runNow = () =>
     run(async () => {
       const result = await trpc.recurring.runNow.mutate({ id: schedule.id })
-      return result.invoice ? t("recurring.runNow.done", { number: result.invoice.number }) : null
+      if (!result.invoice) return null
+      // The generated invoice is a draft; it is numbered when it is sent.
+      return result.invoice.number
+        ? t("recurring.runNow.done", { number: result.invoice.number })
+        : t("recurring.runNow.doneDraft")
     })
 
   const end = () =>

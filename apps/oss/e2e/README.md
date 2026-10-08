@@ -20,8 +20,9 @@ The scenarios cover login, session persistence, contact creation with readback a
 a reload, and a draft invoice journey: create an invoice for a new customer with two
 line items and a tax rate, check the live summary, save, and verify the stored totals
 after a reload and in the invoice list; edit the draft and verify the recalculated
-total; and download the draft's PDF and check its filename, PDF signature, end marker,
-and minimum size. They do not yet cover sending an invoice, payments, or stored PDF
+total; and download the draft's PDF and check its filename (`draft.pdf`), PDF signature, end marker,
+and minimum size. A draft has no number until it is sent, so the scenarios find it by its
+customer and the "Draft invoice" heading. They do not yet cover sending an invoice, payments, or stored PDF
 artifacts of issued documents, which need provider fakes the consumer must supply.
 Add those as browser journeys using the same fixture contract.
 

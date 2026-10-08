@@ -7,6 +7,7 @@ import { createContact } from "../commands/contacts"
 import {
   convertQuoteToInvoice,
   createQuoteDraft,
+  deleteQuoteDraft,
   recordQuoteCustomerDecision,
   sendQuote,
 } from "../commands/quotes"
@@ -41,15 +42,24 @@ describeIfDatabase("quote commands", () => {
     items: [{ description: "Design", quantity: 2, unitPrice: 100 }],
   })
 
-  it("allocates unique sequential numbers under concurrent creates", async () => {
+  it("creates drafts without a number and numbers quotes when they are sent, even concurrently", async () => {
     const { org, contactId } = await setupWithContact()
     const outcomes = await Promise.all(
       Array.from({ length: 6 }, () =>
         executeCommand(createQuoteDraft, draft(contactId), { actor: org.actors.admin })
       )
     )
+    const ids = outcomes.map((outcome) => {
+      if (outcome.status !== "completed") throw new Error(JSON.stringify(outcome))
+      expect(outcome.result.number).toBeNull()
+      return outcome.result.id
+    })
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).quoteNextNum).toBe(1)
 
-    const numbers = outcomes.map((outcome) => {
+    const sent = await Promise.all(
+      ids.map((id) => executeCommand(sendQuote, { id, allowSendWithoutEmail: true }, { actor: org.actors.admin }))
+    )
+    const numbers = sent.map((outcome) => {
       if (outcome.status !== "completed") throw new Error(JSON.stringify(outcome))
       return outcome.result.number
     })
@@ -62,6 +72,41 @@ describeIfDatabase("quote commands", () => {
       "QTE-0005",
       "QTE-0006",
     ])
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).quoteNextNum).toBe(7)
+  })
+
+  it("leaves no gap when a draft quote is deleted", async () => {
+    const { org, contactId } = await setupWithContact()
+    const [a, b] = await Promise.all([draft(contactId), draft(contactId)].map((input) =>
+      executeCommand(createQuoteDraft, input, { actor: org.actors.admin })
+    ))
+    if (a?.status !== "completed" || b?.status !== "completed") throw new Error("create failed")
+    expect(await executeCommand(deleteQuoteDraft, { id: a.result.id }, { actor: org.actors.admin })).toMatchObject({ status: "completed" })
+    const sent = await executeCommand(sendQuote, { id: b.result.id, allowSendWithoutEmail: true }, { actor: org.actors.admin })
+    expect(sent).toMatchObject({ status: "completed", result: { number: "QTE-0001", status: "sent" } })
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).quoteNextNum).toBe(2)
+  })
+
+  it("keeps the number of a draft that was numbered before numbers moved to sending", async () => {
+    const { org, contactId } = await setupWithContact()
+    const created = await executeCommand(createQuoteDraft, draft(contactId), { actor: org.actors.admin })
+    if (created.status !== "completed") throw new Error("create failed")
+    await prisma.quote.update({ where: { id: created.result.id }, data: { number: "QTE-0042" } })
+    const sent = await executeCommand(sendQuote, { id: created.result.id, allowSendWithoutEmail: true }, { actor: org.actors.admin })
+    expect(sent).toMatchObject({ status: "completed", result: { number: "QTE-0042" } })
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).quoteNextNum).toBe(1)
+  })
+
+  it("does not consume a number when sending fails", async () => {
+    const { org } = await setupWithContact()
+    const noEmail = await executeCommand(createContact, { name: "No email" }, { actor: org.actors.admin })
+    if (noEmail.status !== "completed") throw new Error("contact setup failed")
+    const created = await executeCommand(createQuoteDraft, draft(noEmail.result.id), { actor: org.actors.admin })
+    if (created.status !== "completed") throw new Error("create failed")
+    const sent = await executeCommand(sendQuote, { id: created.result.id, allowSendWithoutEmail: true }, { actor: org.actors.admin })
+    expect(sent.status).toBe("failed")
+    expect((await prisma.quote.findUniqueOrThrow({ where: { id: created.result.id } })).number).toBeNull()
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).quoteNextNum).toBe(1)
   })
 
   it("records the full lifecycle and converts into an identical invoice", async () => {
@@ -96,8 +141,9 @@ describeIfDatabase("quote commands", () => {
       include: { items: { orderBy: { sortOrder: "asc" } } },
     })
 
+    // The converted invoice is a draft; it is numbered when it is sent.
     expect(invoice).toMatchObject({
-      number: "INV-0001",
+      number: null,
       status: "draft",
       quoteId: quote.id,
       contactId: quote.contactId,

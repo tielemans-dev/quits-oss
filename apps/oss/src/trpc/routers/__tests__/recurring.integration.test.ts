@@ -45,7 +45,8 @@ describeIfDatabase("recurring router", () => {
     expect(created).toMatchObject({ status: "active", taxRate: 10, subtotal: 100, remainingRuns: 4 })
 
     const run = await caller.recurring.runNow({ id: created.id })
-    expect(run.invoice?.number).toMatch(/^INV-/)
+    // The generated invoice is a draft; it is numbered when it is sent.
+    expect(run.invoice?.number).toBeNull()
 
     const [listed] = await caller.recurring.list()
     expect(listed).toMatchObject({

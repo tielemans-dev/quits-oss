@@ -1,3 +1,4 @@
+import { issuedNumber } from "./numbering"
 import { creditedGroupsSchema } from "@quits/contracts/pricing"
 import { vatGroupKey, percentageToFraction } from "@quits/shared/pricing"
 import { frozenVatGroups } from "./frozen-vat-groups"
@@ -128,7 +129,7 @@ export function creditTaxRate(invoice: {
 
 type CreditableInvoice = Parameters<typeof creditAvailabilityFor>[0] & {
   status: string
-  number: string
+  number: string | null
   locale: string
 }
 
@@ -150,7 +151,7 @@ export const priceCreditNote = (invoice: CreditableInvoice, selection: CreditSel
       selection,
       taxRate: creditTaxRate(invoice),
       amountDescription: translate("creditNotes.amountDescription", invoice.locale, {
-        number: invoice.number,
+        number: issuedNumber(invoice),
       }),
     }), catch: () => new InvalidState({ code: "credit_groups_unavailable", message: "The invoice lacks valid frozen credit groups or prior credit components" }) })
     if (!built.ok) {

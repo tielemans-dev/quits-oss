@@ -181,9 +181,10 @@ describeIfDatabase("review fixes", () => {
       if (queued.status !== "awaiting_approval") throw new Error("expected approval")
 
       const request = await prisma.approvalRequest.findUniqueOrThrow({ where: { id: queued.approvalRequestId } })
-      expect(request.summary).toBe("Send invoice INV-0001 (100.00 USD) to billing@acme.test")
+      // A draft has no number yet: it is numbered when the send is approved and runs.
+      expect(request.summary).toBe("Send draft invoice (100.00 USD) to billing@acme.test")
       expect(request.reviewContext).toMatchObject({
-        details: { number: "INV-0001", recipient: "billing@acme.test", total: "100.00" },
+        details: { number: null, recipient: "billing@acme.test", total: "100.00" },
       })
 
       // Drafting is not gated, so the agent can still change the invoice after queuing the send.

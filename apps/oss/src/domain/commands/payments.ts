@@ -16,6 +16,7 @@ import { lockDocument } from "../documents/locks"
 import { expireReplacedCheckoutSession } from "../documents/checkout-sessions"
 import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
 import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
+import { documentRef } from "../documents/numbering"
 import { Command, Db } from "../services"
 import { paymentRecordApproval, paymentVoidApproval } from "../approval-contexts"
 
@@ -95,7 +96,7 @@ const applyPayment = (input: ApplyPaymentInput) =>
 
     if (invoice.status === "draft") {
       return yield* new InvalidState({
-        message: `Invoice ${invoice.number} is a draft. Send it before recording payments.`,
+        message: `Send ${documentRef("invoice", invoice.number)} before recording payments. It is still a draft.`,
         code: "invoice_not_issued",
       })
     }
@@ -105,14 +106,14 @@ const applyPayment = (input: ApplyPaymentInput) =>
 
     if (input.stripe && input.stripe.currency.toUpperCase() !== invoice.currency.toUpperCase()) {
       return yield* new InvalidState({
-        message: `Stripe charged ${input.stripe.currency.toUpperCase()} but invoice ${invoice.number} is in ${invoice.currency}`,
+        message: `Stripe charged ${input.stripe.currency.toUpperCase()} but ${documentRef("invoice", invoice.number)} is in ${invoice.currency}`,
         code: "currency_mismatch",
       })
     }
 
     if (!isStripe && (before.fullyCredited || invoice.status === "credited")) {
       return yield* new InvalidState({
-        message: `Invoice ${invoice.number} is fully credited and cannot receive payments`,
+        message: `The ${documentRef("invoice", invoice.number)} is fully credited and cannot receive payments`,
         code: "invoice_credited",
       })
     }
@@ -132,7 +133,7 @@ const applyPayment = (input: ApplyPaymentInput) =>
       }
       if (before.balanceDue.isZero()) {
         return yield* new InvalidState({
-          message: `Invoice ${invoice.number} is already paid`,
+          message: `The ${documentRef("invoice", invoice.number)} is already paid`,
           code: "invoice_already_paid",
         })
       }

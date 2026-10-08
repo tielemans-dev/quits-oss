@@ -35,7 +35,8 @@ export const Route = createFileRoute("/_app/quotes/")({
 
 type Quote = {
   id: string
-  number: string
+  /** Null until the quote is sent. */
+  number: string | null
   status: string
   issueDate: string
   expiryDate: string
@@ -150,7 +151,11 @@ function QuotesListPage() {
                     })
                   }
                 >
-                  <TableCell className="font-medium">{quote.number}</TableCell>
+                  <TableCell className="font-medium">
+                    {quote.number ?? (
+                      <span className="font-normal text-muted-foreground" aria-label={t("quotes.number.draft")}>—</span>
+                    )}
+                  </TableCell>
                   <TableCell>{quote.contact.name}</TableCell>
                   <TableCell>{formatDate(quote.issueDate, locale)}</TableCell>
                   <TableCell>{formatDate(quote.expiryDate, locale)}</TableCell>
@@ -177,9 +182,9 @@ function QuotesListPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t("quotes.delete.title")}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              {t("quotes.delete.description", {
-                                number: quote.number,
-                              })}
+                              {quote.number
+                                ? t("quotes.delete.description", { number: quote.number })
+                                : t("quotes.delete.descriptionDraft")}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

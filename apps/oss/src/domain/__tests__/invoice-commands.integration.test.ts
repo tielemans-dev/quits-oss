@@ -1,5 +1,6 @@
 import { executeIssuanceCommand } from "../../application/issuance"
 import { afterEach, describe, expect, it } from "vitest"
+import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
@@ -33,15 +34,26 @@ describeIfDatabase("invoice commands", () => {
     items: [{ description: "Design", quantity: 2, unitPrice: 100 }],
   })
 
-  it("allocates unique sequential numbers under concurrent creates", async () => {
+  it("creates drafts without a number and numbers invoices when they are sent, even concurrently", async () => {
     const { org, contactId } = await setupWithContact()
     const outcomes = await Promise.all(
       Array.from({ length: 6 }, () =>
         executeIssuanceCommand(createInvoiceDraft, draft(contactId), { actor: org.actors.admin })
       )
     )
+    const ids = outcomes.map((outcome) => {
+      if (outcome.status !== "completed") throw new Error(JSON.stringify(outcome))
+      expect(outcome.result.number).toBeNull()
+      return outcome.result.id
+    })
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).invoiceNextNum).toBe(1)
 
-    const numbers = outcomes.map((outcome) => {
+    const sent = await Promise.all(
+      ids.map((id) =>
+        executeIssuanceCommand(sendInvoice, { id, allowSendWithoutEmail: true }, { actor: org.actors.admin })
+      )
+    )
+    const numbers = sent.map((outcome) => {
       if (outcome.status !== "completed") throw new Error(JSON.stringify(outcome))
       return outcome.result.number
     })
@@ -54,6 +66,7 @@ describeIfDatabase("invoice commands", () => {
       "INV-0005",
       "INV-0006",
     ])
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).invoiceNextNum).toBe(7)
   })
 
   it("prices drafts and records the lifecycle in the activity log", async () => {

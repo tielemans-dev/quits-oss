@@ -64,6 +64,7 @@ export const enRecurringMessages = {
   "recurring.confirm.runNow.descriptionAutoSend": "The invoice for {date} is created and sent to the customer right away, and the schedule moves on to the following run.",
   "recurring.confirm.cancel": "Cancel",
   "recurring.runNow.done": "Invoice {number} was created.",
+  "recurring.runNow.doneDraft": "A draft invoice was created. It gets its number when it is sent.",
   "recurring.error.action": "That did not work. Please try again.",
   "recurring.detail.notFound": "This schedule could not be found.",
   "recurring.detail.template": "Template",

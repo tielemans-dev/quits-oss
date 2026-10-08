@@ -1,7 +1,7 @@
 /** The invoice fields every lifecycle panel on the invoice page receives. */
 export type InvoicePanelInvoice = {
   id: string
-  number: string
+  number: string | null
   status: string
   paymentStatus: string
   currency: string

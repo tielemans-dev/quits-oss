@@ -150,7 +150,8 @@ export function ApprovalItem({
             {Object.entries(approval.reviewDetails).map(([key, value]) => (
               <Fragment key={key}>
                 <dt className="text-muted-foreground">{reviewLabel(key)}</dt>
-                <dd className="font-medium">{value ?? "—"}</dd>
+                {/* A draft has no number yet: it is numbered when it is sent. */}
+                <dd className="font-medium">{value ?? (key === "number" ? t("invoices.number.draft") : "—")}</dd>
               </Fragment>
             ))}
           </dl>

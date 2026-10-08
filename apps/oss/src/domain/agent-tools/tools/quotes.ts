@@ -71,7 +71,8 @@ export const quoteTools: AgentTool[] = [
     title: "Create draft quote",
     description:
       "Creates a draft quote (estimate) for a contact. Drafts are free: nothing is sent and no " +
-      "approval is needed. expiryDate is YYYY-MM-DD; taxRate is a percentage.",
+      "approval is needed. A draft has no quote number (number is null): the number is assigned when " +
+      "the quote is sent. expiryDate is YYYY-MM-DD; taxRate is a percentage.",
     command: createQuoteDraft,
     input: quoteCreateDraftV2InputSchema,
     present: presentQuote,
@@ -91,7 +92,8 @@ export const quoteTools: AgentTool[] = [
     title: "Send quote",
     description:
       "Emails a draft quote to the contact with a link where they can accept or reject it. The quote " +
-      "can no longer be edited afterwards. It becomes sent once the email provider accepts the email; " +
+      "gets the next quote number (returned as number; a draft that already has a number keeps it) " +
+      "and can no longer be edited afterwards. It becomes sent once the email provider accepts the email; " +
       "until then lastEmailAttempt reads \"sending\", so check it before sending again.",
     command: sendQuote,
     input: quoteSendInputSchema,
@@ -111,8 +113,8 @@ export const quoteTools: AgentTool[] = [
     name: "quote_convert_to_invoice",
     title: "Convert quote to invoice",
     description:
-      "Creates a draft invoice from a quote the customer accepted. The invoice is a draft; send it " +
-      "with invoice_send.",
+      "Creates a draft invoice from a quote the customer accepted. The invoice is a draft without a " +
+      "number (number is null); it is numbered when you send it with invoice_send.",
     command: convertQuoteToInvoice,
     input: quoteIdInputSchema,
     present: presentInvoice,
