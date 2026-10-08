@@ -121,9 +121,7 @@ async function setup() {
 
   it("carries a quote's existing order reference into the converted invoice", async () => {
     const { api, input } = await setup()
-    const quote = await api.quotes.createV2({ ...input, expiryDate: "2099-01-01" })
-    // Quotes already store the field, but their command inputs do not expose it.
-    await prisma.quote.update({ where: { id: quote.id }, data: { purchaseOrderRef: "PO-quote" } })
+    const quote = await api.quotes.createV2({ ...input, expiryDate: "2099-01-01", purchaseOrderRef: "PO-quote" })
     await api.quotes.send({ id: quote.id, allowSendWithoutEmail: true })
     await prisma.quote.update({ where: { id: quote.id }, data: { status: "accepted" } })
     const invoice = await api.quotes.convertToInvoice({ id: quote.id })

@@ -4,7 +4,16 @@ import {
   invoiceUpdateDraftV2InputSchema, invoiceCreateFromDeliverablesInputSchema, purchaseOrderRefInputSchema,
 } from "./invoices"
 
+import { quoteCreateDraftInputSchema, quoteCreateDraftV2InputSchema, quoteUpdateDraftInputSchema, quoteUpdateDraftV2InputSchema } from "./quotes"
+import { recurringCreateInputSchema, recurringCreateV2InputSchema, recurringUpdateInputSchema, recurringUpdateV2InputSchema } from "./recurring"
+
+const quote = { contactId: "c", expiryDate: "2026-12-01", items: [{ description: "Work", quantity: "1", unitPrice: "100" }] }
+const schedule = { contactId: "c", name: "Monthly", startDate: "2026-12-01", items: quote.items }
 const cases = [
+  [quoteCreateDraftInputSchema, quote], [quoteCreateDraftV2InputSchema, quote],
+  [quoteUpdateDraftInputSchema, { id: "q" }], [quoteUpdateDraftV2InputSchema, { id: "q", expectedRevision: 2 }],
+  [recurringCreateInputSchema, schedule], [recurringCreateV2InputSchema, schedule],
+  [recurringUpdateInputSchema, { id: "r" }], [recurringUpdateV2InputSchema, { id: "r" }],
   [invoiceCreateDraftInputSchema, { contactId: "c", dueDate: "2026-12-01", items: [{ description: "Work", quantity: 1, unitPrice: 100 }] }],
   [invoiceCreateDraftV2InputSchema, { contactId: "c", dueDate: "2026-12-01", supplyDate: "2026-10-08", items: [{ description: "Work", quantity: "1", unitPrice: "100" }] }],
   [invoiceUpdateDraftInputSchema, { id: "i" }],
@@ -13,7 +22,7 @@ const cases = [
 ] as const
 
 describe("purchaseOrderRef input", () => {
-  it("normalizes consistently across invoice inputs without replacing omitted values", () => {
+  it("normalizes consistently across invoice, quote and recurring inputs without replacing omitted values", () => {
     for (const [schema, input] of cases) {
       expect(schema.parse(input).purchaseOrderRef).toBeUndefined()
       for (const purchaseOrderRef of [null, "", "   "]) {
