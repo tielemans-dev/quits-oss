@@ -1,0 +1,363 @@
+{
+  "status": "synthetic analysis only; operational import and cutover are blocked",
+  "sourceCheckout": "6d9c9fcbd678bf4800ad5c21bea791779acdbab2",
+  "extractionFixtureSha256": "75d91ed190af6cb29a759565b136c71d78ce2579d87598487a00dd0b18b02dce",
+  "units": "integer minor units; DKK and EUR exponent 2; no cross-currency netting",
+  "counts": {
+    "contacts": 2,
+    "invoices": 5,
+    "credits": 1,
+    "receipts": 4,
+    "allocations": 4,
+    "staged": 16,
+    "excluded": 2,
+    "availableSyntheticArtifacts": 3,
+    "missingArtifacts": 1,
+    "failedArtifacts": 1
+  },
+  "totals": {
+    "DKK": {
+      "invoices": 3,
+      "invoiced": 275000,
+      "credited": 25000,
+      "paid": 90000,
+      "outstanding": 160000,
+      "receiptGross": 100000,
+      "unapplied": 10000
+    },
+    "EUR": {
+      "invoices": 2,
+      "invoiced": 30000,
+      "credited": 0,
+      "paid": 22000,
+      "outstanding": 8000,
+      "receiptGross": 22000,
+      "unapplied": 0
+    }
+  },
+  "documents": [
+    {
+      "sourceId": "I1",
+      "originalNumber": "1001",
+      "date": "2026-09-30",
+      "currency": "DKK",
+      "gross": 125000,
+      "credited": 0,
+      "paid": 0,
+      "outstanding": 125000,
+      "sourceResidual": 125000,
+      "artifact": "missing",
+      "syntheticArtifactHash": null
+    },
+    {
+      "sourceId": "I2",
+      "originalNumber": "1002",
+      "date": "2026-09-30",
+      "currency": "DKK",
+      "gross": 100000,
+      "credited": 25000,
+      "paid": 40000,
+      "outstanding": 35000,
+      "sourceResidual": 35000,
+      "artifact": "available",
+      "syntheticArtifactHash": "d0abb33e537fdb9b929eb9c1bbd3860c0343362cd17b254cea0274164d005851"
+    },
+    {
+      "sourceId": "I3",
+      "originalNumber": "1003",
+      "date": "2026-09-30",
+      "currency": "DKK",
+      "gross": 50000,
+      "credited": 0,
+      "paid": 50000,
+      "outstanding": 0,
+      "sourceResidual": 0,
+      "artifact": "available",
+      "syntheticArtifactHash": "c4068d9c96bd502aa3ca5b4c619b89c2d8ecc40930d2d11083ed7b49fe3ca193"
+    },
+    {
+      "sourceId": "I4",
+      "originalNumber": "1004",
+      "date": "2026-09-30",
+      "currency": "EUR",
+      "gross": 20000,
+      "credited": 0,
+      "paid": 12000,
+      "outstanding": 8000,
+      "sourceResidual": 8000,
+      "artifact": "error",
+      "syntheticArtifactHash": null
+    },
+    {
+      "sourceId": "I5",
+      "originalNumber": "1005",
+      "date": "2026-09-30",
+      "currency": "EUR",
+      "gross": 10000,
+      "credited": 0,
+      "paid": 10000,
+      "outstanding": 0,
+      "sourceResidual": 0,
+      "artifact": "available",
+      "syntheticArtifactHash": "57b2e49b6707d032fc5561869ec760fdcc02f0e1a08e68ad9f13a427a60d8452"
+    }
+  ],
+  "exclusions": [
+    {
+      "id": "FUTURE1",
+      "kind": "invoice",
+      "date": "09.10.2026",
+      "currency": "DKK",
+      "amount": "75,00",
+      "reason": "after_cutover"
+    },
+    {
+      "id": "DRAFT1",
+      "kind": "draft",
+      "date": "01.10.2026",
+      "currency": "DKK",
+      "amount": "50,00",
+      "reason": "not_issued"
+    }
+  ],
+  "numberingCollisionsBlockingCommit": [
+    "I1"
+  ],
+  "retrySimulation": {
+    "failure": {
+      "outcome": "simulated_failure",
+      "added": 4,
+      "committedKeys": [
+        "synthetic-org-A/synthetic-source-A/contacts/C1",
+        "synthetic-org-A/synthetic-source-A/contacts/C2",
+        "synthetic-org-A/synthetic-source-A/invoices/I1",
+        "synthetic-org-A/synthetic-source-A/invoices/I2"
+      ]
+    },
+    "resumed": {
+      "outcome": "complete",
+      "added": 12,
+      "committedKeys": [
+        "synthetic-org-A/synthetic-source-A/contacts/C1",
+        "synthetic-org-A/synthetic-source-A/contacts/C2",
+        "synthetic-org-A/synthetic-source-A/invoices/I1",
+        "synthetic-org-A/synthetic-source-A/invoices/I2",
+        "synthetic-org-A/synthetic-source-A/invoices/I3",
+        "synthetic-org-A/synthetic-source-A/invoices/I4",
+        "synthetic-org-A/synthetic-source-A/invoices/I5",
+        "synthetic-org-A/synthetic-source-A/credits/CR1",
+        "synthetic-org-A/synthetic-source-A/receipts/R1",
+        "synthetic-org-A/synthetic-source-A/receipts/R2",
+        "synthetic-org-A/synthetic-source-A/receipts/R3",
+        "synthetic-org-A/synthetic-source-A/receipts/R4",
+        "synthetic-org-A/synthetic-source-A/allocations/A1",
+        "synthetic-org-A/synthetic-source-A/allocations/A2",
+        "synthetic-org-A/synthetic-source-A/allocations/A3",
+        "synthetic-org-A/synthetic-source-A/allocations/A4"
+      ]
+    },
+    "repeated": {
+      "outcome": "complete",
+      "added": 0,
+      "committedKeys": [
+        "synthetic-org-A/synthetic-source-A/contacts/C1",
+        "synthetic-org-A/synthetic-source-A/contacts/C2",
+        "synthetic-org-A/synthetic-source-A/invoices/I1",
+        "synthetic-org-A/synthetic-source-A/invoices/I2",
+        "synthetic-org-A/synthetic-source-A/invoices/I3",
+        "synthetic-org-A/synthetic-source-A/invoices/I4",
+        "synthetic-org-A/synthetic-source-A/invoices/I5",
+        "synthetic-org-A/synthetic-source-A/credits/CR1",
+        "synthetic-org-A/synthetic-source-A/receipts/R1",
+        "synthetic-org-A/synthetic-source-A/receipts/R2",
+        "synthetic-org-A/synthetic-source-A/receipts/R3",
+        "synthetic-org-A/synthetic-source-A/receipts/R4",
+        "synthetic-org-A/synthetic-source-A/allocations/A1",
+        "synthetic-org-A/synthetic-source-A/allocations/A2",
+        "synthetic-org-A/synthetic-source-A/allocations/A3",
+        "synthetic-org-A/synthetic-source-A/allocations/A4"
+      ]
+    },
+    "changedPayloadRejectedWithoutWrites": true,
+    "duplicateIdsRejectWholeBatch": true
+  },
+  "sideEffects": "No application or provider operations exist in this analysis script. Runtime isolation is untested.",
+  "extractionScenarios": [
+    {
+      "scenario": "unpaid",
+      "documents": 1,
+      "ledgerItems": 0,
+      "allocations": 0,
+      "allRowsMatch": true,
+      "exceptions": [],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "fully_paid",
+      "documents": 1,
+      "ledgerItems": 1,
+      "allocations": 1,
+      "allRowsMatch": true,
+      "exceptions": [],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "partially_paid",
+      "documents": 1,
+      "ledgerItems": 1,
+      "allocations": 1,
+      "allRowsMatch": true,
+      "exceptions": [],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "credit_allocation",
+      "documents": 5,
+      "ledgerItems": 0,
+      "allocations": 2,
+      "allRowsMatch": true,
+      "exceptions": [],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "unapplied_cash",
+      "documents": 1,
+      "ledgerItems": 2,
+      "allocations": 1,
+      "allRowsMatch": true,
+      "exceptions": [],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "rounding",
+      "documents": 2,
+      "ledgerItems": 0,
+      "allocations": 0,
+      "allRowsMatch": true,
+      "exceptions": [
+        "rounding_semantics_unverified@invoice:1011"
+      ],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "foreign_currency",
+      "documents": 2,
+      "ledgerItems": 2,
+      "allocations": 2,
+      "allRowsMatch": true,
+      "exceptions": [
+        "fx_difference_unattributed@cluster:1"
+      ],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "missing_documents",
+      "documents": 4,
+      "ledgerItems": 0,
+      "allocations": 0,
+      "allRowsMatch": true,
+      "exceptions": [
+        "original_pdf_fetch_failed@invoice:1015",
+        "original_pdf_missing@invoice:1014",
+        "original_pdf_missing@invoice:1016",
+        "voucher_year_unresolved@invoice:1017"
+      ],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "many_to_one",
+      "documents": 3,
+      "ledgerItems": 3,
+      "allocations": 4,
+      "allRowsMatch": true,
+      "exceptions": [],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "ambiguous_cycle",
+      "documents": 2,
+      "ledgerItems": 2,
+      "allocations": 0,
+      "allRowsMatch": false,
+      "exceptions": [
+        "allocation_ambiguous@cluster:1",
+        "snapshot_residual_only@invoice:1021",
+        "snapshot_residual_only@invoice:1022"
+      ],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "unsupported_history",
+      "documents": 1,
+      "ledgerItems": 1,
+      "allocations": 0,
+      "allRowsMatch": false,
+      "exceptions": [
+        "applied_without_match_pair@entry:3",
+        "applied_without_match_pair@entry:4",
+        "snapshot_residual_only@invoice:1023"
+      ],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "inconsistent_match",
+      "documents": 2,
+      "ledgerItems": 1,
+      "allocations": 0,
+      "allRowsMatch": false,
+      "exceptions": [
+        "cluster_not_conserved@cluster:1",
+        "remainder_disagreement@invoice:1025",
+        "snapshot_residual_only@invoice:1024"
+      ],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "cutover_boundary",
+      "documents": 1,
+      "ledgerItems": 0,
+      "allocations": 0,
+      "allRowsMatch": false,
+      "exceptions": [
+        "document_after_cutover@invoice:1027",
+        "snapshot_residual_only@invoice:1026"
+      ],
+      "excludedAfterCutover": [
+        "invoice:1027"
+      ]
+    },
+    {
+      "scenario": "manual_and_opening",
+      "documents": 0,
+      "ledgerItems": 2,
+      "allocations": 0,
+      "allRowsMatch": true,
+      "exceptions": [
+        "entry_type_unsupported@entry:3",
+        "manual_invoice_has_no_document@entry:2"
+      ],
+      "excludedAfterCutover": []
+    },
+    {
+      "scenario": "control_total_disagreement",
+      "documents": 1,
+      "ledgerItems": 0,
+      "allocations": 0,
+      "allRowsMatch": true,
+      "exceptions": [
+        "customer_balance_disagreement@customer:1"
+      ],
+      "excludedAfterCutover": []
+    }
+  ],
+  "unmet": [
+    "source page/count controls",
+    "unpaid-total semantics and comparison",
+    "real export columns",
+    "real grant/plan tests",
+    "approved provenance persistence",
+    "database resume/concurrency tests",
+    "consented pilot",
+    "qualified cutover/retention review"
+  ]
+}

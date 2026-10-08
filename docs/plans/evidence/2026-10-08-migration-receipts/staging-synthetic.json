@@ -1,0 +1,183 @@
+{
+  "synthetic": true,
+  "profile": "analysis-only/1; not an e-conomic export",
+  "organization": "synthetic-org-A",
+  "sourceAccount": "synthetic-source-A",
+  "asOf": "2026-10-08",
+  "contacts": [
+    {
+      "id": "C1"
+    },
+    {
+      "id": "C2"
+    }
+  ],
+  "invoices": [
+    {
+      "id": "I1",
+      "number": "1001",
+      "customer": "C1",
+      "currency": "DKK",
+      "gross": "1.250,00",
+      "sourceResidual": "1.250,00",
+      "date": "30.09.2026",
+      "issued": true,
+      "artifact": {
+        "state": "missing"
+      }
+    },
+    {
+      "id": "I2",
+      "number": "1002",
+      "customer": "C1",
+      "currency": "DKK",
+      "gross": "1.000,00",
+      "sourceResidual": "350,00",
+      "date": "30.09.2026",
+      "issued": true,
+      "artifact": {
+        "state": "available",
+        "syntheticText": "SYNTHETIC evidence bytes for I2",
+        "mediaType": "text/plain"
+      }
+    },
+    {
+      "id": "I3",
+      "number": "1003",
+      "customer": "C1",
+      "currency": "DKK",
+      "gross": "500,00",
+      "sourceResidual": "0,00",
+      "date": "30.09.2026",
+      "issued": true,
+      "artifact": {
+        "state": "available",
+        "syntheticText": "SYNTHETIC evidence bytes for I3",
+        "mediaType": "text/plain"
+      }
+    },
+    {
+      "id": "I4",
+      "number": "1004",
+      "customer": "C2",
+      "currency": "EUR",
+      "gross": "200,00",
+      "sourceResidual": "80,00",
+      "date": "30.09.2026",
+      "issued": true,
+      "artifact": {
+        "state": "error"
+      }
+    },
+    {
+      "id": "I5",
+      "number": "1005",
+      "customer": "C2",
+      "currency": "EUR",
+      "gross": "100,00",
+      "sourceResidual": "0,00",
+      "date": "30.09.2026",
+      "issued": true,
+      "artifact": {
+        "state": "available",
+        "syntheticText": "SYNTHETIC evidence bytes for I5",
+        "mediaType": "text/plain"
+      }
+    }
+  ],
+  "credits": [
+    {
+      "id": "CR1",
+      "invoice": "I2",
+      "customer": "C1",
+      "currency": "DKK",
+      "amount": "250,00",
+      "date": "30.09.2026"
+    }
+  ],
+  "receipts": [
+    {
+      "id": "R1",
+      "customer": "C1",
+      "currency": "DKK",
+      "gross": "400,00",
+      "date": "07.10.2026",
+      "fee": "0,00",
+      "evidence": "synthetic-explicit-identity:R1"
+    },
+    {
+      "id": "R2",
+      "customer": "C1",
+      "currency": "DKK",
+      "gross": "600,00",
+      "date": "07.10.2026",
+      "fee": "0,00",
+      "evidence": "synthetic-explicit-identity:R2"
+    },
+    {
+      "id": "R3",
+      "customer": "C2",
+      "currency": "EUR",
+      "gross": "120,00",
+      "date": "07.10.2026",
+      "fee": "0,00",
+      "evidence": "synthetic-explicit-identity:R3"
+    },
+    {
+      "id": "R4",
+      "customer": "C2",
+      "currency": "EUR",
+      "gross": "100,00",
+      "date": "07.10.2026",
+      "fee": "0,00",
+      "evidence": "synthetic-explicit-identity:R4"
+    }
+  ],
+  "allocations": [
+    {
+      "id": "A1",
+      "receipt": "R1",
+      "invoice": "I2",
+      "amount": "400,00"
+    },
+    {
+      "id": "A2",
+      "receipt": "R2",
+      "invoice": "I3",
+      "amount": "500,00"
+    },
+    {
+      "id": "A3",
+      "receipt": "R3",
+      "invoice": "I4",
+      "amount": "120,00"
+    },
+    {
+      "id": "A4",
+      "receipt": "R4",
+      "invoice": "I5",
+      "amount": "100,00"
+    }
+  ],
+  "targetNumbers": [
+    "1001"
+  ],
+  "excluded": [
+    {
+      "id": "FUTURE1",
+      "kind": "invoice",
+      "date": "09.10.2026",
+      "currency": "DKK",
+      "amount": "75,00",
+      "reason": "after_cutover"
+    },
+    {
+      "id": "DRAFT1",
+      "kind": "draft",
+      "date": "01.10.2026",
+      "currency": "DKK",
+      "amount": "50,00",
+      "reason": "not_issued"
+    }
+  ]
+}

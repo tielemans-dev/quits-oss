@@ -1,0 +1,489 @@
+[
+  {
+    "id": "dinero-spec",
+    "url": "https://api.dinero.dk/openapi/v1/swagger.json",
+    "accessed": "2026-10-08",
+    "http_status": 200,
+    "sha256": "0e780af984cc1f6ec7313a4b5e8111a83ae85444a918fec81a9c2dd6ea4baf3b",
+    "info": {
+      "title": "Dinero API",
+      "description": "Welcome to our endpoint documentation. Please try to carefully read our general documentation found on <a href=\"https://developer.dinero.dk/\">developer.dinero.dk</a> for information regarding the authorization proces, status and errorcodes, FAQ, Postman tutorial etc. <br><br>Once authorized, you simply add 'Authorization: Bearer <access-token>' to the header of your requests. On the page below, you'll find all our endpoints documented as well as possible, but if you have any questions regarding an endpoint, or an error in the description, please contact us on <a href=\"mailto:api@dinero.dk\">api@dinero.dk.</a> ",
+      "version": "v1"
+    },
+    "paths": {
+      "/v1/{organizationId}/attachments/{documentGuid}/{fileGuid}/{fileName}": {
+        "post": {
+          "tags": [
+            "Attachments"
+          ],
+          "summary": "Bind attachment with a document",
+          "description": "You can bind a file with an invoice using this endpoint. The bound file will be sent with the invoice.",
+          "parameters": [
+            {
+              "name": "organizationId",
+              "in": "path",
+              "description": "The ID of the organization",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            {
+              "name": "documentGuid",
+              "in": "path",
+              "description": "Guid of invoice, trade-offer or credit-note",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            {
+              "name": "fileGuid",
+              "in": "path",
+              "description": "Attachment Guid",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "fileName",
+              "in": "path",
+              "description": "Attachment name",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK"
+            }
+          }
+        }
+      },
+      "/v1/{organizationId}/files": {
+        "post": {
+          "tags": [
+            "Files"
+          ],
+          "summary": "Upload file",
+          "description": "Accepts a posted image/pdf. If the file is accepted status code 200 will be returned with info\non the file's id and the id of the organization owning file. It might take a second for the\nfile to be accessible.\nIf the file size is above 6 MB, then a status code 400 will be returned.\nA file posted to this endpoint will also be added to the file archive and\ncan be used for all bookkeeping vouchers and the ledger.",
+          "parameters": [
+            {
+              "name": "organizationId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "multipart/formdata": {
+                "encoding": {
+                  "file": {}
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "description": "Read model for a file posted to the server.",
+                    "$ref": "#/components/schemas/FileSavedReadModel"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Bad Request",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "get": {
+          "tags": [
+            "Files"
+          ],
+          "summary": "List files",
+          "description": "Lists all files in file archive, either so it can be used to bind with a document or to download the file.",
+          "parameters": [
+            {
+              "name": "extensions",
+              "in": "query",
+              "description": "(optional) limits the search to the given file extension(s)\n                Several extensions can be specified by separating values with comma. Ex. ?extensions=pdf,png,csv",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "name": "uploadedBefore",
+              "in": "query",
+              "description": "(optional) limits the search to the given after. Format: yyyy/MM/dd",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "uploadedAfter",
+              "in": "query",
+              "description": "(optional) limits the search to the given before date. Format: yyyy/MM/dd",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "fileStatus",
+              "in": "query",
+              "description": "(optional) limits the search to the specified file status, available values are: All, Used or Unused",
+              "schema": {
+                "default": "All",
+                "$ref": "#/components/schemas/FileStatus"
+              }
+            },
+            {
+              "name": "page",
+              "in": "query",
+              "description": "(optional) specifies page number",
+              "schema": {
+                "type": "integer",
+                "format": "int32",
+                "default": 0
+              }
+            },
+            {
+              "name": "pageSize",
+              "in": "query",
+              "description": "(optional) specifies page size",
+              "schema": {
+                "type": "integer",
+                "format": "int32",
+                "default": 1000
+              }
+            },
+            {
+              "name": "organizationId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "description": "A file in the organization's file archive, with the vouchers it is linked to.",
+                      "$ref": "#/components/schemas/FilteredFileReadModel"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/{organizationId}/files/attachment": {
+        "post": {
+          "tags": [
+            "Files"
+          ],
+          "summary": "Upload a file as an attachment.",
+          "description": "Accepts a posted image/pdf. If the file is accepted, status code 200 will be returned with info\non the file's id and the id of the organization owning file. It might take a second for the\nfile to be accessible.\nIf the file size is above 6 MB, then a status code 400 will be returned.\nA file posted to this endpoint will NOT be added to the file archive and can only be used with\nthe attachment endpoints to be attached to an invoice intended for a customer.\nUseful for invoice specifications or terms of sales for instance.",
+          "parameters": [
+            {
+              "name": "organizationId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "multipart/formdata": {
+                "encoding": {
+                  "file": {}
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "description": "Read model for a file posted to the server.",
+                    "$ref": "#/components/schemas/FileSavedReadModel"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Bad Request",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/{organizationId}/files/{fileGuid}": {
+        "get": {
+          "tags": [
+            "Files"
+          ],
+          "summary": "Download the specified file",
+          "description": "Returns the file with a certain file guid.",
+          "parameters": [
+            {
+              "name": "fileGuid",
+              "in": "path",
+              "description": "Specifies the file to be downloaded",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "organizationId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK"
+            }
+          }
+        }
+      },
+      "/v1/{organizationId}/vouchers/purchase/fileguid/{fileGuid}": {
+        "get": {
+          "tags": [
+            "PurchaseVouchers"
+          ],
+          "summary": "Get purchase draft Guid by fileGuid",
+          "description": "Gets purchase voucher Guid by fileGuid.",
+          "parameters": [
+            {
+              "name": "fileGuid",
+              "in": "path",
+              "description": "FileGuid used to find purchase",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "organizationId",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "FileSavedReadModel": {
+        "type": "object",
+        "properties": {
+          "FileGuid": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The guid of the posted file",
+            "example": "web0crmck5v0ndcx3313g6zn61tc7wgc"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Read model for a file posted to the server."
+      },
+      "FilteredFileReadModel": {
+        "required": [
+          "Size",
+          "UploadedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "FileGuid": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The guid of the file.",
+            "example": "74ba828f-0b4b-49e1-b5c9-ef9675755556"
+          },
+          "Name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The file name.",
+            "example": "receipt.pdf"
+          },
+          "Extension": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The file extension.",
+            "example": "pdf"
+          },
+          "Size": {
+            "type": "integer",
+            "description": "File size in bytes.",
+            "format": "int64",
+            "example": 20480
+          },
+          "UploadedAt": {
+            "type": "string",
+            "description": "When the file was uploaded.",
+            "format": "date-time"
+          },
+          "Note": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "User supplied note on the file."
+          },
+          "NumberOfPages": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Number of pages in the file, when known.",
+            "format": "int32",
+            "example": 2
+          },
+          "Linked": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "description": "A link between a file and the voucher it is attached to.",
+              "$ref": "#/components/schemas/FileLinkReadModel"
+            },
+            "description": "The vouchers this file is linked to."
+          },
+          "UploadedBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Name of the user who uploaded the file."
+          }
+        },
+        "additionalProperties": false,
+        "description": "A file in the organization's file archive, with the vouchers it is linked to."
+      }
+    }
+  },
+  {
+    "id": "dinero-auth",
+    "url": "https://developer.dinero.dk/documentation/authorization/",
+    "accessed": "2026-10-08",
+    "http_status": 200,
+    "sha256": "470ee88fc54142747c1dd628712c45c4c359c079e9388bca8dea18a263d3b47a",
+    "text": " Dinero - Authorization Front page Documentation Endpoints News dinero.dk Introduction Getting started Test company Authorization Review & publish Error & status codes Contact Personal integration Postman FAQ Authorization Working with Visma Connect OAuth 2.0 Alright lets get rocking - if you are unfamiliar, I will quickly try to summarize how OAuth 2.0 works through Visma Connect. After that you should jump into Postman with our collection and try it out yourself. Do note that steps 1-3 only happen ONCE if you have offline_access turned on. With that you will get refresh tokens, so your users won't have to authorize you every single hour. First We need to generate a link for our users to click. This link needs to contain: client_id - the isv_companyname. scopes - the ones you applied for, for instance dineropublicapi:read, dineropublicapi:write and/or offline_access. redirect_uri - which needs to match the one we have in our Visma Connect settings. A response_type of code. We might also include a nonce or state value, so we can identify the user, once they return and prevent replay attacks. It could look something like this: https://connect.visma.com/connect/authorize?client_id=isv_{INSERT_YOUR_CLIENT_ID}&response_mode=form_post&response_type=code&scope=dineropublicapi:read+dineropublicapi:write+offline_access&redirect_uri={INSERT_YOUR_REDIRECT_URI}&ui_locales=da-DK Do note that this is a link we create for our user to interact with. So it is neither a POST nor GET request. We do recommend avoiding openid connect, unless you are very comfortable with it. This should also be reflected in your Visma Connect Application settings. Second We wait for the users to hit either accept or cancel in the window they get. All we do here is wait for the user. Further down this tutorial you can see this in practice. Third If the user accepts, we'll get a POST request send to our application through our redirect_uri. This POST request will contain everything we need to get an access_token. Simple enough. We will get a code, id_token, a confirmation of scopes and so on to validate the request. The most important part, that we will continue to interact with, is the code. Forth We exchange the code for a token, that we can use to interact with the API. This happens through a regular old POST request to https://connect.visma.com/connect/token. Here we send: grant_type of authorization_code our redirect_uri from our visma connect application settings the code we got in step 3 client_id client_secret We send this as content-type: application/x-www-form-urlencoded. Make sure to send it as a url-encoded string. If the body is formatted as a json, the request will fail. In return we'll get our access_token, id_token, expires_in, token_type and scopes. We're ready to interact with Dineros API. Remember. The user must have a valid Pro (either test or paid) or Total licens to use the API, otherwise you can only request the /organizations endpoint to check their subscription status. Just to reiterate , if we have offline_access turned on here, we'll also get a refresh_token that we can exchange for a new token, so the user doesn't have to go through this once an hour, and we can continue to interact with the API without user involvement. Once you need to apply this to your own code, you can find all the information in the Visma Connect Documentation . Just make sure to use the right scopes, and remember you're creating a link for user interaction in step 1. Next: Review & publish Previous: Test company Could we improve these docs or do you have any questions? Please write us at api@dinero.dk Visma Dinero ApS | CVR: 34731543 | api@dinero.dk "
+  },
+  {
+    "id": "dinero-start",
+    "url": "https://developer.dinero.dk/documentation/getting-started/",
+    "accessed": "2026-10-08",
+    "http_status": 200,
+    "sha256": "846b9ac9385b97f204b85953049c2d0e74d592240007a5cce842a55bc05822ac",
+    "text": " Dinero - Getting started Front page Documentation Endpoints News dinero.dk Introduction Getting started Test company Authorization Review & publish Error & status codes Contact Personal integration Postman FAQ Getting started Terms of use Before starting, please read our terms of use . Personal integrations Are you creating a personal integration for yourself only? Then you should use our personal integration system, which is much simpler for this case. These are two different and seperate authorization systems, so you only need one or the other. The following system is only for public integrations. The three main steps You must complete these steps, in order to get a public integration with Dinero. Go through our Getting started section. (You are here) Thoroughly test your application. Go through the review and publish section. Visma Connect IMPORTANT❗ Visma Connect OAuth2.0 is a user based authorization, not organization based. So for instance, if you have a user with 10 organizations on your end, and 10 organizations in Dinero you should handle this through one authorization. This is especially imporant for accountants who might own several organizations across the two systems. Once you're all setup, we recommend taking some time to go over the Visma Connect Documentation . But there are some things that you need to be aware of and that are different from the standard documentation for Visma Connect. Whenever the two are in disagreement follow our documentation here. Check it out! Want to see exactly how all of this will work in your own application? In less than a minute, we will go over all the essentials of how it'll look and function in practice, in our demo video below. Creating an account First of all, you need to create an account for the Visma Developer portal. You can sign up here . Make sure during the setup, to set your teams country to Denmark, otherwise you might not be able to apply for Dinero scopes later on. Also, make sure you fill out your real organization details. Moving forward, if you want, you can create several different applications, if you want one for test and one for production. But the team needs to be a real organization with a real CVR number. If you create a team called \"Test\" or fill out organization number with anything but your actual CVR number, your future applications will be rejected. Once you've signed up, you should see something that looks like this: Add Application Now we're ready to get started - go to My Applications in the top menubar and in the top right, you can click Add Application . IMPORTANT ❗ The Debugger, seen on the top left here, can help so much, when the first attempt to authorize inevitably fails. If it does, you'll get an error code, that you can paste into the Debugger, and get feedback on why the attempt failed. It might take a few seconds, so have a little patience. 👍 If you ever need to change anything in your application, this is also where you'll need to go. Creating our Application First of, and this very important, you must choose web application, as it is currently our only supported type. Setting up our Application Alright, in this next step we'll have a lot of things going on, lets break it into smaller pieces. First off, we need to give our application a Name and an Id. The Name is what users will see when they want to authorize your product to be able to interact with Dinero. The Client Id is the Id you use to authorize and what we see all over our internal logs. Both Name and Client Id should clearly indentify your organization and/or your product. IMPORTANT❗ We'll only approve applications whose Client Id can uniquely identify the company behind the integration. For instance \"isv_test-application\" would certainly be rejected, while \"isv_Vibrant\" would be approved. If you wish you could also add a product name to the Client Id and/or Name, for instance \"isv_Vibrant_payments\". We enforce this, so we can easily identify the company behind any request to our API. You should not add Dinero to any of these names, since you do not represent us. Grant and offline access Now next up, we'll need to setup our grants and offline configuration if we want that (which we probably do). IMPORTANT❗ There is a \"Authorization_code with PKCE\" grant type you can choose. If you do so, you need to add a code challenge to your initial request. If you are unsure how to do this, please pick the regular \"Authorization Code\" grant, as shown above. Here we have a few things going on, and some things to explain. Offline access just means, that our user doesn't need to go through the approval steps, every time we'll make a request. This will in most instances be a nice feature, for most integrations, so we'll grab offline access. 👍 Next we'll need to set this up, and we'll recommend the following settings, as shown in the screenshot above. Get a re-use refresh token Give it a 365 days expiration Re-use tokens are much easier to handle than one-time tokens since you can exchange the same token several times. You also know exactly when they will expire. You can use one-time tokens, which can get a theoretic unlimited expiration, but they can be difficult to handle properly, as they will be invalidated if they are handled incorrectly. For instance if you attempt to swap an already used refresh token, the entire authorization is invalidated. More can be found regarding offline access here . Therefore we recommend the above setup for ease of use. The user will need to reauthorize you once a year though, so keep that in mind. Setup redirect URI Alright, we're almost done here! First of, make sure to turn off OpenID Connect by default - unless you really want to work with it. Our Authorization guide and postman collection doesn't support it. For the last obligatory part, we need to set a redirect URI. For our purpose, and if you wish to follow the next steps of our tutorial, we'll set this up for Postman. Now if you use the browser version of Postman, like I'll do here, you need to use the URI: 👉 https://oauth.pstmn.io/v1/browser-callback Or if you use the Desktop version of Postman, it'll be: 👉 https://oauth.pstmn.io/v1/callback For testing purposes you can also use localhost, but make sure to remove it as redirect uri, once you head into production. Finally! Click save in the bottom and lets move on! Credentials Now this part might be self-explanatory, but we need some credentials. Obviously we already have our Client ID which will be isv_ourname. Again I'd like to remind you to pick a client name that can easily identify your company. But on top of our Client ID, we need a Client Secret. So lets head to the Credentials tab, and generate a secret. Once done, you can copy your secret and save it somewhere safe. What is great about Visma Connect, is we can go back here if we ever lose our secret and easily create a new one! Scopes YES! We've done it. Lets go to Integrations and click New Integration Choose to integrate to Dinero. Now the final thing is scopes. If you do not see Dineros scopes at this point, go to My Team, and make sure your country is set to Denmark. You can apply for Write and Read (NOT Internal). If you apply for our Internal API, it will be rejected. ❌ So apply for the following scopes: ✅ Scope: Read ✅ Scope: Write ❌ Scope: Internal Obviously you don't need to apply for both read and write, if you only need one or the other for your integration. And with that you're done. Once you actually start asking for authorization, make sure to use the scopes: dineropublicapi:read dineropublicapi:write offline_access Next steps Now we'll approve or reject your application. This will usually take up to a work day. To speed up the process you can go through the following: Choose a suitable application and client ID name that can easily identify your company Only apply for read and write scopes And well - that's it. You'll get an email with either the approval or rejection. The next step we highly recommend is looking at our Authorization guide . IMPORTANT❗ You should read through our review and publish section and our FAQ for information on a lot of important aspect, for instance our rate limit and requirements of you, to be published on our site. You can also take some time at this point to read through the Visma Connect Documentation . If you've been following along, then you've probably noticed that it's right there in the top, once we're logged into Visma Connect. 👍 Next: Test company Previous: Introduction Could we improve these docs or do you have any questions? Please write us at api@dinero.dk Visma Dinero ApS | CVR: 34731543 | api@dinero.dk "
+  },
+  {
+    "id": "dinero-faq",
+    "url": "https://developer.dinero.dk/documentation/faq/",
+    "accessed": "2026-10-08",
+    "http_status": 200,
+    "sha256": "6d52b0f92282c86cf78c7e097d0de35351d0641dc92e0fb112fb1f39d2bd955e",
+    "text": " Dinero - FAQ Front page Documentation Endpoints News dinero.dk Introduction Getting started Test company Authorization Review & publish Error & status codes Contact Personal integration Postman FAQ FAQ Can I create a service application in Visma Connect? No. Not if you wish to interact with our API. Our only supported client type is web application. My authorization request failed. What do I do? You can use the debugger found under \"More > Debugger\" under \"My Applications\" in Visma Connect. What is my Client ID? Will always start with 'isv_' for one-to-many clients created through Visma Connect. You can find your Client ID in Visma Connect . You'll use this in combination with your Client Secret to authenticate yourself. For personal integrations you get your Client ID sent via email if your application is accepted. What is my Client Secret? This is generated after you've setup your application. You can always return here, if you lose or compromise your secret, and would like to generate a new and secure one. For personal integrations this is supplied in the same email as the Client ID. Which scopes should I use? Most likely you'll want to use some combination of dineropublicapi:read, dineropublicapi:write and/or offline_access. Depending on your requested and granted scopes from your Visma Connect application and your settings regarding offline access. Check out our Getting Started section, to get started in the right way. Your scopes must match what you've applied for, and your settings in Visma Connect. What is firmaID / organization ID? A unique identifier for each company in Dinero. Can be found in the bottom left once logged in, and is also a part of the URL, directly following app.dinero.dk/ . What is a købsbilag / purchase voucher? You can use a purchase voucher to book expenses, one item at a time. Most of our users expect their expenses to be booked with this voucher type, since they will get assistance in Dinero, by using this template. Keep this in mind. This voucher type also gives you the option to add a contact as a creditor to the purchase. Once created or booked they can be found in Dinero under: Bogføring > Bilagsoversigt What is a kassekladdelinje / ledger item? The ledger is a classic booking tool, where you can add several lines for booking and book them all at once. Very useful if you need to create several entries in one call. The ledger can be found under: Bogføring > Kassekladde What endpoint should I use? In most cases, we recommend using the endpoints which our users would use themselves in app. That means, if you want to book an expense, choose something specific to that. For expenses that would be a purchase voucher . How do I book sales and invoices? If you need to book a sale, it might make sense to do it as an invoice, if you don't generate one on your end. If you create the invoice on your own end, it would make sense to book it as a manual voucher, uploading your invoice as a file, and attach that to the manual voucher. Does your integration book daily sales, then it would probably make sense to create a manual voucher as well, and probably a few extra accounts for credit card, mobilepay etc. How do contacts work? Contacts are all the customers and suppliers of the organization in one big list. You can sort these if you want to just see debitors or creditors. There are isDebitor and isCreditor values, which will be true if the organization you're requesting has either had a sale or purchased something from a contact. A contact can only become a debitor or creditor by either creating a sales- or purchase invoice to them. Debitors are contacts that the organization have made a sale to. Creditors are contacts that the organization has bought something from. Do you support webhooks? Currently we only have one available webhook, the entries webhook. You can find our webhook endpoints here . Webhooks are only available for one-to-many integrations created through Visma Connect. Personal integrations cannot use webhooks and should instead use list endpoints with the changesSince filter applied. Why am I getting a 401 unauthorized? Most likely your user has supplied you with the organizationID, and the logged in user, does not have access to the organization. Try using the /organizations endpoint after user authorization, and let them select their organization from a list of organizations they have access to, to avoid this issue. This issue also often occurs for new integration partner, who has created a new Visma profile for their Connect application, while using another for Dinero. This means you now have two different accounts, but only one with access to anything in Dinero. You can always check the user, when authorizing on the accept / deny page. This page will also indicate which user is logged in, and you can log out and change the account before authorizing. Why am I getting a 403 forbidden? Most likely the user does not have a Pro or Total subscription, which is required to interact with the API. You can always check out the HasPro or HasTotal status on the /organizations endpoint. How does replay detection work? If you work with refresh tokens and especially one time refresh tokens that can last forever, you need to handle them very carefully. Visma connect has replay detection. This means that if you try to swap an already used refresh token, then you will invalidate the entire authorization and you need to involve the user again. So be very careful with your refresh tokens. Is there throttling? We have a rate limit of 100 request a minute pr. organization, on a ClientID basis. If you hit the rate limit, this is the body of the HTTP 429 message that you will see: API calls quota exceeded! (...) We constantly monitor the usage of our API to ensure that it is used as efficient as possible. If we detect that the API can be used more efficient or that the API resources are being exhausted by a single client integration and it is evaluated by Dinero to hurt the general service of the API to other customers, Dinero can decide to revoke the access for single clients. You can also expect action to be taken, if you hit a lot of 400, 401 or 403 requests. We expect you to mitigate this on your end. Dinero will always strive to solve such issues in dialog with the integrating partner before any counter measures are taken. How do I post images? One of the harder parts of REST API's are images, because they require some extra steps. Here is a CURL example of image upload: POST https://api.dinero.dk/v1/[organization_id]/files/?fileName=sample-invoice.jpg HTTP/1.1 Authorization: Bearer eyJ0eXAiOiJKV1QiLC.... Accept: application/json Content-Type: multipart/form-data; boundary=\"-------abcdefg1234\" Host: api.dinero.dk Content-Length: 313036 Expect: 100-continue Connection: Keep-Alive ---------abcdefg1234 Content-Type: image/jpeg Content-Disposition: form-data; name=image; filename=sample-invoice.jpg; filename\\*=utf-8''sample-invoice.jpg [ReplaceWithYourImage] ---------abcdefg1234-- Luckily this is all extremely well documented online, and you can easily search REST Image upload to find some great resources. How do I use filters? Filters are not available on all properties, so be sure to check the endpoints queryFilter URI parameter description to see which. If the endpoint do not contain a queryFilter URI parameter, then it does not support filtering. Each filter command is built after the structure: [PropertyName]+[Operator]+[Value] For instance: /v1//invoices?queryFilter=ContactGuid+eq+'012a5052-af79-4696-826c-709c278ae7f9' Be aware that the [Value] is not case sensitive. Each filter command should be separated with: ; Name Types Operator Example Equals string, int, bool eq Name+eq+’John Doe’ Contains string contains Name+contains+’John D’ How does pagination work? GET methods, that potentially have a very large output, implements pagination. It can return a maximum of 1000 entries per page. If a higher pageSize is given an Exception with error code 43 is thrown. The pagination defaults to a pageSize of 100 entries, and returns the first page if left empty. The pagination URI properties are listed below: Name Description Type Additional information page The 0-based page number integer Default value is 0 pageSize The maximum number of items to include in a page. Max 1000. integer Default value is 100. Max value is 1000. Previous: Postman Could we improve these docs or do you have any questions? Please write us at api@dinero.dk Visma Dinero ApS | CVR: 34731543 | api@dinero.dk "
+  },
+  {
+    "id": "economic-documents",
+    "url": "https://apis.e-conomic.com/documentsapi/redoc.html?receipt-discovery=1",
+    "accessed": "2026-10-08",
+    "http_status": 200,
+    "sha256": "6ca998e91fc3a7b6f5939adcba7ff84ce86caf228375c18cf1da916ac5492b68",
+    "excerpt": "Attach PDF/JPG/PNG Use this endpoint to attach a PDF or an image (JPG or PNG) to Booked or Draft Entries. Authorizations: ( X-AppSecretToken X-AgreementGrantToken ) Request Body schema: multipart/form-data accountingYear required string [ 0 .. 11 ] characters The accounting year of the voucher that the document is attached to Filterable: eq, ne, lt, lte, gt, gte, in, nin Sortable: false file required string < binary > Filterable: not filterable Sortable: false Max allowed file size: 9 MB Allowed content types: application/pdf ( .pdf ), image/jpeg ( .jpg ), image/jpeg ( .jpeg ), image/png ( .png ) voucherNumber required integer < int32 > [ 1 .. 999999999 ] The number of the voucher that the document is attached to Filterable: eq, ne, lt, lte, gt, gte, in, nin Sortable: false note string or null [ 0 .. 250 ] characters The note of the attached document Filterable: not filterable Sortable: false number integer < int32 > The unique number of the attached document Filterable: eq, ne, lt, lte, gt, gte, in, nin Sortable: true onConflict integer < int32 > Default: 0 Enum : 0 1 Action when the voucher already has a document attached. 0 = Merge (default), 1 = Fail. Click to see the list of possible values. Value Name Description 0 Merge 1 Fail Filterable: not filterable Sortable: false pageCount integer or null < int32 > The number of pages of the attached document Filterable: not filterable Sortable: false Responses 201 Created Response Schema: application/json number integer < int32 > Filterable: not filterable Sortable: false 400 Bad request. Your request does not pass our validation. Check the errors array for more details. 401 Unauthorized access. Please take a look at https://apis.e-conomic.com and follow the links to help on authorization, or use the word demo for both tokens. 403 Access forbidden. You won’t necessarily have access to everything. So even though you were authorized we might still deny access to certain resources. This depends on the roles asked for when the grant was issued. 429 Too many requests. You have made too many calls towards our API. You are over your quota. Need to wait a bit. Check info in the response headers. 500 Internal server error. Something went wrong but the error has been logged. If you continue to see errors here, please contact api@e-conomic.com . Remember to include log id and agreement number when contacting support. post /AttachedDocuments https://apis.e-conomic.com/documentsapi/v4.0.1 /AttachedDocuments Request samples Payload Content type multipart/form-data Copy Content - Type : multipart / form - data ; boundary = -- -- boundary -- -- -- boundary Content - Disposition : form - data ; name = \"File\" ; filename = \"[file name here]\" Content - Type : [ content type here ] < binary > -- -- -- boundary Content - Disposition : form - data ; name = \"VoucherNumber\" -- -- -- boundary Content - Disposition : form - data ; name = \"AccountingYear\" string -- -- -- boundary -- Response samples 201 400 401 403 429 500 Content type application/json Copy { \"number\" : 0 } Retrieve a page of AttachedDocuments Use this endpoint to load a page of AttachedDocuments. Authorizations: ( X-AppSecretToken X-AgreementGrantToken ) query Parameters filter string Use this parameter to set the filtering for fields. Filtering instructions pageSize integer < int32 > [ 1 .. 100 ] Default: 20 Use this parameter to set the page size. Pagination instructions skipPages integer < int32 > [ 0 .. 100 ] Default: 0 Use this parameter to set number of pages to skip. Pagination instructions sort string Use this parameter to set the sort fields and direction. Sort instructions Responses 200 Success Response Schema: application/json Array accountingYear required string [ 0 .. 11 ] characters The accounting year of the voucher that the document is attached to Filterable: eq, ne, lt, lte, gt, gte, in, nin Sortable: false voucherNumber required integer < int32 > [ 1 .. 999999999 ] The number of the voucher that the document is attached to Filterable: eq, ne, lt, lte, gt, gte, in, nin Sortable: false note string or null [ 0 .. 250 ] characters The note of the attached document Filterable: not filterable Sortable: false number integer < int32 > The unique number of the attached document Filterable: eq, ne, lt, lte, gt, gte, in, nin Sortable: true pageCount integer or null < int32 > The number of pages of the attached document Filterable: not filterable Sortable: false 400 Bad request. Your request does not pass our validation. Check the errors array for more details. 401 Unauthorized access. Please take a look at https://apis.e-conomic.com and follow the links to help on authorization, or use the word demo for both tokens. 403 Access forbidden. You won’t necessarily have access to everything. So even though you were authorized we might still deny access to certain resources. This depends on the roles asked for when the grant was issued. 429 Too many requests. You have made too many calls towards our API. You are over your quota. Need to wait a bit. Check info in the response headers. 500 Internal server error. Something went wrong but the error has been logged. If you continue to see errors here, please contact api@e-conomic.com . Remember to include log id and agreement number when contacting support. get /AttachedDocuments/paged https://apis.e-conomic.com/documentsapi/v4.0.1 /AttachedDocuments/paged Response samples 200 400 401 403 429 500 Content type application/json Copy Expand all Collapse all [ { \"number\" : 0 , \"note\" : \"string\" , \"pageCount\" : 0 , \"voucherNumber\" : 1 , \"accountingYear\" : \"string\" } ] Retrieve the number of AttachedDocuments Call this endpoint to get the number of AttachedDocuments. You can use filtering as well. Authorizations: ( X-AppSecretToken X-AgreementGrantToken ) query Parameters filter string Use this parameter to set the filtering for fields. Filtering instructions Responses 200 Success Response Schema: application/json integer < int32 > 400 Bad request. Your request does not pass our validation. Check the errors array for more details. 401 Unauthorized access. Please take a look at https://apis.e-conomic.com and follow the links to help on authorization, or use the word demo for both tokens. 403 Access forbidden. You won’t necessarily have access to everything. So even though you were authorized we might still deny access to certain resources. This depends on the roles asked for when the grant was issued. 429 Too many requests. You have made too many calls towards our API. You are over your quota. Need to wait a bit. Check info in the response headers. 500 Internal server error. Something went wrong but the error has been logged. If you continue to see errors here, please contact api@e-conomic.com . Remember to include log id and agreement number when contacting support. get /AttachedDocuments/count https://apis.e-conomic.com/documentsapi/v4.0.1 /AttachedDocuments/count Response samples 200 400 401 403 429 500 Content type application/json Copy 0 0 Retrieve single AttachedDocument Use this endpoint to load a single AttachedDocument by number. Authorizations: ( X-AppSecretToken X-AgreementGrantToken ) path Parameters number required integer < int32 > Responses 200 Success Response Schema: application/json accountingYear required string [ 0 .. 11 ] characters The accounting year of the voucher that the document is attached to Filterable: eq, ne, lt, lte, gt, gte, in, nin Sortable: false voucherNumber required integer < int32 > [ 1 .. 999999999 ] The number of the voucher that the document is attached to Filterable: eq, ne, lt, lte, gt, gte, in, nin Sortable: false note string or null [ 0 .. 250 ] characters The note of the attached document Filterable: not filterable Sortable: false number integer < int32 > The unique number of the attached document Filterable: eq, ne, lt, lte, gt, gte, in, nin Sortable: true pageCount integer or null < int32 > The number of pages of the attached document Filterable: not filterable Sortable: false 400 Bad request. Your request does not pass our validation. Check the errors array for more details. 401 Unauthorized access. Please take a look at https://apis.e-conomic.com and follow the links to help on authorization, or use the word demo for both tokens. 403 Access forbidden. You won’t necessarily have access to everything. So even though you were authorized we might still deny access to certain resources. This depends on the roles asked for when the grant was issued. 404 Resource not found. The resource you have been looking for does not exist. 429 Too many requests. You have made too many calls towards our API. You are over your quota. Need to wait a bit. Check info in the response headers. 500 Internal server error. Something went wrong but the error has been logged. If you continue to see errors here, please contact api@e-conomic.com . Remember to include log id and agreement number when contacting support. get /AttachedDocuments/{number} https://apis.e-conomic.com/documentsapi/v4.0.1 /AttachedDocuments/{number} Response samples 200 400 401 403 404 429 500 Content type application/json Copy { \"number\" : 0 , \"note\" : \"string\" , \"pageCount\" : 0 , \"voucherNumber\" : 1 , \"accountingYear\" : \"string\" } Delete single AttachedDocument Use this endpoint to delete a single AttachedDocument by number. Authorizations: ( X-AppSecretToken X-AgreementGrantToken ) path Parameters number required integer < int32 > Responses 204 No Content 400 Bad request. Your request does not pass our validation. Check the errors array for more details. 401 Unauthorized access. Please take a look at https://apis.e-conomic.com and follow the links to help on authorization, or use the word demo for both tokens. 403 Access forbidden. You won’t necessarily have access to everything. So even though you were authorized we might still deny access to certain resources. This depends on the roles asked for when the grant was issued. 404 Resource not found. The resource you have been looking for does not exist. 429 Too many requests. You have made too many calls towards our API. You are over your quota. Need to wait a bit. Check info in the response headers. 500 Internal server error. Something went wrong but the error has been logged. If you continue to see errors here, please contact api@e-conomic.com . Remember to include log id and agreement number when contacting support. delete /AttachedDocuments/{number} https://apis.e-conomic.com/documentsapi/v4.0.1 /AttachedDocuments/{number} Response samples 400 401 403 404 429 500 Content type application/problem+json Copy Expand all Collapse all { \"type\" : \"string\" , \"title\" : \"string\" , \"status\" : 0 , \"detail\" : \"string\" , \"instance\" : \"string\" , \"errors\" : [ { \"message\" : \"string\" , \"errorCode\" : \"string\" , \"property\" : \"string\" } ] , \"traceId\" : \"string\" , \"errorCode\" : \"string\" , \"traceTimeUtc\" : \"string\" } Retrieve the pdf file for a single AttachedDocument Call this endpoint to retrieve the pdf file for a single AttachedDocumen",
+    "extra_excerpts": {
+      "roles": "ou will see. 403 Forbidden You won’t necessarily have access to everything. So even though you were authorized we might still deny access to certain resources. This depends on the roles asked for when the grant was issued. 404 Not Found This is returned when you try to request something that doesn’t exist. This could be a resource that has been deleted or just a URL you tried to hack. If you see a lot of these, it could be an indication that you aren’t using the links provided by the API. You should never need to concatenate any URLs. The API should provide you with the links needed. 405 Method Not Allowed Not all endpoints support all HTTP methods. If you try issue a PUT request to a collection resource this is what you get. 409 Conflict The request cannot be completed due to a conflict with the current state of the target resource. Retrieve the resource/object and try the update again. This is needed in order to prevent you from rolling back another user's update. 415 Unsupported Media Type Our API is a JSON api. If you ask us to give you anything else, we give you this, and tell you why in the JSON body of the response. 500 Internal Server Error We don’t like to see these, and they are flagged in our logs. When you see this, something went wrong on our end. Either try again, or contact our support. Required and Readonly Properties Since OpenAPI allows client generation based on the specification, we decided to use the same model/schema in our for both read and write endpoints where possible. This led us to chose not to have the Id/Number in the URL parameter for PUT requests, but to use the one from the body, so there is no confusion. When a property is marked as required it means you need to provide a value on each POST and PUT requests. When a property is marked as readonly it means you should provide the same value you get in the GET requests",
+      "Retrieve the pdf file for a single AttachedDocument Call": ": \"string\" , \"errors\" : [ { \"message\" : \"string\" , \"errorCode\" : \"string\" , \"property\" : \"string\" } ] , \"traceId\" : \"string\" , \"errorCode\" : \"string\" , \"traceTimeUtc\" : \"string\" } Retrieve the pdf file for a single AttachedDocument Call this endpoint to retrieve the pdf file for a single AttachedDocument. Authorizations: ( X-AppSecretToken X-AgreementGrantToken ) path Parameters number required integer < int32 > Responses 200 Success Response Schema: application/pdf string < binary > 401 Unauthorized access. Please take a look at https://apis.e-conomic.com and follow the links to help on authorization, or use the word demo for both tokens. 403 Access forbidden. You won’t necessarily have access to everything. So even though you were authorized we might still deny access to certain resources. This depends on the roles asked for when the grant was issued. 404 Resource not found. The resource you have been looking for does not exist. 429 Too many requests. You have made too many calls towards our API. You are over your quota. Need to wait a bit. Check info in the response headers. 500 Internal server error. Something went wrong but the error has been logged. If you continue to see errors here, please contact api@e-conomic.com . Remember to include log id and agreement number when contacting support. get /AttachedDocuments/{number}/pdf https://apis.e-conomic.com/documentsapi/v4.0.1 /AttachedDocuments/{number}/pdf Response samples 401 403 404 429 500 Content type application/problem+json Copy Expand all Collapse all { \"type\" : \"string\" , \"title\" : \"string\" , \"status\" : 0 , \"detail\" : \"string\" , \"instance\" : \"string\" , \"errors\" : [ { \"message\" : \"string\" , \"errorCode\" : \"string\" , \"property\" : \"string\" } ] , \"traceId\" : \"string\" , \"errorCode\" : \"string\" , \"traceTimeUtc\" : \"string\" } Bulk delete AttachedDocuments Use this endpoint to bulk delete AttachedD"
+    }
+  },
+  {
+    "id": "economic-rest",
+    "url": "https://restdocs.e-conomic.com/?receipt-discovery=1",
+    "accessed": "2026-10-08",
+    "http_status": 200,
+    "sha256": "55010db8162d728f07d5f0e5fe9a9741f510c79cdb323b24df7892d378375612",
+    "excerpts": [
+      "POST /invoices/drafts/:draftInvoiceNumber/attachment/file Allows attaching a document to the draft invoice. Only valid PDF files are supported. Please note that for the file upload “application/json” is not a valid content-type. Upload of binary data requires the content-type header to be “multipart/form-data”. Some clients do not automatically set boundaries on the multipart/form-data and for these you will need to define “multipart/form-data; boundary= ;” where boundary defines the file part of the multipart stream. Returns status code 201 upon successful creation. Maximum file size is 9.0 MB per request. var form = new FormData (); form . append ( \"\" , \"path/to/the/file.jpg\" ); var settings = { \"crossDomain\" : true , \"url\" : \"https://restapi.e-conomic.com/invoices/drafts/123/attachment/file\" , \"method\" : \"POST\" , \"headers\" : { \"x-appsecrettoken\" : \"demo\" , \"x-agreementgranttoken\" : \"demo\" , \"cache-control\" : \"no-cache\" }, \"processData\" : false , \"mimeType\" : \"multipart/form-data\" , \"data\" : form } $ . ajax ( settings ). done ( function ( response ) { console . log ( response ); }); DELETE /invoices/drafts/:draftInvoiceNumber/attachment/file Removes the entire attached document that is associated with the given draft invoice. Returns status code 204 upon successful deletion. Operation is not idempotent, which means that on the consecutive calls it will be returning status code 404. Journals Journals contain your draft transactions, that can be modified until the journal is booked or the drafts are deleted. Journals are known as Kassekladder in Danish. For more information please look at the Danish e-copedia article https://www.e-conomic.dk/support/artikler/kassekladde . GET /journals This is the root endpoint for the journals endpoint. It provides you with an overview of available journals on the agreement. It also includes convenience links to a few templates that allow you to create entries in the journal with ease. Schema name journals.get.schema.json Return type This method returns a collection of items. The containing items are described below. Required properties self, settings.contraAccounts.customerPayments.self, settings.contraAccounts.financeVouchers.self, settings.contraAccounts.supplierPayments.self, templates.self Filterable properties journalNumber, name Sortable properties journalNumber, name Properties Name Type Format Max value Min value V"
+    ]
+  },
+  {
+    "id": "economic-roles",
+    "url": "https://www.e-conomic.com/developer/permissions",
+    "accessed": "2026-10-08",
+    "http_status": 200,
+    "sha256": "e6754b9a5f0df8eb5de231ef7a3bd094f23e2577b002f7cca1f28b6b9bbc1518",
+    "text": " Role-based permissions to user data block-306\" role=\"navigation\"> Online Accounting Software Start Developing Documentation Tech-talk blog Twitter App Market Requirements Publishing FAQ App Listing Search Login Search this site Role-based permissions to user data Check out the access levels for each app role App access to user data is limited by the role that is set when creating an App. You can learn more about specifying roles and using URL redirects on our Connection page . Currently, the roles set up are 'Superuser', 'Bookkeeping', 'Sales' and 'Project employee'. Below, you can see the entities that are accessible to each role: REST Path Superuser Bookkeeping Sales Project Employee /accounts ✓ ✓ /accounting-years/:accounting-year/periods ✓ ✓ /accounting-years ✓ ✓ n/a (Project module) ✓ /payment-types ✓ ✓ n/a ✓ ✓ /journals/:journalNumber ✓ ✓ /journals/:journalNumber/vouchers /journals/:journalNumber/entries ✓ ✓ /self ✓ ✓ n/a (Project module) ✓ ✓ n/a (Project module) ✓ ✓ /suppliers ✓ ✓ /suppliers/:supplierNo/contacts ✓ ✓ /accounting-years/:accounting-year/* ✓ ✓ /supplier-groups ✓ ✓ /currencies ✓ ✓ ✓ /invoices/drafts ✓ ✓ /invoices/drafts/:draftInvoiceNumber ✓ ✓ n/a (Inventory module) ✓ n/a (Inventory module) ✓ /customers ✓ ✓ /customers/:customerNumber/contacts ✓ ✓ /accounting-years/:accounting-year/* ✓ ✓ /customer-groups ✓ ✓ /customers/:customerNumber/delivery-locations ✓ ✓ /departmental-distributions ✓ ✓ ✓ /departmental-distributions ✓ ✓ n/a ✓ ✓ /employees ✓ ✓ n/a ✓ ✓ /accounting-years/:accounting-year/* ✓ ✓ n/a (Inventory module) ✓ ✓ /invoices/booked ✓ ✓ /invoices/booked/:bookedInvoiceNumber ✓ ✓ n/a ✓ ✓ ✓ n/a (Project module) ✓ ✓ /orders ✓ ✓ /orders/:orderNumber ✓ ✓ n/a (Inventory module) ✓ /products ✓ ✓ ✓ /product-groups ✓ ✓ /products/:productNumber/pricing/currency-specific-sales-prices ✓ ✓ ✓ n/a (Project module) ✓ ✓ n/a (Project module) ✓ ✓ n/a ✓ ✓ n/a ✓ ✓ n/a ✓ n/a ✓ n/a ✓ ✓ n/a (Subscription module) ✓ ✓ n/a (Subscription module) ✓ ✓ n/a (Subscription module) ✓ ✓ /accounting-years/:accounting-year/totals ✓ /layouts ✓ ✓ /payment-terms ✓ ✓ ✓ n/a (Project module) ✓ ✓ /units ✓ ✓ /vat-accounts ✓ ✓ SOAP Entity REST Path Superuser Bookkeeping Sales Project Employee Account /accounts ✓ ✓ - - AccountingPeriod /accounting-years/:accounting-year/periods ✓ ✓ - - AccountingYear /accounting-years ✓ ✓ - - Activity n/a (Project module) ✓ - - - BankPaymentType /payment-types ✓ ✓ - - BudgetFigure n/a ✓ ✓ - - CashBook /journals/:journalNumber ✓ ✓ - - CashBookEntry /journals/:journalNumber/vouchers ✓ ✓ - - Company /self ✓ - ✓ - CostType n/a (Project module) ✓ ✓ - - CostTypeGroup n/a (Project module) ✓ ✓ - - Creditor /suppliers ✓ ✓ - - CreditorContact /suppliers/:supplierNo/contacts ✓ ✓ - - CreditorEntry /accounting-years/:accounting-year/* ✓ ✓ - - CreditorGroup /supplier-groups ✓ ✓ - - Currency /currencies ✓ ✓ ✓ - CurrentInvoice /invoices/drafts ✓ - ✓ - CurrentInvoiceLine /invoices/drafts/:draftInvoiceNumber ✓ - ✓ - CurrentSupplierInvoice n/a (Inventory module) ✓ - - - CurrentSupplierInvoiceLine n/a (Inventory module) ✓ - - - Debtor /customers ✓ - ✓ - DebtorContact /customers/:customerNumber/contacts ✓ - ✓ - DebtorEntry /accounting-years/:accounting-year/* ✓ - ✓ - DebtorGroup /customer-groups ✓ - ✓ - DeliveryLocation /customers/:customerNumber/delivery-locations ✓ - ✓ - Department /departmental-distributions ✓ ✓ ✓ - DistributionKey /departmental-distributions ✓ ✓ - - DocumentArchiveCategory n/a ✓ ✓ - - Employee /employees ✓ - ✓ - EmployeeGroup n/a ✓ - ✓ - Entry /accounting-years/:accounting-year/* ✓ ✓ - - InventoryLocation n/a (Inventory module) ✓ - ✓ - Invoice /invoices/booked ✓ - ✓ - InvoiceLine /invoices/booked/:bookedInvoiceNumber ✓ - ✓ - KeyFigureCode n/a ✓ ✓ ✓ - MileageEntry n/a (Project module) ✓ - - ✓ Order /orders ✓ - ✓ - OrderLine /orders/:orderNumber ✓ - ✓ - PriceGroup n/a (Inventory module) ✓ - - - Product /products ✓ - ✓ ✓ ProductGroup /product-groups ✓ - ✓ - ProductPrice /products/:productNumber/pricing/currency-specific-sales-prices ✓ - ✓ ✓ Project n/a (Project module) ✓ - - ✓ ProjectGroup n/a (Project module) ✓ - - ✓ Quotation n/a ✓ - ✓ - QuotationLine n/a ✓ - ✓ - ReportCode n/a ✓ - - - ReportCodeSet n/a ✓ - - - ScannedDocument n/a ✓ ✓ - - Subscriber n/a (Subscription module) ✓ - ✓ - Subscription n/a (Subscription module) ✓ - ✓ - SubscriptionLine n/a (Subscription module) ✓ - ✓ - SumInterval /accounting-years/:accounting-year/totals ✓ - - - TemplateCollection /layouts ✓ - ✓ - TermOfPayment /payment-terms ✓ ✓ ✓ - TimeEntry n/a (Project module) ✓ - - ✓ Unit /units ✓ - ✓ - VatAccount /vat-accounts ✓ ✓ - - Need help? We are ready to help you with your API questions at api@e-conomic.com . And if you have questions regarding apps, don't hesitate to contact apps@e-conomic.com . Contact Visma e-conomic a/s VAT: 29403473 Gærtorvet 1-5 1799 Copenhagen Denmark Tlf: 88 20 48 40 E-mail: info@e-conomic.dk © 2024 Visma e-conomic A/S. Alle rettigheder forbeholdes. Documentation API Roadmap OpenAPI Docs REST Docs SOAP Docs News API Forum TechTalk Blog Support App Partner Requirements Publishing Partner FAQ This page is protected by reCAPTCHA. Google's privacy policy and terms apply. Visma Group Visma in Denmark "
+  }
+]
