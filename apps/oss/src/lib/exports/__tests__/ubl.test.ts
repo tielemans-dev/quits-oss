@@ -171,14 +171,33 @@ describe("UBL e-invoice", () => {
   describe("payment means", () => {
     const payment = { iban: "DK5000400440116243", bic: "DABADKKK", reference: "INV-0007" }
 
-    it("writes a SEPA credit transfer to the seller's IBAN with the invoice number as reference", () => {
-      const xml = buildUblDocument(invoice({ payment }))
+    const meansXml = (code: string, id = "INV-0007") =>
+      new RegExp(
+        `<cac:PaymentMeans>\\s*<cbc:PaymentMeansCode>${code}</cbc:PaymentMeansCode>\\s*<cbc:PaymentID>${id}</cbc:PaymentID>\\s*<cac:PayeeFinancialAccount>\\s*<cbc:ID>DK5000400440116243</cbc:ID>\\s*<cac:FinancialInstitutionBranch>\\s*<cbc:ID>DABADKKK</cbc:ID>\\s*</cac:FinancialInstitutionBranch>\\s*</cac:PayeeFinancialAccount>\\s*</cac:PaymentMeans>`
+      )
+
+    it("writes a SEPA credit transfer (58) to the seller's IBAN on a EUR invoice", () => {
+      const xml = buildUblDocument(invoice({ currency: "EUR", payment }))
 
       expect(between(xml, "cbc:PaymentMeansCode")).toEqual(["58"])
       expect(between(xml, "cbc:PaymentID")).toEqual(["INV-0007"])
-      expect(xml).toMatch(
-        /<cac:PaymentMeans>\s*<cbc:PaymentMeansCode>58<\/cbc:PaymentMeansCode>\s*<cbc:PaymentID>INV-0007<\/cbc:PaymentID>\s*<cac:PayeeFinancialAccount>\s*<cbc:ID>DK5000400440116243<\/cbc:ID>\s*<cac:FinancialInstitutionBranch>\s*<cbc:ID>DABADKKK<\/cbc:ID>\s*<\/cac:FinancialInstitutionBranch>\s*<\/cac:PayeeFinancialAccount>\s*<\/cac:PaymentMeans>/
-      )
+      expect(xml).toMatch(meansXml("58"))
+    })
+
+    it("writes a plain credit transfer (30) to the same IBAN on a DKK invoice", () => {
+      const xml = buildUblDocument(invoice({ currency: "DKK", payment }))
+
+      expect(between(xml, "cbc:PaymentMeansCode")).toEqual(["30"])
+      expect(between(xml, "cbc:PaymentID")).toEqual(["INV-0007"])
+      expect(xml).toMatch(meansXml("30"))
+    })
+
+    it.each([["SEK"], ["USD"], ["GBP"], ["NOK"]])("does not call a %s invoice a SEPA transfer", (currency) => {
+      expect(between(buildUblDocument(invoice({ currency, payment })), "cbc:PaymentMeansCode")).toEqual(["30"])
+    })
+
+    it("treats the currency code case-insensitively", () => {
+      expect(between(buildUblDocument(invoice({ currency: "eur", payment })), "cbc:PaymentMeansCode")).toEqual(["58"])
     })
 
     it("places the payment means between the delivery and the tax total", () => {
@@ -217,6 +236,7 @@ describe("UBL e-invoice", () => {
 
     it("does not change the missing-data check", () => {
       expect(validateEinvoice(invoice({ payment }))).toEqual([])
+      expect(validateEinvoice(invoice({ currency: "EUR", payment }))).toEqual([])
     })
   })
 
