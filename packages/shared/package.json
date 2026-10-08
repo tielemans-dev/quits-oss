@@ -10,6 +10,7 @@
     "src/runtimeEnv.ts",
     "src/http.ts",
     "src/pricing/index.ts",
+    "src/documents/view.ts",
     "src/currency.ts"
   ],
   "exports": {
@@ -18,6 +19,7 @@
     "./logging": "./src/logging.ts",
     "./runtimeEnv": "./src/runtimeEnv.ts",
     "./pricing": "./src/pricing/index.ts",
+    "./documents": "./src/documents/view.ts",
     "./currency": "./src/currency.ts"
   },
   "scripts": {
