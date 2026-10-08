@@ -1,3 +1,4 @@
+import { enJournalMessages } from "./journal"
 import { enAgreementsMessages } from "./agreements"
 import { enPaymentDetailsMessages } from "./payment-details"
 import { enPaymentsMessages } from "./payments"
@@ -28,6 +29,7 @@ import { enUiMessages } from "./ui"
 import { enUserMessages } from "./user"
 
 export const enCatalog = {
+  ...enJournalMessages,
   ...enAgreementsMessages,
   ...enPaymentDetailsMessages,
   ...enPaymentsMessages,

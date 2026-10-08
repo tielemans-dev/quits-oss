@@ -1,0 +1,18 @@
+{
+  "type": "delivery.manual_resend_requested",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "delivery/journal.ts",
+      "typeExpression": "\"delivery.manual_resend_requested\"",
+      "payloadExpression": "{\n            deliveryId: job.id,\n            reason: input.reason,\n            acknowledgeDuplicateRisk: true,\n            recipient: payload.message.to\n          }",
+      "variant": "default",
+      "payload": {
+        "deliveryId": "delivery-1",
+        "reason": "Correction",
+        "acknowledgeDuplicateRisk": true,
+        "recipient": "customer@example.test"
+      }
+    }
+  ]
+}

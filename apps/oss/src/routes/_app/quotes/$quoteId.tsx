@@ -1,3 +1,4 @@
+import { OperationJournal } from "../../../components/activity/operation-journal"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
@@ -997,6 +998,7 @@ function QuoteDetailPage() {
           )}
         </CardContent>
       </Card>
+      <OperationJournal documentType="quote" documentId={quoteId} />
     </div>
   )
 }

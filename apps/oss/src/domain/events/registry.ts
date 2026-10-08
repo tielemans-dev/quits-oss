@@ -42,6 +42,9 @@ const artifact = z.object({ ref: s.min(1), hash: s.regex(/^[a-f0-9]{64}$/), size
 
 /** Serialized v1 shapes, inventoried from the writers. Change a payload only with a version bump. */
 export const eventRegistry = {
+  "delivery.recovery_requested": { version: 1, schema: z.object({ deliveryId: s }).strict() },
+  "delivery.manual_resend_requested": { version: 1, schema: z.object({ deliveryId: s, reason: s, acknowledgeDuplicateRisk: z.literal(true), recipient: s }).strict() },
+  "delivery.provider_evidence": { version: 1, schema: z.object({ deliveryId: s, evidenceId: s, observedAt: date, outcome: z.enum(["accepted", "unknown"]), providerMessageId: s.optional() }).strict() },
   "document.artifact_stored": { version: 1, schema: z.object({ ...artifactIdentity,
     artifacts: z.object({ pdf: artifact, ubl: artifact.optional() }).strict(), rendererVersion: s }).strict() },
   "document.artifact_missing": { version: 1, schema: z.object({ ...artifactIdentity, reason: s }).strict() },

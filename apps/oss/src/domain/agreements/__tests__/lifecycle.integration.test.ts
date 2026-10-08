@@ -36,6 +36,7 @@ import {
   expireOrganizationAgreements,
   sweepPublicLinkAttempts,
 } from "../../features/agreement-expiry"
+import { manualResendCommand } from "../../delivery/journal"
 import { settleAbandonedDeliveries } from "../../delivery/outbox"
 import { retryEmailDeliveries, findEmailDeliveryJobs } from "../../../test-utils/email-outbox"
 import {
@@ -875,10 +876,15 @@ describe("agreement validity", () => {
     const issued = await ctx.get()
     expect(issued).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "unconfirmed" })
     expect(identity(issued)).toEqual(identity(pending))
+    rejected(await ctx.run(resendAgreement, { id }), "manual_resend_required")
     vi.mocked(deliver).mockRejectedValueOnce(
       new EmailSendError("validation_error", "bad recipient"),
     )
-    completed(await ctx.run(resendAgreement, { id }, new Date(now.getTime() + 1000)))
+    completed(await ctx.run(manualResendCommand("agreement"), {
+      documentType: "agreement", documentId: id, deliveryId: job.id,
+      reason: "Recipient verified the original email and requested another copy",
+      acknowledgeDuplicateRisk: true, clientRequestId: "agreement-manual-recovery"
+    }, new Date(now.getTime() + 1000)))
     expect(await ctx.get()).toMatchObject({
       status: "sent",
       lastEmailAttemptOutcome: "failed",

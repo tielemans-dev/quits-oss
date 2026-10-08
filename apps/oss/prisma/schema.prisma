@@ -763,6 +763,8 @@ model DomainEvent {
 }
 
 model CommandReceipt {
+  /// Minimal document reference for failed or waiting commands with no committed event.
+  target          Json?
   id              String   @id @default(cuid())
   organizationId  String
   actorKey        String

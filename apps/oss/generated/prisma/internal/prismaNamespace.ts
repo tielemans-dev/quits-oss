@@ -4062,6 +4062,7 @@ export type DomainEventScalarFieldEnum = (typeof DomainEventScalarFieldEnum)[key
 
 
 export const CommandReceiptScalarFieldEnum = {
+  target: 'target',
   id: 'id',
   organizationId: 'organizationId',
   actorKey: 'actorKey',

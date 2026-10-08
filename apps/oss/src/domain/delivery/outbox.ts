@@ -95,7 +95,7 @@ const storedMessageSchema = z.object({
 })
 export type StoredEmailMessage = z.infer<typeof storedMessageSchema>
 
-const payloadSchema = z.object({
+export const deliveryPayloadSchema = z.object({
   message: storedMessageSchema,
   idempotencyKey: z.string().min(1),
   completion: z.object({ kind: z.string().min(1), target: z.record(z.string(), z.string()) }),
@@ -108,12 +108,23 @@ const payloadSchema = z.object({
   requests: z.number().int().optional(),
   /** Pinned before the first request. Legacy requests without this field used Resend. */
   provider: z.enum(["resend", "smtp"]).optional(),
+  recoveryOf: z.string().optional(),
+  manualReason: z.string().optional(),
+  attempts: z.array(z.object({
+    startedAt: z.string(),
+    outcome: z.enum(["started", "accepted", "rejected", "uncertain"]),
+    providerMessageId: z.string().optional(),
+  })).optional(),
+  evidence: z.array(z.object({
+    evidenceId: z.string(), observedAt: z.string(),
+    outcome: z.enum(["accepted", "unknown"]), providerMessageId: z.string().optional(),
+  })).optional(),
   /** A failure decided but not yet settled, kept so a retried settlement settles the same way. */
   decision: z
     .object({ reason: z.enum(["rejected", "unconfirmed", "withdrawn"]), message: z.string(), code: emailProviderFailureCodeSchema.optional() })
     .optional(),
 })
-type DeliveryPayload = z.infer<typeof payloadSchema>
+export type DeliveryPayload = z.infer<typeof deliveryPayloadSchema>
 
 export type DeliveryFailure = {
   reason: "rejected" | "unconfirmed" | "withdrawn"
@@ -173,6 +184,8 @@ export const enqueueEmailDelivery = (input: {
   message: EmailMessage & StoredEmailMessage
   idempotencyKey: string
   completion: { kind: string; target: Record<string, string> }
+  recoveryOf?: string
+  manualReason?: string
 }) =>
   Effect.gen(function* () {
     const command = yield* Command
@@ -191,6 +204,7 @@ export const enqueueEmailDelivery = (input: {
       commandId: command.commandId,
       approvedByUserId: command.approvedByUserId,
       requests: 0,
+      ...(input.recoveryOf ? { recoveryOf: input.recoveryOf, manualReason: input.manualReason } : {}),
     }
     const key = deliveryKey(input.idempotencyKey)
     command.enqueue({ type: EMAIL_DELIVERY_JOB, payload, dedupeKey: key })
@@ -304,7 +318,7 @@ const orphanedResult = (payload: DeliveryPayload, jobAttempts: number): Delivery
       : { outcome: "withdrawn", message: NOT_WAITING_MESSAGE }
 
 registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
-  const payload = payloadSchema.parse(job.payload)
+  const payload = deliveryPayloadSchema.parse(job.payload)
   const completion = completions.get(payload.completion.kind)
   if (!completion) {
     throw new Error(`No delivery completion registered for ${payload.completion.kind}`)
@@ -372,7 +386,9 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   }
 
   // Counted before the request, so a request whose outcome is lost is never mistaken for none.
-  const requested = { ...payload, requests: requests + 1, provider }
+  const requested: DeliveryPayload = { ...payload, requests: requests + 1, provider,
+    attempts: [...(payload.attempts ?? []), { startedAt: new Date().toISOString(), outcome: "started" }],
+  }
   await recordOnJob(job, requested)
   // Checked again after the writes above, which can stall: no request once the key may have lapsed.
   if (possiblyDelivered && Date.now() - job.createdAt.getTime() >= IDEMPOTENCY_WINDOW_MS) {
@@ -385,6 +401,8 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
       PROVIDER_TIMEOUT_MS
     )
   } catch (error) {
+    requested.attempts!.at(-1)!.outcome = isDefiniteRejection(error) ? "rejected" : "uncertain"
+    await recordOnJob(job, requested)
     if (isDefiniteRejection(error)) {
       deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, providerCode: error.providerCode })
       // Only this SMTP classification proves the connection failed before submission.
@@ -409,6 +427,8 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   }
 
   // Recorded first, so a settlement that fails is retried without sending again.
+  requested.attempts!.at(-1)!.outcome = "accepted"
+  requested.attempts!.at(-1)!.providerMessageId = accepted.id
   await recordOnJob(job, { ...requested, providerMessageId: accepted.id })
   await settle(job, payload, completion, { delivered: true })
 })
@@ -436,7 +456,7 @@ export async function settleAbandonedDeliveries(input: { organizationIds?: reado
   let failed = 0
   for (const job of abandoned) {
     try {
-      const payload = payloadSchema.parse(job.payload)
+      const payload = deliveryPayloadSchema.parse(job.payload)
       const completion = completions.get(payload.completion.kind)
       if (!completion) throw new Error(`No delivery completion registered for ${payload.completion.kind}`)
       if (!(await completion.pending(prisma, payload.completion.target))) {
@@ -495,3 +515,6 @@ registerDeliveryCompletion("agreement.notification", {
   delivered: async () => [],
   failed: async () => [],
 })
+
+/** Used by operator recovery after authorization. The original completion is reused. */
+export function getDeliveryCompletion(kind: string) { return completions.get(kind) }

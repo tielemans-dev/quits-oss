@@ -1,3 +1,4 @@
+import { OperationJournal } from "../../../components/activity/operation-journal"
 import { InvoiceDeliverables } from "../../../components/agreements/invoice-deliverables"
 import { DeliverableAllocation } from "../../../components/agreements/deliverable-allocation"
 import { DeliverableControls } from "../../../components/agreements/deliverable-controls"
@@ -366,6 +367,7 @@ function AgreementDetail() {
           <CardContent className="whitespace-pre-wrap">{agreement.notes}</CardContent>
         </Card>
       )}
+      <OperationJournal documentType="agreement" documentId={agreementId} />
     </div>
   )
 }

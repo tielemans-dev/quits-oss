@@ -10,7 +10,7 @@ import {
 } from "../delivery/outbox"
 import { pendingCandidate, publishCandidate, retireCandidate } from "./artifacts"
 import { InvalidState } from "../errors"
-import { Command } from "../services"
+import { Command, Db } from "../services"
 
 /**
  * Emailing invoices, quotes, and credit notes through the outbox. While an email is queued the
@@ -187,7 +187,7 @@ export function refuseWhileSending(kind: DocumentKind, document: { lastEmailAtte
 export const queueDocumentEmail = <Row>(input: {
   kind: DocumentKind
   mode: Mode
-  document: { id: string; number: string | null }
+  document: { id: string; number: string | null; publicAccessKeyVersion?: number; publicPaymentKeyVersion?: number }
   recipient: string
   message: StoredEmailMessage
   /** Names exactly this delivery; the provider drops a repeat sent under the same key. */
@@ -198,6 +198,12 @@ export const queueDocumentEmail = <Row>(input: {
 }) =>
   Effect.gen(function* () {
     const { now, issuance } = yield* Command
+    const db = yield* Db
+    const ambiguous = yield* Effect.promise(() => delegate(db, input.kind).count({ where: { id: input.document.id, lastEmailAttemptOutcome: "unconfirmed" } }))
+    if (ambiguous) return yield* new InvalidState({
+      message: "The previous email may already have arrived. Verify it with the recipient, then use the operation history to record a manual resend decision and its reason.",
+      code: "manual_resend_required",
+    })
     const updated = yield* Effect.promise(() =>
       input.markSending(
         createEmailDeliveryAttempt({
@@ -216,6 +222,8 @@ export const queueDocumentEmail = <Row>(input: {
         target: {
           ...(issuance ? { candidateId: issuance.candidateId, issuedAt: issuance.issuedAt.toISOString() } : {}),
           documentId: input.document.id,
+          ...(input.document.publicAccessKeyVersion !== undefined ? { publicLinkKeyVersion: String(input.document.publicAccessKeyVersion) } : {}),
+          ...(input.document.publicPaymentKeyVersion !== undefined ? { publicLinkKeyVersion: String(input.document.publicPaymentKeyVersion) } : {}),
           attemptAt: now.toISOString(),
           number: input.document.number ?? "",
           recipient: input.recipient,

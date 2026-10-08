@@ -47,6 +47,7 @@ export type CommandReceiptMaxAggregateOutputType = {
 }
 
 export type CommandReceiptCountAggregateOutputType = {
+  target: number
   id: number
   organizationId: number
   actorKey: number
@@ -84,6 +85,7 @@ export type CommandReceiptMaxAggregateInputType = {
 }
 
 export type CommandReceiptCountAggregateInputType = {
+  target?: true
   id?: true
   organizationId?: true
   actorKey?: true
@@ -170,6 +172,7 @@ export type CommandReceiptGroupByArgs<ExtArgs extends runtime.Types.Extensions.I
 }
 
 export type CommandReceiptGroupByOutputType = {
+  target: runtime.JsonValue | null
   id: string
   organizationId: string
   actorKey: string
@@ -204,6 +207,7 @@ export type CommandReceiptWhereInput = {
   AND?: Prisma.CommandReceiptWhereInput | Prisma.CommandReceiptWhereInput[]
   OR?: Prisma.CommandReceiptWhereInput[]
   NOT?: Prisma.CommandReceiptWhereInput | Prisma.CommandReceiptWhereInput[]
+  target?: Prisma.JsonNullableFilter<"CommandReceipt">
   id?: Prisma.StringFilter<"CommandReceipt"> | string
   organizationId?: Prisma.StringFilter<"CommandReceipt"> | string
   actorKey?: Prisma.StringFilter<"CommandReceipt"> | string
@@ -217,6 +221,7 @@ export type CommandReceiptWhereInput = {
 }
 
 export type CommandReceiptOrderByWithRelationInput = {
+  target?: Prisma.SortOrderInput | Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   actorKey?: Prisma.SortOrder
@@ -235,6 +240,7 @@ export type CommandReceiptWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.CommandReceiptWhereInput | Prisma.CommandReceiptWhereInput[]
   OR?: Prisma.CommandReceiptWhereInput[]
   NOT?: Prisma.CommandReceiptWhereInput | Prisma.CommandReceiptWhereInput[]
+  target?: Prisma.JsonNullableFilter<"CommandReceipt">
   organizationId?: Prisma.StringFilter<"CommandReceipt"> | string
   actorKey?: Prisma.StringFilter<"CommandReceipt"> | string
   clientRequestId?: Prisma.StringFilter<"CommandReceipt"> | string
@@ -247,6 +253,7 @@ export type CommandReceiptWhereUniqueInput = Prisma.AtLeast<{
 }, "id" | "organizationId_actorKey_clientRequestId">
 
 export type CommandReceiptOrderByWithAggregationInput = {
+  target?: Prisma.SortOrderInput | Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   actorKey?: Prisma.SortOrder
@@ -266,6 +273,7 @@ export type CommandReceiptScalarWhereWithAggregatesInput = {
   AND?: Prisma.CommandReceiptScalarWhereWithAggregatesInput | Prisma.CommandReceiptScalarWhereWithAggregatesInput[]
   OR?: Prisma.CommandReceiptScalarWhereWithAggregatesInput[]
   NOT?: Prisma.CommandReceiptScalarWhereWithAggregatesInput | Prisma.CommandReceiptScalarWhereWithAggregatesInput[]
+  target?: Prisma.JsonNullableWithAggregatesFilter<"CommandReceipt">
   id?: Prisma.StringWithAggregatesFilter<"CommandReceipt"> | string
   organizationId?: Prisma.StringWithAggregatesFilter<"CommandReceipt"> | string
   actorKey?: Prisma.StringWithAggregatesFilter<"CommandReceipt"> | string
@@ -279,6 +287,7 @@ export type CommandReceiptScalarWhereWithAggregatesInput = {
 }
 
 export type CommandReceiptCreateInput = {
+  target?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   id?: string
   organizationId: string
   actorKey: string
@@ -292,6 +301,7 @@ export type CommandReceiptCreateInput = {
 }
 
 export type CommandReceiptUncheckedCreateInput = {
+  target?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   id?: string
   organizationId: string
   actorKey: string
@@ -305,6 +315,7 @@ export type CommandReceiptUncheckedCreateInput = {
 }
 
 export type CommandReceiptUpdateInput = {
+  target?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   actorKey?: Prisma.StringFieldUpdateOperationsInput | string
@@ -318,6 +329,7 @@ export type CommandReceiptUpdateInput = {
 }
 
 export type CommandReceiptUncheckedUpdateInput = {
+  target?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   actorKey?: Prisma.StringFieldUpdateOperationsInput | string
@@ -331,6 +343,7 @@ export type CommandReceiptUncheckedUpdateInput = {
 }
 
 export type CommandReceiptCreateManyInput = {
+  target?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   id?: string
   organizationId: string
   actorKey: string
@@ -344,6 +357,7 @@ export type CommandReceiptCreateManyInput = {
 }
 
 export type CommandReceiptUpdateManyMutationInput = {
+  target?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   actorKey?: Prisma.StringFieldUpdateOperationsInput | string
@@ -357,6 +371,7 @@ export type CommandReceiptUpdateManyMutationInput = {
 }
 
 export type CommandReceiptUncheckedUpdateManyInput = {
+  target?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   actorKey?: Prisma.StringFieldUpdateOperationsInput | string
@@ -376,6 +391,7 @@ export type CommandReceiptOrganizationIdActorKeyClientRequestIdCompoundUniqueInp
 }
 
 export type CommandReceiptCountOrderByAggregateInput = {
+  target?: Prisma.SortOrder
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   actorKey?: Prisma.SortOrder
@@ -413,6 +429,7 @@ export type CommandReceiptMinOrderByAggregateInput = {
 
 
 export type CommandReceiptSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  target?: boolean
   id?: boolean
   organizationId?: boolean
   actorKey?: boolean
@@ -426,6 +443,7 @@ export type CommandReceiptSelect<ExtArgs extends runtime.Types.Extensions.Intern
 }, ExtArgs["result"]["commandReceipt"]>
 
 export type CommandReceiptSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  target?: boolean
   id?: boolean
   organizationId?: boolean
   actorKey?: boolean
@@ -439,6 +457,7 @@ export type CommandReceiptSelectCreateManyAndReturn<ExtArgs extends runtime.Type
 }, ExtArgs["result"]["commandReceipt"]>
 
 export type CommandReceiptSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+  target?: boolean
   id?: boolean
   organizationId?: boolean
   actorKey?: boolean
@@ -452,6 +471,7 @@ export type CommandReceiptSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
 }, ExtArgs["result"]["commandReceipt"]>
 
 export type CommandReceiptSelectScalar = {
+  target?: boolean
   id?: boolean
   organizationId?: boolean
   actorKey?: boolean
@@ -464,12 +484,16 @@ export type CommandReceiptSelectScalar = {
   updatedAt?: boolean
 }
 
-export type CommandReceiptOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "actorKey" | "clientRequestId" | "commandType" | "status" | "result" | "error" | "createdAt" | "updatedAt", ExtArgs["result"]["commandReceipt"]>
+export type CommandReceiptOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"target" | "id" | "organizationId" | "actorKey" | "clientRequestId" | "commandType" | "status" | "result" | "error" | "createdAt" | "updatedAt", ExtArgs["result"]["commandReceipt"]>
 
 export type $CommandReceiptPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "CommandReceipt"
   objects: {}
   scalars: runtime.Types.Extensions.GetPayloadResult<{
+    /**
+     * Minimal document reference for failed or waiting commands with no committed event.
+     */
+    target: runtime.JsonValue | null
     id: string
     organizationId: string
     actorKey: string
@@ -563,8 +587,8 @@ export interface CommandReceiptDelegate<ExtArgs extends runtime.Types.Extensions
    * // Get first 10 CommandReceipts
    * const commandReceipts = await prisma.commandReceipt.findMany({ take: 10 })
    * 
-   * // Only select the `id`
-   * const commandReceiptWithIdOnly = await prisma.commandReceipt.findMany({ select: { id: true } })
+   * // Only select the `target`
+   * const commandReceiptWithTargetOnly = await prisma.commandReceipt.findMany({ select: { target: true } })
    * 
    */
   findMany<T extends CommandReceiptFindManyArgs>(args?: Prisma.SelectSubset<T, CommandReceiptFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommandReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
@@ -608,9 +632,9 @@ export interface CommandReceiptDelegate<ExtArgs extends runtime.Types.Extensions
    *   ]
    * })
    * 
-   * // Create many CommandReceipts and only return the `id`
-   * const commandReceiptWithIdOnly = await prisma.commandReceipt.createManyAndReturn({
-   *   select: { id: true },
+   * // Create many CommandReceipts and only return the `target`
+   * const commandReceiptWithTargetOnly = await prisma.commandReceipt.createManyAndReturn({
+   *   select: { target: true },
    *   data: [
    *     // ... provide data here
    *   ]
@@ -699,9 +723,9 @@ export interface CommandReceiptDelegate<ExtArgs extends runtime.Types.Extensions
    *   ]
    * })
    * 
-   * // Update zero or more CommandReceipts and only return the `id`
-   * const commandReceiptWithIdOnly = await prisma.commandReceipt.updateManyAndReturn({
-   *   select: { id: true },
+   * // Update zero or more CommandReceipts and only return the `target`
+   * const commandReceiptWithTargetOnly = await prisma.commandReceipt.updateManyAndReturn({
+   *   select: { target: true },
    *   where: {
    *     // ... provide filter here
    *   },
@@ -903,6 +927,7 @@ export interface Prisma__CommandReceiptClient<T, Null = never, ExtArgs extends r
  * Fields of the CommandReceipt model
  */
 export interface CommandReceiptFieldRefs {
+  readonly target: Prisma.FieldRef<"CommandReceipt", 'Json'>
   readonly id: Prisma.FieldRef<"CommandReceipt", 'String'>
   readonly organizationId: Prisma.FieldRef<"CommandReceipt", 'String'>
   readonly actorKey: Prisma.FieldRef<"CommandReceipt", 'String'>

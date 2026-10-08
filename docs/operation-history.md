@@ -1,0 +1,91 @@
+# Operation history and delivery recovery
+
+The operation history on an invoice, quote, agreement or credit note joins its command receipts,
+completed document changes and email outbox. It shows the exact record, original recipient,
+queue time, request times and provider reference when available. Older emails may have only a
+job-run count because their individual request times were not recorded.
+
+A completed business command does not prove email delivery. Creation and email delivery have
+separate outcomes. A provider acceptance means the provider accepted a submission, not that the
+recipient read it or that it reached an inbox. If acceptance was stored but document settlement
+failed, the history says that recording the document outcome still needs recovery.
+
+## Choose the recovery step
+
+- **Queued:** delivery is waiting for its job runner.
+- **Waiting for a prerequisite:** check email configuration and document sending requirements.
+  Recover the queued delivery if the action is available. A withdrawn delivery needs a new send
+  from the same document page.
+- **Failed step:** a provider refusal or stopped job needs attention. Recover the existing job
+  only when the history offers that action. For a settled refusal, correct the requirements and
+  send the same document from its page. Do not create a replacement invoice.
+- **External outcome uncertain:** the customer may already have the email. Check with the
+  recipient or provider. SMTP cannot deduplicate a second submission after possible acceptance.
+  An original-key retry is offered only when the existing outbox policy proves it remains safe.
+- **Provider acceptance confirmed:** submission is confirmed. If recording the document outcome
+  is still pending, recovery settles the same job without contacting the provider again.
+
+Recovering a job retains its command ID, message, provider, request count, idempotency key and
+completion target. It does not replay creation or financial events. A job currently held by a
+runner cannot be recovered manually. The scheduler first reclaims an expired runner lease.
+
+## Verify an uncertain outcome
+
+A distribution can supply the optional `EmailDeliveryStatusProvider` in `RuntimeServices`.
+`supports(provider)` declares a trustworthy lookup for the pinned provider. `lookup` receives the
+organization, original provider, original idempotency key and provider message ID if known. It
+returns a stable evidence ID, observation time and either `accepted` or `unknown`. Acceptance
+requires a provider message ID. Adapters must verify the identity of the original submission;
+absence from a lookup must return `unknown`, never permission to resend.
+
+Repeated evidence IDs do not produce duplicate events. Once acceptance is confirmed, delayed
+unknown evidence cannot regress it. A lookup that fails or returns unknown leaves the original
+uncertainty in place. OSS does not add a provider lookup adapter or webhook here. Without one,
+verify with the recipient or the provider's own logs before deciding whether another copy is needed.
+
+## Explicit manual resend
+
+An authorized person can review a manual resend of the latest uncertain document email. The form
+requires a verification note and reason, and acknowledgement that the recipient might receive
+both copies. It sends the stored email to its original recipient for the same issued document,
+under a new communication identity. A separate `delivery.manual_resend_requested` event and
+receipt record the decision, reason and original delivery ID. The original uncertain outcome
+remains visible. Revoked public links cannot be replayed. Only one manual recovery is permitted per source delivery, and repeating the
+same client request returns the same receipt.
+
+Ordinary send controls refuse a document whose last email is uncertain and direct the operator
+to this documented path. Manual replay of reminders and agreement notifications is not offered;
+use their supported document workflow after verification. Paid or closed invoices are not
+eligible for replaying an earlier payment request.
+
+Command receipts add a nullable `target` JSON field containing only `documentType` and
+`documentId`. It links failed commands and approval waits that have no committed document
+event. Existing receipts are joined through their domain events and outbox command IDs.
+Successful UI commands now retain receipts even when callers did not supply a request ID.
+
+The journal requires the document's read permission and a record in the active organization.
+Recovery additionally requires its send permission and a human actor. It does not expose stored
+email bodies or raw command results. The view is bounded to the latest 200 document events, 100 command receipts and
+100 deliveries. Older records remain in the existing activity log.
+
+## Moderated recovery scenarios
+
+These are a research protocol, not measured results. Recruit representative operators and run
+sessions without explaining which action to choose. Record each participant's first choice,
+completion time, assistance requests and explanation of duplicate-delivery risk.
+
+1. Creation completed, submission never started: identify the exact invoice and recover delivery
+   without creating another record.
+2. Email configuration disappeared after queuing: distinguish a prerequisite from a provider
+   refusal, restore configuration and recover the existing step.
+3. SMTP disconnected after the message body: explain why the recipient may already have it,
+   verify the outcome and choose whether a manual resend is justified.
+4. Provider accepted, document settlement stopped: recover settlement without sending again.
+5. Provider lookup is unresolved: retain uncertainty instead of interpreting missing evidence as
+   a refusal. Repeat with late acceptance evidence followed by an older unknown result.
+6. Manual resend after recipient verification: provide a reason, acknowledge duplicate risk and
+   identify both communication attempts and the single underlying financial record.
+
+Report correct unaided recovery choices and correct risk identification as separate counts,
+with participant count and scenario order. Keep failed or assisted attempts in the results.
+Moderated sessions and production provider evidence remain outstanding until collected.
