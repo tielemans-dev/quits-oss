@@ -4,9 +4,16 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js"
 import type { CommandError } from "@quits/contracts/agent"
 import { appLogger } from "../../lib/observability"
 import type { AgentActor } from "../actor"
-import { authenticateAgentSecret } from "../agent-keys"
+import { authenticateAgentSecret, isAgentKeySecret } from "../agent-keys"
+import {
+  authenticateMcpAccessToken,
+  bearerChallenge,
+  getMcpOAuthContext,
+  insufficientScopeChallenge,
+  type McpOAuthContext,
+} from "../agent-oauth/server"
 import type { AgentTool } from "./define"
-import { getAgentTool, visibleAgentTools } from "./registry"
+import { agentTools, getAgentTool, visibleAgentTools } from "./registry"
 import { resolveUrlOrigin, readProductEnv } from "@quits/shared/runtimeEnv"
 
 const logger = appLogger.child("agent-api")
@@ -165,6 +172,61 @@ export function isAllowedMcpOrigin(origin: string | null, env: Record<string, st
   return allowed.has(resolveUrlOrigin(origin) ?? "")
 }
 
+/**
+ * With sign-in authorization (prototype, issue #31), a tool outside the granted scopes is refused
+ * with `403 insufficient_scope` before the MCP server runs, so the client can ask the person for
+ * more access. Only scopes the grant lacks are challenged: a scope the grant holds but the owner's
+ * role does not is refused by the tool itself, since signing in again cannot fix it.
+ */
+async function missingGrantScope(request: Request, grantScopes: readonly string[]) {
+  let message: unknown
+  try {
+    message = await request.clone().json()
+  } catch {
+    return null
+  }
+  const call = message as { method?: unknown; params?: { name?: unknown } } | null
+  if (!call || call.method !== "tools/call" || typeof call.params?.name !== "string") {
+    return null
+  }
+  const tool = agentTools.find((candidate) => candidate.name === call.params?.name)
+  return tool?.permission && !grantScopes.includes(tool.permission) ? tool.permission : null
+}
+
+async function authenticate(
+  request: Request,
+  oauth: McpOAuthContext | null
+): Promise<{ actor: AgentActor; grantScopes: string[] | null } | Response> {
+  const challenge = (error?: "invalid_token") =>
+    oauth ? bearerChallenge(oauth, error) : `Bearer realm="quits"${error ? `, error="${error}"` : ""}`
+
+  const secret = readBearer(request)
+  if (!secret) {
+    return jsonRpcError(401, "Missing agent key. Send Authorization: Bearer quits_ak_...", {
+      "WWW-Authenticate": challenge(),
+    })
+  }
+
+  if (oauth && !isAgentKeySecret(secret)) {
+    const grant = await authenticateMcpAccessToken(oauth, secret)
+    if (!grant) {
+      return jsonRpcError(401, "The access token is invalid, expired, revoked, or not issued for this server", {
+        "WWW-Authenticate": challenge("invalid_token"),
+      })
+    }
+    return { actor: grant.actor, grantScopes: grant.scopes }
+  }
+
+  try {
+    return { actor: await authenticateAgentSecret(secret), grantScopes: null }
+  } catch (error) {
+    if (isDomainError(error) && error._tag === "Forbidden") {
+      return jsonRpcError(401, error.message, { "WWW-Authenticate": challenge("invalid_token") })
+    }
+    throw error
+  }
+}
+
 export async function handleMcpRequest(request: Request): Promise<Response> {
   if (!isAllowedMcpOrigin(request.headers.get("origin"))) {
     return jsonRpcError(403, "Origin not allowed")
@@ -175,23 +237,20 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
     return jsonRpcError(405, "Method not allowed. Send MCP requests with POST.", { Allow: "POST" })
   }
 
-  const secret = readBearer(request)
-  if (!secret) {
-    return jsonRpcError(401, "Missing agent key. Send Authorization: Bearer quits_ak_...", {
-      "WWW-Authenticate": 'Bearer realm="quits"',
-    })
+  const oauth = getMcpOAuthContext()
+  const authenticated = await authenticate(request, oauth)
+  if (authenticated instanceof Response) {
+    return authenticated
   }
+  const { actor, grantScopes } = authenticated
 
-  let actor: AgentActor
-  try {
-    actor = await authenticateAgentSecret(secret)
-  } catch (error) {
-    if (isDomainError(error) && error._tag === "Forbidden") {
-      return jsonRpcError(401, error.message, {
-        "WWW-Authenticate": 'Bearer realm="quits", error="invalid_token"',
+  if (oauth && grantScopes) {
+    const missing = await missingGrantScope(request, grantScopes)
+    if (missing) {
+      return jsonRpcError(403, `This connection was not granted ${missing}`, {
+        "WWW-Authenticate": insufficientScopeChallenge(oauth, [missing]),
       })
     }
-    throw error
   }
 
   const server = createAgentMcpServer(actor)

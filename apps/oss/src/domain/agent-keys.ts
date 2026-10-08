@@ -215,9 +215,14 @@ async function toAgentActor(
   }
 }
 
+/** Whether a bearer value is an agent key secret (as opposed to, say, an OAuth access token). */
+export function isAgentKeySecret(secret: string) {
+  return secret.startsWith(SECRET_PREFIX) || secret.startsWith(LEGACY_SECRET_PREFIX)
+}
+
 /** Authenticates a bearer secret from the agent API. */
 export async function authenticateAgentSecret(secret: string, now = new Date()): Promise<AgentActor> {
-  if (!secret.startsWith(SECRET_PREFIX) && !secret.startsWith(LEGACY_SECRET_PREFIX)) {
+  if (!isAgentKeySecret(secret)) {
     throw new Forbidden({ message: "Invalid agent key" })
   }
 
