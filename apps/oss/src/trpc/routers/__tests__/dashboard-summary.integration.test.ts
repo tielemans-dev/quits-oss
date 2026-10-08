@@ -1,12 +1,15 @@
 import { randomUUID } from "node:crypto"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { dashboardSummarySchema, type DashboardTotal } from "@quits/contracts/dashboard"
+import { DASHBOARD_ACTIVITY_EVENT_TYPES, dashboardSummarySchema, type DashboardTotal } from "@quits/contracts/dashboard"
 import { Prisma, PrismaClient } from "../../../../generated/prisma/client"
 import { prisma } from "../../../lib/db"
 import { dashboardSummary } from "../../../lib/dashboard/summary"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import { appRouter } from "../../router"
+import { eventRegistry } from "../../../domain/events/registry"
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
+import superjson, { type SuperJSONResult } from "superjson"
 
 const NOW = new Date("2026-10-08T12:00:00Z")
 const zero = { count: 0, buckets: [], unvalued: [] }
@@ -47,7 +50,7 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     await prisma.orgSettings.delete({ where: { organizationId: org.organizationId } })
     for (const role of ["admin", "member", "accountant"] as const) {
       const result = await caller(org.organizationId, org.actors[role].userId).dashboard.summary()
-      expect(result).toMatchObject({ currencyMode: "per_currency", timezone: "UTC", baseCurrency: "USD", outstanding: zero, overdue: { ...zero, oldestDaysOverdue: 0 }, paidThisMonth: zero, streak: 0, attention: [], incoming: [], activity: [] })
+      expect(result).toMatchObject({ currencyMode: "per_currency", timezone: "UTC", baseCurrency: "USD", outstanding: zero, overdue: { ...zero, oldestDaysOverdue: 0 }, paidThisMonth: zero, hasOtherCurrencies: false, streak: 0, attention: [], incoming: [], activity: [] })
       expect(result.receivedByMonth).toHaveLength(12)
       expect(result.receivedByMonth.every(row => row.count === 0 && row.buckets.length === 0)).toBe(true)
     }
@@ -74,6 +77,9 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
         expect(bucket.amount).toBe(sum.toFixed(bucket.exponent))
       }
       expect(amount(summary.outstanding)).toBe(expected)
+      expect(summary.incoming.find(row => row.documentId === invoice.id)).toMatchObject({
+        total: { currency: "DKK", exponent: 2, amount: "100.00" }, amount: { amount: expected },
+      })
       expect(amount(summary.outstanding, "EUR")).toBe("12.34")
       expect(summary.incoming.find(row => row.documentId === second.id)?.amount.amount).toBe("12.34")
       const payments = await org.admin.payments.list({ invoiceId: invoice.id })
@@ -110,9 +116,14 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     const org = await setup()
     const invoice = await org.seed({ dueDate: new Date("2026-10-24T22:00:00Z") })
     for (const now of ["2026-10-24T21:59:59.999Z", "2026-10-24T22:00:00Z"]) {
-      expect((await org.summary(new Date(now))).overdue).toEqual({ ...zero, oldestDaysOverdue: 0 })
+      const before = await org.summary(new Date(now))
+      expect(before.incoming[0]?.isOverdue).toBe(false)
+      expect(before.attention).toEqual([])
+      expect(before.overdue).toEqual({ ...zero, oldestDaysOverdue: 0 })
     }
     const justPastDue = await org.summary(new Date("2026-10-24T22:00:00.001Z"))
+    expect(justPastDue.incoming[0]).toMatchObject({ daysOverdue: 0, isOverdue: true })
+    expect(justPastDue.attention[0]).toMatchObject({ dueDate: "2026-10-25", daysOverdue: 0, isOverdue: true, expiresOn: null })
     expect(justPastDue.overdue).toMatchObject({ count: 1, oldestDaysOverdue: 0 })
     const result = await org.summary(new Date("2026-10-25T23:00:00Z"))
     expect(result.overdue).toMatchObject({ count: 1, oldestDaysOverdue: 1 })
@@ -175,7 +186,10 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect(result.attention.map(row => [row.documentId, row.reason])).toEqual([
       [overdue.id, "invoice_overdue"], [draft.id, "draft_older_than_7_days"], [quote.id, "quote_expiring"], [failed.id, "email_failed"], [uncertain.id, "email_unconfirmed"],
     ])
-    expect(result.attention[0]?.canRemind).toBe(true)
+    expect(result.attention[0]).toMatchObject({ canRemind: true, dueDate: "2026-10-01", daysOverdue: 7, isOverdue: true, expiresOn: null })
+    expect(result.attention[1]).toMatchObject({ dueDate: "2026-10-15", daysOverdue: null, isOverdue: false, expiresOn: null })
+    expect(result.attention[2]).toMatchObject({ dueDate: null, daysOverdue: null, isOverdue: false, expiresOn: "2026-10-15" })
+    expect(result.attention[3]).toMatchObject({ dueDate: "2026-10-16", daysOverdue: 0, isOverdue: false, expiresOn: null })
     await prisma.invoiceReminder.create({ data: { invoiceId: overdue.id, offsetDays: 7, scheduledFor: NOW, sentAt: NOW, outcome: "sent" } })
     expect((await org.summary()).attention[0]?.canRemind).toBe(false)
     await prisma.invoiceReminder.deleteMany({ where: { invoiceId: overdue.id } })
@@ -215,6 +229,136 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     const ids = (await prisma.domainEvent.findMany({ where: { organizationId: org.organizationId } })).map(row => row.id)
     expect(result.activity.every(event => ids.includes(event.id))).toBe(true)
     expect(JSON.stringify(result)).not.toContain("not returned")
+  })
+
+  it("reports the oldest overdue days per currency and per unvalued subset", async () => {
+    const org = await setup()
+    await org.seed({ dueDate: new Date("2026-09-28"), valuation: { rateSource: "manual", base: { currency: "DKK", minor: "10000" } } })
+    await org.seed({ dueDate: new Date("2026-10-06") })
+    await org.seed({ currency: "EUR", dueDate: new Date("2026-10-03") })
+    const result = await org.summary()
+    expect(result.overdue.oldestDaysOverdue).toBe(10)
+    expect(result.overdue.buckets.map(bucket => [bucket.currency, bucket.oldestDaysOverdue])).toEqual([["DKK", 10], ["EUR", 5]])
+    expect(result.overdue.unvalued.map(bucket => [bucket.currency, bucket.oldestDaysOverdue])).toEqual([["DKK", 2], ["EUR", 5]])
+    expect(result.outstanding.buckets.every(bucket => bucket.oldestDaysOverdue === undefined)).toBe(true)
+    expect(dashboardSummarySchema.safeParse(result).success).toBe(true)
+  })
+
+  it("detects other currencies in outstanding and received totals, excluding drafts and out-of-window receipts", async () => {
+    const org = await setup()
+    await org.seed({ currency: "EUR", status: "draft", number: null })
+    const settled = await org.seed({ currency: "EUR", status: "paid", amountPaid: "100" })
+    await org.payment(settled.id, "2025-01-01T00:00:00Z", "100", "EUR")
+    expect((await org.summary()).hasOtherCurrencies).toBe(false)
+    const outstanding = await org.seed({ currency: "JPY", totalGross: "1" })
+    expect((await org.summary()).hasOtherCurrencies).toBe(true)
+    await prisma.invoice.update({ where: { id: outstanding.id }, data: { amountCredited: "1", status: "credited" } })
+    expect((await org.summary()).hasOtherCurrencies).toBe(false)
+    await org.payment(settled.id, "2026-09-01T00:00:00Z", "100", "EUR")
+    const result = await org.summary()
+    expect(result.paidThisMonth).toEqual(zero)
+    expect(result.hasOtherCurrencies).toBe(true)
+  })
+
+  it("exports only real event types and filters excluded events before the eight-row cap", async () => {
+    expect(DASHBOARD_ACTIVITY_EVENT_TYPES).toHaveLength(28)
+    expect(new Set(DASHBOARD_ACTIVITY_EVENT_TYPES).size).toBe(28)
+    for (const type of DASHBOARD_ACTIVITY_EVENT_TYPES) expect(Object.hasOwn(eventRegistry, type)).toBe(true)
+    const org = await setup()
+    const invoice = await org.seed()
+    await prisma.domainEvent.createMany({ data: Array.from({ length: 20 }, (_, index) => ({
+      organizationId: org.organizationId, sequence: index + 1, aggregateType: "invoice", aggregateId: invoice.id,
+      type: index < 8 ? "invoice.sent" : index % 2 ? "document.artifact_stored" : "invoice.draft_updated",
+      payload: { number: "PAYLOAD MUST NOT WIN", customerName: "hidden", secret: "not returned" }, actorKind: "user",
+    })) })
+    const result = await org.summary()
+    expect(result.activity.map(event => event.sequence)).toEqual([8, 7, 6, 5, 4, 3, 2, 1])
+    expect(result.activity.every(event => event.documentKind === "invoice" && event.documentNumber === invoice.number && event.customerName === org.contact.name)).toBe(true)
+    expect(JSON.stringify(result.activity)).not.toContain("not returned")
+    expect(dashboardSummarySchema.safeParse(result).success).toBe(true)
+  })
+
+  it("resolves all document kinds through scoped joins, refusing cross-org references even in local events", async () => {
+    const org = await setup(), other = await setup()
+    await prisma.contact.update({ where: { id: other.contact.id }, data: { name: "Foreign customer secret" } })
+    async function documents(target: Awaited<ReturnType<typeof setup>>) {
+      const invoice = await target.seed()
+      const quote = await prisma.quote.create({ data: { organizationId: target.organizationId, contactId: target.contact.id, status: "sent", number: "Q-1", expiryDate: NOW, subtotalNet: "50", totalGross: "50" } })
+      const credit = await prisma.creditNote.create({ data: {
+        organizationId: target.organizationId, contactId: target.contact.id, invoiceId: invoice.id, number: "CN-1", reason: "Return",
+        currency: "DKK", countryCode: "US", locale: "en-US", timezone: "Europe/Copenhagen", taxRegime: "us_sales_tax", subtotalNet: "10", totalGross: "10",
+      } })
+      const agreement = await prisma.agreement.create({ data: {
+        organizationId: target.organizationId, contactId: target.contact.id, number: "AGR-1", status: "sent", title: "Work", termsMarkdown: "Terms",
+        validUntil: NOW, subtotalNet: "50", totalGross: "50",
+      } })
+      return [
+        { kind: "invoice", aggregateType: "invoice", type: "invoice.sent", document: invoice },
+        { kind: "quote", aggregateType: "quote", type: "quote.sent", document: quote },
+        { kind: "credit_note", aggregateType: "creditNote", type: "credit_note.issued", document: credit },
+        { kind: "agreement", aggregateType: "agreement", type: "agreement.sent", document: agreement },
+      ]
+    }
+    const own = await documents(org), foreign = await documents(other)
+    await prisma.domainEvent.createMany({ data: [...own, ...foreign].map((entry, index) => ({
+      organizationId: org.organizationId, sequence: index + 1, aggregateType: entry.aggregateType, aggregateId: entry.document.id,
+      type: entry.type, payload: { customerName: "Foreign customer secret" }, actorKind: "user",
+    })) })
+    await prisma.domainEvent.create({ data: { organizationId: other.organizationId, sequence: 100, aggregateType: "invoice", aggregateId: foreign[0]!.document.id, type: "invoice.sent", payload: {}, actorKind: "user" } })
+    const activity = (await org.summary()).activity
+    expect(activity).toHaveLength(8)
+    for (const entry of own) expect(activity.find(event => event.aggregateId === entry.document.id)).toMatchObject({ documentKind: entry.kind, documentNumber: entry.document.number, customerName: org.contact.name })
+    for (const entry of foreign) expect(activity.find(event => event.aggregateId === entry.document.id)).toMatchObject({ documentKind: null, documentNumber: null, customerName: null })
+    expect(JSON.stringify(activity)).not.toContain("Foreign customer secret")
+  })
+
+  it("resolves payment aggregates and keeps drafts and deleted records nullable without payload fallback", async () => {
+    const org = await setup(), other = await setup()
+    const invoice = await org.seed()
+    const payment = await org.payment(invoice.id, NOW.toISOString())
+    const foreignPayment = await other.payment((await other.seed()).id, NOW.toISOString())
+    const draft = await org.seed({ status: "draft", number: "LEGACY-DRAFT" })
+    await prisma.domainEvent.createMany({ data: [
+      { aggregateType: "payment", aggregateId: payment.id, type: "payment.recorded" },
+      { aggregateType: "payment", aggregateId: foreignPayment.id, type: "payment.voided" },
+      { aggregateType: "invoice", aggregateId: draft.id, type: "invoice.draft_created" },
+      { aggregateType: "invoice", aggregateId: randomUUID(), type: "invoice.draft_created" },
+    ].map((entry, index) => ({ ...entry, organizationId: org.organizationId, sequence: index + 1, payload: { number: "SECRET" }, actorKind: "user" })) })
+    const result = (await org.summary()).activity
+    expect(result[0]).toMatchObject({ documentKind: null, documentNumber: null, customerName: null })
+    expect(result[1]).toMatchObject({ documentKind: "invoice", documentNumber: null, customerName: org.contact.name })
+    expect(result[2]).toMatchObject({ documentKind: null, documentNumber: null, customerName: null })
+    expect(result[3]).toMatchObject({ documentKind: "invoice", documentNumber: invoice.number, customerName: org.contact.name })
+  })
+
+  it("transports existing sendNow refusal codes as data.reason for UI translation", async () => {
+    const org = await setup()
+    const draft = await org.seed({ status: "draft", number: null })
+    async function refusal(invoiceId: string) {
+      const response = await fetchRequestHandler({
+        endpoint: "/api/trpc", router: appRouter,
+        req: new Request("http://localhost/api/trpc/reminders.sendNow", {
+          method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(superjson.serialize({ invoiceId })),
+        }),
+        createContext: async () => ({ session: { user: { id: org.actors.admin.userId }, session: { activeOrganizationId: org.organizationId } } }) as never,
+      })
+      const body = await response.json() as { error: SuperJSONResult }
+      return superjson.deserialize<{ data: { reason: string; code: string } }>(body.error).data
+    }
+    expect(await refusal(draft.id)).toMatchObject({ code: "BAD_REQUEST", reason: "not_remindable" })
+    const invoice = await org.seed()
+    await prisma.contact.update({ where: { id: org.contact.id }, data: { email: null } })
+    expect((await refusal(invoice.id)).reason).toBe("missing_recipient")
+    await prisma.contact.update({ where: { id: org.contact.id }, data: { email: "buyer@example.com" } })
+    vi.stubEnv("EMAIL_PROVIDER", "resend")
+    vi.stubEnv("RESEND_API_KEY", "")
+    expect((await refusal(invoice.id)).reason).toBe("email_unavailable")
+    vi.stubEnv("RESEND_API_KEY", "test-dashboard")
+    vi.stubEnv("FROM_EMAIL", "sender@example.com")
+    // Reserve both adjacent slots to avoid a wall-clock boundary race while executing the request.
+    const slot = Math.floor((Date.now() - invoice.dueDate.getTime()) / 86400000)
+    await prisma.invoiceReminder.createMany({ data: [slot, slot + 1].map(offsetDays => ({ invoiceId: invoice.id, offsetDays, scheduledFor: NOW, sentAt: NOW, outcome: "sent" })) })
+    expect((await refusal(invoice.id)).reason).toBe("already_reminded")
   })
 
   it("uses five SELECTs for one and 501 invoices with bounded lists, independent of SQL timezone", async () => {

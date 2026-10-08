@@ -7,12 +7,12 @@ contracts entrypoint.
 
 ## Response
 
-All fields are present. Dates and times are strings. Money never passes through a JavaScript
+All fields are present except optional bucket `oldestDaysOverdue`. Dates and times are strings. Money never passes through a JavaScript
 number. The following TypeScript notation describes the exact JSON shape:
 
 ```ts
 type Money = { currency: string; exponent: number; amount: string }
-type Bucket = Money & { count: number }
+type Bucket = Money & { count: number; oldestDaysOverdue?: number }
 type Total = { count: number; buckets: Bucket[]; unvalued: Bucket[] }
 type Document = {
   documentId: string
@@ -25,6 +25,7 @@ type Summary = {
   timezone: string
   baseCurrency: string
   currencyMode: "per_currency"
+  hasOtherCurrencies: boolean
   outstanding: Total
   overdue: Total & { oldestDaysOverdue: number }
   paidThisMonth: Total
@@ -32,11 +33,17 @@ type Summary = {
   streak: number
   attention: Array<Document & {
     kind: "invoice" | "quote"
+    dueDate: string | null // YYYY-MM-DD; invoices only, including drafts
+    daysOverdue: number | null // nonnegative; issued invoices only
+    isOverdue: boolean
+    expiresOn: string | null // YYYY-MM-DD; quote_expiring only
     reason: "invoice_overdue" | "draft_older_than_7_days" | "quote_expiring"
       | "email_failed" | "email_unconfirmed"
     canRemind: boolean
   }> // at most 5
   incoming: Array<Document & {
+    total: Money // original gross, before payments and credits
+    isOverdue: boolean
     dueDate: string // YYYY-MM-DD in the organization's timezone
     daysOverdue: number
     canRemind: boolean
@@ -48,6 +55,9 @@ type Summary = {
     aggregateType: string
     aggregateId: string
     occurredAt: string // ISO timestamp
+    documentKind: "invoice" | "quote" | "credit_note" | "agreement" | null
+    documentNumber: string | null
+    customerName: string | null
   }> // at most 8
 }
 ```
@@ -76,7 +86,13 @@ amount. Missing settings use the existing USD/UTC defaults without creating sett
 - Overdue uses the same `dueDate < asOf` predicate as `markOrganizationInvoicesOverdue`, independent
   of the stored status badge. Calendar days overdue are the difference between the current and due
   dates in the organization's timezone, not elapsed 24-hour periods. Just past the due timestamp on
-  the same calendar date is overdue with zero days. The dashboard never updates lifecycle statuses.
+  the same calendar date is overdue with zero days. Use `isOverdue`, not `daysOverdue > 0`, on
+  attention and incoming. It is true only for an issued invoice with positive balance and
+  `dueDate < asOf`. Drafts and quotes have `isOverdue: false`; draft invoices retain their due date
+  but have `daysOverdue: null`. Quotes have null due date and days. Each overdue bucket also has
+  `oldestDaysOverdue`, computed within that currency. The unvalued subset has its own maximum.
+  Other totals omit the optional bucket field. The top-level maximum stays unchanged.
+  The dashboard never updates lifecycle statuses.
   A list's stored badge can lag the scheduler; its balance and the underlying overdue predicate agree.
 - Received money is non-voided payments by `paidAt`, from the start of each local month through
   `asOf`. Future-dated payments are excluded. The series starts eleven months before the current
@@ -97,16 +113,52 @@ amount. Missing settings use the existing USD/UTC defaults without creating sett
 - `canRemind` checks send permission, open settlement, a valid recipient, provider availability and
   the manual reminder's current offset slot. Pausing automatic reminders does not disable manual
   reminders. The command checks again under lock before sending. Nothing in this query sends email.
-- Incoming contains the earliest due outstanding invoices, with the balance still owed. Drafts
+- `hasOtherCurrencies` is true if any bucket in outstanding, overdue, paid this month or any of the
+  twelve monthly totals differs from `baseCurrency`. Unvalued subsets are checked too. Draft-only
+  foreign currencies and receipts outside the window do not set the flag.
+- Incoming contains the earliest due outstanding invoices, with the balance still owed in `amount`
+  and the original invoice gross in `total`. Both use the same native currency. The UI can calculate
+  `1 - amount / total` with decimal arithmetic; credits count as settled, like payments. Incoming
+  rows always have positive balance and positive total, so this denominator is nonzero. Drafts
   appear only in attention. Activity projects the latest document/payment events by organization
   sequence, using the existing `DomainEvent` source. Organization settings, agent events, audit
   payloads, actor details and command results are not exposed through invoice-read permission.
+  Display fields come from current document/contact rows in the same organization and snapshot,
+  not event payloads. Numbers are null for current drafts, including legacy numbered drafts.
+  Missing/deleted or foreign document references resolve all display fields to null. A foreign
+  contact reference resolves the customer name to null. Payment aggregates resolve through their
+  scoped payment's invoice; current payment events already aggregate on the invoice.
+- Attention carries its own dates, independent of the eight incoming rows. `expiresOn` is the
+  organization's local quote expiry date only for `quote_expiring`, and null for other reasons.
+
+## Activity allowlist and reminder refusals
+
+`DASHBOARD_ACTIVITY_EVENT_TYPES` is the single exported allowlist in `@quits/contracts/dashboard`.
+`DashboardActivityEventType` is its string-literal union for UI label mappings. The server applies
+it before the cap of eight and orders by descending organization sequence. The event `type` field
+keeps its existing string schema for additive compatibility.
+
+The UI's named types all exist in the real `eventRegistry`. Its `*.email_failed` and
+`*.email_unconfirmed` wildcards expand to invoice, quote, credit_note and agreement, yielding
+28 explicit entries. No named type needed renaming. Other real types such as `quote.email_resent`,
+`agreement.email_resent`, `credit_note.sent`, `payment.failed`, `agreement.declined` and artifact,
+valuation or draft-update events are intentionally excluded from this requested set. New types
+need a deliberate addition to the shared constant and a UI label.
+
+`reminders.sendNow` already carries `InvalidState` refusal codes through `DomainRefusal` in the
+tRPC error cause and `error.data.reason` in the HTTP response. No production change was needed.
+The integration test exercises the real fetch adapter and command for all four domain reasons:
+`not_remindable`, `missing_recipient`, `email_unavailable`, `already_reminded`. The tRPC code is
+`BAD_REQUEST`. Missing records or permission/authentication failures use the ordinary tRPC
+`NOT_FOUND`, `FORBIDDEN` or `UNAUTHORIZED` codes; their `data.reason` may be null. Delivery outcomes
+after queuing still live in the successful response's `delivery` field, not a refusal code.
 
 ## Queries and indexes
 
 The helper executes five SELECTs in a repeatable-read transaction: settings, narrow invoice rows
 with contacts and the current reminder slot, SQL payment sums grouped by currency and local month,
-old draft/expiring quotes, and eight event projections. tRPC membership resolution adds its existing query.
+old draft/expiring quotes, and eight allowed events joined to scoped document/contact display
+fields. tRPC membership resolution adds its existing query.
 Transaction control statements are separate. There are no per-invoice round trips, line-item loads
 or document snapshot loads. The invoice pass remains O(number of organization invoices) to reuse
 settlement arithmetic and derive the streak; it is not a constant-memory aggregate of all history.
@@ -119,6 +171,8 @@ The existing indexes were checked against PostgreSQL on port 55473:
 - `payment(organizationId, paidAt)` bounds the twelve-month receipt aggregation.
 - `quote(organizationId, status)` bounds eligible quotes; expiry sorting is local to that result.
 - `domain_event(organizationId, sequence)` is unique and supports newest-first activity.
+  `domain_event(organizationId, type)` also supports the event-type allowlist filter. The activity
+  joins resolve at most eight events through primary keys, with organization checks on every join.
 
 No new index or migration is needed for these access paths. The database integration test asserts
 exactly five SELECTs with one invoice and 501 invoices, seeds payment and credit rows, reconciles
@@ -146,9 +200,9 @@ same columns. Keep tests for reversed allocations reopening debt.
 
 ### Operation journal, PR #74
 
-No mandatory change to `recentActivity`: the journal retains `DomainEvent`, and its new delivery
-events use document aggregate types already included here. The current contract will show them
-as event metadata. If product scope expands to failed commands, approval waits and queued jobs,
+No mandatory change to `recentActivity`: the journal retains `DomainEvent`. Its new delivery
+events are not in the dashboard allowlist; adding them requires both an allowlist entry and UI
+labels. If product scope expands to failed commands, approval waits and queued jobs,
 replace only `recentActivity` with a bounded organization-wide journal projection and extend the
 activity contract explicitly. Do not call `documentJournal` once per invoice. Its document-level
 query and recovery permissions are not a dashboard aggregation API. Never expose email bodies,

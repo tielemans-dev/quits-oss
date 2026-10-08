@@ -1,4 +1,4 @@
-import type { DashboardMoney, DashboardSummary, DashboardTotal } from "@quits/contracts/dashboard"
+import { DASHBOARD_ACTIVITY_EVENT_TYPES, type DashboardMoney, type DashboardSummary, type DashboardTotal } from "@quits/contracts/dashboard"
 import { requireCurrencyExponent } from "@quits/shared/currency"
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client"
 import { actorCan, type UserActor } from "../../domain/actor"
@@ -15,18 +15,21 @@ const money = (currency: string, amount: Prisma.Decimal): DashboardMoney => {
 }
 
 function totals() {
-  const buckets = new Map<string, { amount: Prisma.Decimal; count: number }>()
-  const unvalued = new Map<string, { amount: Prisma.Decimal; count: number }>()
+  const buckets = new Map<string, { amount: Prisma.Decimal; count: number; oldestDaysOverdue?: number }>()
+  const unvalued = new Map<string, { amount: Prisma.Decimal; count: number; oldestDaysOverdue?: number }>()
   return {
-    add(currency: string, amount: Prisma.Decimal, count: number, hasValuation = false) {
+    add(currency: string, amount: Prisma.Decimal, count: number, hasValuation = false, oldestDaysOverdue?: number) {
       for (const map of hasValuation ? [buckets] : [buckets, unvalued]) {
         const old = map.get(currency) ?? { amount: new Prisma.Decimal(0), count: 0 }
-        map.set(currency, { amount: old.amount.plus(amount), count: old.count + count })
+        map.set(currency, {
+          amount: old.amount.plus(amount), count: old.count + count,
+          ...(oldestDaysOverdue === undefined ? {} : { oldestDaysOverdue: Math.max(old.oldestDaysOverdue ?? 0, oldestDaysOverdue) }),
+        })
       }
     },
     result(): DashboardTotal {
       const serialize = (map: typeof buckets) => [...map].sort(([a], [b]) => a.localeCompare(b))
-        .map(([currency, value]) => ({ ...money(currency, value.amount), count: value.count }))
+        .map(([currency, value]) => ({ ...money(currency, value.amount), count: value.count, ...(value.oldestDaysOverdue === undefined ? {} : { oldestDaysOverdue: value.oldestDaysOverdue }) }))
       const values = serialize(buckets)
       return { count: values.reduce((sum, value) => sum + value.count, 0), buckets: values, unvalued: serialize(unvalued) }
     },
@@ -90,11 +93,41 @@ export async function moneyReceived(db: Db, organizationId: string, timezone: st
  * #74 retains DomainEvent; replacing this projection with a bulk journal adapter is local here.
  */
 export async function recentActivity(db: Db, organizationId: string): Promise<DashboardSummary["activity"]> {
-  const events = await db.domainEvent.findMany({
-    where: { organizationId, aggregateType: { in: ["invoice", "payment", "quote", "creditNote", "credit_note", "agreement"] } },
-    select: { id: true, sequence: true, type: true, aggregateType: true, aggregateId: true, occurredAt: true },
-    orderBy: { sequence: "desc" }, take: 8,
-  })
+  // Filter before LIMIT. Resolve at most eight rows in this same statement/snapshot, with
+  // organization checks on every join. Payment events normally aggregate on invoices; older
+  // payment aggregates are resolved through their scoped Payment row. Never read event payloads.
+  const events = await db.$queryRaw<Array<Omit<DashboardSummary["activity"][number], "occurredAt"> & { occurredAt: Date }>>`
+    SELECT e.id, e.sequence, e.type, e."aggregateType", e."aggregateId", e."occurredAt",
+      CASE WHEN i.id IS NOT NULL THEN 'invoice' WHEN q.id IS NOT NULL THEN 'quote'
+        WHEN cn.id IS NOT NULL THEN 'credit_note' WHEN a.id IS NOT NULL THEN 'agreement'
+        ELSE NULL END AS "documentKind",
+      CASE WHEN coalesce(i.status, q.status, cn.status, a.status) = 'draft' THEN NULL
+        ELSE coalesce(i.number, q.number, cn.number, a.number) END AS "documentNumber",
+      c.name AS "customerName"
+    FROM (
+      SELECT id, sequence, type, "aggregateType", "aggregateId", "occurredAt", "organizationId"
+      FROM domain_event
+      WHERE "organizationId" = ${organizationId}
+        AND type IN (${Prisma.join(DASHBOARD_ACTIVITY_EVENT_TYPES)})
+        AND "aggregateType" IN ('invoice', 'payment', 'quote', 'creditNote', 'credit_note', 'agreement')
+      ORDER BY sequence DESC LIMIT 8
+    ) e
+    LEFT JOIN payment p ON e."aggregateType" = 'payment' AND p.id = e."aggregateId"
+      AND p."organizationId" = e."organizationId"
+    LEFT JOIN invoice i ON i."organizationId" = e."organizationId" AND (
+      (e."aggregateType" = 'invoice' AND i.id = e."aggregateId") OR
+      (e."aggregateType" = 'payment' AND i.id = p."invoiceId")
+    )
+    LEFT JOIN quote q ON e."aggregateType" = 'quote' AND q.id = e."aggregateId"
+      AND q."organizationId" = e."organizationId"
+    LEFT JOIN credit_note cn ON e."aggregateType" IN ('credit_note', 'creditNote') AND cn.id = e."aggregateId"
+      AND cn."organizationId" = e."organizationId"
+    LEFT JOIN agreement a ON e."aggregateType" = 'agreement' AND a.id = e."aggregateId"
+      AND a."organizationId" = e."organizationId"
+    LEFT JOIN contact c ON c.id = coalesce(i."contactId", q."contactId", cn."contactId", a."contactId")
+      AND c."organizationId" = e."organizationId"
+    ORDER BY e.sequence DESC
+  `
   return events.map(event => ({ ...event, occurredAt: event.occurredAt.toISOString() }))
 }
 
@@ -133,8 +166,8 @@ export async function dashboardSummary(db: PrismaClient, actor: UserActor, now =
     const start = startOfDayInTimeZone(`${months[0]}-01`, timezone)
     const invoiceRows = await readInvoices(tx, organizationId, baseCurrency, now)
     const receipts = await moneyReceived(tx, organizationId, timezone, start, now)
-    const quotes = await tx.$queryRaw<Array<{ id: string; number: string | null; customerName: string; totalGross: Prisma.Decimal; currency: string; status: string; createdAt: Date }>>`
-      SELECT q.id, q.number, c.name AS "customerName", q."totalGross", q.currency, q.status, q."createdAt"
+    const quotes = await tx.$queryRaw<Array<{ id: string; number: string | null; customerName: string; totalGross: Prisma.Decimal; currency: string; status: string; createdAt: Date; expiryDate: Date }>>`
+      SELECT q.id, q.number, c.name AS "customerName", q."totalGross", q.currency, q.status, q."createdAt", q."expiryDate"
       FROM quote q JOIN contact c ON c.id = q."contactId" AND c."organizationId" = q."organizationId"
       WHERE q."organizationId" = ${organizationId} AND (
         (q.status = 'draft' AND q."createdAt" < ${utcTimestamp(new Date(now.getTime() - 7 * DAY_MS))})
@@ -170,29 +203,40 @@ export async function dashboardSummary(db: PrismaClient, actor: UserActor, now =
       outstanding.add(invoice.currency, balance, 1, invoice.hasValuation)
       const days = daysOverdue(invoice)
       if (isOverdue(invoice)) {
-        overdue.add(invoice.currency, balance, 1, invoice.hasValuation)
+        overdue.add(invoice.currency, balance, 1, invoice.hasValuation, days)
         oldestDaysOverdue = Math.max(oldestDaysOverdue, days)
       }
     }
+    const invoiceDates = (invoice: InvoiceRow) => ({
+      dueDate: localDate(invoice.dueDate),
+      daysOverdue: invoice.status === "draft" ? null : daysOverdue(invoice),
+      isOverdue: invoice.status !== "draft" && amountStillOwed(invoice).gt(0) && isOverdue(invoice),
+      expiresOn: null,
+    })
+    const quoteDates = { dueDate: null, daysOverdue: null, isOverdue: false, expiresOn: null }
     const attention: DashboardSummary["attention"] = open.filter(isOverdue)
-      .map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), kind: "invoice", reason: "invoice_overdue", canRemind: canRemind(invoice) }))
+      .map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), ...invoiceDates(invoice), kind: "invoice", reason: "invoice_overdue", canRemind: canRemind(invoice) }))
     const drafts = [
       ...invoiceRows.filter(invoice => invoice.status === "draft" && invoice.createdAt.getTime() < now.getTime() - 7 * DAY_MS)
         .map(invoice => ({ ...invoice, kind: "invoice" as const })),
       ...quotes.filter(quote => quote.status === "draft").map(quote => ({ ...quote, kind: "quote" as const })),
     ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))
-    attention.push(...drafts.map(draft => ({ ...document(draft, draft.totalGross), kind: draft.kind, reason: "draft_older_than_7_days" as const, canRemind: false })))
-    attention.push(...quotes.filter(quote => quote.status !== "draft").map(quote => ({ documentId: quote.id, number: quote.number, customerName: quote.customerName, amount: money(quote.currency, quote.totalGross), kind: "quote" as const, reason: "quote_expiring" as const, canRemind: false })))
+    attention.push(...drafts.map(draft => ({ ...document(draft, draft.totalGross), ...(draft.kind === "invoice" ? invoiceDates(draft) : quoteDates), kind: draft.kind, reason: "draft_older_than_7_days" as const, canRemind: false })))
+    attention.push(...quotes.filter(quote => quote.status !== "draft").map(quote => ({ ...quoteDates, expiresOn: localDate(quote.expiryDate), documentId: quote.id, number: quote.number, customerName: quote.customerName, amount: money(quote.currency, quote.totalGross), kind: "quote" as const, reason: "quote_expiring" as const, canRemind: false })))
     // An uncertain submission is never labelled a bounce. This baseline has no bounce state.
     attention.push(...open.filter(invoice => !isOverdue(invoice) && ["failed", "unconfirmed"].includes(invoice.lastEmailAttemptOutcome ?? ""))
-      .map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), kind: "invoice" as const, reason: invoice.lastEmailAttemptOutcome === "failed" ? "email_failed" as const : "email_unconfirmed" as const, canRemind: false })))
+      .map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), ...invoiceDates(invoice), kind: "invoice" as const, reason: invoice.lastEmailAttemptOutcome === "failed" ? "email_failed" as const : "email_unconfirmed" as const, canRemind: false })))
     const current = receivedByMonth.at(-1)!
+    const outstandingTotal = outstanding.result()
+    const overdueTotal = overdue.result()
+    const hasOtherCurrencies = [outstandingTotal, overdueTotal, ...receivedByMonth]
+      .some(total => [...total.buckets, ...total.unvalued].some(bucket => bucket.currency !== baseCurrency))
     return {
-      asOf: now.toISOString(), timezone, baseCurrency, currencyMode: "per_currency",
-      outstanding: outstanding.result(), overdue: { ...overdue.result(), oldestDaysOverdue },
+      asOf: now.toISOString(), timezone, baseCurrency, currencyMode: "per_currency", hasOtherCurrencies,
+      outstanding: outstandingTotal, overdue: { ...overdueTotal, oldestDaysOverdue },
       paidThisMonth: { count: current.count, buckets: current.buckets, unvalued: current.unvalued },
       receivedByMonth, streak: onTimeStreak(invoiceRows, timezone), attention: attention.slice(0, 5),
-      incoming: open.slice(0, 8).map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), dueDate: localDate(invoice.dueDate), daysOverdue: daysOverdue(invoice), canRemind: canRemind(invoice) })),
+      incoming: open.slice(0, 8).map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), total: money(invoice.currency, invoice.totalGross), isOverdue: isOverdue(invoice), dueDate: localDate(invoice.dueDate), daysOverdue: daysOverdue(invoice), canRemind: canRemind(invoice) })),
       activity,
     }
   }, { isolationLevel: "RepeatableRead" })
