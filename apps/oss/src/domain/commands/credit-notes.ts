@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { creditNoteIssueInputSchema, creditNoteSendInputSchema } from "@quits/contracts/credit-notes"
 import type { Prisma } from "../../../generated/prisma/client"
 import { composeMessage } from "../../lib/email"
@@ -173,12 +174,16 @@ export const sendCreditNote = defineCommand({
           taxAmount: num(creditNote.totalTax),
           total: num(creditNote.totalGross),
           currency: creditNote.currency,
-          items: creditNote.items.map((item) => ({
-            description: item.description,
-            quantity: num(item.quantity),
-            unitPrice: num(item.unitPriceGross),
-            total: num(item.lineGross),
-          })),
+          priceBasis: priceBasis(creditNote.pricesIncludeTax),
+          items: creditNote.items.map((item) => {
+            const shown = lineAmounts(priceBasis(creditNote.pricesIncludeTax), item)
+            return {
+              description: item.description,
+              quantity: num(item.quantity),
+              unitPrice: num(shown.unitPrice),
+              total: num(shown.amount),
+            }
+          }),
         },
         invoice: asIssued(creditNote.invoice),
         org: {

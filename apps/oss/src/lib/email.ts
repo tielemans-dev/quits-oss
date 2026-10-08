@@ -2,6 +2,7 @@ import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import type { TranslationKey } from "./i18n/messages"
+import { lineColumnKeys, type PriceBasis } from "./documents/line-amounts"
 import { selectedEmailProvider, readSmtpConfiguration, type EmailProvider, type EmailEnvironment } from "./email-provider-config"
 import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
 
@@ -136,11 +137,14 @@ export function t(
   return translate(key, locale, vars)
 }
 
+/** Item unit prices and totals are the stored amounts on the document's price basis, named in the headers. */
 export function itemsTable(
   items: { description: string; quantity: number; unitPrice: number; total: number }[],
   currency: string,
-  locale?: string | null
+  locale?: string | null,
+  basis?: PriceBasis
 ) {
+  const columns = lineColumnKeys(basis)
   const rows = items.map((item) => `
     <tr>
       <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;">${escapeHtml(item.description)}</td>
@@ -155,8 +159,8 @@ export function itemsTable(
         <tr style="border-bottom:2px solid #e5e7eb;">
           <th style="padding:8px 0;text-align:left;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.description", locale)}</th>
           <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.qty", locale)}</th>
-          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.unitPrice", locale)}</th>
-          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.total", locale)}</th>
+          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t(columns.unitPrice, locale)}</th>
+          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t(columns.amount, locale)}</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -243,6 +247,8 @@ export type SendInvoiceEmailParams = {
     total: number
     currency: string
     notes?: string | null
+    /** The basis `items` state their amounts on. Absent, the headers stay plain. */
+    priceBasis?: PriceBasis
     items: { description: string; quantity: number; unitPrice: number; total: number }[]
   }
   org: {
@@ -287,7 +293,7 @@ export function buildInvoiceEmailContent({
       </div>
     </div>
 
-    ${itemsTable(invoice.items, invoice.currency, locale)}
+    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis)}
     ${totalsBlock(invoice.subtotal, invoice.taxAmount, invoice.total, invoice.currency, locale)}
 
     ${invoice.notes ? `<p style="margin-top:24px;color:#6b7280;font-size:14px;border-top:1px solid #e5e7eb;padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
@@ -333,6 +339,8 @@ export type SendQuoteEmailParams = {
     total: number
     currency: string
     notes?: string | null
+    /** The basis `items` state their amounts on. Absent, the headers stay plain. */
+    priceBasis?: PriceBasis
     items: { description: string; quantity: number; unitPrice: number; total: number }[]
   }
   org: {
@@ -377,7 +385,7 @@ export function buildQuoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(quote.items, quote.currency, locale)}
+    ${itemsTable(quote.items, quote.currency, locale, quote.priceBasis)}
     ${totalsBlock(quote.subtotal, quote.taxAmount, quote.total, quote.currency, locale)}
 
     ${quote.notes ? `<p style="margin-top:24px;color:#6b7280;font-size:14px;border-top:1px solid #e5e7eb;padding-top:16px;">${formatMultilineHtml(quote.notes)}</p>` : ""}

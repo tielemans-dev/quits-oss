@@ -1,3 +1,4 @@
+import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { buildQuoteEmailContent, composeMessage } from "../../lib/email"
 import { documentEmailOrg, resolveInvoiceEmailContext } from "./invoice-email"
 
@@ -20,11 +21,14 @@ export type QuoteForEmail = {
   subtotalNet: Decimalish
   totalTax: Decimalish
   totalGross: Decimalish
+  pricesIncludeTax: boolean
   contact: { name: string; email: string | null }
   items: Array<{
     description: string
     quantity: Decimalish
+    unitPriceNet: Decimalish
     unitPriceGross: Decimalish
+    lineNet: Decimalish
     lineGross: Decimalish
   }>
 }
@@ -53,12 +57,16 @@ export function composeQuoteEmail(input: {
       subtotal: quote.subtotalNet.toNumber(),
       taxAmount: quote.totalTax.toNumber(),
       total: quote.totalGross.toNumber(),
-      items: quote.items.map((item) => ({
-        description: item.description,
-        quantity: item.quantity.toNumber(),
-        unitPrice: item.unitPriceGross.toNumber(),
-        total: item.lineGross.toNumber(),
-      })),
+      priceBasis: priceBasis(quote.pricesIncludeTax),
+      items: quote.items.map((item) => {
+        const shown = lineAmounts(priceBasis(quote.pricesIncludeTax), item)
+        return {
+          description: item.description,
+          quantity: item.quantity.toNumber(),
+          unitPrice: shown.unitPrice.toNumber(),
+          total: shown.amount.toNumber(),
+        }
+      }),
     },
     org: documentEmailOrg(quote, input.settings),
     contactName: quote.contact.name,

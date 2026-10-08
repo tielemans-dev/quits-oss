@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { z } from "zod"
 import {
   readDocumentSendingDomainState,
@@ -36,11 +37,14 @@ export type InvoiceForEmail = {
   subtotalNet: Decimalish
   totalTax: Decimalish
   totalGross: Decimalish
+  pricesIncludeTax: boolean
   contact: { name: string; email: string | null }
   items: Array<{
     description: string
     quantity: Decimalish
+    unitPriceNet: Decimalish
     unitPriceGross: Decimalish
+    lineNet: Decimalish
     lineGross: Decimalish
   }>
 }
@@ -113,12 +117,16 @@ export function composeInvoiceEmail(input: {
       subtotal: invoice.subtotalNet.toNumber(),
       taxAmount: invoice.totalTax.toNumber(),
       total: invoice.totalGross.toNumber(),
-      items: invoice.items.map((item) => ({
-        description: item.description,
-        quantity: item.quantity.toNumber(),
-        unitPrice: item.unitPriceGross.toNumber(),
-        total: item.lineGross.toNumber(),
-      })),
+      priceBasis: priceBasis(invoice.pricesIncludeTax),
+      items: invoice.items.map((item) => {
+        const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), item)
+        return {
+          description: item.description,
+          quantity: item.quantity.toNumber(),
+          unitPrice: shown.unitPrice.toNumber(),
+          total: shown.amount.toNumber(),
+        }
+      }),
     },
     org: documentEmailOrg(invoice, input.settings),
     contactName: invoice.contact.name,
