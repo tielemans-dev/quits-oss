@@ -170,7 +170,7 @@ export const agreementsRouter = router({
       const detail = serializeAgreementDetail(await getAgreement(ctx.organizationId, input.id))
       const allocations = await describeAllocations(prisma, ctx.organizationId, detail.id, detail.deliverables, {
         invoices: actorCan(ctx.actor, "invoice:read"), creditNotes: actorCan(ctx.actor, "creditNote:read"),
-      })
+      }, detail.status)
       return { ...detail, deliverables: detail.deliverables.map(line => ({ ...line, allocation: allocations.get(line.id)! })) }
     }),
   releaseReservation: authorizedProcedure("invoice:update")

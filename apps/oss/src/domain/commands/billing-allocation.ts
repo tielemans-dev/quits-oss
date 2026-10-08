@@ -21,11 +21,14 @@ export const releaseDeliverableReservation = defineCommand({
   summarize: input => `Release deliverable ${input.deliverableId} from its draft invoice`,
   handle: input => Effect.gen(function* () {
     const db = yield* Db, command = yield* Command
+    yield* lockDocument("agreement", input.agreementId)
     const line = yield* Effect.promise(() => db.deliverable.findFirst({ where: { id: input.deliverableId, agreementId: input.agreementId, agreement: { organizationId: command.organizationId } } }))
     if (!line) return yield* new NotFound({ message: "Deliverable not found", entity: "deliverable", id: input.deliverableId })
-    const held = yield* Effect.promise(() => db.invoiceItem.findFirst({ where: { deliverableId: line.id, allocationGeneration: line.billingGeneration }, select: { invoiceId: true } }))
+    const held = yield* Effect.promise(() => db.invoiceItem.findFirst({ where: { deliverableId: line.id, allocationGeneration: line.billingGeneration }, select: { id: true, invoiceId: true } }))
     if (line.billingStatus !== "reserved" || !held)
       return yield* new InvalidState({ code: "not_reserved", message: line.billingStatus === "invoiced" ? "This work is on an issued invoice and cannot be released" : "This work is not reserved by a draft" })
+    if (held.invoiceId !== input.expectedAllocation?.invoiceId || held.id !== input.expectedAllocation?.invoiceItemId || line.billingGeneration !== input.expectedAllocation?.generation)
+      return yield* new InvalidState({ code: "allocation_changed", message: "This work's reservation changed after review. Refresh the agreement and review its current draft before releasing it." })
     // Parent first: this locks the agreement, then the invoice, like every other draft editor.
     yield* lockDocument("invoice", held.invoiceId)
     const invoice = yield* Effect.promise(() => db.invoice.findFirst({ where: { id: held.invoiceId, organizationId: command.organizationId }, include: { items: { orderBy: { sortOrder: "asc" } } } }))
@@ -62,6 +65,7 @@ export const authorizeDeliverableRebill = defineCommand({
     const agreement = yield* lockedAgreement(input.agreementId)
     const line = agreement.deliverables.find(row => row.id === input.deliverableId)
     if (!line) return yield* new NotFound({ message: "Deliverable not found", entity: "deliverable", id: input.deliverableId })
+    if (agreement.status !== "accepted") return yield* new InvalidState({ code: "agreement_not_accepted", message: "Only an accepted agreement can authorize new billing. This agreement cannot be rebilled.", details: { agreementStatus: agreement.status } })
     if (line.billingStatus !== "invoiced") return yield* new InvalidState({ code: "rebill_not_invoiced", message: "Only work on an issued invoice can be rebilled" })
     const item = yield* Effect.promise(() => db.invoiceItem.findFirst({ where: { deliverableId: line.id, allocationGeneration: line.billingGeneration }, include: { invoice: { include: { creditNotes: { where: { status: "issued" }, include: { items: true } } } } } }))
     if (!item) return yield* new InvalidState({ code: "rebill_not_invoiced", message: "This work has no issued invoice line" })

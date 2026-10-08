@@ -21,6 +21,7 @@ export function DeliverableAllocation({ agreement, line, capabilities, onChanged
   const { t } = useI18n()
   const { allocation } = line
   const [busy, setBusy] = useState(false)
+  const [reviewedReservation, setReviewedReservation] = useState<{ holder: NonNullable<Line["allocation"]["holder"]>; generation: number } | null>(null)
   const [reason, setReason] = useState("")
   async function run(action: () => Promise<unknown>) {
     setBusy(true); onError(null)
@@ -39,16 +40,16 @@ export function DeliverableAllocation({ agreement, line, capabilities, onChanged
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <p>{holder ? t("agreements.allocation.heldBy") : t("agreements.allocation.heldHidden")} {holderLink}</p>
           {holder && capabilities.releaseReservation && (
-            <AlertDialog>
+            <AlertDialog onOpenChange={open => { if (open) setReviewedReservation({ holder: { ...holder }, generation: allocation.generation }) }}>
               <AlertDialogTrigger asChild><Button variant="outline" size="sm" disabled={busy}>{t("agreements.allocation.release")}</Button></AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>{t("agreements.allocation.release")}</AlertDialogTitle>
-                  <AlertDialogDescription>{t("agreements.allocation.releaseConfirm", { title: line.title, invoice: holderName ?? "" })}</AlertDialogDescription>
+                  <AlertDialogDescription>{t("agreements.allocation.releaseConfirm", { title: line.title, invoice: reviewedReservation?.holder.number ?? t("invoices.number.draft") })}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>{t("agreements.cancel")}</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => void run(() => trpc.agreements.releaseReservation.mutate({ agreementId: agreement.id, deliverableId: line.id }))}>{t("agreements.allocation.release")}</AlertDialogAction>
+                  <AlertDialogAction disabled={!reviewedReservation || busy} onClick={() => reviewedReservation && void run(() => trpc.agreements.releaseReservation.mutate({ agreementId: agreement.id, deliverableId: line.id, expectedAllocation: { invoiceId: reviewedReservation.holder.invoiceId, invoiceItemId: reviewedReservation.holder.invoiceItemId, generation: reviewedReservation.generation } }))}>{t("agreements.allocation.release")}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -61,7 +62,8 @@ export function DeliverableAllocation({ agreement, line, capabilities, onChanged
           {allocation.state === "partially_credited" && <p>{t("agreements.allocation.partialCredit", { credited: allocation.creditedQuantity, quantity: allocation.quantity })}</p>}
           {allocation.state !== "invoiced" && <p className="text-muted-foreground">{t("agreements.allocation.creditDoesNotRelease")}</p>}
           {allocation.invoiceHasUntiedCredit && <p className="text-muted-foreground">{t("agreements.allocation.untiedCredit")}</p>}
-          {allocation.state === "credited" && capabilities.authorizeRebill && creditNote && (
+          {allocation.state === "credited" && allocation.rebill.blocker === "agreement_not_accepted" && <p className="text-muted-foreground">{t("agreements.allocation.rebillAgreementClosed")}</p>}
+          {allocation.rebill.eligible && capabilities.authorizeRebill && creditNote && (
             <AlertDialog>
               <AlertDialogTrigger asChild><Button variant="outline" size="sm" className="w-fit" disabled={busy}>{t("agreements.allocation.allowRebill")}</Button></AlertDialogTrigger>
               <AlertDialogContent>

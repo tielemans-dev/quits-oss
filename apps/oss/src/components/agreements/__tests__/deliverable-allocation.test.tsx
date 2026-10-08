@@ -41,8 +41,13 @@ describe("deliverable allocation", () => {
     expect(html).not.toContain("agreements.allocation.allowRebill")
   })
   it("offers a rebill decision only for fully credited work, and only to those who may decide", () => {
-    const credited = { state: "credited", holder: { invoiceId: "inv-1", number: "INV-0001", status: "sent" }, creditNotes: [{ id: "cn-1", number: "CN-0001" }] }
+    const credited = { state: "credited", holder: { invoiceId: "inv-1", number: "INV-0001", status: "sent" }, creditNotes: [{ id: "cn-1", number: "CN-0001" }], rebill: { eligible: true, blocker: null } }
     expect(render(credited)).toContain("agreements.allocation.allowRebill")
     expect(render(credited, { releaseReservation: true })).not.toContain("agreements.allocation.allowRebill")
+  })
+  it("explains why credited work on a closed agreement cannot be rebilled", () => {
+    const html = render({ state: "credited", creditNotes: [{ id: "cn-1", number: "CN-0001" }], rebill: { eligible: false, blocker: "agreement_not_accepted" } })
+    expect(html).toContain("agreements.allocation.rebillAgreementClosed")
+    expect(html).not.toContain("agreements.allocation.allowRebill")
   })
 })

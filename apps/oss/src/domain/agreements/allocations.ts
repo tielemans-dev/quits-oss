@@ -5,7 +5,7 @@ type Reader = Pick<PrismaClient, "invoiceItem" | "deliverableRebill" | "invoice"
 type Visibility = { invoices: boolean; creditNotes: boolean }
 
 /** A draft has no number until it is issued, so `number` is null while the holder is a draft. */
-export type AllocationHolder = { invoiceId: string; number: string | null; status: string }
+export type AllocationHolder = { invoiceId: string; invoiceItemId: string; number: string | null; status: string }
 export type AllocationView = {
   state: BillableAllocationState
   generation: number
@@ -16,8 +16,8 @@ export type AllocationView = {
   /** True when the invoice carries an amount credit that is not tied to any line, so it says nothing about this work. */
   invoiceHasUntiedCredit: boolean
   creditNotes: Array<{ id: string; number: string }>
-  rebill: { eligible: boolean; blocker: "not_invoiced" | "line_not_fully_credited" | null }
-  rebills: Array<{ generation: number; priorInvoiceId: string; priorInvoiceNumber: string | null; creditNoteId: string; creditNoteNumber: string | null; reason: string; decidedBy: string; createdAt: string }>
+  rebill: { eligible: boolean; blocker: "not_invoiced" | "line_not_fully_credited" | "agreement_not_accepted" | null }
+  rebills: Array<{ generation: number; priorInvoiceId: string | null; priorInvoiceNumber: string | null; creditNoteId: string | null; creditNoteNumber: string | null; reason: string; decidedBy: string; createdAt: string }>
 }
 
 /** Billing state of the work behind an agreement, derived from its current allocation and issued credits. */
@@ -27,6 +27,7 @@ export async function describeAllocations(
   agreementId: string,
   lines: Array<{ id: string; billingStatus: string; billingGeneration: number }>,
   visible: Visibility,
+  agreementStatus: string,
 ): Promise<Map<string, AllocationView>> {
   const [items, rebills] = await Promise.all([
     db.invoiceItem.findMany({
@@ -41,8 +42,8 @@ export async function describeAllocations(
     const ids = [...new Set(rebills.map(row => row.priorInvoiceId))]
     const creditIds = [...new Set(rebills.map(row => row.creditNoteId))]
     const [invoices, credits] = await Promise.all([
-      db.invoice.findMany({ where: { id: { in: ids }, organizationId }, select: { id: true, number: true } }),
-      db.creditNote.findMany({ where: { id: { in: creditIds }, organizationId }, select: { id: true, number: true } }),
+      visible.invoices ? db.invoice.findMany({ where: { id: { in: ids }, organizationId }, select: { id: true, number: true } }) : Promise.resolve([]),
+      visible.creditNotes ? db.creditNote.findMany({ where: { id: { in: creditIds }, organizationId }, select: { id: true, number: true } }) : Promise.resolve([]),
     ])
     invoices.forEach(row => row.number && numbers.set(`invoice:${row.id}`, row.number))
     credits.forEach(row => numbers.set(`credit:${row.id}`, row.number))
@@ -59,14 +60,14 @@ export async function describeAllocations(
       : fully ? "credited" : credited.gt(0) ? "partially_credited" : "invoiced"
     views.set(line.id, {
       state, generation: line.billingGeneration,
-      holder: item && visible.invoices ? { invoiceId: item.invoice.id, number: item.invoice.number, status: item.invoice.status } : null,
+      holder: item && visible.invoices ? { invoiceId: item.invoice.id, invoiceItemId: item.id, number: item.invoice.number, status: item.invoice.status } : null,
       creditedQuantity: credited.toString(), quantity: quantity.toString(),
       invoiceHasUntiedCredit: !!item && item.invoice.creditNotes.some(note => note.items.some(row => row.invoiceItemId === null)),
       creditNotes: visible.creditNotes ? tied.map(note => ({ id: note.id, number: note.number })) : [],
-      rebill: { eligible: state === "credited", blocker: line.billingStatus !== "invoiced" ? "not_invoiced" : fully ? null : "line_not_fully_credited" },
+      rebill: { eligible: agreementStatus === "accepted" && state === "credited", blocker: agreementStatus !== "accepted" ? "agreement_not_accepted" : line.billingStatus !== "invoiced" ? "not_invoiced" : fully ? null : "line_not_fully_credited" },
       rebills: rebills.filter(row => row.deliverableId === line.id).map(row => ({
-        generation: row.generation, priorInvoiceId: row.priorInvoiceId, priorInvoiceNumber: visible.invoices ? numbers.get(`invoice:${row.priorInvoiceId}`) ?? null : null,
-        creditNoteId: row.creditNoteId, creditNoteNumber: visible.creditNotes ? numbers.get(`credit:${row.creditNoteId}`) ?? null : null,
+        generation: row.generation, priorInvoiceId: visible.invoices ? row.priorInvoiceId : null, priorInvoiceNumber: visible.invoices ? numbers.get(`invoice:${row.priorInvoiceId}`) ?? null : null,
+        creditNoteId: visible.creditNotes ? row.creditNoteId : null, creditNoteNumber: visible.creditNotes ? numbers.get(`credit:${row.creditNoteId}`) ?? null : null,
         reason: row.reason, decidedBy: row.decidedBy, createdAt: row.createdAt.toISOString() })),
     })
   }

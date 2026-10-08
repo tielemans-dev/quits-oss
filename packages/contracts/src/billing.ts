@@ -41,6 +41,12 @@ export const supportedBillableSources = {
 export const deliverableReleaseReservationInputSchema = z.strictObject({
   agreementId: z.string().min(1),
   deliverableId: z.string().min(1),
+  /** Exact allocation the actor reviewed. Required even when the same draft reserves the work again. */
+  expectedAllocation: z.strictObject({
+    invoiceId: z.string().min(1),
+    invoiceItemId: z.string().min(1),
+    generation: z.number().int().nonnegative(),
+  }),
 })
 
 export const deliverableAuthorizeRebillInputSchema = z.strictObject({

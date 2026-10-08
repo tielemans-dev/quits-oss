@@ -239,6 +239,8 @@ are examples, not legal advice.
 `agreement_get` and `deliverable_list` include an `allocation` for each deliverable: its state
 (`unbilled`, `reserved`, `invoiced`, `partially_credited`, `credited`), the draft or invoice holding
 it, credits tied to it and rebill decisions. `deliverable_release_reservation` (`invoice:update`)
-takes reserved work out of its draft. `deliverable_authorize_rebill` is for a person: agents receive
+takes reserved work out of its draft. Supply `expectedAllocation: { invoiceId, invoiceItemId, generation }`
+from the reviewed holder and allocation. A changed allocation receives `allocation_changed`; refresh
+before retrying. Missing identity is refused. `deliverable_authorize_rebill` is for a person: agents receive
 `human_review_required`. A refusal such as `deliverable_reserved` carries structured `details`. See
 [Billable work and reservations](billable-work.md).

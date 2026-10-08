@@ -41,7 +41,11 @@ A draft has no number until it is issued, so a holding draft is shown as "Draft"
   `(sourceKind, sourceId, allocationGeneration)`, so the guard holds even if a code path skips the
   application check.
 - `deliverable.release_reservation` needs `invoice:update`. It refuses work on an issued invoice and
-  a draft that is being emailed.
+  a draft that is being emailed. Its strict input requires `expectedAllocation` with `invoiceId`,
+  `invoiceItemId` and `generation`, copied from the reviewed allocation holder and generation.
+  The handler locks the agreement before reading the allocation, then locks the invoice. If the
+  holder, line identity or generation changed, it refuses with `allocation_changed`. Refresh and
+  review the current draft before retrying. Missing expected identity is refused at validation.
 
 ## Credits and rebilling
 
@@ -52,6 +56,8 @@ not tied to a line, or a full credit, the work stays invoiced and creating a dra
 To bill credited work again, a person records a decision with `deliverable.authorize_rebill`
 (`invoice:create`; agents receive `human_review_required`):
 
+- the agreement must still be accepted; completed and cancelled agreements receive
+  `agreement_not_accepted`. A rebill never reopens an agreement;
 - the work's current invoice line must be credited in full by line credits, and the named credit note
   must be an issued credit of that line;
 - the decision stores who decided, why, the prior invoice and the credit note;
@@ -77,3 +83,6 @@ expense adapters:
 
 Adding a source kind means adding it to the contract, writing its allocate and release steps against
 these guards, and listing it as supported in the interface.
+
+Allocation views redact historical invoice IDs and numbers without `invoice:read`, and historical
+credit note IDs and numbers without `creditNote:read`. Each permission applies independently.
