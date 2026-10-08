@@ -190,6 +190,50 @@ describeIfDatabase("MCP sign-in authorization prototype", () => {
     })
   })
 
+  describe("installation usage", () => {
+    it("records successful MCP authentication with the existing one-minute throttle, not token issuance or refresh", async () => {
+      const org = await setup()
+      const tokens = await connectLikeChatGpt(context, org.actors.admin, approve("read_only"))
+      const key = await prisma.agentKey.findFirstOrThrow({ where: { organizationId: org.organizationId } })
+      const lastUsedAt = async () => (await prisma.agentKey.findUniqueOrThrow({ where: { id: key.id } })).lastUsedAt
+      expect(await lastUsedAt()).toBeNull()
+      const refreshed = await (await refreshTokens(tokens)).json() as Tokens
+      expect(await lastUsedAt()).toBeNull()
+      expect((await rawMcp("quits_at_unknown", "initialize", initializeParams)).response.status).toBe(401)
+      expect(await lastUsedAt()).toBeNull()
+
+      const firstUse = context.clock.now
+      expect((await rawMcp(refreshed.access_token, "initialize", initializeParams)).response.status).toBe(200)
+      expect(await lastUsedAt()).toEqual(firstUse)
+      context.clock.now = new Date(firstUse.getTime() + 60_000)
+      expect((await rawMcp(refreshed.access_token, "initialize", initializeParams)).response.status).toBe(200)
+      expect(await lastUsedAt()).toEqual(firstUse)
+      context.clock.now = new Date(firstUse.getTime() + 60_001)
+      expect((await rawMcp(refreshed.access_token, "initialize", initializeParams)).response.status).toBe(200)
+      expect(await lastUsedAt()).toEqual(context.clock.now)
+
+      const recordedUse = context.clock.now
+      context.clock.now = new Date(firstUse.getTime() + 901_000)
+      expect((await rawMcp(refreshed.access_token, "initialize", initializeParams)).response.status).toBe(401)
+      expect(await lastUsedAt()).toEqual(recordedUse)
+    })
+
+    it.each(["revoked", "expired", "departed owner"] as const)("does not record use when the installation is %s", async (reason) => {
+      const org = await setup()
+      const tokens = await connectLikeChatGpt(context, org.actors.admin, approve("read_only"))
+      const key = await prisma.agentKey.findFirstOrThrow({ where: { organizationId: org.organizationId } })
+      if (reason === "revoked") {
+        await revokeAgentKey(org.actors.admin, key.id, context.clock.now)
+      } else if (reason === "expired") {
+        await prisma.agentKey.update({ where: { id: key.id }, data: { expiresAt: context.clock.now } })
+      } else {
+        await prisma.member.deleteMany({ where: { organizationId: org.organizationId, userId: org.actors.admin.userId } })
+      }
+      expect((await rawMcp(tokens.access_token, "initialize", initializeParams)).response.status).toBe(401)
+      expect((await prisma.agentKey.findUniqueOrThrow({ where: { id: key.id } })).lastUsedAt).toBeNull()
+    })
+  })
+
   describe("authenticated consent binding", () => {
     it("rejects another active organization in the same real user's session, then grants only the reviewed organization", async () => {
       const orgA = await setup()

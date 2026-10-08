@@ -82,6 +82,8 @@ test('login returns to consent, callback works, and Settings revokes the install
   await page.goto('/settings')
   const row = page.getByRole('row').filter({ hasText: 'Browser test client' })
   await expect(row.getByText('Connected app', { exact: true })).toBeVisible()
+  await expect(row.getByText('Never', { exact: true })).toHaveCount(0)
+  expect((await prisma.agentKey.findFirstOrThrow({ where: { name: 'Browser test client' } })).lastUsedAt).not.toBeNull()
   await expect(row.locator('[title*="invoice:read"]')).toBeVisible()
   await row.scrollIntoViewIfNeeded()
   await screenshot(page, info, 'settings-connected-app')

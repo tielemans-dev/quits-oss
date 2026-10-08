@@ -486,9 +486,9 @@ async function issueTokens(
   )
 }
 
-async function liveInstallation(agentKeyId: string, now: Date) {
+async function liveInstallation(agentKeyId: string, now: Date, recordUsage = false) {
   try {
-    return await resolveAgentActorById(agentKeyId, { allowRevoked: false, now })
+    return await resolveAgentActorById(agentKeyId, { allowRevoked: false, now, recordUsage })
   } catch {
     return null
   }
@@ -672,7 +672,7 @@ export async function authenticateMcpAccessToken(
   if (!grant || !sameResource(grant.resource, context.config.resource)) {
     return null
   }
-  const installation = await liveInstallation(grant.agentKeyId, now)
+  const installation = await liveInstallation(grant.agentKeyId, now, true)
   if (!installation) {
     return null
   }

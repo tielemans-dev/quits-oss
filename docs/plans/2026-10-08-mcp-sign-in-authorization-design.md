@@ -177,7 +177,7 @@ the proxy must route `/.well-known/oauth-protected-resource*`,
 Hosted AI apps (claude.ai, ChatGPT) must reach the server from the internet; a server only reachable
 on a LAN can still be used by local clients such as Claude Code.
 
-### Local proof runbook (not yet executed with real clients)
+### Local proof runbook
 
 1. Start the app with `QUITS_MCP_OAUTH_PROTOTYPE=true QUITS_APP_ORIGIN=http://localhost:3000`.
 2. `claude mcp add --transport http quits-local http://localhost:3000/api/mcp`, then run `/mcp` in
@@ -185,7 +185,11 @@ on a LAN can still be used by local clients such as Claude Code.
 3. For claude.ai or ChatGPT, expose the app on a public HTTPS hostname, set
    `QUITS_MCP_OAUTH_ISSUER` to it, and add `https://<host>/api/mcp` as a custom connector.
 
-Whether Claude Code accepts an `http://localhost` authorization server is unverified.
+Claude Code 2.1.293 completed the local proof on 8 October 2026 against the HTTP loopback issuer
+`http://127.0.0.1:4311`, with its own `http://localhost:54101/callback` redirect. Browser sign-in and
+consent completed; the CLI reported Connected, then Needs authentication after Settings revocation.
+The evidence is recorded below. Shipping claude.ai and ChatGPT connections remain unverified;
+SDK and raw-HTTP profiles do not satisfy the required second selected shipping client.
 
 ## Extension contract (hosted issuer or gateway)
 
