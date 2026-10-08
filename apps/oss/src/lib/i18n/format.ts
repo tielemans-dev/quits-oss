@@ -15,6 +15,13 @@ export function formatCurrency(
   }).format(amount)
 }
 
+/** A plain number such as a quantity, with the locale's decimal separator and no currency. */
+export function formatNumber(value: number, locale?: string | null): string {
+  return new Intl.NumberFormat(normalizeLocale(locale), {
+    maximumFractionDigits: 4,
+  }).format(value)
+}
+
 export function formatDate(
   date: Date | string,
   locale?: string | null,
