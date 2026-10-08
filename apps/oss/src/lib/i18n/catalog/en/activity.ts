@@ -80,4 +80,5 @@ export const enActivityMessages = {
   "activity.event.settlement.changed.reverse_allocation": "Reversed allocation of {invoiceAmount} {invoiceCurrency}",
   "activity.event.settlement.changed.reverse_refund": "Reversed refund of {amount} {currency}",
   "activity.event.settlement.changed.reverse_receipt": "Reversed receipt of {amount} {currency}",
+  "activity.event.invoice.marked_paid": "Invoice marked as paid",
 } as const

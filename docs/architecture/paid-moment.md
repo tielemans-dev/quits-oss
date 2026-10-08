@@ -85,6 +85,6 @@ Missing or foreign invoices use tRPC `NOT_FOUND`. Missing permissions use `FORBI
 inputs use `BAD_REQUEST`. These transport errors have no feature-specific `data.reason`.
 
 The previous `{ id }` mark-paid input and full-invoice response are replaced by the contract above.
-The existing detail button sends the new input and still refetches the invoice. The only other UI
-change is the localized `manual` method label in payment history. Toast, undo button, animation
+The existing detail button sends the new input and still refetches the invoice. Payment history has a localized
+`manual` method label, and the new audit event has Danish and English labels. Toast, undo button, animation
 and query invalidation work belong to K6b.
