@@ -63,6 +63,13 @@ export type OrgSettingsMinAggregateOutputType = {
   companyEmail: string | null
   companyPhone: string | null
   companyLogo: string | null
+  bankAccountHolder: string | null
+  bankName: string | null
+  bankRegNumber: string | null
+  bankAccountNumber: string | null
+  bankIban: string | null
+  bankBic: string | null
+  paymentNote: string | null
   invoicePrefix: string | null
   invoiceNextNum: number | null
   agreementPrefix: string | null
@@ -113,6 +120,13 @@ export type OrgSettingsMaxAggregateOutputType = {
   companyEmail: string | null
   companyPhone: string | null
   companyLogo: string | null
+  bankAccountHolder: string | null
+  bankName: string | null
+  bankRegNumber: string | null
+  bankAccountNumber: string | null
+  bankIban: string | null
+  bankBic: string | null
+  paymentNote: string | null
   invoicePrefix: string | null
   invoiceNextNum: number | null
   agreementPrefix: string | null
@@ -163,6 +177,13 @@ export type OrgSettingsCountAggregateOutputType = {
   companyEmail: number
   companyPhone: number
   companyLogo: number
+  bankAccountHolder: number
+  bankName: number
+  bankRegNumber: number
+  bankAccountNumber: number
+  bankIban: number
+  bankBic: number
+  paymentNote: number
   invoicePrefix: number
   invoiceNextNum: number
   agreementPrefix: number
@@ -237,6 +258,13 @@ export type OrgSettingsMinAggregateInputType = {
   companyEmail?: true
   companyPhone?: true
   companyLogo?: true
+  bankAccountHolder?: true
+  bankName?: true
+  bankRegNumber?: true
+  bankAccountNumber?: true
+  bankIban?: true
+  bankBic?: true
+  paymentNote?: true
   invoicePrefix?: true
   invoiceNextNum?: true
   agreementPrefix?: true
@@ -287,6 +315,13 @@ export type OrgSettingsMaxAggregateInputType = {
   companyEmail?: true
   companyPhone?: true
   companyLogo?: true
+  bankAccountHolder?: true
+  bankName?: true
+  bankRegNumber?: true
+  bankAccountNumber?: true
+  bankIban?: true
+  bankBic?: true
+  paymentNote?: true
   invoicePrefix?: true
   invoiceNextNum?: true
   agreementPrefix?: true
@@ -337,6 +372,13 @@ export type OrgSettingsCountAggregateInputType = {
   companyEmail?: true
   companyPhone?: true
   companyLogo?: true
+  bankAccountHolder?: true
+  bankName?: true
+  bankRegNumber?: true
+  bankAccountNumber?: true
+  bankIban?: true
+  bankBic?: true
+  paymentNote?: true
   invoicePrefix?: true
   invoiceNextNum?: true
   agreementPrefix?: true
@@ -476,6 +518,13 @@ export type OrgSettingsGroupByOutputType = {
   companyEmail: string | null
   companyPhone: string | null
   companyLogo: string | null
+  bankAccountHolder: string | null
+  bankName: string | null
+  bankRegNumber: string | null
+  bankAccountNumber: string | null
+  bankIban: string | null
+  bankBic: string | null
+  paymentNote: string | null
   invoicePrefix: string
   invoiceNextNum: number
   agreementPrefix: string
@@ -551,6 +600,13 @@ export type OrgSettingsWhereInput = {
   companyEmail?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyPhone?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyLogo?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankAccountHolder?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankName?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankRegNumber?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankAccountNumber?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankIban?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankBic?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  paymentNote?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   invoicePrefix?: Prisma.StringFilter<"OrgSettings"> | string
   invoiceNextNum?: Prisma.IntFilter<"OrgSettings"> | number
   agreementPrefix?: Prisma.StringFilter<"OrgSettings"> | string
@@ -604,6 +660,13 @@ export type OrgSettingsOrderByWithRelationInput = {
   companyEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   companyPhone?: Prisma.SortOrderInput | Prisma.SortOrder
   companyLogo?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankAccountHolder?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankName?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankRegNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankAccountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankIban?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankBic?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentNote?: Prisma.SortOrderInput | Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
   agreementPrefix?: Prisma.SortOrder
@@ -660,6 +723,13 @@ export type OrgSettingsWhereUniqueInput = Prisma.AtLeast<{
   companyEmail?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyPhone?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyLogo?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankAccountHolder?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankName?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankRegNumber?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankAccountNumber?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankIban?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  bankBic?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  paymentNote?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   invoicePrefix?: Prisma.StringFilter<"OrgSettings"> | string
   invoiceNextNum?: Prisma.IntFilter<"OrgSettings"> | number
   agreementPrefix?: Prisma.StringFilter<"OrgSettings"> | string
@@ -713,6 +783,13 @@ export type OrgSettingsOrderByWithAggregationInput = {
   companyEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   companyPhone?: Prisma.SortOrderInput | Prisma.SortOrder
   companyLogo?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankAccountHolder?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankName?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankRegNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankAccountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankIban?: Prisma.SortOrderInput | Prisma.SortOrder
+  bankBic?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentNote?: Prisma.SortOrderInput | Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
   agreementPrefix?: Prisma.SortOrder
@@ -773,6 +850,13 @@ export type OrgSettingsScalarWhereWithAggregatesInput = {
   companyEmail?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   companyPhone?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   companyLogo?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  bankAccountHolder?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  bankName?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  bankRegNumber?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  bankAccountNumber?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  bankIban?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  bankBic?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  paymentNote?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   invoicePrefix?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
   invoiceNextNum?: Prisma.IntWithAggregatesFilter<"OrgSettings"> | number
   agreementPrefix?: Prisma.StringWithAggregatesFilter<"OrgSettings"> | string
@@ -824,6 +908,13 @@ export type OrgSettingsCreateInput = {
   companyEmail?: string | null
   companyPhone?: string | null
   companyLogo?: string | null
+  bankAccountHolder?: string | null
+  bankName?: string | null
+  bankRegNumber?: string | null
+  bankAccountNumber?: string | null
+  bankIban?: string | null
+  bankBic?: string | null
+  paymentNote?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
   agreementPrefix?: string
@@ -877,6 +968,13 @@ export type OrgSettingsUncheckedCreateInput = {
   companyEmail?: string | null
   companyPhone?: string | null
   companyLogo?: string | null
+  bankAccountHolder?: string | null
+  bankName?: string | null
+  bankRegNumber?: string | null
+  bankAccountNumber?: string | null
+  bankIban?: string | null
+  bankBic?: string | null
+  paymentNote?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
   agreementPrefix?: string
@@ -928,6 +1026,13 @@ export type OrgSettingsUpdateInput = {
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankRegNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankIban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankBic?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -981,6 +1086,13 @@ export type OrgSettingsUncheckedUpdateInput = {
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankRegNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankIban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankBic?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1033,6 +1145,13 @@ export type OrgSettingsCreateManyInput = {
   companyEmail?: string | null
   companyPhone?: string | null
   companyLogo?: string | null
+  bankAccountHolder?: string | null
+  bankName?: string | null
+  bankRegNumber?: string | null
+  bankAccountNumber?: string | null
+  bankIban?: string | null
+  bankBic?: string | null
+  paymentNote?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
   agreementPrefix?: string
@@ -1084,6 +1203,13 @@ export type OrgSettingsUpdateManyMutationInput = {
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankRegNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankIban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankBic?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1136,6 +1262,13 @@ export type OrgSettingsUncheckedUpdateManyInput = {
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankRegNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankIban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankBic?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1193,6 +1326,13 @@ export type OrgSettingsCountOrderByAggregateInput = {
   companyEmail?: Prisma.SortOrder
   companyPhone?: Prisma.SortOrder
   companyLogo?: Prisma.SortOrder
+  bankAccountHolder?: Prisma.SortOrder
+  bankName?: Prisma.SortOrder
+  bankRegNumber?: Prisma.SortOrder
+  bankAccountNumber?: Prisma.SortOrder
+  bankIban?: Prisma.SortOrder
+  bankBic?: Prisma.SortOrder
+  paymentNote?: Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
   agreementPrefix?: Prisma.SortOrder
@@ -1255,6 +1395,13 @@ export type OrgSettingsMaxOrderByAggregateInput = {
   companyEmail?: Prisma.SortOrder
   companyPhone?: Prisma.SortOrder
   companyLogo?: Prisma.SortOrder
+  bankAccountHolder?: Prisma.SortOrder
+  bankName?: Prisma.SortOrder
+  bankRegNumber?: Prisma.SortOrder
+  bankAccountNumber?: Prisma.SortOrder
+  bankIban?: Prisma.SortOrder
+  bankBic?: Prisma.SortOrder
+  paymentNote?: Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
   agreementPrefix?: Prisma.SortOrder
@@ -1305,6 +1452,13 @@ export type OrgSettingsMinOrderByAggregateInput = {
   companyEmail?: Prisma.SortOrder
   companyPhone?: Prisma.SortOrder
   companyLogo?: Prisma.SortOrder
+  bankAccountHolder?: Prisma.SortOrder
+  bankName?: Prisma.SortOrder
+  bankRegNumber?: Prisma.SortOrder
+  bankAccountNumber?: Prisma.SortOrder
+  bankIban?: Prisma.SortOrder
+  bankBic?: Prisma.SortOrder
+  paymentNote?: Prisma.SortOrder
   invoicePrefix?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
   agreementPrefix?: Prisma.SortOrder
@@ -1412,6 +1566,13 @@ export type OrgSettingsCreateWithoutOrganizationInput = {
   companyEmail?: string | null
   companyPhone?: string | null
   companyLogo?: string | null
+  bankAccountHolder?: string | null
+  bankName?: string | null
+  bankRegNumber?: string | null
+  bankAccountNumber?: string | null
+  bankIban?: string | null
+  bankBic?: string | null
+  paymentNote?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
   agreementPrefix?: string
@@ -1463,6 +1624,13 @@ export type OrgSettingsUncheckedCreateWithoutOrganizationInput = {
   companyEmail?: string | null
   companyPhone?: string | null
   companyLogo?: string | null
+  bankAccountHolder?: string | null
+  bankName?: string | null
+  bankRegNumber?: string | null
+  bankAccountNumber?: string | null
+  bankIban?: string | null
+  bankBic?: string | null
+  paymentNote?: string | null
   invoicePrefix?: string
   invoiceNextNum?: number
   agreementPrefix?: string
@@ -1530,6 +1698,13 @@ export type OrgSettingsUpdateWithoutOrganizationInput = {
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankRegNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankIban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankBic?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1581,6 +1756,13 @@ export type OrgSettingsUncheckedUpdateWithoutOrganizationInput = {
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankRegNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankIban?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bankBic?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invoicePrefix?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNextNum?: Prisma.IntFieldUpdateOperationsInput | number
   agreementPrefix?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1635,6 +1817,13 @@ export type OrgSettingsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   companyEmail?: boolean
   companyPhone?: boolean
   companyLogo?: boolean
+  bankAccountHolder?: boolean
+  bankName?: boolean
+  bankRegNumber?: boolean
+  bankAccountNumber?: boolean
+  bankIban?: boolean
+  bankBic?: boolean
+  paymentNote?: boolean
   invoicePrefix?: boolean
   invoiceNextNum?: boolean
   agreementPrefix?: boolean
@@ -1688,6 +1877,13 @@ export type OrgSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   companyEmail?: boolean
   companyPhone?: boolean
   companyLogo?: boolean
+  bankAccountHolder?: boolean
+  bankName?: boolean
+  bankRegNumber?: boolean
+  bankAccountNumber?: boolean
+  bankIban?: boolean
+  bankBic?: boolean
+  paymentNote?: boolean
   invoicePrefix?: boolean
   invoiceNextNum?: boolean
   agreementPrefix?: boolean
@@ -1741,6 +1937,13 @@ export type OrgSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   companyEmail?: boolean
   companyPhone?: boolean
   companyLogo?: boolean
+  bankAccountHolder?: boolean
+  bankName?: boolean
+  bankRegNumber?: boolean
+  bankAccountNumber?: boolean
+  bankIban?: boolean
+  bankBic?: boolean
+  paymentNote?: boolean
   invoicePrefix?: boolean
   invoiceNextNum?: boolean
   agreementPrefix?: boolean
@@ -1794,6 +1997,13 @@ export type OrgSettingsSelectScalar = {
   companyEmail?: boolean
   companyPhone?: boolean
   companyLogo?: boolean
+  bankAccountHolder?: boolean
+  bankName?: boolean
+  bankRegNumber?: boolean
+  bankAccountNumber?: boolean
+  bankIban?: boolean
+  bankBic?: boolean
+  paymentNote?: boolean
   invoicePrefix?: boolean
   invoiceNextNum?: boolean
   agreementPrefix?: boolean
@@ -1829,7 +2039,7 @@ export type OrgSettingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "baseCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiProvider" | "aiBaseUrl" | "aiApiKeyEnc" | "aiModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
+export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "baseCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "bankAccountHolder" | "bankName" | "bankRegNumber" | "bankAccountNumber" | "bankIban" | "bankBic" | "paymentNote" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiProvider" | "aiBaseUrl" | "aiApiKeyEnc" | "aiModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
 export type OrgSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }
@@ -1862,6 +2072,13 @@ export type $OrgSettingsPayload<ExtArgs extends runtime.Types.Extensions.Interna
     companyEmail: string | null
     companyPhone: string | null
     companyLogo: string | null
+    bankAccountHolder: string | null
+    bankName: string | null
+    bankRegNumber: string | null
+    bankAccountNumber: string | null
+    bankIban: string | null
+    bankBic: string | null
+    paymentNote: string | null
     invoicePrefix: string
     invoiceNextNum: number
     agreementPrefix: string
@@ -2335,6 +2552,13 @@ export interface OrgSettingsFieldRefs {
   readonly companyEmail: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly companyPhone: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly companyLogo: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly bankAccountHolder: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly bankName: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly bankRegNumber: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly bankAccountNumber: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly bankIban: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly bankBic: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly paymentNote: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly invoicePrefix: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly invoiceNextNum: Prisma.FieldRef<"OrgSettings", 'Int'>
   readonly agreementPrefix: Prisma.FieldRef<"OrgSettings", 'String'>
