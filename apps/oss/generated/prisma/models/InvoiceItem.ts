@@ -58,6 +58,7 @@ export type InvoiceItemMinAggregateOutputType = {
   allocationGeneration: number | null
   id: string | null
   invoiceId: string | null
+  clientKey: string | null
   description: string | null
   quantity: runtime.Decimal | null
   unitPriceNet: runtime.Decimal | null
@@ -86,6 +87,7 @@ export type InvoiceItemMaxAggregateOutputType = {
   allocationGeneration: number | null
   id: string | null
   invoiceId: string | null
+  clientKey: string | null
   description: string | null
   quantity: runtime.Decimal | null
   unitPriceNet: runtime.Decimal | null
@@ -114,6 +116,7 @@ export type InvoiceItemCountAggregateOutputType = {
   allocationGeneration: number
   id: number
   invoiceId: number
+  clientKey: number
   description: number
   quantity: number
   unitPriceNet: number
@@ -168,6 +171,7 @@ export type InvoiceItemMinAggregateInputType = {
   allocationGeneration?: true
   id?: true
   invoiceId?: true
+  clientKey?: true
   description?: true
   quantity?: true
   unitPriceNet?: true
@@ -196,6 +200,7 @@ export type InvoiceItemMaxAggregateInputType = {
   allocationGeneration?: true
   id?: true
   invoiceId?: true
+  clientKey?: true
   description?: true
   quantity?: true
   unitPriceNet?: true
@@ -224,6 +229,7 @@ export type InvoiceItemCountAggregateInputType = {
   allocationGeneration?: true
   id?: true
   invoiceId?: true
+  clientKey?: true
   description?: true
   quantity?: true
   unitPriceNet?: true
@@ -339,6 +345,7 @@ export type InvoiceItemGroupByOutputType = {
   allocationGeneration: number
   id: string
   invoiceId: string
+  clientKey: string | null
   description: string
   quantity: runtime.Decimal
   unitPriceNet: runtime.Decimal
@@ -390,6 +397,7 @@ export type InvoiceItemWhereInput = {
   allocationGeneration?: Prisma.IntFilter<"InvoiceItem"> | number
   id?: Prisma.StringFilter<"InvoiceItem"> | string
   invoiceId?: Prisma.StringFilter<"InvoiceItem"> | string
+  clientKey?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   description?: Prisma.StringFilter<"InvoiceItem"> | string
   quantity?: Prisma.DecimalFilter<"InvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFilter<"InvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -420,6 +428,7 @@ export type InvoiceItemOrderByWithRelationInput = {
   allocationGeneration?: Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -455,6 +464,7 @@ export type InvoiceItemWhereUniqueInput = Prisma.AtLeast<{
   sourceRevision?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   allocationGeneration?: Prisma.IntFilter<"InvoiceItem"> | number
   invoiceId?: Prisma.StringFilter<"InvoiceItem"> | string
+  clientKey?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   description?: Prisma.StringFilter<"InvoiceItem"> | string
   quantity?: Prisma.DecimalFilter<"InvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFilter<"InvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -485,6 +495,7 @@ export type InvoiceItemOrderByWithAggregationInput = {
   allocationGeneration?: Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -521,6 +532,7 @@ export type InvoiceItemScalarWhereWithAggregatesInput = {
   allocationGeneration?: Prisma.IntWithAggregatesFilter<"InvoiceItem"> | number
   id?: Prisma.StringWithAggregatesFilter<"InvoiceItem"> | string
   invoiceId?: Prisma.StringWithAggregatesFilter<"InvoiceItem"> | string
+  clientKey?: Prisma.StringNullableWithAggregatesFilter<"InvoiceItem"> | string | null
   description?: Prisma.StringWithAggregatesFilter<"InvoiceItem"> | string
   quantity?: Prisma.DecimalWithAggregatesFilter<"InvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalWithAggregatesFilter<"InvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -547,6 +559,7 @@ export type InvoiceItemCreateInput = {
   sourceRevision?: string | null
   allocationGeneration?: number
   id?: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -577,6 +590,7 @@ export type InvoiceItemUncheckedCreateInput = {
   allocationGeneration?: number
   id?: string
   invoiceId: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -603,6 +617,7 @@ export type InvoiceItemUpdateInput = {
   sourceRevision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -633,6 +648,7 @@ export type InvoiceItemUncheckedUpdateInput = {
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -661,6 +677,7 @@ export type InvoiceItemCreateManyInput = {
   allocationGeneration?: number
   id?: string
   invoiceId: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -687,6 +704,7 @@ export type InvoiceItemUpdateManyMutationInput = {
   sourceRevision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -715,6 +733,7 @@ export type InvoiceItemUncheckedUpdateManyInput = {
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -764,6 +783,7 @@ export type InvoiceItemCountOrderByAggregateInput = {
   allocationGeneration?: Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -804,6 +824,7 @@ export type InvoiceItemMaxOrderByAggregateInput = {
   allocationGeneration?: Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -832,6 +853,7 @@ export type InvoiceItemMinOrderByAggregateInput = {
   allocationGeneration?: Prisma.SortOrder
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -954,6 +976,7 @@ export type InvoiceItemCreateWithoutInvoiceInput = {
   sourceRevision?: string | null
   allocationGeneration?: number
   id?: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -982,6 +1005,7 @@ export type InvoiceItemUncheckedCreateWithoutInvoiceInput = {
   sourceRevision?: string | null
   allocationGeneration?: number
   id?: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1039,6 +1063,7 @@ export type InvoiceItemScalarWhereInput = {
   allocationGeneration?: Prisma.IntFilter<"InvoiceItem"> | number
   id?: Prisma.StringFilter<"InvoiceItem"> | string
   invoiceId?: Prisma.StringFilter<"InvoiceItem"> | string
+  clientKey?: Prisma.StringNullableFilter<"InvoiceItem"> | string | null
   description?: Prisma.StringFilter<"InvoiceItem"> | string
   quantity?: Prisma.DecimalFilter<"InvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFilter<"InvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1065,6 +1090,7 @@ export type InvoiceItemCreateWithoutDeliverableInput = {
   sourceRevision?: string | null
   allocationGeneration?: number
   id?: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1093,6 +1119,7 @@ export type InvoiceItemUncheckedCreateWithoutDeliverableInput = {
   allocationGeneration?: number
   id?: string
   invoiceId: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1146,6 +1173,7 @@ export type InvoiceItemCreateManyInvoiceInput = {
   sourceRevision?: string | null
   allocationGeneration?: number
   id?: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1172,6 +1200,7 @@ export type InvoiceItemUpdateWithoutInvoiceInput = {
   sourceRevision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1200,6 +1229,7 @@ export type InvoiceItemUncheckedUpdateWithoutInvoiceInput = {
   sourceRevision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1227,6 +1257,7 @@ export type InvoiceItemUncheckedUpdateManyWithoutInvoiceInput = {
   sourceRevision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1254,6 +1285,7 @@ export type InvoiceItemCreateManyDeliverableInput = {
   allocationGeneration?: number
   id?: string
   invoiceId: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1280,6 +1312,7 @@ export type InvoiceItemUpdateWithoutDeliverableInput = {
   sourceRevision?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1308,6 +1341,7 @@ export type InvoiceItemUncheckedUpdateWithoutDeliverableInput = {
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1335,6 +1369,7 @@ export type InvoiceItemUncheckedUpdateManyWithoutDeliverableInput = {
   allocationGeneration?: Prisma.IntFieldUpdateOperationsInput | number
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -1365,6 +1400,7 @@ export type InvoiceItemSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   allocationGeneration?: boolean
   id?: boolean
   invoiceId?: boolean
+  clientKey?: boolean
   description?: boolean
   quantity?: boolean
   unitPriceNet?: boolean
@@ -1395,6 +1431,7 @@ export type InvoiceItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   allocationGeneration?: boolean
   id?: boolean
   invoiceId?: boolean
+  clientKey?: boolean
   description?: boolean
   quantity?: boolean
   unitPriceNet?: boolean
@@ -1425,6 +1462,7 @@ export type InvoiceItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   allocationGeneration?: boolean
   id?: boolean
   invoiceId?: boolean
+  clientKey?: boolean
   description?: boolean
   quantity?: boolean
   unitPriceNet?: boolean
@@ -1455,6 +1493,7 @@ export type InvoiceItemSelectScalar = {
   allocationGeneration?: boolean
   id?: boolean
   invoiceId?: boolean
+  clientKey?: boolean
   description?: boolean
   quantity?: boolean
   unitPriceNet?: boolean
@@ -1475,7 +1514,7 @@ export type InvoiceItemSelectScalar = {
   inputPrecision?: boolean
 }
 
-export type InvoiceItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"deliverableId" | "sourceKind" | "sourceId" | "sourceRevision" | "allocationGeneration" | "id" | "invoiceId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatRateInput" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["invoiceItem"]>
+export type InvoiceItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"deliverableId" | "sourceKind" | "sourceId" | "sourceRevision" | "allocationGeneration" | "id" | "invoiceId" | "clientKey" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatRateInput" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["invoiceItem"]>
 export type InvoiceItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   deliverable?: boolean | Prisma.InvoiceItem$deliverableArgs<ExtArgs>
   invoice?: boolean | Prisma.InvoiceDefaultArgs<ExtArgs>
@@ -1503,6 +1542,7 @@ export type $InvoiceItemPayload<ExtArgs extends runtime.Types.Extensions.Interna
     allocationGeneration: number
     id: string
     invoiceId: string
+    clientKey: string | null
     description: string
     quantity: runtime.Decimal
     unitPriceNet: runtime.Decimal
@@ -1953,6 +1993,7 @@ export interface InvoiceItemFieldRefs {
   readonly allocationGeneration: Prisma.FieldRef<"InvoiceItem", 'Int'>
   readonly id: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly invoiceId: Prisma.FieldRef<"InvoiceItem", 'String'>
+  readonly clientKey: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly description: Prisma.FieldRef<"InvoiceItem", 'String'>
   readonly quantity: Prisma.FieldRef<"InvoiceItem", 'Decimal'>
   readonly unitPriceNet: Prisma.FieldRef<"InvoiceItem", 'Decimal'>

@@ -17,6 +17,7 @@ export const quoteCreateDraftInputSchema = z.object({
 })
 
 export const quoteUpdateDraftInputSchema = z.object({
+  expectedRevision: z.number().int().nonnegative().optional(),
   id: z.string().min(1),
   contactId: z.string().trim().min(1).optional(),
   expiryDate: calendarDateInputSchema.optional(),

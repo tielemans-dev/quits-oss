@@ -1,0 +1,4 @@
+ALTER TABLE "invoice" ADD COLUMN "editRevision" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "quote" ADD COLUMN "editRevision" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "invoice_item" ADD COLUMN "clientKey" TEXT;
+ALTER TABLE "quote_item" ADD COLUMN "clientKey" TEXT;

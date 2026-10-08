@@ -77,6 +77,7 @@ export function priceDocumentV2(input: {
     itemRows: calculation.lines.map((line, index) => {
       const source = input.items[index]!
       return {
+        ...(source.key !== undefined ? { clientKey: source.key } : {}),
         description: source.description,
         quantity: line.quantity,
         quantityInput: line.quantity,
@@ -104,6 +105,7 @@ export function priceDocumentV2(input: {
 export function storedDraftItems(document: {
   pricesIncludeTax: boolean
   items: Array<{
+    clientKey?: string | null
     description: string
     quantity: { toString(): string }
     unitPriceNet: { toString(): string }
@@ -119,6 +121,7 @@ export function storedDraftItems(document: {
   }>
 }): DocumentLineInput[] {
   return document.items.map((item) => ({
+    key: item.clientKey ?? undefined,
     description: item.description,
     quantity: item.quantityInput ?? item.quantity.toString(),
     unitPrice: item.unitPriceInput ?? (document.pricesIncludeTax ? item.unitPriceGross : item.unitPriceNet).toString(),

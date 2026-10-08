@@ -155,7 +155,7 @@ export const updateQuoteDraft = defineCommand({
   outwardFacing: false,
   input: quoteUpdateDraftInputSchema,
   summarize: (input) => `Update draft quote ${input.id}`,
-  handle: (input) =>
+  handle: ({ expectedRevision, ...input }) =>
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
@@ -168,6 +168,9 @@ export const updateQuoteDraft = defineCommand({
           code: "not_draft",
         })
       }
+      if (expectedRevision !== undefined && expectedRevision !== existing.editRevision) {
+        return yield* new InvalidState({ code: "stale_draft", message: "This draft changed since it was loaded. Reload it before saving." })
+      }
       if (existing.lastEmailAttemptOutcome === "sending") {
         return yield* new InvalidState({
           message: "This quote is being emailed. Wait for that delivery to finish before changing it.",
@@ -175,7 +178,7 @@ export const updateQuoteDraft = defineCommand({
         })
       }
 
-      const data: Parameters<typeof db.quote.update>[0]["data"] = {}
+      const data: Parameters<typeof db.quote.update>[0]["data"] = { editRevision: { increment: 1 } }
 
       if (input.contactId) {
         const contact = yield* findContact(input.contactId)
@@ -562,6 +565,7 @@ export const convertQuoteToInvoice = defineCommand({
             quoteId: quote.id,
             items: {
               create: quote.items.map((item) => ({
+                clientKey: item.clientKey,
                 description: item.description,
                 quantity: item.quantity,
                 quantityInput: item.quantityInput,

@@ -180,7 +180,7 @@ export const updateInvoiceDraft = defineCommand({
   outwardFacing: false,
   input: invoiceUpdateDraftInputSchema,
   summarize: (input) => `Update draft invoice ${input.id}`,
-  handle: (input) =>
+  handle: ({ expectedRevision, ...input }) =>
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
@@ -193,6 +193,9 @@ export const updateInvoiceDraft = defineCommand({
           code: "not_draft",
         })
       }
+      if (expectedRevision !== undefined && expectedRevision !== existing.editRevision) {
+        return yield* new InvalidState({ code: "stale_draft", message: "This draft changed since it was loaded. Reload it before saving." })
+      }
       if (existing.lastEmailAttemptOutcome === "sending") {
         return yield* new InvalidState({
           message: "This invoice is being emailed. Wait for that delivery to finish before changing it.",
@@ -203,7 +206,7 @@ export const updateInvoiceDraft = defineCommand({
       if (existing.agreementId) return yield* updateLinkedInvoice(existing, input)
       if (input.items?.some(item => item.deliverableId)) return yield* new InvalidState({ code: "invalid_linked_item", message: "Use invoice.createFromDeliverables to reserve work" })
 
-      const data: Parameters<typeof db.invoice.update>[0]["data"] = {}
+      const data: Parameters<typeof db.invoice.update>[0]["data"] = { editRevision: { increment: 1 } }
 
       if (input.contactId) {
         const contact = yield* findContact(input.contactId)

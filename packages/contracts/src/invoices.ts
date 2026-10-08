@@ -25,6 +25,7 @@ export const calendarDateInputSchema = dateInputSchema
   .pipe(z.iso.date())
 
 export const documentLineInputSchema = z.object({
+  key: z.string().min(1).max(200).optional(),
   description: z.string().trim().min(1).max(500),
   quantity: z.union([z.number().positive().max(1_000_000), quantityDecimalSchema]),
   unitPrice: z.union([z.number().min(0).max(1_000_000_000), unitPriceDecimalSchema]),
@@ -59,6 +60,7 @@ export const invoiceCreateDraftInputSchema = z.object({
 })
 
 export const invoiceUpdateDraftInputSchema = z.object({
+  expectedRevision: z.number().int().nonnegative().optional(),
   id: z.string().min(1),
   contactId: z.string().trim().min(1).optional(),
   dueDate: calendarDateInputSchema.optional(),
@@ -109,7 +111,7 @@ export const invoiceCreateFromDeliverablesInputSchema = z.strictObject({
   // The explicit choice is recorded on the sale draft and the reservation event.
   scheduleAsSale: z.boolean().optional(),
 })
-export const invoiceAddDeliverablesInputSchema = invoiceCreateFromDeliverablesInputSchema.omit({ issueDate: true, dueDate: true }).extend({ id: z.string().min(1) })
+export const invoiceAddDeliverablesInputSchema = invoiceCreateFromDeliverablesInputSchema.omit({ issueDate: true, dueDate: true }).extend({ id: z.string().min(1), expectedRevision: z.number().int().nonnegative().optional() })
 
 /** One request ID per user intent; retain it when retrying an uncertain response. */
 export const invoiceMarkPaidInputSchema = z.object({

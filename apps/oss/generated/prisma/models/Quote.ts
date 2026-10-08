@@ -27,6 +27,7 @@ export type AggregateQuote = {
 }
 
 export type QuoteAvgAggregateOutputType = {
+  editRevision: number | null
   subtotalNet: runtime.Decimal | null
   totalTax: runtime.Decimal | null
   totalGross: runtime.Decimal | null
@@ -34,6 +35,7 @@ export type QuoteAvgAggregateOutputType = {
 }
 
 export type QuoteSumAggregateOutputType = {
+  editRevision: number | null
   subtotalNet: runtime.Decimal | null
   totalTax: runtime.Decimal | null
   totalGross: runtime.Decimal | null
@@ -44,6 +46,7 @@ export type QuoteMinAggregateOutputType = {
   id: string | null
   organizationId: string | null
   contactId: string | null
+  editRevision: number | null
   number: string | null
   status: string | null
   issueDate: Date | null
@@ -79,6 +82,7 @@ export type QuoteMaxAggregateOutputType = {
   id: string | null
   organizationId: string | null
   contactId: string | null
+  editRevision: number | null
   number: string | null
   status: string | null
   issueDate: Date | null
@@ -114,6 +118,7 @@ export type QuoteCountAggregateOutputType = {
   id: number
   organizationId: number
   contactId: number
+  editRevision: number
   number: number
   status: number
   issueDate: number
@@ -153,6 +158,7 @@ export type QuoteCountAggregateOutputType = {
 
 
 export type QuoteAvgAggregateInputType = {
+  editRevision?: true
   subtotalNet?: true
   totalTax?: true
   totalGross?: true
@@ -160,6 +166,7 @@ export type QuoteAvgAggregateInputType = {
 }
 
 export type QuoteSumAggregateInputType = {
+  editRevision?: true
   subtotalNet?: true
   totalTax?: true
   totalGross?: true
@@ -170,6 +177,7 @@ export type QuoteMinAggregateInputType = {
   id?: true
   organizationId?: true
   contactId?: true
+  editRevision?: true
   number?: true
   status?: true
   issueDate?: true
@@ -205,6 +213,7 @@ export type QuoteMaxAggregateInputType = {
   id?: true
   organizationId?: true
   contactId?: true
+  editRevision?: true
   number?: true
   status?: true
   issueDate?: true
@@ -240,6 +249,7 @@ export type QuoteCountAggregateInputType = {
   id?: true
   organizationId?: true
   contactId?: true
+  editRevision?: true
   number?: true
   status?: true
   issueDate?: true
@@ -367,6 +377,7 @@ export type QuoteGroupByOutputType = {
   id: string
   organizationId: string
   contactId: string
+  editRevision: number
   number: string | null
   status: string
   issueDate: Date
@@ -430,6 +441,7 @@ export type QuoteWhereInput = {
   id?: Prisma.StringFilter<"Quote"> | string
   organizationId?: Prisma.StringFilter<"Quote"> | string
   contactId?: Prisma.StringFilter<"Quote"> | string
+  editRevision?: Prisma.IntFilter<"Quote"> | number
   number?: Prisma.StringNullableFilter<"Quote"> | string | null
   status?: Prisma.StringFilter<"Quote"> | string
   issueDate?: Prisma.DateTimeFilter<"Quote"> | Date | string
@@ -475,6 +487,7 @@ export type QuoteOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
+  editRevision?: Prisma.SortOrder
   number?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   issueDate?: Prisma.SortOrder
@@ -524,6 +537,7 @@ export type QuoteWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.QuoteWhereInput | Prisma.QuoteWhereInput[]
   organizationId?: Prisma.StringFilter<"Quote"> | string
   contactId?: Prisma.StringFilter<"Quote"> | string
+  editRevision?: Prisma.IntFilter<"Quote"> | number
   number?: Prisma.StringNullableFilter<"Quote"> | string | null
   status?: Prisma.StringFilter<"Quote"> | string
   issueDate?: Prisma.DateTimeFilter<"Quote"> | Date | string
@@ -569,6 +583,7 @@ export type QuoteOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
+  editRevision?: Prisma.SortOrder
   number?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   issueDate?: Prisma.SortOrder
@@ -617,6 +632,7 @@ export type QuoteScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Quote"> | string
   organizationId?: Prisma.StringWithAggregatesFilter<"Quote"> | string
   contactId?: Prisma.StringWithAggregatesFilter<"Quote"> | string
+  editRevision?: Prisma.IntWithAggregatesFilter<"Quote"> | number
   number?: Prisma.StringNullableWithAggregatesFilter<"Quote"> | string | null
   status?: Prisma.StringWithAggregatesFilter<"Quote"> | string
   issueDate?: Prisma.DateTimeWithAggregatesFilter<"Quote"> | Date | string
@@ -655,6 +671,7 @@ export type QuoteScalarWhereWithAggregatesInput = {
 
 export type QuoteCreateInput = {
   id?: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -700,6 +717,7 @@ export type QuoteUncheckedCreateInput = {
   id?: string
   organizationId: string
   contactId: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -741,6 +759,7 @@ export type QuoteUncheckedCreateInput = {
 
 export type QuoteUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -786,6 +805,7 @@ export type QuoteUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -829,6 +849,7 @@ export type QuoteCreateManyInput = {
   id?: string
   organizationId: string
   contactId: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -867,6 +888,7 @@ export type QuoteCreateManyInput = {
 
 export type QuoteUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -907,6 +929,7 @@ export type QuoteUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -967,6 +990,7 @@ export type QuoteCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
+  editRevision?: Prisma.SortOrder
   number?: Prisma.SortOrder
   status?: Prisma.SortOrder
   issueDate?: Prisma.SortOrder
@@ -1004,6 +1028,7 @@ export type QuoteCountOrderByAggregateInput = {
 }
 
 export type QuoteAvgOrderByAggregateInput = {
+  editRevision?: Prisma.SortOrder
   subtotalNet?: Prisma.SortOrder
   totalTax?: Prisma.SortOrder
   totalGross?: Prisma.SortOrder
@@ -1014,6 +1039,7 @@ export type QuoteMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
+  editRevision?: Prisma.SortOrder
   number?: Prisma.SortOrder
   status?: Prisma.SortOrder
   issueDate?: Prisma.SortOrder
@@ -1049,6 +1075,7 @@ export type QuoteMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   contactId?: Prisma.SortOrder
+  editRevision?: Prisma.SortOrder
   number?: Prisma.SortOrder
   status?: Prisma.SortOrder
   issueDate?: Prisma.SortOrder
@@ -1081,6 +1108,7 @@ export type QuoteMinOrderByAggregateInput = {
 }
 
 export type QuoteSumOrderByAggregateInput = {
+  editRevision?: Prisma.SortOrder
   subtotalNet?: Prisma.SortOrder
   totalTax?: Prisma.SortOrder
   totalGross?: Prisma.SortOrder
@@ -1224,6 +1252,7 @@ export type QuoteUpdateOneWithoutAgreementNestedInput = {
 
 export type QuoteCreateWithoutOrganizationInput = {
   id?: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1267,6 +1296,7 @@ export type QuoteCreateWithoutOrganizationInput = {
 export type QuoteUncheckedCreateWithoutOrganizationInput = {
   id?: string
   contactId: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1339,6 +1369,7 @@ export type QuoteScalarWhereInput = {
   id?: Prisma.StringFilter<"Quote"> | string
   organizationId?: Prisma.StringFilter<"Quote"> | string
   contactId?: Prisma.StringFilter<"Quote"> | string
+  editRevision?: Prisma.IntFilter<"Quote"> | number
   number?: Prisma.StringNullableFilter<"Quote"> | string | null
   status?: Prisma.StringFilter<"Quote"> | string
   issueDate?: Prisma.DateTimeFilter<"Quote"> | Date | string
@@ -1377,6 +1408,7 @@ export type QuoteScalarWhereInput = {
 
 export type QuoteCreateWithoutContactInput = {
   id?: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1420,6 +1452,7 @@ export type QuoteCreateWithoutContactInput = {
 export type QuoteUncheckedCreateWithoutContactInput = {
   id?: string
   organizationId: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1487,6 +1520,7 @@ export type QuoteUpdateManyWithWhereWithoutContactInput = {
 
 export type QuoteCreateWithoutInvoicesInput = {
   id?: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1531,6 +1565,7 @@ export type QuoteUncheckedCreateWithoutInvoicesInput = {
   id?: string
   organizationId: string
   contactId: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1587,6 +1622,7 @@ export type QuoteUpdateToOneWithWhereWithoutInvoicesInput = {
 
 export type QuoteUpdateWithoutInvoicesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1631,6 +1667,7 @@ export type QuoteUncheckedUpdateWithoutInvoicesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1671,6 +1708,7 @@ export type QuoteUncheckedUpdateWithoutInvoicesInput = {
 
 export type QuoteCreateWithoutItemsInput = {
   id?: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1715,6 +1753,7 @@ export type QuoteUncheckedCreateWithoutItemsInput = {
   id?: string
   organizationId: string
   contactId: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1771,6 +1810,7 @@ export type QuoteUpdateToOneWithWhereWithoutItemsInput = {
 
 export type QuoteUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1815,6 +1855,7 @@ export type QuoteUncheckedUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1855,6 +1896,7 @@ export type QuoteUncheckedUpdateWithoutItemsInput = {
 
 export type QuoteCreateWithoutAgreementInput = {
   id?: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1899,6 +1941,7 @@ export type QuoteUncheckedCreateWithoutAgreementInput = {
   id?: string
   organizationId: string
   contactId: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -1955,6 +1998,7 @@ export type QuoteUpdateToOneWithWhereWithoutAgreementInput = {
 
 export type QuoteUpdateWithoutAgreementInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1999,6 +2043,7 @@ export type QuoteUncheckedUpdateWithoutAgreementInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2040,6 +2085,7 @@ export type QuoteUncheckedUpdateWithoutAgreementInput = {
 export type QuoteCreateManyOrganizationInput = {
   id?: string
   contactId: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -2078,6 +2124,7 @@ export type QuoteCreateManyOrganizationInput = {
 
 export type QuoteUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2121,6 +2168,7 @@ export type QuoteUpdateWithoutOrganizationInput = {
 export type QuoteUncheckedUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2163,6 +2211,7 @@ export type QuoteUncheckedUpdateWithoutOrganizationInput = {
 export type QuoteUncheckedUpdateManyWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2202,6 +2251,7 @@ export type QuoteUncheckedUpdateManyWithoutOrganizationInput = {
 export type QuoteCreateManyContactInput = {
   id?: string
   organizationId: string
+  editRevision?: number
   number?: string | null
   status?: string
   issueDate?: Date | string
@@ -2240,6 +2290,7 @@ export type QuoteCreateManyContactInput = {
 
 export type QuoteUpdateWithoutContactInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2283,6 +2334,7 @@ export type QuoteUpdateWithoutContactInput = {
 export type QuoteUncheckedUpdateWithoutContactInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2325,6 +2377,7 @@ export type QuoteUncheckedUpdateWithoutContactInput = {
 export type QuoteUncheckedUpdateManyWithoutContactInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  editRevision?: Prisma.IntFieldUpdateOperationsInput | number
   number?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   issueDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2405,6 +2458,7 @@ export type QuoteSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   id?: boolean
   organizationId?: boolean
   contactId?: boolean
+  editRevision?: boolean
   number?: boolean
   status?: boolean
   issueDate?: boolean
@@ -2451,6 +2505,7 @@ export type QuoteSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   id?: boolean
   organizationId?: boolean
   contactId?: boolean
+  editRevision?: boolean
   number?: boolean
   status?: boolean
   issueDate?: boolean
@@ -2493,6 +2548,7 @@ export type QuoteSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   id?: boolean
   organizationId?: boolean
   contactId?: boolean
+  editRevision?: boolean
   number?: boolean
   status?: boolean
   issueDate?: boolean
@@ -2535,6 +2591,7 @@ export type QuoteSelectScalar = {
   id?: boolean
   organizationId?: boolean
   contactId?: boolean
+  editRevision?: boolean
   number?: boolean
   status?: boolean
   issueDate?: boolean
@@ -2571,7 +2628,7 @@ export type QuoteSelectScalar = {
   vatEvidence?: boolean
 }
 
-export type QuoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "number" | "status" | "issueDate" | "expiryDate" | "supplyDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "complianceStatus" | "complianceErrors" | "legalText" | "purchaseOrderRef" | "paymentReference" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "publicDecisionAt" | "publicRejectionReason" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "notes" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["quote"]>
+export type QuoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "contactId" | "editRevision" | "number" | "status" | "issueDate" | "expiryDate" | "supplyDate" | "subtotalNet" | "totalTax" | "totalGross" | "currency" | "countryCode" | "locale" | "timezone" | "taxRegime" | "pricesIncludeTax" | "sellerSnapshot" | "buyerSnapshot" | "complianceStatus" | "complianceErrors" | "legalText" | "purchaseOrderRef" | "paymentReference" | "publicAccessKeyVersion" | "publicAccessIssuedAt" | "publicDecisionAt" | "publicRejectionReason" | "lastEmailAttemptAt" | "lastEmailAttemptOutcome" | "lastEmailAttemptCode" | "lastEmailAttemptMessage" | "notes" | "createdAt" | "updatedAt" | "calculationVersion" | "vatEvidence", ExtArgs["result"]["quote"]>
 export type QuoteInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
@@ -2602,6 +2659,7 @@ export type $QuotePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     id: string
     organizationId: string
     contactId: string
+    editRevision: number
     number: string | null
     status: string
     issueDate: Date
@@ -3067,6 +3125,7 @@ export interface QuoteFieldRefs {
   readonly id: Prisma.FieldRef<"Quote", 'String'>
   readonly organizationId: Prisma.FieldRef<"Quote", 'String'>
   readonly contactId: Prisma.FieldRef<"Quote", 'String'>
+  readonly editRevision: Prisma.FieldRef<"Quote", 'Int'>
   readonly number: Prisma.FieldRef<"Quote", 'String'>
   readonly status: Prisma.FieldRef<"Quote", 'String'>
   readonly issueDate: Prisma.FieldRef<"Quote", 'DateTime'>
