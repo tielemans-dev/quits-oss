@@ -10,14 +10,32 @@ describe("settingsUpdateSchema", () => {
       defaultCurrency: "DKK",
       taxRegime: "eu_vat",
       pricesIncludeTax: true,
-      aiOpenRouterModel: "openai/gpt-4o-mini",
-      aiOpenRouterApiKey: "sk-or-v1-example-key-1234567890",
+      aiProvider: "openrouter",
+      aiModel: "openai/gpt-4o-mini",
+      aiApiKey: "sk-or-v1-example-key-1234567890",
     })
 
     expect(parsed.countryCode).toBe("DK")
     expect(parsed.defaultCurrency).toBe("DKK")
     expect(parsed.pricesIncludeTax).toBe(true)
-    expect(parsed.aiOpenRouterModel).toBe("openai/gpt-4o-mini")
+    expect(parsed.aiProvider).toBe("openrouter")
+    expect(parsed.aiModel).toBe("openai/gpt-4o-mini")
+  })
+
+  it("accepts short local API keys and rejects unknown AI providers", () => {
+    expect(settingsUpdateSchema.parse({ aiApiKey: "ollama" }).aiApiKey).toBe("ollama")
+    expect(() => settingsUpdateSchema.parse({ aiProvider: "anthropic_direct" })).toThrow()
+  })
+
+  it("accepts http(s) AI endpoints, clears on empty or null, and rejects other schemes", () => {
+    expect(
+      settingsUpdateSchema.parse({ aiBaseUrl: "http://localhost:11434/v1" }).aiBaseUrl
+    ).toBe("http://localhost:11434/v1")
+    expect(settingsUpdateSchema.parse({ aiBaseUrl: "" }).aiBaseUrl).toBe("")
+    expect(settingsUpdateSchema.parse({ aiBaseUrl: null }).aiBaseUrl).toBeNull()
+    for (const aiBaseUrl of ["ftp://example.com/v1", "not a url", "javascript:alert(1)"]) {
+      expect(() => settingsUpdateSchema.parse({ aiBaseUrl })).toThrow()
+    }
   })
 
   it("accepts countries without a module so their organizations can still save settings", () => {
@@ -77,5 +95,14 @@ describe("settingsUpdateSchema", () => {
         timezone: "Mars/OlympusMons",
       })
     ).toThrow()
+  })
+
+  it("rejects credentials embedded in the AI endpoint URL", () => {
+    expect(
+      settingsUpdateSchema.safeParse({ aiBaseUrl: "https://user:secret@llm.example.com/v1" }).success
+    ).toBe(false)
+    expect(settingsUpdateSchema.safeParse({ aiBaseUrl: "https://llm.example.com/v1" }).success).toBe(
+      true
+    )
   })
 })

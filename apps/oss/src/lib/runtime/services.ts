@@ -1,3 +1,4 @@
+import type { AiProvider } from "../ai/provider"
 import type { RenderInput } from "../../domain/documents/render-input"
 export type { RenderInput } from "../../domain/documents/render-input"
 
@@ -65,6 +66,8 @@ export type RuntimeServices = {
   billingProvider: BillingProvider
   onboardingAiService: OnboardingAiService
   managedDocumentDomainProvider: ManagedDocumentDomainProvider
+  /** Hosted AI provider, billed by the distribution. Absent in self-hosted installs. */
+  managedAiProvider?: AiProvider
 }
 
 const unsupportedManagedDocumentDomains = async (): Promise<never> => {
@@ -111,3 +114,7 @@ export function getManagedDocumentDomainProvider(): ManagedDocumentDomainProvide
 
 export function getDocumentRenderer() { return runtimeServices.documentRenderer }
 export function getDocumentArtifactStore() { return runtimeServices.documentArtifactStore }
+
+export function getManagedAiProvider(): AiProvider | undefined {
+  return runtimeServices.managedAiProvider
+}

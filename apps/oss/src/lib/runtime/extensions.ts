@@ -3,7 +3,7 @@ import type {
   RuntimeCapabilityPatch,
 } from "@quits/contracts/runtime"
 import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
-import { getRuntimeEnv } from "./platform"
+import { getRuntimeEnv, getRuntimePlatform } from "./platform"
 
 export type RuntimeExtension = {
   id: string
@@ -51,6 +51,16 @@ function readDefaultCapabilities(
   const isCloud = distribution === "cloud"
   const byok = readBooleanEnv(readProductEnv(env, "AI_BYOK_ENABLED"), true)
   const managed = readBooleanEnv(readProductEnv(env, "AI_MANAGED_ENABLED"), false)
+  const customEndpoint = readBooleanEnv(
+    readProductEnv(env, "AI_CUSTOM_ENDPOINT_ENABLED"),
+    !isCloud
+  )
+  // Running a local agent is an operator decision: it needs both the flag and a command.
+  const localAgent =
+    !isCloud &&
+    getRuntimePlatform().getRuntimeKind() === "node" &&
+    readBooleanEnv(readProductEnv(env, "AI_LOCAL_AGENT_ENABLED"), false) &&
+    Boolean(readProductEnv(env, "AI_LOCAL_AGENT_COMMAND")?.trim())
   const onboardingAiManaged = readBooleanEnv(
     readProductEnv(env, "ONBOARDING_AI_MANAGED_ENABLED"),
     isCloud
@@ -63,10 +73,12 @@ function readDefaultCapabilities(
   return {
     documents: { artifactsRequired: true },
     aiInvoiceDraft: {
-      enabled: byok || managed,
+      enabled: byok || managed || localAgent,
       byok,
       managed,
       managedRequiresSubscription: managed,
+      customEndpoint,
+      localAgent,
       maxPromptChars: DEFAULT_MAX_PROMPT_CHARS,
     },
     onboardingAi: {
@@ -113,12 +125,20 @@ export function getRuntimeCapabilities(
 ) {
   let capabilities = readDefaultCapabilities(env)
 
+  // The last extension that sets `enabled` explicitly decides whether it may be on.
+  let enabledByExtension: boolean | undefined
   for (const extension of runtimeExtensions) {
-    capabilities = mergeCapabilities(
-      capabilities,
-      extension.resolveCapabilities?.(capabilities)
-    )
+    const patch = extension.resolveCapabilities?.(capabilities)
+    if (patch && patch.aiInvoiceDraft?.enabled !== undefined) {
+      enabledByExtension = patch.aiInvoiceDraft.enabled
+    }
+    capabilities = mergeCapabilities(capabilities, patch)
   }
+
+  // `enabled` follows the provider flags after extensions patch them, so an extension that turns on
+  // managed AI also enables drafting. An extension can still switch drafting off explicitly.
+  const ai = capabilities.aiInvoiceDraft
+  ai.enabled = enabledByExtension !== false && (ai.byok || ai.managed || ai.localAgent)
 
   // Issuance artifacts are a release invariant; runtime extensions cannot opt out.
   capabilities.documents.artifactsRequired = true
