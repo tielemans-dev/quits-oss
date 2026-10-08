@@ -8,6 +8,7 @@ import {
 } from "@react-pdf/renderer"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
+import { canRenderLogo } from "./documents/logo"
 import type { TranslationKey } from "./i18n/messages"
 
 const styles = StyleSheet.create({
@@ -191,11 +192,6 @@ function getStatusStyle(status: string) {
     default:
       return { backgroundColor: "#f3f4f6", color: "#374151" }
   }
-}
-
-function canRenderLogo(logo: string | null | undefined) {
-  if (!logo) return false
-  return logo.startsWith("data:image/") || /^https?:\/\/.+/i.test(logo)
 }
 
 function statusKey(status: string): TranslationKey {
