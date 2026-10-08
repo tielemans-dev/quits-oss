@@ -72,6 +72,16 @@ describe("runtime extension capabilities", () => {
     expect(mod.getRuntimeCapabilities({}).aiInvoiceDraft.enabled).toBe(false)
   })
 
+  it("honours a later extension that switches drafting back on", async () => {
+    const mod = await import("../runtime/extensions")
+    mod.setRuntimeExtensions([
+      { id: "off", resolveCapabilities: () => ({ aiInvoiceDraft: { enabled: false } }) },
+      { id: "on", resolveCapabilities: () => ({ aiInvoiceDraft: { enabled: true } }) },
+    ])
+
+    expect(mod.getRuntimeCapabilities({}).aiInvoiceDraft.enabled).toBe(true)
+  })
+
   it("never offers the local agent on a worker runtime", async () => {
     const { setRuntimePlatform } = await import("../runtime/platform")
     setRuntimePlatform(

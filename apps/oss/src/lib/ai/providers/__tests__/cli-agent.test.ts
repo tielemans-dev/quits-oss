@@ -252,6 +252,18 @@ describe("cli agent provider", () => {
     expect(await first.outcome).toEqual({ value: "done" })
   })
 
+  it("admits only the limit when requests start in the same tick", async () => {
+    vi.stubEnv("QUITS_AI_LOCAL_AGENT_MAX_CONCURRENT", "1")
+    const first = capture(createCliAgentProvider().complete(REQUEST))
+    const second = capture(createCliAgentProvider().complete(REQUEST))
+
+    expect(await second).toMatchObject({ error: { code: "busy" } })
+    await vi.waitFor(() => expect(spawnMock).toHaveBeenCalledTimes(1))
+    currentChild().writeStdout("done")
+    currentChild().exit(0)
+    expect(await first).toEqual({ value: "done" })
+  })
+
   it("is disabled on the worker runtime and never spawns", async () => {
     setRuntimePlatform({
       id: "test-worker",

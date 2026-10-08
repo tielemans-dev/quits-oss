@@ -49,6 +49,16 @@ const aiBaseUrlSchema = z
       return false
     }
   }, "AI endpoint must be an http or https URL")
+  // The base URL is stored and shown in plain text; credentials belong in the encrypted API key.
+  .refine((value) => {
+    if (!value) return true
+    try {
+      const url = new URL(value)
+      return !url.username && !url.password
+    } catch {
+      return true
+    }
+  }, "Put credentials in the API key field, not in the AI endpoint URL")
 
 const aiProviderLabels: Record<AiProviderKind, string> = {
   openrouter: "OpenRouter",

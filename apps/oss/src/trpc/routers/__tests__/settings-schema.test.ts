@@ -96,4 +96,13 @@ describe("settingsUpdateSchema", () => {
       })
     ).toThrow()
   })
+
+  it("rejects credentials embedded in the AI endpoint URL", () => {
+    expect(
+      settingsUpdateSchema.safeParse({ aiBaseUrl: "https://user:secret@llm.example.com/v1" }).success
+    ).toBe(false)
+    expect(settingsUpdateSchema.safeParse({ aiBaseUrl: "https://llm.example.com/v1" }).success).toBe(
+      true
+    )
+  })
 })

@@ -73,13 +73,13 @@ async function runLocalAgent(request: AiCompletionRequest): Promise<string> {
   // `request.model` is ignored: the CLI chooses its own model. `temperature` is not supported.
   const prompt = buildPrompt(request.messages)
 
-  const [{ spawn }, { tmpdir }] = await Promise.all([
-    import("node:child_process"),
-    import("node:os"),
-  ])
-
+  // Reserve the slot before the first await so concurrent requests cannot all pass the check.
   runningAgents += 1
   try {
+    const [{ spawn }, { tmpdir }] = await Promise.all([
+      import("node:child_process"),
+      import("node:os"),
+    ])
     return await collectAgentOutput({
       spawn,
       executable,
