@@ -42,13 +42,22 @@ function BillingPage() {
       setLoading(false)
       return
     }
+    // A response that arrives after billing was switched off, or after the page closed, is dropped.
+    let cancelled = false
     trpc.billing.getSubscription
       .query()
-      .then((data) => setSubscription(data))
-      .catch(() =>
-        setError(t("billing.error.loadSubscription"))
-      )
-      .finally(() => setLoading(false))
+      .then((data) => {
+        if (!cancelled) setSubscription(data)
+      })
+      .catch(() => {
+        if (!cancelled) setError(t("billing.error.loadSubscription"))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [t, billingEnabled])
 
   if (!billingEnabled) {
