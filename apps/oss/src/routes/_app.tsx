@@ -1,13 +1,12 @@
 import { createFileRoute, redirect, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect } from 'react'
-import { getSession } from '../lib/auth-session'
+import { getAppLayoutSession } from '../lib/auth-session'
 import { useSession } from '../lib/auth-client'
 import {
   initializeRequestOrganizationId,
   useRequestOrganizationInitialized,
 } from '../lib/active-organization'
 import { OrganizationChangedBanner } from '../components/organization-changed-banner'
-import { getActiveOrgCloudOnboardingStatus } from '../lib/cloud-onboarding-session'
 import { shouldRedirectToCloudOnboarding } from '../lib/cloud-onboarding'
 import { isCloudDistribution } from '../lib/distribution'
 import { SidebarProvider, SidebarTrigger } from '../components/ui/sidebar'
@@ -17,7 +16,7 @@ import { trpc } from '../trpc/client'
 
 export const Route = createFileRoute('/_app')({
   beforeLoad: async ({ location }) => {
-    const session = await getSession()
+    const { session, cloudOnboardingComplete } = await getAppLayoutSession()
     if (!session) {
       throw redirect({ to: '/login' })
     }
@@ -30,11 +29,11 @@ export const Route = createFileRoute('/_app')({
     }
 
     if (isCloudDistribution && hasActiveOrg) {
-      const onboarding = await getActiveOrgCloudOnboardingStatus()
+      // Fails closed: a missing status is treated as incomplete, which sends the user to onboarding.
       const redirectTo = shouldRedirectToCloudOnboarding(
         location.pathname,
         hasActiveOrg,
-        onboarding.isComplete
+        cloudOnboardingComplete === true
       )
       if (redirectTo) {
         throw redirect({ to: redirectTo })
