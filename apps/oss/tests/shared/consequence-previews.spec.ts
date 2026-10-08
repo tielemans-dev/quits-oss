@@ -4,7 +4,7 @@ import { buildOfferSnapshot, hashOfferSnapshot } from "../../src/domain/agreemen
 import { mintAgreementLink } from "../../src/lib/agreements/tokens"
 import { resetDatabase, seedCompletedSetup, waitForClientReady } from "../e2e/support"
 
-test("public acceptance preview identifies consequences, redacts private records, and supports keyboard review", async ({ page }) => {
+test("public acceptance preview identifies consequences, redacts private records, and supports keyboard review", async ({ page }, testInfo) => {
   const database = new URL(process.env.DATABASE_URL!)
   if (database.hostname !== "127.0.0.1" || database.pathname !== "/quits_e2e") throw new Error("Requires the shared disposable browser database")
   await resetDatabase()
@@ -52,4 +52,22 @@ test("public acceptance preview identifies consequences, redacts private records
   expect(await prisma.payment.count({ where: { organizationId: setup.organizationId } })).toBe(0)
   expect(await prisma.invoice.count({ where: { organizationId: setup.organizationId } })).toBe(0)
   expect(await prisma.job.count({ where: { organizationId: setup.organizationId } })).toBe(0)
+  await testInfo.attach("review-before", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" })
+  await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { companyEmail: "changed-seller@example.test" } })
+  await page.keyboard.press("Enter")
+  await expect(page.getByRole("alert")).toContainText("Reload this page")
+  await expect(page.getByRole("checkbox")).not.toBeChecked()
+  expect(await prisma.agreement.findUnique({ where: { id: agreement.id } })).toMatchObject({ status: "sent", acceptedAt: null })
+  expect(await prisma.job.count({ where: { organizationId: setup.organizationId } })).toBe(0)
+  await testInfo.attach("stale-review", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" })
+  await page.reload()
+  await waitForClientReady(page)
+  await expect(page.getByRole("region", { name: "Before you accept" })).toContainText("changed-seller@example.test")
+  await page.getByLabel("Your full name").fill("Customer A")
+  await page.getByRole("checkbox").check()
+  await page.getByRole("button", { name: "Accept agreement", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Accept agreement", exact: true })).toHaveCount(0)
+  expect(await prisma.agreement.findUnique({ where: { id: agreement.id } })).toMatchObject({ status: "accepted" })
+  expect(await prisma.payment.count({ where: { organizationId: setup.organizationId } })).toBe(0)
+  expect(await prisma.invoice.count({ where: { organizationId: setup.organizationId } })).toBe(0)
 })

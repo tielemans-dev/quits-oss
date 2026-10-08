@@ -9,6 +9,8 @@ import {
 import { Prisma } from "../../../generated/prisma/client"
 import { appLogger } from "../../lib/observability"
 import { parsePaidAt } from "../documents/payment-date"
+// Compatibility for consumers of the original command-module export.
+export { parsePaidAt } from "../documents/payment-date"
 import { planManualPayment } from "../documents/payment-plan"
 import type { Actor } from "../actor"
 import { defineCommand } from "../command"

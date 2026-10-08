@@ -21,6 +21,11 @@ export async function refreshPreviewActor(actor: Actor) {
   const fresh = actor.kind === "agent" ? await resolveAgentActorById(actor.agentKeyId, { allowRevoked: false })
     : actor.kind === "user" ? await resolveUserActor({ organizationId: actor.organizationId, userId: actor.userId }) : null
   if (!fresh || fresh.organizationId !== actor.organizationId) throw new Forbidden({ message: "The preview caller is no longer authorized" })
+  // Authentication may attenuate the key (for example an OAuth access-token grant).
+  // Refresh revocation, membership, mode and live scopes without widening that grant.
+  if (fresh.kind === "agent" && actor.kind === "agent") {
+    return { ...fresh, scopes: fresh.scopes.filter(scope => actor.scopes.includes(scope)) }
+  }
   return fresh
 }
 

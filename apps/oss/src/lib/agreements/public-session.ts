@@ -75,6 +75,7 @@ export const submitPublicAgreementDecision = createServerFn({ method: "POST" })
       const code = error && typeof error === "object" && "code" in error ? error.code : "invalid"
       if (code === "retry_later") return { kind: "retry_later" } as const
       if (code === "already_decided") return { kind: "already_decided" } as const
+      if (code === "changed_since_review") return { kind: "changed_since_review" } as const
       return { kind: "invalid" } as const
     }
   })

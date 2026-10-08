@@ -195,7 +195,7 @@ export const agreementPublicTokenPayloadSchema = z.discriminatedUnion("scope", [
   z.object({ agreementId: z.string().min(1), scope: z.literal("read"), keyVersion: z.number().int().positive(), exp: z.iso.datetime() }).strict(),
 ])
 export const agreementPublicDecisionSchema = z.discriminatedUnion("decision", [
-  z.object({ decision: z.literal("accept"), acceptedByName: z.string().trim().min(1).max(200), confirmed: z.literal(true) }).strict(),
+  z.object({ decision: z.literal("accept"), acceptedByName: z.string().trim().min(1).max(200), confirmed: z.literal(true), expectedPreviewVersion: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(),
   z.object({ decision: z.literal("decline"), reason: z.string().trim().max(5000).optional() }).strict(),
 ])
 export const agreementPublicSubmissionSchema = z.object({

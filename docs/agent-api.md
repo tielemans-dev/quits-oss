@@ -278,3 +278,7 @@ or for a sale draft after an explicit separate choice.
 
 See [consequence preview validation](consequence-preview-validation.md) for the pending
 moderated comprehension study.
+
+Preview permission refresh preserves the authenticated actor's scope ceiling. For an OAuth token,
+the token's narrower scopes stay in force even when its installation key has broader scopes.
+Live key restrictions, owner membership and mode still apply.

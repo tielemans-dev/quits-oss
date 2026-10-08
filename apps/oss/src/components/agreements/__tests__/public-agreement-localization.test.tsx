@@ -55,7 +55,7 @@ const document: PublicAgreementDto = {
   snapshot,
   expectedDates: ["2027-04-15T00:00:00.000Z"],
   acceptance: null,
-  acceptancePreview: { revision: 1, recipients: ["customer@example.test"] },
+  acceptancePreview: { version: "a".repeat(64), revision: 1, recipients: ["customer@example.test"] },
   declinedAt: null,
   declineReason: null,
 }

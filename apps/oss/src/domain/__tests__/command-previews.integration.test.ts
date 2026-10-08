@@ -12,6 +12,7 @@ import { recordPayment } from "../commands/payments"
 import { createAgentKey, resolveAgentActorById, revokeAgentKey } from "../agent-keys"
 import { decideApproval } from "../approvals"
 import { previewCommand } from "../preview"
+import { runAgentTool } from "../agent-tools/mcp"
 import { getAgentTool } from "../agent-tools/registry"
 
 const describeWithDatabase = hasTestDatabase ? describe : describe.skip
@@ -124,6 +125,35 @@ describeWithDatabase("command consequence previews", () => {
     await expect(tool.run({ actor }, { commandType: "invoice.send", command: { id: invoice.id }, includeDocument: false })).rejects.toMatchObject({ _tag: "Forbidden" })
     await revokeAgentKey(org.actors.admin, actor.agentKeyId)
     await expect(previewCommand(sendInvoice, { id: invoice.id }, { actor })).rejects.toMatchObject({ _tag: "Forbidden" })
+  })
+  it("preserves an OAuth-authenticated actor's narrower scopes through command_preview", async () => {
+    const { org, invoice } = await setup()
+    const { key } = await createAgentKey(org.actors.admin, {
+      name: "OAuth installation", mode: "full_access", scopes: ["invoice:read", "invoice:send"],
+    })
+    const installation = await resolveAgentActorById(key.id, { allowRevoked: false })
+    // MCP #31 authenticateMcpAccessToken returns the live installation intersected with
+    // the token grant. This is its output contract, not an OAuth verifier substitute.
+    const actor = { ...installation, scopes: installation.scopes.filter(scope => scope === "invoice:read") }
+    const before = await evidence(org.organizationId)
+    expect(await runAgentTool(actor, "command_preview", {
+      commandType: "invoice.send", command: { id: invoice.id, allowSendWithoutEmail: true }, includeDocument: false,
+    })).toMatchObject({ ok: false, error: { tag: "Forbidden" } })
+    expect(await evidence(org.organizationId)).toEqual(before)
+    expect(await runAgentTool(installation, "command_preview", {
+      commandType: "invoice.send", command: { id: invoice.id, allowSendWithoutEmail: true }, includeDocument: false,
+    })).toMatchObject({ ok: true })
+  })
+  it.each(["read_only", "membership_removed", "expired"])("refreshes live agent restrictions: %s", async restriction => {
+    const { org, invoice } = await setup(), actor = await agent(org, "full_access")
+    if (restriction === "read_only") await prisma.agentKey.update({ where: { id: actor.agentKeyId }, data: { mode: "read_only" } })
+    if (restriction === "expired") await prisma.agentKey.update({ where: { id: actor.agentKeyId }, data: { expiresAt: new Date(0) } })
+    if (restriction === "membership_removed") await prisma.member.deleteMany({ where: { organizationId: org.organizationId, userId: org.actors.admin.userId } })
+    const before = await evidence(org.organizationId)
+    expect(await runAgentTool(actor, "command_preview", {
+      commandType: "invoice.send", command: { id: invoice.id, allowSendWithoutEmail: true }, includeDocument: false,
+    })).toMatchObject({ ok: false, error: { tag: "Forbidden" } })
+    expect(await evidence(org.organizationId)).toEqual(before)
   })
   it("distinguishes future eligibility, sale drafts and blocked prepayment drafts without collection", async () => {
     const { org, contact } = await setup()

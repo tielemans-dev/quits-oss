@@ -1,5 +1,6 @@
 import { readAgreementOfferSnapshot, type AgreementOfferSnapshot } from "@quits/contracts/agreements"
 import type { Agreement, Deliverable } from "../../../generated/prisma/client"
+import { publicAcceptancePreview } from "./acceptance-preview"
 import { sanitizeAgreementHtml } from "./markdown"
 
 /** Public evidence excludes IP, user agent and internal evidence notes. */
@@ -39,10 +40,7 @@ export function publicAgreementDto(
           ?.expectedDate?.toISOString() ?? null,
     ),
     acceptance: agreementAcceptanceRecord(agreement),
-    acceptancePreview: {
-      revision: agreement.offerRevision,
-      recipients: [...new Set([companyEmail?.trim(), agreement.issuedToEmail].filter((email): email is string => Boolean(email)))],
-    },
+    acceptancePreview: publicAcceptancePreview(agreement, companyEmail),
     declinedAt: agreement.declinedAt?.toISOString() ?? null,
     declineReason: agreement.declineReason,
   }

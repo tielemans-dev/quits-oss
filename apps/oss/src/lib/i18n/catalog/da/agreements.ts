@@ -163,6 +163,7 @@ export const daAgreementsMessages = {
   "agreements.quoteConversionNotice": "Vælg en ny gyldighedsdato. Kladden kopierer kunden, ydelserne og momsoplysningerne fra tilbuddet og bruger din standardskabelon. Totalerne genberegnes med den aktuelle prisberegning; afrunding kan være anderledes for ældre tilbud. Gennemgå kladden, før du sender den.",
   "agreements.consequenceTitle": "Før du accepterer",
   "agreements.acceptanceConsequence": "Din accept registreres for tilbudsrevision {revision}.",
+  "agreements.acceptanceReviewChanged": "Modtagerne af beskeden er ændret, eller siden skal gennemgås igen. Genindlæs siden, gennemgå modtagerne, og bekræft igen.",
   "agreements.acceptanceNotifications": "Beskeder om accept sættes i kø til {recipients}.",
   "agreements.acceptanceDrafts": "Accept opretter ingen fakturakladder. Sælgeren fakturerer fakturerbart arbejde separat.",
   "agreements.acceptancePrepayment": "Betalingsplanlinjer udsteder ikke en forudbetalingsfaktura. Forudbetalingskladder kan ikke udstedes endnu. En salgsfaktura kræver et særskilt valg.",

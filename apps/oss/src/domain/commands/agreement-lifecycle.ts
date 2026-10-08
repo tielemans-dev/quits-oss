@@ -1,3 +1,4 @@
+import { acceptanceRecipients, publicAcceptancePreview } from "../../lib/agreements/acceptance-preview"
 import { Effect } from "effect"
 import { z } from "zod"
 import { Prisma } from "../../../generated/prisma/client"
@@ -271,17 +272,14 @@ export const recallAgreement = defineCommand({
 /** Notifications inherit the outbox's recovery, and never change agreement delivery markers. */
 const notifyAccepted = (
   agreement: Awaited<ReturnType<typeof import("../agreements/queries").getAgreement>>,
+  reviewedContext?: Effect.Effect.Success<typeof loadDocumentContext>,
 ) =>
   Effect.gen(function* () {
     const command = yield* Command
-    const { settings } = yield* loadDocumentContext
+    const { settings } = reviewedContext ?? (yield* loadDocumentContext)
     const { url } = mintAgreementLink(agreement, "read", command.now)
     const snapshot = readAgreementOfferSnapshot(agreement.offerSnapshot)
-    const recipients = new Set(
-      [settings.companyEmail?.trim(), agreement.issuedToEmail].filter((email): email is string =>
-        Boolean(email),
-      ),
-    )
+    const recipients = acceptanceRecipients(settings.companyEmail, agreement.issuedToEmail)
     for (const recipient of recipients) {
       yield* enqueueEmailDelivery({
         message: composeAgreementEmail({
@@ -312,7 +310,7 @@ export const recordAgreementAcceptance = defineCommand({
     yield* requireLiveOffer(agreement, now)
     const { settings } = yield* loadDocumentContext
     const snapshot = readAgreementOfferSnapshot(agreement.offerSnapshot)
-    const recipients = [...new Set([settings.companyEmail?.trim(), agreement.issuedToEmail].filter((email): email is string => Boolean(email)))]
+    const recipients = acceptanceRecipients(settings.companyEmail, agreement.issuedToEmail)
     const schedule = yield* agreementScheduleConsequences(agreement)
     return {
       summary: `Record acceptance of agreement ${agreement.number} by ${input.acceptedByName}`,
@@ -564,6 +562,13 @@ export const recordAgreementCustomerDecision = defineCommand({
       if (command.now >= new Date(payload.exp))
         return yield* new InvalidState({ code: "invalid", message: "This link is no longer valid" })
       const decision = input.decision
+      const reviewedContext = decision.decision === "accept" ? yield* loadDocumentContext : undefined
+      if (decision.decision === "accept" && decision.expectedPreviewVersion !==
+        publicAcceptancePreview(agreement, reviewedContext!.settings.companyEmail).version) {
+        // Missing versions include old pages/clients. The original link can still reload
+        // the current review, but never bypass the recipient check on a new acceptance.
+        return yield* new InvalidState({ code: "changed_since_review", message: "The acceptance review changed. Reload and review the recipients before accepting." })
+      }
       const updated = yield* Effect.promise(() =>
         db.agreement.update({
           where: { id: agreement.id },
@@ -600,7 +605,7 @@ export const recordAgreementCustomerDecision = defineCommand({
             : { reason: decision.reason ?? null }),
         },
       })
-      if (decision.decision === "accept") yield* notifyAccepted(updated)
+      if (decision.decision === "accept") yield* notifyAccepted(updated, reviewedContext)
       return updated
     }),
 })
