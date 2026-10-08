@@ -20,7 +20,7 @@ import { defineCommand, type AnyCommandDefinition } from "../command"
 import { lockDocument } from "../documents/locks"
 import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { executeCommand } from "../execute"
-import { registerJobHandler, TerminalJobError } from "../jobs"
+import { MAX_JOB_ATTEMPTS, registerJobHandler, TerminalJobError } from "../jobs"
 import { Command, Db, type CommandScope } from "../services"
 import {
   addUtcDays,
@@ -725,8 +725,14 @@ registerJobHandler(AUTO_SEND_JOB, async (job) => {
   }
 
   // Other issuances kept taking the number this one was prepared with. Nothing is wrong with the
-  // draft; the job runner tries again.
-  if (outcome.error.code === NUMBER_CHANGED) throw new Error(outcome.error.message)
+  // draft; the job runner tries again. On the last attempt nobody will, so leave the failure on
+  // the draft, where a person looks.
+  if (outcome.error.code === NUMBER_CHANGED) {
+    if (job.attempts >= MAX_JOB_ATTEMPTS) {
+      await executeCommand(recordRecurringAutoSendFailure, { ...payload, error: outcome.error }, { actor })
+    }
+    throw new Error(outcome.error.message)
+  }
 
   await executeCommand(recordRecurringAutoSendFailure, { ...payload, error: outcome.error }, { actor })
   // Provider outages are retried by the job runner. Anything else (a missing recipient, a draft

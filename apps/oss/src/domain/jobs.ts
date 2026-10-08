@@ -4,7 +4,8 @@ import type { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { appLogger } from "../lib/observability"
 
-const MAX_ATTEMPTS = 5
+/** A job that fails on its last attempt is failed for good; handlers can tell when no retry is left. */
+export const MAX_JOB_ATTEMPTS = 5
 /**
  * A job still `running` after this long was claimed by a process that stopped. Longer than any
  * command transaction (60s), so a live runner is never interrupted.
@@ -97,7 +98,7 @@ async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
     }
     const message = error instanceof Error ? error.message : String(error)
     const terminal = error instanceof TerminalJobError
-    const exhausted = job.attempts >= MAX_ATTEMPTS
+    const exhausted = job.attempts >= MAX_JOB_ATTEMPTS
     const failed = terminal || exhausted
     await prisma.job.updateMany({
       where: owned,
@@ -175,11 +176,11 @@ export async function reclaimStaleJobs(now = new Date(), scope?: JobScope) {
   const stale = { ...scopeFilter(scope), status: "running", updatedAt: { lt: staleBefore } }
   const [requeued, exhausted] = await prisma.$transaction([
     prisma.job.updateMany({
-      where: { ...stale, attempts: { lt: MAX_ATTEMPTS } },
+      where: { ...stale, attempts: { lt: MAX_JOB_ATTEMPTS } },
       data: { status: "pending", runAfter: now, lastError: "Runner stopped before finishing", claimToken: null },
     }),
     prisma.job.updateMany({
-      where: { ...stale, attempts: { gte: MAX_ATTEMPTS } },
+      where: { ...stale, attempts: { gte: MAX_JOB_ATTEMPTS } },
       data: { status: "failed", lastError: "Runner stopped before finishing", claimToken: null },
     }),
   ])
