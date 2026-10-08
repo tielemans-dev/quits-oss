@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_app/")({
 
 type RecentInvoice = {
   id: string
-  number: string
+  number: string | null
   contactName: string
   total: number
   currency: string
@@ -216,7 +216,9 @@ function DashboardPage() {
                       }
                     >
                       <TableCell className="font-medium">
-                        {invoice.number}
+                        {invoice.number ?? (
+                          <span className="font-normal text-muted-foreground">{t("invoices.number.draft")}</span>
+                        )}
                       </TableCell>
                       <TableCell>{invoice.contactName}</TableCell>
                       <TableCell>{formatDate(invoice.issueDate, locale)}</TableCell>

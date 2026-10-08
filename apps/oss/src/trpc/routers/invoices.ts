@@ -26,6 +26,7 @@ import {
   updateInvoiceDraft,
 } from "../../domain/commands/invoices"
 import { recordPayment } from "../../domain/commands/payments"
+import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { executeCommand } from "../../domain/execute"
 import { markOrganizationInvoicesOverdue } from "../../domain/features/overdue"
@@ -139,6 +140,11 @@ export const invoicesRouter = router({
 
       return {
         ...invoice,
+        // A draft has no number yet. This is the number it would take if sent now; it is not reserved.
+        nextNumber:
+          invoice.status === "draft" && invoice.number === null
+            ? await previewNextDocumentNumber(ctx.organizationId, "invoice")
+            : null,
         agreementTaxRate: invoice.agreement?.taxRateInput ?? invoice.agreement?.taxRate.toString() ?? null,
         subtotal: invoice.subtotalNet.toNumber(),
         taxAmount: invoice.totalTax.toNumber(),

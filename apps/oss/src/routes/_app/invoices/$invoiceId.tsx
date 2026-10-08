@@ -113,7 +113,10 @@ type Invoice = {
   agreementId?: string | null
   agreementTaxRate?: string | null
   id: string
-  number: string
+  /** Null until the invoice is sent. */
+  number: string | null
+  /** The number a draft would take if sent now; not reserved. */
+  nextNumber?: string | null
   status: string
   paymentStatus: string
   paidAt: string | null
@@ -505,7 +508,7 @@ function InvoiceDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {t("invoices.detail.editTitle")} {invoice.number}
+              {[t("invoices.detail.editTitle"), invoice.number].filter(Boolean).join(" ")}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-6">
@@ -850,9 +853,9 @@ function InvoiceDetailPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>{t("invoices.delete.title")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {t("invoices.delete.description", {
-                        number: invoice.number,
-                      })}
+                      {invoice.number
+                        ? t("invoices.delete.description", { number: invoice.number })
+                        : t("invoices.delete.descriptionDraft")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -969,8 +972,15 @@ function InvoiceDetailPage() {
             <div className="flex items-start justify-between">
               <div>
                 <h1 className="text-2xl font-bold">
-                  {t("pdf.invoice")} {invoice.number}
+                  {invoice.number ? `${t("pdf.invoice")} ${invoice.number}` : t("invoices.number.draftHeading")}
                 </h1>
+                {invoice.number === null && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {invoice.nextNumber
+                      ? t("invoices.number.willBe", { number: invoice.nextNumber })
+                      : t("invoices.number.assignedOnSend")}
+                  </p>
+                )}
                 <div className="mt-1">
                   <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
                 </div>

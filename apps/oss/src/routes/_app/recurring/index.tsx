@@ -139,7 +139,7 @@ function RecurringInvoicesPage() {
                         search={{ emailWarning: undefined }}
                         className="hover:underline"
                       >
-                        {schedule.lastInvoice.number}
+                        {schedule.lastInvoice.number ?? t("invoices.number.draft")}
                       </Link>
                     ) : (
                       <span className="text-muted-foreground">{t("recurring.none")}</span>

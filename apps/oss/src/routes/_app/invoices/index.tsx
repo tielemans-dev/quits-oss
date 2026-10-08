@@ -37,7 +37,8 @@ export const Route = createFileRoute("/_app/invoices/")({
 
 type Invoice = {
   id: string
-  number: string
+  /** Null until the invoice is sent. */
+  number: string | null
   status: string
   paymentStatus: string
   issueDate: string
@@ -157,7 +158,11 @@ function InvoicesListPage() {
                     })
                   }
                 >
-                  <TableCell className="font-medium">{invoice.number}</TableCell>
+                  <TableCell className="font-medium">
+                    {invoice.number ?? (
+                      <span className="font-normal text-muted-foreground">{t("invoices.number.draft")}</span>
+                    )}
+                  </TableCell>
                   <TableCell>{invoice.contact.name}</TableCell>
                   <TableCell>{formatDate(invoice.issueDate, locale)}</TableCell>
                   <TableCell>{formatDate(invoice.dueDate, locale)}</TableCell>
@@ -190,9 +195,9 @@ function InvoicesListPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t("invoices.delete.title")}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              {t("invoices.delete.description", {
-                                number: invoice.number,
-                              })}
+                              {invoice.number
+                                ? t("invoices.delete.description", { number: invoice.number })
+                                : t("invoices.delete.descriptionDraft")}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

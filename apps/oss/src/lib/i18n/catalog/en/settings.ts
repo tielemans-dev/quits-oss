@@ -72,7 +72,7 @@ export const enSettingsMessages = {
   "settings.taxRate.label": "Default Tax Rate (%)",
   "settings.section.numbering.title": "Document Numbering",
   "settings.section.numbering.description":
-    "Prefixes and sequence numbers for generated documents.",
+    "Prefixes and sequence numbers for generated documents. Invoices and quotes receive the next number when they are sent, so drafts have none.",
   "settings.invoicePrefix.label": "Invoice Prefix",
   "settings.prefix.title":
     "Use 1-10 uppercase letters, numbers, or hyphens",

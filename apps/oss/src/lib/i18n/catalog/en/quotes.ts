@@ -7,6 +7,10 @@ export const enQuotesMessages = {
   "quotes.empty.description":
     "Create your first quote to start sending proposals to your clients.",
   "quotes.table.number": "Number",
+  "quotes.number.draft": "Draft",
+  "quotes.number.draftHeading": "Draft quote",
+  "quotes.number.willBe": "Numbered {number} when sent. The number is not reserved: another quote may be sent first.",
+  "quotes.number.assignedOnSend": "Gets its number when sent.",
   "quotes.table.contact": "Contact",
   "quotes.table.issueDate": "Issue Date",
   "quotes.table.expiryDate": "Expiry Date",
@@ -20,6 +24,8 @@ export const enQuotesMessages = {
   "quotes.delete.title": "Delete quote",
   "quotes.delete.description":
     "Are you sure you want to delete quote {number}? This action cannot be undone.",
+  "quotes.delete.descriptionDraft":
+    "Are you sure you want to delete this draft quote? It has no number yet, so the quote numbering is not affected. This action cannot be undone.",
   "quotes.action.cancel": "Cancel",
   "quotes.action.delete": "Delete",
   "quotes.new.title": "New Quote",

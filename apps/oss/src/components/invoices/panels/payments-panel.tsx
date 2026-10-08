@@ -213,7 +213,7 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
       {recordOpen ? (
         <RecordPaymentDialog
           invoiceId={invoice.id}
-          invoiceNumber={invoice.number}
+          invoiceNumber={invoice.number ?? ""}
           currency={invoice.currency}
           balanceDue={balanceDue}
           timeZone={view?.timeZone ?? "UTC"}

@@ -64,6 +64,7 @@ export const daRecurringMessages = {
   "recurring.confirm.runNow.descriptionAutoSend": "Fakturaen for {date} oprettes og sendes til kunden med det samme, og planen går videre til den følgende kørsel.",
   "recurring.confirm.cancel": "Annuller",
   "recurring.runNow.done": "Faktura {number} blev oprettet.",
+  "recurring.runNow.doneDraft": "En fakturakladde blev oprettet. Den får sit nummer, når den sendes.",
   "recurring.error.action": "Det lykkedes ikke. Prøv igen.",
   "recurring.detail.notFound": "Planen blev ikke fundet.",
   "recurring.detail.template": "Skabelon",
