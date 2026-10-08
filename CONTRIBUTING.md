@@ -8,12 +8,18 @@ This repository is the OSS runtime baseline. Hosted-only features belong in the 
 
 Do not submit changes that:
 
-- Add managed billing/webhooks (Stripe lifecycle and webhook handlers)
+- Add hosted Quits plan billing, subscription lifecycle or managed billing webhook handlers
 - Add hosted auth enforcement logic that belongs in cloud edge infrastructure
 - Add private cloud module imports into OSS runtime code
 - Add managed AI subscription entitlements or billing coupling into OSS core
 
 Use extension interfaces in `apps/oss/src/lib/runtime/extensions.ts` when you need cloud-specific behavior.
+
+Customer invoice payments belong in OSS. The existing Stripe Checkout provider in
+`apps/oss/src/lib/payments/stripe.ts` and invoice webhook at `/api/payments/stripe-webhook`
+use an organization's own payment credentials. This does not permit hosted Quits subscription
+billing. The boundary check allows only the existing `import Stripe from "stripe"` line in that
+provider; other Stripe SDK imports and hosted subscription or billing portal calls remain forbidden.
 
 ## Pull Request Expectations
 
@@ -22,6 +28,8 @@ Use extension interfaces in `apps/oss/src/lib/runtime/extensions.ts` when you ne
 - Keep cloud-specific logic outside OSS runtime paths.
 - Add or update tests for behavior changes.
 - Ensure CI and boundary checks pass.
+- Install ripgrep, then run `bash scripts/__tests__/oss-boundaries.test.sh` and
+  `bash scripts/check-oss-boundaries.sh`. Missing tools and search errors fail the check.
 - Use the pull request template and include screenshots for UI changes.
 - `bun run lint`, `bun run typecheck`, and `bun run test` should pass before asking for review.
 

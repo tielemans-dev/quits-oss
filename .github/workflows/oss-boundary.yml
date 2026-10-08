@@ -31,6 +31,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install boundary search tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ripgrep
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -53,7 +58,9 @@ jobs:
         run: bunx prisma migrate deploy
 
       - name: Run OSS boundary checks
-        run: bash scripts/check-oss-boundaries.sh
+        run: |
+          bash scripts/__tests__/oss-boundaries.test.sh
+          bash scripts/check-oss-boundaries.sh
 
       - name: Run tests
         run: bun run test
