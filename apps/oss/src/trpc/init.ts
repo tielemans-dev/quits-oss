@@ -107,8 +107,9 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next, type }) =
   // A request started while another organization was active must not be applied to this one.
   assertRequestedOrganization(ctx.requestedOrganizationId, ctx.organizationId)
 
+  const organizationId = ctx.organizationId
   const loadActor = () => resolveUserActor({
-    organizationId: ctx.organizationId,
+    organizationId,
     userId: ctx.user.id,
     userName: ctx.user.name,
     userEmail: ctx.user.email,
