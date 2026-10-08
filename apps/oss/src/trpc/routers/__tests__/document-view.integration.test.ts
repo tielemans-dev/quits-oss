@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { documentViewSchema } from "@quits/contracts/document-view"
 import { buildIssuedView } from "@quits/shared/documents"
@@ -44,6 +45,47 @@ async function issue(ctx: Context) {
 }
 
 ;(hasTestDatabase ? describe : describe.skip)("server document views and draft revisions", () => {
+  it("keeps issued payable frozen while receipt allocations and reversals update status and balance", async () => {
+    const ctx = await setup("DKK")
+    const id = ctx.invoice.id
+    await ctx.admin.invoices.updateV2({ id, items: [{ key: "work", description: "Work", quantity: "1", unitPrice: "800" }] })
+    const issued = await issue(ctx)
+    const before = await ctx.admin.invoices.view({ id })
+    expect(before.view.totals).toMatchObject({ gross: "1000.00", payable: "1000.00" })
+    const evidence = { reason: "Bank statement reconciled", evidence: "https://evidence.example.test/statement" }
+    const { receiptId } = await ctx.admin.payments.recordReceipt({
+      requestId: randomUUID(), reference: randomUUID(), contactId: ctx.contact.id, currency: "DKK",
+      netAmount: "985", feeAmount: "15", feeEvidence: evidence, paidAt: "2026-10-08", method: "bank_transfer", ...evidence,
+    })
+    const expectSettlement = async (status: string, amountPaid: number, balanceDue: number) => {
+      // Status is current; the rendered money, line keys and draft revision remain as issued.
+      expect(await ctx.admin.invoices.view({ id })).toEqual({ ...before, view: { ...before.view, status } })
+      expect(await ctx.admin.invoices.get({ id })).toMatchObject({ status, amountPaid, balanceDue })
+      expect(await ctx.admin.payments.list({ invoiceId: id })).toMatchObject({ amountPaid, balanceDue })
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id } })).issuanceSnapshot).toEqual(issued.issuanceSnapshot)
+    }
+    // Unallocated receipt funds do not discharge this invoice's debt.
+    await expectSettlement("sent", 0, 1000)
+    const allocate = async (amount: string) => {
+      const input = { requestId: randomUUID(), receiptId, allocations: [{ invoiceId: id, receiptAmount: amount, invoiceAmount: amount }], ...evidence }
+      const { previewToken } = await ctx.admin.payments.previewAllocation(input)
+      return ctx.admin.payments.allocateReceipt({ ...input, previewToken })
+    }
+    const first = await allocate("600")
+    await expectSettlement("sent", 600, 400)
+    await allocate("400")
+    // The evidenced gross allocation settles 1000, despite the net bank receipt being 985.
+    await expectSettlement("paid", 1000, 0)
+    const correction = { requestId: randomUUID(), action: "reverse_allocation" as const, paymentId: first.paymentIds[0]!, ...evidence }
+    const { previewToken } = await ctx.admin.payments.previewReceiptChange(correction)
+    await ctx.admin.payments.changeReceipt({ ...correction, previewToken })
+    await expectSettlement("sent", 400, 600)
+    const payments = await ctx.admin.payments.list({ invoiceId: id })
+    expect(payments.payments).toHaveLength(2)
+    expect(payments.payments.every(payment => payment.receiptId === receiptId)).toBe(true)
+    expect(payments.payments.find(payment => payment.id === first.paymentIds[0])?.voidedAt).toBeInstanceOf(Date)
+  })
+
   for (const timezone of ["America/New_York", "Pacific/Auckland"]) {
     it(`round-trips calendar dates without timezone drift in ${timezone}`, async () => {
       const ctx = await setup("USD", timezone)

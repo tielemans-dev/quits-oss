@@ -298,6 +298,11 @@ If the snapshot is missing, incomplete or corrupt,
 stored line amounts and document totals without repricing. Missing historical branding stays null.
 Credit-note correction dates come only from the corrected invoice's snapshot, or are null.
 
+`view.totals.payable` is the amount payable as issued, not the current outstanding balance.
+Receipt allocations and their reversals update the view's current `status`, while its issued money
+stays frozen. Read `balanceDue` from `invoices.get` or `payments.list`; both include receipt-linked
+payment allocations. Unallocated receipt funds do not reduce an invoice's balance.
+
 Quotes have no issued money snapshot. Once a quote is no longer a draft, its view has
 `state: "issued"` and all stored lines are locked. It retains the rows' amounts and the frozen
 seller and buyer snapshots, uses settings for phone and logo, and has `historical: false`.
