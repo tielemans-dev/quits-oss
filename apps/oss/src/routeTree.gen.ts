@@ -39,6 +39,7 @@ import { Route as PayTokenLogoRouteImport } from './routes/pay.$token_.logo'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe-webhook'
 import { Route as ApiCronTickRouteImport } from './routes/api/cron/tick'
+import { Route as ApiCronStatusRouteImport } from './routes/api/cron/status'
 import { Route as ApiCronMarkOverdueRouteImport } from './routes/api/cron/mark-overdue'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ATokenPdfRouteImport } from './routes/a.$token_.pdf'
@@ -209,6 +210,11 @@ const ApiCronTickRoute = ApiCronTickRouteImport.update({
   path: '/api/cron/tick',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronStatusRoute = ApiCronStatusRouteImport.update({
+  id: '/api/cron/status',
+  path: '/api/cron/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronMarkOverdueRoute = ApiCronMarkOverdueRouteImport.update({
   id: '/api/cron/mark-overdue',
   path: '/api/cron/mark-overdue',
@@ -338,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
+  '/api/cron/status': typeof ApiCronStatusRoute
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
@@ -387,6 +394,7 @@ export interface FileRoutesByTo {
   '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
+  '/api/cron/status': typeof ApiCronStatusRoute
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
@@ -438,6 +446,7 @@ export interface FileRoutesById {
   '/a/$token_/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
+  '/api/cron/status': typeof ApiCronStatusRoute
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
@@ -489,6 +498,7 @@ export interface FileRouteTypes {
     | '/a/$token/pdf'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
+    | '/api/cron/status'
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
@@ -538,6 +548,7 @@ export interface FileRouteTypes {
     | '/a/$token/pdf'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
+    | '/api/cron/status'
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
@@ -588,6 +599,7 @@ export interface FileRouteTypes {
     | '/a/$token_/pdf'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
+    | '/api/cron/status'
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
@@ -622,6 +634,7 @@ export interface RootRouteChildren {
   ATokenPdfRoute: typeof ATokenPdfRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCronMarkOverdueRoute: typeof ApiCronMarkOverdueRoute
+  ApiCronStatusRoute: typeof ApiCronStatusRoute
   ApiCronTickRoute: typeof ApiCronTickRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
@@ -845,6 +858,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronTickRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/status': {
+      id: '/api/cron/status'
+      path: '/api/cron/status'
+      fullPath: '/api/cron/status'
+      preLoaderRoute: typeof ApiCronStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/mark-overdue': {
       id: '/api/cron/mark-overdue'
       path: '/api/cron/mark-overdue'
@@ -1046,6 +1066,7 @@ const rootRouteChildren: RootRouteChildren = {
   ATokenPdfRoute: ATokenPdfRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCronMarkOverdueRoute: ApiCronMarkOverdueRoute,
+  ApiCronStatusRoute: ApiCronStatusRoute,
   ApiCronTickRoute: ApiCronTickRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,

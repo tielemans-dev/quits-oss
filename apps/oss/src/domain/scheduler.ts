@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
+import { isOperationsHeld } from "../lib/operations-hold"
 import { appLogger } from "../lib/observability"
 import { DEFAULT_JOBS_PER_SWEEP, runDueJobs } from "./jobs"
 
@@ -59,6 +60,10 @@ export function registerTickTask(task: TickTask) {
  * retried, and a failed task never stops the others.
  */
 export async function runSchedulerTick(now = new Date(), options: TickOptions = {}) {
+  // Overdue marking, reminders, recurring invoices and jobs all wait until operations are enabled.
+  if (await isOperationsHeld()) {
+    return { operationsHold: { held: 1 } } as Record<string, Record<string, number> | { error: string }>
+  }
   const results: Record<string, Record<string, number> | { error: string }> = {}
 
   for (const task of [...tasks].sort((a, b) => a.order - b.order)) {

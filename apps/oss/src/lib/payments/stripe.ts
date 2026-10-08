@@ -1,4 +1,5 @@
 import Stripe from "stripe"
+import { assertOperationsLive } from "../operations-hold"
 import { decryptSecret } from "../secrets"
 import { toStripeMinorUnits } from "./stripe-amounts"
 
@@ -61,6 +62,7 @@ export async function createStripeInvoiceCheckoutSession(input: {
     throw new Error("Stripe payment credentials are not configured")
   }
 
+  await assertOperationsLive("creating a Stripe Checkout session")
   const stripe = createStripeClient(input.credentials.secretKey)
 
   return stripe.checkout.sessions.create({
@@ -102,6 +104,7 @@ export async function expireOpenStripeCheckoutSession(input: {
   secretKey: string
   sessionId: string
 }): Promise<CheckoutSessionExpiry> {
+  await assertOperationsLive("expiring a Stripe Checkout session")
   const stripe = createStripeClient(input.secretKey, { timeoutMs: EXPIRE_TIMEOUT_MS })
   try {
     await stripe.checkout.sessions.expire(input.sessionId)

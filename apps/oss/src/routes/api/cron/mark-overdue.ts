@@ -8,6 +8,10 @@ async function handleMarkOverdue(request: Request) {
     return denied
   }
 
+  const { isOperationsHeld } = await import("../../../lib/operations-hold")
+  if (await isOperationsHeld()) {
+    return Response.json({ ok: true, held: true, marked: 0, failed: 0, remaining: 0 })
+  }
   const { runOverdueTask } = await import("../../../domain/features/overdue")
   const result = await runOverdueTask()
   const ok = result.failed === 0

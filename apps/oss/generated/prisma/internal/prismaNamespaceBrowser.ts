@@ -87,7 +87,9 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  RecoveryState: 'RecoveryState',
+  BackupRecord: 'BackupRecord'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -957,6 +959,35 @@ export const IssuanceCandidateScalarFieldEnum = {
 } as const
 
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
+
+
+export const RecoveryStateScalarFieldEnum = {
+  id: 'id',
+  operationsMode: 'operationsMode',
+  heldReason: 'heldReason',
+  heldAt: 'heldAt',
+  restoredFrom: 'restoredFrom',
+  restoreReport: 'restoreReport',
+  enabledAt: 'enabledAt',
+  lastSchedulerTickAt: 'lastSchedulerTickAt',
+  lastSchedulerTickOk: 'lastSchedulerTickOk',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RecoveryStateScalarFieldEnum = (typeof RecoveryStateScalarFieldEnum)[keyof typeof RecoveryStateScalarFieldEnum]
+
+
+export const BackupRecordScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind',
+  bundleId: 'bundleId',
+  manifestSha256: 'manifestSha256',
+  formatVersion: 'formatVersion',
+  summary: 'summary',
+  createdAt: 'createdAt'
+} as const
+
+export type BackupRecordScalarFieldEnum = (typeof BackupRecordScalarFieldEnum)[keyof typeof BackupRecordScalarFieldEnum]
 
 
 export const SortOrder = {

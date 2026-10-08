@@ -2,10 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const runSchedulerTick = vi.fn()
 const runOverdueTask = vi.fn()
+const isOperationsHeld = vi.fn()
+const recordSchedulerTick = vi.fn()
 
 vi.mock("../../domain/scheduler-tasks", () => ({}))
 vi.mock("../../domain/scheduler", () => ({ runSchedulerTick }))
 vi.mock("../../domain/features/overdue", () => ({ runOverdueTask }))
+vi.mock("../../lib/operations-hold", () => ({ isOperationsHeld, recordSchedulerTick }))
 
 import { Route as MarkOverdueRoute } from "../api/cron/mark-overdue"
 import { Route as TickRoute } from "../api/cron/tick"
@@ -26,6 +29,8 @@ describe("cron routes", () => {
     process.env.CRON_SECRET = "s3cret-value"
     runSchedulerTick.mockReset()
     runOverdueTask.mockReset()
+    isOperationsHeld.mockReset().mockResolvedValue(false)
+    recordSchedulerTick.mockReset().mockResolvedValue(undefined)
   })
   afterEach(() => {
     if (previous === undefined) delete process.env.CRON_SECRET
@@ -93,5 +98,27 @@ describe("cron routes", () => {
 
     runOverdueTask.mockResolvedValue({ organizations: 2, marked: 3, failed: 0, remaining: 0 })
     expect((await markOverdue(request("/api/cron/mark-overdue"))).status).toBe(200)
+  })
+
+  it("records each tick so monitors can see the scheduler is alive", async () => {
+    runSchedulerTick.mockResolvedValue({ jobs: { processed: 1 } })
+    await tick(request("/api/cron/tick"))
+    expect(recordSchedulerTick).toHaveBeenLastCalledWith(true)
+
+    runSchedulerTick.mockResolvedValue({ reminders: { error: "database unavailable" } })
+    await tick(request("/api/cron/tick"))
+    expect(recordSchedulerTick).toHaveBeenLastCalledWith(false)
+  })
+
+  it("runs nothing while operations are held, and says so without failing the tick", async () => {
+    isOperationsHeld.mockResolvedValue(true)
+    const response = await tick(request("/api/cron/tick"))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ ok: true, held: true, results: {} })
+    expect(runSchedulerTick).not.toHaveBeenCalled()
+
+    const overdue = await markOverdue(request("/api/cron/mark-overdue"))
+    expect(await overdue.json()).toMatchObject({ ok: true, held: true, marked: 0 })
+    expect(runOverdueTask).not.toHaveBeenCalled()
   })
 })

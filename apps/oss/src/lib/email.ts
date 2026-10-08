@@ -5,6 +5,7 @@ import type { TranslationKey } from "./i18n/messages"
 import { lineColumnKeys, type PriceBasis, type VatRow } from "./documents/line-amounts"
 import { buildTotals } from "./documents/totals"
 import { selectedEmailProvider, readSmtpConfiguration, type EmailProvider, type EmailEnvironment } from "./email-provider-config"
+import { assertOperationsLive } from "./operations-hold"
 import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
 
 let _resend: Resend | null = null
@@ -109,6 +110,8 @@ export async function deliver(
   message: EmailMessage,
   options: DeliveryOptions = {}
 ): Promise<{ id: string }> {
+  // Every outgoing message passes through here, so a held installation cannot email anyone.
+  await assertOperationsLive("sending email")
   const environment = options.environment ?? getRuntimeEnv()
   if ((options.provider ?? selectedEmailProvider(environment.EMAIL_PROVIDER ?? "")) === "smtp") {
     ensureEmailProvider("smtp", environment)

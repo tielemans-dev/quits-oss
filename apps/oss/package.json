@@ -48,6 +48,7 @@
     "db:start": "../../scripts/dev-db-start.sh",
     "db:stop": "docker stop ${QUITS_DB_CONTAINER_NAME:-${YAIP_DB_CONTAINER_NAME:-yaip-postgres}}",
     "db:logs": "docker logs -f ${QUITS_DB_CONTAINER_NAME:-${YAIP_DB_CONTAINER_NAME:-yaip-postgres}}",
+    "recovery": "node ../../scripts/run-with-workspace-env.mjs bun src/selfhost/recovery/cli.ts",
     "i18n:check": "node ../../scripts/i18n-check.mjs && node ../../scripts/i18n-tm-guard.mjs",
     "i18n:update-tm-allowlist": "node ../../scripts/update-tm-allowlist.mjs",
     "migrate": "bun run db:start && bun run prisma:migrate",

@@ -1026,3 +1026,37 @@ model IssuanceCandidate {
   @@index([stagingId, status, createdAt])
   @@map("issuance_candidate")
 }
+
+/// Whether this installation may act on the outside world. A restore leaves it `held`: scheduled
+/// work, queued jobs, email, payment-provider calls and AI calls stay off until an operator
+/// reviews the pending work and enables operations (`recovery enable-operations`). One row.
+model RecoveryState {
+  id                  String    @id @default("default")
+  operationsMode      String    @default("live")
+  heldReason          String?
+  heldAt              DateTime?
+  /// Summary of the backup the data was restored from; set by a restore, never by the app.
+  restoredFrom        Json?
+  restoreReport       Json?
+  enabledAt           DateTime?
+  lastSchedulerTickAt DateTime?
+  lastSchedulerTickOk Boolean?
+  updatedAt           DateTime  @updatedAt
+
+  @@map("recovery_state")
+}
+
+/// Backups and verifications made with the recovery tool against this database, so the app can
+/// report how old the newest verified backup is. Holds counts and digests, never backup content.
+model BackupRecord {
+  id             String   @id @default(cuid())
+  kind           String
+  bundleId       String
+  manifestSha256 String
+  formatVersion  Int
+  summary        Json
+  createdAt      DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@map("backup_record")
+}
