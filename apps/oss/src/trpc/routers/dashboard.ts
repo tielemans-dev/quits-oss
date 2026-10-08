@@ -1,3 +1,5 @@
+import { dashboardSummarySchema } from "@quits/contracts/dashboard"
+import { dashboardSummary } from "../../lib/dashboard/summary"
 import { router, authorizedProcedure } from "../init"
 import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
@@ -5,6 +7,8 @@ import { computeSettlement } from "../../domain/documents/settlement"
 import { requireCurrencyExponent } from "@quits/shared/currency"
 
 export const dashboardRouter = router({
+  summary: authorizedProcedure("invoice:read").output(dashboardSummarySchema)
+    .query(({ ctx }) => dashboardSummary(prisma, ctx.actor)),
   stats: authorizedProcedure("invoice:read").query(async ({ ctx }) => {
     // Select only what the aggregation and the recent-invoice rows read. Invoice rows carry
     // large JSON snapshots that this query never uses.
