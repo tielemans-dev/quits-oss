@@ -64,6 +64,7 @@ export const sendAgreement = defineCommand({
       const message = composeAgreementEmail({
         snapshot: readAgreementOfferSnapshot(agreement.offerSnapshot),
         number: agreement.number,
+        locale: agreement.locale,
         settings,
         recipient,
         url,
@@ -173,6 +174,7 @@ export const resendAgreement = defineCommand({
       const message = composeAgreementEmail({
         snapshot: readAgreementOfferSnapshot(updated.offerSnapshot),
         number: updated.number,
+        locale: updated.locale,
         settings,
         recipient,
         url,
@@ -283,6 +285,7 @@ const notifyAccepted = (
         message: composeAgreementEmail({
           snapshot,
           number: agreement.number,
+          locale: agreement.locale,
           settings,
           recipient,
           url,
@@ -452,6 +455,7 @@ export const sendAgreementReadLink = defineCommand({
         message: composeAgreementEmail({
           snapshot: readAgreementOfferSnapshot(agreement.offerSnapshot),
           number: agreement.number,
+          locale: agreement.locale,
           settings,
           recipient,
           url,

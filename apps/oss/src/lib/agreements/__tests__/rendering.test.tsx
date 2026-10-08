@@ -102,6 +102,7 @@ describe("agreement page, PDF and email share the restricted terms", () => {
     const email = composeAgreementEmail({
       snapshot,
       number: "AGR-1",
+      locale: "en-US",
       settings,
       recipient: "customer@example.test",
       url: "https://quits.example/a/synthetic",
