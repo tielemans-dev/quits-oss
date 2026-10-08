@@ -14,7 +14,7 @@
     },
     "apps/oss": {
       "name": "@quits/oss",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "ipaddr.js": "^1.9.1",
         "@better-auth/core": "1.5.4",
@@ -86,7 +86,7 @@
     },
     "packages/contracts": {
       "name": "@quits/contracts",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "zod": "^4.3.6",
       },
@@ -98,7 +98,7 @@
     },
     "packages/shared": {
       "name": "@quits/shared",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "@quits/contracts": "workspace:*",
         "decimal.js-light": "2.5.1",
