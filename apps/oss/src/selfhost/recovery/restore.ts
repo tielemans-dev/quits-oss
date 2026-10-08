@@ -7,7 +7,7 @@ import { insideBundle, sha256Bytes, verifyBundle, type BundleCheck, type Finding
 import { readPendingWork, readTotals } from "./backup"
 import { ARTIFACT_OWNERS, ENCRYPTED_COLUMNS, RecoveryError, type CurrencyTotals, type Manifest } from "./format"
 import { compareKeys, countUndecryptable } from "./keys"
-import { orderByDependency, queryFn, quoteIdent, readAppliedMigrations, readTables, type QueryFn } from "./pgdb"
+import { orderByDependency, queryFn, quoteIdent, readAppliedMigrations, readTables, utcParam, type QueryFn } from "./pgdb"
 
 export type GateName = "integrity" | "artifacts" | "totals" | "rows" | "keys"
 export type GateResult = "pass" | "fail" | "skipped"
@@ -354,9 +354,9 @@ export async function restoreBundle(options: RestoreOptions): Promise<RestoreRep
     const reason = `Restored from backup ${manifest.bundleId} taken ${manifest.createdAt}. Nothing has been sent, charged or run since.`
     await query(
       `INSERT INTO recovery_state (id, "operationsMode", "heldReason", "heldAt", "restoredFrom", "restoreReport", "updatedAt")
-       VALUES ('default', 'held', $1, $2, $3::jsonb, $4::jsonb, $2)
-       ON CONFLICT (id) DO UPDATE SET "operationsMode" = 'held', "heldReason" = $1, "heldAt" = $2, "restoredFrom" = $3::jsonb,
-         "restoreReport" = $4::jsonb, "enabledAt" = NULL, "updatedAt" = $2`,
+       VALUES ('default', 'held', $1, ${utcParam(2)}, $3::jsonb, $4::jsonb, ${utcParam(2)})
+       ON CONFLICT (id) DO UPDATE SET "operationsMode" = 'held', "heldReason" = $1, "heldAt" = ${utcParam(2)}, "restoredFrom" = $3::jsonb,
+         "restoreReport" = $4::jsonb, "enabledAt" = NULL, "updatedAt" = ${utcParam(2)}`,
       [
         reason,
         now,

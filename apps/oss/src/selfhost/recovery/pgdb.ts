@@ -88,3 +88,13 @@ export async function readAppliedMigrations(query: QueryFn): Promise<string[] | 
 export async function readPostgresVersion(query: QueryFn) {
   return String((await query(`SHOW server_version`))[0]?.server_version ?? "unknown")
 }
+
+/**
+ * Timestamps are stored as UTC wall-clock time without a zone, as Prisma writes them. `pg` would
+ * read and write them in the client's local zone, so every date goes through these.
+ */
+export const utcNow = `(now() AT TIME ZONE 'UTC')`
+/** A bound Date parameter as UTC wall-clock time. */
+export const utcParam = (position: number) => `($${position}::timestamptz AT TIME ZONE 'UTC')`
+/** A stored timestamp column as an instant, so it reads back as the right Date. */
+export const instant = (column: string) => `(${column} AT TIME ZONE 'UTC')`

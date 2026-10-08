@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import type { Client } from "pg"
 import { RecoveryError } from "./format"
-import { queryFn, type QueryFn } from "./pgdb"
+import { instant, queryFn, utcNow, utcParam, type QueryFn } from "./pgdb"
 import type { GateName, RestoreReport } from "./restore"
 
 export type PendingWorkReview = {
@@ -30,7 +30,7 @@ export async function reviewPendingWork(query: QueryFn): Promise<PendingWorkRevi
   const report = (state?.restoreReport ?? null) as RestoreReport | null
   const restoredFrom = (state?.restoredFrom ?? null) as PendingWorkReview["restoredFrom"]
   const jobs = await query(`
-    SELECT type, status, count(*)::int AS n, count(*) FILTER (WHERE attempts > 0)::int AS prior, min("runAfter") AS oldest
+    SELECT type, status, count(*)::int AS n, count(*) FILTER (WHERE attempts > 0)::int AS prior, min(${instant('"runAfter"')}) AS oldest
     FROM job WHERE status IN ('pending','running') GROUP BY type, status ORDER BY type, status`)
   const scalar = async (sql: string) => Number((await query(sql))[0]?.n ?? 0)
   const review: PendingWorkReview = {
@@ -43,8 +43,8 @@ export async function reviewPendingWork(query: QueryFn): Promise<PendingWorkRevi
       withPriorAttempts: Number(row.prior),
       oldestRunAfter: row.oldest instanceof Date ? row.oldest.toISOString() : row.oldest ? String(row.oldest) : null,
     })),
-    remindersDue: await scalar(`SELECT count(*)::int AS n FROM invoice_reminder WHERE "sentAt" IS NULL AND "scheduledFor" <= now()`),
-    recurringDue: await scalar(`SELECT count(*)::int AS n FROM recurring_invoice WHERE status = 'active' AND "nextRunAt" <= now()`),
+    remindersDue: await scalar(`SELECT count(*)::int AS n FROM invoice_reminder WHERE "sentAt" IS NULL AND "scheduledFor" <= ${utcNow}`),
+    recurringDue: await scalar(`SELECT count(*)::int AS n FROM recurring_invoice WHERE status = 'active' AND "nextRunAt" <= ${utcNow}`),
     eventDeliveriesPending: await scalar(`SELECT count(*)::int AS n FROM event_consumer_delivery WHERE status IN ('pending','claimed')`),
     duplicateExecutionControls: CONTROLS,
     warnings: [],
@@ -115,13 +115,13 @@ export async function enableOperations(options: EnableOptions) {
     let cancelled = 0
     if (options.jobs === "cancel") {
       const result = await options.client.query(
-        `UPDATE job SET status = 'failed', "claimToken" = NULL, "lastError" = 'Cancelled at cutover after restore', "updatedAt" = $1 WHERE status IN ('pending','running')`,
+        `UPDATE job SET status = 'failed', "claimToken" = NULL, "lastError" = 'Cancelled at cutover after restore', "updatedAt" = ${utcParam(1)} WHERE status IN ('pending','running')`,
         [now]
       )
       cancelled = result.rowCount ?? 0
     }
     await options.client.query(
-      `UPDATE recovery_state SET "operationsMode" = 'live', "heldReason" = NULL, "enabledAt" = $1, "updatedAt" = $1,
+      `UPDATE recovery_state SET "operationsMode" = 'live', "heldReason" = NULL, "enabledAt" = ${utcParam(1)}, "updatedAt" = ${utcParam(1)},
          "restoreReport" = jsonb_set(coalesce("restoreReport", '{}'::jsonb), '{enabled}', $2::jsonb) WHERE id = 'default'`,
       [now, JSON.stringify({ at: now.toISOString(), jobs: options.jobs, cancelled, acceptedGates: [...accepted], reviewToken: options.reviewToken })]
     )

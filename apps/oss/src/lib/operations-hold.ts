@@ -37,7 +37,12 @@ export async function readOperationsHold(): Promise<OperationsHold> {
       heldAt: null,
     }
   }
-  const state = await prisma.recoveryState.findUnique({ where: { id: RECOVERY_STATE_ID } })
+  const state = await prisma.recoveryState.findUnique({ where: { id: RECOVERY_STATE_ID } }).catch((error: unknown) => {
+    // A database without the recovery migration was never restored by the recovery tool, so
+    // nothing can have held it.
+    if ((error as { code?: string }).code === "P2021") return null
+    throw error
+  })
   if (!state || state.operationsMode === "live") {
     return { held: false }
   }
@@ -63,9 +68,14 @@ export async function assertOperationsLive(effect: string) {
 
 /** Records the outcome of a scheduler tick so operators can see the scheduler is alive. */
 export async function recordSchedulerTick(ok: boolean, now = new Date()) {
-  await prisma.recoveryState.upsert({
-    where: { id: RECOVERY_STATE_ID },
-    create: { id: RECOVERY_STATE_ID, lastSchedulerTickAt: now, lastSchedulerTickOk: ok },
-    update: { lastSchedulerTickAt: now, lastSchedulerTickOk: ok },
-  })
+  await prisma.recoveryState
+    .upsert({
+      where: { id: RECOVERY_STATE_ID },
+      create: { id: RECOVERY_STATE_ID, lastSchedulerTickAt: now, lastSchedulerTickOk: ok },
+      update: { lastSchedulerTickAt: now, lastSchedulerTickOk: ok },
+    })
+    .catch((error: unknown) => {
+      // The heartbeat is only a convenience for monitors; it must never fail a tick.
+      if ((error as { code?: string }).code !== "P2021") throw error
+    })
 }

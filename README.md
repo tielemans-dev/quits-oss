@@ -282,6 +282,13 @@ Runtime hosts can supply `documentRenderer` and `documentArtifactStore` services
 `bootstrapQuitsRuntime`. This release advertises `documents.artifactsRequired: false`; hosts
 without both adapters can still issue documents and record `document.artifact_missing`.
 
+### Backup and recovery
+
+`recovery backup create` writes a checksummed backup of the database and the issued documents, and
+`recovery restore` rebuilds it into a clean installation with outgoing email, payments, AI calls,
+scheduled work and queued jobs held until you enable them. See
+[Backup, restore rehearsal and cutover](docs/operations/backup-and-recovery.md).
+
 ### SMTP email for self-hosting
 
 Set `EMAIL_PROVIDER=smtp`, `SMTP_HOST`, and `FROM_EMAIL` to use your own relay. For

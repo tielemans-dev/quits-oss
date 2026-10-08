@@ -2,7 +2,7 @@ import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
 import type { DocumentArtifactStore } from "../../lib/runtime/services"
 import { readSmtpConfiguration } from "../../lib/email-provider-config"
 import { ARTIFACT_OWNERS } from "./format"
-import { quoteIdent, type QueryFn } from "./pgdb"
+import { instant, quoteIdent, utcParam, type QueryFn } from "./pgdb"
 
 type Env = Record<string, string | undefined>
 
@@ -55,7 +55,7 @@ export async function collectOperationalStatus(options: StatusOptions): Promise<
   const scalar = async (sql: string, params?: unknown[]) => Number((await query(sql, params))[0]?.n ?? 0)
   const problems: StatusProblem[] = []
 
-  const state = (await query(`SELECT "operationsMode", "heldReason", "heldAt", "enabledAt", "lastSchedulerTickAt", "lastSchedulerTickOk" FROM recovery_state WHERE id = 'default'`))[0]
+  const state = (await query(`SELECT "operationsMode", "heldReason", ${instant('"heldAt"')} AS "heldAt", ${instant('"enabledAt"')} AS "enabledAt", ${instant('"lastSchedulerTickAt"')} AS "lastSchedulerTickAt", "lastSchedulerTickOk" FROM recovery_state WHERE id = 'default'`))[0]
   const heldByDatabase = Boolean(state && state.operationsMode !== "live")
   const operations: OperationalStatus["operations"] = {
     held: options.environmentHold || heldByDatabase,
@@ -70,7 +70,7 @@ export async function collectOperationalStatus(options: StatusOptions): Promise<
 
   // Backups.
   const maxAgeHours = Number(readProductEnv(env, "BACKUP_MAX_AGE_HOURS")) || 48
-  const records = await query(`SELECT kind, max("createdAt") AS at FROM backup_record GROUP BY kind`)
+  const records = await query(`SELECT kind, max(${instant('"createdAt"')}) AS at FROM backup_record GROUP BY kind`)
   const lastOf = (kind: string) => {
     const at = records.find((row) => row.kind === kind)?.at
     return at ? new Date(String(at instanceof Date ? at.toISOString() : at)) : null
@@ -128,18 +128,18 @@ export async function collectOperationalStatus(options: StatusOptions): Promise<
   // Scheduler.
   const lastTick = state?.lastSchedulerTickAt ? new Date(String(state.lastSchedulerTickAt instanceof Date ? state.lastSchedulerTickAt.toISOString() : state.lastSchedulerTickAt)) : null
   const tickMinutes = minutes(lastTick, now)
-  const oldest = (await query(`SELECT min("runAfter") AS at FROM job WHERE status = 'pending' AND "runAfter" <= $1`, [now]))[0]?.at
+  const oldest = (await query(`SELECT min(${instant('"runAfter"')}) AS at FROM job WHERE status = 'pending' AND "runAfter" <= ${utcParam(1)}`, [now]))[0]?.at
   const scheduler: OperationalStatus["scheduler"] = {
     lastTickAt: lastTick?.toISOString() ?? null,
     lastTickOk: typeof state?.lastSchedulerTickOk === "boolean" ? state.lastSchedulerTickOk : null,
     ageMinutes: tickMinutes,
     stale: tickMinutes === null || tickMinutes > 30,
     pendingJobs: await scalar(`SELECT count(*)::int AS n FROM job WHERE status = 'pending'`),
-    overdueJobs: await scalar(`SELECT count(*)::int AS n FROM job WHERE status = 'pending' AND "runAfter" <= $1 - interval '30 minutes'`, [now]),
+    overdueJobs: await scalar(`SELECT count(*)::int AS n FROM job WHERE status = 'pending' AND "runAfter" <= ${utcParam(1)} - interval '30 minutes'`, [now]),
     failedJobs: await scalar(`SELECT count(*)::int AS n FROM job WHERE status = 'failed'`),
     oldestPendingMinutes: oldest ? minutes(new Date(String(oldest instanceof Date ? oldest.toISOString() : oldest)), now) : null,
-    remindersDue: await scalar(`SELECT count(*)::int AS n FROM invoice_reminder WHERE "sentAt" IS NULL AND "scheduledFor" <= $1`, [now]),
-    recurringDue: await scalar(`SELECT count(*)::int AS n FROM recurring_invoice WHERE status = 'active' AND "nextRunAt" <= $1`, [now]),
+    remindersDue: await scalar(`SELECT count(*)::int AS n FROM invoice_reminder WHERE "sentAt" IS NULL AND "scheduledFor" <= ${utcParam(1)}`, [now]),
+    recurringDue: await scalar(`SELECT count(*)::int AS n FROM recurring_invoice WHERE status = 'active' AND "nextRunAt" <= ${utcParam(1)}`, [now]),
   }
   if (!operations.held) {
     if (scheduler.stale) problems.push({ severity: "error", code: "scheduler_silent", message: scheduler.lastTickAt ? `The scheduler last ran ${tickMinutes} minutes ago. Check that the scheduler service is running and CRON_SECRET matches.` : "The scheduler has never run. Start the scheduler service (docker compose runs it) and check CRON_SECRET." })
@@ -161,12 +161,12 @@ export async function collectOperationalStatus(options: StatusOptions): Promise<
   } else {
     configured = Boolean(env.RESEND_API_KEY?.trim())
   }
-  const attempt = (await query(`SELECT max("lastEmailAttemptAt") AS at FROM invoice`))[0]?.at
+  const attempt = (await query(`SELECT max(${instant('"lastEmailAttemptAt"')}) AS at FROM invoice`))[0]?.at
   const mail: OperationalStatus["mail"] = {
     provider,
     configured,
     senderConfigured: Boolean(env.FROM_EMAIL?.trim()),
-    failedDeliveries7d: await scalar(`SELECT count(*)::int AS n FROM job WHERE type = 'email.deliver' AND status = 'failed' AND "updatedAt" >= $1 - interval '7 days'`, [now]),
+    failedDeliveries7d: await scalar(`SELECT count(*)::int AS n FROM job WHERE type = 'email.deliver' AND status = 'failed' AND "updatedAt" >= ${utcParam(1)} - interval '7 days'`, [now]),
     retryingDeliveries: await scalar(`SELECT count(*)::int AS n FROM job WHERE type = 'email.deliver' AND status = 'pending' AND attempts > 0`),
     lastAttemptAt: attempt ? iso(attempt) : null,
   }

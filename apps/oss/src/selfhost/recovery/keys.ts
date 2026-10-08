@@ -42,6 +42,11 @@ export function compareKeys(recorded: Record<string, string | null>, env: Env): 
   const findings: KeyFinding[] = []
   for (const [name, fingerprint] of Object.entries(recorded)) {
     if (fingerprint === null) continue
+    // A link secret that was only the auth secret's fallback is covered by the auth secret's finding.
+    if (name !== "BETTER_AUTH_SECRET" && fingerprint === recorded.BETTER_AUTH_SECRET) {
+      const auth = current.BETTER_AUTH_SECRET
+      if (auth === null || auth !== recorded.BETTER_AUTH_SECRET) continue
+    }
     if (current[name] == null) {
       findings.push({
         code: "missing_key",
@@ -53,7 +58,7 @@ export function compareKeys(recorded: Record<string, string | null>, env: Env): 
       findings.push({
         code: "wrong_key",
         key: name,
-        message: `${name} differs from the key the backup was made with.`,
+        message: `${envName(name)} differs from the key the backup was made with.`,
         action: "Use the original value. Encrypted settings and issued public links stop working with a different key.",
       })
     }

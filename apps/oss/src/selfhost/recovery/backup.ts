@@ -20,7 +20,7 @@ import {
   type Manifest,
 } from "./format"
 import { configurationInventory, keyFingerprints } from "./keys"
-import { quoteIdent, queryFn, readAppliedMigrations, readPostgresVersion, readTables, type QueryFn } from "./pgdb"
+import { quoteIdent, queryFn, readAppliedMigrations, readPostgresVersion, readTables, utcNow, type QueryFn } from "./pgdb"
 
 const FETCH_ROWS = 500
 
@@ -86,8 +86,8 @@ export async function readPendingWork(query: QueryFn): Promise<Manifest["pending
     jobsRunning: byStatus("running"),
     jobsFailed: byStatus("failed"),
     jobsByType,
-    remindersDue: await scalar(`SELECT count(*)::int AS n FROM invoice_reminder WHERE "sentAt" IS NULL AND "scheduledFor" <= now()`),
-    recurringDue: await scalar(`SELECT count(*)::int AS n FROM recurring_invoice WHERE status = 'active' AND "nextRunAt" <= now()`),
+    remindersDue: await scalar(`SELECT count(*)::int AS n FROM invoice_reminder WHERE "sentAt" IS NULL AND "scheduledFor" <= ${utcNow}`),
+    recurringDue: await scalar(`SELECT count(*)::int AS n FROM recurring_invoice WHERE status = 'active' AND "nextRunAt" <= ${utcNow}`),
     eventDeliveriesPending: await scalar(`SELECT count(*)::int AS n FROM event_consumer_delivery WHERE status IN ('pending','claimed')`),
   }
 }
