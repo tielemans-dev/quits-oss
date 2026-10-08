@@ -1,4 +1,5 @@
 import { prisma } from "../db"
+import { publicPresentationSettingsSelect } from "../documents/public-presentation"
 import { getStripePaymentConfigurationState } from "./stripe"
 import {
   getInvoicePaymentState,
@@ -39,6 +40,8 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
         select: {
           settings: {
             select: {
+              // Language, timezone, name and logo of the seller, for presenting the page.
+              ...publicPresentationSettingsSelect,
               stripePublishableKey: true,
               stripeSecretKeyEnc: true,
               stripeWebhookSecretEnc: true,

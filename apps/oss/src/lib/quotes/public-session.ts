@@ -7,6 +7,9 @@ import {
 import {
   publicQuoteTokenInputSchema,
 } from "@quits/contracts/quotes"
+import { invalidLinkLocale } from "../documents/public-invalid-link"
+import { publicLogoPath } from "../documents/public-logo"
+import { resolvePublicPresentation } from "../documents/public-presentation"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -22,6 +25,7 @@ function toDateString(value: Date | string | null) {
   return value instanceof Date ? value.toISOString() : value
 }
 
+/** `token` is the link the page was opened with: an uploaded logo is served from its logo route. */
 export function serializePublicQuoteSession(session: {
   quote: {
     id: string
@@ -33,9 +37,21 @@ export function serializePublicQuoteSession(session: {
     totalTax: Decimalish
     subtotalNet: Decimalish
     currency: string
+    /** The document's own language and timezone, the ones its PDF and email use. */
+    locale?: string | null
+    timezone?: string | null
     notes: string | null
     sellerSnapshot: unknown
     buyerSnapshot: unknown
+    /** Only the presentation fields are read from the seller's settings. */
+    organization?: {
+      settings?: {
+        locale?: string | null
+        timezone?: string | null
+        companyName?: string | null
+        companyLogo?: string | null
+      } | null
+    } | null
     publicDecisionAt: Date | string | null
     publicRejectionReason: string | null
     contact: {
@@ -58,10 +74,19 @@ export function serializePublicQuoteSession(session: {
     }>
   }
   decisionState: "pending" | "accepted" | "rejected"
-}) {
+}, token: string) {
   const { quote } = session
+  const sellerSnapshot = parseSellerSnapshot(quote.sellerSnapshot)
+  const presentation = resolvePublicPresentation({
+    document: { locale: quote.locale, timezone: quote.timezone, sellerSnapshot },
+    settings: quote.organization?.settings,
+    logoPath: publicLogoPath("q", token),
+  })
 
   return {
+    /** The language the page is shown in. */
+    locale: presentation.locale,
+    seller: presentation.seller,
     decisionState: session.decisionState,
     quote: {
       id: quote.id,
@@ -73,8 +98,9 @@ export function serializePublicQuoteSession(session: {
       totalTax: toNumber(quote.totalTax),
       subtotalNet: toNumber(quote.subtotalNet),
       currency: quote.currency,
+      timezone: presentation.timezone,
       notes: quote.notes,
-      sellerSnapshot: parseSellerSnapshot(quote.sellerSnapshot),
+      sellerSnapshot,
       buyerSnapshot: parseBuyerSnapshot(quote.buyerSnapshot),
       publicDecisionAt: toDateString(quote.publicDecisionAt),
       publicRejectionReason: quote.publicRejectionReason,
@@ -101,12 +127,13 @@ export const getPublicQuoteSession = createServerFn({ method: "GET" })
     ])
     const session = await loadPublicQuoteByToken(data.token, getPublicQuoteSecret())
     if (!session) {
-      return { kind: "invalid" } as const
+      // No document to take a language from: answer in the visitor's.
+      return { kind: "invalid", locale: invalidLinkLocale() } as const
     }
 
     return {
       kind: "ready",
-      ...serializePublicQuoteSession(session),
+      ...serializePublicQuoteSession(session, data.token),
     } as const
   })
 
@@ -130,7 +157,7 @@ export const submitPublicQuoteDecision = createServerFn({ method: "POST" })
 
       return {
         kind: "ready",
-        ...serializePublicQuoteSession(session),
+        ...serializePublicQuoteSession(session, data.token),
       } as const
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "retry_later") {

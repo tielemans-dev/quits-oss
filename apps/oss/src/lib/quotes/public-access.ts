@@ -4,6 +4,7 @@ import type { SystemActor } from "../../domain/actor"
 import { recordQuoteCustomerDecision } from "../../domain/commands/quotes"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../db"
+import { publicPresentationSettingsSelect } from "../documents/public-presentation"
 import {
   getQuotePublicDecisionState,
   verifyQuotePublicToken,
@@ -39,6 +40,10 @@ export async function loadPublicQuoteByToken(token: string, secret: string) {
       },
       invoices: {
         select: { id: true, number: true, status: true },
+      },
+      // Language, timezone, name and logo of the seller, for presenting the page.
+      organization: {
+        select: { settings: { select: publicPresentationSettingsSelect } },
       },
     },
   })
@@ -114,7 +119,12 @@ export async function decidePublicQuoteByToken(
     )
   }
 
-  const quote = outcome.result
+  // The decided quote is presented like a loaded one, so the seller's identity stays on the page.
+  const settings = await prisma.orgSettings.findUnique({
+    where: { organizationId: target.organizationId },
+    select: publicPresentationSettingsSelect,
+  })
+  const quote = { ...outcome.result, organization: { settings } }
   return {
     quote,
     decisionState: getQuotePublicDecisionState({

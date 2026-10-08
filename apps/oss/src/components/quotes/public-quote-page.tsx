@@ -1,6 +1,10 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { Textarea } from "../ui/textarea"
+import { PublicSellerHeader } from "../documents/public-seller-header"
+import { useDocumentFormat } from "../documents/use-document-format"
+import type { PublicSeller } from "../../lib/documents/public-presentation"
+import { useI18n } from "../../lib/i18n/react"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -29,6 +33,8 @@ type PublicQuote = {
   totalTax: Decimalish
   subtotalNet: Decimalish
   currency: string
+  /** The timezone the document's dates are shown in, as its PDF and email do. */
+  timezone: string
   notes: string | null
   sellerSnapshot: {
     companyName?: string | null
@@ -45,7 +51,6 @@ type PublicQuote = {
   contact: PublicQuoteContact
   items: PublicQuoteItem[]
   invoices: Array<{ id: string; number: string; status: string }>
-  locale?: string | null
 }
 
 export type PublicQuotePageState =
@@ -53,6 +58,8 @@ export type PublicQuotePageState =
   | {
       kind: "ready"
       decisionState: "pending" | "accepted" | "rejected"
+      /** Who the quote is from: shown at the top of the page. */
+      seller: PublicSeller
       quote: PublicQuote
     }
 
@@ -74,44 +81,87 @@ export function PublicQuotePage({
   submitting?: boolean
   error?: string | null
 }) {
+  const { t } = useI18n()
+
   if (state.kind === "invalid") {
     return (
       <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 py-12">
         <Card className="w-full max-w-lg">
           <CardHeader>
-            <CardTitle>Quote unavailable</CardTitle>
-            <CardDescription>
-              This quote link is invalid or has expired.
-            </CardDescription>
+            <CardTitle>{t("public.quote.unavailable.title")}</CardTitle>
+            <CardDescription>{t("public.quote.unavailable.description")}</CardDescription>
           </CardHeader>
         </Card>
       </div>
     )
   }
 
-  const { quote, decisionState } = state
-  const sellerName = quote.sellerSnapshot?.companyName ?? "Quits"
-  const decisionAt = quote.publicDecisionAt ? formatDate(quote.publicDecisionAt) : null
+  return (
+    <PublicQuoteDocument
+      state={state}
+      rejectionReason={rejectionReason}
+      onRejectionReasonChange={onRejectionReasonChange}
+      onAccept={onAccept}
+      onReject={onReject}
+      submitting={submitting}
+      error={error}
+    />
+  )
+}
+
+function PublicQuoteDocument({
+  state,
+  rejectionReason,
+  onRejectionReasonChange,
+  onAccept,
+  onReject,
+  submitting,
+  error,
+}: {
+  state: Extract<PublicQuotePageState, { kind: "ready" }>
+  rejectionReason: string
+  onRejectionReasonChange?: (value: string) => void
+  onAccept?: () => void
+  onReject?: () => void
+  submitting: boolean
+  error?: string | null
+}) {
+  const { t } = useI18n()
+  const { quote, decisionState, seller } = state
+  const format = useDocumentFormat(quote.timezone)
+  const money = (amount: number) => format.money(amount, quote.currency)
+  const decisionAt = quote.publicDecisionAt ? format.date(quote.publicDecisionAt) : null
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl items-center px-4 py-12">
+    <div className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center gap-6 px-4 py-12">
+      <PublicSellerHeader seller={seller} />
       <div className="grid w-full gap-6 lg:grid-cols-[1.35fr_0.9fr]">
         <Card>
           <CardHeader>
             <CardTitle>{quote.number}</CardTitle>
             <CardDescription>
-              Quote from {sellerName}
+              {seller.name
+                ? t("public.quote.from", { seller: seller.name })
+                : t("public.quote.label")}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
             <div className="grid gap-4 sm:grid-cols-3">
-              <InfoBlock label="Status" value={statusLabel(decisionState)} />
-              <InfoBlock label="Issued" value={formatDate(quote.issueDate)} />
-              <InfoBlock label="Valid until" value={formatDate(quote.expiryDate)} />
+              <InfoBlock
+                label={t("public.document.status")}
+                value={t(`public.quote.status.${decisionState}`)}
+              />
+              <InfoBlock label={t("public.quote.issued")} value={format.date(quote.issueDate)} />
+              <InfoBlock
+                label={t("public.quote.validUntil")}
+                value={format.date(quote.expiryDate)}
+              />
             </div>
 
             <div className="grid gap-3">
-              <h2 className="text-sm font-medium text-muted-foreground">Quote summary</h2>
+              <h2 className="text-sm font-medium text-muted-foreground">
+                {t("public.quote.summary")}
+              </h2>
               <div className="rounded-lg border">
                 {quote.items
                   .slice()
@@ -124,13 +174,13 @@ export function PublicQuotePage({
                       <div>
                         <p className="font-medium">{item.description}</p>
                         <p className="text-sm text-muted-foreground">
-                          {toNumber(item.quantity)} x{" "}
-                          {formatCurrency(toNumber(item.unitPriceGross), quote.currency)}
+                          {t("public.document.lineQuantity", {
+                            quantity: format.number(toNumber(item.quantity)),
+                            price: money(toNumber(item.unitPriceGross)),
+                          })}
                         </p>
                       </div>
-                      <p className="font-medium">
-                        {formatCurrency(toNumber(item.lineGross), quote.currency)}
-                      </p>
+                      <p className="font-medium">{money(toNumber(item.lineGross))}</p>
                     </div>
                   ))}
               </div>
@@ -138,7 +188,7 @@ export function PublicQuotePage({
 
             {quote.notes ? (
               <div className="grid gap-2">
-                <h2 className="text-sm font-medium text-muted-foreground">Notes</h2>
+                <h2 className="text-sm font-medium text-muted-foreground">{t("public.document.notes")}</h2>
                 <p className="whitespace-pre-wrap text-sm">{quote.notes}</p>
               </div>
             ) : null}
@@ -147,19 +197,13 @@ export function PublicQuotePage({
 
         <Card>
           <CardHeader>
-            <CardTitle>
-              {decisionState === "accepted"
-                ? "Quote accepted"
-                : decisionState === "rejected"
-                  ? "Quote rejected"
-                  : "Review this quote"}
-            </CardTitle>
+            <CardTitle>{t(`public.quote.decision.${decisionState}.title`)}</CardTitle>
             <CardDescription>
               {decisionState === "pending"
-                ? "Confirm whether you want to accept or reject this quote."
+                ? t("public.quote.decision.pending.description")
                 : decisionAt
-                  ? `Decision recorded on ${decisionAt}.`
-                  : "This quote is no longer actionable."}
+                  ? t("public.quote.decision.recorded", { date: decisionAt })
+                  : t("public.quote.decision.closed")}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
@@ -170,34 +214,35 @@ export function PublicQuotePage({
             ) : null}
 
             <div className="grid gap-4 rounded-lg border p-4">
-              <InfoBlock label="Customer" value={quote.contact.name} />
+              <InfoBlock label={t("public.document.customer")} value={quote.contact.name} />
               <InfoBlock
-                label="Company"
-                value={quote.contact.company ?? quote.buyerSnapshot?.company ?? "Not provided"}
+                label={t("public.document.company")}
+                value={
+                  quote.contact.company ??
+                  quote.buyerSnapshot?.company ??
+                  t("public.document.notProvided")
+                }
               />
-              <InfoBlock
-                label="Total"
-                value={formatCurrency(toNumber(quote.totalGross), quote.currency)}
-              />
+              <InfoBlock label={t("public.document.total")} value={money(toNumber(quote.totalGross))} />
             </div>
 
             {decisionState === "pending" ? (
               <div className="grid gap-4">
                 <div className="grid gap-2">
                   <label className="text-sm font-medium" htmlFor="publicQuoteRejectionReason">
-                    Rejection reason (optional)
+                    {t("public.quote.rejectionReason.label")}
                   </label>
                   <Textarea
                     id="publicQuoteRejectionReason"
                     value={rejectionReason}
                     onChange={(event) => onRejectionReasonChange?.(event.target.value)}
-                    placeholder="Tell the sender why this quote does not work for you."
+                    placeholder={t("public.quote.rejectionReason.placeholder")}
                     rows={4}
                   />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Button type="button" disabled={submitting} onClick={onAccept}>
-                    Accept quote
+                    {t("public.quote.action.accept")}
                   </Button>
                   <Button
                     type="button"
@@ -205,7 +250,7 @@ export function PublicQuotePage({
                     disabled={submitting}
                     onClick={onReject}
                   >
-                    Reject quote
+                    {t("public.quote.action.reject")}
                   </Button>
                 </div>
               </div>
@@ -213,14 +258,14 @@ export function PublicQuotePage({
 
             {decisionState === "rejected" && quote.publicRejectionReason ? (
               <div className="grid gap-2 rounded-lg border border-dashed p-4">
-                <p className="text-sm font-medium">Rejection reason</p>
+                <p className="text-sm font-medium">{t("public.quote.rejectionReason.recorded")}</p>
                 <p className="text-sm text-muted-foreground">{quote.publicRejectionReason}</p>
               </div>
             ) : null}
           </CardContent>
           <CardFooter className="justify-between text-sm text-muted-foreground">
-            <span>{sellerName}</span>
-            <span>{formatCurrency(toNumber(quote.totalGross), quote.currency)}</span>
+            <span>{seller.name}</span>
+            <span>{money(toNumber(quote.totalGross))}</span>
           </CardFooter>
         </Card>
       </div>
@@ -241,35 +286,4 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 
 function toNumber(value: Decimalish) {
   return typeof value === "number" ? value : value.toNumber()
-}
-
-function formatCurrency(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  } catch {
-    return `${amount.toFixed(2)} ${currency}`
-  }
-}
-
-function formatDate(value: Date | string) {
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown"
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(date)
-}
-
-function statusLabel(state: "pending" | "accepted" | "rejected") {
-  if (state === "accepted") return "Accepted"
-  if (state === "rejected") return "Rejected"
-  return "Pending"
 }

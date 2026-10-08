@@ -10,6 +10,7 @@ import {
   parseSellerSnapshot,
   type DocumentTaxId,
 } from "@quits/contracts/documents"
+import { canRenderLogo } from "../documents/logo"
 import { translate } from "../i18n/translate"
 import type { OrgSettingsForPdf } from "../invoice-pdf"
 
@@ -52,11 +53,6 @@ export type CreditNotePdfBuyer = {
 }
 
 const VAT_SCHEMES = new Set(["vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
-
-function canRenderLogo(logo: string | null | undefined): logo is string {
-  if (!logo) return false
-  return logo.startsWith("data:image/") || /^https?:\/\/.+/i.test(logo)
-}
 
 function formatTaxIds(taxIds: readonly DocumentTaxId[] | undefined, locale: string | null | undefined) {
   return (taxIds ?? []).flatMap((taxId) => {

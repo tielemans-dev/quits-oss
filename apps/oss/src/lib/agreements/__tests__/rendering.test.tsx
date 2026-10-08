@@ -73,6 +73,7 @@ describe("agreement page, PDF and email share the restricted terms", () => {
     const page = renderToStaticMarkup(
       <I18nProvider>
         <PublicAgreementPage
+          seller={{ name: null, logo: null }}
           document={{
             expectedDates: [],
             number: "AGR-1",
@@ -102,6 +103,7 @@ describe("agreement page, PDF and email share the restricted terms", () => {
     const email = composeAgreementEmail({
       snapshot,
       number: "AGR-1",
+      locale: "en-US",
       settings,
       recipient: "customer@example.test",
       url: "https://quits.example/a/synthetic",

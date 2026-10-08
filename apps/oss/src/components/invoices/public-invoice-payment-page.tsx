@@ -1,5 +1,9 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
+import { PublicSellerHeader } from "../documents/public-seller-header"
+import { useDocumentFormat } from "../documents/use-document-format"
+import type { PublicSeller } from "../../lib/documents/public-presentation"
+import { useI18n } from "../../lib/i18n/react"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -35,6 +39,8 @@ type PublicInvoice = {
   totalTax: Decimalish
   subtotalNet: Decimalish
   currency: string
+  /** The timezone the document's dates are shown in, as its PDF does. */
+  timezone: string
   notes: string | null
   sellerSnapshot: {
     companyName?: string | null
@@ -56,6 +62,8 @@ export type PublicInvoicePaymentPageState =
       kind: "ready"
       paymentState: "unpaid" | "paid"
       stripeEnabled: boolean
+      /** Who the invoice is from: shown at the top of the page. */
+      seller: PublicSeller
       invoice: PublicInvoice
     }
 
@@ -71,23 +79,39 @@ export function PublicInvoicePaymentPage({
   submitting?: boolean
   error?: string | null
 }) {
+  const { t } = useI18n()
+
   if (state.kind === "invalid") {
     return (
       <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 py-12">
         <Card className="w-full max-w-lg">
           <CardHeader>
-            <CardTitle>Invoice unavailable</CardTitle>
-            <CardDescription>
-              This invoice payment link is invalid or has expired.
-            </CardDescription>
+            <CardTitle>{t("public.invoice.unavailable.title")}</CardTitle>
+            <CardDescription>{t("public.invoice.unavailable.description")}</CardDescription>
           </CardHeader>
         </Card>
       </div>
     )
   }
 
-  const { invoice, paymentState } = state
-  const sellerName = invoice.sellerSnapshot?.companyName ?? "Quits"
+  return <PublicInvoiceDocument state={state} onPay={onPay} submitting={submitting} error={error} />
+}
+
+function PublicInvoiceDocument({
+  state,
+  onPay,
+  submitting,
+  error,
+}: {
+  state: Extract<PublicInvoicePaymentPageState, { kind: "ready" }>
+  onPay?: () => void
+  submitting: boolean
+  error?: string | null
+}) {
+  const { t } = useI18n()
+  const { invoice, paymentState, seller } = state
+  const format = useDocumentFormat(invoice.timezone)
+  const money = (amount: number) => format.money(amount, invoice.currency)
   const total = toNumber(invoice.totalGross)
   const amountPaid = invoice.amountPaid ?? 0
   const amountCredited = invoice.amountCredited ?? 0
@@ -96,30 +120,37 @@ export function PublicInvoicePaymentPage({
   // Credited in full: nothing is owed, so the page says so instead of "Payment received".
   const credited = invoice.status === "credited"
   const statusLabel = credited
-    ? "Credited"
+    ? t("public.invoice.status.credited")
     : paymentState === "paid"
-      ? "Paid"
+      ? t("public.invoice.status.paid")
       : amountPaid > 0
-        ? "Partially paid"
-        : "Open"
+        ? t("public.invoice.status.partiallyPaid")
+        : t("public.invoice.status.open")
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl items-center px-4 py-12">
+    <div className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center gap-6 px-4 py-12">
+      <PublicSellerHeader seller={seller} />
       <div className="grid w-full gap-6 lg:grid-cols-[1.35fr_0.9fr]">
         <Card>
           <CardHeader>
             <CardTitle>{invoice.number}</CardTitle>
-            <CardDescription>Invoice from {sellerName}</CardDescription>
+            <CardDescription>
+              {seller.name
+                ? t("public.invoice.from", { seller: seller.name })
+                : t("public.invoice.label")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
             <div className="grid gap-4 sm:grid-cols-3">
-              <InfoBlock label="Status" value={statusLabel} />
-              <InfoBlock label="Issued" value={formatDate(invoice.issueDate)} />
-              <InfoBlock label="Due" value={formatDate(invoice.dueDate)} />
+              <InfoBlock label={t("public.document.status")} value={statusLabel} />
+              <InfoBlock label={t("public.invoice.issued")} value={format.date(invoice.issueDate)} />
+              <InfoBlock label={t("public.invoice.due")} value={format.date(invoice.dueDate)} />
             </div>
 
             <div className="grid gap-3">
-              <h2 className="text-sm font-medium text-muted-foreground">Invoice summary</h2>
+              <h2 className="text-sm font-medium text-muted-foreground">
+                {t("public.invoice.summary")}
+              </h2>
               <div className="rounded-lg border">
                 {invoice.items
                   .slice()
@@ -132,13 +163,13 @@ export function PublicInvoicePaymentPage({
                       <div>
                         <p className="font-medium">{item.description}</p>
                         <p className="text-sm text-muted-foreground">
-                          {toNumber(item.quantity)} x{" "}
-                          {formatCurrency(toNumber(item.unitPriceGross), invoice.currency)}
+                          {t("public.document.lineQuantity", {
+                            quantity: format.number(toNumber(item.quantity)),
+                            price: money(toNumber(item.unitPriceGross)),
+                          })}
                         </p>
                       </div>
-                      <p className="font-medium">
-                        {formatCurrency(toNumber(item.lineGross), invoice.currency)}
-                      </p>
+                      <p className="font-medium">{money(toNumber(item.lineGross))}</p>
                     </div>
                   ))}
               </div>
@@ -149,14 +180,18 @@ export function PublicInvoicePaymentPage({
         <Card>
           <CardHeader>
             <CardTitle>
-              {credited ? "Invoice credited" : paymentState === "paid" ? "Payment received" : "Pay this invoice"}
+              {credited
+                ? t("public.invoice.credited.title")
+                : paymentState === "paid"
+                  ? t("public.invoice.paid.title")
+                  : t("public.invoice.pay.title")}
             </CardTitle>
             <CardDescription>
               {credited
-                ? "This invoice has been credited in full. Nothing is due."
+                ? t("public.invoice.credited.description")
                 : paymentState === "paid"
-                  ? "This invoice has already been settled."
-                  : "Review the balance due and continue to secure checkout."}
+                  ? t("public.invoice.paid.description")
+                  : t("public.invoice.pay.description")}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
@@ -167,43 +202,45 @@ export function PublicInvoicePaymentPage({
             ) : null}
 
             <div className="grid gap-4 rounded-lg border p-4">
-              <InfoBlock label="Customer" value={invoice.contact.name} />
+              <InfoBlock label={t("public.document.customer")} value={invoice.contact.name} />
               <InfoBlock
-                label="Company"
-                value={invoice.contact.company ?? invoice.buyerSnapshot?.company ?? "Not provided"}
+                label={t("public.document.company")}
+                value={
+                  invoice.contact.company ??
+                  invoice.buyerSnapshot?.company ??
+                  t("public.document.notProvided")
+                }
               />
-              <InfoBlock label="Total" value={formatCurrency(total, invoice.currency)} />
+              <InfoBlock label={t("public.document.total")} value={money(total)} />
               {credited ? (
-                <InfoBlock label="Credited" value={formatCurrency(amountCredited, invoice.currency)} />
+                <InfoBlock label={t("public.invoice.credited")} value={money(amountCredited)} />
               ) : null}
               {partiallySettled && amountPaid > 0 ? (
-                <InfoBlock label="Paid" value={formatCurrency(amountPaid, invoice.currency)} />
+                <InfoBlock label={t("public.invoice.paid")} value={money(amountPaid)} />
               ) : null}
               {partiallySettled && amountCredited > 0 ? (
-                <InfoBlock label="Credited" value={formatCurrency(amountCredited, invoice.currency)} />
+                <InfoBlock label={t("public.invoice.credited")} value={money(amountCredited)} />
               ) : null}
               {paymentState === "unpaid" ? (
-                <InfoBlock label="Balance due" value={formatCurrency(balanceDue, invoice.currency)} />
+                <InfoBlock label={t("public.invoice.balanceDue")} value={money(balanceDue)} />
               ) : null}
             </div>
 
             {paymentState === "unpaid" ? (
               state.stripeEnabled ? (
                 <Button type="button" disabled={submitting} onClick={onPay}>
-                  Pay now
+                  {t("public.invoice.pay.action")}
                 </Button>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Online payment is not available for this invoice.
+                  {t("public.invoice.pay.unavailable")}
                 </p>
               )
             ) : null}
           </CardContent>
           <CardFooter className="justify-between text-sm text-muted-foreground">
-            <span>{sellerName}</span>
-            <span>
-              {formatCurrency(paymentState === "paid" && !credited ? total : balanceDue, invoice.currency)}
-            </span>
+            <span>{seller.name}</span>
+            <span>{money(paymentState === "paid" && !credited ? total : balanceDue)}</span>
           </CardFooter>
         </Card>
       </div>
@@ -224,29 +261,4 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 
 function toNumber(value: Decimalish) {
   return typeof value === "number" ? value : value.toNumber()
-}
-
-function formatCurrency(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  } catch {
-    return `${amount.toFixed(2)} ${currency}`
-  }
-}
-
-function formatDate(value: Date | string) {
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown"
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(date)
 }

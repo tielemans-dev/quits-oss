@@ -1,6 +1,6 @@
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
-import type { Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { signInvoicePaymentToken } from "../../src/lib/payments/public"
 import { signQuotePublicToken } from "../../src/lib/quotes/public"
@@ -29,6 +29,51 @@ type PublicSeed = {
   url: string
 }
 
+type SeedLocale = {
+  locale: string
+  countryCode: string
+  timezone: string
+  currency: string
+}
+
+/** The default seller: a US English organization that bills in dollars. */
+export const usEnglishLocale: SeedLocale = {
+  locale: "en-US",
+  countryCode: "US",
+  timezone: "UTC",
+  currency: "USD",
+}
+
+/** A Danish seller: the organization and the documents it issues are Danish and bill in kroner. */
+export const danishLocale: SeedLocale = {
+  locale: "da-DK",
+  countryCode: "DK",
+  timezone: "Europe/Copenhagen",
+  currency: "DKK",
+}
+
+/** A 1x1 transparent PNG, to stand in for an uploaded company logo. */
+export const tinyLogoDataUrl =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+
+/**
+ * A 1x1 PNG followed by about 1.4 MB of padding, base64 encoded to under the 2,000,000 characters
+ * settings accept. Decoders stop at the end of the image, so it still renders.
+ */
+export const largeLogoDataUrl = `data:image/png;base64,${Buffer.concat([
+  Buffer.from(tinyLogoDataUrl.split(",")[1]!, "base64"),
+  Buffer.alloc(1_400_000),
+]).toString("base64")}`
+
+export type PublicSeedOptions = {
+  /** Language, country, timezone and currency of the seller and of the document. */
+  locale?: SeedLocale
+  /** Stored on the seller's settings and shown at the top of the page. */
+  companyLogo?: string
+  /** The document total, with two decimals. Defaults to 100.00 for a quote and 250.00 for an invoice. */
+  total?: string
+}
+
 export async function resetDatabase() {
   const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
     SELECT tablename
@@ -48,7 +93,7 @@ export async function resetDatabase() {
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${names} RESTART IDENTITY CASCADE`)
 }
 
-export async function seedCompletedSetup() {
+export async function seedCompletedSetup(locale: SeedLocale = usEnglishLocale) {
   const slug = `e2e-${Math.random().toString(36).slice(2, 10)}`
   const initialized = await applySetupInitialization({
     instanceProfile: "smb",
@@ -60,12 +105,7 @@ export async function seedCompletedSetup() {
     auth: {
       mode: "local_only",
     },
-    locale: {
-      locale: "en-US",
-      countryCode: "US",
-      timezone: "UTC",
-      currency: "USD",
-    },
+    locale,
   })
 
   await completeSetup()
@@ -73,8 +113,17 @@ export async function seedCompletedSetup() {
   return initialized
 }
 
-export async function seedPublicQuote(): Promise<PublicSeed> {
-  const setup = await seedCompletedSetup()
+export async function seedPublicQuote(options: PublicSeedOptions = {}): Promise<PublicSeed> {
+  const locale = options.locale ?? usEnglishLocale
+  const total = options.total ?? "100.00"
+  const setup = await seedCompletedSetup(locale)
+
+  if (options.companyLogo) {
+    await prisma.orgSettings.update({
+      where: { organizationId: setup.organizationId },
+      data: { companyLogo: options.companyLogo },
+    })
+  }
 
   const contact = await prisma.contact.create({
     data: {
@@ -96,14 +145,14 @@ export async function seedPublicQuote(): Promise<PublicSeed> {
       expiryDate: new Date("2026-03-23T00:00:00.000Z"),
       publicAccessIssuedAt: new Date("2026-03-09T00:00:00.000Z"),
       publicAccessKeyVersion: 1,
-      subtotalNet: "100.00",
+      subtotalNet: total,
       totalTax: "0.00",
-      totalGross: "100.00",
-      currency: "USD",
-      countryCode: "US",
-      locale: "en-US",
-      timezone: "UTC",
-      taxRegime: "us_sales_tax",
+      totalGross: total,
+      currency: locale.currency,
+      countryCode: locale.countryCode,
+      locale: locale.locale,
+      timezone: locale.timezone,
+      taxRegime: locale.countryCode === "US" ? "us_sales_tax" : "eu_vat",
       pricesIncludeTax: false,
       sellerSnapshot: {
         companyName: "E2E Org",
@@ -119,11 +168,11 @@ export async function seedPublicQuote(): Promise<PublicSeed> {
           {
             description: "Strategy session",
             quantity: "1.00",
-            unitPriceNet: "100.00",
-            unitPriceGross: "100.00",
-            lineNet: "100.00",
+            unitPriceNet: total,
+            unitPriceGross: total,
+            lineNet: total,
             lineTax: "0.00",
-            lineGross: "100.00",
+            lineGross: total,
             taxRate: "0.00",
             taxCategory: "standard",
             sortOrder: 0,
@@ -149,8 +198,10 @@ export async function seedPublicQuote(): Promise<PublicSeed> {
   }
 }
 
-export async function seedPublicInvoice(): Promise<PublicSeed> {
-  const setup = await seedCompletedSetup()
+export async function seedPublicInvoice(options: PublicSeedOptions = {}): Promise<PublicSeed> {
+  const locale = options.locale ?? usEnglishLocale
+  const total = options.total ?? "250.00"
+  const setup = await seedCompletedSetup(locale)
 
   await prisma.orgSettings.update({
     where: { organizationId: setup.organizationId },
@@ -158,6 +209,7 @@ export async function seedPublicInvoice(): Promise<PublicSeed> {
       stripePublishableKey: "pk_test_123456789",
       stripeSecretKeyEnc: "sk_test_placeholder",
       stripeWebhookSecretEnc: "whsec_placeholder",
+      ...(options.companyLogo ? { companyLogo: options.companyLogo } : {}),
     },
   })
 
@@ -182,14 +234,14 @@ export async function seedPublicInvoice(): Promise<PublicSeed> {
       dueDate: new Date("2026-03-23T00:00:00.000Z"),
       publicPaymentIssuedAt: new Date("2026-03-09T00:00:00.000Z"),
       publicPaymentKeyVersion: 1,
-      subtotalNet: "250.00",
+      subtotalNet: total,
       totalTax: "0.00",
-      totalGross: "250.00",
-      currency: "USD",
-      countryCode: "US",
-      locale: "en-US",
-      timezone: "UTC",
-      taxRegime: "us_sales_tax",
+      totalGross: total,
+      currency: locale.currency,
+      countryCode: locale.countryCode,
+      locale: locale.locale,
+      timezone: locale.timezone,
+      taxRegime: locale.countryCode === "US" ? "us_sales_tax" : "eu_vat",
       pricesIncludeTax: false,
       sellerSnapshot: {
         companyName: "E2E Org",
@@ -205,11 +257,11 @@ export async function seedPublicInvoice(): Promise<PublicSeed> {
           {
             description: "Implementation sprint",
             quantity: "1.00",
-            unitPriceNet: "250.00",
-            unitPriceGross: "250.00",
-            lineNet: "250.00",
+            unitPriceNet: total,
+            unitPriceGross: total,
+            lineNet: total,
             lineTax: "0.00",
-            lineGross: "250.00",
+            lineGross: total,
             taxRate: "0.00",
             taxCategory: "standard",
             sortOrder: 0,
@@ -255,4 +307,27 @@ export function uniqueEmail(prefix: string) {
 export async function waitForClientReady(page: Page) {
   await page.waitForLoadState("networkidle")
   await page.waitForTimeout(250)
+}
+
+/**
+ * The seller's logo on a page opened from a link comes from the token-checked logo route of that
+ * link and never from the page itself: neither the server HTML nor the hydration data carries it.
+ */
+export async function expectLogoServedFromRoute(page: Page, kind: "pay" | "q" | "a", logoDataUrl = tinyLogoDataUrl) {
+  const logo = page.locator("header img")
+  await expect(logo).toHaveAttribute("src", new RegExp(`^/${kind}/[^/]+/logo$`))
+  await expect
+    .poll(() => logo.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth))
+    .toBeGreaterThan(0)
+
+  const response = await page.request.get((await logo.getAttribute("src"))!)
+  expect(response.status()).toBe(200)
+  expect(response.headers()["content-type"]).toBe("image/png")
+  expect(response.headers()["cache-control"]).toBe("private, max-age=300")
+  expect(response.headers()["x-content-type-options"]).toBe("nosniff")
+  expect((await response.body()).toString("base64")).toBe(logoDataUrl.split(",")[1])
+
+  const html = await (await page.request.get(page.url())).text()
+  expect(html).not.toContain("data:image")
+  return html
 }
