@@ -10,9 +10,9 @@ type OrgEmailSettings = Parameters<typeof resolveInvoiceEmailContext>[0]
 export type QuoteForEmail = {
   id: string
   number: string
-  /** Copied from the organization when the draft was created; legacy rows may lack them. */
-  locale?: string | null
-  timezone?: string | null
+  /** Copied from the organization when the draft was created. Required so no caller can drop them. */
+  locale: string
+  timezone: string
   issueDate: Date
   expiryDate: Date
   currency: string

@@ -26,9 +26,9 @@ type OrgEmailSettings = {
 export type InvoiceForEmail = {
   id: string
   number: string
-  /** Copied from the organization when the draft was created; legacy rows may lack them. */
-  locale?: string | null
-  timezone?: string | null
+  /** Copied from the organization when the draft was created. Required so no caller can drop them. */
+  locale: string
+  timezone: string
   issueDate: Date
   dueDate: Date
   currency: string
@@ -48,10 +48,10 @@ export type InvoiceForEmail = {
 /**
  * The language and timezone of an email about one document: the ones the document was created
  * with, so a later change to the organization's settings does not change what its customer is
- * sent. Only legacy documents without their own fall back to the organization's current ones.
+ * sent. Only a document whose own are empty (legacy rows) falls back to the organization's.
  */
 export function documentEmailOrg(
-  document: { locale?: string | null; timezone?: string | null },
+  document: { locale: string; timezone: string },
   settings: Pick<OrgEmailSettings, "companyName" | "companyEmail" | "locale" | "timezone">,
 ) {
   return {

@@ -95,7 +95,7 @@ describe("documentEmailOrg", () => {
   })
 
   it("falls back to the organization for a legacy document", () => {
-    expect(documentEmailOrg({ locale: "", timezone: null }, settings)).toMatchObject({
+    expect(documentEmailOrg({ locale: "", timezone: "" }, settings)).toMatchObject({
       locale: "en-US",
       timezone: "America/New_York",
     })
