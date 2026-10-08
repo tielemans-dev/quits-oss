@@ -30,6 +30,8 @@ import { deliver } from "../../email"
 import { encryptSecret } from "../../secrets"
 import { clientActionDownload } from "../download"
 import { performClientAction } from "../actions"
+import { mintDeliverableSignOffLink, verifyAgreementPublicToken, getAgreementPublicSecret } from "../../agreements/tokens"
+import { decidePublicDeliverableByToken } from "../../agreements/public-access"
 import { resolveClientActionAccess, type ActiveClientActionLink } from "../access"
 import { buildClientActionDetail, buildClientActionPage, type ClientActionItem } from "../page"
 import { mintClientActionToken, verifyClientActionToken } from "../tokens"
@@ -278,6 +280,71 @@ describe.runIf(hasTestDatabase)("client action page", () => {
   })
 
   describe("approving work", () => {
+    it.each([-1, 0, 1])("uses the public delivery lifetime at expiry %+dms in summary, detail and submission", async (offset) => {
+      const ctx = await setup()
+      const deliveredAt = new Date(now.getTime() - 90 * DAY)
+      const line = await prisma.deliverable.update({ where: { id: ctx.line.id }, data: { deliveredAt } })
+      const approver = await ctx.link([{ kind: "deliverable", recordId: line.id, capabilities: ["view", "approve"] }])
+      const link = await reload(approver.id)
+      const instant = new Date(now.getTime() + offset)
+      const publicLink = mintDeliverableSignOffLink(ctx.signed, line)
+      expect(verifyAgreementPublicToken(publicLink.token, getAgreementPublicSecret())?.exp).toBe(now.toISOString())
+      const page = await buildClientActionPage(link, { verified: false, now: instant })
+      expect(page.items[0]).toMatchObject({ state: offset < 0 ? "awaiting" : "expired", canApprove: offset < 0 })
+      expect(page.attention).toBe(offset < 0 ? 1 : 0)
+      expect(await buildClientActionDetail(link, { kind: "deliverable", recordId: line.id }, approver.token, instant)).toMatchObject({ canDecide: offset < 0 })
+      const request = { type: "deliverable.accept", deliverableId: line.id, deliveryRevision: 1, confirmed: true } as const
+      expect(await performClientAction(link, request, { token: approver.token, verified: false, now: instant })).toEqual(offset < 0 ? { status: "ok", checkoutUrl: null } : { status: "unavailable" })
+      if (offset >= 0) {
+        await expect(decidePublicDeliverableByToken(publicLink.token, { decision: "accept", confirmed: true }, instant)).rejects.toMatchObject({ code: "invalid" })
+        expect(await prisma.deliverable.findUniqueOrThrow({ where: { id: line.id } })).toMatchObject({ status: "delivered", acceptedAt: null })
+        expect(await prisma.domainEvent.count({ where: { organizationId: ctx.org.organizationId, type: "deliverable.accepted" } })).toBe(0)
+      }
+    })
+
+    it("keeps an expired delivery expired after reload and client-link renewal", async () => {
+      const ctx = await setup()
+      await prisma.deliverable.update({ where: { id: ctx.line.id }, data: { deliveredAt: new Date(now.getTime() - 91 * DAY) } })
+      const approver = await ctx.link([{ kind: "deliverable", recordId: ctx.line.id, capabilities: ["view", "approve"] }])
+      const request = { type: "deliverable.request_changes", deliverableId: ctx.line.id, deliveryRevision: 1, note: "Review" } as const
+      for (let load = 0; load < 2; load += 1) {
+        const link = await reload(approver.id)
+        expect((await buildClientActionPage(link, { verified: false, now })).items[0]).toMatchObject({ state: "expired", canApprove: false })
+        expect((await buildClientActionPage(link, { verified: false, now })).attention).toBe(0)
+        expect(await buildClientActionDetail(link, { kind: "deliverable", recordId: ctx.line.id }, approver.token, now)).toMatchObject({ canDecide: false })
+        expect(await performClientAction(link, request, { token: approver.token, verified: false, now })).toEqual({ status: "unavailable" })
+        await ctx.member.clientLinks.renew({ id: approver.id, expiresInDays: 90 })
+      }
+      expect(await prisma.deliverable.findUniqueOrThrow({ where: { id: ctx.line.id } })).toMatchObject({ status: "delivered", changeRequestNote: null })
+    })
+
+    it.each(["accept", "request_changes"] as const)("replays a completed %s after delivery expiry without writing a second decision", async (verb) => {
+      const ctx = await setup()
+      await prisma.deliverable.update({ where: { id: ctx.line.id }, data: { deliveredAt: new Date(now.getTime() - 90 * DAY) } })
+      const approver = await ctx.link([{ kind: "deliverable", recordId: ctx.line.id, capabilities: ["view", "approve"] }])
+      const link = await reload(approver.id)
+      const request = verb === "accept"
+        ? { type: "deliverable.accept", deliverableId: ctx.line.id, deliveryRevision: 1, confirmed: true } as const
+        : { type: "deliverable.request_changes", deliverableId: ctx.line.id, deliveryRevision: 1, note: "Fix heading" } as const
+      expect(await performClientAction(link, request, { token: approver.token, verified: false, now: new Date(now.getTime() - 1) })).toEqual({ status: "ok", checkoutUrl: null })
+      const before = await prisma.deliverable.findUniqueOrThrow({ where: { id: ctx.line.id } })
+      expect(await performClientAction(link, request, { token: approver.token, verified: false, now: new Date(now.getTime() + DAY) })).toEqual({ status: "ok", checkoutUrl: null })
+      expect(await prisma.deliverable.findUniqueOrThrow({ where: { id: ctx.line.id } })).toEqual(before)
+      const page = await buildClientActionPage(link, { verified: false, now: new Date(now.getTime() + DAY) })
+      expect(page.items[0]).toMatchObject({ state: verb === "accept" ? "accepted" : "changes_requested" })
+      expect(page.attention).toBe(0)
+      expect(await prisma.domainEvent.count({ where: { organizationId: ctx.org.organizationId, type: verb === "accept" ? "deliverable.accepted" : "deliverable.changes_requested" } })).toBe(1)
+    })
+
+    it("does not offer decisions when a delivery has no delivery instant", async () => {
+      const ctx = await setup()
+      await prisma.deliverable.update({ where: { id: ctx.line.id }, data: { deliveredAt: null } })
+      const approver = await ctx.link([{ kind: "deliverable", recordId: ctx.line.id, capabilities: ["view", "approve"] }])
+      const link = await reload(approver.id)
+      expect((await buildClientActionPage(link, { verified: false, now })).items[0]).toMatchObject({ state: "unavailable", canApprove: false })
+      expect(await buildClientActionDetail(link, { kind: "deliverable", recordId: ctx.line.id }, approver.token, now)).toMatchObject({ canDecide: false })
+    })
+
     it("records a delivery sign-off once and refuses an obsolete revision", async () => {
       const ctx = await setup()
       const approver = await ctx.link([{ kind: "deliverable", recordId: ctx.line.id, capabilities: ["view", "approve"] }])

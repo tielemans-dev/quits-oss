@@ -9,6 +9,7 @@ import { appLogger } from "../observability"
 import { findGrant, type ActiveClientActionLink } from "./access"
 import { loadGrantedAgreement, loadGrantedDeliverable, loadGrantedInvoice } from "./page"
 import { clientActionUrl } from "./tokens"
+import { deliveryReviewExpiresAt, deliveryReviewState } from "./delivery"
 
 const logger = appLogger.child("client-actions")
 
@@ -105,7 +106,8 @@ async function dispatch(
       if (loaded.state !== "ready") return refuse("unavailable")
       const { agreement, line } = loaded
       if (line.deliveryRevision !== request.deliveryRevision) return refuse("changed")
-      if (!line.deliveredAt) return refuse("unavailable")
+      const expiresAt = deliveryReviewExpiresAt(line.deliveredAt)
+      if (!expiresAt || deliveryReviewState(line, now) === "expired") return refuse("unavailable")
       const token = signAgreementPublicToken(
         {
           agreementId: agreement.id,
@@ -113,7 +115,7 @@ async function dispatch(
           scope: "sign_off",
           deliverableId: line.id,
           deliveryRevision: request.deliveryRevision,
-          exp: new Date(line.deliveredAt.getTime() + 90 * 86_400_000).toISOString(),
+          exp: expiresAt.toISOString(),
         },
         getAgreementPublicSecret(),
       )

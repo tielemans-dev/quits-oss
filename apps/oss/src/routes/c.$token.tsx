@@ -51,10 +51,11 @@ export const Route = createFileRoute("/c/$token")({
 
 function ClientActionRoute() {
   const initial = Route.useLoaderData()
+  const { token } = Route.useParams()
   const locale = initial.kind === "ready" ? initial.page.locale : initial.locale
   return (
     <LocalizedDocument locale={locale}>
-      <ClientActionContent />
+      <ClientActionContent key={token} />
     </LocalizedDocument>
   )
 }
@@ -76,7 +77,6 @@ function ClientActionContent() {
   const [state, setState] = useState<ClientActionState>(loaded)
   const [notice, setNotice] = useState<{ tone: "ok" | "problem"; text: string } | null>(null)
   const [payingId, setPayingId] = useState<string | null>(null)
-  const [verified, setVerified] = useState(false)
 
   // Opening another record (or the browser's back button) loads fresh state for it.
   useEffect(() => {
@@ -131,7 +131,7 @@ function ClientActionContent() {
   }
 
   const { page, detail } = state
-  const isVerified = page.verification.verified || verified
+  const isVerified = page.verification.verified
   const announce = notice ? (
     <p
       role={notice.tone === "problem" ? "alert" : "status"}
@@ -147,8 +147,10 @@ function ClientActionContent() {
         requestCode={() => requestClientActionCode({ data: { token } })}
         submitCode={(code) => submitClientActionCode({ data: { token, code } })}
         onVerified={() => {
-          setVerified(true)
-          void navigate({ search: item ? { item } : {} })
+          // Read the cookie on the server again. A local success flag must never outlive it.
+          void getClientActionState({ data: { token, item: item ?? null } })
+            .then(setState)
+            .catch(() => setNotice({ tone: "problem", text: t("clientActions.refused.failed") }))
         }}
       />
     ) : null
@@ -247,6 +249,7 @@ function Detail({
         error={problem}
         verified={verified}
         approvalsNeedVerification={page.verification.required}
+        sellerName={page.seller.name}
       />
     )
   return (

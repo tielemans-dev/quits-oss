@@ -34,7 +34,7 @@ Only an explicit field list per record, never the stored row: no internal notes,
 acceptance evidence, IP addresses or unrelated project records. Each item shows its state:
 
 - agreements: awaiting decision, accepted, declined, offer expired, closed;
-- deliveries: awaiting sign-off, signed off, changes requested;
+- deliveries: awaiting sign-off, signed off, changes requested, review expired or unavailable;
 - invoices: payment due, open, paid, credited (and overdue);
 - an item the seller changed after the link was made shows as *access changed*, and one that is
   not in a state to show as *not available*, with no details.
@@ -56,6 +56,14 @@ The link is a reference to a database row, so each request is judged afresh:
 - **Renewing** (expired or active links) sets a new expiry and moves every grant to the record's
   current state at the same address. A grant whose record can no longer be shared is dropped.
 
+Each undecided delivery revision keeps the existing sign-off lifetime of 90 days from its
+`deliveredAt` instant. The summary, detail and submission use that deadline, including refusal at
+the exact expiry instant. Renewing a client page does not extend the delivery's review authority.
+An expired review stays readable through a view grant, leaves the waiting count, and asks the
+recipient to contact the seller to arrange a new review. Missing delivery dates show review
+unavailable. Completed decisions keep their recorded state and the public command's replay
+behavior after the deadline.
+
 A link that expired or was revoked shows only the seller's name and *Ask {seller} to send you a new
 link*. A link that never existed shows a generic invalid-link page.
 
@@ -76,6 +84,9 @@ Approving is stronger:
   first approval the page sends a six-digit code to that address; entering it opens a 12-hour
   verified browser session (an HttpOnly cookie that is never shared between links). A forwarded
   copy opens the page, but without access to the recipient's inbox it cannot approve anything.
+  After a cookie expires, the next refused approval or page load restores the code form. A new
+  code can be requested and verified in the same tab; server state determines whether approval
+  controls are available.
 - **Signing off a delivery** follows the link's setting. With verification on (the default when a
   link can approve anything) it needs the code too; with it off, sign-off is a bearer action, as
   the existing delivery sign-off link is.

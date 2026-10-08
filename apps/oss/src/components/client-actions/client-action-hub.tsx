@@ -210,6 +210,11 @@ function ItemCard({
         {item.state === "accepted" && item.acceptedRevision ? (
           <p className="text-sm text-muted-foreground">{t("clientActions.deliverable.signedRevision", { revision: item.acceptedRevision })}</p>
         ) : null}
+        {item.state === "expired" || item.state === "unavailable" ? (
+          <p className="text-sm text-muted-foreground">
+            {t(item.state === "expired" ? "clientActions.deliverable.expired" : "clientActions.deliverable.unavailable", { seller: sellerName ?? t("clientActions.theSender") })}
+          </p>
+        ) : null}
         <div>{open(actionable ? t("clientActions.action.reviewAndSignOff") : t("clientActions.action.viewDelivery"), actionable ? "default" : "outline")}</div>
       </article>
     )

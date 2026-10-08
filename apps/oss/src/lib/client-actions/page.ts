@@ -9,6 +9,7 @@ import { loadPublicInvoice } from "../payments/public-access"
 import { serializePublicInvoiceSession } from "../payments/public-session"
 import { grantCapabilities, type ActiveClientActionLink, type GrantRef } from "./access"
 import { mintClientActionToken } from "./tokens"
+import { deliveryReviewState } from "./delivery"
 
 /**
  * What a client action page shows, built from the link's grants and nothing else. The seller's
@@ -42,7 +43,7 @@ export type ClientActionItem =
       title: string
       agreementNumber: string
       agreementTitle: string
-      state: "awaiting" | "accepted" | "changes_requested"
+      state: "awaiting" | "accepted" | "changes_requested" | "expired" | "unavailable"
       deliveryRevision: number
       acceptedRevision: number | null
       deliveredAt: string | null
@@ -193,6 +194,7 @@ export async function buildClientActionPage(
         continue
       }
       const { line, agreement } = loaded
+      const state = deliveryReviewState(line, now)
       items.push({
         kind,
         recordId: grant.recordId,
@@ -200,11 +202,11 @@ export async function buildClientActionPage(
         title: line.title,
         agreementNumber: agreement.number ?? "",
         agreementTitle: agreement.title,
-        state: line.status === "delivered" ? "awaiting" : (line.status as "accepted" | "changes_requested"),
+        state,
         deliveryRevision: line.deliveryRevision,
         acceptedRevision: line.acceptedRevision,
         deliveredAt: line.deliveredAt?.toISOString() ?? null,
-        canApprove: capabilities.includes("approve"),
+        canApprove: state === "awaiting" && capabilities.includes("approve"),
       })
     } else if (kind === "invoice") {
       const loaded = await loadGrantedInvoice(link, grant)
@@ -315,7 +317,8 @@ export async function buildClientActionDetail(
       recordId: grant.recordId,
       locale: snapshot.locale,
       deliverable: publicDeliverableDto(loaded.agreement, loaded.line),
-      canDecide: capabilities.includes("approve"),
+      state: deliveryReviewState(loaded.line, now),
+      canDecide: deliveryReviewState(loaded.line, now) === "awaiting" && capabilities.includes("approve"),
     }
   }
   const loaded = await loadGrantedInvoice(link, grant)

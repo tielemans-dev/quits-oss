@@ -1,4 +1,5 @@
-import { createServer, type Server } from "node:http"
+import { readFileSync, writeFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test"
 import { executeIssuanceCommand } from "../../src/application/issuance"
 import { createAgreementDraft } from "../../src/domain/commands/agreements"
@@ -16,11 +17,12 @@ import { adminCredentials, loginAsAdmin, resetDatabase, seedCompletedSetup, wait
  * recipients use them on a phone and with the keyboard. A fake mail provider receives the
  * verification codes.
  */
-const browserErrors: Array<{ path: string; message: string }> = []
+const browserErrors: Array<{ kind: "crash" | "pageerror" | "console"; path: string; message: string }> = []
 function observePage(page: Page) {
-  const record = (message: string) => browserErrors.push({ path: new URL(page.url()).pathname, message })
-  page.on("crash", () => record("Page crashed"))
-  page.on("pageerror", (error) => record(error.message))
+  const record = (kind: (typeof browserErrors)[number]["kind"], message: string) => browserErrors.push({ kind, path: new URL(page.url()).pathname, message })
+  page.on("crash", () => record("crash", "Page crashed"))
+  page.on("pageerror", (error) => record("pageerror", error.message))
+  page.on("console", (message) => { if (message.type() === "error") record("console", message.text()) })
 }
 async function screenshot(page: Page, name: string, info: TestInfo = test.info()) {
   const path = info.outputPath(`${name}.png`)
@@ -28,21 +30,10 @@ async function screenshot(page: Page, name: string, info: TestInfo = test.info()
   await info.attach(name, { path, contentType: "image/png" })
 }
 
-let provider: Server
-const messages: Array<{ to: string; subject: string; html: string }> = []
-test.beforeAll(async () => {
-  provider = createServer(async (request, response) => {
-    let body = ""
-    for await (const chunk of request) body += chunk
-    messages.push(JSON.parse(body))
-    response.writeHead(200, { "content-type": "application/json" })
-    response.end(JSON.stringify({ id: `synthetic-email-${messages.length}` }))
-  })
-  await new Promise<void>((resolve) => provider.listen(3060, "127.0.0.1", resolve))
-})
-test.afterAll(async () => {
-  await new Promise<void>((resolve, reject) => provider.close((error) => (error ? reject(error) : resolve())))
-})
+const mailbox = resolve(process.env.CLIENT_ACTIONS_MAILBOX ?? "test-results/client-actions-mail.jsonl")
+function capturedMessages(): Array<{ to: string; subject: string; html: string }> {
+  return readFileSync(mailbox, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line))
+}
 
 function completed<T>(outcome: CommandOutcome<T>): T {
   if (outcome.status !== "completed") throw new Error(JSON.stringify(outcome))
@@ -101,7 +92,7 @@ async function seed() {
   const signed = await agreement("Signed offer", true)
   const line = signed.deliverables[0]!
   completed(await executeCommand(markDeliverableDelivered, { agreementId: signed.id, id: line.id }, { actor, now }))
-  messages.length = 0
+  writeFileSync(mailbox, "")
   return { setup, contact, invoice, open, signed, line }
 }
 
@@ -143,19 +134,12 @@ test.beforeEach(async ({ page }) => {
 })
 test.afterEach(async () => {
   const info = test.info()
-  // Keep the unrelated seller UserMenu hydration diagnostic visible. Its recoverable missing
-  // SidebarMenu SSR node comes from a component unchanged from main; all functional assertions still run. Never
-  // exempt public client pages, crashes, module import errors or any other hydration mismatch.
-  const knownSellerHydration = ({ path, message }: (typeof browserErrors)[number]) =>
-    !path.startsWith("/c/") &&
-    message.startsWith("Hydration failed because the server rendered HTML didn't match the client.") &&
-    message.includes("<UserMenu") && message.includes("/src/components/user-menu.tsx:106:5")
   if (browserErrors.length) {
     await info.attach("browser-runtime-diagnostics", {
       body: JSON.stringify(browserErrors, null, 2), contentType: "application/json",
     })
   }
-  expect(browserErrors.filter((error) => !knownSellerHydration(error)), "Browser runtime errors").toEqual([])
+  expect(browserErrors, "Browser runtime errors").toEqual([])
 })
 
 test("a finance contact sees and can pay only their invoice, on a phone and with the keyboard", async ({ page, browser }) => {
@@ -233,9 +217,9 @@ test("a project approver verifies their email, then signs off the delivery and a
   await expect(approver.getByText("Verify your email address to decide.")).toBeVisible()
   await approver.getByRole("button", { name: "Email me a code" }).click()
   await expect(approver.getByText("A code was sent. It is valid for 10 minutes.")).toBeVisible()
-  await expect.poll(() => messages.length).toBe(1)
-  expect(messages[0]).toMatchObject({ to: "client@example.test" })
-  const code = messages[0]!.html.match(/>(\d{6})</)![1]!
+  await expect.poll(() => capturedMessages().length).toBe(1)
+  expect(capturedMessages()[0]).toMatchObject({ to: "client@example.test" })
+  const code = capturedMessages()[0]!.html.match(/>(\d{6})</)![1]!
   const wrong = code === "000000" ? "111111" : "000000"
   await approver.getByLabel("Six-digit code").fill(wrong)
   await approver.getByRole("button", { name: "Verify" }).click()
@@ -311,5 +295,76 @@ test("a revoked or expired link shows no records and says whom to ask", async ({
   await stranger.goto(`${approverUrl.slice(0, -4)}abcd`)
   await waitForClientReady(stranger)
   await expect(stranger.getByRole("heading", { name: "This link is not valid" })).toBeVisible()
+  await context.close()
+})
+
+test("an expired verification cookie restores the form and allows a new code without reload", async ({ page, browser }) => {
+  const data = await seed()
+  await loginAsAdmin(page)
+  const url = await createLinkAsSeller(page, data.contact.id, "Project approver")
+  const { page: approver, context } = await visitor(browser, 390, 844)
+  await approver.goto(url)
+  await waitForClientReady(approver)
+  await approver.getByRole("link", { name: "Review and sign off" }).click()
+  async function verifyEmail() {
+    const previous = capturedMessages().length
+    await approver.getByRole("button", { name: "Email me a code" }).click()
+    await expect.poll(() => capturedMessages().length).toBe(previous + 1)
+    const code = capturedMessages().at(-1)!.html.match(/>(\d{6})</)![1]!
+    await approver.getByLabel("Six-digit code").fill(code)
+    await approver.getByRole("button", { name: "Verify", exact: true }).click()
+    await expect(approver.getByRole("heading", { name: "Confirm it is you before approving" })).toHaveCount(0)
+  }
+  await verifyEmail()
+  const verificationCookies = (await context.cookies()).filter((cookie) => cookie.name.startsWith("qca_"))
+  expect(verificationCookies).toHaveLength(1)
+  const cookie = verificationCookies[0]!
+  // The browser removes a cookie at expiry while the already-rendered page stays open. Expire the
+  // actual httpOnly cookie rather than mocking the server response or advancing only browser time.
+  await context.addCookies([{ ...cookie, expires: Math.floor(Date.now() / 1000) - 1 }])
+  expect((await context.cookies()).some((value) => value.name === cookie.name)).toBe(false)
+  await approver.getByRole("checkbox", { name: "I have reviewed and accept this delivery." }).check()
+  await approver.getByRole("button", { name: "Accept delivery", exact: true }).click()
+  await expect(approver.getByRole("alert")).toHaveText("Verify your email address first.")
+  await expect(approver.getByRole("heading", { name: "Confirm it is you before approving" })).toBeVisible()
+  await expect(approver.getByRole("button", { name: "Accept delivery", exact: true })).toHaveCount(0)
+  expect(await prisma.deliverable.findUniqueOrThrow({ where: { id: data.line.id } })).toMatchObject({ status: "delivered", acceptedAt: null })
+  await screenshot(approver, "verification-expired-recovery")
+  await verifyEmail()
+  await approver.getByRole("checkbox", { name: "I have reviewed and accept this delivery." }).check()
+  await approver.getByRole("button", { name: "Accept delivery", exact: true }).click()
+  await expect(approver.getByText("Thank you. The delivery is signed off.")).toBeVisible()
+  expect(await prisma.deliverable.findUniqueOrThrow({ where: { id: data.line.id } })).toMatchObject({ status: "accepted", acceptedRevision: 1 })
+  await context.close()
+})
+
+test("expired delivery review stays closed after reload and client-link renewal", async ({ page, browser }) => {
+  const data = await seed()
+  await prisma.deliverable.update({ where: { id: data.line.id }, data: { deliveredAt: new Date(Date.now() - 91 * 86_400_000) } })
+  await loginAsAdmin(page)
+  const url = await createLinkAsSeller(page, data.contact.id, "Project approver")
+  const { page: guest, context } = await visitor(browser)
+  await guest.goto(url)
+  await waitForClientReady(guest)
+  // The open agreement is still awaiting its decision; the expired delivery is not counted.
+  await expect(guest.getByTestId("client-action-summary")).toHaveText("Waiting for you: 1")
+  await expect(guest.getByText("Review expired", { exact: true })).toBeVisible()
+  await guest.getByRole("link", { name: "View delivery", exact: true }).click()
+  await expect(guest.getByText("Review expired", { exact: true })).toBeVisible()
+  await expect(guest.getByText(/The 90-day review period has ended. Contact E2E Org/)).toBeVisible()
+  await expect(guest.getByRole("button", { name: "Accept delivery", exact: true })).toHaveCount(0)
+  await expect(guest.getByRole("button", { name: "Request changes", exact: true })).toHaveCount(0)
+  await screenshot(guest, "delivery-review-expired")
+  await guest.reload()
+  await expect(guest.getByText("Review expired", { exact: true })).toBeVisible()
+  const link = await prisma.clientActionLink.findFirstOrThrow({ where: { verification: "email_code" } })
+  // Same seller renewal command used by the management UI, with its existing grants intact.
+  const { renewClientLink } = await import("../../src/domain/commands/client-links")
+  const actor = (await resolveUserActor({ organizationId: data.setup.organizationId, userId: data.setup.adminUserId! }))!
+  completed(await executeCommand(renewClientLink, { id: link.id, expiresInDays: 90 }, { actor }))
+  await guest.reload()
+  await expect(guest.getByText("Review expired", { exact: true })).toBeVisible()
+  await expect(guest.getByRole("button", { name: "Accept delivery", exact: true })).toHaveCount(0)
+  expect(await prisma.deliverable.findUniqueOrThrow({ where: { id: data.line.id } })).toMatchObject({ status: "delivered", acceptedAt: null })
   await context.close()
 })

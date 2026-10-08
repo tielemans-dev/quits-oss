@@ -76,12 +76,14 @@ export function DeliverableDetail({
   error,
   verified,
   approvalsNeedVerification,
+  sellerName,
 }: {
   detail: Extract<ClientActionDetail, { kind: "deliverable" }>
   perform: PerformAction
   error: string | null
   verified: boolean
   approvalsNeedVerification: boolean
+  sellerName: string | null
 }) {
   const { t, locale } = useI18n()
   const line = detail.deliverable
@@ -107,7 +109,7 @@ export function DeliverableDetail({
         </p>
         <h2 className="text-3xl font-semibold">{line.title}</h2>
         <Badge variant="outline" className="w-fit">
-          {t(`agreements.fulfillment.${line.status as "delivered" | "accepted" | "changes_requested"}`)}
+          {t(`clientActions.state.deliverable.${detail.state}`)}
         </Badge>
       </header>
       <p className="whitespace-pre-wrap">{line.description}</p>
@@ -123,6 +125,11 @@ export function DeliverableDetail({
           <p className="whitespace-pre-wrap">{line.changeRequestNote}</p>
         </section>
       )}
+      {detail.state === "expired" || detail.state === "unavailable" ? (
+        <p className="text-sm text-muted-foreground">
+          {t(detail.state === "expired" ? "clientActions.deliverable.expired" : "clientActions.deliverable.unavailable", { seller: sellerName ?? t("clientActions.theSender") })}
+        </p>
+      ) : null}
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {detail.canDecide && line.status === "delivered" && !canAct ? (
         <p className="text-sm text-muted-foreground">{t("clientActions.gate.required")}</p>

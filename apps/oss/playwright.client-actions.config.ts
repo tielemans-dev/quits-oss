@@ -1,3 +1,4 @@
+import { resolve } from "node:path"
 import { defineConfig } from "@playwright/test"
 import base from "./playwright.config"
 
@@ -11,7 +12,9 @@ if (
     "Client action e2e requires an explicit throwaway DATABASE_URL named quits_client_actions_browser (optionally with a suffix)",
   )
 }
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3016"
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:4387"
+const port = new URL(baseURL).port
+const mailbox = resolve(process.env.CLIENT_ACTIONS_MAILBOX ?? "test-results/client-actions-mail.jsonl")
 export default defineConfig({
   ...base,
   testMatch: "client-actions.spec.ts",
@@ -19,7 +22,7 @@ export default defineConfig({
   use: { ...base.use, baseURL },
   webServer: {
     command:
-      "bunx prisma generate && bunx prisma migrate deploy && bunx vite dev --port 3016 --host 127.0.0.1",
+      `bunx prisma migrate deploy && bunx vite dev --config vite.client-actions.config.ts --port ${port} --strictPort --host 127.0.0.1`,
     cwd: import.meta.dirname,
     reuseExistingServer: false,
     timeout: 120_000,
@@ -34,7 +37,8 @@ export default defineConfig({
       VITE_QUITS_DISTRIBUTION: "selfhost",
       RESEND_API_KEY: "re_synthetic_client_actions_browser",
       FROM_EMAIL: "billing@example.test",
-      RESEND_BASE_URL: "http://127.0.0.1:3060",
+      RESEND_BASE_URL: `${baseURL}/__client-actions-email`,
+      CLIENT_ACTIONS_MAILBOX: mailbox,
     },
   },
 })
