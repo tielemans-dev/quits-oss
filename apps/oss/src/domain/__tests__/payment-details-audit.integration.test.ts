@@ -84,20 +84,29 @@ const tick = (organizationId: string) =>
     expect(recorded).toHaveLength(2)
 
     const [first, second] = recorded
+    // The person is named by the email and id of their account, not only by the name they chose.
+    const changedBy = {
+      kind: "user",
+      id: org.actors.admin.userId,
+      name: expect.any(String),
+      email: `${org.actors.admin.userId}@test.quits.invalid`,
+    }
     expect(first!.payload).toEqual({
+      changedBy,
       changes: [
         { field: "accountHolder", before: null, after: "Nordic Design ApS" },
         { field: "bankName", before: null, after: "Danske Bank" },
         { field: "regNumber", before: null, after: "0040" },
         { field: "accountNumber", before: null, after: "****6243" },
-        { field: "iban", before: null, after: "****6243" },
+        { field: "iban", before: null, after: "DK****6243" },
         { field: "bic", before: null, after: "DABADKKK" },
         { field: "note", before: null, after: "****" },
       ],
     })
     expect(second!.payload).toEqual({
+      changedBy,
       changes: [
-        { field: "iban", before: "****6243", after: "****3000" },
+        { field: "iban", before: "DK****6243", after: "DE****3000" },
         { field: "bic", before: "DABADKKK", after: "COBADEFF" },
       ],
     })
@@ -109,6 +118,50 @@ const tick = (organizationId: string) =>
       actorId: org.actors.admin.userId,
       actorLabel: `${org.actors.admin.userId} user`,
     })
+  })
+
+  it("names the person by their account, not by the display name the session carries", async () => {
+    const { org } = await setup()
+    // A display name is the user's own choice: here one that poses as someone else.
+    const caller = appRouter.createCaller({
+      session: {
+        user: { id: org.actors.admin.userId, email: "ignored@example.test", name: "Anna the CEO" },
+        session: { activeOrganizationId: org.organizationId },
+      },
+    } as never)
+    await caller.paymentDetails.update({ bankAccount: account })
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: org.actors.admin.userId } })
+    const [event] = await events(org.organizationId)
+    expect((event!.payload as { changedBy: unknown }).changedBy).toEqual({
+      kind: "user",
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    })
+    const [job] = await jobs(org.organizationId)
+    expect((job!.payload as { changedBy: unknown }).changedBy).toEqual({ kind: "user", id: user.id, name: user.name, email: user.email })
+
+    await tick(org.organizationId)
+    const [message] = send.mock.calls[0]!
+    expect(message.html).toContain(`&lt;${user.email}&gt;`)
+    expect(message.html).not.toContain("ignored@example.test")
+  })
+
+  it("chains the before and after values of saves made at once", async () => {
+    const { org, admin } = await setup()
+    await admin.paymentDetails.update({ bankAccount: account })
+    const other = { ...account, accountNumber: "0440116300", iban: "DK6300400440116300" }
+    const third = { ...account, accountNumber: "0440116400", iban: "DK7900400440116400" }
+    await Promise.all([admin.paymentDetails.update({ bankAccount: other }), admin.paymentDetails.update({ bankAccount: third })])
+
+    const accountEvents = (await events(org.organizationId)).map(
+      (event) => (event.payload as { changes: Array<{ field: string; before: string | null; after: string | null }> }).changes.find((change) => change.field === "iban")!
+    )
+    expect(accountEvents).toHaveLength(3)
+    // Each save starts from what the previous one left, whichever of the two ran first.
+    expect(accountEvents[1]!.before).toBe(accountEvents[0]!.after)
+    expect(accountEvents[2]!.before).toBe(accountEvents[1]!.after)
   })
 
   it("never stores a full IBAN, account number or note in an event or a job", async () => {
@@ -195,9 +248,9 @@ const tick = (organizationId: string) =>
       from: "Quits <noreply@quits.test>",
       subject: "Bankoplysningerne på dine fakturaer er ændret",
     })
-    expect(message.html).toContain(`ændret af ${org.actors.admin.userId} user.`)
-    expect(message.html).toContain("****6243")
-    expect(message.html).toContain("****3000")
+    expect(message.html).toContain(`ændret af ${org.actors.admin.userId} &lt;${org.actors.admin.userId}@test.quits.invalid&gt;.`)
+    expect(message.html).toContain("DK****6243")
+    expect(message.html).toContain("DE****3000")
     expect(message.html).toContain("Hvis det ikke var dig, skal du skifte din adgangskode og tjekke dine indstillinger.")
     for (const secret of [account.iban, otherIban, account.accountNumber]) {
       expect(message.html).not.toContain(secret)

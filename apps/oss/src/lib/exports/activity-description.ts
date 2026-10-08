@@ -1,5 +1,5 @@
 import { enMessages, type TranslationKey } from "../i18n/messages"
-import { PAYMENT_DETAIL_LABEL_KEYS } from "../payment-details-audit"
+import { PAYMENT_DETAIL_LABEL_KEYS, formatChangedBy } from "../payment-details-audit"
 import { PAYMENT_DETAILS_FIELDS, type PaymentDetailsField } from "@quits/contracts/payment-details"
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string
@@ -21,7 +21,7 @@ export function humanizeEventType(type: string): string {
 }
 
 function payloadVars(payload: Record<string, unknown>) {
-  const vars: Record<string, string> = { number: "", name: "", recipient: "", fields: "" }
+  const vars: Record<string, string> = { number: "", name: "", recipient: "", fields: "", changedBy: "" }
   for (const [key, value] of Object.entries(payload)) {
     if (typeof value === "string" || typeof value === "number") vars[key] = String(value)
   }
@@ -41,6 +41,13 @@ function changedFieldNames(payload: Record<string, unknown>, t: Translate): stri
   return fields.length > 0 ? fields.join(", ") : null
 }
 
+/** "Name <email>" of the person who made a change, for events that record `changedBy`. */
+function changedByText(payload: Record<string, unknown>): string | null {
+  const value = payload.changedBy as { name?: unknown; email?: unknown } | null | undefined
+  if (typeof value?.name !== "string" || !value.name.trim()) return null
+  return formatChangedBy({ name: value.name, email: typeof value.email === "string" ? value.email : null })
+}
+
 /** The catalog key for an event, choosing a variant from its payload where one exists. */
 export function activityMessageKey(event: DescribableEvent): TranslationKey | null {
   let key = `activity.event.${event.type}`
@@ -58,6 +65,8 @@ export function describeActivity(event: DescribableEvent, t: Translate): string 
   const vars = payloadVars(event.payload)
   const fields = changedFieldNames(event.payload, t)
   if (fields) vars.fields = fields
+  const changedBy = changedByText(event.payload)
+  if (changedBy) vars.changedBy = changedBy
   return t(key, vars).replace(/\s+/g, " ").trim()
 }
 

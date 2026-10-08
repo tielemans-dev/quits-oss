@@ -6,7 +6,7 @@ import { PAYMENT_DETAIL_LABEL_KEYS, type PaymentDetailsChange } from "../payment
 
 export type PaymentDetailsChangedEmailInput = {
   to: string
-  /** Who changed the details: a person's name, or the agent that did. */
+  /** Who changed the details, already formatted: "Name <email>" for a person (see `formatChangedBy`). */
   changedBy: string
   changedAt: Date | string
   /** The masked changes, as recorded in the audit log. */

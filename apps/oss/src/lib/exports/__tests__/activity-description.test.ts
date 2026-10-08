@@ -27,15 +27,16 @@ describe("activity descriptions", () => {
       type: "organization.payment_details_updated",
       aggregateType: "organization",
       payload: {
+        changedBy: { kind: "user", id: "user-1", name: "Mette Admin", email: "mette@example.com" },
         changes: [
-          { field: "iban", before: "****6243", after: "****1100" },
+          { field: "iban", before: "DK****6243", after: "DK****1100" },
           { field: "regNumber", before: "0040", after: "5000" },
           { field: "note", before: null, after: "****" },
         ],
       },
     }
-    expect(describeActivity(event, en)).toBe("Payment details changed: IBAN, Reg. no., Payment note")
-    expect(describeActivity(event, da)).toBe("Betalingsoplysninger ændret: IBAN, Reg.nr., Betalingsnote")
+    expect(describeActivity(event, en)).toBe("Payment details changed by Mette Admin <mette@example.com>: IBAN, Reg. no., Payment note")
+    expect(describeActivity(event, da)).toBe("Betalingsoplysninger ændret af Mette Admin <mette@example.com>: IBAN, Reg.nr., Bemærkning til betaling")
     expect(describeActivity(event, en)).not.toContain("6243")
     expect(aggregateLabel("organization", en)).toBe("Organization")
     expect(aggregateLabel("organization", da)).toBe("Organisation")

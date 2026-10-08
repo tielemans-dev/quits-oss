@@ -4,6 +4,7 @@ import { prisma } from "../lib/db"
 import { fromAddress } from "../lib/email"
 import { getEmailDeliveryRuntimeStatus } from "../lib/email-delivery"
 import { sendPaymentDetailsChangedEmail } from "../lib/emails/payment-details-changed-email"
+import { formatChangedBy } from "../lib/payment-details-audit"
 import { appLogger } from "../lib/observability"
 import { getRuntimeCapabilities } from "../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../lib/runtime/platform"
@@ -21,7 +22,12 @@ export const PAYMENT_DETAILS_NOTIFICATION_DELAY_MS = 30_000
 const logger = appLogger.child("payment-details")
 
 export const paymentDetailsChangedJobSchema = z.object({
-  changedBy: z.string(),
+  changedBy: z.object({
+    kind: z.enum(["user", "agent", "system"]),
+    id: z.string().nullable(),
+    name: z.string(),
+    email: z.string().nullable(),
+  }),
   changedAt: z.iso.datetime(),
   changes: z
     .array(
@@ -47,8 +53,8 @@ export type PaymentDetailsNotificationResult =
 /**
  * Tells the organization's owners and admins that its bank details changed. Best effort: with no
  * email provider configured (a self-hosted install without one) it quietly does nothing, and a
- * delivery that fails is logged and does not stop the others. Only the masked values leave the
- * audit log; the full numbers are never in the job.
+ * delivery that fails is logged, not retried, and does not stop the others. The job and the email
+ * carry the masked change-audit values, never the full numbers.
  */
 export async function notifyPaymentDetailsChanged(
   organizationId: string,
@@ -105,7 +111,7 @@ export async function notifyPaymentDetailsChanged(
       await sendPaymentDetailsChangedEmail(
         {
           to,
-          changedBy: change.changedBy,
+          changedBy: formatChangedBy(change.changedBy),
           changedAt: change.changedAt,
           changes: change.changes,
           organizationName,

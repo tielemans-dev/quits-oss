@@ -9,11 +9,11 @@ vi.mock("resend", () => ({ Resend: class { emails = { send } } }))
 afterEach(() => { send.mockClear(); vi.unstubAllEnvs() })
 
 const input = {
-  changedBy: "Mette Admin",
+  changedBy: "Mette Admin <mette@example.com>",
   changedAt: "2026-10-08T09:30:00.000Z",
   organizationName: "Nordic Design ApS",
   changes: [
-    { field: "iban" as const, before: "****6243", after: "****1100" },
+    { field: "iban" as const, before: "DK****6243", after: "DK****1100" },
     { field: "bankName" as const, before: "Danske Bank", after: null },
   ],
 }
@@ -23,11 +23,11 @@ describe("payment details changed email", () => {
     const content = buildPaymentDetailsChangedEmailContent({ ...input, locale: "en-US", timezone: "Europe/Copenhagen" })
 
     expect(content.subject).toBe("The bank details on your invoices were changed")
-    expect(content.html).toContain("The bank details on your invoices were changed by Mette Admin.")
+    expect(content.html).toContain("The bank details on your invoices were changed by Mette Admin &lt;mette@example.com&gt;.")
     expect(content.html).toContain("Nordic Design ApS")
     expect(content.html).toContain("October 8, 2026 at 11:30")
-    expect(content.html).toContain("****6243")
-    expect(content.html).toContain("****1100")
+    expect(content.html).toContain("DK****6243")
+    expect(content.html).toContain("DK****1100")
     expect(content.html).toContain("Danske Bank")
     expect(content.html).toContain("(none)")
     expect(content.html).toContain("If this wasn&#39;t you, change your password and check your settings.")
@@ -42,7 +42,7 @@ describe("payment details changed email", () => {
   it("is written in the organization's language and time zone", () => {
     const content = buildPaymentDetailsChangedEmailContent({ ...input, locale: "da-DK", timezone: "Europe/Copenhagen" })
     expect(content.subject).toBe("Bankoplysningerne på dine fakturaer er ændret")
-    expect(content.html).toContain("Bankoplysningerne på dine fakturaer blev ændret af Mette Admin.")
+    expect(content.html).toContain("Bankoplysningerne på dine fakturaer blev ændret af Mette Admin &lt;mette@example.com&gt;.")
     expect(content.html).toContain("8. oktober 2026")
     expect(content.html).toContain("kl. 11.30")
     expect(content.html).toContain("(ingen)")

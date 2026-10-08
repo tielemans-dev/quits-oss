@@ -64,7 +64,7 @@ export const daActivityMessages = {
   "activity.event.approval.rejected": "Anmodning afvist",
   "activity.event.agent_key.created": "Agentnøgle oprettet",
   "activity.event.agent_key.revoked": "Agentnøgle tilbagekaldt",
-  "activity.event.organization.payment_details_updated": "Betalingsoplysninger ændret: {fields}",
+  "activity.event.organization.payment_details_updated": "Betalingsoplysninger ændret af {changedBy}: {fields}",
   "activity.event.deliverable.changes_requested": "Kunden har anmodet om ændringer til levering {deliveryRevision}: {note}",
   "activity.event.invoice.dispute_acknowledged": "Bekræftede ønskede ændringer før afsendelse af faktura {number}",
   "activity.event.deliverable.accepted": "Levering {deliveryRevision} godkendt",

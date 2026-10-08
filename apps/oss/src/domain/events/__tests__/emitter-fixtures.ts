@@ -91,7 +91,8 @@ export function reconstruct(expression: { source: string; typeExpression: string
     note: optional ? "Reviewed" : undefined, created: { name: "Bookkeeper", mode: "approval_required" }, scopes: ["invoice:read"],
     acceptanceRecord: (value: unknown) => acceptanceRecord(value as Parameters<typeof acceptanceRecord>[0]),
     kind, mode, aggregateType: kind === "creditNote" ? "credit_note" : kind,
-    changes: [{ field: "iban", before: "****6243", after: "****1100" }, { field: "note", before: null, after: "****" }],
+    changes: [{ field: "iban", before: "DK****6243", after: "DK****1100" }, { field: "note", before: null, after: "****" }],
+    changedBy: { kind: "user", id: "user-1", name: "Mette Admin", email: "mette@example.test" },
     deliveredEvent: (documentKind: string, deliveryMode: string) => deliveryMode === "send" || documentKind === "creditNote" ? "sent" : "email_resent",
   }
   if (expression.payloadExpression === "payload" && ["documents/artifacts.ts", "commands/base-valuation.ts"].includes(expression.source)) {

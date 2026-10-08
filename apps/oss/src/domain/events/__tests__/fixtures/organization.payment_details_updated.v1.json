@@ -5,21 +5,27 @@
     {
       "source": "commands/payment-details.ts",
       "typeExpression": "\"organization.payment_details_updated\"",
-      "payloadExpression": "{ changes }",
+      "payloadExpression": "{ changes, changedBy }",
       "variant": "default",
       "payload": {
         "changes": [
           {
             "field": "iban",
-            "before": "****6243",
-            "after": "****1100"
+            "before": "DK****6243",
+            "after": "DK****1100"
           },
           {
             "field": "note",
             "before": null,
             "after": "****"
           }
-        ]
+        ],
+        "changedBy": {
+          "kind": "user",
+          "id": "user-1",
+          "name": "Mette Admin",
+          "email": "mette@example.test"
+        }
       }
     }
   ]
