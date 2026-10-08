@@ -279,6 +279,21 @@ describe("redirects", () => {
   })
 })
 
+describe("stalled bodies", () => {
+  it("reports a body that stalls past the deadline as a timeout", async () => {
+    const stalled = new ReadableStream({
+      start(controller) {
+        controller.error(new DOMException("The operation timed out.", "TimeoutError"))
+      },
+    })
+    global.fetch = vi.fn(async () => new Response(stalled, { status: 200 })) as unknown as typeof fetch
+
+    await expect(openRouter().complete(completionRequest)).rejects.toMatchObject({
+      code: "timeout",
+    })
+  })
+})
+
 describe("response size limits", () => {
   it("rejects a response body larger than the cap", async () => {
     global.fetch = vi.fn(

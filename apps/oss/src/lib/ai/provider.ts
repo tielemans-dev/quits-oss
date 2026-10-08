@@ -70,8 +70,15 @@ export function isAiEndpointHostAllowed(
   } catch {
     return false
   }
+  // `URL` drops a protocol's default port, so `https://host:443` has host `host`. Treat an entry
+  // naming the default port the same as the bare host.
+  const defaultPort = url.protocol === "https:" ? "443" : url.protocol === "http:" ? "80" : ""
   const hostname = url.hostname.toLowerCase()
-  return allowed.includes(hostname) || allowed.includes(url.host.toLowerCase())
+  const candidates = new Set([hostname, url.host.toLowerCase()])
+  if (!url.port && defaultPort) {
+    candidates.add(`${hostname}:${defaultPort}`)
+  }
+  return allowed.some((entry) => candidates.has(entry))
 }
 
 export type AiProviderErrorCode =

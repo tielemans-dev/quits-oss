@@ -14,4 +14,13 @@ describe("isAiEndpointHostAllowed", () => {
     expect(isAiEndpointHostAllowed("http://localhost:6379", env)).toBe(false)
     expect(isAiEndpointHostAllowed("http://169.254.169.254/latest", env)).toBe(false)
   })
+
+  it("matches an entry that names the protocol's default port", () => {
+    const env = { QUITS_AI_CUSTOM_ENDPOINT_HOSTS: "api.example.com:443,plain.example.com:80" }
+
+    expect(isAiEndpointHostAllowed("https://api.example.com:443/v1", env)).toBe(true)
+    expect(isAiEndpointHostAllowed("https://api.example.com/v1", env)).toBe(true)
+    expect(isAiEndpointHostAllowed("http://plain.example.com/v1", env)).toBe(true)
+    expect(isAiEndpointHostAllowed("http://api.example.com/v1", env)).toBe(false)
+  })
 })

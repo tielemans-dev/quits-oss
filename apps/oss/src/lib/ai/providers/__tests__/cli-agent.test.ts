@@ -264,6 +264,18 @@ describe("cli agent provider", () => {
     expect(await first).toEqual({ value: "done" })
   })
 
+  it("starts the agent in its own process group on POSIX so its descendants can be killed", async () => {
+    const { outcome, child } = await startAgent()
+    expect(spawnMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.objectContaining({ detached: process.platform !== "win32" })
+    )
+    child.writeStdout("ok")
+    child.exit(0)
+    expect(await outcome).toEqual({ value: "ok" })
+  })
+
   it("is disabled on the worker runtime and never spawns", async () => {
     setRuntimePlatform({
       id: "test-worker",

@@ -69,6 +69,16 @@ async function runLocalAgent(request: AiCompletionRequest): Promise<string> {
     })
   }
 
+  // Windows .cmd/.bat shims need a shell, and the command is deliberately never run through one.
+  if (process.platform === "win32" && /\.(cmd|bat)$/i.test(executable)) {
+    throw new AiProviderError({
+      code: "not_configured",
+      providerId: PROVIDER_ID,
+      message:
+        "AI_LOCAL_AGENT_COMMAND points at a .cmd or .bat shim. On Windows, use the path to the agent's executable (.exe) or run node with the agent's script",
+    })
+  }
+
   const timeoutMs = readTimeoutMs(readProductEnv(env, "AI_LOCAL_AGENT_TIMEOUT_MS"))
   // `request.model` is ignored: the CLI chooses its own model. `temperature` is not supported.
   const prompt = buildPrompt(request.messages)
@@ -115,8 +125,26 @@ type SpawnFunction = (
     env: NodeJS.ProcessEnv
     stdio: ["pipe", "pipe", "pipe"]
     windowsHide: true
+    detached: boolean
   }
 ) => ChildProcessWithoutNullStreams
+
+// On POSIX the agent runs as the leader of its own process group, so a sandbox wrapper or any
+// worker the CLI starts can be killed with it. Killing only the direct child would leave those
+// running after the concurrency slot is released.
+const USE_PROCESS_GROUP = process.platform !== "win32"
+
+function killAgentTree(child: ChildProcessWithoutNullStreams) {
+  if (USE_PROCESS_GROUP && child.pid !== undefined) {
+    try {
+      process.kill(-child.pid, "SIGKILL")
+      return
+    } catch {
+      // The group is already gone; fall through to the direct child.
+    }
+  }
+  child.kill("SIGKILL")
+}
 
 // The prompt includes text written by users, so the agent must not see the server's own
 // secrets (database URL, auth and encryption keys). Pass only what a CLI agent needs to
@@ -154,6 +182,7 @@ function collectAgentOutput(input: {
         env: agentEnv(process.env),
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
+        detached: USE_PROCESS_GROUP,
       })
     } catch (error) {
       reject(startFailure(input.executable, error))
@@ -179,7 +208,7 @@ function collectAgentOutput(input: {
 
     timer = setTimeout(() => {
       settle(() => {
-        child.kill("SIGKILL")
+        killAgentTree(child)
         reject(
           new AiProviderError({
             code: "timeout",
@@ -201,7 +230,7 @@ function collectAgentOutput(input: {
       stdoutBytes += chunk.length
       if (stdoutBytes > MAX_STDOUT_BYTES) {
         settle(() => {
-          child.kill("SIGKILL")
+          killAgentTree(child)
           reject(
             new AiProviderError({
               code: "invalid_response",
@@ -224,6 +253,14 @@ function collectAgentOutput(input: {
     })
 
     child.once("close", (code: number | null, signal: NodeJS.Signals | null) => {
+      // Anything the agent left running in its group goes with it.
+      if (USE_PROCESS_GROUP && child.pid !== undefined) {
+        try {
+          process.kill(-child.pid, "SIGKILL")
+        } catch {
+          // No process left in the group.
+        }
+      }
       settle(() => {
         if (code !== 0) {
           const status = code !== null ? `code ${code}` : `signal ${signal ?? "unknown"}`

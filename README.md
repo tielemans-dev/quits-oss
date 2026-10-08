@@ -241,7 +241,7 @@ Long-running Node processes keep reset email delivery in the background. Runtime
 The local agent runs the CLI as the user the server process runs as, so that agent must be installed
 and logged in for that user. It uses the operator's own agent subscription, not a per-organisation
 key. It generally does not work inside the stock Docker image, because the image has no agent CLI and
-no login for it.
+no login for it. On Windows, point the command at the agent's executable rather than a `.cmd` or `.bat` shim, because the command is never run through a shell.
 
 **Treat the local agent as untrusted.** Any member who can create invoices writes part of its prompt,
 and a prompt can tell an agent to read files, use its login or run commands. The server only removes

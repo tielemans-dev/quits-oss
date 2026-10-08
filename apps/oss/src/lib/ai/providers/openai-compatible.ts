@@ -39,6 +39,10 @@ const MODELS_TIMEOUT_MS = 15_000
 const RESPONSE_MAX_BYTES = 2 * 1024 * 1024
 const ERROR_BODY_MAX_BYTES = 16 * 1024
 
+function isTimeout(cause: unknown) {
+  return cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError")
+}
+
 class ResponseTooLargeError extends Error {}
 
 /** Reads a response body as text, stopping with an error once it exceeds `maxBytes`. */
@@ -99,6 +103,14 @@ export function createOpenAiCompatibleProvider(input: {
     timeoutMs: number
   }): Promise<T> {
     const url = endpointUrl(baseUrl, options.endpoint)
+    // The signal covers the body as well, so a stalled body also ends as a timeout.
+    const timeoutError = (cause: unknown) =>
+      new AiProviderError({
+        code: "timeout",
+        providerId: input.id,
+        message: `${providerName} ${options.endpoint} did not respond within ${options.timeoutMs / 1000} seconds`,
+        cause,
+      })
     const body = options.body === undefined ? undefined : JSON.stringify(options.body)
 
     const headers: Record<string, string> = {}
@@ -120,13 +132,8 @@ export function createOpenAiCompatibleProvider(input: {
         redirect: "manual",
       })
     } catch (cause) {
-      if (cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError")) {
-        throw new AiProviderError({
-          code: "timeout",
-          providerId: input.id,
-          message: `${providerName} ${options.endpoint} did not respond within ${options.timeoutMs / 1000} seconds`,
-          cause,
-        })
+      if (isTimeout(cause)) {
+        throw timeoutError(cause)
       }
       throw new AiProviderError({
         code: "network",
@@ -145,7 +152,10 @@ export function createOpenAiCompatibleProvider(input: {
     }
 
     if (!response.ok) {
-      const errorBody = await readCappedText(response, ERROR_BODY_MAX_BYTES).catch(() => "")
+      const errorBody = await readCappedText(response, ERROR_BODY_MAX_BYTES).catch((cause) => {
+        if (isTimeout(cause)) throw timeoutError(cause)
+        return ""
+      })
       throw new AiProviderError({
         code: "http",
         providerId: input.id,
@@ -157,6 +167,9 @@ export function createOpenAiCompatibleProvider(input: {
     try {
       payload = JSON.parse(await readCappedText(response, RESPONSE_MAX_BYTES))
     } catch (cause) {
+      if (isTimeout(cause)) {
+        throw timeoutError(cause)
+      }
       throw new AiProviderError({
         code: "invalid_response",
         providerId: input.id,

@@ -191,6 +191,27 @@ describe("provider fallbacks and errors", () => {
     resetRuntimeServices()
   })
 
+  it("uses managed AI when the organisation's saved provider is no longer allowed", async () => {
+    const complete = vi.fn(async () => '{"items":[{"description":"Consulting","quantity":3}]}')
+    mocks.aiCapabilities = { ...defaultAiCapabilities, managed: true, localAgent: false }
+    mocks.findMany.mockResolvedValue([])
+    mocks.findUnique.mockResolvedValue({
+      aiProvider: "cli_agent",
+      aiBaseUrl: null,
+      aiApiKeyEnc: null,
+      aiModel: null,
+    })
+    setRuntimeServices({ managedAiProvider: { id: "managed", complete } })
+
+    const caller = aiRouter.createCaller(createContext())
+    const result = await caller.generateInvoiceDraft({
+      prompt: "Invoice Acme for three hours of consulting",
+    })
+
+    expect(result.provider).toBe("managed")
+    resetRuntimeServices()
+  })
+
   it("does not pass upstream error details to the client", async () => {
     const { AiProviderError } = await import("../../../lib/ai/provider")
     const complete = vi.fn(async () => {

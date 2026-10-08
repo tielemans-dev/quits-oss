@@ -183,9 +183,12 @@ export const aiRouter = router({
           provider = resolveOrgAiProvider(settings)
         } catch (error) {
           if (!(error instanceof AiProviderError)) throw error
-          // An organisation that has not set up its own provider uses the distribution's managed
-          // provider when one is available.
-          if (error.code !== "not_configured" || !capabilities.aiInvoiceDraft.managed) {
+          // An organisation whose own provider is not set up, or no longer allowed, uses the
+          // distribution's managed provider when one is available.
+          if (
+            (error.code !== "not_configured" && error.code !== "disabled") ||
+            !capabilities.aiInvoiceDraft.managed
+          ) {
             throw toTrpcAiError(error)
           }
           ;({ provider, model } = await useManaged())
