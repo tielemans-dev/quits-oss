@@ -1,0 +1,1397 @@
+{
+  "notice": "Entirely synthetic discovery fixtures. No customer, accountant, provider or production evidence. Signed balances use debit positive and credit negative. Fiscal document figures are DKK base figures; source figures are explicit for EUR. Missing expected accounts mean zero.",
+  "scenarios": [
+    {
+      "id": "advance_30_bank",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "final_residual_invoice_issued",
+          "debits_minor": {
+            "AR": 3500000
+          },
+          "credits_minor": {
+            "REV": 2800000,
+            "VAT": 700000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 2800000,
+            "tax_minor": 700000,
+            "gross_minor": 3500000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 1200000
+          },
+          "credits_minor": {
+            "REV": 1200000
+          },
+          "funds": {
+            "applied": 1500000
+          }
+        },
+        {
+          "event": "final_bank_receipt",
+          "debits_minor": {
+            "BANK": 3500000
+          },
+          "credits_minor": {
+            "AR": 3500000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 5000000,
+        "FEE": 0,
+        "REV": -4000000,
+        "VAT": -1000000
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 1500000,
+        "refunded": 0,
+        "available": 0
+      }
+    },
+    {
+      "id": "advance_30_card",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "CLR": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "processor_payout",
+          "debits_minor": {
+            "BANK": 1477500,
+            "FEE": 22500
+          },
+          "credits_minor": {
+            "CLR": 1500000
+          }
+        },
+        {
+          "event": "final_residual_invoice_issued",
+          "debits_minor": {
+            "AR": 3500000
+          },
+          "credits_minor": {
+            "REV": 2800000,
+            "VAT": 700000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 2800000,
+            "tax_minor": 700000,
+            "gross_minor": 3500000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 1200000
+          },
+          "credits_minor": {
+            "REV": 1200000
+          },
+          "funds": {
+            "applied": 1500000
+          }
+        },
+        {
+          "event": "final_bank_receipt",
+          "debits_minor": {
+            "BANK": 3500000
+          },
+          "credits_minor": {
+            "AR": 3500000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 4977500,
+        "FEE": 22500,
+        "REV": -4000000,
+        "VAT": -1000000
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 1500000,
+        "refunded": 0,
+        "available": 0
+      }
+    },
+    {
+      "id": "cancel_bank",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "cancel_before_supply_credit",
+          "debits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "credits_minor": {
+            "REFUND_PAYABLE": 1500000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": -1200000,
+            "tax_minor": -300000,
+            "gross_minor": -1500000
+          }
+        },
+        {
+          "event": "external_refund_confirmed",
+          "debits_minor": {
+            "REFUND_PAYABLE": 1500000
+          },
+          "credits_minor": {
+            "BANK": 1500000
+          },
+          "funds": {
+            "refunded": 1500000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 0,
+        "FEE": 0
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 0,
+        "refunded": 1500000,
+        "available": 0
+      }
+    },
+    {
+      "id": "cancel_card_fee_retained",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "CLR": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "processor_payout",
+          "debits_minor": {
+            "BANK": 1477500,
+            "FEE": 22500
+          },
+          "credits_minor": {
+            "CLR": 1500000
+          }
+        },
+        {
+          "event": "cancel_before_supply_credit",
+          "debits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "credits_minor": {
+            "REFUND_PAYABLE": 1500000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": -1200000,
+            "tax_minor": -300000,
+            "gross_minor": -1500000
+          }
+        },
+        {
+          "event": "external_refund_confirmed",
+          "debits_minor": {
+            "REFUND_PAYABLE": 1500000
+          },
+          "credits_minor": {
+            "BANK": 1500000
+          },
+          "funds": {
+            "refunded": 1500000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": -22500,
+        "FEE": 22500
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 0,
+        "refunded": 1500000,
+        "available": 0
+      }
+    },
+    {
+      "id": "cancel_after_partial_work",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "cancel_unused_advance_credit",
+          "debits_minor": {
+            "AL": 400000,
+            "VAT": 100000
+          },
+          "credits_minor": {
+            "REFUND_PAYABLE": 500000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": -400000,
+            "tax_minor": -100000,
+            "gross_minor": -500000
+          }
+        },
+        {
+          "event": "external_refund_confirmed",
+          "debits_minor": {
+            "REFUND_PAYABLE": 500000
+          },
+          "credits_minor": {
+            "BANK": 500000
+          },
+          "funds": {
+            "refunded": 500000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 800000
+          },
+          "credits_minor": {
+            "REV": 800000
+          },
+          "funds": {
+            "applied": 1000000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 1000000,
+        "REV": -800000,
+        "VAT": -200000
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 1000000,
+        "refunded": 500000,
+        "available": 0
+      }
+    },
+    {
+      "id": "partial_refund_same_contract",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "advance_reduction",
+          "debits_minor": {
+            "AL": 400000,
+            "VAT": 100000
+          },
+          "credits_minor": {
+            "REFUND_PAYABLE": 500000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": -400000,
+            "tax_minor": -100000,
+            "gross_minor": -500000
+          }
+        },
+        {
+          "event": "external_refund_confirmed",
+          "debits_minor": {
+            "REFUND_PAYABLE": 500000
+          },
+          "credits_minor": {
+            "BANK": 500000
+          },
+          "funds": {
+            "refunded": 500000
+          }
+        },
+        {
+          "event": "final_residual_invoice_issued",
+          "debits_minor": {
+            "AR": 4000000
+          },
+          "credits_minor": {
+            "REV": 3200000,
+            "VAT": 800000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 3200000,
+            "tax_minor": 800000,
+            "gross_minor": 4000000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 800000
+          },
+          "credits_minor": {
+            "REV": 800000
+          },
+          "funds": {
+            "applied": 1000000
+          }
+        },
+        {
+          "event": "final_bank_receipt",
+          "debits_minor": {
+            "BANK": 4000000
+          },
+          "credits_minor": {
+            "AR": 4000000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 5000000,
+        "REV": -4000000,
+        "VAT": -1000000
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 1000000,
+        "refunded": 500000,
+        "available": 0
+      }
+    },
+    {
+      "id": "overpayment_returned",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "accidental_excess_received",
+          "debits_minor": {
+            "BANK": 100000
+          },
+          "credits_minor": {
+            "UNALLOCATED": 100000
+          },
+          "excess": {
+            "received": 100000
+          }
+        },
+        {
+          "event": "excess_returned",
+          "debits_minor": {
+            "UNALLOCATED": 100000
+          },
+          "credits_minor": {
+            "BANK": 100000
+          },
+          "excess": {
+            "refunded": 100000
+          }
+        },
+        {
+          "event": "final_residual_invoice_issued",
+          "debits_minor": {
+            "AR": 3500000
+          },
+          "credits_minor": {
+            "REV": 2800000,
+            "VAT": 700000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 2800000,
+            "tax_minor": 700000,
+            "gross_minor": 3500000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 1200000
+          },
+          "credits_minor": {
+            "REV": 1200000
+          },
+          "funds": {
+            "applied": 1500000
+          }
+        },
+        {
+          "event": "final_bank_receipt",
+          "debits_minor": {
+            "BANK": 3500000
+          },
+          "credits_minor": {
+            "AR": 3500000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 5000000,
+        "REV": -4000000,
+        "VAT": -1000000
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 1500000,
+        "refunded": 0,
+        "available": 0
+      },
+      "expected_excess_minor": {
+        "received": 100000,
+        "applied": 0,
+        "refunded": 100000,
+        "available": 0
+      }
+    },
+    {
+      "id": "insufficient_advance",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "advance_reduction",
+          "debits_minor": {
+            "AL": 400000,
+            "VAT": 100000
+          },
+          "credits_minor": {
+            "REFUND_PAYABLE": 500000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": -400000,
+            "tax_minor": -100000,
+            "gross_minor": -500000
+          }
+        },
+        {
+          "event": "external_refund_confirmed",
+          "debits_minor": {
+            "REFUND_PAYABLE": 500000
+          },
+          "credits_minor": {
+            "BANK": 500000
+          },
+          "funds": {
+            "refunded": 500000
+          }
+        },
+        {
+          "event": "final_residual_invoice_issued",
+          "debits_minor": {
+            "AR": 4000000
+          },
+          "credits_minor": {
+            "REV": 3200000,
+            "VAT": 800000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 3200000,
+            "tax_minor": 800000,
+            "gross_minor": 4000000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 800000
+          },
+          "credits_minor": {
+            "REV": 800000
+          },
+          "funds": {
+            "applied": 1000000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 1000000,
+        "AR": 4000000,
+        "REV": -4000000,
+        "VAT": -1000000
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 1000000,
+        "refunded": 500000,
+        "available": 0
+      },
+      "refused_operations": [
+        {
+          "after_events": 4,
+          "apply_minor": 1500000,
+          "reason": "insufficient_available",
+          "expected_available_minor": 1000000
+        }
+      ]
+    },
+    {
+      "id": "increased_final_contract",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "final_residual_invoice_issued",
+          "debits_minor": {
+            "AR": 4750000
+          },
+          "credits_minor": {
+            "REV": 3800000,
+            "VAT": 950000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 3800000,
+            "tax_minor": 950000,
+            "gross_minor": 4750000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 1200000
+          },
+          "credits_minor": {
+            "REV": 1200000
+          },
+          "funds": {
+            "applied": 1500000
+          }
+        },
+        {
+          "event": "final_bank_receipt",
+          "debits_minor": {
+            "BANK": 4750000
+          },
+          "credits_minor": {
+            "AR": 4750000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 6250000,
+        "REV": -5000000,
+        "VAT": -1250000
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 1500000,
+        "refunded": 0,
+        "available": 0
+      }
+    },
+    {
+      "id": "reduced_final_below_advance",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 1500000
+          },
+          "credits_minor": {
+            "AR": 1500000
+          },
+          "funds": {
+            "received": 1500000
+          }
+        },
+        {
+          "event": "accepted_scope_reduction_credit",
+          "debits_minor": {
+            "AL": 200000,
+            "VAT": 50000
+          },
+          "credits_minor": {
+            "REFUND_PAYABLE": 250000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": -200000,
+            "tax_minor": -50000,
+            "gross_minor": -250000
+          }
+        },
+        {
+          "event": "external_refund_confirmed",
+          "debits_minor": {
+            "REFUND_PAYABLE": 250000
+          },
+          "credits_minor": {
+            "BANK": 250000
+          },
+          "funds": {
+            "refunded": 250000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 1000000
+          },
+          "credits_minor": {
+            "REV": 1000000
+          },
+          "funds": {
+            "applied": 1250000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 1250000,
+        "REV": -1000000,
+        "VAT": -250000
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 1250000,
+        "refunded": 250000,
+        "available": 0
+      },
+      "zero_final_document": "Statement treatment requires accountant review. No negative invoice assumed."
+    },
+    {
+      "id": "mixed_tax_review_only",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 360000
+          },
+          "credits_minor": {
+            "AL": 300000,
+            "VAT": 60000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 300000,
+            "tax_minor": 60000,
+            "gross_minor": 360000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 360000
+          },
+          "credits_minor": {
+            "AR": 360000
+          },
+          "funds": {
+            "received": 360000
+          }
+        },
+        {
+          "event": "final_residual_invoice_issued",
+          "debits_minor": {
+            "AR": 840000
+          },
+          "credits_minor": {
+            "REV": 700000,
+            "VAT": 140000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 700000,
+            "tax_minor": 140000,
+            "gross_minor": 840000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 300000
+          },
+          "credits_minor": {
+            "REV": 300000
+          },
+          "funds": {
+            "applied": 360000
+          }
+        },
+        {
+          "event": "final_bank_receipt",
+          "debits_minor": {
+            "BANK": 840000
+          },
+          "credits_minor": {
+            "AR": 840000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 1200000,
+        "REV": -1000000,
+        "VAT": -200000
+      },
+      "expected_funds_minor": {
+        "received": 360000,
+        "applied": 360000,
+        "refunded": 0,
+        "available": 0
+      },
+      "tax_groups": [
+        {
+          "treatment": "domestic_25",
+          "net_minor": 800000,
+          "tax_minor": 200000,
+          "advance_net_minor": 240000,
+          "advance_tax_minor": 60000
+        },
+        {
+          "treatment": "exempt_assumed_evidenced",
+          "net_minor": 200000,
+          "tax_minor": 0,
+          "advance_net_minor": 60000,
+          "advance_tax_minor": 0
+        }
+      ],
+      "scope": "Blocked; this fixture assumes independently specified/priced groups. An unspecified mixed wallet cannot use this tax conclusion."
+    },
+    {
+      "id": "rounding_100_01",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_issued",
+          "debits_minor": {
+            "AR": 3000
+          },
+          "credits_minor": {
+            "AL": 2400,
+            "VAT": 600
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 2400,
+            "tax_minor": 600,
+            "gross_minor": 3000
+          }
+        },
+        {
+          "event": "advance_received",
+          "debits_minor": {
+            "BANK": 3000
+          },
+          "credits_minor": {
+            "AR": 3000
+          },
+          "funds": {
+            "received": 3000
+          }
+        },
+        {
+          "event": "final_residual_invoice_issued",
+          "debits_minor": {
+            "AR": 7001
+          },
+          "credits_minor": {
+            "REV": 5601,
+            "VAT": 1400
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 5601,
+            "tax_minor": 1400,
+            "gross_minor": 7001
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 2400
+          },
+          "credits_minor": {
+            "REV": 2400
+          },
+          "funds": {
+            "applied": 3000
+          }
+        },
+        {
+          "event": "final_bank_receipt",
+          "debits_minor": {
+            "BANK": 7001
+          },
+          "credits_minor": {
+            "AR": 7001
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 10001,
+        "REV": -8001,
+        "VAT": -2000
+      },
+      "expected_funds_minor": {
+        "received": 3000,
+        "applied": 3000,
+        "refunded": 0,
+        "available": 0
+      }
+    },
+    {
+      "id": "unexpected_receipt_first_review_only",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "DKK",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "unexpected_qualifying_receipt_assessed",
+          "debits_minor": {
+            "BANK": 1500000
+          },
+          "credits_minor": {
+            "AL": 1200000,
+            "VAT": 300000
+          },
+          "funds": {
+            "received": 1500000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 1200000,
+            "tax_minor": 300000,
+            "gross_minor": 1500000
+          }
+        },
+        {
+          "event": "same_assessment_documented",
+          "debits_minor": {},
+          "credits_minor": {},
+          "note": "Tax invoice references same assessment; no second posting or debt."
+        },
+        {
+          "event": "final_residual_invoice_issued",
+          "debits_minor": {
+            "AR": 3500000
+          },
+          "credits_minor": {
+            "REV": 2800000,
+            "VAT": 700000
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 2800000,
+            "tax_minor": 700000,
+            "gross_minor": 3500000
+          }
+        },
+        {
+          "event": "advance_entitlement_applied_at_delivery",
+          "debits_minor": {
+            "AL": 1200000
+          },
+          "credits_minor": {
+            "REV": 1200000
+          },
+          "funds": {
+            "applied": 1500000
+          }
+        },
+        {
+          "event": "final_bank_receipt",
+          "debits_minor": {
+            "BANK": 3500000
+          },
+          "credits_minor": {
+            "AR": 3500000
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 5000000,
+        "REV": -4000000,
+        "VAT": -1000000
+      },
+      "expected_funds_minor": {
+        "received": 1500000,
+        "applied": 1500000,
+        "refunded": 0,
+        "available": 0
+      }
+    },
+    {
+      "id": "fx_eur_review_only",
+      "synthetic": true,
+      "base_currency": "DKK",
+      "funds_currency": "EUR",
+      "exponent": 2,
+      "assumptions": "Specified supply, reviewed tax classification assumed, open periods, no input VAT on invented fees. Arithmetic only; not approved policy.",
+      "events": [
+        {
+          "event": "advance_invoice_eur_at_7_45",
+          "debits_minor": {
+            "AR": 279375
+          },
+          "credits_minor": {
+            "AL": 223500,
+            "VAT": 55875
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 223500,
+            "tax_minor": 55875,
+            "gross_minor": 279375,
+            "source": {
+              "currency": "EUR",
+              "net_minor": 30000,
+              "tax_minor": 7500,
+              "gross_minor": 37500,
+              "dkk_per_eur": "7.45"
+            }
+          }
+        },
+        {
+          "event": "advance_received_eur_at_7_45",
+          "debits_minor": {
+            "CLR": 279375
+          },
+          "credits_minor": {
+            "AR": 279375
+          },
+          "funds": {
+            "received": 37500
+          }
+        },
+        {
+          "event": "converted_payout_fee_eur_5",
+          "debits_minor": {
+            "BANK": 275650,
+            "FEE": 3725
+          },
+          "credits_minor": {
+            "CLR": 279375
+          }
+        },
+        {
+          "event": "final_residual_invoice_eur_at_7_50",
+          "debits_minor": {
+            "AR": 656250
+          },
+          "credits_minor": {
+            "REV": 525000,
+            "VAT": 131250
+          },
+          "document": {
+            "currency": "DKK",
+            "net_minor": 525000,
+            "tax_minor": 131250,
+            "gross_minor": 656250,
+            "source": {
+              "currency": "EUR",
+              "net_minor": 70000,
+              "tax_minor": 17500,
+              "gross_minor": 87500,
+              "dkk_per_eur": "7.50"
+            }
+          }
+        },
+        {
+          "event": "historical_advance_released",
+          "debits_minor": {
+            "AL": 223500
+          },
+          "credits_minor": {
+            "REV": 223500
+          },
+          "funds": {
+            "applied": 37500
+          }
+        },
+        {
+          "event": "final_receipt_eur_at_7_46",
+          "debits_minor": {
+            "BANK": 652750,
+            "FX_LOSS": 3500
+          },
+          "credits_minor": {
+            "AR": 656250
+          }
+        }
+      ],
+      "expected_balances_minor": {
+        "BANK": 928400,
+        "FEE": 3725,
+        "FX_LOSS": 3500,
+        "REV": -748500,
+        "VAT": -187125
+      },
+      "expected_funds_minor": {
+        "received": 37500,
+        "applied": 37500,
+        "refunded": 0,
+        "available": 0
+      },
+      "fx_assumptions": "Synthetic rates, same rate for advance invoice and capture; non-monetary historical AL assumed; final AR monetary, discharged at actual cash rate. No legal approval."
+    }
+  ],
+  "rounding_probes": [
+    {
+      "gross_minor": 3,
+      "tax_minor": 1,
+      "slices_minor": [
+        1,
+        1,
+        1
+      ],
+      "expected_tax_slices_minor": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "gross_minor": 10001,
+      "tax_minor": 2000,
+      "slices_minor": [
+        3000,
+        7001
+      ],
+      "expected_tax_slices_minor": [
+        600,
+        1400
+      ]
+    }
+  ],
+  "retainer_probes": {
+    "capacity_minutes": {
+      "granted": 600,
+      "used": 390,
+      "expired": 210,
+      "carried": 0,
+      "remaining": 0
+    },
+    "monetary_minor": {
+      "received": 1500000,
+      "applied": 1000000,
+      "refunded": 250000,
+      "available": 250000
+    },
+    "fixed_fee_minor": {
+      "invoice_1": 187500,
+      "invoice_2": 187500,
+      "received": 187500,
+      "receivable": 187500,
+      "net": 300000,
+      "tax": 75000
+    }
+  }
+}
