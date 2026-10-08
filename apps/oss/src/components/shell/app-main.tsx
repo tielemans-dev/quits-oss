@@ -1,9 +1,10 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { useRuntimeDistribution } from '../../lib/runtime-distribution'
 import { SidebarTrigger } from '../ui/sidebar'
 import { NewMenu } from './new-menu'
 import { CommandPalette } from './palette'
+import { createActions } from './palette/builtin-providers'
 import { SearchField } from './search-field'
 import { useShellHotkeys } from './use-shell-hotkeys'
 import { useShellPermissions } from './use-shell-permissions'
@@ -27,7 +28,15 @@ export function AppMain({ banner, children }: { banner?: ReactNode; children: Re
     setNewMenuOpen(false)
     setPaletteOpen((open) => !open)
   }, [])
-  const openNewMenu = useCallback(() => setNewMenuOpen(true), [])
+  // The menu exists once the role is known and lets the member create something. Until then an
+  // `N` must not be remembered: the menu would open by itself the moment it becomes available.
+  const newMenuAvailable = ready && createActions.some((action) => can(action.capability))
+  const openNewMenu = useCallback(() => {
+    if (newMenuAvailable) setNewMenuOpen(true)
+  }, [newMenuAvailable])
+  useEffect(() => {
+    if (!newMenuAvailable) setNewMenuOpen(false)
+  }, [newMenuAvailable])
   useShellHotkeys({ togglePalette, openPalette, openNewMenu })
 
   return (
