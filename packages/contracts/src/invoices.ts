@@ -64,16 +64,15 @@ export const PURCHASE_ORDER_REF_MAX_LENGTH = 200
 
 /** The buyer's order identifier (BT-13). Omission preserves an existing draft value. */
 export const purchaseOrderRefInputSchema = z.string()
-  // Check the raw identifier: trim() would hide a BOM or control character at either end.
-  .refine(value => !/[\p{Cc}\p{Cf}]/u.test(value), "Order reference must not contain control or format characters")
+  // Check the raw identifier: trim() would hide a BOM, control character or separator at either end.
+  .refine(value => !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(value), "Order reference must not contain control, format, line separator or paragraph separator characters")
   .trim()
   .max(PURCHASE_ORDER_REF_MAX_LENGTH, `Order reference must be at most ${PURCHASE_ORDER_REF_MAX_LENGTH} characters after trimming`)
   .refine(value => {
     // UBL is XML 1.0. Reject characters its writer would discard instead of changing an identifier.
     for (const char of value) {
       const code = char.codePointAt(0)!
-      if (code === 0x9 || code === 0xa || code === 0xd) continue
-      if (code < 0x20 || (code >= 0xd800 && code <= 0xdfff) || code === 0xfffe || code === 0xffff) return false
+      if ((code >= 0xd800 && code <= 0xdfff) || code === 0xfffe || code === 0xffff) return false
     }
     return true
   }, "Order reference must contain only XML 1.0 characters").nullable().transform(value => value || null)

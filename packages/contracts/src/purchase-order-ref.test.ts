@@ -57,9 +57,22 @@ describe("purchaseOrderRef input", () => {
           const refused = schema.safeParse({ ...input, purchaseOrderRef })
           expect(refused.success).toBe(false)
           if (!refused.success) expect(refused.error.issues).toContainEqual(expect.objectContaining({
-            path: ["purchaseOrderRef"], message: "Order reference must not contain control or format characters",
+            path: ["purchaseOrderRef"], message: "Order reference must not contain control, format, line separator or paragraph separator characters",
           }))
         }
+      }
+    }
+  })
+
+  it.each([0x2028, 0x2029])("rejects Unicode separator %i before trimming", code => {
+    const char = String.fromCodePoint(code)
+    for (const purchaseOrderRef of [char, `${char}PO-42`, `PO-42${char}`, `PO-${char}42`]) {
+      for (const [schema, input] of cases) {
+        const refused = schema.safeParse({ ...input, purchaseOrderRef })
+        expect(refused.success).toBe(false)
+        if (!refused.success) expect(refused.error.issues).toContainEqual(expect.objectContaining({
+          path: ["purchaseOrderRef"], message: "Order reference must not contain control, format, line separator or paragraph separator characters",
+        }))
       }
     }
   })

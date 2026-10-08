@@ -272,14 +272,14 @@ describeIfDatabase("MCP endpoint", () => {
         })
         expect(created.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: "PO-agent" } })
         const id = created.value.result.id
-        expect((await call(client, update, { id, expectedRevision: 0, purchaseOrderRef: " PO-updated ", clientRequestId: "ref-update" })).value)
+        expect((await call(client, update, { id, ...(kind === "quote" ? { expectedRevision: 0 } : {}), purchaseOrderRef: " PO-updated ", clientRequestId: "ref-update" })).value)
           .toMatchObject({ status: "completed", result: { purchaseOrderRef: "PO-updated" } })
         for (const [index, purchaseOrderRef] of ["A".repeat(201), "\u200b", "PO\n", "\ufeffPO"].entries()) {
-          expect((await call(client, update, { id, expectedRevision: 1, purchaseOrderRef, clientRequestId: `ref-invalid-${index}` })).isError).toBe(true)
+          expect((await call(client, update, { id, ...(kind === "quote" ? { expectedRevision: 1 } : {}), purchaseOrderRef, clientRequestId: `ref-invalid-${index}` })).isError).toBe(true)
         }
         const fetched = kind === "quote" ? (await call(client, "quote_get", { id })).value : (await call(client, "recurring_list")).value.items[0]
         expect(fetched.purchaseOrderRef).toBe("PO-updated")
-        expect((await call(client, update, { id, expectedRevision: 1, purchaseOrderRef: " ", clientRequestId: "ref-clear" })).value)
+        expect((await call(client, update, { id, ...(kind === "quote" ? { expectedRevision: 1 } : {}), purchaseOrderRef: " ", clientRequestId: "ref-clear" })).value)
           .toMatchObject({ status: "completed", result: { purchaseOrderRef: null } })
         await client.close()
       })
