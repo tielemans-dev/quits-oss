@@ -67,6 +67,30 @@ function edgeKey(a: number, b: number) {
  */
 export function normalizeEconomic(src: SourceBundle): ImportBundle {
   const issues = new Collector()
+  // Overlapping pages are not evidence that one payload is safe to prefer, even when identical.
+  // Reject the batch before any Map can overwrite a row or a document can double its debt.
+  const identities = [
+    src.customers.map((c) => `customer:${c.customerNumber}`),
+    src.bookedInvoices.map((i) => `invoice:${i.bookedInvoiceNumber}`),
+    src.entries.map((e) => `entry:${e.entryNumber}`),
+    src.attachedDocuments.map((d) => `attachedDocument:${d.number}`),
+    src.accountingYears.map((y) => `accountingYear:${y.year}`),
+  ]
+  for (const keys of identities) {
+    const seen = new Set<string>()
+    for (const key of keys) {
+      if (seen.has(key)) issues.add("duplicate_source_identity", "blocking", key, "Source identity occurs more than once; reject the whole batch and extract again without overlapping or conflicting pages")
+      seen.add(key)
+    }
+  }
+  if (issues.list.length > 0) {
+    return {
+      contractVersion: CONTRACT_VERSION, synthetic: true, provenance: src.extraction,
+      contacts: [], documents: [], ledgerItems: [], allocations: [], clusters: [], excludedAfterCutover: [],
+      exceptions: issues.list,
+      reconciliation: { rows: [], customerControls: [], allRowsMatch: false },
+    }
+  }
   const base = src.extraction.baseCurrency
   const baseExp = exponentFor(base, issues)
   const cutover = src.extraction.cutoverDate
@@ -153,7 +177,6 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
   const allocations: ImportAllocation[] = []
   const clusters: ImportCluster[] = []
   const entryCluster = new Map<number, string>()
-  const flowOnEntry = new Map<number, number>() // unsigned amount applied through solved pairs
   let clusterSeq = 0
 
   for (const nodes of [...members.values()].sort((x, y) => Math.min(...x) - Math.min(...y))) {
@@ -226,10 +249,6 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
         allocations.push({ debitEntry: debit, creditEntry: credit, amount: amt, currency: entryCurrency(d), exponent: entryExp(d), clusterId: id })
       }
       if (status === "resolved") {
-        for (const a of allocations.filter((x) => x.clusterId === id)) {
-          flowOnEntry.set(a.debitEntry, (flowOnEntry.get(a.debitEntry) ?? 0) + a.amount)
-          flowOnEntry.set(a.creditEntry, (flowOnEntry.get(a.creditEntry) ?? 0) + a.amount)
-        }
         const allClosed = known.every((n) => remainderOf(ledger.get(n)!) === 0)
         if (allClosed && currencies.size === 1 && !currencies.has(base)) {
           const delta = known.reduce((s, n) => s + toMinor(ledger.get(n)!.amountInBaseCurrency, baseExp, issues, `entry:${n}`), 0)
@@ -239,7 +258,6 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
         }
       }
     }
-    if (status !== "resolved") for (const n of known) flowOnEntry.delete(n)
     clusters.push({ id, entries: nodes, status, applied: appliedRecord })
   }
 
@@ -262,6 +280,7 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
   const documents: ImportDocument[] = []
   const excludedAfterCutover: string[] = []
   const debtorEntryOfDocument = new Set<number>()
+  const invalidDocumentJoins = new Set<string>()
   const invoiceLines = new Map<number, SourceBookedEntry[]>()
   for (const e of src.entries) {
     if (e.type === ENTRY_CUSTOMER_INVOICE && e.customerInvoiceNumber != null) {
@@ -290,21 +309,31 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
     }
 
     const debtor = [...ledger.values()].filter((e) => e.type === ENTRY_CUSTOMER_INVOICE && e.customerInvoiceNumber === inv.bookedInvoiceNumber)
+    const currenciesMatch = debtor.every((e) => entryCurrency(e) === inv.currency)
+    if (!currenciesMatch) {
+      issues.add("debtor_line_currency_mismatch", "blocking", key, `Invoice currency ${inv.currency} differs from debtor-line currencies ${[...new Set(debtor.map(entryCurrency))].join(", ")}; amounts and residuals cannot be compared`)
+      invalidDocumentJoins.add(key)
+    }
     const afterCutover = day(inv.date) > cutover
     if (debtor.length === 0) {
       issues.add("invoice_without_ledger_entry", "blocking", key, "No customer-ledger entry carries this invoice number; residual cannot be checked against BookedEntries")
+      invalidDocumentJoins.add(key)
     }
     if (debtor.length > 1) {
       issues.add("multiple_debtor_lines", "degraded", key, `${debtor.length} customer-ledger lines carry invoice ${inv.bookedInvoiceNumber}; amounts and remainders are summed`)
     }
     for (const e of debtor) debtorEntryOfDocument.add(e.entryNumber)
     if (debtor.length > 0) {
-      const sum = debtor.reduce((s, e) => s + amountMinor(e), 0)
-      if (sum !== gross) {
-        issues.add("debtor_line_amount_mismatch", "blocking", key, `Ledger lines sum to ${sum} but the booked invoice gross is ${gross} (${inv.currency} minor units)`)
+      if (currenciesMatch) {
+        const sum = debtor.reduce((s, e) => s + amountMinor(e), 0)
+        if (sum !== gross) {
+          issues.add("debtor_line_amount_mismatch", "blocking", key, `Ledger lines sum to ${sum} but the booked invoice gross is ${gross} (${inv.currency} minor units)`)
+          invalidDocumentJoins.add(key)
+        }
       }
       if (debtor.some((e) => e.customerNumber !== inv.customer.customerNumber)) {
         issues.add("debtor_line_amount_mismatch", "blocking", key, "Ledger line customer differs from the invoice customer")
+        invalidDocumentJoins.add(key)
       }
     }
     const lines = invoiceLines.get(inv.bookedInvoiceNumber) ?? []
@@ -321,8 +350,8 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
 
     const sourceRest = toMinor(inv.remainder, exp, issues, key)
     const entryRemainders = debtor.map((e) => remainderMinor(e))
-    const entrySum = entryRemainders.every((r) => r != null) ? entryRemainders.reduce<number>((s, r) => s + (r ?? 0), 0) : null
-    if (entrySum != null && entrySum !== sourceRest) {
+    const entrySum = currenciesMatch && entryRemainders.every((r) => r != null) ? entryRemainders.reduce<number>((s, r) => s + (r ?? 0), 0) : null
+    if (currenciesMatch && entrySum != null && entrySum !== sourceRest) {
       issues.add("remainder_disagreement", "blocking", key, `Booked invoice remainder ${inv.remainder} (REST) differs from the ledger-line remainder ${entrySum / 10 ** exp} (BookedEntries)`)
     }
 
@@ -330,27 +359,6 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
       excludedAfterCutover.push(key)
       issues.add("document_after_cutover", "info", key, `Dated ${day(inv.date)}, after the cutover ${cutover}; not imported as history`)
       continue
-    }
-
-    // Allocation-based recomputation.
-    let recomputed: number | null = null
-    let basis: ImportDocument["residualBasis"] = "source_remainder_only"
-    if (debtor.length > 0) {
-      const states = debtor.map((e) => clusters.find((c) => c.id === entryCluster.get(e.entryNumber))?.status ?? "resolved")
-      if (states.every((s) => s === "resolved")) {
-        recomputed = debtor.reduce((s, e) => s + amountMinor(e) - Math.sign(amountMinor(e)) * (flowOnEntry.get(e.entryNumber) ?? 0), 0)
-        basis = "recomputed_from_allocations"
-      } else {
-        issues.add("snapshot_residual_only", "degraded", key, "Residual rests on the source remainder alone because the matches around this entry were not resolved")
-      }
-      const crossesCutover = debtor.some((e) => {
-        const cid = entryCluster.get(e.entryNumber)
-        const cl = clusters.find((c) => c.id === cid)
-        return cl?.entries.some((n) => day(ledger.get(n)?.date ?? "0000") > cutover) ?? false
-      })
-      if (crossesCutover) {
-        issues.add("snapshot_residual_only", "degraded", key, `Matched to an entry dated after the cutover ${cutover}; the API exposes no match date, so the residual as of the cutover cannot be reconstructed from this snapshot`)
-      }
     }
 
     // Artifacts.
@@ -391,8 +399,8 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
       originalPdf: pdf,
       attachedDocumentNumbers: attached,
       sourceResidual: sourceRest,
-      recomputedResidual: recomputed,
-      residualBasis: basis,
+      recomputedResidual: null,
+      residualBasis: "source_remainder_only",
     })
   }
 
@@ -437,6 +445,36 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
     })
   }
 
+  // Solve over the complete extraction, but emit allocations only for complete, resolved clusters
+  // whose endpoints are represented in the import scope. Dropping just an out-of-scope edge would
+  // misstate the remaining entries' applied totals. Clusters remain full-snapshot diagnostics.
+  const represented = new Set([...documents.flatMap((d) => d.ledgerEntryNumbers), ...ledgerItems.map((i) => i.entryNumber)])
+  const invalidEntries = new Set(documents.filter((d) => invalidDocumentJoins.has(d.sourceKey)).flatMap((d) => d.ledgerEntryNumbers))
+  const eligibleClusters = new Set(clusters.filter((c) => c.status === "resolved" && c.entries.every((n) => represented.has(n) && !invalidEntries.has(n) && day(ledger.get(n)!.date) <= cutover)).map((c) => c.id))
+  const scopedAllocations = allocations.filter((a) => eligibleClusters.has(a.clusterId))
+  const flowOnEntry = new Map<number, number>()
+  for (const a of scopedAllocations) {
+    flowOnEntry.set(a.debitEntry, (flowOnEntry.get(a.debitEntry) ?? 0) + a.amount)
+    flowOnEntry.set(a.creditEntry, (flowOnEntry.get(a.creditEntry) ?? 0) + a.amount)
+  }
+  const canRecompute = (n: number): boolean => {
+    const cid = entryCluster.get(n)
+    return !invalidEntries.has(n) && day(ledger.get(n)!.date) <= cutover && (cid == null || eligibleClusters.has(cid))
+  }
+  const snapshotOnly = (subject: string) => issues.add("snapshot_residual_only", "degraded", subject, `Residual rests on the source snapshot alone because the match cluster is unresolved or has an endpoint outside the valid import scope through ${cutover}; no match date is available to reconstruct an earlier residual`)
+  for (const d of documents) {
+    if (invalidDocumentJoins.has(d.sourceKey)) continue
+    if (d.ledgerEntryNumbers.length > 0 && d.ledgerEntryNumbers.every(canRecompute)) {
+      d.recomputedResidual = d.ledgerEntryNumbers.reduce((s, n) => {
+        const amount = amountMinor(ledger.get(n)!)
+        return s + amount - Math.sign(amount) * (flowOnEntry.get(n) ?? 0)
+      }, 0)
+      d.residualBasis = "recomputed_from_allocations"
+    } else {
+      snapshotOnly(d.sourceKey)
+    }
+  }
+
   // Reconciliation -------------------------------------------------------------------------------
   const rows: ReconciliationRow[] = []
   for (const d of documents) {
@@ -451,9 +489,8 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
     })
   }
   for (const item of ledgerItems) {
-    const cid = entryCluster.get(item.entryNumber)
-    const status = clusters.find((c) => c.id === cid)?.status ?? "resolved"
-    const recomputed = status === "resolved" ? item.amount - Math.sign(item.amount) * (flowOnEntry.get(item.entryNumber) ?? 0) : null
+    const recomputed = canRecompute(item.entryNumber) ? item.amount - Math.sign(item.amount) * (flowOnEntry.get(item.entryNumber) ?? 0) : null
+    if (recomputed == null && clusters.find((c) => c.id === entryCluster.get(item.entryNumber))?.status === "resolved") snapshotOnly(item.sourceKey)
     if (item.sourceResidual === 0 && recomputed === 0) continue
     rows.push({
       contactSourceId: item.contactSourceId,
@@ -497,7 +534,7 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
     contacts,
     documents,
     ledgerItems,
-    allocations,
+    allocations: scopedAllocations,
     clusters,
     excludedAfterCutover,
     exceptions: issues.list,

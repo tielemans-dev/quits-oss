@@ -101,6 +101,7 @@ export type SourceBundle = {
 export type Severity = "blocking" | "degraded" | "info"
 
 export type ExceptionCode =
+  | "duplicate_source_identity"
   | "sub_minor_precision"
   | "currency_exponent_unknown"
   | "invoice_total_mismatch"
@@ -109,6 +110,7 @@ export type ExceptionCode =
   | "invoice_without_ledger_entry"
   | "multiple_debtor_lines"
   | "debtor_line_amount_mismatch"
+  | "debtor_line_currency_mismatch"
   | "invoice_ledger_lines_unbalanced"
   | "remainder_disagreement"
   | "remainder_out_of_range"
@@ -192,6 +194,7 @@ export type ImportLedgerItem = {
 }
 
 export type ImportAllocation = {
+  /** Both endpoints must appear in documents.ledgerEntryNumbers or ledgerItems.entryNumber. */
   debitEntry: number
   creditEntry: number
   amount: number
@@ -204,6 +207,7 @@ export type ClusterStatus = "resolved" | "ambiguous" | "inconsistent"
 
 export type ImportCluster = {
   id: string
+  /** Full-extraction diagnostics; may include entries excluded from import at cutover. */
   entries: number[]
   status: ClusterStatus
   /** Per entry: how much of the entry was applied (amount minus remainder), signed, minor units. */

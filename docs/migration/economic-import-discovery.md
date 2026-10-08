@@ -134,7 +134,11 @@ Executed on the demo company, 8 October 2026, shapes only:
 - Payment-typed entries can be positive (a +5,000 payment-typed entry was matched against a −7,000 one).
 - `customer.balance` matched the sum of ledger remainders for two customers and was 500.00 away for a third, cause unidentified. It is a control to report on.
 
-The solver in `normalize.ts` uses these: applied amount per entry is `amount − remainder`; pairs form a graph; when pairs ≤ entries − 1 the graph is a tree and peeling leaves yields unique pair amounts; a cycle yields no unique solution and is reported. It is **not** a proof of the vendor's remainder: recomputing a residual from the solved allocations is an internal consistency check (pairs exist, signs agree, flows fit the entries, clusters conserve). The independent anchors are the REST invoice remainder against the ledger-line remainder, and the customer and unpaid-invoice control totals.
+The solver in `normalize.ts` uses these: applied amount per entry is `amount − remainder`; pairs form a graph; when pairs ≤ entries − 1 the graph is a tree and peeling leaves yields unique pair amounts; a cycle yields no unique solution and is reported. It is **not** a proof of the vendor's remainder: recomputing a residual from the solved allocations is an internal consistency check (pairs exist, signs agree, flows fit the entries, clusters conserve). The independent anchors checked by this validator are the REST invoice remainder against the ledger-line remainder and the customer balance. The unpaid-invoice control total is a planned extractor check, not implemented here.
+
+Before normalization, the validator checks source identities for customers, booked invoices, entries, attached documents and accounting years. Any repeated identity rejects the entire batch with a blocking `duplicate_source_identity` exception and no import records. This applies to identical and conflicting payloads; the validator never chooses a first or last copy. Repeated matched pairs, including reversed pairs, represent one graph edge and are checked against their entry amounts.
+
+An invoice and every debtor line must have the same currency before their amounts or residuals can be compared. A missing ledger currency code uses the agreement's base currency. A currency mismatch blocks with `debtor_line_currency_mismatch` and leaves the document's recomputed residual null.
 
 ## 6. Export fallback
 
@@ -168,7 +172,7 @@ Requirements before the fallback is promised: obtain one real export from a cons
 | `manual_and_opening` | Opening balance, journal-posted invoice, reminder line |
 | `control_total_disagreement` | A 500.00 difference in the vendor's customer balance is reported |
 
-The validator also has mutation tests: a missing entry, a changed pair amount, a missing remainder, a remainder larger than the amount, mixed currencies, an unknown currency exponent, sub-minor precision, an invoice without a ledger line and the reverse.
+The validator also has mutation tests: a missing entry, a changed pair amount, a missing remainder, a remainder larger than the amount, mixed currencies, an unknown currency exponent, sub-minor precision, an invoice without a ledger line and the reverse. Regression tests cover equal numeric amounts in different invoice/ledger currencies, identical and conflicting source identities, repeated pairs, and allocations whose counterpart is excluded by cutover or an unsupported entry type. Every emitted allocation endpoint must be represented by an imported document or ledger item.
 
 What the fixtures do **not** prove: that a real account returns this shape, that match clusters conserve on real data, anything about credit notes on a real account, or that rounding works the way the validator tolerates.
 
@@ -178,7 +182,7 @@ What the fixtures do **not** prove: that a real account returns this shape, that
 
 1. Choose the cutover date C = the last business date on which e-conomic issues documents for the customer. Documents dated after C are not imported as history and are listed.
 2. Freeze matching and payment booking in e-conomic from the final extraction until Quits goes live, or extract again. Entries have no incremental sync, so a re-run is a full extract.
-3. A document matched to an entry dated after C keeps only its snapshot residual and is flagged; it is not presented as the residual at C.
+3. Documents use their REST issue date; non-document ledger items use their entry date. Dates equal to C are included. A match cluster is importable only if every endpoint is represented in the output, every entry is dated on or before C, and its document joins and allocation solution are valid. Otherwise the entire cluster's allocations are omitted. Affected documents keep only their source snapshot residual with `recomputedResidual: null`, `residualBasis: source_remainder_only` and a `snapshot_residual_only` exception. Affected ledger-item reconciliation rows likewise have null recomputed residuals. No allocation date is inferred. Full-extraction `clusters` remain diagnostic evidence and may name excluded entries; they are not import records. This also handles a pre-C payment matched to a document issued after C.
 4. Nothing is cancelled in e-conomic. The dry run is read-only and writes a report, not Quits records.
 
 **Levels**, in order; stop at the first level with a `blocking` exception:
@@ -186,12 +190,14 @@ What the fixtures do **not** prove: that a real account returns this shape, that
 | Level | Check | Tolerance |
 | --- | --- | --- |
 | 0 completeness | REST booked-invoice count equals BookedEntries debtor lines with an invoice number; `/count` endpoints against pages read; every PDF fetched or listed missing; attachment count joined | exact |
-| 1 per document | REST `remainder` equals the ledger-line `remainder`; invoice totals add up; the voucher's revenue, VAT and debtor lines net to zero | exact in the document currency; base totals within one minor unit |
-| 2 per allocation | each pair endpoint exists; pair amounts equal entry amounts; clusters conserve; solved flows fit both entries and agree with their signs | exact |
-| 3 per customer and currency | sum of residuals equals `customer.balance` (converted to base) and the unpaid-invoice total | one base minor unit per partially applied foreign entry; any other difference is reported with its amount |
+| 1 per document | debtor-line currency and customer match the invoice before comparing amounts; REST `remainder` equals the ledger-line `remainder`; invoice totals add up; the voucher's revenue, VAT and debtor lines net to zero | exact in the document currency; base totals within one minor unit |
+| 2 per allocation | each pair endpoint exists; pair amounts equal entry amounts; clusters conserve; solved flows fit both entries and agree with their signs; every emitted endpoint is represented in import scope | exact |
+| 3 per customer and currency | per-document and ledger-item residual rows stay in their own currencies; compare the complete extraction's ledger residuals converted to base against `customer.balance`. Planned: compare unpaid booked-invoice residuals with the vendor unpaid-invoice total after verifying its scope and currency semantics | one base minor unit per partially applied foreign entry for the customer check; any other difference is reported with its amount. Unpaid-total tolerance requires verified endpoint semantics |
 | 4 after a Quits dry run | per customer, document and currency: Quits residual equals source residual; unapplied cash and open credits equal their source sums; allocations reproduce each entry's applied amount | exact, per currency; never netted across currencies |
 
-**Pass.** No `blocking` exception; every `degraded` exception acknowledged by an operator decision; every control-total difference recorded with its amount. The validator covers levels 1 to 3, the join and PDF parts of level 0, and produces the reconciliation rows level 4 will compare against. Comparing page totals with the `/count` endpoints is an extractor duty that is not written yet.
+**Pass.** No `blocking` exception; every `degraded` exception acknowledged by an operator decision; every control-total difference recorded with its amount. `allRowsMatch` describes only the emitted reconciliation rows; a source-only row has a null match and makes it false. It is not an overall import approval. Customer controls cover the full extraction snapshot, including entries excluded at cutover; they must not be claimed as totals for imported history.
+
+The validator executes levels 1 and 2, the customer-balance part of level 3, the join and PDF-evidence parts of level 0, and produces the reconciliation rows level 4 will compare against. `SourceBundle` has no unpaid-total input and the unpaid-invoice control-total comparison is **planned, not executed**. Before implementing it, verify whether the endpoint includes credits and which currency it returns, then compare it with the same complete snapshot scope. Never compare it with cutover-filtered records or net different currencies. Comparing page totals with the `/count` endpoints is also a planned extractor duty.
 
 ## 9. Acceptance criteria for #29
 
@@ -201,7 +207,7 @@ What the fixtures do **not** prove: that a real account returns this shape, that
 | Fixture set: unpaid, fully paid, partially paid, credit allocation, unapplied cash, rounding, foreign currency, missing documents | **Met**, synthetic only (15 scenarios). |
 | Fixture verifies matched-pair amounts and joins rather than inferring from a paid flag; unsupported history reported | **Met** in the validator and its tests. Real-account behaviour unverified. |
 | Read-only access and writeback entitlements documented separately, including how to present an inaccessible account | **Met on documentation** (section 2). Plan gating **not tested** on any account. |
-| Test plan reconciling residuals per customer, document and currency, with the cutover boundary | **Met** (section 8). Levels 1 to 3 and part of 0 run on fixtures; level 4 needs the importer. |
+| Test plan reconciling residuals per customer, document and currency, with the cutover boundary | **Met as a test plan** (section 8). Levels 1 and 2, the customer-balance part of 3 and part of 0 run on synthetic fixtures. The unpaid-total and page-count checks are planned; level 4 needs the importer. |
 | No production mutations or source-provider cancellations required | **Met.** Only `GET`; the demo agreement is `GET`-only by the vendor's rule. |
 
 ## 10. Still needed from outside the codebase

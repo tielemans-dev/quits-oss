@@ -94,6 +94,58 @@ describe("e-conomic synthetic fixtures", () => {
 })
 
 describe("allocation proof, not a paid flag", () => {
+  it("blocks equal numeric invoice and ledger amounts in different currencies", () => {
+    const s = clone(byName("unpaid").source)
+    s.bookedInvoices[0]!.currency = "EUR"
+    const out = normalizeEconomic(s)
+    expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "debtor_line_currency_mismatch", severity: "blocking", subject: "invoice:1001" }))
+    expect(out.exceptions.some((e) => e.code === "debtor_line_amount_mismatch" || e.code === "remainder_disagreement")).toBe(false)
+    expect(out.documents[0]!.recomputedResidual).toBeNull()
+    expect(out.documents[0]!.residualBasis).toBe("source_remainder_only")
+    expect(out.reconciliation.rows[0]!.match).toBeNull()
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+  })
+
+  it("uses the base currency for a debtor line with no currency code", () => {
+    const s = clone(byName("unpaid").source)
+    delete s.entries.find((e) => e.customerNumber != null)!.currencyCode
+    expect(normalizeEconomic(s).exceptions).toEqual([])
+    expect(normalizeEconomic(s).reconciliation.allRowsMatch).toBe(true)
+    s.bookedInvoices[0]!.currency = "EUR"
+    expect(normalizeEconomic(s).exceptions.some((e) => e.code === "debtor_line_currency_mismatch")).toBe(true)
+  })
+
+  it("does not reconcile zero residuals or emit allocations for a paid invoice in the wrong currency", () => {
+    const s = clone(byName("fully_paid").source)
+    s.bookedInvoices[0]!.currency = "EUR"
+    const out = normalizeEconomic(s)
+    expect(out.exceptions.some((e) => e.code === "debtor_line_currency_mismatch" && e.severity === "blocking")).toBe(true)
+    expect(out.allocations).toEqual([])
+    expect(out.documents[0]!.recomputedResidual).toBeNull()
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+  })
+
+  it("does not compare minor units when the invoice and ledger have different exponents", () => {
+    const s = clone(byName("unpaid").source)
+    s.bookedInvoices[0]!.currency = "JPY"
+    const out = normalizeEconomic(s)
+    expect(out.exceptions.map((e) => e.code)).toEqual(["debtor_line_currency_mismatch"])
+    expect(out.documents[0]!.recomputedResidual).toBeNull()
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+  })
+
+  it("checks every debtor line's currency before summing residuals", () => {
+    const s = clone(byName("unpaid").source)
+    const debtor = s.entries.find((e) => e.customerNumber != null)!
+    const other = { ...debtor, entryNumber: 99, currencyCode: "EUR", amount: 250, remainder: 250, amountInBaseCurrency: 250 }
+    debtor.amount = debtor.remainder = debtor.amountInBaseCurrency = 1000
+    s.entries.push(other)
+    const out = normalizeEconomic(s)
+    expect(out.exceptions.some((e) => e.code === "debtor_line_currency_mismatch" && e.severity === "blocking")).toBe(true)
+    expect(out.documents[0]!.recomputedResidual).toBeNull()
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+  })
+
   it("never reads a zero remainder as a payment: no pair means unsupported history", () => {
     const out = normalizeEconomic(byName("unsupported_history").source)
     expect(out.allocations).toEqual([])
@@ -207,6 +259,145 @@ describe("allocation proof, not a paid flag", () => {
     const s = clone(byName("unpaid").source)
     s.customers = []
     expect(normalizeEconomic(s).exceptions.some((e) => e.code === "contact_unknown")).toBe(true)
+  })
+})
+
+describe("source identity validation", () => {
+  const collections = ["bookedInvoices", "entries", "customers", "attachedDocuments", "accountingYears"] as const
+  for (const collection of collections) {
+    for (const conflicting of [false, true]) {
+      it(`rejects the whole batch for ${conflicting ? "conflicting" : "identical"} duplicate ${collection}`, () => {
+        const s = clone(byName("unpaid").source)
+        const duplicate = clone(s[collection][0]!)
+        if (conflicting) {
+          if ("grossAmount" in duplicate) duplicate.grossAmount += 1
+          if ("amount" in duplicate) duplicate.amount += 1
+          if ("name" in duplicate) duplicate.name = "Conflicting customer"
+          if ("voucherNumber" in duplicate) duplicate.voucherNumber = 99
+          if ("fromDate" in duplicate) duplicate.fromDate = "2025-02-01"
+        }
+        // The collection and duplicate have the same element type at runtime.
+        ;(s[collection] as typeof duplicate[]).push(duplicate)
+        const out = normalizeEconomic(s)
+        expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "duplicate_source_identity", severity: "blocking" }))
+        expect(out.contacts).toEqual([])
+        expect(out.documents).toEqual([])
+        expect(out.ledgerItems).toEqual([])
+        expect(out.allocations).toEqual([])
+        expect(out.clusters).toEqual([])
+        expect(out.reconciliation.rows).toEqual([])
+        expect(out.reconciliation.allRowsMatch).toBe(false)
+      })
+    }
+  }
+
+  it("keeps repeated pairs as one edge, including reverse traversal", () => {
+    const s = clone(byName("fully_paid").source)
+    const pair = s.matchedPairs[0]!
+    s.matchedPairs.push(clone(pair), {
+      fromEntry: pair.toEntry, fromEntryDate: pair.toEntryDate, fromEntryAmount: pair.toEntryAmount, fromEntryAmountDKK: pair.toEntryAmountDKK,
+      toEntry: pair.fromEntry, toEntryDate: pair.fromEntryDate, toEntryAmount: pair.fromEntryAmount, toEntryAmountDKK: pair.fromEntryAmountDKK,
+    })
+    const out = normalizeEconomic(s)
+    expect(out.allocations).toHaveLength(1)
+    expect(out.exceptions).toEqual([])
+    expect(out.reconciliation.allRowsMatch).toBe(true)
+  })
+
+  for (const type of [1, 2]) {
+    it(`rejects a duplicated customer-ledger ${type === 1 ? "debtor" : "payment"} before Map overwrite`, () => {
+      const s = clone(byName("fully_paid").source)
+      s.entries.push(clone(s.entries.find((e) => e.type === type && e.customerNumber != null)!))
+      const out = normalizeEconomic(s)
+      expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "duplicate_source_identity", severity: "blocking" }))
+      expect(out.documents).toEqual([])
+      expect(out.ledgerItems).toEqual([])
+      expect(out.allocations).toEqual([])
+      expect(out.reconciliation.allRowsMatch).toBe(false)
+    })
+  }
+})
+
+describe("allocation import scope", () => {
+  const expectRepresentedEndpoints = (out: ImportBundle) => {
+    const represented = new Set([...out.documents.flatMap((d) => d.ledgerEntryNumbers), ...out.ledgerItems.map((i) => i.entryNumber)])
+    for (const a of out.allocations) {
+      expect(represented.has(a.debitEntry)).toBe(true)
+      expect(represented.has(a.creditEntry)).toBe(true)
+    }
+  }
+
+  it("emits only allocations with represented endpoints in every fixture", () => {
+    for (const s of fixtures.scenarios) expectRepresentedEndpoints(normalizeEconomic(s.source))
+  })
+
+  it("keeps a source-only snapshot for an invoice paid after cutover", () => {
+    const out = normalizeEconomic(byName("cutover_boundary").source)
+    expect(out.allocations).toEqual([])
+    expect(out.documents[0]).toMatchObject({ sourceKey: "invoice:1026", sourceResidual: 0, recomputedResidual: null, residualBasis: "source_remainder_only" })
+    expect(out.ledgerItems).toEqual([])
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+    expect(out.reconciliation.rows[0]!.match).toBeNull()
+  })
+
+  it("omits the entire cluster when a pre-cutover payment also pays a later invoice", () => {
+    const s = clone(byName("many_to_one").source)
+    // A shared payment connects two invoices. Keep its entry date before cutover,
+    // but exclude one invoice by its REST issue date.
+    const payment = s.entries.find((e) => e.type === 2 && s.matchedPairs.filter((p) => p.fromEntry === e.entryNumber || p.toEntry === e.entryNumber).length > 1)!
+    const pair = s.matchedPairs.find((p) => p.fromEntry === payment.entryNumber || p.toEntry === payment.entryNumber)!
+    const debtorNumber = pair.fromEntry === payment.entryNumber ? pair.toEntry : pair.fromEntry
+    const debtor = s.entries.find((e) => e.entryNumber === debtorNumber)!
+    s.bookedInvoices.find((i) => i.bookedInvoiceNumber === debtor.customerInvoiceNumber)!.date = "2026-10-02"
+    const out = normalizeEconomic(s)
+    expect(out.allocations.some((a) => a.debitEntry === payment.entryNumber || a.creditEntry === payment.entryNumber)).toBe(false)
+    expect(out.reconciliation.rows.filter((r) => r.recomputedResidual == null).length).toBeGreaterThanOrEqual(2)
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+    expectRepresentedEndpoints(out)
+  })
+
+  it("keeps both endpoints dated exactly on cutover eligible", () => {
+    const s = clone(byName("fully_paid").source)
+    s.bookedInvoices[0]!.date = s.extraction.cutoverDate
+    for (const e of s.entries) e.date = `${s.extraction.cutoverDate}T00:00:00`
+    const out = normalizeEconomic(s)
+    expect(out.allocations).toHaveLength(1)
+    expect(out.reconciliation.allRowsMatch).toBe(true)
+    expectRepresentedEndpoints(out)
+  })
+
+  it("keeps a pre-cutover payment source-only when its invoice is excluded", () => {
+    const s = clone(byName("fully_paid").source)
+    s.bookedInvoices[0]!.date = "2026-10-02"
+    const out = normalizeEconomic(s)
+    expect(out.documents).toEqual([])
+    expect(out.ledgerItems).toHaveLength(1)
+    expect(out.allocations).toEqual([])
+    expect(out.reconciliation.rows[0]).toMatchObject({ sourceResidual: 0, recomputedResidual: null, match: null })
+    expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "snapshot_residual_only", subject: "entry:4", severity: "degraded" }))
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+    expectRepresentedEndpoints(out)
+  })
+
+  it("cannot recompute an earlier document whose debtor entry is dated after cutover", () => {
+    const s = clone(byName("unpaid").source)
+    s.entries.find((e) => e.customerNumber != null)!.date = "2026-10-02T00:00:00"
+    const out = normalizeEconomic(s)
+    expect(out.documents[0]!.residualBasis).toBe("source_remainder_only")
+    expect(out.documents[0]!.recomputedResidual).toBeNull()
+    expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "snapshot_residual_only", subject: "invoice:1001" }))
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+  })
+
+  it("omits a match to an unsupported ledger item and leaves the document source-only", () => {
+    const s = clone(byName("fully_paid").source)
+    s.entries.find((e) => e.type === 2)!.type = 6
+    const out = normalizeEconomic(s)
+    expect(out.allocations).toEqual([])
+    expect(out.documents[0]!.recomputedResidual).toBeNull()
+    expect(out.exceptions.some((e) => e.code === "snapshot_residual_only")).toBe(true)
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+    expectRepresentedEndpoints(out)
   })
 })
 

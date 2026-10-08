@@ -615,7 +615,7 @@
    "requirement": "required",
    "status": "derived",
    "source": null,
-   "notes": "Gross minus solved allocations. An internal consistency check, not an independent proof of the vendor's remainder.",
+   "notes": "Gross minus solved allocations only when the invoice/debtor currency and customer joins are valid and the entire resolved match cluster is represented on or before cutover. Otherwise null with a source-only residual. An internal consistency check, not an independent proof of the vendor's remainder.",
    "derivedFrom": [
     "document.gross",
     "allocation.amount"
@@ -815,7 +815,7 @@
      "Bookkeeping"
     ]
    },
-   "notes": "toEntry is the other side. In all four demo pairs 'from' was the positive entry; that is not documented, so the validator orients by sign.",
+   "notes": "toEntry is the other side. In all four demo pairs 'from' was the positive entry; that is not documented, so the validator orients by sign. Emitted allocations require both endpoints in imported documents or ledger items; clusters outside that scope are omitted in full.",
    "executedProbeIds": [
     "be-matched-pairs"
    ]

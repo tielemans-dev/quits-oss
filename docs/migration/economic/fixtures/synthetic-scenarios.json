@@ -3573,19 +3573,13 @@
       "gross": 50000,
       "currency": "DKK",
       "residual": 0,
-      "residualBasis": "recomputed_from_allocations",
+      "residualBasis": "source_remainder_only",
       "pdf": "ok",
       "attachments": 0
      }
     },
     "ledgerItems": {},
-    "allocations": [
-     {
-      "debitEntry": 3,
-      "creditEntry": 4,
-      "amount": 50000
-     }
-    ],
+    "allocations": [],
     "clusters": [
      {
       "entries": [
@@ -3607,7 +3601,7 @@
       "subject": "invoice:1026"
      }
     ],
-    "allRowsMatch": true,
+    "allRowsMatch": false,
     "rowKinds": [
      "document"
     ],
