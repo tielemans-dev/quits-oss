@@ -11,6 +11,7 @@ export const daCreditNotesMessages = {
   "creditNotes.table.date": "Dato",
   "creditNotes.table.reason": "Årsag",
   "creditNotes.table.total": "Total",
+  "creditNotes.table.status": "Status",
   "creditNotes.amountDescription": "Kreditering af {number}",
   "creditNotes.panel.title": "Kreditnotaer",
   "creditNotes.panel.description": "Krediter hele eller dele af fakturaen. Kreditnotaer kan ikke ændres, når de er udstedt.",

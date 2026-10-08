@@ -11,6 +11,7 @@ export const enCreditNotesMessages = {
   "creditNotes.table.date": "Date",
   "creditNotes.table.reason": "Reason",
   "creditNotes.table.total": "Total",
+  "creditNotes.table.status": "Status",
   "creditNotes.amountDescription": "Credit for {number}",
   "creditNotes.panel.title": "Credit notes",
   "creditNotes.panel.description": "Credit all or part of this invoice. Credit notes cannot be changed once issued.",
