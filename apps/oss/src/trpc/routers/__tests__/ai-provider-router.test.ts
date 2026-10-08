@@ -236,6 +236,20 @@ describe("provider fallbacks and errors", () => {
     resetRuntimeServices()
   })
 
+  it("returns no items and the model's reason when the prompt describes no sale", async () => {
+    const complete = vi.fn(async () => '{"items":[],"reason":"Der står ikke, hvad der er solgt."}')
+    mocks.aiCapabilities = { ...defaultAiCapabilities, byok: false, managed: true }
+    mocks.findMany.mockResolvedValue([])
+    mocks.findUnique.mockResolvedValue({ aiModel: null })
+    setRuntimeServices({ managedAiProvider: { id: "managed", complete } })
+
+    const caller = aiRouter.createCaller(createContext())
+    const result = await caller.generateInvoiceDraft({ prompt: "La la la. Jeg kan godt lide kage.", mode: "managed" })
+
+    expect(result.draft).toMatchObject({ items: [], reason: "Der står ikke, hvad der er solgt." })
+    resetRuntimeServices()
+  })
+
   it.each([
     ["invalid_response", "UNPROCESSABLE_CONTENT", "The AI couldn't turn that into an invoice"],
     ["timeout", "GATEWAY_TIMEOUT", "The AI provider did not respond in time"],

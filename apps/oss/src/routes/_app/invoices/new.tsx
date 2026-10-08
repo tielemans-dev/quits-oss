@@ -33,7 +33,7 @@ import {
 } from "../../../components/ui/card"
 import { Plus, Sparkles, Trash2 } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
-import type { TranslationKey } from "../../../lib/i18n/catalog"
+import { aiDraftErrorMessageKey } from "../../../lib/ai-draft-error"
 
 export const Route = createFileRoute("/_app/invoices/new")({
   component: NewInvoicePage,
@@ -47,18 +47,6 @@ type LineItem = {
   unitPrice: string
   vat?: DocumentLineInput["vat"]
   catalogItemId?: string
-}
-
-/** Translated messages for AI drafting failures, by tRPC error code. */
-const aiErrorMessageKeys: Record<string, TranslationKey> = {
-  UNPROCESSABLE_CONTENT: "invoices.new.ai.error.notAnInvoice",
-  TOO_MANY_REQUESTS: "invoices.new.ai.error.busy",
-  GATEWAY_TIMEOUT: "invoices.new.ai.error.timeout",
-  BAD_GATEWAY: "invoices.new.ai.error.providerFailed",
-}
-
-function aiErrorCode(error: unknown) {
-  return (error as { data?: { code?: string } } | null)?.data?.code
 }
 
 function NewInvoicePage() {
@@ -174,6 +162,11 @@ function NewInvoicePage() {
         mode: aiInvoiceDraft?.byok || aiInvoiceDraft?.localAgent ? "byok" : "managed",
       })
       const draft = result.draft
+      // The prompt described nothing that was sold; the model says why, in the user's language.
+      if (draft.items.length === 0) {
+        setAiError(draft.reason ?? t("invoices.new.ai.error.notAnInvoice"))
+        return
+      }
 
       if (draft.dueDate) {
         setDueDate(draft.dueDate)
@@ -222,7 +215,7 @@ function NewInvoicePage() {
         }
       }
     } catch (err) {
-      const messageKey = aiErrorMessageKeys[aiErrorCode(err) ?? ""]
+      const messageKey = aiDraftErrorMessageKey(err)
       setAiError(
         messageKey
           ? t(messageKey)
