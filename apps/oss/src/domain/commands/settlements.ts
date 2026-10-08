@@ -58,6 +58,21 @@ export function settlementAmount(value: string, currency: string, allowZero = fa
   return amount
 }
 
+/** Active totals may come from aggregates or already-loaded history; use receipt currency. */
+export function receiptBalanceFromTotals(
+  receipt: Pick<SettlementReceipt, "grossAmount" | "reversedAt">,
+  allocated: Prisma.Decimal,
+  refunded: Prisma.Decimal,
+) {
+  return {
+    allocated,
+    refunded,
+    available: receipt.reversedAt
+      ? new Prisma.Decimal(0)
+      : receipt.grossAmount.minus(allocated).minus(refunded),
+  }
+}
+
 export async function receiptBalance(db: Prisma.TransactionClient, receipt: SettlementReceipt) {
   const [payments, refunds] = await Promise.all([
     db.payment.aggregate({
@@ -71,13 +86,7 @@ export async function receiptBalance(db: Prisma.TransactionClient, receipt: Sett
   ])
   const allocated = payments._sum.receiptAmount ?? new Prisma.Decimal(0)
   const refunded = refunds._sum.amount ?? new Prisma.Decimal(0)
-  return {
-    allocated,
-    refunded,
-    available: receipt.reversedAt
-      ? new Prisma.Decimal(0)
-      : receipt.grossAmount.minus(allocated).minus(refunded),
-  }
+  return receiptBalanceFromTotals(receipt, allocated, refunded)
 }
 
 async function loadReceipt(db: Prisma.TransactionClient, organizationId: string, id: string) {
