@@ -7,6 +7,7 @@ import { resetRuntimeServices, setRuntimeServices } from "../../../lib/runtime/s
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
   findMany: vi.fn(),
+  txFindUnique: vi.fn(),
   decryptSecret: vi.fn(),
   aiCapabilities: {} as Record<string, unknown>,
 }))
@@ -16,8 +17,15 @@ vi.mock("../../../lib/db", () => ({
     orgSettings: { findUnique: mocks.findUnique },
     contact: { findMany: mocks.findMany },
     catalogItem: { findMany: vi.fn(async () => []) },
-    $transaction: vi.fn(),
+    $transaction: vi.fn(async (run: (tx: unknown) => unknown) =>
+      run({ orgSettings: { findUnique: mocks.txFindUnique } })
+    ),
   },
+}))
+
+vi.mock("../../../domain/documents/base-currency", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../domain/documents/base-currency")>()),
+  resolveBaseCurrency: async () => "EUR",
 }))
 
 vi.mock("../../../lib/secrets", async (importOriginal) => ({
@@ -158,12 +166,16 @@ describe("settings router AI provider handling", () => {
     mocks.aiCapabilities = { ...defaultAiCapabilities }
   })
 
-  it("rejects saving the local agent when the runtime does not enable it", async () => {
+  it("rejects switching to the local agent when the runtime does not enable it", async () => {
+    mocks.txFindUnique.mockResolvedValue({
+      countryCode: "DK",
+      aiProvider: "openrouter",
+      aiBaseUrl: null,
+    })
     const caller = settingsRouter.createCaller(createContext())
 
     await expect(caller.update({ aiProvider: "cli_agent" })).rejects.toMatchObject({
       code: "BAD_REQUEST",
     })
-    expect(mocks.findUnique).not.toHaveBeenCalled()
   })
 })

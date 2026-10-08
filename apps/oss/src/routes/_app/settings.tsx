@@ -213,6 +213,9 @@ function SettingsPage() {
   const [loadingAiCapabilities, setLoadingAiCapabilities] = useState(true)
   const [aiProvider, setAiProvider] = useState<AiProviderId>("openrouter")
   const [aiBaseUrl, setAiBaseUrl] = useState("")
+  // Controlled so a typed key never outlives the destination it was typed for: it is cleared after
+  // saving and whenever the provider or base URL changes.
+  const [aiApiKeyDraft, setAiApiKeyDraft] = useState("")
   const [aiModel, setAiModel] = useState(DEFAULT_AI_MODEL)
   const [clearAiApiKey, setClearAiApiKey] = useState(false)
   const [clearStripeSecretKey, setClearStripeSecretKey] = useState(false)
@@ -411,7 +414,10 @@ function SettingsPage() {
     const creditNotePrefixInput = ((form.get("creditNotePrefix") as string) || "").trim()
     const aiModelInput = aiModel.trim()
     const aiBaseUrlInput = aiBaseUrl.trim()
-    const aiApiKeyInput = ((form.get("aiApiKey") as string) || "").trim()
+    const aiApiKeyInput = aiApiKeyDraft.trim()
+    // With no provider the organisation may choose (managed-only distributions), leave the AI
+    // settings untouched rather than submitting a provider the server would reject.
+    const sendAiSettings = aiProviderOptions.length > 0
     const stripePublishableKeyInput = ((form.get("stripePublishableKey") as string) || "").trim()
     const stripeSecretKeyInput = ((form.get("stripeSecretKey") as string) || "").trim()
     const stripeWebhookSecretInput = ((form.get("stripeWebhookSecret") as string) || "").trim()
@@ -465,11 +471,15 @@ function SettingsPage() {
         quotePrefix: quotePrefixInput || undefined,
         creditNotePrefix: creditNotePrefixInput || undefined,
         onboardingInvoicingIdentity: invoicingIdentity,
-        aiProvider,
-        aiBaseUrl: aiProvider === "openai_compatible" ? aiBaseUrlInput || null : undefined,
-        aiModel: aiModelInput || undefined,
-        aiApiKey: aiApiKeyInput || undefined,
-        clearAiApiKey,
+        ...(sendAiSettings
+          ? {
+              aiProvider,
+              aiBaseUrl: aiProvider === "openai_compatible" ? aiBaseUrlInput || null : undefined,
+              aiModel: aiModelInput || undefined,
+              aiApiKey: aiApiKeyInput || undefined,
+              clearAiApiKey,
+            }
+          : {}),
         stripePublishableKey: stripePublishableKeyInput || undefined,
         stripeSecretKey: stripeSecretKeyInput || undefined,
         stripeWebhookSecret: stripeWebhookSecretInput || undefined,
@@ -478,22 +488,26 @@ function SettingsPage() {
       })
       setTimezone(timezoneInput)
       const savedBaseUrl = aiProvider === "openai_compatible" ? aiBaseUrlInput || null : settings?.aiBaseUrl ?? null
+      // The server drops the saved key when the provider or endpoint changes without a new key.
+      const aiDestinationChanged =
+        aiProvider !== settings?.aiProvider || savedBaseUrl !== (settings?.aiBaseUrl ?? null)
       setSettings((prev) =>
-        prev
+        prev && sendAiSettings
           ? {
               ...prev,
               aiProvider,
               aiBaseUrl: savedBaseUrl,
               aiModel: aiModelInput || prev.aiModel,
-              aiByokConfigured: clearAiApiKey
-                ? false
-                : aiApiKeyInput
-                  ? true
+              aiByokConfigured: aiApiKeyInput
+                ? true
+                : clearAiApiKey || aiDestinationChanged
+                  ? false
                   : prev.aiByokConfigured,
             }
           : prev
       )
       setClearAiApiKey(false)
+      setAiApiKeyDraft("")
       setClearStripeSecretKey(false)
       setClearStripeWebhookSecret(false)
       setSuccess(true)
@@ -1196,7 +1210,10 @@ function SettingsPage() {
                   <Label htmlFor="aiProvider">{t("settings.aiProvider.label")}</Label>
                   <Select
                     value={aiProvider}
-                    onValueChange={(value) => setAiProvider(value as AiProviderId)}
+                    onValueChange={(value) => {
+                      setAiProvider(value as AiProviderId)
+                      setAiApiKeyDraft("")
+                    }}
                   >
                     <SelectTrigger id="aiProvider">
                       <SelectValue />
@@ -1227,7 +1244,10 @@ function SettingsPage() {
                       autoComplete="off"
                       placeholder="http://localhost:11434/v1"
                       value={aiBaseUrl}
-                      onChange={(e) => setAiBaseUrl(e.target.value)}
+                      onChange={(e) => {
+                        setAiBaseUrl(e.target.value)
+                        setAiApiKeyDraft("")
+                      }}
                     />
                     <p className="text-xs text-muted-foreground">
                       {t("settings.aiBaseUrl.help")}
@@ -1302,7 +1322,11 @@ function SettingsPage() {
                         type="password"
                         autoComplete="off"
                         placeholder={aiProvider === "openrouter" ? "sk-or-v1-..." : undefined}
-                        onChange={() => setClearAiApiKey(false)}
+                        value={aiApiKeyDraft}
+                        onChange={(e) => {
+                          setAiApiKeyDraft(e.target.value)
+                          setClearAiApiKey(false)
+                        }}
                       />
                       <p className="text-xs text-muted-foreground">
                         {aiProvider === "openai_compatible"

@@ -230,9 +230,6 @@ export const settingsRouter = router({
         ...settingsInput
       } = input
 
-      if (settingsInput.aiProvider) {
-        assertAiProviderAllowed(settingsInput.aiProvider)
-      }
 
       assertSettingsCurrency(settingsInput.currency)
       assertSettingsCurrency(settingsInput.defaultCurrency)
@@ -246,6 +243,11 @@ export const settingsRouter = router({
           where: { organizationId: ctx.organizationId },
           select: { countryCode: true, aiProvider: true, aiBaseUrl: true },
         })
+        // Re-saving the stored provider is always fine; only switching to a new one is checked, so
+        // capability changes on the server never block saving unrelated settings.
+        if (settingsInput.aiProvider && settingsInput.aiProvider !== current?.aiProvider) {
+          assertAiProviderAllowed(settingsInput.aiProvider)
+        }
         const resolvedCountry = normalizeCountryCode(
           settingsInput.countryCode ?? current?.countryCode
         )

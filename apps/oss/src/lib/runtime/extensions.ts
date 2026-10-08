@@ -3,7 +3,7 @@ import type {
   RuntimeCapabilityPatch,
 } from "@quits/contracts/runtime"
 import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
-import { getRuntimeEnv } from "./platform"
+import { getRuntimeEnv, getRuntimePlatform } from "./platform"
 
 export type RuntimeExtension = {
   id: string
@@ -58,6 +58,7 @@ function readDefaultCapabilities(
   // Running a local agent is an operator decision: it needs both the flag and a command.
   const localAgent =
     !isCloud &&
+    getRuntimePlatform().getRuntimeKind() === "node" &&
     readBooleanEnv(readProductEnv(env, "AI_LOCAL_AGENT_ENABLED"), false) &&
     Boolean(readProductEnv(env, "AI_LOCAL_AGENT_COMMAND")?.trim())
   const onboardingAiManaged = readBooleanEnv(
