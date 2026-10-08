@@ -123,7 +123,7 @@ export const eventRegistry = {
   "agreement.completed": { version: 1, schema: z.object({ reason: s, previousStatus: agreementStatusSchema }).strict() },
   "deliverable.reserved": { version: 1, schema: z.object({ deliverableId: s, invoiceId: s }).strict() },
   "deliverable.released": { version: 1, schema: z.object({ deliverableId: s, invoiceId: s }).strict() },
-  "deliverable.rebill_authorized": { version: 1, schema: z.object({ deliverableId: s, invoiceId: s, creditNoteId: s, creditNoteIds: z.array(s).optional(), generation: i }).strict() },
+  "deliverable.rebill_authorized": { version: 2, schema: z.object({ deliverableId: s, invoiceId: s, creditNoteId: s, creditNoteIds: z.array(s).min(1), generation: i }).strict() },
   "deliverable.invoiced": { version: 1, schema: z.object({ deliverableId: s, invoiceId: s }).strict() },
   "agreement.cancelled": { version: 1, schema: z.object({ reason: s, previousStatus: agreementStatusSchema }).strict() },
   "agreement.links_revoked": { version: 1, schema: z.object({ keyVersion: i }).strict() },

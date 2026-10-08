@@ -1,18 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("../../../lib/email", async () => ({ ...await vi.importActual<typeof import("../../../lib/email")>("../../../lib/email"), deliver: vi.fn() }))
 import { getPrisma, prisma } from "../../../lib/db"
+import { Prisma } from "../../../../generated/prisma/client"
 import { defaultNodePlatform } from "../../../lib/runtime/node-platform"
 import { resetRuntimePlatform, setRuntimePlatform } from "../../../lib/runtime/platform"
+import { getDocumentRenderer, getDocumentArtifactStore } from "../../../lib/runtime/services"
+import { documentPdf } from "../../../lib/documents/pdf-access"
 import { appRouter } from "../../../trpc/router"
 import { deliver } from "../../../lib/email"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
-import { type CommandOutcome } from "../../execute"
-import { executeIssuanceCommand, issueDocument } from "../../../application/issuance"
+import { executeCommand, type CommandOutcome } from "../../execute"
+import { actorCan } from "../../actor"
+import { executeIssuanceCommand, issueDocument, reserveDocument, prepareDocument } from "../../../application/issuance"
 import { createAgreementDraft } from "../../commands/agreements"
 import { closeAgreement, issueAgreement, recordAgreementAcceptance } from "../../commands/agreement-lifecycle"
 import { markDeliverableDelivered, acceptDeliverable } from "../../commands/deliverables"
 import { createInvoiceFromDeliverables, addInvoiceDeliverables } from "../../commands/invoices-from-deliverables"
-import { deleteInvoiceDraft, updateInvoiceDraft } from "../../commands/invoices"
+import { deleteInvoiceDraft, sendInvoice, updateInvoiceDraft } from "../../commands/invoices"
 import { issueCreditNote } from "../../commands/credit-notes"
 import { authorizeDeliverableRebill, releaseDeliverableReservation } from "../../commands/billing-allocation"
 import { describeAllocations } from "../allocations"
@@ -36,7 +40,7 @@ beforeEach(() => {
 afterEach(async () => { resetRuntimePlatform(); vi.restoreAllMocks(); while (cleanups.length) await cleanups.pop()?.(); vi.unstubAllEnvs() })
 
 async function setup(lineCount = 2) {
-  const org = await createTestOrganization({ roles: ["admin", "accountant"] }); cleanups.push(org.cleanup)
+  const org = await createTestOrganization({ roles: ["admin", "member", "accountant"] }); cleanups.push(org.cleanup)
   const actor = org.actors.admin
   const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Customer", email: "customer@example.test" } })
   const agreement = completed(await executeIssuanceCommand(createAgreementDraft, {
@@ -110,28 +114,37 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
     await expectConsistentAllocations(ctx)
   })
 
-  it("refuses the last-line release before an empty draft can reach real issuance", async () => {
+  it("lets a member release the last reservation without deleting the draft or duplicating a financial line", async () => {
     const ctx = await setup(1)
-    const { saleInvoiceId } = completed(await ctx.reserve([ctx.id()]))
+    const actor = ctx.org.actors.member
+    expect(actorCan(actor, "invoice:update")).toBe(true)
+    expect(actorCan(actor, "invoice:delete")).toBe(false)
+    const { saleInvoiceId } = completed(await executeIssuanceCommand(createInvoiceFromDeliverables, { agreementId: ctx.agreement.id, deliverableIds: [ctx.id()] }, { actor }))
     const before = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
     expect(before.number).toBeNull()
-    const providerCallsBefore = vi.mocked(deliver).mock.calls.length
-    const outcome = await executeIssuanceCommand(releaseDeliverableReservation, await ctx.releaseInput(), { actor: ctx.actor })
-    if (outcome.status === "completed") {
-      // Exercise the actual downstream boundary on the broken implementation, not a send mock.
-      const issued = await issueDocument({ kind: "invoice", actor: ctx.actor, commandInput: { id: saleInvoiceId! } })
-      const after = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
-      console.info("last-line release boundary", { issuance: issued.status, status: after.status, number: after.number, itemCount: after.items.length, total: after.totalGross.toString(), providerCalls: vi.mocked(deliver).mock.calls.length - providerCallsBefore })
-    }
-    refused(outcome, "last_invoice_line")
-    expect(outcome).toMatchObject({ error: { message: expect.stringContaining("delete the draft") } })
-    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })).toEqual(before)
-    expect(await events(ctx, "deliverable.released")).toBe(0)
-    expect(await events(ctx, "invoice.draft_updated")).toBe(0)
-    // Deleting the eligible draft is the existing, authorized recovery for its final line.
-    completed(await executeIssuanceCommand(deleteInvoiceDraft, { id: saleInvoiceId! }, { actor: ctx.actor }))
-    expect(await ctx.view()).toMatchObject({ state: "unbilled", holder: null })
+    expect(await executeIssuanceCommand(deleteInvoiceDraft, { id: saleInvoiceId! }, { actor })).toMatchObject({ status: "failed", error: { tag: "Forbidden" } })
+    const input = await ctx.releaseInput()
+    const options = { actor, clientRequestId: "member-release" }
+    const outcome = await executeIssuanceCommand(releaseDeliverableReservation, input, options)
+    expect(completed(outcome)).toEqual({ invoiceId: saleInvoiceId, invoiceNumber: null, remainingLines: 0 })
+    const empty = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
+    expect(empty).toEqual({ ...before, updatedAt: expect.any(Date), items: [], subtotalNet: new Prisma.Decimal(0), totalTax: new Prisma.Decimal(0), totalGross: new Prisma.Decimal(0) })
+    expect(await ctx.view()).toMatchObject({ state: "unbilled", generation: 0, holder: null })
+    // An idempotent replay returns the original decision; a new attempt cannot release twice.
+    expect(await executeIssuanceCommand(releaseDeliverableReservation, input, options)).toEqual(outcome)
+    refused(await executeIssuanceCommand(releaseDeliverableReservation, input, { actor }), "not_reserved")
     expect(await events(ctx, "deliverable.released")).toBe(1)
+    expect(await events(ctx, "invoice.draft_updated")).toBe(1)
+    expect(await events(ctx, "invoice.draft_deleted")).toBe(0)
+    // The same empty draft is reusable. An old review cannot release its new line identity.
+    completed(await executeIssuanceCommand(addInvoiceDeliverables, { id: saleInvoiceId!, agreementId: ctx.agreement.id, deliverableIds: [ctx.id()] }, { actor }))
+    refused(await executeIssuanceCommand(releaseDeliverableReservation, input, { actor }), "allocation_changed")
+    const current = await ctx.releaseInput()
+    expect(current.expectedAllocation.invoiceItemId).not.toBe(input.expectedAllocation.invoiceItemId)
+    refused(await executeIssuanceCommand(releaseDeliverableReservation, { ...current, expectedAllocation: { ...current.expectedAllocation, generation: 1 } }, { actor }), "allocation_changed")
+    await ctx.issue(saleInvoiceId!)
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! } })).number).toBe("INV-0001")
+    await expectConsistentAllocations(ctx)
   })
 
   it("refuses to release work that is already on an issued invoice", async () => {
@@ -141,6 +154,109 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
     refused(await executeIssuanceCommand(releaseDeliverableReservation, await ctx.releaseInput(), { actor: ctx.actor }), "not_reserved")
     expect((await ctx.line()).billingStatus).toBe("invoiced")
     expect(await events(ctx, "deliverable.released")).toBe(0)
+  })
+
+  it.each(["email", "without email"])("refuses an empty draft through real issuance %s before numbering, artifacts or delivery", async (mode) => {
+    const ctx = await setup(1)
+    const actor = ctx.org.actors.member
+    const { saleInvoiceId } = completed(await ctx.reserve([ctx.id()]))
+    completed(await executeIssuanceCommand(releaseDeliverableReservation, await ctx.releaseInput(), { actor }))
+    const before = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
+    expect(before).toMatchObject({ status: "draft", number: null, items: [] })
+    const counter = (await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })).invoiceNextNum
+    const jobsBefore = await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })
+    const render = vi.spyOn(getDocumentRenderer()!, "renderPdf")
+    const store = vi.spyOn(getDocumentArtifactStore()!, "put")
+    vi.mocked(deliver).mockClear()
+    if (mode === "without email") vi.stubEnv("RESEND_API_KEY", "")
+    const commandInput = { id: saleInvoiceId!, allowSendWithoutEmail: mode === "without email" }
+    const outcome = await executeIssuanceCommand(sendInvoice, commandInput, { actor })
+    refused(outcome, "empty_invoice")
+    expect(outcome).toMatchObject({ error: { message: "Add at least one line before sending this invoice." } })
+    // The low-level command cannot bypass the issuance protocol either.
+    refused(await executeCommand(sendInvoice, commandInput, { actor }), "issuance_required")
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })).toEqual(before)
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })).invoiceNextNum).toBe(counter)
+    expect(await prisma.artifactStaging.count({ where: { documentId: saleInvoiceId! } })).toBe(0)
+    expect(await prisma.issuanceCandidate.count({ where: { documentId: saleInvoiceId! } })).toBe(0)
+    expect(await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })).toBe(jobsBefore)
+    expect(await events(ctx, "invoice.issued")).toBe(0)
+    expect(await events(ctx, "invoice.sent")).toBe(0)
+    expect(await events(ctx, "document.number_voided")).toBe(0)
+    expect(render).not.toHaveBeenCalled()
+    expect(store).not.toHaveBeenCalled()
+    expect(deliver).not.toHaveBeenCalled()
+    // Empty drafts can still be previewed, without taking a number or publishing an artifact.
+    const preview = await documentPdf("invoice", saleInvoiceId!, ctx.org.organizationId)
+    expect(preview.status).toBe(200)
+    expect(preview.headers.get("X-Quits-Artifact")).toBe("live")
+    expect(await preview.json()).toMatchObject({ pdf: { invoice: { status: "draft", number: "", items: [] } } })
+    expect(store).not.toHaveBeenCalled()
+  })
+
+  it("refuses a prepared send when a member releases the final line before commit", async () => {
+    const ctx = await setup(1)
+    const { saleInvoiceId } = completed(await ctx.reserve([ctx.id()]))
+    const actor = ctx.org.actors.member
+    const args = { kind: "invoice" as const, actor, clientRequestId: "prepared-send", commandInput: { id: saleInvoiceId! } }
+    const staged = await reserveDocument(args)
+    await prepareDocument(staged.id)
+    completed(await executeIssuanceCommand(releaseDeliverableReservation, await ctx.releaseInput(), { actor }))
+    const before = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
+    vi.mocked(deliver).mockClear()
+    const render = vi.spyOn(getDocumentRenderer()!, "renderPdf")
+    const store = vi.spyOn(getDocumentArtifactStore()!, "put")
+    refused(await executeCommand(sendInvoice, args.commandInput, { actor, clientRequestId: args.clientRequestId, issuanceStagingId: staged.id }), "empty_invoice")
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })).toEqual(before)
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })).invoiceNextNum).toBe(1)
+    expect(await prisma.issuanceCandidate.count({ where: { documentId: saleInvoiceId! } })).toBe(0)
+    expect((await prisma.artifactStaging.findUniqueOrThrow({ where: { id: staged.id } })).status).toBe("stored")
+    expect(await events(ctx, "invoice.issued")).toBe(0)
+    expect(await events(ctx, "invoice.sent")).toBe(0)
+    expect(render).not.toHaveBeenCalled()
+    expect(store).not.toHaveBeenCalled()
+    expect(deliver).not.toHaveBeenCalled()
+  })
+
+  it("keeps last-line member recovery tenant scoped", async () => {
+    const ctx = await setup(1)
+    const foreign = await createTestOrganization({ roles: ["member"] }); cleanups.push(foreign.cleanup)
+    const { saleInvoiceId } = completed(await ctx.reserve([ctx.id()]))
+    const input = await ctx.releaseInput()
+    const before = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
+    expect(await executeIssuanceCommand(releaseDeliverableReservation, input, { actor: foreign.actors.member })).toMatchObject({ status: "failed", error: { tag: "NotFound" } })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })).toEqual(before)
+    expect(await events(ctx, "deliverable.released")).toBe(0)
+    expect(await ctx.view()).toMatchObject({ state: "reserved", generation: 0, holder: { invoiceId: saleInvoiceId } })
+    completed(await executeIssuanceCommand(releaseDeliverableReservation, input, { actor: ctx.org.actors.member }))
+    await expectConsistentAllocations(ctx)
+  })
+
+  it("refuses last-line member recovery while the actual send is in flight and after issuance", async () => {
+    const ctx = await setup(1)
+    const { saleInvoiceId } = completed(await ctx.reserve([ctx.id()]))
+    const input = await ctx.releaseInput()
+    let settle!: (result: { id: string }) => void
+    vi.mocked(deliver).mockImplementationOnce(() => new Promise(resolve => { settle = resolve }))
+    const sending = issueDocument({ kind: "invoice", actor: ctx.org.actors.member, commandInput: { id: saleInvoiceId! } })
+    try {
+      await vi.waitFor(() => expect(settle).toBeTypeOf("function"))
+      const before = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
+      expect(before).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "sending" })
+      refused(await executeIssuanceCommand(releaseDeliverableReservation, input, { actor: ctx.org.actors.member }), "send_in_progress")
+      expect(await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })).toEqual(before)
+      expect(await events(ctx, "deliverable.released")).toBe(0)
+    } finally {
+      settle?.({ id: "synthetic-member-send" })
+      await sending
+    }
+    completed(await sending)
+    const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })
+    expect(issued).toMatchObject({ status: "sent", number: "INV-0001", items: [expect.objectContaining({ deliverableId: ctx.id() })] })
+    refused(await executeIssuanceCommand(releaseDeliverableReservation, input, { actor: ctx.org.actors.member }), "not_reserved")
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true } })).toEqual(issued)
+    expect(await events(ctx, "deliverable.released")).toBe(0)
+    await expectConsistentAllocations(ctx)
   })
 
   it("refuses a release reviewed against A after the work moves to B", async () => {
@@ -299,7 +415,7 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
     completed(await executeIssuanceCommand(authorizeDeliverableRebill, input, { actor: ctx.actor }))
     expect(await prisma.deliverableRebill.findFirstOrThrow({ where: { deliverableId: ctx.id() } })).toMatchObject({ priorInvoiceItemId: item.id, creditNoteIds: [first.id, second.id], reason: input.reason })
     expect(await ctx.view()).toMatchObject({ state: "unbilled", generation: 1, rebills: [{ creditNotes: [{ id: first.id, number: first.number }, { id: second.id, number: second.number }] }] })
-    expect((await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: ctx.org.organizationId, type: "deliverable.rebill_authorized" } })).payload).toMatchObject({ creditNoteIds: [first.id, second.id] })
+    expect(await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: ctx.org.organizationId, type: "deliverable.rebill_authorized" } })).toMatchObject({ schemaVersion: 2, payload: { creditNoteIds: [first.id, second.id] } })
     expect(await prisma.invoice.findUniqueOrThrow({ where: { id: saleInvoiceId! }, include: { items: true, creditNotes: { include: { items: true } } } })).toEqual(before)
     completed(await ctx.reserve([ctx.id()]))
     await expectConsistentAllocations(ctx)

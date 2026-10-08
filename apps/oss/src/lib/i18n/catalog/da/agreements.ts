@@ -121,7 +121,7 @@ export const daAgreementsMessages = {
   "agreements.allocation.heldHidden": "Holdes af en fakturakladde, du ikke har adgang til.",
   "agreements.allocation.billedOn": "Faktureret på faktura",
   "agreements.allocation.release": "Frigiv fra kladde",
-  "agreements.allocation.releaseConfirm": "Fjern {title} fra kladden {invoice}? Arbejdet kan derefter bruges i en anden kladde. Kladden beholder sine øvrige linjer.",
+  "agreements.allocation.releaseConfirm": "Fjern {title} fra kladden {invoice}? Arbejdet kan derefter bruges i en anden kladde. Kladden beholder eventuelle øvrige linjer og kan ikke sendes, mens den er tom.",
   "agreements.allocation.partialCredit": "{credited} af {quantity} er krediteret.",
   "agreements.allocation.creditDoesNotRelease": "En kreditnota gør ikke arbejdet fakturerbart igen.",
   "agreements.allocation.untiedCredit": "Fakturaen har også en kreditering, der ikke hører til denne linje.",

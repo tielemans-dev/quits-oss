@@ -76,6 +76,8 @@ export const prospectiveRenderInput = (input: {
       include: { contact: { include: { taxIds: true } }, items: { orderBy: { sortOrder: "asc" } } },
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.documentId })
+    // Checked before preparation and again under the commit locks. Empty drafts may still be previewed.
+    if (!input.preview && !invoice.items.length) return yield* new InvalidState({ code: "empty_invoice", message: "Add at least one line before sending this invoice." })
     if (!input.preview && invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
     // Payment details are always the ones valid now, also for agreement invoices, which keep the
     // agreed seller identity but are paid to the account in force when they are issued.

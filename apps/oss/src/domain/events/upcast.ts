@@ -13,9 +13,11 @@ type Transform = (payload: unknown) => unknown
 const transforms: Partial<Record<EventType, Record<number, Transform>>> = {
   "credit_note.issued": { 1: payload => ({ ...(payload as Record<string, unknown>), postable: false, incompleteReason: "historical_payload_incomplete" }) },
   "agreement.draft_created": { 1: (payload) => ({ ...(payload as Record<string, unknown>), sourceQuoteId: null }) },
+  // Historical decisions recorded one credit only. Later credits cannot establish what was reviewed.
+  "deliverable.rebill_authorized": { 1: (payload) => ({ ...(payload as Record<string, unknown>), creditNoteIds: [(payload as { creditNoteId: string }).creditNoteId] }) },
 }
 
-/** Known v1 envelopes are unchanged. Unknown types, invalid versions and missing steps refuse. */
+/** Current envelopes are unchanged. Unknown types, invalid versions and missing steps refuse. */
 export function upcastEvent<T extends Envelope>(event: T): Omit<T, "schemaVersion" | "payload"> & Envelope {
   const definition = eventDefinition(event.type)
   if (!definition || !Number.isInteger(event.schemaVersion) || event.schemaVersion < 1 || event.schemaVersion > definition.version) {

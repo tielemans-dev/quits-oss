@@ -33,9 +33,11 @@ A draft has no number until it is issued, so a holding draft is shown as "Draft"
 - Creating a draft or adding to one reserves the selected work in the same transaction as the draft.
   If anything fails, nothing is reserved.
 - Removing the line from a draft, deleting the draft, or releasing the line releases the reservation
-  once. A second release is refused with `not_reserved`. Releasing the last line is refused with
-  `last_invoice_line`; open and delete the eligible draft to free that work, or add another line
-  first. A release never leaves an empty draft that could be issued.
+  once. A second release is refused with `not_reserved`. Members can release the last line with
+  `invoice:update`; the draft stays open with no lines and zero totals. It can be reused without
+  deleting it or adding a placeholder line. Empty invoices cannot be issued or sent, including
+  sending without email. Issuance refuses with `empty_invoice` before taking a number, preparing
+  artifacts or queuing email, and checks again under the commit locks after preparation.
 - Two requests for the same work cannot both succeed. The loser receives `deliverable_reserved` (or
   `deliverable_already_invoiced`). Its `details` carry `deliverableId` and, when the caller may read
   invoices, `holdingInvoiceId`, `holdingInvoiceNumber` (null for a draft) and `holdingInvoiceStatus`.
@@ -124,10 +126,22 @@ set from all credits visible today, since those may postdate the decision. If th
 has been used with retained data, historical cumulative-credit decisions need an evidence audit.
 New decisions always store the reviewed set, including a one-element set for single-note callers.
 
+`deliverable.rebill_authorized` now uses schema version 2 with required `creditNoteIds`. Its archived
+v1 fixture is unchanged. The pure v1-to-v2 upcast derives only `[creditNoteId]`, the one recorded
+reference. It does not establish cumulative reviewed evidence or repair historical decisions.
+
 ## Kvit handoff
 
 Keep the existing agreement allocation panel and confirmation. Show all contributing credit-note
 numbers in the confirmation and all recorded notes in the history. Retain the reviewed IDs when
-opening the dialog. On `last_invoice_line`, explain the existing delete-draft or add-line recovery;
-keep the draft link and reservation visible. No new screen is required. Cumulative full-credit
+opening the dialog. Explain in the existing release confirmation that an empty draft cannot be sent.
+After release, refresh the allocation to unbilled; keep the empty draft available in invoices. Its
+existing send error asks for a line before sending. No new screen is required. Cumulative full-credit
 rebilling remains supported; partial or untied credits alone do not release work.
+
+When draft `editRevision` concurrency lands, releasing a reservation must increment the draft's
+revision and follow the editor's expected-revision rules. Current main has no such fields. This
+correction keeps agreement/invoice locks and reviewed allocation identity, without adding a separate
+revision mechanism. The issuance guard changes only non-preview invoice validation in
+`prospectiveRenderInput`; document-view contracts, invoice editor commands and PDF calculations stay
+as they are on current main.

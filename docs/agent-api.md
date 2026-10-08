@@ -241,7 +241,8 @@ are examples, not legal advice.
 it, credits tied to it and rebill decisions. `deliverable_release_reservation` (`invoice:update`)
 takes reserved work out of its draft. Supply `expectedAllocation: { invoiceId, invoiceItemId, generation }`
 from the reviewed holder and allocation. A changed allocation receives `allocation_changed`; refresh
-before retrying. Missing identity is refused. A last-line release receives `last_invoice_line`;
-delete the eligible draft or add another line before releasing it. `deliverable_authorize_rebill` is for a person: agents receive
+before retrying. Missing identity is refused. Releasing the last line leaves an empty draft with
+zero totals; issuing or sending it receives `empty_invoice` until a line is added.
+`deliverable_authorize_rebill` is for a person: agents receive
 `human_review_required`. A refusal such as `deliverable_reserved` carries structured `details`. See
 [Billable work and reservations](billable-work.md).

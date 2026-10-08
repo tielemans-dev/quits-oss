@@ -123,7 +123,7 @@ export const enAgreementsMessages = {
   "agreements.allocation.heldHidden": "Held by a draft invoice you do not have access to.",
   "agreements.allocation.billedOn": "Billed on invoice",
   "agreements.allocation.release": "Release from draft",
-  "agreements.allocation.releaseConfirm": "Remove {title} from the draft {invoice}? The work becomes available to another draft. The draft keeps its other lines.",
+  "agreements.allocation.releaseConfirm": "Remove {title} from the draft {invoice}? The work becomes available to another draft. The draft keeps any other lines and cannot be sent while empty.",
   "agreements.allocation.partialCredit": "{credited} of {quantity} credited.",
   "agreements.allocation.creditDoesNotRelease": "A credit note does not make this work billable again.",
   "agreements.allocation.untiedCredit": "The invoice also has a credit that is not tied to this line.",

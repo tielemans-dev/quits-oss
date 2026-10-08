@@ -37,8 +37,6 @@ export const releaseDeliverableReservation = defineCommand({
     if (invoice.status !== "draft") return yield* new InvalidState({ code: "not_draft", message: "Only a draft invoice can release work" })
     yield* refuseWhileSending("invoice", invoice)
     const remaining = invoice.items.filter(row => row.id !== item.id)
-    if (!remaining.length)
-      return yield* new InvalidState({ code: "last_invoice_line", message: "This is the draft's last line. Open the invoice and delete the draft to release this work, or add another line before releasing it." })
     const choice = invoice.scheduleSaleChoice as { deliverableIds?: string[] } | null
     yield* Effect.promise(() => db.invoiceItem.delete({ where: { id: item.id } }))
     yield* Effect.promise(() => db.invoice.update({ where: { id: invoice.id }, data: {

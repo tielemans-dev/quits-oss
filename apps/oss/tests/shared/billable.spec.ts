@@ -41,7 +41,7 @@ async function seedReservedWork(lineCount = 1) {
   return { actor, agreementId: agreement.id, deliverableId, first, reserve }
 }
 
-test('billable release refuses a stale holder and explains last-line recovery after refresh', async ({ page }, testInfo) => {
+test('billable release refuses a stale holder, then frees the last line while the empty draft cannot send', async ({ page }, testInfo) => {
   const ctx = await seedReservedWork(2)
   await loginAsAdmin(page)
   await page.goto(`/agreements/${ctx.agreementId}`)
@@ -69,12 +69,18 @@ test('billable release refuses a stale holder and explains last-line recovery af
   await page.reload()
   await expect(work.getByRole('link', { name: 'Draft', exact: true })).toHaveAttribute('href', `/invoices/${second}`)
   await work.getByRole('button', { name: 'Release from draft', exact: true }).click()
+  await expect(dialog).toContainText('cannot be sent while empty')
   await dialog.getByRole('button', { name: 'Release from draft', exact: true }).click()
-  await expect(page.getByRole('alert')).toContainText('last line')
-  await expect(page.getByRole('alert')).toContainText('delete the draft')
-  await expect(work.locator('[data-allocation-state]')).toHaveAttribute('data-allocation-state', 'reserved')
-  expect((await prisma.deliverable.findUniqueOrThrow({ where: { id: ctx.deliverableId } })).billingStatus).toBe('reserved')
-  expect(await prisma.invoiceItem.count({ where: { invoiceId: second } })).toBe(1)
+  await expect(work.locator('[data-allocation-state]')).toHaveAttribute('data-allocation-state', 'unbilled')
+  expect((await prisma.deliverable.findUniqueOrThrow({ where: { id: ctx.deliverableId } })).billingStatus).toBe('unbilled')
+  expect(await prisma.invoiceItem.count({ where: { invoiceId: second } })).toBe(0)
+  await page.goto(`/invoices/${second}`)
+  await page.getByRole('button', { name: 'Send without email', exact: true }).click()
+  await page.getByRole('button', { name: 'Continue without email', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Add at least one line before sending this invoice.')
+  expect(await prisma.invoice.findUniqueOrThrow({ where: { id: second } })).toMatchObject({ status: 'draft', number: null, artifactPdfRef: null })
+  expect(await prisma.issuanceCandidate.count({ where: { documentId: second } })).toBe(0)
+  await testInfo.attach('empty-draft-send-refused', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
 })
 
 test('billable rebill confirmation requires a reason and refreshes credited work to unbilled with its history', async ({ page }, testInfo) => {

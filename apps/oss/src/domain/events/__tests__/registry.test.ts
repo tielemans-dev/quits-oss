@@ -44,6 +44,24 @@ describe("versioned emitter inventory", () => {
 })
 
 describe("event envelope", () => {
+  it("upcasts archived rebill evidence using only the one recorded credit and writes new events as v2", () => {
+    const archived = JSON.parse(readFileSync(new URL("deliverable.rebill_authorized.v1.json", directory), "utf8")) as Fixture
+    const payload = Object.freeze({ deliverableId: "document-1", invoiceId: "invoice-1", creditNoteId: "credit-note-1", generation: 1 })
+    expect(archived.schemaVersion).toBe(1)
+    expect(archived.cases[0].payload).toEqual(payload)
+    const event = Object.freeze({ id: "historical-event", type: archived.type, schemaVersion: 1, payload })
+    const expected = { ...event, schemaVersion: 2, payload: { ...payload, creditNoteIds: ["credit-note-1"] } }
+    expect(upcastEvent(event)).toEqual(expected)
+    expect(upcastEvent(event)).toEqual(expected)
+    expect(event.payload).not.toHaveProperty("creditNoteIds")
+    expect(event.schemaVersion).toBe(1)
+    expect(serializeEvent(event.type, expected.payload)).toEqual({ schemaVersion: 2, payload: expected.payload })
+    const cumulative = { ...payload, creditNoteIds: ["credit-note-1", "credit-note-2"] }
+    expect(serializeEvent(event.type, cumulative)).toEqual({ schemaVersion: 2, payload: cumulative })
+    expect(() => serializeEvent(event.type, payload)).toThrow(InvalidEvent)
+    expect(() => serializeEvent(event.type, { ...payload, creditNoteIds: [] })).toThrow(InvalidEvent)
+    expect(() => serializeEvent(event.type, { ...cumulative, extra: true })).toThrow(InvalidEvent)
+  })
   it("validates after JSON serialization, retains the original serialized value and refuses unknown types", () => {
     const payload = { number: "INV-1", ignored: undefined, toJSON: () => ({ number: "INV-1" }) }
     expect(serializeEvent("invoice.draft_deleted", payload)).toEqual({ schemaVersion: 1, payload: { number: "INV-1" } })
@@ -67,6 +85,9 @@ describe("event envelope", () => {
       else if (fixture.type === "agreement.draft_created" && fixture.schemaVersion === 1) {
         expect(upcastEvent(envelope)).toMatchObject({ schemaVersion: 2, payload: { ...fixture.cases[0].payload as object, sourceQuoteId: null } })
         expect(envelope.payload).not.toHaveProperty("sourceQuoteId")
+      } else if (fixture.type === "deliverable.rebill_authorized" && fixture.schemaVersion === 1) {
+        expect(upcastEvent(envelope)).toMatchObject({ schemaVersion: 2, payload: { ...fixture.cases[0].payload as object, creditNoteIds: ["credit-note-1"] } })
+        expect(envelope.payload).not.toHaveProperty("creditNoteIds")
       } else expect(upcastEvent(envelope)).toBe(envelope)
       expect(() => upcastEvent({ ...envelope, schemaVersion: eventDefinition(fixture.type)!.version + 1 })).toThrow(UnsupportedEventVersion)
       expect(() => upcastEvent({ ...envelope, schemaVersion: 0 })).toThrow(UnsupportedEventVersion)
