@@ -4,7 +4,7 @@ import { TooltipProvider } from '../components/ui/tooltip'
 import { useI18n, I18nProvider } from '../lib/i18n/react'
 import { getInstallationStatus, normalizeInstallationStatus } from '../lib/installation'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
-import { themeInitScript } from '../lib/theme'
+import { THEME_COLORS, themeInitScript } from '../lib/theme'
 
 import appCss from '../styles.css?url'
 
@@ -68,9 +68,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
-        {/* Two tags with one name: the router's head() would keep only one of them. */}
-        <meta name="theme-color" content="#fcfcf9" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#0d1013" media="(prefers-color-scheme: dark)" />
+        {/* One tag: the head script (and applyTheme) set its colour from the resolved theme. */}
+        <meta name="theme-color" content={THEME_COLORS.light} suppressHydrationWarning />
         {/* After HeadContent so the charset meta stays near the top; the stylesheet blocks first paint anyway. */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

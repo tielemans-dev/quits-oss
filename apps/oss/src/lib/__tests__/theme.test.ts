@@ -4,6 +4,7 @@ import { act, cleanup, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  THEME_COLORS,
   THEME_STORAGE_KEY,
   applyTheme,
   isPublicDocumentPath,
@@ -32,10 +33,15 @@ function stubSystemTheme(initiallyDark: boolean) {
 }
 
 const isDark = () => document.documentElement.classList.contains("dark")
+const themeColors = () =>
+  Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')).map(
+    (meta) => meta.content
+  )
 
 beforeEach(() => {
   window.localStorage.clear()
   document.documentElement.className = ""
+  document.head.querySelectorAll('meta[name="theme-color"]').forEach((meta) => meta.remove())
   window.history.pushState({}, "", "/")
   resetThemeForTesting()
 })
@@ -123,6 +129,44 @@ describe("themeInitScript", () => {
     getItem.mockRestore()
   })
 
+  it("works when matchMedia is missing", () => {
+    // @ts-expect-error simulating an environment without matchMedia
+    window.matchMedia = undefined
+    window.localStorage.setItem(THEME_STORAGE_KEY, "dark")
+    runInitScript()
+    expect(isDark()).toBe(true)
+
+    window.localStorage.clear()
+    document.documentElement.className = ""
+    runInitScript()
+    expect(isDark()).toBe(false)
+  })
+
+  it("sets one theme-color meta from the resolved theme, not from the system", () => {
+    document.head.innerHTML = '<meta name="theme-color" content="#fcfcf9">'
+
+    stubSystemTheme(false)
+    window.localStorage.setItem(THEME_STORAGE_KEY, "dark")
+    runInitScript()
+    expect(themeColors()).toEqual([THEME_COLORS.dark])
+
+    stubSystemTheme(true)
+    window.localStorage.setItem(THEME_STORAGE_KEY, "light")
+    runInitScript()
+    expect(themeColors()).toEqual([THEME_COLORS.light])
+
+    window.localStorage.setItem(THEME_STORAGE_KEY, "dark")
+    window.history.pushState({}, "", "/q/some-token")
+    runInitScript()
+    expect(themeColors()).toEqual([THEME_COLORS.light])
+  })
+
+  it("creates the theme-color meta when the document has none", () => {
+    stubSystemTheme(true)
+    runInitScript()
+    expect(themeColors()).toEqual([THEME_COLORS.dark])
+  })
+
   it("agrees with resolveTheme", () => {
     for (const stored of [null, "system", "light", "dark"]) {
       for (const systemDark of [false, true]) {
@@ -143,6 +187,22 @@ describe("themeInitScript", () => {
         }
       }
     }
+  })
+})
+
+describe("applyTheme", () => {
+  it("keeps the theme-color meta in step with the resolved theme", () => {
+    stubSystemTheme(false)
+    document.head.innerHTML = '<meta name="theme-color" content="#fcfcf9">'
+
+    applyTheme("/invoices", "dark")
+    expect(themeColors()).toEqual([THEME_COLORS.dark])
+
+    applyTheme("/pay/token", "dark")
+    expect(themeColors()).toEqual([THEME_COLORS.light])
+
+    applyTheme("/invoices", "light")
+    expect(themeColors()).toEqual([THEME_COLORS.light])
   })
 })
 
