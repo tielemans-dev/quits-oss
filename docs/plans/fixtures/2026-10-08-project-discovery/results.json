@@ -2466,6 +2466,148 @@
       ]
     }
   ],
+  "draftAssociationRefusals": [
+    {
+      "after": {
+        "protected": {
+          "invoice": {
+            "contactId": "buyer-A",
+            "id": "draft-1",
+            "number": null,
+            "organizationId": "org-A",
+            "status": "draft"
+          }
+        },
+        "reporting": {
+          "projectId": null,
+          "revision": 0
+        }
+      },
+      "before": {
+        "protected": {
+          "invoice": {
+            "contactId": "buyer-A",
+            "id": "draft-1",
+            "number": null,
+            "organizationId": "org-A",
+            "status": "draft"
+          }
+        },
+        "reporting": {
+          "projectId": null,
+          "revision": 0
+        }
+      },
+      "case": "assign-before-buyer-change",
+      "expected": "invoice_not_issued",
+      "stateUnchanged": true
+    },
+    {
+      "after": {
+        "protected": {
+          "invoice": {
+            "contactId": "buyer-B",
+            "id": "draft-1",
+            "number": null,
+            "organizationId": "org-A",
+            "status": "draft"
+          }
+        },
+        "reporting": {
+          "projectId": null,
+          "revision": 0
+        }
+      },
+      "before": {
+        "protected": {
+          "invoice": {
+            "contactId": "buyer-B",
+            "id": "draft-1",
+            "number": null,
+            "organizationId": "org-A",
+            "status": "draft"
+          }
+        },
+        "reporting": {
+          "projectId": null,
+          "revision": 0
+        }
+      },
+      "case": "assign-after-buyer-change",
+      "expected": "invoice_not_issued",
+      "stateUnchanged": true
+    },
+    {
+      "after": {
+        "protected": {
+          "invoice": {
+            "contactId": "buyer-A",
+            "id": "draft-1",
+            "number": null,
+            "organizationId": "org-A",
+            "status": "draft"
+          }
+        },
+        "reporting": {
+          "projectId": "project-A",
+          "revision": 0
+        }
+      },
+      "before": {
+        "protected": {
+          "invoice": {
+            "contactId": "buyer-A",
+            "id": "draft-1",
+            "number": null,
+            "organizationId": "org-A",
+            "status": "draft"
+          }
+        },
+        "reporting": {
+          "projectId": "project-A",
+          "revision": 0
+        }
+      },
+      "case": "correct-invalid-draft-association",
+      "expected": "invoice_not_issued",
+      "stateUnchanged": true
+    },
+    {
+      "after": {
+        "protected": {
+          "invoice": {
+            "contactId": "buyer-A",
+            "id": "draft-1",
+            "number": null,
+            "organizationId": "org-A",
+            "status": "draft"
+          }
+        },
+        "reporting": {
+          "projectId": "project-A",
+          "revision": 0
+        }
+      },
+      "before": {
+        "protected": {
+          "invoice": {
+            "contactId": "buyer-A",
+            "id": "draft-1",
+            "number": null,
+            "organizationId": "org-A",
+            "status": "draft"
+          }
+        },
+        "reporting": {
+          "projectId": "project-A",
+          "revision": 0
+        }
+      },
+      "case": "remove-invalid-draft-association",
+      "expected": "invoice_not_issued",
+      "stateUnchanged": true
+    }
+  ],
   "economics": {
     "incompleteProject": {
       "knownActualHours": 27,

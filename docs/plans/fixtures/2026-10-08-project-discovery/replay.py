@@ -20,6 +20,8 @@ def association(protected, reporting, target, expected_revision):
     # Proposed rule only. There is no such command in the audited application.
     if expected_revision != reporting["revision"]:
         raise ValueError("association_changed")
+    if protected["invoice"]["status"] == "draft" or protected["invoice"]["number"] is None:
+        raise ValueError("invoice_not_issued")
     if target is not None:
         if target["organizationId"] != protected["invoice"]["organizationId"]:
             raise ValueError("project_not_found")
@@ -131,6 +133,34 @@ def association_replays():
     return results
 
 
+def draft_association_replays():
+    """Refuse the proposed label around a buyer edit, without simulating the app editor."""
+    cases = [
+        ("assign-before-buyer-change", "buyer-A", None, "project-A"),
+        ("assign-after-buyer-change", "buyer-B", None, "project-B"),
+        ("correct-invalid-draft-association", "buyer-A", "project-A", "project-B"),
+        ("remove-invalid-draft-association", "buyer-A", "project-A", None),
+    ]
+    results = []
+    for name, buyer, previous, next_project in cases:
+        protected = {"invoice": {"id": "draft-1", "status": "draft", "number": None,
+                                  "organizationId": "org-A", "contactId": buyer}}
+        reporting = {"projectId": previous, "revision": 0}
+        target = {"id": next_project, "organizationId": "org-A", "contactId": buyer} if next_project else None
+        before = {"protected": copy.deepcopy(protected), "reporting": reporting.copy()}
+        try:
+            association(protected, reporting, target, 0)
+        except ValueError as exc:
+            assert str(exc) == "invoice_not_issued"
+        else:
+            raise AssertionError("Draft association must refuse")
+        after = {"protected": protected, "reporting": reporting}
+        assert before == after
+        results.append({"case": name, "expected": "invoice_not_issued", "before": before,
+                        "after": after, "stateUnchanged": True})
+    return results
+
+
 def effort(actual, complete, low, high):
     if actual < 0:
         raise ValueError("negative_actual")
@@ -196,7 +226,8 @@ def economics_replays():
 
 def replay():
     return {"evidenceClass": "hypothetical metadata and economics fixtures; not application behavior or customer evidence",
-            "asOf": "2026-10-08", "association": association_replays(), "economics": economics_replays()}
+            "asOf": "2026-10-08", "association": association_replays(),
+            "draftAssociationRefusals": draft_association_replays(), "economics": economics_replays()}
 
 
 if __name__ == "__main__":
@@ -209,4 +240,4 @@ if __name__ == "__main__":
         assert target.read_text() == output, "Committed results differ from deterministic replay"
     else:
         target.write_text(output)
-    print("PASS: 4 financial cases x assign/correct/remove; 12 refusals; 6 effort cases; 4 invalid effort inputs; cash/cost invariants")
+    print("PASS: 4 financial cases x assign/correct/remove; 12 identity/revision refusals; 4 draft refusals; 6 effort cases; 4 invalid effort inputs; cash/cost invariants")
