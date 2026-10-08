@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start"
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { readAgreementOfferSnapshot } from "@quits/contracts/agreements"
@@ -13,7 +13,7 @@ import { publicAgreementDto, publicDeliverableDto } from "./public"
  * and with the seller's identity, both through the same rules as the invoice and quote pages.
  * `token` is the link the page was opened with: an uploaded logo is served from its logo route.
  */
-export function serializePublicAgreementSession(
+export const serializePublicAgreementSession = createServerOnlyFn(function serializePublicAgreementSession(
   session: NonNullable<Awaited<ReturnType<typeof loadPublicAgreementByToken>>>,
   token: string,
 ) {
@@ -46,7 +46,7 @@ export function serializePublicAgreementSession(
     document: publicAgreementDto(agreement, agreement.organization?.settings?.companyEmail),
     readLink: null,
   } as const
-}
+})
 
 export const getPublicAgreementSession = createServerFn({ method: "GET" })
   .inputValidator(z.object({ token: z.string().min(1).max(4096) }).strict())
