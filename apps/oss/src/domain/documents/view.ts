@@ -27,6 +27,7 @@ type DocumentRows = Pick<Invoice,
   supplyDate?: Date | null
   dueDate?: Date | null
   expiryDate?: Date | null
+  purchaseOrderRef?: string | null
   paymentReference?: string | null
 }
 type Branding = Pick<OrgSettings, "companyPhone" | "companyLogo">
@@ -46,7 +47,7 @@ export function draftViewInputFromRows(
     number: document.number, previewNumber: options.previewNumber,
     seller: parseSellerSnapshot(document.sellerSnapshot), buyer: parseBuyerSnapshot(document.buyerSnapshot),
     sellerPhone: options.branding?.companyPhone, logoUrl: options.branding?.companyLogo,
-    contactId: document.contactId, notes: document.notes, paymentReference: document.paymentReference,
+    contactId: document.contactId, notes: document.notes, purchaseOrderRef: document.purchaseOrderRef, paymentReference: document.paymentReference,
     vatEvidence: evidence.success ? evidence.data : null,
     dates: {
       issueDate: document.status === "draft" ? null : formatIsoDate(document.issueDate, document.timezone),
@@ -145,12 +146,16 @@ export async function loadDocumentView(actor: Actor, kind: DocumentKind, id: str
     const isDraft = kind !== "creditNote" && document.status === "draft"
     const settings = await db.orgSettings.findUnique({ where: { organizationId }, select: { companyPhone: true, companyLogo: true } })
     let branding = settings
+    let purchaseOrderRef = "purchaseOrderRef" in document ? document.purchaseOrderRef : null
     if (!isDraft && kind !== "quote") {
       // Only a published candidate can supply issued branding. A failed re-email must not replace it.
       const candidate = await db.issuanceCandidate.findFirst({
         where: { organizationId, documentKind: kind, documentId: id, status: "published" },
         orderBy: { createdAt: "asc" }, select: { renderInput: true },
       })
+      // The published candidate freezes this outside the money snapshot. Preserve explicit nulls.
+      const frozenReference = z.object({ snapshot: z.object({ purchaseOrderRef: z.string().nullable() }) }).safeParse(candidate?.renderInput)
+      if (frozenReference.success) purchaseOrderRef = frozenReference.data.snapshot.purchaseOrderRef
       const frozen = frozenBrandingSchema.safeParse(candidate?.renderInput)
       // Do not invent historical branding from today's settings when it was never frozen.
       branding = frozen.success ? { companyPhone: frozen.data.pdf.org.companyPhone ?? null, companyLogo: frozen.data.pdf.org.companyLogo ?? null } : null
@@ -169,12 +174,13 @@ export async function loadDocumentView(actor: Actor, kind: DocumentKind, id: str
         kind, status: document.status, locale: document.locale, timezone: document.timezone,
         sellerPhone: branding?.companyPhone, logoUrl: branding?.companyLogo, contactId: document.contactId,
         notes: document.notes, paymentReference: "paymentReference" in document ? document.paymentReference : null,
-        correctsIssueDate: correctionDate,
+        purchaseOrderRef, correctsIssueDate: correctionDate,
       })
       historical = view === null
     }
     // Quotes deliberately use locked stored rows after draft; they have no issuanceSnapshot.
     if (!view) view = issuedRowsView(kind, document, branding)
+    if (view.buyer && kind === "invoice") view.buyer.purchaseOrderRef = purchaseOrderRef
     if (kind === "creditNote" && historical && corrected?.number && "reason" in document) {
       view.correction = { invoiceNumber: corrected.number, invoiceIssueDate: correctionDate, reason: document.reason }
     }
