@@ -5,6 +5,22 @@
 /* Schibsted Grotesk (variable), bundled with the app so no font is fetched from a CDN. */
 @import '@fontsource-variable/schibsted-grotesk';
 
+/*
+ * Geist (variable weight, latin only) for figures that must align, through the `num` utility.
+ * Schibsted Grotesk's tabular figures give the comma and period a full digit's width, which makes
+ * money read like a typewriter; Geist keeps punctuation narrow and still aligns. Characters outside
+ * the latin range fall back to the Schibsted stack.
+ */
+@font-face {
+  font-family: 'Geist Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /*
@@ -16,6 +32,11 @@
   --font-sans:
     'Schibsted Grotesk Variable', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', sans-serif;
+
+  /* Figures that must align (money, quantities, totals); see the `num` utility. */
+  --font-num:
+    'Geist Variable', 'Schibsted Grotesk Variable', ui-sans-serif, system-ui,
+    -apple-system, 'Segoe UI', sans-serif;
 
   /* One strong weight: headings and emphasised figures share it. */
   --font-weight-heading: 650;
@@ -204,7 +225,8 @@ code {
   }
 }
 
-/* Tabular figures, for money and number columns. */
+/* Tabular figures in Geist, for money, quantities, totals and number columns only. */
 @utility num {
+  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
 }
