@@ -6,17 +6,34 @@ import {
 } from "../lib/agreements/public-session"
 import { PublicDeliverablePage } from "../components/agreements/public-deliverable-page"
 import { PublicAgreementPage } from "../components/agreements/public-agreement-page"
+import { LocalizedDocument } from "../components/documents/localized-document"
 import { useI18n } from "../lib/i18n/react"
 export const Route = createFileRoute("/a/$token")({
   loader: ({ params }) => getPublicAgreementSession({ data: { token: params.token } }),
   component: AgreementRoute,
 })
 function AgreementRoute() {
+  const initial = Route.useLoaderData()
+  // The page speaks the language the agreement was written in, not the visitor's browser's.
+  const locale =
+    initial.kind === "invalid"
+      ? initial.locale
+      : initial.scope === "sign_off"
+        ? initial.deliverable.locale
+        : initial.document.snapshot.locale
+  return (
+    <LocalizedDocument locale={locale}>
+      <AgreementRouteContent />
+    </LocalizedDocument>
+  )
+}
+function AgreementRouteContent() {
   const { token } = Route.useParams()
   const initial = Route.useLoaderData()
   type State =
     | Awaited<ReturnType<typeof getPublicAgreementSession>>
     | Extract<Awaited<ReturnType<typeof submitPublicAgreementDecision>>, { kind: "ready" }>
+    | { readonly kind: "invalid" }
   const [state, setState] = useState<State>(initial)
   const [name, setName] = useState("")
   const [confirmed, setConfirmed] = useState(false)

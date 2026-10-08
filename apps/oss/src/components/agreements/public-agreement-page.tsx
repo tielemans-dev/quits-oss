@@ -1,6 +1,6 @@
 import type { PublicAgreementDto } from "../../lib/agreements/public"
 import { useI18n } from "../../lib/i18n/react"
-import { formatCurrency } from "../../lib/i18n/format"
+import { formatCurrency, formatDate, formatNumber } from "../../lib/i18n/format"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
@@ -34,9 +34,13 @@ export function PublicAgreementPage({
   busy: boolean
   error: string | null
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { snapshot } = document
   const v2 = "offerFormatVersion" in snapshot ? snapshot : null
+  // Money and dates follow the language the page is shown in, which is the offer's own locale.
+  const money = (amount: string) => formatCurrency(Number(amount), snapshot.currency, locale)
+  // Validity, agreed and expected dates are calendar dates: shown as stored, not shifted by a timezone.
+  const calendarDate = (value: string) => formatDate(value, locale, "UTC")
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-12 grid min-w-0 gap-6 [overflow-wrap:anywhere]">
       <header>
@@ -44,7 +48,7 @@ export function PublicAgreementPage({
           {t("agreements.document")} {document.number}
         </p>
         <h1 className="text-3xl font-semibold">{snapshot.title}</h1>
-        <p>{document.status}</p>
+        <p>{agreementStatusLabel(document.status, t)}</p>
       </header>
       <section className="grid gap-2">
         <p>{snapshot.sellerSnapshot?.companyName}</p>
@@ -55,7 +59,7 @@ export function PublicAgreementPage({
         </p>
         <p className="whitespace-pre-wrap">{snapshot.summary}</p>
         <p>
-          {t("agreements.validUntil")}: {snapshot.validUntil.slice(0, 10)} ({snapshot.timezone})
+          {t("agreements.validUntil")}: {calendarDate(snapshot.validUntil)} ({snapshot.timezone})
         </p>
       </section>
       <section className="grid gap-4">
@@ -65,17 +69,20 @@ export function PublicAgreementPage({
             <h3 className="font-medium">{line.title}</h3>
             <p className="whitespace-pre-wrap">{line.description}</p>
             <p>
-              {line.quantity} x {line.unitPriceGross} ={" "}
-              {formatCurrency(Number(line.lineGross), snapshot.currency, snapshot.locale)}
+              {t("public.document.lineQuantity", {
+                quantity: formatNumber(Number(line.quantity), locale),
+                price: money(line.unitPriceGross),
+              })}{" "}
+              = {money(line.lineGross)}
             </p>
             {line.agreedDate && (
               <p>
-                {t("agreements.agreedDate")}: {line.agreedDate.slice(0, 10)}
+                {t("agreements.agreedDate")}: {calendarDate(line.agreedDate)}
               </p>
             )}
             {document.expectedDates[i] && (
               <p>
-                {t("agreements.expectedDate")}: {document.expectedDates[i]!.slice(0, 10)}
+                {t("agreements.expectedDate")}: {calendarDate(document.expectedDates[i]!)}
               </p>
             )}
             {line.isDeposit && <p>{t("agreements.deposit")}</p>}
@@ -83,22 +90,22 @@ export function PublicAgreementPage({
         ))}
         <p>
           {t("agreements.subtotal")}:{" "}
-          {formatCurrency(Number(v2?.serviceTotal.net ?? snapshot.subtotalNet), snapshot.currency, snapshot.locale)}
+          {money(v2?.serviceTotal.net ?? snapshot.subtotalNet)}
         </p>
         <p>
           {t("agreements.tax")}:{" "}
-          {formatCurrency(Number(v2?.serviceTotal.tax ?? snapshot.totalTax), snapshot.currency, snapshot.locale)}
+          {money(v2?.serviceTotal.tax ?? snapshot.totalTax)}
         </p>
-        {v2 && Number(v2.serviceTotal.payableRounding) !== 0 && <p>{t("agreements.payableRounding")}: {formatCurrency(Number(v2.serviceTotal.payableRounding), snapshot.currency, snapshot.locale)}</p>}
+        {v2 && Number(v2.serviceTotal.payableRounding) !== 0 && <p>{t("agreements.payableRounding")}: {money(v2.serviceTotal.payableRounding)}</p>}
         <p>
           {t(v2 ? "agreements.serviceTotal" : "agreements.total")}:{" "}
-          {formatCurrency(Number(v2?.serviceTotal.gross ?? snapshot.totalGross), snapshot.currency, snapshot.locale)}
+          {money(v2?.serviceTotal.gross ?? snapshot.totalGross)}
         </p>
         {v2 && <section className="grid gap-3">
           <h2 className="text-xl font-semibold">{t("agreements.paymentSchedule")}</h2>
           {v2.paymentSchedule.map(line => <div key={line.sortOrder} className="border-b pb-3">
             <h3 className="font-medium">{line.title}</h3>
-            <p>{formatCurrency(Number(line.amount), snapshot.currency, snapshot.locale)} {t(line.vatBasis === "gross" ? "agreements.vatBasis.gross" : "agreements.vatBasis.net")}</p>
+            <p>{money(line.amount)} {t(line.vatBasis === "gross" ? "agreements.vatBasis.gross" : "agreements.vatBasis.net")}</p>
             <p>{t("agreements.scheduleTrigger")}</p>
           </div>)}
         </section>}
@@ -171,4 +178,19 @@ export function PublicAgreementPage({
       )}
     </main>
   )
+}
+
+const AGREEMENT_STATUSES = [
+  "draft",
+  "sent",
+  "accepted",
+  "declined",
+  "expired",
+  "completed",
+  "cancelled",
+] as const
+
+function agreementStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"]) {
+  const known = AGREEMENT_STATUSES.find((candidate) => candidate === status)
+  return known ? t(`public.agreement.status.${known}`) : status
 }

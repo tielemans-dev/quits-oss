@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { PublicDeliverableDto } from "../../lib/agreements/public"
 import { submitPublicDeliverableDecision } from "../../lib/agreements/public-session"
+import { formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { Button } from "../ui/button"
 import { Label } from "../ui/label"
@@ -8,13 +9,15 @@ import { Textarea } from "../ui/textarea"
 import { Badge } from "../ui/badge"
 
 export function PublicDeliverablePage({ token, initial }: { token: string; initial: PublicDeliverableDto }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [line, setLine] = useState(initial)
   const [note, setNote] = useState("")
   const [confirmed, setConfirmed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [invalid, setInvalid] = useState(false)
+  // Agreed and expected dates are calendar dates: shown as stored, not shifted by a timezone.
+  const calendarDate = (value: string) => formatDate(value, locale, "UTC")
   async function submit(decision: "accept" | "request_changes") {
     setBusy(true)
     setError(null)
@@ -36,8 +39,8 @@ export function PublicDeliverablePage({ token, initial }: { token: string; initi
     </header>
     <p className="whitespace-pre-wrap">{line.description}</p>
     <p>{t("agreements.deliveryRevision")}: {line.deliveryRevision}</p>
-    {line.agreedDate && <p>{t("agreements.agreedDate")}: {line.agreedDate.slice(0, 10)}</p>}
-    {line.expectedDate && <p>{t("agreements.expectedDate")}: {line.expectedDate.slice(0, 10)}</p>}
+    {line.agreedDate && <p>{t("agreements.agreedDate")}: {calendarDate(line.agreedDate)}</p>}
+    {line.expectedDate && <p>{t("agreements.expectedDate")}: {calendarDate(line.expectedDate)}</p>}
     {line.acceptedAt && <p>{t("agreements.acceptedRevision")}: {line.acceptedRevision}</p>}
     {line.changeRequestNote && <section><h2 className="font-medium">{t("agreements.changeRequestNote")}</h2><p className="whitespace-pre-wrap">{line.changeRequestNote}</p></section>}
     {error && <p role="alert">{error}</p>}

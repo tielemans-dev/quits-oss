@@ -49,6 +49,8 @@ export function publicDeliverableDto(agreement: Agreement, line: Deliverable) {
   return {
     agreementNumber: agreement.number,
     agreementTitle: agreement.title,
+    /** The language the agreement was written in: the page is shown in it. */
+    locale: agreement.locale,
     title: line.title,
     description: line.description,
     status: line.status,
