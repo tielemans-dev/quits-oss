@@ -11,7 +11,8 @@ The electronic-delivery route is decided separately in
 
 ## Sources
 
-All were read on 8 October 2026. Dates are the publisher's own "last updated" dates.
+Guidance and provider sources were read on 8 October 2026. B3 to B6 were located through
+that guidance, not independently reviewed. Dates are the publisher's own "last updated" dates.
 
 | Ref | Source | Publisher date |
 | --- | --- | --- |
@@ -25,6 +26,7 @@ All were read on 8 October 2026. Dates are the publisher's own "last updated" da
 | B8 | Nemhandel, [E-fakturering bliver den nye fælles måde at fakturere](https://nemhandel.dk/e-fakturering-bliver-den-nye-faelles-maade-fakturere) | 28 September 2026 |
 | B9 | ERST, [Høringsnotat – dokumentstrategi](https://nemhandel.dk/sites/default/files/2026-05/Hoeringsnotat-dokumentstrategi-18052026_WA.pdf) | 18 May 2026 |
 | B10 | e-conomic, [REST API documentation](https://restdocs.e-conomic.com/) (voucher and draft-invoice attachments, booking with `sendBy`) | Undated, read 8 October 2026 |
+| B11 | Nemhandel, [Hvad er et adgangspunkt i Nemhandel?](https://nemhandel.dk/adgangspunkter-i-nemhandel), section on giving customers access through a third party | Rechecked 8 October 2026 |
 
 B3 to B6 were identified through the links in B1 and B2. Their text was not read independently in
 this research; the duties below are taken from ERST's guides that summarise them.
@@ -82,11 +84,13 @@ this research; the duties below are taken from ERST's guides that summarise them
 
 ## Classification decision
 
-**Quits is not a digital bookkeeping system and does not seek registration.** It issues, delivers and
-collects sales documents and records payments against them. It keeps no general ledger, no purchase
-side, no bank reconciliation, no VAT return and no SAF-T. Under rule 4 it is a specialised application
-covering part of the transactions, and under rule 5 its functions fall outside the bookkeeping
-requirements *only if* the booked sales transactions and the sales vouchers are stored in the
+**Proposed classification: a billing application outside the digital bookkeeping system.** Quits does
+not seek registration in this issue. Qualified review must confirm the classification for the actual
+combined setup. Quits issues sales documents, delivers them by email and records payments against
+them. Its current pure accounting-posting functions do not constitute a complete general ledger,
+purchase side, bank reconciliation, VAT return or SAF-T export. The proposed reading of rules 4 and 5
+is that Quits is a specialised application covering part of the transactions. That reading depends
+on the actual functions and on storing booked sales transactions and sales vouchers in the
 customer's bookkeeping system.
 
 The intended arrangement for the Danish launch is therefore:
@@ -96,19 +100,35 @@ The intended arrangement for the Danish launch is therefore:
 | The business using Quits | Bookkeeping-obligated party | Digital bookkeeping if over the threshold; five-year retention; written description of bookkeeping procedures; choosing a registered system or accepting responsibility for a non-registered one. |
 | e-conomic (registered standard system) | System of record for transactions and sales vouchers | Registered-system requirements, backups, export, the 2027 and 2028 duties. |
 | Quits | Billing application feeding e-conomic | Issue documents with their frozen original artifacts; hand every issued sales voucher and its transaction to e-conomic; prove the handoff; keep its own copy readable and exportable; never present itself as the bookkeeping system. |
-| Electronic-delivery provider | Access point | Transport and its evidence only. Under Nemhandel's guidance, a business that uses a third-party access point needs its auditor to approve the access point and the arrangement. |
+| Electronic-delivery provider | Access point | Proposed network transport and evidence. Its obligations depend on the network and contractual role. See the conditional Nemhandel rule below. |
 
-The arrangement stays a registered-system setup only while rule 6 is not triggered: **the original of
+The design aims to avoid the separate-voucher-storage combination described by rule 6: **the original of
 every in-scope sales invoice and credit note must be in e-conomic, attached to its booked
-transaction.** If an original exists only in Quits, the combination is a non-registered system and the
-business carries the B6 duties itself. Quits must not let that happen silently.
+transaction.** Keeping in-scope originals only in Quits is the combination B1 describes as non-registered; the
+implementation must expose any missing transfer. Qualified review still needs to confirm the selected
+setup, including whether e-conomic holds the legally required original. An architecture proposal and
+a successful attachment upload are not evidence of that approval.
+
+### Scope of the Nemhandel auditor guidance
+
+B11 conditions auditor approval on using a third-party access point **to give customers access to
+Nemhandel**. It covers the access point, the individual business relationship and their technical
+connection. In such a service, the party arranging access for its customers is the relevant service
+operator, potentially the operator of a Quits-based offering. The cited text does not impose this
+condition on every invoice-sending business.
+
+The first proposed route uses Peppol and excludes Nemhandel AS4. B11 alone does not establish whether
+its condition applies to that arrangement. A qualified reviewer must confirm the network, operator
+and contractual roles before attributing this duty. If a later arrangement supplies customers with
+Nemhandel access through a third party, obtain the approval the guidance describes for that
+arrangement. Do not present it as a universal Peppol launch requirement.
 
 ### Alternatives considered
 
 | | Arrangement | Assessment |
 | --- | --- | --- |
 | A | **Quits issues; e-conomic is the ledger** (chosen). Quits numbers, renders and delivers; it posts each issued document to e-conomic with the original file attached. | Keeps Quits's own issuance, numbering and delivery. Depends on every original reaching e-conomic intact, and on e-conomic accepting the original's format. See the e-invoice gap below. |
-| B | **e-conomic issues.** Quits prepares a draft invoice in e-conomic, which books it, numbers it and sends it by email or EAN (`POST /invoices/booked` with `sendBy`, B10). | The original never leaves the registered system, so rule 6 cannot be triggered. Quits loses document numbering, layout and its own delivery; Peppol routing and delivery status then belong to e-conomic. Needs an e-conomic package that allows writing integrations. Keep as the fallback if A's review fails. |
+| B | **e-conomic issues.** Quits prepares a draft invoice in e-conomic, which books it, numbers it and sends it by email or EAN (`POST /invoices/booked` with `sendBy`, B10). | Would keep issuance in e-conomic; storage of the original and supplementary vouchers still needs verification. Quits loses document numbering, layout and its own delivery; Peppol routing and delivery status then belong to e-conomic. Needs an e-conomic package that allows writing integrations. Keep as the fallback if A's review fails. |
 | C | **Quits as part of a non-registered combination.** | The business takes on the B6 duties (weekly backup with an unrelated EU/EEA party, documentation). Not a default for small businesses. Allowed only as an explicit, informed choice for a business that is outside the digital-bookkeeping duty, or that accepts those duties. |
 | D | **Register Quits as a standard bookkeeping system.** | Out of scope (#27). It would mean building a ledger, purchase side, bank reconciliation, SAF-T 2.1 and the 2027/2028 duties. |
 
@@ -128,8 +148,9 @@ be described as kept in a registered system:
    own e-invoice handling, or alternative B for e-invoiced customers)?
 3. Does Quits's retention of the XML, with export, count as the "complete backup" route of rule 4?
 
-Documents delivered by email as PDF do not have this gap: the issued PDF *is* the original, provided
-e-conomic stores exactly those bytes (verified by hash, see below).
+For a document originally issued as a PDF, copying the same bytes would address this particular
+format mismatch. It does not establish qualified approval of the whole arrangement or make email
+an acceptable route for recipients that require structured invoices.
 
 ## Document inventory
 
@@ -140,7 +161,7 @@ and financial records cannot be physically deleted (see
 
 | Record | Authoritative system | Retention responsibility | Readable export from Quits today | Failure policy |
 | --- | --- | --- | --- | --- |
-| Sales invoice, PDF original | Quits issues it; e-conomic must hold the same bytes as the voucher | Business; e-conomic as the registered system once handed off | PDF download per document; accounting CSV (`invoices`) by period | Handoff is pending until e-conomic confirms the voucher and the attachment hash matches. Unconfirmed after 24 hours: shown as an exception. Unconfirmed at 7 days: blocking alert, because rule 6 would then apply. |
+| Sales invoice, PDF original | Quits issues it; e-conomic must hold the same bytes as the voucher | Business; e-conomic as the registered system once handed off | PDF download per document; accounting CSV (`invoices`) by period | Handoff is pending until e-conomic confirms the voucher and the attachment hash matches. Unconfirmed after 24 hours: shown as an exception. Unconfirmed at 7 days: proposed blocking alert. These are operational thresholds, not a statutory grace period; storage gaps matter immediately. |
 | Sales invoice, e-invoice original (UBL) | Quits (frozen XML) | **Blocked** pending the e-invoice gap | UBL download per issued document (`exportEinvoice` serves the stored artifact and checks its hash) | As above for the PDF rendering; the XML has no e-conomic destination until the review answers. |
 | Sales credit note | As for invoices | As for invoices | PDF and UBL per document; accounting CSV (`creditNotes`) | As for invoices. A credit note must reference its invoice in e-conomic. |
 | Payment recorded in Quits | e-conomic once posted; Quits until then | Business; bank statement is the external voucher | Accounting CSV (`payments`), voided payments flagged | A payment never posts before its invoice. Reversal is a corrective entry, never deletion. |
@@ -183,7 +204,7 @@ Detection design for the accounting integration:
 
 | Claim | Status |
 | --- | --- |
-| "Quits is a registered bookkeeping system" or "meets the Bookkeeping Act" | **Never.** Quits is not one. |
+| "Quits is a registered bookkeeping system" or "meets the Bookkeeping Act" | **Unsupported.** Quits is not registered; the proposed classification and combined setup have no qualified approval. |
 | "Works with e-conomic: every invoice and credit note, with its original PDF, is posted to your e-conomic account, and Quits shows you any that did not arrive." | Allowed once the accounting integration ships with verified handoffs and the completeness check. |
 | "Using Quits with e-conomic keeps you compliant with the Bookkeeping Act" | **Blocked** until a qualified reviewer approves arrangement A, including the hash/re-encoding question. |
 | Anything about bookkeeping compliance for invoices Quits sends as e-invoices | **Blocked** by the e-invoice gap. |
@@ -219,8 +240,10 @@ For the accounting integration issue:
 
 For the electronic-delivery issue:
 
-- [ ] Auditor approval of the chosen third-party access point and arrangement, which Nemhandel's
-      guidance requires for businesses using one ([Hvad er et adgangspunkt i Nemhandel?](https://nemhandel.dk/adgangspunkter-i-nemhandel)).
+- [ ] Qualified confirmation of whether B11 applies to the chosen network and service operator.
+      If it supplies customers with Nemhandel access through a third-party access point, obtain
+      the described auditor approval for that arrangement. Applicability to Peppol-only sending
+      remains unconfirmed; this is not a universal auditor-approval gate for every sender.
 - [ ] The e-invoice gap answer, before e-invoiced documents can be part of any bookkeeping claim.
 
 Out of scope here, unchanged: registering Quits as a bookkeeping system, a general ledger, tax

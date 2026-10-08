@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { isPeppolEasCode } from "./exports"
+import { einvoiceDocumentKindSchema, isPeppolEasCode, type EinvoiceDocumentKind } from "./exports"
 
 /**
  * Provider-neutral lifecycle of one electronic delivery of an issued invoice or credit note.
@@ -47,6 +47,24 @@ export const einvoiceRecipientResolutionSchema = z.discriminatedUnion("status", 
   }),
 ])
 
+/** Established independently of registry lookup, from recipient requirements and applicable rules. */
+export const einvoiceRecipientRequirementSchema = z.enum(["unknown", "structured_required", "email_accepted"])
+
+export type EinvoiceRecipientRequirement = z.infer<typeof einvoiceRecipientRequirementSchema>
+export type EinvoiceRecipientAction =
+  | "use_structured_route" | "alternate_structured_route" | "email_available" | "confirm_requirement" | "retry_lookup" | "investigate"
+
+/** Route advice only. Neither an email copy nor this decision completes a structured delivery. */
+export function nextEinvoiceRecipientAction(
+  requirement: EinvoiceRecipientRequirement,
+  resolution: EinvoiceRecipientResolution,
+): EinvoiceRecipientAction {
+  if (resolution.status === "reachable") return "use_structured_route"
+  if (resolution.status === "lookup_failed") return resolution.retryable ? "retry_lookup" : "investigate"
+  if (requirement === "structured_required") return "alternate_structured_route"
+  return requirement === "email_accepted" ? "email_available" : "confirm_requirement"
+}
+
 export const einvoiceValidationStateSchema = z.enum(["not_run", "passed", "failed"])
 
 /**
@@ -72,13 +90,14 @@ export const einvoiceReceiverResponseSchema = z.discriminatedUnion("kind", [
 ])
 
 export const einvoiceDeliveryStateSchema = z.strictObject({
+  documentKind: einvoiceDocumentKindSchema,
   route: einvoiceDeliveryRouteSchema,
   recipient: einvoiceParticipantSchema,
   validation: einvoiceValidationStateSchema,
   /** Rule identifiers that failed, such as `PEPPOL-EN16931-R003` or `DK-R-002`. */
   validationErrors: z.array(z.string().trim().min(1)),
   transport: einvoiceTransportStateSchema,
-  /** The provider's reference for the submission; stable across status reconciliation. */
+  /** Stable across reconciliation; an explicitly acknowledged retry may use a new reference. */
   providerReference: z.string().trim().min(1).nullable(),
   transportCode: z.string().trim().min(1).nullable(),
   transportRetryable: z.boolean(),
@@ -90,6 +109,10 @@ export const einvoiceDeliveryEventSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("validation_passed") }),
   z.strictObject({ type: z.literal("validation_failed"), rules: z.array(z.string().trim().min(1)).min(1) }),
   z.strictObject({ type: z.literal("submitted"), providerReference: z.string().trim().min(1) }),
+  /** Trusted lookup of the original submission confirms it is queued. Does not authorize a send. */
+  z.strictObject({ type: z.literal("submission_reconciled"), providerReference: z.string().trim().min(1) }),
+  /** Acknowledges a permitted retry, correlated to that retry rather than an old callback. */
+  z.strictObject({ type: z.literal("retry_submitted"), providerReference: z.string().trim().min(1) }),
   z.strictObject({ type: z.literal("submission_outcome_unknown") }),
   z.strictObject({ type: z.literal("transport_delivered"), at: z.iso.datetime() }),
   z.strictObject({ type: z.literal("transport_no_route"), code: z.string().trim().min(1) }),
@@ -108,14 +131,14 @@ export type EinvoiceDeliveryEvent = z.infer<typeof einvoiceDeliveryEventSchema>
 
 /** An event that cannot follow the current state; the caller keeps the state and records why. */
 export class EinvoiceDeliveryTransitionError extends Error {
-  constructor(readonly code: "not_validated" | "already_submitted" | "transport_settled" | "response_settled", message: string) {
+  constructor(readonly code: "not_validated" | "already_submitted" | "transport_settled" | "response_settled" | "reference_mismatch", message: string) {
     super(message)
   }
 }
 
-export function initialEinvoiceDeliveryState(route: EinvoiceDeliveryRoute, recipient: EinvoiceParticipant): EinvoiceDeliveryState {
+export function initialEinvoiceDeliveryState(route: EinvoiceDeliveryRoute, recipient: EinvoiceParticipant, documentKind: EinvoiceDocumentKind): EinvoiceDeliveryState {
   return {
-    route, recipient, validation: "not_run", validationErrors: [], transport: "not_sent", providerReference: null,
+    route, recipient, documentKind, validation: "not_run", validationErrors: [], transport: "not_sent", providerReference: null,
     transportCode: null, transportRetryable: false, deliveredAt: null, receiverResponse: null,
   }
 }
@@ -148,9 +171,26 @@ export function applyEinvoiceDeliveryEvent(state: EinvoiceDeliveryState, event: 
       if (state.validation !== "passed") {
         throw new EinvoiceDeliveryTransitionError("not_validated", "Only a validated document can be submitted")
       }
-      if (state.providerReference === event.providerReference) return state
-      if (state.transport !== "not_sent" && !(state.transport === "failed" && state.transportRetryable)) {
+      if (state.transport !== "unknown" && state.providerReference === event.providerReference) return state
+      if (state.transport !== "not_sent") {
         throw new EinvoiceDeliveryTransitionError("already_submitted", "The document was already submitted")
+      }
+      return { ...state, transport: "queued", providerReference: event.providerReference, transportCode: null, transportRetryable: false }
+    }
+    case "submission_reconciled":
+    case "retry_submitted": {
+      if (state.validation !== "passed") {
+        throw new EinvoiceDeliveryTransitionError("not_validated", "Only a validated submission can be acknowledged")
+      }
+      if (event.type === "submission_reconciled" && state.providerReference !== null && state.providerReference !== event.providerReference) {
+        throw new EinvoiceDeliveryTransitionError("reference_mismatch", "Reconciliation must match the original provider reference")
+      }
+      if (state.transport === "queued" && state.providerReference === event.providerReference) return state
+      const allowed = event.type === "submission_reconciled"
+        ? state.transport === "unknown"
+        : state.transport === "failed" && state.transportRetryable
+      if (!allowed) {
+        throw new EinvoiceDeliveryTransitionError("transport_settled", "Queued evidence cannot reopen this transport state")
       }
       return { ...state, transport: "queued", providerReference: event.providerReference, transportCode: null, transportRetryable: false }
     }
@@ -197,22 +237,22 @@ export function applyEinvoiceDeliveryEvent(state: EinvoiceDeliveryState, event: 
  *
  * - `submit`: validated and never sent.
  * - `reconcile`: ask the provider about the existing submission; never send a second copy.
- * - `resubmit`: the provider reported a retryable failure; the same document may be sent again.
+ * - `resubmit`: the provider confirmed non-delivery and that retry is safe under its retry contract.
  * - `fix_recipient`: no route, or the recipient is not registered for this document.
  * - `investigate`: the provider reported a failure that sending again will not fix.
- * - `credit_and_reissue`: the issued document was rejected (failed validation, MLR rejection or
- *   Invoice Response RE). It is not edited: a credit note cancels it and a corrected invoice follows.
+ * - `review_correction`: investigate validation or rejection of the immutable issued artifact.
+ *   This never authorizes a financial command, for either an invoice or a credit note.
  * - `wait`: in transit, or delivered and awaiting the receiver.
  * - `none`: nothing more to do for this delivery.
  */
 export type EinvoiceDeliveryAction =
-  | "submit" | "reconcile" | "resubmit" | "fix_recipient" | "investigate" | "credit_and_reissue" | "wait" | "none"
+  | "submit" | "reconcile" | "resubmit" | "fix_recipient" | "investigate" | "review_correction" | "wait" | "none"
 
 export function nextEinvoiceDeliveryAction(state: EinvoiceDeliveryState): EinvoiceDeliveryAction {
-  if (state.validation === "failed") return "credit_and_reissue"
+  if (state.validation === "failed") return "review_correction"
   const response = state.receiverResponse
   if (response?.kind === "message_rejected" || (response?.kind === "invoice_response" && response.code === "RE")) {
-    return "credit_and_reissue"
+    return "review_correction"
   }
   switch (state.transport) {
     case "not_sent": return state.validation === "passed" ? "submit" : "none"

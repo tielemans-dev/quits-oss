@@ -1,9 +1,9 @@
 # Denmark: first electronic-delivery route
 
 Decision record for [quits-oss#28](https://github.com/tielemans-dev/quits-oss/issues/28). Researched
-8 October 2026. Status: **proposed.** Route, profiles, field mapping and the delivery contract are
-decided. Transport is **not proven**: no provider credentials were available, so no test exchange was
-made. The remaining access dependency is listed under [Sandbox feasibility](#sandbox-feasibility).
+8 October 2026. Status: **proposed.** This record proposes the route, profiles, field mapping and a
+pure delivery-contract prototype. Transport is **not proven**: no provider credentials were available,
+so no test exchange was made. The remaining access dependency is listed under [Sandbox feasibility](#sandbox-feasibility).
 
 The bookkeeping boundary is decided separately in
 [`2026-10-08-denmark-bookkeeping-boundary-decision.md`](./2026-10-08-denmark-bookkeeping-boundary-decision.md).
@@ -25,14 +25,18 @@ Read on 8 October 2026. Dates are the publisher's own.
 | D9 | Nemhandel, [Afsluttet høring om overgangen til Peppol](https://nemhandel.dk/afsluttet-hoering-om-overgangen-til-peppol-en-faelles-e-faktura) and its [høringsnotat](https://nemhandel.dk/sites/default/files/2026-05/Hoeringsnotat-dokumentstrategi-18052026_WA.pdf) | 27 May 2026 / 18 May 2026 |
 | D10 | ERST, [Nye krav til registrerede bogføringssystemer – effektiv og sikker e-fakturering](https://erhvervsstyrelsen.dk/vejledning-nye-krav-til-registrerede-bogfoeringssystemer-effektiv-og-sikker-e-fakturering) | 25 September 2026 |
 | D11 | NHR lookup API, OpenAPI at `https://api-demo.nemhandel.dk/nemhandel-api/v3/api-docs` ("This API allows anonymous access") | Fetched 8 October 2026 |
+| D12 | [BEK 206/2011](https://www.retsinformation.dk/eli/lta/2011/206/pdf), §§3–6, electronic settlement with public authorities | Original text read 8 October 2026 |
+| D13 | [Lov 1593/2018](https://www.retsinformation.dk/eli/lta/2018/1593/pdf), §§1–4, electronic invoicing in public procurement | Original text read 8 October 2026 |
+| D14 | OpenPeppol, [BIS Invoice Response, process rules and code policy](https://docs.peppol.eu/poacc/upgrade-3/profiles/63-invoiceresponse/#invoice-response-process-rules), OP-BR111-R008–R011, R014 | Read 8 October 2026 |
+| D15 | ERST, [NemHandel Fakturablanket](https://virk.dk/myndigheder/stat/ERST/selvbetjening/NemHandel_Fakturablanket/) and [instructions](https://virk.dk/myndigheder/stat/ERST/selvbetjening/NemHandel_Fakturablanket/Vejledning-Nemhandel-Fakturablanket/) | Read 8 October 2026; instructions updated 19 May 2026 |
 | P1 | Digisense, [REST API reference](https://api.digisense.dk/ap/api/rest) (OpenAPI `openapi-spec.json`, version 1.0.0) | Fetched 8 October 2026 |
 | P2 | Storecove, [API documentation](https://www.storecove.com/docs/) | Fetched 8 October 2026 |
 | P3 | e-invoice.be, [Peppol API](https://e-invoice.be/peppol-api) and [OpenAPI](https://api.e-invoice.be/api/openapi.json) (version 1.1.0) | Fetched 8 October 2026 |
 
-Laws referenced by D1 and D2, not read independently here: [lov om offentlige betalinger](https://www.retsinformation.dk/eli/lta/2023/494),
-[BEK 206/2011 on electronic settlement with public authorities](https://www.retsinformation.dk/eli/lta/2011/206),
-[lov om elektronisk fakturering ved offentlige udbud](https://www.retsinformation.dk/eli/lta/2018/1593) and
-[lov om fælles digital infrastruktur](https://www.retsinformation.dk/eli/lta/2023/1764).
+D12 and D13 were read from Retsinformation's original PDFs for this correction. The other laws
+referenced by D1 and D2, [lov om offentlige betalinger](https://www.retsinformation.dk/eli/lta/2023/494)
+and [lov om fælles digital infrastruktur](https://www.retsinformation.dk/eli/lta/2023/1764), were not
+independently reviewed. These readings are not a consolidated legal opinion or qualified approval.
 
 ## What the infrastructure looks like
 
@@ -70,10 +74,12 @@ The NHR lookup API answered anonymously in both environments (D11). Production l
 A random sample of 60 receiver-owning CVR numbers from the production receiver list (seed 20261008,
 one request per second, all private by company form): 17 (28 %) advertise Peppol BIS Billing as
 customer; 53 (88 %) advertise OIOUBL BilSim; **36 (60 %) advertise OIOUBL BilSim only**; 7 advertise
-neither. The sample is small (a 95 % interval for 28 % is roughly 17–41 %) and only indicative, but
-the direction is clear: Peppol BIS Billing alone does not reach most Danish private receivers today.
+neither. The sample is small (a 95 % interval for 28 % is roughly 17–41 %) and only indicative.
+These are registrations of sampled receiver-owning CVRs, not market share or
+coverage of all Danish businesses, customers or public authorities. No fresh sample was taken in
+this correction; the original probes and counts are retained in the review evidence.
 
-### Quits's current output passes the Danish rules
+### Four fixture shapes pass the pinned Danish schematrons
 
 Quits already renders Peppol BIS Billing 3.0 with the Danish national rules it knows about (DK-R-002,
 DK-R-005, DK-R-006, DK-R-014), freezes the XML at issuance and serves the stored artifact afterwards
@@ -92,7 +98,12 @@ schematron XSLT, run with SaxonC-HE 13.0):
 | Negative control: no buyer reference, order reference or seller legal entity | BR-06 fatal | PEPPOL-EN16931-R003, DK-R-002 fatal | — |
 
 The official example invoice and credit note from D7 pass with the same harness. This shows technical
-validity for these document shapes, not delivery.
+schematron validity for these document shapes and this package version. It does not establish
+network delivery, acceptance, an exhaustive invoice matrix or legal compliance. The authored inputs,
+exact XML, expected failures and executable checks are now committed in
+[`evidence/2026-10-08-denmark`](./evidence/2026-10-08-denmark/README.md). After rebasing on main
+`c0f23c014d0502c44fab9b7ea8b7a748c6b5eee8`, including the PDF/VAT fix, the four outputs remain
+byte-identical and all 18 fixture/schematron comparisons match their expected results.
 
 ## Decision
 
@@ -106,21 +117,42 @@ non-negative credit-note totals (DK-R-016).
 
 **First recipients, in order:**
 
-1. Danish public authorities addressed by GLN (`0088`). Suppliers must invoice them electronically
-   (D2), and the act on e-invoicing in public procurement requires them to accept EN 16931 invoices.
-   The authority checked here registers Peppol BIS Billing; each one is still looked up before sending.
+1. Danish public authorities addressed by GLN (`0088`) whose exact endpoint and document type are
+   reachable through this route. D12 §§3–5 require the authority's addressing/reference information
+   and an electronically processable invoice; §5(3) can require an authority's ordering system. D13
+   §4 requires EN-standard reception within its §1 procurement scope. Neither fact proves that every
+   authority has a Peppol route. Confirm recipient-specific requirements before enabling this route.
 2. Danish businesses whose NHR or Peppol SMP registration advertises the Peppol BIS Billing invoice
    (and, for credit notes, credit-note) document type for the chosen identifier, usually CVR (`0184`).
 
-Every send is preceded by a lookup for the exact identifier and document type. A receiver that is not
-registered, or registered only for OIOUBL, is shown as "can't receive this e-invoice format" and the
-document is offered by email instead. Nothing is sent on the assumption that it will reach them.
+Every send is preceded by a lookup for the exact identifier and document type. Registry presence
+and accepted delivery requirements are separate decisions. The caller must establish
+`structured_required`, `email_accepted` or `unknown` from the recipient's requirements and applicable
+rules, with the basis retained alongside the document. Do not infer `email_accepted` merely because
+the recipient is a business or absent from a registry.
+
+For an unavailable route, `nextEinvoiceRecipientAction` applies this contract:
+
+| Requirement | Proposed action | Delivery status |
+| --- | --- | --- |
+| Structured invoice required, including an in-scope public authority | Show "Quits cannot currently deliver through the required route." Use an appropriate structured path, such as the authority's required procurement portal, an accounting system supporting that endpoint, or ERST's Fakturablanket for a suitable public invoice/credit note. | Incomplete until that path succeeds and evidence is retained. An email can be a copy only. |
+| Email established as acceptable | Offer email with the reason the selected e-invoice route is unavailable. | Email has its own lifecycle; it never becomes a Peppol receipt. |
+| Requirement unknown | Confirm it before proposing an alternate route. | Incomplete. |
+| Lookup failed | Retry the lookup or investigate, regardless of requirement. | No fallback permission follows from a lookup error. |
+
+D12 §5(1) allows a template for senders unable to send from their own system. Its §6 defines receipt
+as availability for import into the authority's system and permits delaying payment for missing
+§§4–5 requirements. A PDF email is not evidence of that receipt. D15 identifies a concrete manual
+structured path, with MitID access and Danish-account limitations. It has not been used here. The
+operator must preserve the issued identity/content and retain its original and receipt; no automatic
+reissue, conversion, financial correction or Quits transport success may be inferred from using it.
+External-route evidence remains separate from this Peppol transport state.
 
 **Why not OIOUBL first.** OIOUBL 2.1 reaches more private receivers today, but it is a second document
 format with its own rules, it needs a Nemhandel (MitID-certificate) access point, and ERST has decided
 to phase it out for invoices in favour of a Peppol-based format. Peppol BIS 3 is what Quits already
-produces and validates, and it serves the public authorities for whom e-invoicing is mandatory. The reach gap is real and is
-recorded as the next decision, below.
+produces. The proposal reaches only authorities that advertise the supported route and accept it
+for the transaction. The reach gap remains the next decision, below.
 
 **Exclusions** for this route:
 
@@ -147,11 +179,11 @@ the migration timetable (D9).
 | Seller electronic address | BT-34 | `AccountingSupplierParty/Party/EndpointID@schemeID` | Seller VAT `DKxxxxxxxx` → `0184` + 8-digit CVR (`electronicAddressFromVat`) | Must be the CVR (or a GLN) the provider registers for the sender. |
 | Seller legal registration | BT-30 | `PartyLegalEntity/CompanyID@schemeID=0184` | Organization tax IDs (`cvr` scheme, `nationalRegistration`) | DK-R-002, DK-R-014. Validated before issuance (`seller.legalId`). |
 | Seller VAT | BT-31 | `PartyTaxScheme/CompanyID` | Organization VAT ID | |
-| Seller name, address | BT-27, BG-5 | `PartyName`, `PostalAddress`, `RegistrationName` | Frozen seller snapshot | From 2028, registered systems must use locked CVR data (D10); Quits is not one, but should offer a CVR lookup to avoid mismatches. |
+| Seller name, address | BT-27, BG-5 | `PartyName`, `PostalAddress`, `RegistrationName` | Frozen seller snapshot | From 2028, registered systems must use locked CVR data (D10); Quits's proposed classification is still unreviewed; CVR lookup may help avoid mismatches. |
 | Buyer electronic address | BT-49 | `AccountingCustomerParty/Party/EndpointID@schemeID` | Contact `peppolEndpointScheme` + `peppolEndpointId`, else derived from the buyer's VAT (`0184` for DK) | Public authorities: their GLN (`0088`), which the user must take from the authority. A receiver with several GLNs needs the user to pick; D10 says systems are not expected to guess. |
 | Buyer legal registration | BT-47 | `PartyLegalEntity/CompanyID@schemeID=0184` | Buyer tax IDs | DK-R-017 when given. |
 | Buyer VAT, name, address | BT-48, BT-44, BG-8 | as above | Frozen buyer snapshot, live contact as fallback | |
-| Buyer reference | BT-10 | `BuyerReference` | `purchaseOrderRef`, else the buyer's name | **Gap.** PEPPOL-EN16931-R003 needs BT-10 or BT-13; the name fallback passes validation but is no reference. Danish public receivers route invoices by a reference such as a contact ("personreference") or requisition number. Add an explicit buyer reference on the contact and the invoice. |
+| Buyer reference | BT-10 | `BuyerReference` | `purchaseOrderRef`, else the buyer's name | **Gap.** PEPPOL-EN16931-R003 needs BT-10 or BT-13; the name fallback passes validation but is no reference. D12 §§3–4 require the authority's reference person/other reference and any order or requisition number. Add an explicit buyer reference on the contact and the invoice. |
 | Order reference | BT-13 | `OrderReference/ID` | `purchaseOrderRef` | One order per invoice; line-level order references are not supported by the standard (D8). |
 | Invoice number, dates | BT-1, BT-2, BT-9, BT-72 | `ID`, `IssueDate`, `DueDate`, `Delivery/ActualDeliveryDate` | Number assigned at issuance; issue, due and supply dates | Drafts are never sent: `validateEinvoice` returns `document.notIssued`. |
 | Lines | BG-25 | `InvoiceLine`/`CreditNoteLine` | Frozen items: description, quantity, unit net price, line net | |
@@ -164,7 +196,7 @@ the migration timetable (D9).
 
 | Layer | Question | Source of truth | Quits shows |
 | --- | --- | --- | --- |
-| Technical validation | Does the XML meet EN 16931, Peppol and Danish rules? | Quits's validator before issuance; provider validation before sending; the receiving access point's schematron check | "Ready to send" or the failing rule IDs |
+| Technical validation | Does the XML meet EN 16931, Peppol and Danish rules? | Quits's field checks before issuance; the recorded offline schematron check; future provider validation under its verified contract | "Ready to send" or the failing rule IDs |
 | Transport | Did the receiver's access point acknowledge receipt? | The provider's transport status | "Delivered to the customer's e-invoice provider" with the time. Never "received by the customer". |
 | Receiver response | Did the receiver reject the message, or answer with an Invoice Response? | Message-level response, or a Peppol Invoice Response (AB, IP, UQ, CA, RE, AP, PD) | The receiver's response with its date and note, or nothing if none arrived. Absence is not acceptance. |
 | Commercial dispute | Does the customer disagree with the invoice? | The document's own lifecycle: notes, credit notes, payments | Not delivery state. "Under query" or "accepted" do not close or open a dispute by themselves. |
@@ -177,19 +209,32 @@ wiring yet.
 
 ### Correction and retry policy
 
-- An issued document is never edited or re-sent with changed content. A technical rejection (failed
-  validation, message-level rejection) or an Invoice Response `RE` leads to a credit note and a new,
-  corrected invoice (`credit_and_reissue`).
-- An uncertain submission (timeout, unknown server error) is **reconciled** with the provider using the
-  stored provider reference or the provider's outbound list. It is never sent again blind
-  (`reconcile`).
-- A failure the provider marks as temporary may be resent (`resubmit`), with the same idempotency key
-  where the provider supports one. Other failures need investigation (`investigate`); "no route" needs
-  a corrected recipient (`fix_recipient`).
-- Duplicate and late callbacks are no-ops; a late transport failure never undoes a delivery; a receiver
-  response before the transport receipt implies delivery.
-- Proposed retry schedule for retryable transport failures: 1, 5 and 30 minutes, then hourly up to
-  24 hours, then `investigate`. To be confirmed against the chosen provider's rate limits.
+An issued artifact stays immutable. Failed validation, a message-level rejection or Invoice Response
+`RE` returns `review_correction` for **both invoices and credit notes**. It supplies no financial
+command. A person must investigate the reasons and choose an action supported by the document's
+financial lifecycle and applicable rules. No automatic credit, replacement invoice, payment posting
+or cancellation follows. D14 OP-BR111-R008–R011 state that an Invoice Response has no legal power,
+changes neither invoice content nor commercial responsibilities, and does not remove payment
+obligations. R014 binds the response to the original document type.
+
+The proposed acknowledgment contract distinguishes new sends from existing submissions:
+
+| Event | Permitted previous state | Result |
+| --- | --- | --- |
+| `submitted(ref)` | Validated, `not_sent` | `queued`. Repeated same-reference acknowledgments outside `unknown` are no-ops; they cannot acknowledge a retry. |
+| `submission_outcome_unknown` | A possibly submitted validated document | `unknown`, action `reconcile`; never a send permission. |
+| `submission_reconciled(ref)` | `unknown`, or duplicate evidence for the same `queued` submission | Attaches a discovered reference and sets `queued`; a known reference must match. This event means a trusted provider lookup confirms queued status. |
+| `retry_submitted(ref)` | `failed` with provider-confirmed safe retry, or an exact duplicate acknowledgment while `queued` | Clears the failure and sets `queued`, even when the provider reuses the reference. The caller must correlate it to the permitted retry, not an old callback. |
+
+`submitted` and `retry_submitted` are refused while `unknown`. A queued reconciliation cannot reopen
+`delivered`, `no_route` or a permanent failure. Delivery remains terminal; older receiver responses
+and exact duplicates are ignored, while conflicting terminal transitions throw and must be retained
+as rejected evidence. The caller serializes updates and deduplicates events before applying them.
+
+`transportRetryable` must mean the provider established non-delivery and a safe retry procedure.
+A timeout, generic 5xx or failed lookup does not establish that. A proposed retry schedule of 1, 5
+and 30 minutes, then hourly up to 24 hours is conditional on the adapter's documented retry and
+idempotency rules. Storecove's `failed` is final and does not use that schedule.
 
 ## Architecture
 
@@ -203,16 +248,20 @@ capabilities (`docs/architecture/runtime-extension-interface.md`).
    - `lookup(participant, documentType)` → `EinvoiceRecipientResolution`
    - `submit({ xml, idempotencyKey, sender })` → provider reference, or an event when the provider
      answers synchronously
-   - `status(providerReference)` → events, for polling and reconciliation
+   - `reconcile({ providerReference?, idempotencyKey, sender })` → trusted status evidence or unresolved;
+     a missing reference must be recoverable or remain explicitly unknown
    - `parseCallback(request)` → verified events; signature checking is the adapter's job
-2. A delivery record per send attempt, holding `EinvoiceDeliveryState`, the provider reference, the
-   frozen UBL hash it sent, and every event with its time. It follows the same retained-record rules as
+2. A logical delivery record holding `EinvoiceDeliveryState`, document kind, scoped document identity,
+   recipient requirement and its basis, the frozen UBL hash and stable idempotency key. Attempt and
+   evidence identities belong to an append-only history, including every event and its time. It follows the same retained-record rules as
    other financial records.
-3. A queue job that submits, polls and reconciles, using `nextEinvoiceDeliveryAction`.
+3. A future queue that submits, polls and reconciles. `nextEinvoiceDeliveryAction` is advice only,
+   never authorization to run a financial command or bypass sender/organization checks.
 4. A capability flag (`einvoiceDelivery`) that is off unless a provider is configured, so the send
    option is never shown without a working route.
 5. Self-host configuration of one adapter with credentials the operator supplies: provider API key,
-   the provider's identifier for the sending company, and a webhook signing secret. Self-hosters sign
+   the provider's identifier for the sending company, and callback authentication material supported
+   by that adapter. The actual verification mechanism must be confirmed before implementation. Self-hosters sign
    their own agreement with the provider and the sending company is their own CVR.
 6. The NHR lookup can be used directly without any provider (anonymous, D11), so recipient checks and
    the Danish "can this customer receive an e-invoice?" hint work even before sending is configured.
@@ -240,25 +289,49 @@ up or authenticated against.
 | Submission idempotency | None documented; reconcile via `list-outbound-documents` | `idempotencyGuid` | Not checked |
 | Security note | Says ISO/IEC 27001 certification is planned for Q4 2026 | Not checked | Not checked |
 
-**First concrete adapter: Storecove**, as the provider whose documentation covers everything the first
-route needs: a sandbox on the OpenPeppol test network, submission idempotency, Invoice Response events
+**First concrete adapter candidate: Storecove**, whose documentation covers several needs of the
+first route: a sandbox on the OpenPeppol test network, submission idempotency, Invoice Response events
 mapped to our contract, sending evidence and Danish legal-entity identifiers. **Digisense** is the
 candidate for the next route, because it alone of the three reaches Nemhandel and OIOUBL receivers;
 its lack of documented idempotency and response events must be resolved first. Both choices are
-conditional on sandbox access, commercial terms, a data-processing agreement, and the auditor approval
-that Nemhandel requires of businesses using a third-party access point (D4). If Storecove's terms or
-sandbox fail, the contract lets Digisense or another Peppol access point replace it without changing
+conditional on sandbox access, commercial terms and a data-processing agreement. D4's auditor
+condition concerns an operator giving customers access to **Nemhandel** through a third party. It
+does not establish a blanket duty for sending businesses or this Peppol-only proposal. Applicability
+to the actual service roles needs qualified confirmation, as set out in the bookkeeping decision.
+If Storecove's terms or sandbox fail, the contract lets Digisense or another Peppol access point replace it without changing
 OSS domain code.
 
 Mapping of Storecove events to the contract: `succeeded` → `transport_delivered`; `failed` →
 `transport_failed` (not retryable); `no_action_taken` → `transport_no_route`; Invoice Response events
 → `receiver_response` with codes `AB`, `IP`, `UQ`, `CA`, `RE`, `AP`, `PD`; HTTP timeout on submission →
-`submission_outcome_unknown`, then reconcile by `idempotencyGuid`.
+`submission_outcome_unknown`. P2's `DocumentSubmission.idempotencyGuid` specifies **HTTP 422** on
+later requests using the same key; only the first submission is processed. A duplicate-key 422 is
+neither a fresh success with a guaranteed reference nor a safe-resend signal. A confirmed duplicate
+leaves an uncertain send in reconciliation. Other 422 errors need their own validation/error mapping.
+Never rotate the key just to bypass a duplicate response.
 
-Mapping for Digisense, for the later route: `queued-for-delivery` → `submitted`; `delivered` →
+P2 documents webhook fields `guid` and `idempotencyGuid` and evidence retrieval by known GUID. It does
+not establish a queued-status lookup by idempotency key when the original response/GUID was lost.
+That recovery path must be demonstrated in the sandbox, for example with authenticated pull-mode
+webhook evidence. Until reliable evidence exists, keep `unknown` and expose the access dependency.
+Do not manufacture `submission_reconciled` from HTTP 422 or an empty lookup.
+
+Storecove `succeeded` proves corner-3 receipt, not corner-4 receipt or legal receipt under D12 §6.
+`no_action_taken` means no recipient/routing problem. Neither code settles buyer acceptance. P2 also
+lists partial-payment responses. The prototype does not model response clarification codes such as
+D14's `PD` + `PPD`; adapters must preserve these as unsupported evidence, never flatten them to fully
+paid. P2 documents push callbacks with optional HTTP Basic Authentication or a custom header, and
+authenticated pull-mode webhook retrieval. Require a configured verification mechanism; no signed
+webhook implementation was demonstrated. Authentication and richer response semantics remain
+implementation prerequisites.
+
+Mapping for Digisense, for the later route: `queued-for-delivery` → `submission_reconciled` when
+resolving uncertainty, or
+`submitted`/`retry_submitted` only when acknowledging the corresponding send; `delivered` →
 `transport_delivered`; `document-not-valid` → `transport_failed` (not retryable); `unable-to-deliver` →
 `transport_no_route` after a lookup confirms the receiver is missing, else `transport_failed`;
-`temporary-upstream-error` → `transport_failed` (retryable); `unknown-server-error` or a timeout →
+`temporary-upstream-error` → `transport_failed` (retryable only after its non-delivery/retry semantics
+are confirmed; otherwise investigate); `unknown-server-error` or a timeout →
 `submission_outcome_unknown`.
 
 ## Sandbox feasibility
@@ -285,17 +358,28 @@ Not done, and why:
 Validation steps once access exists, in order:
 
 1. Authenticate; record the account's sender identity.
-2. Look up `0088:5798009811639` (Nemhandel demo GLN, which accepts all profiles) or the provider's
-   Peppol test receiver for the BIS Billing invoice and credit-note document types.
+2. Obtain a provider-confirmed receiver on the **OpenPeppol test network** and look up both document
+   types there. The Nemhandel demo GLN `0088:5798009811639` in the synthetic XML is not proof that it
+   is a reachable Storecove Peppol test endpoint. Substitute the authorized test identity before sending.
 3. Submit the validated `dk-public-gln-invoice` fixture with an idempotency key. Record transport
    status and evidence.
-4. Repeat the submission with the same key: expect no second delivery.
+4. Repeat the submission with the same key. For Storecove expect the documented duplicate-key HTTP
+   422, only the first submission processed, and no assumed GUID in the response. Resolve the first
+   submission from trustworthy evidence; verify no second delivery and no blind key rotation.
 5. Submit the credit note referencing it.
-6. Submit a document that fails Danish rules (the payment-means negative control): expect a provider
-   rejection before transport, mapped to `transport_failed`.
+6. In the authorized sandbox, test rejection of the payment-means negative control before transport.
+   Preserve rule IDs and require investigation without a financial command. The current prototype
+   uses `validation_failed`/`review_correction` for local pre-send validation; a provider rejection
+   after acknowledgment stays `transport_failed` with `retryable: false`/`investigate`. Distinguish
+   a validation 422 from a duplicate-key 422. Neither authorizes automatic reissue.
 7. Look up and attempt a receiver with no Peppol registration: expect `no_route`.
 8. Simulate or trigger Invoice Responses `AB`, `UQ`, `RE`, `AP`; replay one late and one duplicate.
-9. Kill the connection during a submission and reconcile it from the provider's records.
+9. Interrupt the connection during submission. Recover a missing GUID from provider evidence keyed
+   to the original sender/idempotency key; if queued, apply `submission_reconciled`. If that lookup
+   cannot be performed, the criterion fails and the state stays unknown. Repeat with a known GUID.
+10. Where the provider supports a safe retry, confirm non-delivery first and correlate the retry
+    acknowledgment with `retry_submitted`, testing both reused and new references. Do not treat
+    Storecove's final `failed` event as retryable.
 
 Pass criteria: every step's outcome maps to one contract event, and steps 4 and 9 show no duplicate
 delivery.
@@ -309,25 +393,63 @@ delivery.
   own. Sending also needs the seller's CVR as legal ID and endpoint (already validated by Quits).
 - **Receiving responses:** the sender advertises the Invoice Response document type through the
   provider, or no business response events arrive.
-- **Status:** webhooks with signature verification, plus polling for reconciliation; webhook delivery
-  identifiers are the deduplication key.
-- **Retry:** only on provider-declared temporary failures, with the schedule above and the same
-  idempotency key; uncertain outcomes are reconciled, never resent.
-- **UI:** the send option appears only when the capability is on and the lookup says `reachable`;
-  otherwise email remains the delivery method and the reason is shown.
+- **Status:** authenticated provider evidence, with its signature/credential mechanism confirmed
+  in the sandbox; stable evidence identifiers for deduplication. The reference-lost lookup path
+  must be demonstrated before automatic reconciliation is claimed.
+- **Retry:** only after evidence of non-delivery and an adapter-specific safe retry contract;
+  preserve the logical key according to that contract. Unknown outcomes and duplicate-key 422
+  require reconciliation. Storecove's final failures do not authorize resubmission.
+- **UI:** sending needs a configured capability, a reachable exact document type and confirmed
+  recipient requirements. An unavailable route uses the requirement decision above. A mandatory
+  structured recipient stays incomplete until an appropriate structured path succeeds; email is
+  only a copy. These decisions have no UI wiring in this discovery.
 - **Buyer reference:** an explicit buyer-reference field is added before public-authority sending is
   offered.
 - **Bookkeeping:** e-invoiced documents remain excluded from bookkeeping claims until the e-invoice gap
   in the boundary decision is answered.
 
+## Compatibility with execution history and issuance
+
+This is a proposed contract for the implementation issue, not a runtime integration with the
+execution-journal work. The state reducer has no authorization checks, I/O, jobs or financial writes.
+
+- A completed issuance command and a delivery outcome are separate. A timeout never replays issuance
+  or allocates a new number. Bind each delivery to organization, document kind/ID, frozen UBL hash,
+  exact recipient, provider/sending legal entity, logical key, attempt ID and evidence ID.
+- Authenticate callbacks, verify all those bindings against stored data, then parse/reduce under a
+  serialized update. A different known provider reference is refused. New references are permitted
+  only for an explicitly correlated, safe retry. Evidence from another organization, document,
+  recipient or old attempt must not reach this reducer as current evidence.
+- `queued` means provider submission accepted, not corner-3 delivery. The journal's email
+  `accepted` evidence must never be cast to e-invoice `delivered`. `delivered` needs the e-invoice
+  transport receipt; receiver/business responses remain separately recorded.
+- `unknown` maps to unresolved work and reconciliation. A missing receipt, missing provider lookup
+  result or duplicate-key 422 cannot authorize a resend. A journal's explicit human email resend
+  workflow grants no e-invoice retry permission. No automatic or manual e-invoice override is
+  implemented by this prototype.
+- `review_correction` projects a human review need for either document kind. It cannot call a credit,
+  cancellation, reissue or payment command. Even `PD` is reported evidence, not a posted payment.
+- Keep current read/send permissions and organization scope at the future command boundary. A
+  provider capability does not grant permission. Recipient corrections require a new reviewed
+  delivery target and must not mutate an uncertain attempt. External structured delivery evidence
+  cannot mark this Peppol attempt delivered.
+- Schema changes in this unpublished prototype require `documentKind` as the third argument to
+  `initialEinvoiceDeliveryState`. Callers use `submission_reconciled` for queued reconciliation and
+  `retry_submitted` for a permitted retry acknowledgment. The removed `credit_and_reissue` action
+  becomes `review_correction`. No persisted runtime records exist to migrate.
+
+The contract regressions cover the acknowledgment/refusal rules and both document kinds. The fixture
+check invokes the current UBL builder and proves the preserved outputs still match after the PDF/VAT
+merge. No journal candidate was imported and no cross-stream runtime exchange was tested. Event
+binding/authentication, attempt fencing, current response-order/clarification rules and provider
+callback security still need implementation and their own integration evidence. Existing immutable
+artifacts, numbering and UX document-view/PDF contracts remain owned by their implementations.
+
 ## Reproducing the evidence
 
-1. Download `PEPPOL_DK_CIUS_2026-08-03_v1.17.0.ff275f9.zip` from ERST's repository and check its
-   SHA-256 against D7 above.
-2. Render fixtures with the checkout's own builder, `buildUblDocument` from
-   `apps/oss/src/lib/exports/ubl.ts`, for the four documents in the validation table.
-3. Run each `Schematron/*-UBL.xslt` (CEN, PEPPOL, DK) with an XSLT 3.0 processor such as SaxonC-HE and
-   count `svrl:failed-assert` elements with `flag="fatal"`.
-4. Look up receivers with `GET https://api.nemhandel.dk/nemhandel-api/search/lookup/{cvr}`
-   (production) or `https://api-demo.nemhandel.dk/...` (demo). No authentication is needed. Keep the
-   request rate low.
+The [committed fixture bundle](./evidence/2026-10-08-denmark/README.md) contains exact builder inputs,
+six XML files, checksums, the byte-comparison command, a validator invocation pinned to the official
+CIUS archive and expected results including both negative controls. It is synthetic/offline evidence.
+The original 60-CVR registry sample remains historical review evidence; it is not bundled as customer
+data or presented as national market coverage. No credentials, environment, provider transport or
+qualified legal/accounting review are included or implied.

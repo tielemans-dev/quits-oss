@@ -1,0 +1,363 @@
+{
+  "dk-b2b-invoice": {
+    "issued": true,
+    "currency": "DKK",
+    "calculationVersion": "v2",
+    "deliveryDate": "2026-09-30",
+    "note": null,
+    "seller": {
+      "name": "Nordic Design ApS",
+      "street": "Vesterbrogade 1",
+      "additionalStreet": null,
+      "city": "København V",
+      "postalZone": "1620",
+      "region": null,
+      "countryCode": "DK",
+      "vatId": "DK12345678",
+      "legalId": {
+        "id": "12345678",
+        "scheme": "0184"
+      },
+      "electronicAddress": {
+        "scheme": "0184",
+        "id": "12345678"
+      },
+      "email": "billing@nordic.test"
+    },
+    "amountPaid": "0",
+    "kind": "invoice",
+    "number": "INV-1001",
+    "issueDate": "2026-10-01",
+    "dueDate": "2026-10-31",
+    "buyerReference": "Jens Hansen",
+    "orderReference": "PO-77",
+    "billingReference": null,
+    "buyer": {
+      "name": "Kunde ApS",
+      "street": "Nørregade 10",
+      "additionalStreet": null,
+      "city": "Aarhus C",
+      "postalZone": "8000",
+      "region": null,
+      "countryCode": "DK",
+      "vatId": "DK87654321",
+      "legalId": {
+        "id": "87654321",
+        "scheme": "0184"
+      },
+      "electronicAddress": {
+        "scheme": "0184",
+        "id": "87654321"
+      },
+      "email": "ap@kunde.test"
+    },
+    "payment": {
+      "meansCode": "42",
+      "accountId": "0001234567",
+      "accountName": "Nordic Design ApS",
+      "branchId": "1234",
+      "reference": "INV-1001"
+    },
+    "frozenGroups": [
+      {
+        "key": "standard:null",
+        "treatment": "standard",
+        "reasonCode": null,
+        "country": null,
+        "rate": "0.25",
+        "exponent": 2,
+        "baseExponent": 2,
+        "net": "1500.00",
+        "tax": "375.00",
+        "gross": "1875.00",
+        "payableRounding": "0",
+        "netBase": null,
+        "taxBase": null,
+        "grossBase": null,
+        "payableRoundingBase": null,
+        "evidence": null
+      }
+    ],
+    "lines": [
+      {
+        "description": "Design work",
+        "quantity": "10",
+        "unitPriceNet": "120",
+        "lineNet": "1200.00",
+        "taxRate": "25",
+        "taxCategory": "standard",
+        "vatTreatment": "standard",
+        "groupKey": "standard:null"
+      },
+      {
+        "description": "Hosting",
+        "quantity": "3",
+        "unitPriceNet": "100",
+        "lineNet": "300.00",
+        "taxRate": "25",
+        "taxCategory": "standard",
+        "vatTreatment": "standard",
+        "groupKey": "standard:null"
+      }
+    ],
+    "storedGross": "1875.00"
+  },
+  "dk-public-gln-invoice": {
+    "issued": true,
+    "currency": "DKK",
+    "calculationVersion": "v2",
+    "deliveryDate": "2026-09-30",
+    "note": null,
+    "seller": {
+      "name": "Nordic Design ApS",
+      "street": "Vesterbrogade 1",
+      "additionalStreet": null,
+      "city": "København V",
+      "postalZone": "1620",
+      "region": null,
+      "countryCode": "DK",
+      "vatId": "DK12345678",
+      "legalId": {
+        "id": "12345678",
+        "scheme": "0184"
+      },
+      "electronicAddress": {
+        "scheme": "0184",
+        "id": "12345678"
+      },
+      "email": "billing@nordic.test"
+    },
+    "amountPaid": "0",
+    "kind": "invoice",
+    "number": "INV-1002",
+    "issueDate": "2026-10-01",
+    "dueDate": "2026-10-31",
+    "buyerReference": "Personreference 1234",
+    "orderReference": "REK-55",
+    "billingReference": null,
+    "buyer": {
+      "name": "Demo Kommune",
+      "street": "Rådhuspladsen 1",
+      "additionalStreet": null,
+      "city": "København V",
+      "postalZone": "1550",
+      "region": null,
+      "countryCode": "DK",
+      "vatId": null,
+      "legalId": {
+        "id": "11223344",
+        "scheme": "0184"
+      },
+      "electronicAddress": {
+        "scheme": "0088",
+        "id": "5798009811639"
+      },
+      "email": null
+    },
+    "payment": {
+      "meansCode": "42",
+      "accountId": "0001234567",
+      "accountName": "Nordic Design ApS",
+      "branchId": "1234",
+      "reference": "INV-1002"
+    },
+    "frozenGroups": [
+      {
+        "key": "standard:null",
+        "treatment": "standard",
+        "reasonCode": null,
+        "country": null,
+        "rate": "0.25",
+        "exponent": 2,
+        "baseExponent": 2,
+        "net": "800.00",
+        "tax": "200.00",
+        "gross": "1000.00",
+        "payableRounding": "0",
+        "netBase": null,
+        "taxBase": null,
+        "grossBase": null,
+        "payableRoundingBase": null,
+        "evidence": null
+      }
+    ],
+    "lines": [
+      {
+        "description": "Workshop",
+        "quantity": "1",
+        "unitPriceNet": "800",
+        "lineNet": "800.00",
+        "taxRate": "25",
+        "taxCategory": "standard",
+        "vatTreatment": "standard",
+        "groupKey": "standard:null"
+      }
+    ],
+    "storedGross": "1000.00"
+  },
+  "dk-b2b-credit-note": {
+    "issued": true,
+    "currency": "DKK",
+    "calculationVersion": "v2",
+    "deliveryDate": null,
+    "note": "Hosting credited",
+    "seller": {
+      "name": "Nordic Design ApS",
+      "street": "Vesterbrogade 1",
+      "additionalStreet": null,
+      "city": "København V",
+      "postalZone": "1620",
+      "region": null,
+      "countryCode": "DK",
+      "vatId": "DK12345678",
+      "legalId": {
+        "id": "12345678",
+        "scheme": "0184"
+      },
+      "electronicAddress": {
+        "scheme": "0184",
+        "id": "12345678"
+      },
+      "email": "billing@nordic.test"
+    },
+    "amountPaid": "0",
+    "kind": "creditNote",
+    "number": "CN-0001",
+    "issueDate": "2026-10-05",
+    "dueDate": null,
+    "buyerReference": "Jens Hansen",
+    "orderReference": "PO-77",
+    "billingReference": {
+      "number": "INV-1001",
+      "issueDate": "2026-10-01"
+    },
+    "buyer": {
+      "name": "Kunde ApS",
+      "street": "Nørregade 10",
+      "additionalStreet": null,
+      "city": "Aarhus C",
+      "postalZone": "8000",
+      "region": null,
+      "countryCode": "DK",
+      "vatId": "DK87654321",
+      "legalId": {
+        "id": "87654321",
+        "scheme": "0184"
+      },
+      "electronicAddress": {
+        "scheme": "0184",
+        "id": "87654321"
+      },
+      "email": "ap@kunde.test"
+    },
+    "frozenGroups": [
+      {
+        "key": "standard:null",
+        "treatment": "standard",
+        "reasonCode": null,
+        "country": null,
+        "rate": "0.25",
+        "exponent": 2,
+        "baseExponent": 2,
+        "net": "300.00",
+        "tax": "75.00",
+        "gross": "375.00",
+        "payableRounding": "0",
+        "netBase": null,
+        "taxBase": null,
+        "grossBase": null,
+        "payableRoundingBase": null,
+        "evidence": null
+      }
+    ],
+    "lines": [
+      {
+        "description": "Hosting",
+        "quantity": "3",
+        "unitPriceNet": "100",
+        "lineNet": "300.00",
+        "taxRate": "25",
+        "taxCategory": "standard",
+        "vatTreatment": "standard",
+        "groupKey": "standard:null"
+      }
+    ],
+    "storedGross": "375.00"
+  },
+  "legacy-fixture-dk-to-de": {
+    "kind": "invoice",
+    "issued": true,
+    "number": "INV-0007",
+    "issueDate": "2026-10-01",
+    "dueDate": "2026-10-31",
+    "deliveryDate": null,
+    "currency": "DKK",
+    "buyerReference": "PO-42",
+    "orderReference": "PO-42",
+    "billingReference": null,
+    "note": null,
+    "seller": {
+      "name": "Nordic Design ApS",
+      "street": "Vesterbrogade 1",
+      "additionalStreet": null,
+      "city": "København V",
+      "postalZone": "1620",
+      "region": null,
+      "countryCode": "DK",
+      "vatId": "DK12345678",
+      "legalId": {
+        "id": "12345678",
+        "scheme": "0184"
+      },
+      "electronicAddress": {
+        "scheme": "0184",
+        "id": "12345678"
+      },
+      "email": "billing@nordic.test"
+    },
+    "buyer": {
+      "name": "Acme & Sons <GmbH>",
+      "street": "Hauptstraße 5",
+      "additionalStreet": null,
+      "city": "Berlin",
+      "postalZone": "10115",
+      "region": null,
+      "countryCode": "DE",
+      "vatId": "DE123456789",
+      "legalId": null,
+      "electronicAddress": {
+        "scheme": "9930",
+        "id": "DE123456789"
+      },
+      "email": null
+    },
+    "lines": [
+      {
+        "description": "Design",
+        "quantity": "2",
+        "unitPriceNet": "100",
+        "lineNet": "200",
+        "taxRate": "25",
+        "taxCategory": "standard"
+      },
+      {
+        "description": "Hosting",
+        "quantity": "3",
+        "unitPriceNet": "33.33",
+        "lineNet": "99.99",
+        "taxRate": "25",
+        "taxCategory": "standard"
+      },
+      {
+        "description": "Book",
+        "quantity": "1",
+        "unitPriceNet": "50",
+        "lineNet": "50",
+        "taxRate": "0",
+        "taxCategory": "exempt"
+      }
+    ],
+    "storedGross": "424.99",
+    "amountPaid": "100"
+  }
+}
