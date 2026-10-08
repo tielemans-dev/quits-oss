@@ -1,8 +1,10 @@
 import { HeadContent, Scripts, createRootRoute, Link, redirect } from '@tanstack/react-router'
+import { ThemeProvider } from '../components/theme-provider'
 import { TooltipProvider } from '../components/ui/tooltip'
 import { useI18n, I18nProvider } from '../lib/i18n/react'
 import { getInstallationStatus, normalizeInstallationStatus } from '../lib/installation'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
+import { themeInitScript } from '../lib/theme'
 
 import appCss from '../styles.css?url'
 
@@ -58,15 +60,20 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // The head script puts the theme's `dark` class on <html> before React hydrates.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/* After HeadContent so the charset meta stays near the top; the stylesheet blocks first paint anyway. */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
         <I18nProvider>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
+          <ThemeProvider>
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
+          </ThemeProvider>
         </I18nProvider>
         <Scripts />
       </body>

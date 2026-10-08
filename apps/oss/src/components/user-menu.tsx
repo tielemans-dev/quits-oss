@@ -1,16 +1,19 @@
 import { useNavigate } from '@tanstack/react-router'
-import { Check, ChevronsUpDown, LogOut, Plus } from 'lucide-react'
+import { Check, ChevronsUpDown, LogOut, Monitor, Moon, Plus, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { authClient, useSession } from '../lib/auth-client'
 import { switchActiveOrganization, useRequestOrganizationId } from '../lib/active-organization'
 import { loadPage } from '../lib/page-navigation'
+import { parseThemePreference, useTheme, type ThemePreference } from '../lib/theme'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
@@ -21,6 +24,17 @@ import {
   useSidebar,
 } from './ui/sidebar'
 import { useI18n } from '../lib/i18n/react'
+import type { TranslationKey } from '../lib/i18n/messages'
+
+const themeOptions: Array<{
+  value: ThemePreference
+  labelKey: TranslationKey
+  icon: typeof Monitor
+}> = [
+  { value: 'system', labelKey: 'user.theme.system', icon: Monitor },
+  { value: 'light', labelKey: 'user.theme.light', icon: Sun },
+  { value: 'dark', labelKey: 'user.theme.dark', icon: Moon },
+]
 
 function getInitials(name: string): string {
   return name
@@ -45,6 +59,7 @@ export function UserMenu() {
   const navigate = useNavigate()
   const { isMobile } = useSidebar()
   const { data: session } = useSession()
+  const { preference: themePreference, setPreference: setThemePreference } = useTheme()
 
   const user = session?.user
   const sessionOrgId = session?.session?.activeOrganizationId ?? null
@@ -167,6 +182,21 @@ export function UserMenu() {
                 </DropdownMenuItem>
               </>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="px-2 py-1 text-xs text-muted-foreground">
+              {t('user.theme')}
+            </DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={themePreference}
+              onValueChange={(value) => setThemePreference(parseThemePreference(value))}
+            >
+              {themeOptions.map(({ value, labelKey, icon: Icon }) => (
+                <DropdownMenuRadioItem key={value} value={value}>
+                  <Icon className="text-muted-foreground" />
+                  {t(labelKey)}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut />
