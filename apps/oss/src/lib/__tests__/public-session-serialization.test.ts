@@ -155,6 +155,85 @@ describe("public session serialization", () => {
     expect(session.seller).toEqual({ name: null, logo: null })
   })
 
+  it("keeps the frozen bank account and payment note off the public payment page", () => {
+    const session = serializePublicInvoiceSession({
+      invoice: {
+        id: "invoice-1",
+        number: "INV-0001",
+        status: "sent",
+        paymentStatus: "unpaid",
+        issueDate: new Date("2026-03-09T00:00:00.000Z"),
+        dueDate: new Date("2026-03-23T00:00:00.000Z"),
+        totalGross: decimal(250),
+        amountPaid: decimal(0),
+        amountCredited: decimal(0),
+        totalTax: decimal(0),
+        subtotalNet: decimal(250),
+        currency: "DKK",
+        notes: null,
+        sellerSnapshot: {
+          companyName: "E2E Org",
+          companyEmail: "billing@e2e.test",
+          taxIds: [{ scheme: "vat", value: "DK12345678", countryCode: "DK" }],
+          bankAccount: {
+            accountHolder: "E2E Org ApS",
+            bankName: "Danske Bank",
+            regNumber: "0040",
+            accountNumber: "0440116243",
+            iban: "DK5000400440116243",
+            bic: "DABADKKK",
+          },
+          paymentNote: "MobilePay Box 12345",
+        },
+        buyerSnapshot: { name: "Invoice Customer" },
+        contact: { name: "Invoice Customer", email: "invoice@example.com", company: null },
+        items: [],
+      },
+      paymentState: "unpaid",
+      stripeEnabled: false,
+    }, "tok.en")
+
+    // The rest of the seller identity is still there.
+    expect(session.invoice.sellerSnapshot).toEqual({
+      companyName: "E2E Org",
+      companyEmail: "billing@e2e.test",
+      taxIds: [{ scheme: "vat", value: "DK12345678", countryCode: "DK" }],
+    })
+    const json = JSON.stringify(session)
+    for (const secret of ["bankAccount", "paymentNote", "DK5000400440116243", "0440116243", "DABADKKK", "MobilePay"]) {
+      expect(json).not.toContain(secret)
+    }
+  })
+
+  it("serializes a missing or malformed seller snapshot as null", () => {
+    const base = {
+      id: "invoice-1",
+      number: "INV-0001",
+      status: "sent",
+      paymentStatus: "unpaid",
+      issueDate: "2026-03-09T00:00:00.000Z",
+      dueDate: "2026-03-23T00:00:00.000Z",
+      totalGross: 10,
+      amountPaid: 0,
+      amountCredited: 0,
+      totalTax: 0,
+      subtotalNet: 10,
+      currency: "DKK",
+      notes: null,
+      buyerSnapshot: null,
+      contact: { name: "Customer", email: null, company: null },
+      items: [],
+    }
+    for (const sellerSnapshot of [null, "nonsense"]) {
+      const session = serializePublicInvoiceSession({
+        invoice: { ...base, sellerSnapshot },
+        paymentState: "unpaid",
+        stripeEnabled: false,
+      }, "tok.en")
+      expect(session.invoice.sellerSnapshot).toBeNull()
+    }
+  })
+
   it("serializes quote sessions into plain numbers", () => {
     const session = serializePublicQuoteSession({
       quote: {
