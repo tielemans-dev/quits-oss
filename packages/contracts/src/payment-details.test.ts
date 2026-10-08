@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   EMPTY_PAYMENT_DETAILS,
+  IBAN_LENGTH_BY_COUNTRY,
   formatIban,
   hasPaymentDetails,
   isValidBic,
@@ -12,6 +13,17 @@ import { parseSellerSnapshot } from "./documents"
 
 /** A valid Danish IBAN: DK, check digits 50, reg.nr. 0040, account number 0440116243. */
 const DANISH_IBAN = "DK5000400440116243"
+
+/** An IBAN with correct mod-97 check digits for any country and basic account number. */
+function ibanWithCheckDigits(country: string, bban: string): string {
+  const digits = (country + "00" + bban)
+    .slice(4)
+    .concat(country, "00")
+    .replace(/[A-Z]/g, (letter) => String(letter.charCodeAt(0) - 55))
+  let remainder = 0
+  for (const digit of digits) remainder = (remainder * 10 + Number(digit)) % 97
+  return `${country}${String(98 - remainder).padStart(2, "0")}${bban}`
+}
 
 describe("IBAN validation", () => {
   it("accepts the Danish sample IBAN", () => {
@@ -47,6 +59,38 @@ describe("IBAN validation", () => {
     ["1K5000400440116243"],
   ])("rejects a malformed IBAN %j", (iban) => {
     expect(isValidIban(iban)).toBe(false)
+  })
+
+  it("checks the length of a known country's IBAN", () => {
+    // Both have correct check digits, so only the length can reject the second one.
+    const tooLong = ibanWithCheckDigits("DK", "0040044011624" + "30")
+    expect(tooLong).toHaveLength(IBAN_LENGTH_BY_COUNTRY.DK! + 1)
+    expect(isValidIban(ibanWithCheckDigits("DK", "004004401162" + "43"))).toBe(true)
+    expect(isValidIban(tooLong)).toBe(false)
+    expect(isValidIban(ibanWithCheckDigits("DK", "0040044011624"))).toBe(false)
+  })
+
+  it("rejects a DK IBAN with one digit too many through the input schema", () => {
+    const result = paymentDetailsInputSchema.safeParse({ iban: ibanWithCheckDigits("DK", "004004401162430") })
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error.issues[0]?.path).toEqual(["iban"])
+  })
+
+  it.each(Object.entries(IBAN_LENGTH_BY_COUNTRY))(
+    "accepts a %s IBAN of %i characters and rejects one more or less",
+    (country, length) => {
+      const bban = "0".repeat(length - 4)
+      expect(isValidIban(ibanWithCheckDigits(country, bban))).toBe(true)
+      expect(isValidIban(ibanWithCheckDigits(country, `${bban}0`))).toBe(false)
+      expect(isValidIban(ibanWithCheckDigits(country, bban.slice(1)))).toBe(false)
+    }
+  )
+
+  it.each([
+    ["AE07 0331 2345 6789 0123 456"],
+    ["BR18 0036 0305 0000 1000 9795 493C 1"],
+  ])("only applies the generic length range to an unlisted country: %s", (iban) => {
+    expect(isValidIban(iban)).toBe(true)
   })
 
   it("normalizes and formats", () => {

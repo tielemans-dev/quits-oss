@@ -6,6 +6,16 @@ export const PAYMENT_NOTE_MAX_LENGTH = 500
 export const IBAN_MIN_LENGTH = 15
 export const IBAN_MAX_LENGTH = 34
 
+/**
+ * The fixed IBAN length of the countries Quits users are most likely to bank in. Other countries
+ * only get the generic length check, so a country missing here is never rejected for its length.
+ */
+export const IBAN_LENGTH_BY_COUNTRY: Readonly<Record<string, number>> = {
+  AT: 20, BE: 16, BG: 22, CH: 21, CY: 28, CZ: 24, DE: 22, DK: 18, EE: 20, ES: 24, FI: 18, FO: 18,
+  FR: 27, GB: 22, GL: 18, GR: 27, HR: 21, HU: 28, IE: 22, IS: 26, IT: 27, LI: 21, LT: 20, LU: 20,
+  LV: 21, MC: 27, MT: 31, NL: 18, NO: 15, PL: 28, PT: 25, RO: 24, SE: 24, SI: 19, SK: 24, SM: 27,
+}
+
 /** Removes all whitespace and upper-cases: how an IBAN or BIC is stored and compared. */
 function normalizeCode(value: string): string {
   return value.replace(/\s+/g, "").toUpperCase()
@@ -20,13 +30,16 @@ export function formatIban(value: string): string {
 }
 
 /**
- * Checks an IBAN's structure and its ISO 13616 mod-97 check digits. Spaces and lower case are
- * accepted. This does not check the country's expected length or its national account format.
+ * Checks an IBAN's structure, its length and its ISO 13616 mod-97 check digits. Spaces and lower
+ * case are accepted. The length is the country's own where it is known (`IBAN_LENGTH_BY_COUNTRY`),
+ * otherwise anywhere in the generic range. National account formats are not checked.
  */
 export function isValidIban(value: string): boolean {
   const iban = normalizeIban(value)
   if (iban.length < IBAN_MIN_LENGTH || iban.length > IBAN_MAX_LENGTH) return false
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(iban)) return false
+  const expectedLength = IBAN_LENGTH_BY_COUNTRY[iban.slice(0, 2)]
+  if (expectedLength !== undefined && iban.length !== expectedLength) return false
   // Move the country code and check digits to the end, then read letters as 10..35. The number
   // is reduced digit by digit, so it never exceeds the safe integer range.
   const rearranged = iban.slice(4) + iban.slice(0, 4)
