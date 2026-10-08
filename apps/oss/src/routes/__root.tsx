@@ -4,7 +4,7 @@ import { TooltipProvider } from '../components/ui/tooltip'
 import { useI18n, I18nProvider } from '../lib/i18n/react'
 import { getInstallationStatus, normalizeInstallationStatus } from '../lib/installation'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
-import { THEME_COLORS, themeInitScript } from '../lib/theme'
+import { themeInitScript } from '../lib/theme'
 
 import appCss from '../styles.css?url'
 import schibstedFontUrl from '@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2?url'
@@ -79,9 +79,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
-        {/* One tag: the head script (and applyTheme) set its colour from the resolved theme. */}
-        <meta name="theme-color" content={THEME_COLORS.light} suppressHydrationWarning />
-        {/* After HeadContent so the charset meta stays near the top; the stylesheet blocks first paint anyway. */}
+        {/*
+          The head script creates the one theme-color meta from the resolved theme, and applyTheme
+          keeps it current. React does not render it: React 19 hoists <meta> elements, so on
+          hydration it would add a second tag next to the one the script changed.
+          After HeadContent so the charset meta stays near the top; the stylesheet blocks first paint anyway.
+        */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
