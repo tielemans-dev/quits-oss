@@ -18,9 +18,9 @@ import { CommandPalette } from "../command-palette"
 import { registerPaletteProvider, resetPaletteProvidersForTesting } from "../registry"
 import type { PaletteCapability } from "../types"
 
-function Harness({ can }: { can: (action: PaletteCapability) => boolean }) {
+function Harness({ can, onNavigate }: { can: (action: PaletteCapability) => boolean; onNavigate?: () => void }) {
   const [open, setOpen] = useState(true)
-  return <CommandPalette open={open} onOpenChange={setOpen} can={can} billingEnabled={false} />
+  return <CommandPalette open={open} onOpenChange={setOpen} can={can} billingEnabled={false} onNavigate={onNavigate} />
 }
 
 afterEach(() => {
@@ -244,5 +244,63 @@ describe("command palette", () => {
     registerPaletteProvider({ id: "draft", order: 1, placeholderKey: "shell.search.placeholderDraft", sections: () => [] })
     render(<Harness can={everything} />)
     expect(screen.getByRole("combobox").getAttribute("placeholder")).toBe("Søg, eller skriv en faktura…")
+  })
+
+  it("shows a quiet searching row, not the empty message, while an async provider still answers", async () => {
+    let answer: (value: never[]) => void = () => undefined
+    registerPaletteProvider({
+      id: "slow",
+      order: 1,
+      sections: ({ query }) =>
+        query
+          ? new Promise<never[]>((resolve) => {
+              answer = resolve
+            })
+          : [],
+    })
+    render(<Harness can={everything} />)
+    const input = screen.getByRole("combobox")
+
+    fireEvent.change(input, { target: { value: "zzzz" } })
+    expect(screen.getByText("Søger…")).toBeTruthy()
+    expect(screen.queryByText(/Ingen resultater/)).toBeNull()
+    expect(screen.getByRole("listbox").getAttribute("aria-busy")).toBe("true")
+
+    await act(async () => {
+      answer([] as never[])
+    })
+    expect(screen.queryByText("Søger…")).toBeNull()
+    expect(screen.getByText("Ingen resultater for “zzzz”")).toBeTruthy()
+    expect(screen.getByRole("listbox").getAttribute("aria-busy")).toBe("false")
+  })
+
+  it("says so when an async provider rejects and nothing matched", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    registerPaletteProvider({ id: "rejects", order: 1, sections: () => Promise.reject(new Error("no")) })
+    render(<Harness can={everything} />)
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "zzzz" } })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(screen.getByText("Ingen resultater for “zzzz”")).toBeTruthy()
+  })
+
+  it("does not take a placeholder from a provider that reuses a reserved id", () => {
+    registerPaletteProvider({ id: "navigate", order: 1, placeholderKey: "shell.search.placeholderDraft", sections: () => [] })
+    render(<Harness can={everything} />)
+    expect(screen.getByRole("combobox").getAttribute("placeholder")).toBe("Søg eller gå til…")
+  })
+
+  it("tells the shell when an item navigates, besides closing", () => {
+    const onNavigate = vi.fn()
+    render(<Harness can={everything} onNavigate={onNavigate} />)
+
+    const input = screen.getByRole("combobox")
+    fireEvent.change(input, { target: { value: "kredit" } })
+    fireEvent.keyDown(input, { key: "Enter" })
+
+    expect(router.navigate).toHaveBeenCalledWith({ to: "/credit-notes" })
+    expect(onNavigate).toHaveBeenCalledTimes(1)
   })
 })

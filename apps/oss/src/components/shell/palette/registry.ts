@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 import type { TranslationKey } from '../../../lib/i18n/messages'
+import { reservedProviderIds } from './builtin-providers'
 import type { PaletteProvider } from './types'
 
 /**
@@ -41,8 +42,9 @@ export function useRegisteredPaletteProviders(): readonly PaletteProvider[] {
  */
 export function useSearchPlaceholderKey(): TranslationKey {
   const registered = useRegisteredPaletteProviders()
+  // A provider that takes a built-in's id is ignored by the palette, so it promises nothing.
   const promising = registered
-    .filter((provider) => provider.placeholderKey)
+    .filter((provider) => provider.placeholderKey && !reservedProviderIds.has(provider.id))
     .sort((a, b) => a.order - b.order)[0]
   return promising?.placeholderKey ?? 'shell.search.placeholder'
 }

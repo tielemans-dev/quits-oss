@@ -13,18 +13,22 @@ type Props = {
   onOpenChange: (open: boolean) => void
   can: PaletteContext['can']
   billingEnabled: boolean
+  /** Called when an item navigates, besides closing the palette: the shell closes its mobile drawer here. */
+  onNavigate?: () => void
 }
 
 /**
  * Sections of every provider for `query`, in provider order. Async providers fill in when they
- * resolve. A provider that throws offers nothing; the rest carry on.
+ * resolve, and `pending` says whether any still has to. A provider that throws offers nothing;
+ * the rest carry on.
  */
 function useSections(
   providers: readonly PaletteProvider[],
   context: Omit<PaletteContext, 'signal'>,
   active: boolean
-): PaletteSection[] {
+): { sections: PaletteSection[]; pending: boolean } {
   const [resolved, setResolved] = useState<Record<string, PaletteSection[]>>({})
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set())
 
   useEffect(() => {
     if (!active) return
@@ -32,6 +36,13 @@ function useSections(
     // requests are told to stop.
     const run = new AbortController()
     const next: Record<string, PaletteSection[]> = {}
+    const waiting = new Set<string>()
+    const settle = (id: string) =>
+      setPendingIds((current) => {
+        const rest = new Set(current)
+        rest.delete(id)
+        return rest
+      })
     for (const provider of providers) {
       let result: PaletteSection[] | Promise<PaletteSection[]>
       try {
@@ -43,23 +54,28 @@ function useSections(
       if (Array.isArray(result)) {
         next[provider.id] = result
       } else {
+        waiting.add(provider.id)
         result.then(
           (sections) => {
             if (run.signal.aborted) return
             setResolved((current) => ({ ...current, [provider.id]: sections }))
+            settle(provider.id)
           },
           (error) => {
-            if (!run.signal.aborted) console.error(`Command palette provider "${provider.id}" failed`, error)
+            if (run.signal.aborted) return
+            console.error(`Command palette provider "${provider.id}" failed`, error)
+            settle(provider.id)
           }
         )
       }
     }
     setResolved(next)
+    setPendingIds(waiting)
     return () => run.abort()
     // `context` is rebuilt every render; its parts that matter are listed.
   }, [providers, context.query, context.billingEnabled, context.can, context.t, active])
 
-  return useMemo(() => {
+  const sections = useMemo(() => {
     const seen = new Set<string>()
     return [...providers]
       .sort((a, b) => a.order - b.order)
@@ -74,6 +90,7 @@ function useSections(
       }))
       .filter((section) => section.items.length > 0)
   }, [providers, resolved])
+  return { sections, pending: pendingIds.size > 0 }
 }
 
 /**
@@ -81,7 +98,7 @@ function useSections(
  * (arrows, Home/End, Enter, Esc), focus (trapped while open, returned to where it came from) and
  * closing. What it offers comes from providers; see `types.ts`.
  */
-export function CommandPalette({ open, onOpenChange, can, billingEnabled }: Props) {
+export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavigate }: Props) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const listboxId = useId()
@@ -101,7 +118,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled }: Prop
     () => ({ query, can, billingEnabled, t }),
     [query, can, billingEnabled, t]
   )
-  const sections = useSections(providers, context, open)
+  const { sections, pending } = useSections(providers, context, open)
   const items = useMemo(() => sections.flatMap((section) => section.items), [sections])
 
   // A new query, or new results, start on the first item; keep the choice while it still exists.
@@ -122,12 +139,13 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled }: Prop
       item.perform({
         navigate: (to) => {
           close()
+          onNavigate?.()
           void navigate({ to } as Parameters<typeof navigate>[0])
         },
         close,
       })
     },
-    [close, navigate]
+    [close, navigate, onNavigate]
   )
 
   function move(delta: number | 'first' | 'last') {
@@ -208,14 +226,19 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled }: Prop
           <div
             id={listboxId}
             role="listbox"
+            aria-busy={pending}
             aria-label={t('shell.palette.title')}
             className="max-h-[min(380px,55vh)] overflow-y-auto p-2"
           >
-            {sections.length === 0 && (
-              <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                {t('shell.palette.empty', { query: query.trim() })}
-              </p>
-            )}
+            {sections.length === 0 &&
+              (pending ? (
+                // Nothing has matched yet, but a provider is still answering: not "no results" yet.
+                <p className="mono-label px-3 py-8 text-center">{t('shell.palette.searching')}</p>
+              ) : (
+                <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                  {t('shell.palette.empty', { query: query.trim() })}
+                </p>
+              ))}
             {sections.map((section) => (
               <div
                 key={section.id}

@@ -4,11 +4,21 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const permissions = vi.hoisted(() => ({ ready: false, allowed: false }))
+const sidebar = vi.hoisted(() => ({ setOpenMobile: vi.fn() }))
 
 vi.mock("../../../lib/runtime-distribution", () => ({ useRuntimeDistribution: () => ({ billingEnabled: false }) }))
-vi.mock("../../ui/sidebar", () => ({ SidebarTrigger: () => null }))
+vi.mock("../../ui/sidebar", () => ({
+  SidebarTrigger: () => null,
+  useSidebar: () => ({ setOpenMobile: sidebar.setOpenMobile }),
+}))
 vi.mock("../search-field", () => ({ SearchField: () => null }))
-vi.mock("../palette", () => ({ CommandPalette: () => null }))
+vi.mock("../palette", () => ({
+  CommandPalette: ({ onNavigate }: { onNavigate?: () => void }) => (
+    <button type="button" onClick={onNavigate}>
+      navigate
+    </button>
+  ),
+}))
 vi.mock("../use-shell-permissions", () => ({
   useShellPermissions: () => ({ ready: permissions.ready, can: () => permissions.allowed }),
 }))
@@ -22,6 +32,7 @@ afterEach(() => {
   cleanup()
   permissions.ready = false
   permissions.allowed = false
+  sidebar.setOpenMobile.mockReset()
 })
 
 const isOpen = () => screen.getByTestId("new-menu").getAttribute("data-open")
@@ -70,5 +81,12 @@ describe("app main new menu", () => {
 
     fireEvent.keyDown(document.body, { key: "n" })
     expect(isOpen()).toBe("false")
+  })
+
+  it("closes the mobile drawer when the palette navigates", () => {
+    render(<AppMain>page</AppMain>)
+
+    fireEvent.click(screen.getByRole("button", { name: "navigate" }))
+    expect(sidebar.setOpenMobile).toHaveBeenCalledWith(false)
   })
 })

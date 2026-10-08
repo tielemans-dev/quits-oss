@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { useRuntimeDistribution } from '../../lib/runtime-distribution'
-import { SidebarTrigger } from '../ui/sidebar'
+import { SidebarTrigger, useSidebar } from '../ui/sidebar'
 import { NewMenu } from './new-menu'
 import { CommandPalette } from './palette'
 import { createActions } from './palette/builtin-providers'
@@ -17,6 +17,7 @@ import { useShellPermissions } from './use-shell-permissions'
 export function AppMain({ banner, children }: { banner?: ReactNode; children: ReactNode }) {
   const { billingEnabled } = useRuntimeDistribution()
   const { can, ready } = useShellPermissions()
+  const { setOpenMobile } = useSidebar()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
 
@@ -55,7 +56,14 @@ export function AppMain({ banner, children }: { banner?: ReactNode; children: Re
           {children}
         </div>
       </main>
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} can={can} billingEnabled={billingEnabled} />
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        can={can}
+        billingEnabled={billingEnabled}
+        // ⌘K works over the mobile drawer; going to a page must not leave the drawer over it.
+        onNavigate={() => setOpenMobile(false)}
+      />
     </div>
   )
 }
