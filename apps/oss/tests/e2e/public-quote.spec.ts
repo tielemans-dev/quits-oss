@@ -72,11 +72,11 @@ test("presents the quote in Danish, with kroner, and keeps the seller's identity
   await expect(page.locator("header img")).toHaveAttribute("src", tinyLogoDataUrl)
   await expect(page).toHaveTitle("Tilbud QTE-E2E-0001 · E2E Org")
 
-  await page.getByRole("button", { name: "Accepter tilbud" }).click()
+  await page.getByRole("button", { name: "Acceptér tilbud" }).click()
 
   await expect(page.getByText("Tilbud accepteret")).toBeVisible()
   await expect(page.getByText(/^Dit svar blev registreret den \d{1,2}\. \w+\.? \d{4}\.$/)).toBeVisible()
-  await expect(page.getByRole("button", { name: "Accepter tilbud" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "Acceptér tilbud" })).toHaveCount(0)
   // The decided page still presents the seller.
   await expect(page.locator("header img")).toHaveAttribute("src", tinyLogoDataUrl)
   await expect(page.locator("header").getByText("E2E Org")).toBeVisible()

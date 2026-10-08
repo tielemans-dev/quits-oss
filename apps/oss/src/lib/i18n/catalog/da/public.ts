@@ -44,7 +44,7 @@ export const daPublicMessages = {
   "public.quote.rejectionReason.label": "Årsag til afvisning (valgfri)",
   "public.quote.rejectionReason.placeholder": "Fortæl afsenderen, hvorfor tilbuddet ikke passer til dig.",
   "public.quote.rejectionReason.recorded": "Årsag til afvisning",
-  "public.quote.action.accept": "Accepter tilbud",
+  "public.quote.action.accept": "Acceptér tilbud",
   "public.quote.action.reject": "Afvis tilbud",
   "public.quote.error.retryLater": "For mange forsøg. Prøv igen senere.",
   "public.quote.error.failed": "Tilbuddet kunne ikke opdateres lige nu. Prøv igen.",

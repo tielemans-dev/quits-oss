@@ -43,8 +43,8 @@ describe("agreement email language", () => {
     expect(offer.html).not.toContain("Review agreement")
 
     const accepted = compose("da-DK", true)
-    expect(accepted.subject).toBe("Aftale godkendt AGR-1: Website")
-    expect(accepted.html).toContain("Læs den godkendte aftale")
+    expect(accepted.subject).toBe("Aftale accepteret AGR-1: Website")
+    expect(accepted.html).toContain("Læs den accepterede aftale")
   })
 
   it("keeps English for an English agreement", () => {
