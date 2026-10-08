@@ -25,6 +25,17 @@ describe("purchaseOrderRef input", () => {
     }
   })
 
+  it("accepts 200 characters after trimming and refuses 201 with a clear message", () => {
+    for (const [schema, input] of cases) {
+      expect(schema.parse({ ...input, purchaseOrderRef: `  ${"Æ".repeat(200)}  ` }).purchaseOrderRef).toBe("Æ".repeat(200))
+      const refused = schema.safeParse({ ...input, purchaseOrderRef: `  ${"Æ".repeat(201)}  ` })
+      expect(refused.success).toBe(false)
+      if (!refused.success) expect(refused.error.issues).toContainEqual(expect.objectContaining({
+        path: ["purchaseOrderRef"], message: "Order reference must be at most 200 characters after trimming",
+      }))
+    }
+  })
+
   it.each([0, 1, 8, 11, 12, 14, 31, 0xd800, 0xdfff, 0xfffe, 0xffff])("rejects XML-forbidden character %i without silently changing the reference", code => {
     expect(purchaseOrderRefInputSchema.safeParse(`A${String.fromCharCode(code)}B`).success).toBe(false)
   })

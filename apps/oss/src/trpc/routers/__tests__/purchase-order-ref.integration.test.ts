@@ -30,6 +30,22 @@ async function setup() {
 
 ;(hasTestDatabase ? describe : describe.skip)("invoice purchase order references", () => {
   for (const version of ["V1", "V2"] as const) {
+    it(`enforces the trimmed reference length on ${version} create and update without saving invalid edits`, async () => {
+      const { api, input, org } = await setup()
+      const create = version === "V1" ? api.invoices.create : api.invoices.createV2
+      const update = version === "V1" ? api.invoices.update : api.invoices.updateV2
+      const reference = "Æ".repeat(200)
+      const invoice = await create({ ...input, purchaseOrderRef: `  ${reference}  ` })
+      expect(invoice.purchaseOrderRef).toBe(reference)
+      await expect(create({ ...input, purchaseOrderRef: `${reference}A` })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+      expect(await prisma.invoice.count({ where: { organizationId: org.organizationId } })).toBe(1)
+      await update({ id: invoice.id, expectedRevision: 0, purchaseOrderRef: `  ${"B".repeat(200)}  ` })
+      const before = await api.invoices.view({ id: invoice.id })
+      expect(before.view.buyer?.purchaseOrderRef).toBe("B".repeat(200))
+      await expect(update({ id: invoice.id, expectedRevision: 1, purchaseOrderRef: "B".repeat(201) })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+      expect(await api.invoices.view({ id: invoice.id })).toEqual(before)
+    })
+
     it(`round-trips ${version} create and revision-checked edits, including clear and omission`, async () => {
       const { api, input } = await setup()
       const create = version === "V1" ? api.invoices.create : api.invoices.createV2
