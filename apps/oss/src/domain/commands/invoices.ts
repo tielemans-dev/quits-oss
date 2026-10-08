@@ -27,7 +27,7 @@ import {
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
 import { documentFingerprint, lockedContact } from "../approval-contexts"
-import { asIssued, numberForIssuance, documentRef } from "../documents/numbering"
+import { asIssued, numberForIssuance, numberVoidedByDraftDeletion, documentRef } from "../documents/numbering"
 import { requireDraftCurrency } from "../documents/currency"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
@@ -290,6 +290,7 @@ export const deleteInvoiceDraft = defineCommand({
         type: "invoice.draft_deleted",
         payload: { number: invoice.number },
       })
+      for (const event of numberVoidedByDraftDeletion("invoice", invoice.id, invoice.number, command.organizationId)) command.emit(event)
       return { id: invoice.id }
     }),
 })

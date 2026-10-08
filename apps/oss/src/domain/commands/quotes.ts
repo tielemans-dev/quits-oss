@@ -20,7 +20,7 @@ import { assessCompliance, loadDocumentContext } from "../documents/context"
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
 import { documentFingerprint, lockedContact } from "../approval-contexts"
-import { asIssued, documentRef, numberForIssuance } from "../documents/numbering"
+import { asIssued, documentRef, numberForIssuance, numberVoidedByDraftDeletion } from "../documents/numbering"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
 import {
   composeQuoteEmail,
@@ -259,6 +259,7 @@ export const deleteQuoteDraft = defineCommand({
         type: "quote.draft_deleted",
         payload: { number: quote.number },
       })
+      for (const event of numberVoidedByDraftDeletion("quote", quote.id, quote.number, command.organizationId)) command.emit(event)
       return deleted
     }),
 })

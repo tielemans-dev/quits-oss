@@ -35,6 +35,8 @@ const agreementDecision = { revision: i, hash: nullableString, recipient: nullab
 const reminderFailure = z.object({ number: s, reminderId: s, reason: s, message: s.optional() }).strict()
 
 const artifactDocumentKind = z.enum(["invoice", "creditNote", "agreement"])
+/** A number can also be voided for a quote, which is not rendered as an artifact. */
+const voidedDocumentKind = z.enum(["invoice", "quote", "creditNote", "agreement"])
 const artifactIdentity = { documentKind: artifactDocumentKind, documentId: s, candidateId: s }
 const artifact = z.object({ ref: s.min(1), hash: s.regex(/^[a-f0-9]{64}$/), size: i.nonnegative() }).strict()
 
@@ -43,8 +45,9 @@ export const eventRegistry = {
   "document.artifact_stored": { version: 1, schema: z.object({ ...artifactIdentity,
     artifacts: z.object({ pdf: artifact, ubl: artifact.optional() }).strict(), rendererVersion: s }).strict() },
   "document.artifact_missing": { version: 1, schema: z.object({ ...artifactIdentity, reason: s }).strict() },
-  "document.number_voided": { version: 1, schema: z.object({ organizationId: s, documentKind: artifactDocumentKind,
-    number: s, reservationId: s, reason: s }).strict() },
+  // `reservationId` names the reservation that was abandoned; a deleted draft that held a number has none.
+  "document.number_voided": { version: 1, schema: z.object({ organizationId: s, documentKind: voidedDocumentKind,
+    number: s, reservationId: s.optional(), reason: s }).strict() },
   "invoice.issued": { version: 1, schema: invoiceIssuedSchema },
   "invoice.base_valuation_recorded": { version: 1, schema: baseValuationRecordedSchema },
   "invoice.draft_created": { version: 1, schema: draft.extend({ quoteId: s.optional() }).strict() },
