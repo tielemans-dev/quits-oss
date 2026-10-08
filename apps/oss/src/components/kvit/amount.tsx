@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 
 import { cn } from "../../lib/utils"
-import { formatAmountParts, type AmountValue } from "./amount-format"
+import { AMOUNT_UNAVAILABLE, formatAmountParts, type AmountValue } from "./amount-format"
 
 export type AmountSize = "sm" | "md" | "hero"
 /** none: nothing yet (a draft). single: money asked for. double: money settled. */
@@ -50,7 +50,8 @@ export function Amount({
   ruleTone = "settled",
   className,
 }: {
-  value: AmountValue
+  /** null (an amount that could not be written down, see `decimalFromNumber`) shows an em dash. */
+  value: AmountValue | null
   currency: string
   locale?: string
   size?: AmountSize
@@ -64,7 +65,10 @@ export function Amount({
   className?: string
 }) {
   const spec = sizes[size]
-  const parts = useMemo(() => formatAmountParts(value, currency, locale), [value, currency, locale])
+  const parts = useMemo(
+    () => (value === null ? null : formatAmountParts(value, currency, locale)),
+    [value, currency, locale]
+  )
 
   const drawn = rule === "double" ? clamp01(paidFraction ?? 1) : 1
   const hidden = rule !== "double"
@@ -76,7 +80,7 @@ export function Amount({
       className={cn("relative inline-block whitespace-nowrap align-baseline", spec.text, className)}
       style={{ paddingBottom: spec.height + spec.gap }}
     >
-      {parts.map((part, index) => {
+      {parts === null ? AMOUNT_UNAVAILABLE : parts.map((part, index) => {
         if (part.type === "fraction") {
           return (
             <span
@@ -103,7 +107,7 @@ export function Amount({
         return part.value
       })}
       {statusLabel ? <span className="sr-only">{`, ${statusLabel}`}</span> : null}
-      {rule === "none" ? null : (
+      {rule === "none" || parts === null ? null : (
         <svg
           aria-hidden="true"
           focusable="false"

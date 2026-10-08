@@ -70,7 +70,7 @@ export function CreditNotesList({ creditNotes }: { creditNotes: CreditNoteListIt
               <ListCell align="end" className="max-md:col-start-2 max-md:row-start-1">
                 {/* Money taken off, so no rule: the double rule says money has arrived. */}
                 <Amount
-                  value={`-${decimalFromNumber(creditNote.total, creditNote.currency)}`}
+                  value={decimalFromNumber(-creditNote.total, creditNote.currency)}
                   currency={creditNote.currency}
                   locale={locale}
                 />

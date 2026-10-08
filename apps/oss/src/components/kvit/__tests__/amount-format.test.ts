@@ -33,6 +33,31 @@ describe("decimalFromNumber", () => {
     expect(decimalFromNumber(5600, "DKK")).toBe("5600.00")
     expect(decimalFromNumber(1234.5, "DKK")).toBe("1234.50")
     expect(decimalFromNumber(1500, "JPY")).toBe("1500")
+    expect(decimalFromNumber(-1850, "DKK")).toBe("-1850.00")
+  })
+
+  it("writes a rounded negative zero as zero", () => {
+    expect(decimalFromNumber(-0.001, "DKK")).toBe("0.00")
+    expect(decimalFromNumber(-0, "DKK")).toBe("0.00")
+    expect(decimalFromNumber(-0.4, "JPY")).toBe("0")
+    expect(formatAmountText(decimalFromNumber(-0.001, "DKK"), "DKK", "da-DK")).toBe(`0,00${nbsp}kr.`)
+  })
+
+  it("holds the Decimal(12,2) range and gives up beyond it", () => {
+    expect(decimalFromNumber(9_999_999_999.99, "DKK")).toBe("9999999999.99")
+    expect(decimalFromNumber(-9_999_999_999.99, "DKK")).toBe("-9999999999.99")
+    expect(decimalFromNumber(10_000_000_000, "DKK")).toBeNull()
+  })
+
+  it("returns null for a number that is not finite or would be written in exponent notation", () => {
+    expect(decimalFromNumber(Number.NaN, "DKK")).toBeNull()
+    expect(decimalFromNumber(Number.POSITIVE_INFINITY, "DKK")).toBeNull()
+    expect(decimalFromNumber(1e21, "DKK")).toBeNull()
+    expect(decimalFromNumber(1e-7, "DKK")).toBe("0.00")
+  })
+
+  it("shows an em dash for null instead of throwing", () => {
+    expect(formatAmountText(null, "DKK", "da-DK")).toBe("—")
   })
 })
 

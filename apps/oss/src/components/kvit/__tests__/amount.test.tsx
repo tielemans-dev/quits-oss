@@ -68,6 +68,12 @@ describe("Amount", () => {
     expect(container.querySelector(".sr-only")!.textContent).toBe(", Betalt")
   })
 
+  it("shows an em dash, and no rule, for an amount that could not be written down", () => {
+    const { container } = render(<Amount value={null} currency="DKK" locale="da-DK" rule="double" />)
+    expect(container.textContent).toBe("—")
+    expect(container.querySelector("svg")).toBeNull()
+  })
+
   it("takes minor units", () => {
     const { container } = render(<Amount value={{ minor: 4825000 }} currency="DKK" locale="da-DK" />)
     expect(container.textContent).toBe(`48.250,00${nbsp}kr.`)

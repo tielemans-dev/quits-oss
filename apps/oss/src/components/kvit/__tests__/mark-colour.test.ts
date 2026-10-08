@@ -25,6 +25,19 @@ describe("markInitials", () => {
     expect(markInitials("åse jensen")).toBe("ÅJ")
   })
 
+  it("upper-cases without the host locale", () => {
+    const original = String.prototype.toLocaleUpperCase
+    // A Turkish host would turn "i" into "İ"; the initials must be the same on every machine.
+    String.prototype.toLocaleUpperCase = function (this: string) {
+      return original.call(this, "tr-TR")
+    }
+    try {
+      expect(markInitials("istanbul izmir")).toBe("II")
+    } finally {
+      String.prototype.toLocaleUpperCase = original
+    }
+  })
+
   it("uses one letter for one word and none for an empty name", () => {
     expect(markInitials("Acme")).toBe("A")
     expect(markInitials("  ")).toBe("")

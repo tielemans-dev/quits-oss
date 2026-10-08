@@ -37,14 +37,27 @@ export function minorToDecimal(minor: number | bigint, exponent: number): string
   return `${negative ? "-" : ""}${whole}${exponent > 0 ? `.${fraction}` : ""}`
 }
 
+/** The largest amount of the API's `Decimal(12,2)` columns. */
+const MAX_NUMBER_AMOUNT = 9_999_999_999.99
+
+/** Shown where an amount cannot be formatted. */
+export const AMOUNT_UNAVAILABLE = "—"
+
 /**
  * A money amount that the API serialises as a JS number in major units ("5600" or "1234.5") as a
  * decimal string at the currency's precision. The API converts from an exact Decimal, so the number
  * already has at most `exponent` decimals; this only writes it down.
+ *
+ * Supported: values up to `Decimal(12,2)`, 9,999,999,999.99, which a double holds exactly to the
+ * cent. Anything bigger must be passed to `Amount` as a decimal string. A number outside that
+ * range, or not finite (NaN, Infinity), returns null instead of a wrong or thrown amount, and
+ * `Amount` shows an em dash for null. A rounded negative zero is written as zero: -0.001 is
+ * "0.00", never "-0.00".
  */
-export function decimalFromNumber(value: number, currency: string): string {
-  if (!Number.isFinite(value)) return "0"
-  return value.toFixed(exponentFor(normalizeCurrency(currency)))
+export function decimalFromNumber(value: number, currency: string): string | null {
+  if (!Number.isFinite(value) || Math.abs(value) > MAX_NUMBER_AMOUNT) return null
+  const fixed = value.toFixed(exponentFor(normalizeCurrency(currency)))
+  return /^-0(\.0+)?$/.test(fixed) ? fixed.slice(1) : fixed
 }
 
 function toDecimalString(value: AmountValue, currency: string): string {
@@ -84,10 +97,11 @@ export function formatAmountParts(
 
 /** The plain text of the same amount ("5.600,00 kr."), for tooltips and the cases that need a string. */
 export function formatAmountText(
-  value: AmountValue,
+  value: AmountValue | null,
   currency: string | null | undefined,
   locale: string | null | undefined
 ): string {
+  if (value === null) return AMOUNT_UNAVAILABLE
   return formatAmountParts(value, currency, locale)
     .map((part) => part.value)
     .join("")

@@ -44,12 +44,12 @@ export function deriveMarkColour(name: string): MarkColour {
   return palette[hashName(name) % palette.length]
 }
 
-/** Up to two initials from the first two words that start with a letter or digit; "Fjord & Co." is "FC". */
+/** Up to two initials, upper-cased without the host locale (a Turkish "i" must not become "İ" on one machine only); from the first two words that start with a letter or digit; "Fjord & Co." is "FC". */
 export function markInitials(name: string): string {
   const words = name
     .trim()
     .split(/\s+/)
     .map((word) => Array.from(word).find((char) => /[\p{L}\p{N}]/u.test(char)))
     .filter((char): char is string => Boolean(char))
-  return words.slice(0, 2).join("").toLocaleUpperCase()
+  return words.slice(0, 2).join("").toUpperCase()
 }
