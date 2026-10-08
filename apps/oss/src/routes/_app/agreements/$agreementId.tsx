@@ -1,4 +1,5 @@
 import { InvoiceDeliverables } from "../../../components/agreements/invoice-deliverables"
+import { DeliverableAllocation } from "../../../components/agreements/deliverable-allocation"
 import { DeliverableControls } from "../../../components/agreements/deliverable-controls"
 import { AgreementActions } from "../../../components/agreements/agreement-actions"
 import { AcceptanceRecord } from "../../../components/agreements/acceptance-record"
@@ -278,7 +279,7 @@ function AgreementDetail() {
                 {line.description}
               </p>
               <p className="num">{formatCurrency(line.lineGross, agreement.currency, locale)}</p>
-              <StatusBadge domain="deliverableBilling" status={line.billingStatus} />
+              {capabilities && <DeliverableAllocation agreement={agreement} line={line} capabilities={capabilities} onChanged={refresh} onError={setError} />}
               {line.agreedDate && (
                 <p className="text-sm">
                   {t("agreements.agreedDate")}: {formatDate(line.agreedDate, locale, "UTC")}
