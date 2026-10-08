@@ -168,6 +168,145 @@ describe("UBL e-invoice", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order)
   })
 
+  describe("payment means", () => {
+    const payment = {
+      meansCode: "58",
+      accountId: "DK5000400440116243",
+      accountName: null,
+      branchId: "DABADKKK",
+      reference: "INV-0007",
+    }
+
+    const meansXml = (code: string, accountId: string, branchId: string, name?: string) =>
+      new RegExp(
+        `<cac:PaymentMeans>\\s*<cbc:PaymentMeansCode>${code}</cbc:PaymentMeansCode>\\s*<cbc:PaymentID>INV-0007</cbc:PaymentID>\\s*<cac:PayeeFinancialAccount>\\s*<cbc:ID>${accountId}</cbc:ID>\\s*${
+          name ? `<cbc:Name>${name}</cbc:Name>\\s*` : ""
+        }<cac:FinancialInstitutionBranch>\\s*<cbc:ID>${branchId}</cbc:ID>\\s*</cac:FinancialInstitutionBranch>\\s*</cac:PayeeFinancialAccount>\\s*</cac:PaymentMeans>`
+      )
+
+    it("writes the resolved means code, account, branch and payment reference", () => {
+      const xml = buildUblDocument(invoice({ currency: "EUR", payment }))
+
+      expect(between(xml, "cbc:PaymentMeansCode")).toEqual(["58"])
+      expect(between(xml, "cbc:PaymentID")).toEqual(["INV-0007"])
+      expect(xml).toMatch(meansXml("58", "DK5000400440116243", "DABADKKK"))
+    })
+
+    it("writes a Danish bank account (42) with the reg.nr. as the branch", () => {
+      const xml = buildUblDocument(
+        invoice({ payment: { ...payment, meansCode: "42", accountId: "0440116243", branchId: "0040" } })
+      )
+      expect(xml).toMatch(meansXml("42", "0440116243", "0040"))
+    })
+
+    it("writes the account holder (BT-85) as cbc:Name between the account ID and the branch", () => {
+      const xml = buildUblDocument(invoice({ payment: { ...payment, accountName: "Nordic Design ApS" } }))
+      expect(xml).toMatch(meansXml("58", "DK5000400440116243", "DABADKKK", "Nordic Design ApS"))
+    })
+
+    it("escapes the account holder", () => {
+      const xml = buildUblDocument(invoice({ payment: { ...payment, accountName: "Smith & <Sons>" } }))
+      expect(between(xml, "cbc:Name")).toContain("Smith &amp; &lt;Sons&gt;")
+    })
+
+    it("places the payment means between the delivery and the tax total", () => {
+      const xml = buildUblDocument(invoice({ deliveryDate: "2026-10-01", payment }))
+      const order = ["cac:AccountingCustomerParty", "cac:Delivery", "cac:PaymentMeans", "cac:TaxTotal"].map((needle) =>
+        xml.indexOf(needle)
+      )
+      expect(order.every((index) => index >= 0)).toBe(true)
+      expect([...order].sort((a, b) => a - b)).toEqual(order)
+    })
+
+    it("omits the branch and the name when there are none", () => {
+      const xml = buildUblDocument(invoice({ payment: { ...payment, branchId: null } }))
+      expect(between(xml, "cbc:ID")).toContain("DK5000400440116243")
+      expect(xml).not.toContain("FinancialInstitutionBranch")
+      expect(xml.match(/<cac:PayeeFinancialAccount>[\s\S]*?<\/cac:PayeeFinancialAccount>/)?.[0]).not.toContain("<cbc:Name>")
+    })
+
+    it("writes no payment means without payment instructions", () => {
+      expect(buildUblDocument(invoice())).not.toContain("PaymentMeans")
+      expect(buildUblDocument(invoice({ payment: null }))).not.toContain("PaymentMeans")
+    })
+
+    it("leaves credit notes without payment means", () => {
+      const xml = buildUblDocument(
+        invoice({
+          kind: "creditNote",
+          number: "CN-0001",
+          dueDate: null,
+          billingReference: { number: "INV-0007", issueDate: "2026-10-01" },
+          amountPaid: 0,
+          payment,
+        })
+      )
+      expect(xml).not.toContain("PaymentMeans")
+    })
+  })
+
+  describe("Danish payment means rules", () => {
+    const danishBuyer: EinvoiceParty = {
+      ...buyer,
+      countryCode: "DK",
+      vatId: "DK87654321",
+      legalId: { id: "87654321", scheme: "0184" },
+      electronicAddress: { scheme: "0184", id: "87654321" },
+    }
+    const means = (overrides: Partial<NonNullable<EinvoiceDocument["payment"]>>) => ({
+      meansCode: "42",
+      accountId: "0440116243",
+      accountName: null,
+      branchId: "0040",
+      reference: "INV-0007",
+      ...overrides,
+    })
+    const domestic = (payment: EinvoiceDocument["payment"]) => invoice({ buyer: danishBuyer, payment })
+
+    it("passes DK-R-005 and DK-R-006 for a Danish bank account (42)", () => {
+      expect(validateEinvoice(domestic(means({})))).toEqual([])
+    })
+
+    it.each([["1"], ["10"], ["31"], ["42"], ["48"], ["49"], ["50"], ["58"], ["59"], ["93"], ["97"]])(
+      "DK-R-005 allows means code %s between two Danish parties",
+      (meansCode) => {
+        expect(validateEinvoice(domestic(means({ meansCode })))).toEqual([])
+      }
+    )
+
+    it.each([["30"], ["2"], ["20"], ["57"], ["ZZZ"]])(
+      "DK-R-005 rejects means code %s between two Danish parties",
+      (meansCode) => {
+        expect(validateEinvoice(domestic(means({ meansCode })))).toEqual(["seller.paymentMeansCode"])
+      }
+    )
+
+    it("applies DK-R-005 only when both parties are Danish", () => {
+      expect(validateEinvoice(invoice({ payment: means({ meansCode: "30" }) }))).toEqual([])
+      const foreignSeller = invoice({ seller: { ...seller, countryCode: "SE" }, buyer: danishBuyer, payment: means({ meansCode: "30" }) })
+      expect(validateEinvoice(foreignSeller)).not.toContain("seller.paymentMeansCode")
+    })
+
+    it.each([["31"], ["42"]])("DK-R-006 needs the branch for code %s", (meansCode) => {
+      expect(validateEinvoice(domestic(means({ meansCode, branchId: null })))).toEqual(["seller.paymentAccountBranch"])
+      expect(validateEinvoice(domestic(means({ meansCode, branchId: "  " })))).toEqual(["seller.paymentAccountBranch"])
+      expect(validateEinvoice(domestic(means({ meansCode, accountId: " " })))).toEqual(["seller.paymentAccountBranch"])
+    })
+
+    it("does not need the branch for code 58 or outside Denmark", () => {
+      expect(validateEinvoice(domestic(means({ meansCode: "58", branchId: null })))).toEqual([])
+      expect(validateEinvoice(invoice({ payment: means({ branchId: null }) }))).toEqual([])
+    })
+
+    it("accepts a document without payment means", () => {
+      expect(validateEinvoice(domestic(null))).toEqual([])
+    })
+
+    it("does not change the missing-data check for other pairs", () => {
+      expect(validateEinvoice(invoice({ payment: means({ meansCode: "30", accountId: "DK5000400440116243" }) }))).toEqual([])
+    })
+  })
+
   it("writes a credit note with a billing reference to the invoice", () => {
     const xml = buildUblDocument(
       invoice({

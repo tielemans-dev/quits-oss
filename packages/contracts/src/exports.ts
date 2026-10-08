@@ -200,6 +200,8 @@ export const einvoiceMissingFieldSchema = z.enum([
   "seller.legalIdInvalid",
   "seller.electronicAddress",
   "seller.electronicAddressInvalid",
+  "seller.paymentMeansCode",
+  "seller.paymentAccountBranch",
   "buyer.name",
   "buyer.country",
   "buyer.address",

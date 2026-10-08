@@ -36,6 +36,7 @@ const FILTERS = [
   "recurring",
   "approval",
   "agentKey",
+  "organization",
 ] as const
 type Filter = (typeof FILTERS)[number]
 

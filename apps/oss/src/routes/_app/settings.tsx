@@ -55,6 +55,7 @@ import { shouldAutoLoadAiModels, type AiProviderId } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
 import { AgentKeysCard } from "../../components/settings/agent-keys-card"
 import { AuditLogCard } from "../../components/settings/audit-log-card"
+import { PaymentDetailsCard } from "../../components/settings/payment-details-card"
 import { ReminderPolicyCard } from "../../components/settings/reminder-policy-card"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
@@ -1575,6 +1576,7 @@ function SettingsPage() {
       </Card>
 
       <div className="mt-6 grid gap-6">
+        <PaymentDetailsCard locale={settings?.locale} />
         <ReminderPolicyCard />
         <AgentKeysCard />
         <AuditLogCard />

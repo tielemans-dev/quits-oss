@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { bankAccountSnapshotSchema } from "./payment-details"
 
 export const documentTaxIdSchema = z.object({
   scheme: z.string().optional(),
@@ -6,12 +7,18 @@ export const documentTaxIdSchema = z.object({
   countryCode: z.string().nullable().optional(),
 })
 
-/** Seller details frozen onto a document when it is created. */
+/**
+ * Seller details frozen onto a document when it is created. `bankAccount` and `paymentNote` are
+ * only set on invoices issued after payment details existed; every older document simply has none.
+ * `bankAccount` is always the one account the invoice is paid to.
+ */
 export const sellerSnapshotSchema = z.object({
   companyName: z.string().nullable().optional(),
   companyEmail: z.string().nullable().optional(),
   companyAddress: z.string().nullable().optional(),
   taxIds: z.array(documentTaxIdSchema).optional(),
+  bankAccount: bankAccountSnapshotSchema.nullable().optional(),
+  paymentNote: z.string().nullable().optional(),
 })
 
 /** Buyer details frozen onto a document when it is created. */

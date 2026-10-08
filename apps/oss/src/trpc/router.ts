@@ -1,5 +1,6 @@
 import { agreementsRouter } from "./routers/agreements"
 import { router } from "./init"
+import { paymentDetailsRouter } from "./routers/payment-details"
 import { paymentsRouter } from "./routers/payments"
 import { creditNotesRouter } from "./routers/credit-notes"
 import { remindersRouter } from "./routers/reminders"
@@ -21,6 +22,7 @@ import { setupRouter } from "./routers/setup"
 import { settingsRouter } from "./routers/settings"
 
 export const appRouter = router({
+  paymentDetails: paymentDetailsRouter,
   payments: paymentsRouter,
   creditNotes: creditNotesRouter,
   reminders: remindersRouter,

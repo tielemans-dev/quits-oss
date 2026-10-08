@@ -1,0 +1,42 @@
+/** Owned by the payment details feature: the settings card. The invoice PDF labels are `pdf.*`. */
+export const enPaymentDetailsMessages = {
+  "settings.paymentDetails.title": "Payment details",
+  "settings.paymentDetails.description":
+    "Bank details printed on your invoices so customers know where to pay. The invoice number is used as the payment reference.",
+  "settings.paymentDetails.group.dk.title": "Danish bank account",
+  "settings.paymentDetails.group.dk.hint": "For customers paying from a Danish bank account.",
+  "settings.paymentDetails.group.intl.title": "International transfers",
+  "settings.paymentDetails.group.intl.hint": "For payments from abroad (SEPA and SWIFT).",
+  "settings.paymentDetails.regNumber.label": "Reg. no. (reg.nr.)",
+  "settings.paymentDetails.accountNumber.label": "Account no. (kontonr.)",
+  "settings.paymentDetails.iban.label": "IBAN",
+  "settings.paymentDetails.bic.label": "BIC",
+  "settings.paymentDetails.accountHolder.label": "Account holder",
+  "settings.paymentDetails.bankName.label": "Bank name",
+  "settings.paymentDetails.note.label": "Payment note",
+  "settings.paymentDetails.note.placeholder": "MobilePay Box 12345",
+  "settings.paymentDetails.note.help": "Shown below the bank details, for example a MobilePay number. {count}/{max}",
+  "settings.paymentDetails.preview.title": "Preview on invoices",
+  "settings.paymentDetails.preview.help":
+    "Shown like this on invoices you issue from now on. Invoices already issued keep the details they were issued with.",
+  "settings.paymentDetails.preview.empty":
+    "Invoices show no payment details until you fill in at least one field.",
+  "settings.paymentDetails.readOnly": "Only owners and admins can change payment details.",
+  "settings.paymentDetails.save": "Save payment details",
+  "settings.paymentDetails.saving": "Saving…",
+  "settings.paymentDetails.saved": "Payment details saved.",
+  "settings.paymentDetails.error.load": "Could not load payment details.",
+  "settings.paymentDetails.error.save": "Could not save payment details.",
+  "settings.paymentDetails.error.regNumber": "Enter exactly 4 digits.",
+  "settings.paymentDetails.error.regNumber.required": "Enter the registration number together with the account number.",
+  "settings.paymentDetails.error.accountNumber": "Enter 1 to 10 digits.",
+  "settings.paymentDetails.error.accountNumber.required":
+    "Enter the account number together with the registration number.",
+  "settings.paymentDetails.error.iban": "This is not a valid IBAN. Check the characters and the length, and try again.",
+  "settings.paymentDetails.error.iban.required":
+    "Enter an IBAN, or a registration number and account number, so customers know where to pay.",
+  "settings.paymentDetails.error.bic": "Enter 8 or 11 characters, for example DABADKKK.",
+  "settings.paymentDetails.error.accountHolder": "Use at most 120 characters.",
+  "settings.paymentDetails.error.bankName": "Use at most 120 characters.",
+  "settings.paymentDetails.error.note": "Use at most 500 characters.",
+} as const

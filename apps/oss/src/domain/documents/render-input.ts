@@ -12,7 +12,7 @@ import type { CreditNoteForPdf } from "../../lib/credit-note-pdf"
 import type { AgreementPdfInput } from "../../lib/agreement-pdf"
 import { buildOfferSnapshot, canonicalizeOffer, hashOfferSnapshot } from "../agreements/snapshot"
 import { creditNoteIssueInputSchema } from "@quits/contracts/credit-notes"
-import { buildBuyerSnapshot, buildSellerSnapshot } from "./snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, withInvoicePaymentDetails, withoutPaymentDetails } from "./snapshots"
 import { loadDocumentContext } from "./context"
 import { priceCreditNote } from "./credit-pricing"
 import { InvalidState, NotFound } from "../errors"
@@ -73,22 +73,33 @@ export const prospectiveRenderInput = (input: {
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.documentId })
     if (!input.preview && invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
-    const seller = invoice.agreementId ? { ...parseSellerSnapshot(invoice.sellerSnapshot), taxIds: sellerTaxIds } : buildSellerSnapshot(settings, sellerTaxIds)
+    // Payment details are always the ones valid now, also for agreement invoices, which keep the
+    // agreed seller identity but are paid to the account in force when they are issued.
+    const seller = withInvoicePaymentDetails(
+      invoice.agreementId ? { ...parseSellerSnapshot(invoice.sellerSnapshot), taxIds: sellerTaxIds } : buildSellerSnapshot(settings, sellerTaxIds),
+      settings
+    )
     const refreshedBuyer = buildBuyerSnapshot(invoice.contact)
     const buyer = invoice.agreementId ? { ...parseBuyerSnapshot(invoice.buyerSnapshot), taxIds: refreshedBuyer.taxIds } : refreshedBuyer
     if (!input.preview && invoice.calculationVersion === "v2" && !invoice.supplyDate && !(input.commandInput as { supplyDate?: string }).supplyDate) return yield* new InvalidState({ code: "supply_date_required", message: "Confirm a supply date before issuing a v2 invoice" })
     if (!input.preview) yield* requireVatIssuance({ ...invoice, sellerSnapshot: seller, buyerSnapshot: buyer })
     const money = input.preview ? undefined : yield* Effect.try({ try: () => invoiceMoneySnapshot(invoice, { ...(input.commandInput as { supplyDate?: string; exchangeRate?: string; rateDate?: string }), issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, seller: seller ?? buildSellerSnapshot(settings, sellerTaxIds), buyer }), catch: error => error instanceof InvalidState ? error : new InvalidState({ code: "money_snapshot_unavailable", message: "The document's currency or frozen money components cannot be valued" }) })
+    // The reference a bank transfer is matched by: the invoice's own, else its number. A draft preview has no number yet.
+    const paymentReference = invoice.paymentReference?.trim() || (input.preview ? null : input.number)
     // All PDF fields, including branding and the intended customer, are frozen here.
     const pdfInvoice: InvoiceForPdf = {
       number: input.number, status: "sent", issueDate: base.issuedAt, dueDate: invoice.dueDate.toISOString(),
       subtotal: num(invoice.subtotalNet), taxAmount: num(invoice.totalTax), total: num(invoice.totalGross),
-      currency: invoice.currency, notes: invoice.notes, contact: { ...buyer, name: buyer?.name ?? invoice.contact.name },
+      currency: invoice.currency, notes: invoice.notes, ...(seller.bankAccount ? { bankAccount: seller.bankAccount } : {}), ...(seller.paymentNote ? { paymentNote: seller.paymentNote } : {}),
+      // Frozen with the rest of the payment details; absent without them, so the render input of an
+      // organization without payment details is unchanged. A draft preview has no number yet.
+      ...(seller.bankAccount || seller.paymentNote ? { paymentReference } : {}),
+      contact: { ...buyer, name: buyer?.name ?? invoice.contact.name },
       items: invoice.items.map(line => ({ description: line.description, quantity: num(line.quantity),
         unitPrice: num(line.unitPriceGross), total: num(line.lineGross) })),
     }
     return { ...base, kind: "invoice" as const, recipient: invoice.contact.email?.trim() || null,
-      ...(money ? { ubl: frozenEinvoiceInput({ kind: "invoice", money, contact: invoice.contact, countryCode: invoice.countryCode, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
+      ...(money ? { ubl: frozenEinvoiceInput({ kind: "invoice", money, contact: invoice.contact, countryCode: invoice.countryCode, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
       snapshot: { ...(money ? { money } : {}), purpose: invoice.purpose, agreementId: invoice.agreementId, seller, buyer: pdfInvoice.contact,
         invoice: pdfInvoice, items: invoice.items, supplyDate: invoice.supplyDate,
         pricesIncludeTax: invoice.pricesIncludeTax, countryCode: invoice.countryCode,
@@ -107,7 +118,7 @@ export const prospectiveRenderInput = (input: {
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: selection.invoiceId })
     const built = yield* priceCreditNote(invoice, selection)
-    const sellerSnapshot = invoice.sellerSnapshot ?? buildSellerSnapshot(settings, sellerTaxIds)
+    const sellerSnapshot = withoutPaymentDetails(invoice.sellerSnapshot) ?? buildSellerSnapshot(settings, sellerTaxIds)
     const buyerSnapshot = invoice.buyerSnapshot ?? buildBuyerSnapshot(invoice.contact)
     const money = creditMoneySnapshot(invoice, { id: input.documentId, number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, reason: selection.reason, mode: selection.mode, built, hasPayments: invoice.payments.length > 0, paid: invoice.payments.reduce((sum, payment) => sum.plus(payment.amount), toDecimal(0)).toString(), priorCredits: invoice.creditNotes.reduce((sum, credit) => sum.plus(credit.totalGross), toDecimal(0)).toString(), seller: parseSellerSnapshot(sellerSnapshot) ?? {}, buyer: parseBuyerSnapshot(buyerSnapshot) ?? {} })
     const creditNote: CreditNoteForPdf = {

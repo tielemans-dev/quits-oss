@@ -185,6 +185,13 @@ model OrgSettings {
   companyEmail                       String?
   companyPhone                       String?
   companyLogo                        String?
+  bankAccountHolder                  String?
+  bankName                           String?
+  bankRegNumber                      String?
+  bankAccountNumber                  String?
+  bankIban                           String?
+  bankBic                            String?
+  paymentNote                        String?
   invoicePrefix                      String       @default("INV")
   invoiceNextNum                     Int          @default(1)
   agreementPrefix                    String       @default("AGR")

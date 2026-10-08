@@ -11,7 +11,7 @@ import { requireRecipientEmail, resolveInvoiceEmailContext } from "../documents/
 import { allocateDocumentNumber } from "../documents/numbering"
 import { priceCreditNote } from "../documents/credit-pricing"
 import { refreshInvoiceSettlement } from "../documents/settlement"
-import { buildBuyerSnapshot, buildSellerSnapshot } from "../documents/snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, withoutPaymentDetails } from "../documents/snapshots"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
@@ -95,7 +95,7 @@ export const issueCreditNote = defineCommand({
               payableRounding: built.payableRounding,
               vatEvidence: invoice.vatEvidence ?? undefined,
             } : {}),
-            sellerSnapshot: (invoice.sellerSnapshot ??
+            sellerSnapshot: (withoutPaymentDetails(invoice.sellerSnapshot) ??
               buildSellerSnapshot(settings, sellerTaxIds)) as Prisma.InputJsonValue,
             buyerSnapshot: (invoice.buyerSnapshot ??
               buildBuyerSnapshot(invoice.contact)) as Prisma.InputJsonValue,

@@ -1,0 +1,41 @@
+/** Owned by the payment details feature: the settings card. The invoice PDF labels are `pdf.*`. */
+export const daPaymentDetailsMessages = {
+  "settings.paymentDetails.title": "Betalingsoplysninger",
+  "settings.paymentDetails.description":
+    "Bankoplysninger, der står på dine fakturaer, så kunderne ved, hvor de skal betale. Fakturanummeret bruges som betalingsreference.",
+  "settings.paymentDetails.group.dk.title": "Dansk bankkonto",
+  "settings.paymentDetails.group.dk.hint": "Til kunder, der betaler fra en dansk bankkonto.",
+  "settings.paymentDetails.group.intl.title": "Internationale overførsler",
+  "settings.paymentDetails.group.intl.hint": "Til betalinger fra udlandet (SEPA og SWIFT).",
+  "settings.paymentDetails.regNumber.label": "Reg.nr.",
+  "settings.paymentDetails.accountNumber.label": "Kontonr.",
+  "settings.paymentDetails.iban.label": "IBAN",
+  "settings.paymentDetails.bic.label": "BIC",
+  "settings.paymentDetails.accountHolder.label": "Kontohaver",
+  "settings.paymentDetails.bankName.label": "Bank",
+  "settings.paymentDetails.note.label": "Bemærkning til betaling",
+  "settings.paymentDetails.note.placeholder": "MobilePay Box 12345",
+  "settings.paymentDetails.note.help": "Vises under bankoplysningerne, fx et MobilePay-nummer. {count}/{max}",
+  "settings.paymentDetails.preview.title": "Sådan ser det ud på fakturaen",
+  "settings.paymentDetails.preview.help":
+    "Vises sådan på de fakturaer, du udsteder fra nu af. Fakturaer, der allerede er udstedt, beholder de oplysninger, de blev udstedt med.",
+  "settings.paymentDetails.preview.empty":
+    "Fakturaerne viser ingen betalingsoplysninger, før du har udfyldt mindst ét felt.",
+  "settings.paymentDetails.readOnly": "Kun ejere og administratorer kan ændre betalingsoplysningerne.",
+  "settings.paymentDetails.save": "Gem betalingsoplysninger",
+  "settings.paymentDetails.saving": "Gemmer…",
+  "settings.paymentDetails.saved": "Betalingsoplysningerne er gemt.",
+  "settings.paymentDetails.error.load": "Betalingsoplysningerne kunne ikke indlæses.",
+  "settings.paymentDetails.error.save": "Betalingsoplysningerne kunne ikke gemmes.",
+  "settings.paymentDetails.error.regNumber": "Angiv præcis 4 cifre.",
+  "settings.paymentDetails.error.regNumber.required": "Angiv reg.nr. sammen med kontonummeret.",
+  "settings.paymentDetails.error.accountNumber": "Angiv 1 til 10 cifre.",
+  "settings.paymentDetails.error.accountNumber.required": "Angiv kontonummer sammen med reg.nr.",
+  "settings.paymentDetails.error.iban": "IBAN er ikke gyldigt. Kontrollér tegnene og længden, og prøv igen.",
+  "settings.paymentDetails.error.iban.required":
+    "Angiv et IBAN eller et reg.nr. og kontonummer, så kunderne ved, hvor de skal betale.",
+  "settings.paymentDetails.error.bic": "Angiv 8 eller 11 tegn, fx DABADKKK.",
+  "settings.paymentDetails.error.accountHolder": "Brug højst 120 tegn.",
+  "settings.paymentDetails.error.bankName": "Brug højst 120 tegn.",
+  "settings.paymentDetails.error.note": "Brug højst 500 tegn.",
+} as const
