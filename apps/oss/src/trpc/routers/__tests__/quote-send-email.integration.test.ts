@@ -282,7 +282,7 @@ describeIfDatabase("quote send email delivery", () => {
 
     try {
       await expect(caller.quotes.send({ id: quote.id })).rejects.toThrow(
-        "The email provider refused the quote email: Domain is not verified"
+        "The email provider refused the email. Check the email configuration."
       )
 
       const reloaded = await prisma.quote.findUniqueOrThrow({

@@ -71,6 +71,24 @@ async function readInvoices(db: Db, organizationId: string, baseCurrency: string
   `
 }
 
+/** Complete draft inventory, independent of the attention/event caps. In-flight sends are locked. */
+async function openDrafts(db: Db, actor: UserActor): Promise<DashboardSummary["drafts"]> {
+  const rows = await db.$queryRaw<DashboardSummary["drafts"][]>`
+    SELECT count(*) OVER ()::int AS count, id AS "newestId", kind AS "newestKind"
+    FROM (
+      SELECT id, "createdAt", 'invoice' AS kind FROM invoice
+      WHERE "organizationId" = ${actor.organizationId} AND ${actorCan(actor, "invoice:read")}
+        AND status = 'draft' AND "lastEmailAttemptOutcome" IS DISTINCT FROM 'sending'
+      UNION ALL
+      SELECT id, "createdAt", 'quote' AS kind FROM quote
+      WHERE "organizationId" = ${actor.organizationId} AND ${actorCan(actor, "quote:read")}
+        AND status = 'draft' AND "lastEmailAttemptOutcome" IS DISTINCT FROM 'sending'
+    ) drafts
+    ORDER BY "createdAt" DESC, id DESC, kind DESC LIMIT 1
+  `
+  return rows[0] ?? { count: 0, newestId: null, newestKind: null }
+}
+
 /**
  * Active payment rows are receipts on this baseline. After #72, union legacy Payment rows
  * (receiptId IS NULL) with active SettlementReceipt.netAmount, once per receipt, by paidAt.
@@ -153,7 +171,7 @@ export function onTimeStreak(invoices: InvoiceRow[], timezone: string) {
   return streak
 }
 
-/** Five data statements in one repeatable-read snapshot, independent of invoice count. */
+/** Six data statements in one repeatable-read snapshot, independent of invoice count. */
 export async function dashboardSummary(db: PrismaClient, actor: UserActor, now = new Date()): Promise<DashboardSummary> {
   return db.$transaction(async tx => {
     const organizationId = actor.organizationId
@@ -178,6 +196,7 @@ export async function dashboardSummary(db: PrismaClient, actor: UserActor, now =
       ORDER BY CASE WHEN q.status = 'draft' THEN 0 ELSE 1 END,
         CASE WHEN q.status = 'draft' THEN q."createdAt" ELSE q."expiryDate" END, q.id LIMIT 5
     `
+    const draftSummary = await openDrafts(tx, actor)
     const activity = await recentActivity(tx, organizationId)
     const outstanding = totals(), overdue = totals()
     const receivedByMonth = months.map(monthKey => {
@@ -237,7 +256,7 @@ export async function dashboardSummary(db: PrismaClient, actor: UserActor, now =
       paidThisMonth: { count: current.count, buckets: current.buckets, unvalued: current.unvalued },
       receivedByMonth, streak: onTimeStreak(invoiceRows, timezone), attention: attention.slice(0, 5),
       incoming: open.slice(0, 8).map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), total: money(invoice.currency, invoice.totalGross), isOverdue: isOverdue(invoice), dueDate: localDate(invoice.dueDate), daysOverdue: daysOverdue(invoice), canRemind: canRemind(invoice) })),
-      activity,
+      activity, drafts: draftSummary,
     }
   }, { isolationLevel: "RepeatableRead" })
 }

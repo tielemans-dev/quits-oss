@@ -278,11 +278,11 @@ describeIfDatabase("email outbox", () => {
       lastEmailAttemptOutcome: "failed",
       lastEmailAttemptCode: "send_failed",
     })
-    expect(invoice.lastEmailAttemptMessage).toContain("Domain is not verified")
+    expect(invoice.lastEmailAttemptMessage).toBe("The email provider refused the email. Check the email configuration.")
     // A refusal is a permanent failure of the job, counted as failed.
     expect(await deliveryJob(org.organizationId)).toMatchObject({
       status: "failed",
-      result: { outcome: "rejected", message: "Domain is not verified" },
+      result: { outcome: "rejected", code: "email_provider_refused", message: "The email provider refused the email. Check the email configuration." },
     })
     const edited = await executeIssuanceCommand(
       updateInvoiceDraft,

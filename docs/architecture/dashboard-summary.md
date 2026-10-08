@@ -26,6 +26,11 @@ type Summary = {
   baseCurrency: string
   currencyMode: "per_currency"
   hasOtherCurrencies: boolean
+  drafts: {
+    count: number // nonnegative integer
+    newestId: string | null
+    newestKind: "invoice" | "quote" | null
+  }
   outstanding: Total
   overdue: Total & { oldestDaysOverdue: number }
   paidThisMonth: Total
@@ -74,10 +79,18 @@ appear in `unvalued`. Every amount remains included in the primary native-curren
 
 An empty total is `{ count: 0, buckets: [], unvalued: [] }`. An empty organization has twelve empty
 monthly totals, zero streak and oldest days overdue, and empty attention, incoming and activity
-arrays. The UI can format zero using `baseCurrency`; the API does not invent a currency-free zero
-amount. Missing settings use the existing USD/UTC defaults without creating settings.
+arrays, and `drafts: { count: 0, newestId: null, newestKind: null }`. The UI can format zero using
+`baseCurrency`; the API does not invent a currency-free zero amount. Missing settings use the existing USD/UTC defaults without creating settings.
 
 ## Definitions
+
+- `drafts` counts all organization-scoped invoice and quote rows with `status = 'draft'`, except
+  `lastEmailAttemptOutcome = 'sending'` (locked while the email is in flight). A refused send leaves
+  an editable draft and is included. Each kind requires its own read permission; in particular,
+  quote drafts require `quote:read`. This inventory has no age threshold or attention/activity cap.
+  `newestId` and `newestKind` identify the most recently created eligible draft, ordered by creation
+  timestamp descending, then id descending, then kind descending for ties. They are both null when
+  count is zero. Exactly one draft can open directly; more than one can link to the draft list.
 
 - Outstanding includes every non-draft invoice with positive `computeSettlement(invoice).balanceDue`.
   This is the exact helper used by the invoice list and payment status, including partial payments,
@@ -120,8 +133,8 @@ amount. Missing settings use the existing USD/UTC defaults without creating sett
   and the original invoice gross in `total`. Both use the same native currency. The UI can calculate
   `1 - amount / total` with decimal arithmetic; credits count as settled, like payments. Incoming
   rows always have positive balance and positive total, so this denominator is nonzero. Drafts
-  appear only in attention. Activity projects the latest document/payment events by organization
-  sequence, using the existing `DomainEvent` source. Organization settings, agent events, audit
+  appear in the draft inventory and, when old enough, attention. Activity projects the latest
+  document/payment events by organization sequence, using the existing `DomainEvent` source. Organization settings, agent events, audit
   payloads, actor details and command results are not exposed through invoice-read permission.
   Display fields come from current document/contact rows in the same organization and snapshot,
   not event payloads. Numbers are null for current drafts, including legacy numbered drafts.
@@ -146,19 +159,37 @@ valuation or draft-update events are intentionally excluded from this requested 
 need a deliberate addition to the shared constant and a UI label.
 
 `reminders.sendNow` already carries `InvalidState` refusal codes through `DomainRefusal` in the
-tRPC error cause and `error.data.reason` in the HTTP response. No production change was needed.
+tRPC error cause and `error.data.reason` in the HTTP response.
 The integration test exercises the real fetch adapter and command for all four domain reasons:
 `not_remindable`, `missing_recipient`, `email_unavailable`, `already_reminded`. The tRPC code is
 `BAD_REQUEST`. Missing records or permission/authentication failures use the ordinary tRPC
-`NOT_FOUND`, `FORBIDDEN` or `UNAUTHORIZED` codes; their `data.reason` may be null. Delivery outcomes
-after queuing still live in the successful response's `delivery` field, not a refusal code.
+`NOT_FOUND`, `FORBIDDEN` or `UNAUTHORIZED` codes; their `data.reason` may be null.
+
+Definite provider failures after queuing throw `PRECONDITION_FAILED` (HTTP 412), with an
+`ExternalFailure` domain cause and one of these stable `data.reason` values:
+
+- `email_provider_refused`: the provider rejected the request, including authentication or
+  validation errors. Legacy rejected delivery results without a classification also use this code.
+- `email_provider_unreachable`: SMTP positively identified a connection failure before message
+  submission (`smtp_unavailable`). This does not claim that an ambiguous timeout delivered nothing.
+
+Provider messages and arbitrary provider codes are never used as client error text. Both paths use
+fixed configuration guidance. Rejected delivery decisions and results store the safe classification
+and message, so retrying settlement preserves the reason and reminder/document history stays safe.
+The shared email-result adapter applies the same codes to other document email refusals. Legacy
+rejected results and failed reminder history are also sanitized when read. No database migration
+is required for the optional code in the outbox's JSON records.
+
+Uncertain delivery remains `pending` or `unconfirmed` in the successful response's `delivery`
+field. A lost response or an error after an earlier uncertain attempt is never relabeled as a
+proven refusal. The outbox retains its existing retry/idempotency behavior.
 
 ## Queries and indexes
 
-The helper executes five SELECTs in a repeatable-read transaction: settings, narrow invoice rows
+The helper executes six SELECTs in a repeatable-read transaction: settings, narrow invoice rows
 with contacts and the current reminder slot, SQL payment sums grouped by currency and local month,
-old draft/expiring quotes, and eight allowed events joined to scoped document/contact display
-fields. tRPC membership resolution adds its existing query.
+old draft/expiring quotes, one complete draft count/newest aggregate, and eight allowed events joined
+to scoped document/contact display fields. tRPC membership resolution adds its existing query.
 Transaction control statements are separate. There are no per-invoice round trips, line-item loads
 or document snapshot loads. The invoice pass remains O(number of organization invoices) to reuse
 settlement arithmetic and derive the streak; it is not a constant-memory aggregate of all history.
@@ -175,7 +206,7 @@ The existing indexes were checked against PostgreSQL on port 55473:
   joins resolve at most eight events through primary keys, with organization checks on every join.
 
 No new index or migration is needed for these access paths. The database integration test asserts
-exactly five SELECTs with one invoice and 501 invoices, seeds payment and credit rows, reconciles
+exactly six SELECTs with one invoice and 501 invoices, seeds payment and credit rows, reconciles
 with `invoices.list`, and uses a non-UTC PostgreSQL session to check timestamp handling.
 
 ## Adapting after the research PRs merge

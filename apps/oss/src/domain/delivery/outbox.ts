@@ -11,6 +11,7 @@ import { registerJobHandler, StaleJobClaimError, TerminalJobError } from "../job
 import { registerTickTask, type TickOptions } from "../scheduler"
 import { lockArtifactOrganization } from "../documents/artifacts"
 import { Command, type PendingEvent } from "../services"
+import { emailProviderFailureCodeSchema, emailProviderFailureMessage, type EmailProviderFailureCode } from "./provider-failure"
 
 /**
  * The email outbox. A command that emails a customer renders the exact message, records that the
@@ -109,7 +110,7 @@ const payloadSchema = z.object({
   provider: z.enum(["resend", "smtp"]).optional(),
   /** A failure decided but not yet settled, kept so a retried settlement settles the same way. */
   decision: z
-    .object({ reason: z.enum(["rejected", "unconfirmed", "withdrawn"]), message: z.string() })
+    .object({ reason: z.enum(["rejected", "unconfirmed", "withdrawn"]), message: z.string(), code: emailProviderFailureCodeSchema.optional() })
     .optional(),
 })
 type DeliveryPayload = z.infer<typeof payloadSchema>
@@ -117,11 +118,13 @@ type DeliveryPayload = z.infer<typeof payloadSchema>
 export type DeliveryFailure = {
   reason: "rejected" | "unconfirmed" | "withdrawn"
   message: string
+  code?: EmailProviderFailureCode
 }
 
 const resultSchema = z.object({
   outcome: z.enum(["delivered", "rejected", "unconfirmed", "withdrawn"]),
   message: z.string().nullable(),
+  code: emailProviderFailureCodeSchema.optional(),
 })
 export type DeliveryResult = z.infer<typeof resultSchema>
 
@@ -220,7 +223,7 @@ async function settle(
     await lockArtifactOrganization(tx, job.organizationId)
     const result: DeliveryResult = outcome.delivered
       ? { outcome: "delivered", message: null }
-      : { outcome: outcome.failure.reason, message: outcome.failure.message }
+      : { outcome: outcome.failure.reason, message: outcome.failure.message, ...(outcome.failure.code ? { code: outcome.failure.code } : {}) }
     const recorded = await tx.job.updateMany({
       where: { ...fenced(job), result: { equals: Prisma.DbNull } },
       data: { result },
@@ -266,6 +269,12 @@ async function settleDecision(
   completion: DeliveryCompletion,
   failure: DeliveryFailure
 ) {
+  // Sanitize before persisting or calling completions, including legacy pinned decisions.
+  // These messages also reach document fields, reminder history and operation events.
+  if (failure.reason === "rejected") {
+    const code = failure.code ?? "email_provider_refused"
+    failure = { ...failure, code, message: emailProviderFailureMessage(code) }
+  }
   if (!payload.decision) {
     await recordOnJob(job, { ...payload, decision: failure })
   }
@@ -377,6 +386,9 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   } catch (error) {
     if (isDefiniteRejection(error)) {
       deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, providerCode: error.providerCode })
+      // Only this SMTP classification proves the connection failed before submission.
+      // Timeouts and lost responses remain uncertain, never a definite refusal.
+      const code = error.providerCode === "smtp_unavailable" ? "email_provider_unreachable" : "email_provider_refused"
       // A refusal proves only that this request delivered nothing.
       return settleDecision(
         job,
@@ -384,7 +396,7 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
         completion,
         possiblyDelivered
           ? { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE }
-          : { reason: "rejected", message: error.message }
+          : { reason: "rejected", code, message: emailProviderFailureMessage(code) }
       )
     }
     if (provider === "smtp" || job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {

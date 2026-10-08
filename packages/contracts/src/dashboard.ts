@@ -80,6 +80,12 @@ export const dashboardSummarySchema = z.strictObject({
   baseCurrency: currencyCodeSchema,
   currencyMode: z.literal("per_currency"),
   hasOtherCurrencies: z.boolean(),
+  /** Editable, unsent drafts the member can read; newest by creation time, then id descending. */
+  drafts: z.strictObject({
+    count: z.number().int().nonnegative(),
+    newestId: z.string().nullable(),
+    newestKind: z.enum(["invoice", "quote"]).nullable(),
+  }),
   outstanding: dashboardTotalSchema,
   /** Uses the existing dueDate < asOf predicate; same-day arrears have 0 calendar days overdue. */
   overdue: z.strictObject({ ...dashboardTotalSchema.shape, oldestDaysOverdue: z.number().int().nonnegative() }),

@@ -331,6 +331,38 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect(result[3]).toMatchObject({ documentKind: "invoice", documentNumber: invoice.number, customerName: org.contact.name })
   })
 
+  it("counts every editable draft independently of attention and activity caps", async () => {
+    const org = await setup()
+    const other = await setup()
+    expect((await org.admin.dashboard.summary()).drafts).toEqual({ count: 0, newestId: null, newestKind: null })
+    const invoice = await org.seed({ status: "draft", number: null, createdAt: new Date("2026-01-01") })
+    expect((await org.admin.dashboard.summary()).drafts).toEqual({ count: 1, newestId: invoice.id, newestKind: "invoice" })
+    await org.seed({ status: "draft", lastEmailAttemptOutcome: "sending" })
+    await other.seed({ status: "draft" })
+    await prisma.quote.create({ data: { organizationId: other.organizationId, contactId: other.contact.id, expiryDate: NOW, subtotalNet: "10", totalGross: "10" } })
+    await prisma.quote.createMany({ data: Array.from({ length: 10 }, () => ({
+      organizationId: org.organizationId, contactId: org.contact.id,
+      status: "draft", expiryDate: NOW, subtotalNet: "10", totalGross: "10", createdAt: new Date("2026-02-01"),
+    })) })
+    const quote = await prisma.quote.create({ data: {
+      organizationId: org.organizationId, contactId: org.contact.id, status: "draft", expiryDate: NOW, subtotalNet: "10", totalGross: "10",
+      createdAt: new Date("2026-03-01"), lastEmailAttemptOutcome: "failed",
+    } })
+    await prisma.quote.createMany({ data: [
+      { organizationId: org.organizationId, contactId: org.contact.id, status: "draft", expiryDate: NOW, subtotalNet: "10", totalGross: "10", lastEmailAttemptOutcome: "sending" },
+      { organizationId: org.organizationId, contactId: org.contact.id, status: "sent", expiryDate: NOW, subtotalNet: "10", totalGross: "10" },
+    ] })
+    const result = await org.admin.dashboard.summary()
+    expect(result.drafts).toEqual({ count: 12, newestId: quote.id, newestKind: "quote" })
+    expect(result.attention).toHaveLength(5)
+    expect(result.activity).toEqual([])
+    expect((await dashboardSummary(prisma, { ...org.actors.admin, roles: [] }, NOW)).drafts)
+      .toEqual({ count: 0, newestId: null, newestKind: null })
+    await prisma.quote.update({ where: { id: quote.id }, data: { status: "sent" } })
+    const latest = await org.seed({ status: "draft", createdAt: new Date("2026-04-01") })
+    expect((await org.admin.dashboard.summary()).drafts).toEqual({ count: 12, newestId: latest.id, newestKind: "invoice" })
+  })
+
   it("transports existing sendNow refusal codes as data.reason for UI translation", async () => {
     const org = await setup()
     const draft = await org.seed({ status: "draft", number: null })
@@ -361,7 +393,7 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect((await refusal(invoice.id)).reason).toBe("already_reminded")
   })
 
-  it("uses five SELECTs for one and 501 invoices with bounded lists, independent of SQL timezone", async () => {
+  it("uses six SELECTs for one and 501 invoices with bounded lists, independent of SQL timezone", async () => {
     const org = await setup()
     const invoice = await org.seed()
     await org.admin.payments.record({ invoiceId: invoice.id, amount: 1.25, paidAt: "2026-09-30T22:00:00Z", method: "cash" })
@@ -372,7 +404,7 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
       const measure = async () => {
         queries.length = 0
         const summary = await dashboardSummary(db, org.actors.admin, NOW)
-        expect(queries.filter(query => /^\s*SELECT/i.test(query))).toHaveLength(5)
+        expect(queries.filter(query => /^\s*SELECT/i.test(query))).toHaveLength(6)
         expect(queries.every(query => /^\s*(SELECT|BEGIN|COMMIT|SET TRANSACTION)/i.test(query))).toBe(true)
         expect(amount(summary.paidThisMonth)).toBe("1.25")
         return summary
