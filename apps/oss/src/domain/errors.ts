@@ -26,6 +26,8 @@ export class ValidationFailed extends Data.TaggedError("ValidationFailed")<{
 export class ExternalFailure extends Data.TaggedError("ExternalFailure")<{
   readonly message: string
   readonly service: string
+  /** Names the failure for clients that retry it, such as `number_contention`. */
+  readonly code?: string
   readonly cause?: unknown
 }> {}
 
