@@ -63,7 +63,10 @@ export const invoiceUpdateLineV2InputSchema = invoiceUpdateLineInputSchema.exten
 export const PURCHASE_ORDER_REF_MAX_LENGTH = 200
 
 /** The buyer's order identifier (BT-13). Omission preserves an existing draft value. */
-export const purchaseOrderRefInputSchema = z.string().trim()
+export const purchaseOrderRefInputSchema = z.string()
+  // Check the raw identifier: trim() would hide a BOM or control character at either end.
+  .refine(value => !/[\p{Cc}\p{Cf}]/u.test(value), "Order reference must not contain control or format characters")
+  .trim()
   .max(PURCHASE_ORDER_REF_MAX_LENGTH, `Order reference must be at most ${PURCHASE_ORDER_REF_MAX_LENGTH} characters after trimming`)
   .refine(value => {
     // UBL is XML 1.0. Reject characters its writer would discard instead of changing an identifier.

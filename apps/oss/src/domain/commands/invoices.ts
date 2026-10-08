@@ -324,6 +324,7 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
         disputed: String(invoice.disputed),
         acknowledgeDisputed: String(acknowledgeDisputed),
         number: invoice.number,
+        purchaseOrderRef: invoice.purchaseOrderRef,
         customer: invoice.contact.name,
         recipient,
         total: invoice.totalGross.toFixed(2),

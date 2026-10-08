@@ -46,6 +46,20 @@ async function setup() {
       expect(await api.invoices.view({ id: invoice.id })).toEqual(before)
     })
 
+    it(`refuses invisible and control characters on ${version} without saving`, async () => {
+      const { api, input, org } = await setup()
+      const create = version === "V1" ? api.invoices.create : api.invoices.createV2
+      const update = version === "V1" ? api.invoices.update : api.invoices.updateV2
+      const invoice = await create({ ...input, purchaseOrderRef: "PO-valid" })
+      const before = await api.invoices.view({ id: invoice.id })
+      for (const purchaseOrderRef of ["\u200b", "\ufeffPO-42", "PO-\u200d42", "PO-42\n", "\rPO-42", "\t", "PO-42\u007f", "PO-42\u0085"]) {
+        await expect(create({ ...input, purchaseOrderRef })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+        await expect(update({ id: invoice.id, expectedRevision: 0, purchaseOrderRef })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+      }
+      expect(await prisma.invoice.count({ where: { organizationId: org.organizationId } })).toBe(1)
+      expect(await api.invoices.view({ id: invoice.id })).toEqual(before)
+    })
+
     it(`round-trips ${version} create and revision-checked edits, including clear and omission`, async () => {
       const { api, input } = await setup()
       const create = version === "V1" ? api.invoices.create : api.invoices.createV2
@@ -61,7 +75,7 @@ async function setup() {
       expect((await api.invoices.view({ id })).view.buyer?.purchaseOrderRef).toBe("PO-43")
       await update({ id, expectedRevision: 1, notes: "Unrelated edit" })
       expect((await prisma.invoice.findUniqueOrThrow({ where: { id } })).purchaseOrderRef).toBe("PO-43")
-      await update({ id, expectedRevision: 2, purchaseOrderRef: " \t\n " })
+      await update({ id, expectedRevision: 2, purchaseOrderRef: "   " })
       expect(await api.invoices.view({ id })).toMatchObject({ revision: 3, view: { buyer: { purchaseOrderRef: null } } })
       await update({ id, expectedRevision: 3, purchaseOrderRef: "PO-44" })
       await update({ id, expectedRevision: 4, purchaseOrderRef: null })
@@ -97,6 +111,8 @@ async function setup() {
     const actor = await authenticateAgentSecret(secret)
     const queued = await executeIssuanceCommand(sendInvoice, { id: invoice.id, allowSendWithoutEmail: true }, { actor, clientRequestId: "send-reviewed" })
     if (queued.status !== "awaiting_approval") throw new Error(JSON.stringify(queued))
+    const review = (await api.agents.approvals({ view: "pending" })).find(request => request.id === queued.approvalRequestId)
+    expect(review?.reviewDetails).toMatchObject({ purchaseOrderRef: "PO-reviewed" })
     await api.invoices.updateV2({ id: invoice.id, expectedRevision: 0, purchaseOrderRef: "PO-changed" })
     const decided = await decideApproval({ approvalRequestId: queued.approvalRequestId, decider: org.actors.admin, decision: "approve" })
     expect(decided).toMatchObject({ status: "failed", error: { code: "changed_since_review" } })

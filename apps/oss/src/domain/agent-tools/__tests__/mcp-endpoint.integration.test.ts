@@ -240,6 +240,11 @@ describeIfDatabase("MCP endpoint", () => {
       const updated = await call(client, "invoice_update_draft", { id, expectedRevision: 0, purchaseOrderRef: " PO-update ", clientRequestId: "ref-update" })
       expect(updated.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: "PO-update" } })
       expect((await call(client, "invoice_get", { id })).value.purchaseOrderRef).toBe("PO-update")
+      for (const [index, purchaseOrderRef] of ["\u200b", "PO-42\n", "\ufeffPO-42", "PO-\u202e42"].entries()) {
+        const invalid = await call(client, "invoice_update_draft", { id, expectedRevision: 1, purchaseOrderRef, clientRequestId: `ref-invalid-${index}` })
+        expect(invalid.isError).toBe(true)
+      }
+      expect((await call(client, "invoice_get", { id })).value.purchaseOrderRef).toBe("PO-update")
       const cleared = await call(client, "invoice_update_draft", { id, expectedRevision: 1, purchaseOrderRef: " ", clientRequestId: "ref-clear" })
       expect(cleared.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: null } })
       await client.close()
