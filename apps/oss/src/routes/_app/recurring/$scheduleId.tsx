@@ -121,8 +121,8 @@ function RecurringSchedulePage() {
       )}
 
       {schedule.lastProblem && (
-        <div className="mb-4 flex items-start gap-2 rounded-md border border-tone-warning/30 bg-tone-warning/10 p-3 text-sm text-foreground">
-          <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-tone-warning/30 bg-tone-warning/14 p-3 text-sm text-foreground">
+          <AlertTriangle className="size-4 mt-0.5 shrink-0 text-tone-warning" aria-hidden="true" />
           <span>
             {formatRunDate(schedule.lastProblem.occurredAt, locale)}:{" "}
             {t(

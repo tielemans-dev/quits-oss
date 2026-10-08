@@ -10,7 +10,7 @@ import {
   CardTitle,
   CardDescription,
 } from "../../components/ui/card"
-import { CreditCard } from "lucide-react"
+import { AlertTriangle, CreditCard } from "lucide-react"
 import { useI18n } from "../../lib/i18n/react"
 
 export const Route = createFileRoute("/_app/billing")({
@@ -146,8 +146,9 @@ function BillingPage() {
         </div>
       )}
       {search.canceled && (
-        <div className="mb-4 rounded-md border border-tone-warning/30 bg-tone-warning/10 p-3 text-sm text-foreground">
-          {t("billing.flash.canceled")}
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-tone-warning/30 bg-tone-warning/14 p-3 text-sm text-foreground">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-tone-warning" aria-hidden="true" />
+          <span>{t("billing.flash.canceled")}</span>
         </div>
       )}
       {error && (

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import type { EinvoiceMissingField } from "@quits/contracts/exports"
-import { Download } from "lucide-react"
+import { AlertTriangle, Download } from "lucide-react"
 import { useState } from "react"
 import { downloadTextFile } from "../../../lib/exports/download"
 import { useI18n } from "../../../lib/i18n/react"
@@ -60,8 +60,11 @@ export function InvoiceExportsPanel({ invoice }: InvoicePanelProps) {
           </p>
         ) : null}
         {missing.length > 0 ? (
-          <div className="rounded-md border border-tone-warning/30 bg-tone-warning/10 p-3 text-sm text-foreground" role="alert">
-            <p className="font-medium">{t("exports.einvoice.missing.title")}</p>
+          <div className="rounded-md border border-tone-warning/30 bg-tone-warning/14 p-3 text-sm text-foreground" role="alert">
+            <p className="flex items-start gap-2 font-medium">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-tone-warning" aria-hidden="true" />
+              {t("exports.einvoice.missing.title")}
+            </p>
             <ul className="mt-2 list-disc pl-5 grid gap-1">
               {missing.map((field) => (
                 <li key={field}>{t(`exports.einvoice.missing.${field}`)}</li>
