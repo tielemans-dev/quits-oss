@@ -90,7 +90,10 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  SettlementEvidenceSource: 'SettlementEvidenceSource',
+  SettlementEvidence: 'SettlementEvidence',
+  SettlementEvidenceDecision: 'SettlementEvidenceDecision'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1035,6 +1038,64 @@ export const IssuanceCandidateScalarFieldEnum = {
 } as const
 
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
+
+
+export const SettlementEvidenceSourceScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  contactId: 'contactId',
+  source: 'source',
+  accountReference: 'accountReference',
+  transactionReference: 'transactionReference',
+  receiptId: 'receiptId',
+  createdReceiptId: 'createdReceiptId',
+  revision: 'revision'
+} as const
+
+export type SettlementEvidenceSourceScalarFieldEnum = (typeof SettlementEvidenceSourceScalarFieldEnum)[keyof typeof SettlementEvidenceSourceScalarFieldEnum]
+
+
+export const SettlementEvidenceScalarFieldEnum = {
+  id: 'id',
+  sourceId: 'sourceId',
+  revision: 'revision',
+  eventReference: 'eventReference',
+  state: 'state',
+  occurredAt: 'occurredAt',
+  currency: 'currency',
+  netAmount: 'netAmount',
+  feeAmount: 'feeAmount',
+  feeReason: 'feeReason',
+  feeEvidence: 'feeEvidence',
+  reason: 'reason',
+  evidence: 'evidence',
+  correctsEvidenceId: 'correctsEvidenceId',
+  reversesEvidenceId: 'reversesEvidenceId',
+  payloadHash: 'payloadHash',
+  actorKey: 'actorKey',
+  commandId: 'commandId',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementEvidenceScalarFieldEnum = (typeof SettlementEvidenceScalarFieldEnum)[keyof typeof SettlementEvidenceScalarFieldEnum]
+
+
+export const SettlementEvidenceDecisionScalarFieldEnum = {
+  id: 'id',
+  sourceId: 'sourceId',
+  evidenceId: 'evidenceId',
+  receiptId: 'receiptId',
+  revision: 'revision',
+  action: 'action',
+  identity: 'identity',
+  reason: 'reason',
+  evidence: 'evidence',
+  actorKey: 'actorKey',
+  commandId: 'commandId',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementEvidenceDecisionScalarFieldEnum = (typeof SettlementEvidenceDecisionScalarFieldEnum)[keyof typeof SettlementEvidenceDecisionScalarFieldEnum]
 
 
 export const SortOrder = {

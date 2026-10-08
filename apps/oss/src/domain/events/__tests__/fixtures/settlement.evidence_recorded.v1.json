@@ -1,0 +1,71 @@
+{
+  "type": "settlement.evidence_recorded",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/settlement-provenance.ts",
+      "typeExpression": "\"settlement.evidence_recorded\"",
+      "payloadExpression": "{\n            evidenceId: result.evidenceId,\n            sourceId: result.sourceId,\n            state: input.state,\n            correctsEvidenceId: input.correctsEvidenceId ?? null,\n            reversesEvidenceId: input.reversesEvidenceId ?? null,\n          }",
+      "variant": "default",
+      "payload": {
+        "evidenceId": "evidence-1",
+        "sourceId": "source-1",
+        "state": "received",
+        "correctsEvidenceId": null,
+        "reversesEvidenceId": null
+      }
+    },
+    {
+      "source": "commands/settlement-provenance.ts",
+      "typeExpression": "\"settlement.evidence_recorded\"",
+      "payloadExpression": "{\n            evidenceId: result.evidenceId,\n            sourceId: result.sourceId,\n            state: input.state,\n            correctsEvidenceId: input.correctsEvidenceId ?? null,\n            reversesEvidenceId: input.reversesEvidenceId ?? null,\n          }",
+      "variant": "user",
+      "payload": {
+        "evidenceId": "evidence-1",
+        "sourceId": "source-1",
+        "state": "reported",
+        "correctsEvidenceId": null,
+        "reversesEvidenceId": null
+      }
+    },
+    {
+      "source": "commands/settlement-provenance.ts",
+      "typeExpression": "\"settlement.evidence_recorded\"",
+      "payloadExpression": "{\n            evidenceId: result.evidenceId,\n            sourceId: result.sourceId,\n            state: input.state,\n            correctsEvidenceId: input.correctsEvidenceId ?? null,\n            reversesEvidenceId: input.reversesEvidenceId ?? null,\n          }",
+      "variant": "decline",
+      "payload": {
+        "evidenceId": "evidence-1",
+        "sourceId": "source-1",
+        "state": "returned",
+        "correctsEvidenceId": null,
+        "reversesEvidenceId": "evidence-original"
+      }
+    },
+    {
+      "source": "commands/settlement-provenance.ts",
+      "typeExpression": "\"settlement.evidence_recorded\"",
+      "payloadExpression": "{\n            evidenceId: result.evidenceId,\n            sourceId: result.sourceId,\n            state: input.state,\n            correctsEvidenceId: input.correctsEvidenceId ?? null,\n            reversesEvidenceId: input.reversesEvidenceId ?? null,\n          }",
+      "variant": "in_progress",
+      "payload": {
+        "evidenceId": "evidence-1",
+        "sourceId": "source-1",
+        "state": "processing",
+        "correctsEvidenceId": null,
+        "reversesEvidenceId": null
+      }
+    },
+    {
+      "source": "commands/settlement-provenance.ts",
+      "typeExpression": "\"settlement.evidence_recorded\"",
+      "payloadExpression": "{\n            evidenceId: result.evidenceId,\n            sourceId: result.sourceId,\n            state: input.state,\n            correctsEvidenceId: input.correctsEvidenceId ?? null,\n            reversesEvidenceId: input.reversesEvidenceId ?? null,\n          }",
+      "variant": "completed",
+      "payload": {
+        "evidenceId": "evidence-1",
+        "sourceId": "source-1",
+        "state": "received",
+        "correctsEvidenceId": "evidence-old",
+        "reversesEvidenceId": null
+      }
+    }
+  ]
+}

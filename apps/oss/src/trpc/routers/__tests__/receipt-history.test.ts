@@ -8,16 +8,29 @@ const queries = vi.hoisted(() => ({
   receipts: vi.fn(),
   paymentTotal: vi.fn(),
   refundTotal: vi.fn(),
+  transaction: vi.fn(),
+  orgSettings: vi.fn(),
+  lock: vi.fn(),
+  evidenceDecision: vi.fn(),
+  events: vi.fn(),
 }))
 
 vi.mock("../../../lib/db", () => ({
   prisma: {
-    invoice: { findFirst: queries.invoice, findMany: queries.invoices },
-    settlementReceipt: { findMany: queries.receipts },
-    payment: { aggregate: queries.paymentTotal },
-    settlementRefund: { aggregate: queries.refundTotal },
+    $transaction: queries.transaction,
   },
 }))
+
+const db = {
+  invoice: { findFirst: queries.invoice, findMany: queries.invoices },
+  settlementReceipt: { findMany: queries.receipts },
+  payment: { aggregate: queries.paymentTotal },
+  settlementRefund: { aggregate: queries.refundTotal },
+  orgSettings: { upsert: queries.orgSettings },
+  $queryRaw: queries.lock,
+  settlementEvidenceDecision: { findFirst: queries.evidenceDecision },
+  domainEvent: { findMany: queries.events },
+}
 
 vi.mock("../../../domain/user-actor", () => ({
   resolveUserActor: async () => ({
@@ -31,6 +44,7 @@ const now = new Date("2026-10-08T12:00:00Z")
 function history(id: string, reversed = false) {
   return {
     id, reference: id, currency: "DKK",
+    actorKey: "user:reader", createdAt: now,
     grossAmount: decimal("100"), feeAmount: decimal("2"), netAmount: decimal("98"),
     reversedAt: reversed ? now : null,
     creditReason: "Retain remainder", reason: "Bank statement", evidence: "statement:1",
@@ -55,6 +69,11 @@ function history(id: string, reversed = false) {
 describe("receipt history query budget", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queries.transaction.mockImplementation(async (run) => run(db))
+    queries.orgSettings.mockResolvedValue({})
+    queries.lock.mockResolvedValue([])
+    queries.evidenceDecision.mockResolvedValue(null)
+    queries.events.mockResolvedValue([])
     queries.invoice.mockResolvedValue({ contactId: "contact" })
     queries.invoices.mockResolvedValue([])
     queries.paymentTotal.mockResolvedValue({ _sum: { receiptAmount: decimal("27.35") } })
@@ -75,6 +94,12 @@ describe("receipt history query budget", () => {
     } as never)
     const result = await caller.receipts({ invoiceId: "invoice" })
 
+    expect(queries.transaction).toHaveBeenCalledTimes(1)
+    expect(queries.orgSettings).toHaveBeenCalledWith({
+      where: { organizationId: "org" }, create: { organizationId: "org" }, update: {},
+    })
+    expect(queries.lock).toHaveBeenCalledTimes(1)
+    expect(queries.lock.mock.invocationCallOrder[0]).toBeLessThan(queries.invoice.mock.invocationCallOrder[0]!)
     expect(queries.invoice).toHaveBeenCalledTimes(1)
     expect(queries.invoices).toHaveBeenCalledTimes(1)
     expect(queries.receipts).toHaveBeenCalledTimes(1)
@@ -87,6 +112,8 @@ describe("receipt history query budget", () => {
     for (const receipt of result.receipts.slice(0, count)) {
       expect(receipt).toMatchObject({
         allocated: "27.35", refunded: "5.05", available: "67.60", customerCredit: true,
+        provenance: { state: "received", recordedBy: "user:reader", recordedAt: now.toISOString() },
+        history: [],
       })
       expect(receipt.allocations).toHaveLength(4)
       expect(receipt.allocations[2]).toMatchObject({ amount: "99.00", reversed: true })
@@ -98,5 +125,15 @@ describe("receipt history query budget", () => {
     expect(result.receipts[count + 1]).toMatchObject({
       allocated: "0.00", refunded: "0.00", available: "100.00", customerCredit: false,
     })
+    expect(queries.events).toHaveBeenCalledTimes(count + 2)
+    for (const receipt of result.receipts) {
+      expect(queries.events).toHaveBeenCalledWith(expect.objectContaining({
+        where: {
+          organizationId: "org", type: { startsWith: "settlement." },
+          payload: { path: ["receiptId"], equals: receipt.id },
+        },
+        orderBy: { sequence: "asc" },
+      }))
+    }
   })
 })

@@ -1,3 +1,18 @@
+import {
+  settlementEvidenceInputSchema,
+  settlementEvidenceDecisionSchema,
+  settlementProvenanceListSchema,
+} from "@quits/contracts/settlement-provenance"
+import {
+  recordSettlementEvidence,
+  decideSettlementEvidence,
+  previewEvidenceDecision,
+  ProvenanceRefusal,
+} from "../../domain/commands/settlement-provenance"
+import {
+  receiptProvenance,
+  settlementProvenanceHistory,
+} from "../../domain/documents/settlement-provenance"
 import { z } from "zod"
 import { Prisma } from "../../../generated/prisma/client"
 import {
@@ -47,7 +62,7 @@ type PaymentRow = {
 }
 
 function rethrowPreviewError(error: unknown, message: string): never {
-  if (error instanceof SettlementRefusal || error instanceof InvalidState) {
+  if (error instanceof SettlementRefusal || error instanceof ProvenanceRefusal || error instanceof InvalidState) {
     throw new TRPCError({ code: "BAD_REQUEST", message: error.message })
   }
   // Persistence and timeout errors may contain server details. Do not attach their cause.
@@ -86,82 +101,152 @@ export function serializePayment(payment: PaymentRow) {
 
 /** Owned by the payments feature. */
 export const paymentsRouter = router({
-  receipts: authorizedProcedure("payment:read")
-    .input(z.object({ invoiceId: z.string().min(1) }))
+  evidenceHistory: authorizedProcedure("payment:read")
+    .input(settlementProvenanceListSchema)
+    .query(({ ctx, input }) =>
+      prisma.$transaction(async (db) => {
+        await lockArtifactOrganization(db, ctx.organizationId)
+        return settlementProvenanceHistory(db, ctx.organizationId, input.contactId)
+      }),
+    ),
+  recordEvidence: authorizedProcedure("payment:create")
+    .input(settlementEvidenceInputSchema)
+    .mutation(async ({ ctx, input }) =>
+      unwrapReceiptMutation(
+        executeCommand(recordSettlementEvidence, input, {
+          actor: ctx.actor,
+          clientRequestId: `settlement-evidence:${input.requestId}`,
+        }),
+        "Could not record settlement evidence",
+      ),
+    ),
+  previewEvidenceDecision: authorizedProcedure("payment:create")
+    .input(settlementEvidenceDecisionSchema)
     .query(async ({ ctx, input }) => {
-      const invoice = await prisma.invoice.findFirst({
-        where: { id: input.invoiceId, organizationId: ctx.organizationId },
-      })
-      if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" })
-      const [receipts, invoices] = await Promise.all([
-        prisma.settlementReceipt.findMany({
-          where: { organizationId: ctx.organizationId, contactId: invoice.contactId },
-          include: {
-            payments: { include: { invoice: { select: { number: true } } } },
-            refunds: true,
-          },
-          orderBy: { createdAt: "desc" },
-        }),
-        prisma.invoice.findMany({
-          where: {
-            organizationId: ctx.organizationId,
-            contactId: invoice.contactId,
-            status: { notIn: ["draft", "credited"] },
-          },
-          orderBy: { number: "asc" },
-        }),
-      ])
-      return {
-        contactId: invoice.contactId,
-        canCreate: actorCan(ctx.actor, "payment:create"),
-        canReverse: actorCan(ctx.actor, "payment:void"),
-        invoices: invoices.map((row) => ({
-          id: row.id,
-          number: row.number,
-          currency: row.currency,
-          balanceDue: computeSettlement(row).balanceDue.toFixed(2),
-        })),
-        receipts: receipts.map((row) => {
-          const allocated = row.payments.reduce(
-            (sum, payment) => payment.voidedAt ? sum : sum.plus(payment.receiptAmount ?? 0),
-            new Prisma.Decimal(0),
-          )
-          const refunded = row.refunds.reduce(
-            (sum, refund) => refund.reversedAt ? sum : sum.plus(refund.amount),
-            new Prisma.Decimal(0),
-          )
-          const balance = receiptBalanceFromTotals(row, allocated, refunded)
-          return {
-            id: row.id,
-            reference: row.reference,
-            currency: row.currency,
-            gross: row.grossAmount.toFixed(2),
-            fee: row.feeAmount.toFixed(2),
-            net: row.netAmount.toFixed(2),
-            available: balance.available.toFixed(2),
-            allocated: balance.allocated.toFixed(2),
-            refunded: balance.refunded.toFixed(2),
-            reversed: Boolean(row.reversedAt),
-            customerCredit: Boolean(row.creditReason) && balance.available.greaterThan(0),
-            reason: row.reason,
-            evidence: row.evidence,
-            allocations: row.payments.map((payment) => ({
-              id: payment.id,
-              invoiceId: payment.invoiceId,
-              invoiceNumber: payment.invoice.number ?? payment.invoiceId,
-              amount: payment.amount.toFixed(2),
-              currency: payment.currency,
-              reversed: Boolean(payment.voidedAt),
-            })),
-            refunds: row.refunds.map((refund) => ({
-              id: refund.id,
-              amount: refund.amount.toFixed(2),
-              reversed: Boolean(refund.reversedAt),
-            })),
-          }
-        }),
+      if (
+        (input.action === "return" || input.action === "unmatch") &&
+        !actorCan(ctx.actor, "payment:void")
+      )
+        throw new TRPCError({ code: "FORBIDDEN", message: "Missing permission payment:void" })
+      try {
+        return await prisma.$transaction(async (db) => {
+          await lockArtifactOrganization(db, ctx.organizationId)
+          return previewEvidenceDecision(db, ctx.organizationId, input)
+        })
+      } catch (error) {
+        rethrowPreviewError(error, "Could not preview evidence decision")
       }
     }),
+  decideEvidence: authorizedProcedure("payment:create")
+    .input(decideSettlementEvidence.input)
+    .mutation(async ({ ctx, input }) =>
+      unwrapReceiptMutation(
+        executeCommand(decideSettlementEvidence, input, {
+          actor: ctx.actor,
+          clientRequestId: `settlement-evidence-decision:${input.decision.requestId}`,
+        }),
+        "Could not decide settlement evidence",
+      ),
+    ),
+  receipts: authorizedProcedure("payment:read")
+    .input(z.object({ invoiceId: z.string().min(1) }))
+    .query(({ ctx, input }) =>
+      prisma.$transaction(async (db) => {
+        await lockArtifactOrganization(db, ctx.organizationId)
+        const invoice = await db.invoice.findFirst({
+          where: { id: input.invoiceId, organizationId: ctx.organizationId },
+        })
+        if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" })
+        const [receipts, invoices] = await Promise.all([
+          db.settlementReceipt.findMany({
+            where: { organizationId: ctx.organizationId, contactId: invoice.contactId },
+            include: {
+              payments: { include: { invoice: { select: { number: true } } } },
+              refunds: true,
+            },
+            orderBy: { createdAt: "desc" },
+          }),
+          db.invoice.findMany({
+            where: {
+              organizationId: ctx.organizationId,
+              contactId: invoice.contactId,
+              status: { notIn: ["draft", "credited"] },
+            },
+            orderBy: { number: "asc" },
+          }),
+        ])
+        return {
+          contactId: invoice.contactId,
+          canCreate: actorCan(ctx.actor, "payment:create"),
+          canReverse: actorCan(ctx.actor, "payment:void"),
+          invoices: invoices.map((row) => ({
+            id: row.id,
+            number: row.number,
+            currency: row.currency,
+            balanceDue: computeSettlement(row).balanceDue.toFixed(2),
+          })),
+          receipts: await Promise.all(
+            receipts.map(async (row) => {
+              const allocated = row.payments.reduce(
+                (sum, payment) => payment.voidedAt ? sum : sum.plus(payment.receiptAmount ?? 0),
+                new Prisma.Decimal(0),
+              )
+              const refunded = row.refunds.reduce(
+                (sum, refund) => refund.reversedAt ? sum : sum.plus(refund.amount),
+                new Prisma.Decimal(0),
+              )
+              const balance = receiptBalanceFromTotals(row, allocated, refunded)
+              return {
+                id: row.id,
+                reference: row.reference,
+                currency: row.currency,
+                gross: row.grossAmount.toFixed(2),
+                fee: row.feeAmount.toFixed(2),
+                net: row.netAmount.toFixed(2),
+                available: balance.available.toFixed(2),
+                allocated: balance.allocated.toFixed(2),
+                refunded: balance.refunded.toFixed(2),
+                reversed: Boolean(row.reversedAt),
+                customerCredit: Boolean(row.creditReason) && balance.available.greaterThan(0),
+                provenance: await receiptProvenance(db, row),
+                history: await db.domainEvent.findMany({
+                  where: {
+                    organizationId: ctx.organizationId,
+                    type: { startsWith: "settlement." },
+                    payload: { path: ["receiptId"], equals: row.id },
+                  },
+                  orderBy: { sequence: "asc" },
+                  select: {
+                    id: true,
+                    type: true,
+                    actorKind: true,
+                    actorId: true,
+                    occurredAt: true,
+                    commandId: true,
+                    payload: true,
+                  },
+                }),
+                reason: row.reason,
+                evidence: row.evidence,
+                allocations: row.payments.map((payment) => ({
+                  id: payment.id,
+                  invoiceId: payment.invoiceId,
+                  invoiceNumber: payment.invoice.number ?? payment.invoiceId,
+                  amount: payment.amount.toFixed(2),
+                  currency: payment.currency,
+                  reversed: Boolean(payment.voidedAt),
+                })),
+                refunds: row.refunds.map((refund) => ({
+                  id: refund.id,
+                  amount: refund.amount.toFixed(2),
+                  reversed: Boolean(refund.reversedAt),
+                })),
+              }
+            }),
+          ),
+        }
+      }),
+    ),
   recordReceipt: authorizedProcedure("payment:create")
     .input(receiptRecordInputSchema)
     .mutation(async ({ ctx, input }) =>
