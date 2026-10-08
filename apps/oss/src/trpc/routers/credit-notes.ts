@@ -13,6 +13,7 @@ import { actorCan } from "../../domain/actor"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { authorizedProcedure, router } from "../init"
+import { documentDisplayForUi, lineDisplayForUi } from "./document-display"
 import { readEmailDelivery } from "../email-delivery-result"
 import { unwrapOutcome } from "../outcome"
 
@@ -20,7 +21,7 @@ type Decimalish = { toNumber(): number }
 
 const num = (value: Decimalish) => value.toNumber()
 
-function serializeItem(item: {
+function serializeItem(document: { pricesIncludeTax: boolean }, item: {
   id: string
   invoiceItemId: string | null
   description: string
@@ -43,6 +44,8 @@ function serializeItem(item: {
     lineNet: num(item.lineNet),
     lineTax: num(item.lineTax),
     total: num(item.lineGross),
+    // On the credit note's price basis, the one of the invoice it credits.
+    ...lineDisplayForUi(document, item),
     taxRate: num(item.taxRate),
     sortOrder: item.sortOrder,
   }
@@ -105,7 +108,12 @@ export const creditNotesRouter = router({
       }
 
       const { subtotalNet: _net, totalTax: _tax, totalGross: _gross, items, ...rest } = creditNote
-      return { ...rest, ...serializeTotals(creditNote), items: items.map(serializeItem) }
+      return {
+        ...rest,
+        ...serializeTotals(creditNote),
+        ...documentDisplayForUi({ ...creditNote, items }),
+        items: items.map((item) => serializeItem(creditNote, item)),
+      }
     }),
 
   /** What can still be credited on an invoice, for the create dialog. */

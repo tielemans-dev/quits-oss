@@ -20,23 +20,30 @@ import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { getPublicQuoteUrl } from "../../lib/quotes/public-url"
 import { router, authorizedProcedure } from "../init"
+import { documentDisplayForUi, lineDisplayForUi } from "./document-display"
 import { settleEmailResult } from "../email-delivery-result"
 import { unwrapOutcome } from "../outcome"
 
-function mapQuoteItemForUi(item: {
-  quantity: { toNumber: () => number }
-  unitPriceGross: { toNumber: () => number }
-  unitPriceNet: { toNumber: () => number }
-  taxRate: { toNumber: () => number }
-  lineGross: { toNumber: () => number }
-}) {
+function mapQuoteItemForUi(
+  item: {
+    quantity: { toNumber: () => number }
+    unitPriceGross: { toNumber: () => number }
+    unitPriceNet: { toNumber: () => number }
+    taxRate: { toNumber: () => number }
+    lineNet: { toNumber: () => number }
+    lineGross: { toNumber: () => number }
+  },
+  document: { pricesIncludeTax: boolean }
+) {
   return {
     quantity: item.quantity.toNumber(),
+    // Gross, as ever. The line table prints displayUnitPrice and displayAmount, on the document's price basis.
     unitPrice: item.unitPriceGross.toNumber(),
     unitPriceGross: item.unitPriceGross.toNumber(),
     unitPriceNet: item.unitPriceNet.toNumber(),
     taxRate: item.taxRate.toNumber(),
     total: item.lineGross.toNumber(),
+    ...lineDisplayForUi(document, item),
   }
 }
 
@@ -46,15 +53,18 @@ function serializeDocumentForUi<
     subtotalNet: { toNumber: () => number }
     totalTax: { toNumber: () => number }
     totalGross: { toNumber: () => number }
-    items: Array<Parameters<typeof mapQuoteItemForUi>[0]>
+    pricesIncludeTax: boolean
+    currency: string
+    items: Array<Parameters<typeof mapQuoteItemForUi>[0] & Parameters<typeof documentDisplayForUi>[0]["items"][number]>
   },
 >(document: Document) {
   return {
     ...document,
+    ...documentDisplayForUi(document),
     subtotal: document.subtotalNet.toNumber(),
     taxAmount: document.totalTax.toNumber(),
     total: document.totalGross.toNumber(),
-    items: document.items.map((item) => ({ ...item, ...mapQuoteItemForUi(item) })),
+    items: document.items.map((item) => ({ ...item, ...mapQuoteItemForUi(item, document) })),
   }
 }
 
@@ -111,9 +121,10 @@ export const quotesRouter = router({
         taxAmount: quote.totalTax.toNumber(),
         total: quote.totalGross.toNumber(),
         publicViewUrl: getPublicQuoteUrl(quote),
+        ...documentDisplayForUi(quote),
         items: quote.items.map((item) => ({
           ...item,
-          ...mapQuoteItemForUi(item),
+          ...mapQuoteItemForUi(item, quote),
         })),
       }
     }),
