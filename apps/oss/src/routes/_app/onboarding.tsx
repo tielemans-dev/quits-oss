@@ -4,7 +4,7 @@ import type { RuntimeCapabilities } from '@quits/contracts/runtime'
 import { useEffect, useState } from 'react'
 import { authClient, useSession } from '../../lib/auth-client'
 import { switchActiveOrganization } from '../../lib/active-organization'
-import { isCloudDistribution } from '../../lib/distribution'
+import { useRuntimeDistribution } from '../../lib/runtime-distribution'
 import {
   getOrganizationAccessState,
   type OrganizationAccessState,
@@ -110,6 +110,7 @@ function parseCloudOnboardingValues(values?: Record<string, unknown> | null): Cl
 function OnboardingPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const { isCloud } = useRuntimeDistribution()
   const { data: session } = useSession()
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
@@ -168,7 +169,7 @@ function OnboardingPage() {
         if (accessState.kind === 'auto-select') {
           // Loads a new page acting for the organization: onboarding continues there in cloud.
           const switched = await switchActiveOrganization(accessState.organizationId, {
-            destination: isCloudDistribution ? '/onboarding' : '/',
+            destination: isCloud ? '/onboarding' : '/',
             isCancelled: () => cancelled,
           })
           if (!switched?.error || cancelled) {
@@ -195,10 +196,10 @@ function OnboardingPage() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg])
+  }, [hasActiveOrg, isCloud])
 
   useEffect(() => {
-    if (!isCloudDistribution || !hasActiveOrg) {
+    if (!isCloud || !hasActiveOrg) {
       return
     }
 
@@ -248,10 +249,10 @@ function OnboardingPage() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, navigate])
+  }, [hasActiveOrg, isCloud, navigate])
 
   useEffect(() => {
-    if (!isCloudDistribution || !hasActiveOrg) {
+    if (!isCloud || !hasActiveOrg) {
       setRuntimeCapabilities(null)
       return
     }
@@ -277,7 +278,7 @@ function OnboardingPage() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg])
+  }, [hasActiveOrg, isCloud])
 
   useEffect(() => {
     if (!runtimeCapabilities?.onboardingAi.enabled && method === 'ai') {
@@ -538,7 +539,7 @@ function OnboardingPage() {
     )
   }
 
-  if (!isCloudDistribution) {
+  if (!isCloud) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">

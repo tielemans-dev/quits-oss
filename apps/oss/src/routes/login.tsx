@@ -16,7 +16,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { z } from 'zod'
 import { useI18n } from '../lib/i18n/react'
-import { isCloudDistribution } from '../lib/distribution'
+import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { getOrganizationAccessState } from '../lib/organization-access'
 import { toInternalRedirectPath } from '../lib/redirect-target'
 
@@ -32,6 +32,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const { t } = useI18n()
+  const { isCloud } = useRuntimeDistribution()
   const { redirect, message } = Route.useSearch()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -66,7 +67,7 @@ function LoginPage() {
 
         if (accessState.kind === 'auto-select') {
           const switched = await switchActiveOrganization(accessState.organizationId, {
-            destination: isCloudDistribution ? '/onboarding' : redirectPath,
+            destination: isCloud ? '/onboarding' : redirectPath,
           })
           if (!switched?.error) return
         }
