@@ -73,7 +73,7 @@ vi.mock("../../lib/auth-client", () => ({
 }))
 
 vi.mock("../_app/-settings.helpers", () => ({
-  shouldAutoLoadOpenRouterModels: () => false,
+  shouldAutoLoadAiModels: () => false,
 }))
 
 vi.mock("../../trpc/client", () => ({
@@ -98,6 +98,23 @@ vi.mock("../../trpc/client", () => ({
     ai: {
       listModels: {
         query: vi.fn(),
+      },
+    },
+    runtime: {
+      capabilities: {
+        query: vi.fn(() =>
+          Promise.resolve({
+            aiInvoiceDraft: {
+              enabled: true,
+              byok: true,
+              managed: false,
+              managedRequiresSubscription: false,
+              customEndpoint: false,
+              localAgent: false,
+              maxPromptChars: 4000,
+            },
+          })
+        ),
       },
     },
   },
@@ -128,7 +145,9 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
     quotePrefix: "QTE",
     quoteNextNum: 1,
     aiByokConfigured: false,
-    aiOpenRouterModel: "openai/gpt-4o-mini",
+    aiProvider: "openrouter",
+    aiBaseUrl: null,
+    aiModel: "openai/gpt-4o-mini",
     stripeByokConfigured: false,
     stripePublishableKey: null,
     onboardingInvoicingIdentity: "registered_business",

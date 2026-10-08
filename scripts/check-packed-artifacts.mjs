@@ -58,10 +58,19 @@ const { betterAuth } = await import(app.resolve("better-auth"))
 import { buildQuitsAuthOptions } from "@quits/oss/runtime/auth-config"
 import { bootstrapQuitsRuntime } from "@quits/oss/runtime"
 import { getRuntimeCapabilities } from "@quits/oss/runtime/extensions"
-import { getDocumentRenderer, getDocumentArtifactStore, type DocumentRenderer, type DocumentArtifactStore } from "@quits/oss/runtime/services"
+import { getDocumentRenderer, getDocumentArtifactStore, getManagedAiProvider, type DocumentRenderer, type DocumentArtifactStore } from "@quits/oss/runtime/services"
+import { AiProviderError, type AiProvider } from "@quits/oss/ai/provider"
 const renderer: DocumentRenderer = { version: "consumer-v1", renderPdf: async input => new TextEncoder().encode(input.number) }
 const store: DocumentArtifactStore = { put: async (_bytes, meta) => meta.hash, get: async () => null, head: async () => null, delete: async () => {} }
-bootstrapQuitsRuntime({ services: { documentRenderer: renderer, documentArtifactStore: store } })
+// A distribution's managed AI provider reports failures as AiProviderError so they are sanitised.
+const managedAi: AiProvider = {
+  id: "managed",
+  defaultModel: "consumer/model",
+  complete: async () => { throw new AiProviderError({ code: "http", providerId: "managed", message: "upstream detail" }) },
+}
+bootstrapQuitsRuntime({ services: { documentRenderer: renderer, documentArtifactStore: store, managedAiProvider: managedAi } })
+assert.equal(getManagedAiProvider(), managedAi)
+await assert.rejects(managedAi.complete({ model: "m", messages: [] }), (error: unknown) => error instanceof AiProviderError && error.code === "http")
 const optional: boolean = getRuntimeCapabilities().documents.artifactsRequired
 assert.equal(optional, true)
 assert.equal(getDocumentRenderer(), renderer)

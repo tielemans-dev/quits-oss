@@ -201,8 +201,10 @@ model OrgSettings {
   onboardingInvoicingIdentity        String?
   onboardingVersion                  Int?
   onboardingCompletedAt              DateTime?
-  aiOpenRouterApiKeyEnc              String?
-  aiOpenRouterModel                  String       @default("openai/gpt-4o-mini")
+  aiProvider                         String       @default("openrouter")
+  aiBaseUrl                          String?
+  aiApiKeyEnc                        String?
+  aiModel                            String       @default("openai/gpt-4o-mini")
   stripePublishableKey               String?
   stripeSecretKeyEnc                 String?
   stripeWebhookSecretEnc             String?

@@ -13,6 +13,8 @@ describe("runtime contracts", () => {
         byok: true,
         managed: false,
         managedRequiresSubscription: false,
+        customEndpoint: true,
+        localAgent: false,
         maxPromptChars: 4000,
       },
       onboardingAi: {

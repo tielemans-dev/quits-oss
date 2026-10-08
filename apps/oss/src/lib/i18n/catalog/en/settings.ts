@@ -5,8 +5,7 @@ export const enSettingsMessages = {
   "settings.loading": "Loading...",
   "settings.success.saved": "Settings saved successfully.",
   "settings.error.loadFailed": "Failed to load settings",
-  "settings.error.loadModelsFailed":
-    "Could not load model list from OpenRouter. Using fallback list.",
+  "settings.error.loadModelsFailed": "Could not load the model list.",
   "settings.error.inviteFailed": "Failed to send invite",
   "settings.error.logoInvalid":
     "Company logo must be an image URL or uploaded image data.",
@@ -143,13 +142,13 @@ export const enSettingsMessages = {
   "settings.payments.removeSecret": "Remove saved secret key",
   "settings.payments.removeWebhook": "Remove saved webhook secret",
   "settings.payments.undo": "Undo",
-  "settings.section.ai.title": "AI Invoice Drafting (BYOK)",
+  "settings.section.ai.title": "AI Invoice Drafting",
   "settings.section.ai.description":
-    "Use OpenRouter with your own API key and chosen model.",
-  "settings.aiModel.label": "OpenRouter Model",
+    "Choose how AI invoice drafts are generated and configure the connection.",
+  "settings.aiModel.label": "AI Model",
   "settings.aiModel.refreshing": "Refreshing...",
   "settings.aiModel.refresh": "Refresh models",
-  "settings.aiApiKey.label": "OpenRouter API Key",
+  "settings.aiApiKey.label": "API Key",
   "settings.aiApiKey.configuredHelp":
     "A key is currently configured. Enter a new key only if you want to rotate it.",
   "settings.aiApiKey.notConfiguredHelp": "No key configured yet.",
@@ -157,6 +156,22 @@ export const enSettingsMessages = {
   "settings.aiApiKey.removePending":
     "Saved key will be removed when you save settings.",
   "settings.aiApiKey.undo": "Undo",
+  "settings.aiApiKey.optionalHelp": "Optional for local endpoints such as Ollama.",
+  "settings.aiBaseUrl.required": "Enter the base URL of the OpenAI-compatible endpoint.",
+  "settings.aiModel.required": "Enter the model to use with this AI provider.",
+  "settings.aiModel.customHelp":
+    "Type a model name or pick one of the suggestions from the endpoint.",
+  "settings.aiProvider.label": "Provider",
+  "settings.aiProvider.checking": "Checking AI availability...",
+  "settings.aiProvider.unavailable": "AI invoice drafting is not available on this server.",
+  "settings.aiProvider.openrouter": "OpenRouter",
+  "settings.aiProvider.openaiCompatible": "OpenAI-compatible endpoint",
+  "settings.aiProvider.cliAgent": "Local agent on this server",
+  "settings.aiProvider.localAgent.help":
+    "Requests are sent to the agent the server operator configured (Claude Code or Codex). No API key or model is needed here. Responses can be slow.",
+  "settings.aiBaseUrl.label": "Base URL",
+  "settings.aiBaseUrl.help":
+    "The root of an OpenAI-compatible API, including its version path. For Ollama, use http://localhost:11434/v1.",
   "settings.action.saving": "Saving...",
   "settings.action.save": "Save Settings",
   "settings.section.team.title": "Team Members",
