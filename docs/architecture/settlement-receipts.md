@@ -119,3 +119,9 @@ VAT treatment is unknown. Before tax-affecting routes are enabled, the reviewer 
 VAT evidence, discount tax-base changes, bad-debt eligibility and recovery treatment, and carrying
 value/FX rules. Automated fixtures establish arithmetic and conservation; they are not accounting
 approval or evidence from real customer books.
+
+## One-click settlement
+
+[Mark paid and undo](paid-moment.md) settles only the debt remaining after allocations, legacy
+payments and credits. Its undo reverses that specific legacy payment and never touches receipt
+allocations. These convenience mutations are not available through the agent API or MCP.

@@ -255,3 +255,7 @@ zero totals; issuing or sending it receives `empty_invoice` until a line is adde
 `deliverable_authorize_rebill` is for a person: agents receive
 `human_review_required`. A refusal such as `deliverable_reserved` carries structured `details`. See
 [Billable work and reservations](billable-work.md).
+
+The user-only `invoices.markPaid` and `invoices.undoMarkPaid` conveniences are deliberately absent
+from the agent API, MCP tools and approval command registry. Agents use the existing payment
+record/void commands and their approval flows. See [mark paid and undo](architecture/paid-moment.md).
