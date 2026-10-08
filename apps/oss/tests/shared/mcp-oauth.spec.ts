@@ -34,6 +34,8 @@ async function openConsent(page: Page, url: string) {
   await page.route('**/__oauth-test/callback?**', route => route.fulfill({ contentType: 'text/plain', body: 'Local client callback received' }))
   await page.goto(url)
   await expect(page).toHaveURL(/\/login\?redirect=/)
+  // The first cold login navigation renders HTML before its controlled inputs hydrate.
+  await page.waitForLoadState('networkidle')
   await page.getByLabel('Email', { exact: true }).fill(adminCredentials.email)
   await page.getByLabel('Password', { exact: true }).fill(adminCredentials.password)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
