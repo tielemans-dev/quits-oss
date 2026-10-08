@@ -51,6 +51,15 @@ function readDefaultCapabilities(
   const isCloud = distribution === "cloud"
   const byok = readBooleanEnv(readProductEnv(env, "AI_BYOK_ENABLED"), true)
   const managed = readBooleanEnv(readProductEnv(env, "AI_MANAGED_ENABLED"), false)
+  const customEndpoint = readBooleanEnv(
+    readProductEnv(env, "AI_CUSTOM_ENDPOINT_ENABLED"),
+    !isCloud
+  )
+  // Running a local agent is an operator decision: it needs both the flag and a command.
+  const localAgent =
+    !isCloud &&
+    readBooleanEnv(readProductEnv(env, "AI_LOCAL_AGENT_ENABLED"), false) &&
+    Boolean(readProductEnv(env, "AI_LOCAL_AGENT_COMMAND")?.trim())
   const onboardingAiManaged = readBooleanEnv(
     readProductEnv(env, "ONBOARDING_AI_MANAGED_ENABLED"),
     isCloud
@@ -63,10 +72,12 @@ function readDefaultCapabilities(
   return {
     documents: { artifactsRequired: true },
     aiInvoiceDraft: {
-      enabled: byok || managed,
+      enabled: byok || managed || localAgent,
       byok,
       managed,
       managedRequiresSubscription: managed,
+      customEndpoint,
+      localAgent,
       maxPromptChars: DEFAULT_MAX_PROMPT_CHARS,
     },
     onboardingAi: {

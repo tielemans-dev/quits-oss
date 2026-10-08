@@ -6,6 +6,10 @@ export const aiInvoiceDraftCapabilitiesSchema = z
     byok: z.boolean(),
     managed: z.boolean(),
     managedRequiresSubscription: z.boolean(),
+    /** Organisations may point the OpenAI-compatible provider at their own base URL. */
+    customEndpoint: z.boolean(),
+    /** The server may run a locally installed CLI agent configured by the operator. */
+    localAgent: z.boolean(),
     maxPromptChars: z.number().int().positive(),
   })
   .strict()
