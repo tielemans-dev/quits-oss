@@ -4,7 +4,8 @@ import type { BillableAllocationState } from "@quits/contracts/billing"
 type Reader = Pick<PrismaClient, "invoiceItem" | "deliverableRebill" | "invoice" | "creditNote">
 type Visibility = { invoices: boolean; creditNotes: boolean }
 
-export type AllocationHolder = { invoiceId: string; number: string; status: string }
+/** A draft has no number until it is issued, so `number` is null while the holder is a draft. */
+export type AllocationHolder = { invoiceId: string; number: string | null; status: string }
 export type AllocationView = {
   state: BillableAllocationState
   generation: number
@@ -43,7 +44,7 @@ export async function describeAllocations(
       db.invoice.findMany({ where: { id: { in: ids }, organizationId }, select: { id: true, number: true } }),
       db.creditNote.findMany({ where: { id: { in: creditIds }, organizationId }, select: { id: true, number: true } }),
     ])
-    invoices.forEach(row => numbers.set(`invoice:${row.id}`, row.number))
+    invoices.forEach(row => row.number && numbers.set(`invoice:${row.id}`, row.number))
     credits.forEach(row => numbers.set(`credit:${row.id}`, row.number))
   }
   const views = new Map<string, AllocationView>()

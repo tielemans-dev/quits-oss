@@ -23,7 +23,7 @@ const unavailableReason = (agreementId: string, line: Deliverable) => Effect.gen
   const holder = yield* currentAllocation(line)
   const visible = actorCan(command.actor, "invoice:read") ? holder?.invoice : undefined
   const details = { deliverableId: line.id, agreementId, ...(visible ? { holdingInvoiceId: visible.id, holdingInvoiceNumber: visible.number, holdingInvoiceStatus: visible.status } : {}) }
-  const where = visible ? ` by ${visible.status === "draft" ? "draft invoice" : "invoice"} ${visible.number}` : ""
+  const where = visible ? ` by ${visible.status === "draft" ? "draft invoice" : "invoice"}${visible.number ? ` ${visible.number}` : ""}` : ""
   if (line.billingStatus === "reserved")
     return yield* new InvalidState({ code: "deliverable_reserved", details, message: `"${line.title}" is reserved${where}. Open that draft to keep the work there, or release the line from it first.` })
   return yield* new InvalidState({ code: "deliverable_already_invoiced", details, message: `"${line.title}" was already invoiced${where}. A credit note does not make it billable again; a person must authorize a rebill.` })
