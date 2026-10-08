@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { quantityDecimalSchema, unitPriceDecimalSchema, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
+import { calendarDateInputSchema, quantityDecimalSchema, unitPriceDecimalSchema, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
 import { decimalStringSchema, vatGroupSchema } from "./vat"
 import { quantityInputSchema, unitPriceInputSchema } from "./pricing"
 import { documentVatInputSchema } from "./invoices"
@@ -24,7 +24,7 @@ export const deliverableStatusSchema = z.enum([
 ])
 export const deliverableBillingStatusSchema = z.enum(["unbilled", "reserved", "invoiced"])
 export const agreementBillingTriggerSchema = z.enum(["on_acceptance", "on_delivery"])
-export const agreementDateSchema = z.iso.date()
+export const agreementDateSchema = calendarDateInputSchema
 const nullableDate = agreementDateSchema.nullable().optional()
 const currencySchema = z
   .string()

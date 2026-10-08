@@ -1,3 +1,4 @@
+import { addUtcDays } from "../features/recurring-dates"
 import { formatIsoDate } from "../../lib/exports/format"
 import { Effect } from "effect"
 import { z } from "zod"
@@ -30,7 +31,8 @@ export const createInvoiceFromDeliverables = defineCommand({
     const { agreement, lines } = yield* billableSelection(input.agreementId, input.deliverableIds)
     const result: { saleInvoiceId?: string; prepaymentInvoiceId?: string } = {}
     const issueDate = input.issueDate ? new Date(input.issueDate) : command.now
-    const dueDate = input.dueDate ? new Date(input.dueDate) : new Date(issueDate.getTime() + agreement.dueInDays * 86_400_000)
+    const supplyDate = new Date(formatIsoDate(issueDate, agreement.timezone))
+    const dueDate = input.dueDate ? new Date(input.dueDate) : addUtcDays(supplyDate, agreement.dueInDays)
     for (const purpose of ["sale", "prepayment"] as const) {
       const selected = lines.filter(line => (line.isDeposit && !input.scheduleAsSale ? "prepayment" : "sale") === purpose)
       if (!selected.length) continue
@@ -39,7 +41,7 @@ export const createInvoiceFromDeliverables = defineCommand({
       const saleIds = selected.filter(line => line.isDeposit && input.scheduleAsSale).map(line => line.id)
       const invoice = yield* Effect.promise(() => db.invoice.create({ data: {
         organizationId: command.organizationId, agreementId: agreement.id, contactId: agreement.contactId,
-        purpose, status: "draft", issueDate, dueDate, supplyDate: new Date(formatIsoDate(issueDate, agreement.timezone)),
+        purpose, status: "draft", issueDate, dueDate, supplyDate,
         ...frozenTotals(rows), calculationVersion: agreement.calculationVersion,
         currency: agreement.currency, countryCode: agreement.countryCode, locale: agreement.locale,
         timezone: agreement.timezone, taxRegime: agreement.taxRegime, pricesIncludeTax: agreement.pricesIncludeTax,
