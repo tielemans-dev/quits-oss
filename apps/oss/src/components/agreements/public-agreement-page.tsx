@@ -147,6 +147,14 @@ export function PublicAgreementPage({
       </a>
       {scope === "decide" && document.status === "sent" && (
         <section className="grid gap-4 rounded-md border p-4">
+          <section className="grid gap-2" aria-label={t("agreements.consequenceTitle")}>
+            <h2 className="font-semibold">{t("agreements.consequenceTitle")}</h2>
+            <p>{t("agreements.acceptanceConsequence", { revision: document.offerRevision })}</p>
+            <p>{t("agreements.acceptanceNotifications", { recipients: document.acceptancePreview.recipients.join(", ") })}</p>
+            <p>{t("agreements.acceptanceDrafts")}</p>
+            <p>{t("agreements.acceptancePrepayment")}</p>
+            <p>{t("agreements.acceptanceCollection")}</p>
+          </section>
           <Label htmlFor="accepted-name">{t("agreements.signerName")}</Label>
           <Input
             id="accepted-name"

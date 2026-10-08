@@ -1,9 +1,12 @@
 import { setTimeout as sleep } from "node:timers/promises"
 import {
+  commandPreviewInputSchema,
   commandStatusToolInputSchema,
   commandWaitToolInputSchema,
   type CommandRecord,
 } from "@quits/contracts/agent"
+import { previewCommand } from "../../preview"
+import { getCommandDefinition } from "../../registry"
 import { prisma } from "../../../lib/db"
 import { actorKey, type AgentActor } from "../../actor"
 import { expireStaleApprovals } from "../../approvals"
@@ -31,6 +34,18 @@ async function readOwnCommand(actor: AgentActor, commandId: string, presenterFor
 /** `command_status` and `command_wait`; they present results with the issuing tool's presenter. */
 export function commandTrackingTools(presenterFor: Presenter): AgentTool[] {
   return [
+    defineQueryTool({
+      name: "command_preview", title: "Preview command consequences",
+      description: "Validate one invoice send, agreement issue/send, or payment record without effects. Returns exact review facts, expected records, recipients and manual steps. Pass previewVersion as expectedPreviewVersion when executing. Each command needs its own review.",
+      input: commandPreviewInputSchema, permission: null, requiresWriteMode: true,
+      run: async ({ actor }, input) => {
+        const definition = getCommandDefinition(input.commandType)
+        if (!definition) throw new NotFound({ message: "Command not found", entity: "command" })
+        const preview = await previewCommand(definition, input.command, { actor })
+        const { presentCommandPreview } = await import("../../../application/command-preview")
+        return presentCommandPreview(preview, input.includeDocument)
+      },
+    }),
     defineQueryTool({
       name: "command_status",
       title: "Command status",

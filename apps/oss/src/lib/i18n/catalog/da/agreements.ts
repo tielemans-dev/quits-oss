@@ -161,4 +161,10 @@ export const daAgreementsMessages = {
   "agreements.quoteHasAgreement": "Dette tilbud har allerede en aftale. Fakturer aftalens leverancer i stedet.",
   "agreements.quoteHasInvoices": "Dette tilbud har allerede fakturaer og kan ikke konverteres til en aftale.",
   "agreements.quoteConversionNotice": "Vælg en ny gyldighedsdato. Kladden kopierer kunden, ydelserne og momsoplysningerne fra tilbuddet og bruger din standardskabelon. Totalerne genberegnes med den aktuelle prisberegning; afrunding kan være anderledes for ældre tilbud. Gennemgå kladden, før du sender den.",
+  "agreements.consequenceTitle": "Før du accepterer",
+  "agreements.acceptanceConsequence": "Din accept registreres for tilbudsrevision {revision}.",
+  "agreements.acceptanceNotifications": "Beskeder om accept sættes i kø til {recipients}.",
+  "agreements.acceptanceDrafts": "Accept opretter ingen fakturakladder. Sælgeren fakturerer fakturerbart arbejde separat.",
+  "agreements.acceptancePrepayment": "Betalingsplanlinjer udsteder ikke en forudbetalingsfaktura. Forudbetalingskladder kan ikke udstedes endnu. En salgsfaktura kræver et særskilt valg.",
+  "agreements.acceptanceCollection": "Accept trækker ikke penge fra dit kort og opkræver ikke betaling. Betaling er et særskilt trin.",
 } as const

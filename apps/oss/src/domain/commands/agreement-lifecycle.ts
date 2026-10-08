@@ -10,6 +10,8 @@ import {
   readAgreementOfferSnapshot,
   agreementPublicDecisionSchema,
 } from "@quits/contracts/agreements"
+import { agreementScheduleConsequences } from "../agreements/consequences"
+import { fingerprint } from "../approval-contexts"
 import { defineCommand } from "../command"
 import { Command, Db } from "../services"
 import { Forbidden, InvalidState } from "../errors"
@@ -302,6 +304,29 @@ export const recordAgreementAcceptance = defineCommand({
   outwardFacing: false,
   input: agreementRecordAcceptanceInputSchema,
   summarize: ({ id }) => `Record acceptance of agreement ${id}`,
+  approvalContext: (input) => Effect.gen(function* () {
+    yield* humanOnly
+    const { now } = yield* Command
+    const agreement = yield* lockedAgreement(input.id)
+    yield* refuseWhileSending("agreement", agreement)
+    yield* requireLiveOffer(agreement, now)
+    const { settings } = yield* loadDocumentContext
+    const snapshot = readAgreementOfferSnapshot(agreement.offerSnapshot)
+    const recipients = [...new Set([settings.companyEmail?.trim(), agreement.issuedToEmail].filter((email): email is string => Boolean(email)))]
+    const schedule = yield* agreementScheduleConsequences(agreement)
+    return {
+      summary: `Record acceptance of agreement ${agreement.number} by ${input.acceptedByName}`,
+      version: fingerprint([agreement.offerSnapshotHash, agreement.offerRevision, agreement.status, recipients, schedule]),
+      details: { number: agreement.number, recipient: agreement.issuedToEmail, total: snapshot.totalGross, currency: snapshot.currency, revision: agreement.offerRevision },
+      preview: { snapshot, hash: agreement.offerSnapshotHash!, recipient: agreement.issuedToEmail },
+      consequences: {
+        records: [{ kind: "agreement_acceptance" as const, documentId: agreement.id, revision: String(agreement.offerRevision) }],
+        messages: recipients.map(recipient => ({ kind: "agreement_accepted" as const, recipient })),
+        manualSteps: ["invoice_eligible_work" as const, "prepayment_blocked" as const, "collect_payment" as const],
+        refreshWhen: "agreement_offer" as const, schedule,
+      },
+    }
+  }),
   handle: (input) =>
     Effect.gen(function* () {
       yield* humanOnly

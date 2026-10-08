@@ -4,6 +4,7 @@ import type { CommandError, CommandRecord } from "@quits/contracts/agent"
 import { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { appLogger } from "../lib/observability"
+import { commandPreviewVersion, previewCommand, refreshPreviewActor } from "./preview"
 import { actorCan, actorId, actorKey, type Actor } from "./actor"
 import type { ApprovalContext, CommandDefinition } from "./command"
 import {
@@ -38,6 +39,8 @@ export type ExecuteOptions = {
   resumeReceiptId?: string
   /** The approval context version a person reviewed; the command is refused if it changed. */
   expectedApprovalVersion?: string
+  /** Optional review binding, including for full-access callers. Never forces an approval. */
+  expectedPreviewVersion?: string
   now?: Date
   /** Application orchestration runs this after authorization, receipt lookup and approval gating. */
   prepareIssuance?: (input: unknown, now: Date) => Promise<string>
@@ -152,7 +155,7 @@ export async function executeCommand<Input, Result>(
   rawInput: unknown,
   options: ExecuteOptions
 ): Promise<CommandOutcome<Result>> {
-  const { actor } = options
+  let actor = options.actor
   const organizationId = actor.organizationId
   const now = options.now ?? new Date()
   const key = actorKey(actor)
@@ -218,6 +221,23 @@ export async function executeCommand<Input, Result>(
   }
   const input = parsed.data
 
+  if (options.expectedPreviewVersion) {
+    try {
+      actor = await refreshPreviewActor(actor)
+      const preview = await previewCommand(definition, input, { actor, now })
+      if (preview.previewVersion !== options.expectedPreviewVersion) return rejectEarly(new InvalidState({ code: "changed_since_review", message: "The command input or relevant resource context changed. Preview this command again." }))
+    } catch (error) {
+      if (error instanceof InvalidState || error instanceof ValidationFailed || error instanceof Forbidden || error instanceof NotFound) return rejectEarly(error)
+      throw error
+    }
+  }
+  // Refuse stale approved issuance before preparing or reserving an artifact.
+  if (options.expectedApprovalVersion && definition.approvalContext && ["invoice.send", "agreement.send", "agreement.issue"].includes(definition.type)) {
+    const reviewed = await readInScope(definition.approvalContext(input), { actor, organizationId, commandId: provisionalId, now })
+    if (reviewed.kind === "failed") return rejectEarly(reviewed.error)
+    if (reviewed.value.version !== options.expectedApprovalVersion) return rejectEarly(new InvalidState({ code: "changed_since_review", message: "The relevant document facts changed after review. Request approval again." }))
+  }
+
   let needsApproval =
     actor.kind === "agent" &&
     actor.mode === "approval_required" &&
@@ -245,6 +265,7 @@ export async function executeCommand<Input, Result>(
       clientRequestId: clientRequestId ?? provisionalId,
       commandId: provisionalId,
       now,
+      expectedPreviewVersion: options.expectedPreviewVersion,
     })
   }
 
@@ -317,6 +338,10 @@ export async function executeCommand<Input, Result>(
         }
       }
 
+      if (options.expectedPreviewVersion && definition.approvalContext) {
+        const current = await runRead(tx, definition.approvalContext(input), { actor, organizationId, commandId: provisionalId, now })
+        if (commandPreviewVersion(definition, input, actor, current) !== options.expectedPreviewVersion) throw new HandlerFailed(new InvalidState({ code: "changed_since_review", message: "The command input or relevant resource context changed. Preview again." }))
+      }
       const reviewedVersion = options.expectedApprovalVersion
       const approvalContext = definition.approvalContext
       const verifyReviewed =
@@ -587,6 +612,7 @@ async function queueForApproval<Input, Result>(
     clientRequestId: string
     commandId: string
     now: Date
+    expectedPreviewVersion?: string
   }
 ): Promise<CommandOutcome<Result>> {
   try {
@@ -596,6 +622,7 @@ async function queueForApproval<Input, Result>(
       if (definition.approvalContext) {
         review = await runRead(tx, definition.approvalContext(input), context)
       }
+      if (context.expectedPreviewVersion && review && commandPreviewVersion(definition, input, context.actor, review) !== context.expectedPreviewVersion) throw new HandlerFailed(new InvalidState({ code: "changed_since_review", message: "The command input or relevant resource context changed. Preview again." }))
       const summary = review?.summary ?? definition.summarize(input)
 
       await tx.commandReceipt.create({
@@ -621,6 +648,8 @@ async function queueForApproval<Input, Result>(
             ? toJson({
                 version: review.version,
                 details: review.details,
+                ...(review.consequences ? { consequences: review.consequences } : {}),
+                ...(review.documentPreview ? { documentPreview: review.documentPreview } : {}),
                 ...(review.preview ? { preview: review.preview } : {}),
               })
             : Prisma.DbNull,

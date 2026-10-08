@@ -19,6 +19,7 @@ export function publicAgreementDto(
   agreement: Agreement & {
     deliverables?: Pick<Deliverable, "sortOrder" | "expectedDate">[]
   },
+  companyEmail?: string | null,
 ) {
   const snapshot = readAgreementOfferSnapshot(agreement.offerSnapshot)
   return {
@@ -38,6 +39,10 @@ export function publicAgreementDto(
           ?.expectedDate?.toISOString() ?? null,
     ),
     acceptance: agreementAcceptanceRecord(agreement),
+    acceptancePreview: {
+      revision: agreement.offerRevision,
+      recipients: [...new Set([companyEmail?.trim(), agreement.issuedToEmail].filter((email): email is string => Boolean(email)))],
+    },
     declinedAt: agreement.declinedAt?.toISOString() ?? null,
     declineReason: agreement.declineReason,
   }

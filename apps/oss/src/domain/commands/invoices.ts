@@ -26,7 +26,8 @@ import {
 } from "../documents/invoice-email"
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
-import { documentFingerprint, lockedContact } from "../approval-contexts"
+import { prospectiveRenderInput } from "../documents/render-input"
+import { fingerprint, documentFingerprint, lockedContact } from "../approval-contexts"
 import { asIssued, numberForIssuance, numberVoidedByDraftDeletion, documentRef } from "../documents/numbering"
 import { requireDraftCurrency } from "../documents/currency"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
@@ -295,24 +296,71 @@ export const deleteInvoiceDraft = defineCommand({
     }),
 })
 
+/** Shared issuance validation. Reading a plan cannot issue, reserve, or queue delivery. */
+const planInvoiceSend = (input: z.infer<typeof invoiceSendInputSchema>) => Effect.gen(function* () {
+  yield* lockDocument("invoice", input.id)
+  const found = yield* findInvoice(input.id)
+  const invoice = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
+
+  if (invoice.status !== "draft") {
+    return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
+  }
+  yield* refuseWhileSending("invoice", invoice)
+  if (invoice.disputed && !input.acknowledgeDisputed)
+    return yield* new InvalidState({ code: "disputed_deliverables", message: "The customer requested changes. Explicitly acknowledge the disputed draft before sending." })
+  if (invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet. You can explicitly invoice the schedule as a sale instead." })
+  yield* requireVatIssuance({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact) })
+
+  const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
+  const emailContext = resolveInvoiceEmailContext(settings)
+  const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(invoice))
+  if (compliance.blocking.length > 0) {
+    return yield* new InvalidState({
+      message: `Compliance check failed: ${compliance.blocking.map((issue) => issue.code).join(", ")}`,
+      code: "compliance_failed",
+    })
+  }
+  const recipient = yield* requireRecipientEmail(invoice.contact)
+
+  if (!emailContext.emailDelivery.available && !input.allowSendWithoutEmail) return yield* new InvalidState({ code: "email_unavailable", message: "Email delivery is not configured" })
+  return { invoice, settings, emailContext, compliance, recipient }
+})
+
 /** What a person approving an agent's invoice email sees, versioned by the invoice's last change. */
 const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", acknowledgeDisputed = false, valuationInput?: z.infer<typeof invoiceSendInputSchema>) =>
   Effect.gen(function* () {
     yield* lockDocument("invoice", id)
-    const found = yield* findInvoice(id)
+    const planned = action === "send" ? yield* planInvoiceSend(valuationInput ?? { id, acknowledgeDisputed }) : null
+    const found = planned?.invoice ?? (yield* findInvoice(id))
     if (action === "send" && found.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
     // Lock the contact before reading the address, so the approved recipient cannot change.
     const invoice = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
     const recipient = invoice.contact.email?.trim() || null
     const { settings, sellerTaxIds } = yield* loadDocumentContext
     const total = `${invoice.totalGross.toFixed(2)} ${invoice.currency}`
+    const { now } = yield* Command
+    const renderInput = action === "send" ? yield* prospectiveRenderInput({ kind: "invoice", commandInput: valuationInput ?? { id }, documentId: id, number: invoice.number ?? "draft", issuedAt: now }) : null
+    if (renderInput?.kind === "invoice" && !invoice.number) {
+      renderInput.pdf.invoice.status = "draft"
+      renderInput.pdf.invoice.paymentReference = invoice.paymentReference?.trim() || null
+    }
+    const version = `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}:${fingerprint(renderInput?.kind === "invoice" ? [{ ...renderInput.pdf.invoice, issueDate: null }, renderInput.pdf.org, Boolean(planned?.emailContext.emailDelivery.available)] : [])}`
     return {
       summary:
         action === "send"
           ? `Send ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name}`
           : `Email ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name} again`,
-      version: `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}`,
+      version,
+      ...(renderInput ? { documentPreview: renderInput } : {}),
+      consequences: {
+        records: action === "send" ? [{ kind: "invoice_issue" as const, documentId: id, revision: version }] : [],
+        messages: action === "resend" || planned?.emailContext.emailDelivery.available ? [{ kind: "invoice_email" as const, recipient: recipient! }] : [],
+        manualSteps: action === "send" && !planned?.emailContext.emailDelivery.available ? ["share_document" as const] : [],
+        refreshWhen: "invoice_content" as const,
+      },
       details: {
+        documentId: id,
+        revision: version,
         disputed: String(invoice.disputed),
         acknowledgeDisputed: String(acknowledgeDisputed),
         number: invoice.number,
@@ -352,37 +400,12 @@ export const sendInvoice = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const { organizationId, now } = command
-      yield* lockDocument("invoice", input.id)
-      const found = yield* findInvoice(input.id)
-
-      if (found.status !== "draft") {
-        return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
-      }
-      yield* refuseWhileSending("invoice", found)
-      // The number is taken here, in the issuing transaction: if any later check fails, the
-      // transaction rolls back and the number goes back with it.
+      const { invoice: found, settings, emailContext, recipient } = yield* planInvoiceSend(input)
       const invoice = { ...found, number: yield* numberForIssuance("invoice", found) }
-      if (invoice.disputed && !input.acknowledgeDisputed)
-        return yield* new InvalidState({ code: "disputed_deliverables", message: "The customer requested changes. Explicitly acknowledge the disputed draft before sending." })
       if (invoice.disputed) command.emit({
         aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.dispute_acknowledged",
         payload: { number: invoice.number, disputedRevision: invoice.disputedRevision, acknowledgeDisputed: true },
       })
-      if (invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet. You can explicitly invoice the schedule as a sale instead." })
-      if (invoice.agreementId && !command.issuance) return yield* new InvalidState({ code: "issuance_required", message: "Linked invoices must issue through issueDocument" })
-      yield* requireVatIssuance({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact) })
-
-      const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
-      const emailContext = resolveInvoiceEmailContext(settings)
-      const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(invoice))
-      if (compliance.blocking.length > 0) {
-        return yield* new InvalidState({
-          message: `Compliance check failed: ${compliance.blocking.map((issue) => issue.code).join(", ")}`,
-          code: "compliance_failed",
-        })
-      }
-      const recipient = yield* requireRecipientEmail(invoice.contact)
-
       if (!emailContext.emailDelivery.available) {
         if (!input.allowSendWithoutEmail) {
           return yield* new InvalidState({

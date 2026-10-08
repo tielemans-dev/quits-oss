@@ -1,11 +1,17 @@
+import { z } from "zod"
+import { executeIssuanceCommand } from "../../application/issuance"
 import { TRPCError } from "@trpc/server"
 import {
+  commandPreviewInputSchema,
+  clientRequestIdSchema,
+  type CommandConsequences,
   agentKeyCreateInputSchema,
   agentKeyIdInputSchema,
   approvalDecideInputSchema,
   approvalListInputSchema,
   type CommandStatus,
 } from "@quits/contracts/agent"
+import { previewCommand } from "../../domain/preview"
 import { actorCan } from "../../domain/actor"
 import { createAgentKey, listAgentKeys, revokeAgentKey } from "../../domain/agent-keys"
 import { decideApproval, expireStaleApprovals } from "../../domain/approvals"
@@ -29,6 +35,24 @@ async function userNames(userIds: string[]) {
 }
 
 export const agentsRouter = router({
+  preview: orgProcedure.input(commandPreviewInputSchema).query(async ({ ctx, input }) => {
+    const definition = getCommandDefinition(input.commandType)
+    if (!definition) throw new TRPCError({ code: "NOT_FOUND", message: "Command not found" })
+    const preview = await previewCommand(definition, input.command, { actor: ctx.actor }).catch(rethrowDomainError)
+    const { presentCommandPreview } = await import("../../application/command-preview")
+    return presentCommandPreview(preview, input.includeDocument).catch(rethrowDomainError)
+  }),
+
+  executePreview: orgProcedure.input(commandPreviewInputSchema.extend({
+    expectedPreviewVersion: z.string().length(64), clientRequestId: clientRequestIdSchema,
+  })).mutation(async ({ ctx, input }) => {
+    const definition = getCommandDefinition(input.commandType)
+    if (!definition) throw new TRPCError({ code: "NOT_FOUND", message: "Command not found" })
+    const outcome = await executeIssuanceCommand(definition, input.command, { actor: ctx.actor,
+      clientRequestId: input.clientRequestId, expectedPreviewVersion: input.expectedPreviewVersion }).catch(rethrowDomainError)
+    return { ...toCommandRecord(definition.type, outcome), result: null }
+  }),
+
   /** What the signed-in user may do here, so the UI only offers allowed actions. */
   access: orgProcedure.query(({ ctx }) => ({
     canRead: actorCan(ctx.actor, "agent:read"),
@@ -105,6 +129,8 @@ export const agentsRouter = router({
         reviewDetails:
           ((request.reviewContext as { details?: Record<string, string | number | null> } | null)
             ?.details ?? null),
+        consequences: (request.reviewContext as { consequences?: CommandConsequences } | null)?.consequences ?? null,
+        hasDocumentPreview: Boolean((request.reviewContext as { documentPreview?: unknown; preview?: unknown } | null)?.documentPreview || (request.reviewContext as { preview?: unknown } | null)?.preview),
         status: request.status,
         agent: request.agentKey,
         createdAt: request.createdAt,

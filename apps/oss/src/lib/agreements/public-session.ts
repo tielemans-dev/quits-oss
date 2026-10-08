@@ -43,7 +43,7 @@ export function serializePublicAgreementSession(
     scope: payload.scope,
     locale,
     seller,
-    document: publicAgreementDto(agreement),
+    document: publicAgreementDto(agreement, agreement.organization?.settings?.companyEmail),
     readLink: null,
   } as const
 }

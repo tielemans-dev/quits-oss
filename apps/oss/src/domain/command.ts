@@ -38,6 +38,9 @@ export type ApprovalContext = {
   version: string
   /** Key facts shown in the approvals inbox. */
   details: Record<string, string | number | null>
+  consequences?: import("@quits/contracts/agent").CommandConsequences
+  /** Customer-facing render data only. Never a provider call or artifact reservation. */
+  documentPreview?: import("./documents/render-input").RenderInput
   /** Frozen document preview, persisted in reviewContext. */
   preview?: {
     snapshot: import("@quits/contracts/agreements").AgreementOfferSnapshot

@@ -1,3 +1,5 @@
+import { toAgentActor } from "./agent-actor"
+export { resolveAgentActorById } from "./agent-actor"
 import { createHash, randomBytes } from "node:crypto"
 import type { Prisma } from "../../generated/prisma/client"
 import { agentKeyCreateInputSchema, type AgentKeyCreateInput, type AgentMode } from "@quits/contracts/agent"
@@ -6,7 +8,7 @@ import { actorCan, type AgentActor, type UserActor } from "./actor"
 import { closePendingApprovals } from "./approvals"
 import { Forbidden, NotFound, ValidationFailed } from "./errors"
 import { appendEvents } from "./events"
-import { isPermission, parseOrganizationRoles, type Permission } from "./permissions"
+import { isPermission, type Permission } from "./permissions"
 
 const SECRET_PREFIX = "quits_ak_"
 /** Keys issued before the product was renamed; they keep working. */
@@ -176,45 +178,6 @@ function toAgentKeySummary(key: {
   }
 }
 
-async function toAgentActor(
-  key: {
-    id: string
-    organizationId: string
-    name: string
-    mode: string
-    scopes: string[]
-    createdByUserId: string
-    expiresAt: Date | null
-    revokedAt: Date | null
-  },
-  options: { allowRevoked: boolean; now: Date }
-): Promise<AgentActor> {
-  if (!options.allowRevoked && key.revokedAt) {
-    throw new Forbidden({ message: "Agent key has been revoked" })
-  }
-  if (key.expiresAt && key.expiresAt <= options.now) {
-    throw new Forbidden({ message: "Agent key has expired" })
-  }
-
-  const creator = await prisma.member.findFirst({
-    where: { organizationId: key.organizationId, userId: key.createdByUserId },
-    select: { role: true },
-  })
-  if (!creator) {
-    throw new Forbidden({ message: "The user who created this agent key is no longer a member" })
-  }
-
-  return {
-    kind: "agent",
-    organizationId: key.organizationId,
-    agentKeyId: key.id,
-    mode: key.mode as AgentMode,
-    scopes: key.scopes.filter(isPermission),
-    ownerRoles: parseOrganizationRoles(creator.role),
-    label: `Agent: ${key.name}`,
-  }
-}
-
 /** Authenticates a bearer secret from the agent API. */
 export async function authenticateAgentSecret(secret: string, now = new Date()): Promise<AgentActor> {
   if (!secret.startsWith(SECRET_PREFIX) && !secret.startsWith(LEGACY_SECRET_PREFIX)) {
@@ -233,15 +196,4 @@ export async function authenticateAgentSecret(secret: string, now = new Date()):
   }
 
   return actor
-}
-
-export async function resolveAgentActorById(
-  agentKeyId: string,
-  options: { allowRevoked: boolean; now?: Date }
-): Promise<AgentActor> {
-  const key = await prisma.agentKey.findUnique({ where: { id: agentKeyId } })
-  if (!key) {
-    throw new NotFound({ message: "Agent key not found", entity: "agentKey", id: agentKeyId })
-  }
-  return toAgentActor(key, { allowRevoked: options.allowRevoked, now: options.now ?? new Date() })
 }

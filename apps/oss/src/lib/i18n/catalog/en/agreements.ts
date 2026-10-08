@@ -163,4 +163,10 @@ export const enAgreementsMessages = {
   "agreements.quoteHasAgreement": "This quote already has an agreement. Invoice its deliverables instead.",
   "agreements.quoteHasInvoices": "This quote already has invoices and cannot be converted to an agreement.",
   "agreements.quoteConversionNotice": "Choose a new validity date. The draft copies the customer, services and tax context from this quote and uses your default template. Current pricing recalculates totals; rounding may differ for older quotes. Review the draft before sending.",
+  "agreements.consequenceTitle": "Before you accept",
+  "agreements.acceptanceConsequence": "Your acceptance is recorded for offer revision {revision}.",
+  "agreements.acceptanceNotifications": "Acceptance notifications will be queued to {recipients}.",
+  "agreements.acceptanceDrafts": "Acceptance creates no invoice drafts. The seller invoices eligible work separately.",
+  "agreements.acceptancePrepayment": "Payment schedule lines do not issue a prepayment invoice. Prepayment drafts cannot be issued yet. A sale invoice requires a separate explicit choice.",
+  "agreements.acceptanceCollection": "Accepting does not charge your card or collect money. Payment remains a separate step.",
 } as const

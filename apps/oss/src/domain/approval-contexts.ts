@@ -5,6 +5,8 @@ import type { ApprovalContext } from "./command"
 import { formatIsoDate } from "../lib/exports/format"
 import { lockDocument } from "./documents/locks"
 import { priceCreditNote } from "./documents/credit-pricing"
+import { planManualPayment } from "./documents/payment-plan"
+import { parsePaidAt } from "./documents/payment-date"
 import { computeSettlement } from "./documents/settlement"
 import { NotFound, type DomainError } from "./errors"
 import { documentRef } from "./documents/numbering"
@@ -134,19 +136,26 @@ export const paymentRecordApproval = (input: {
   amount: number
   method: string
   paidAt: string
-}): Effect.Effect<ApprovalContext, NotFound, Db | Command> =>
+}): Effect.Effect<ApprovalContext, DomainError, Db | Command> =>
   Effect.gen(function* () {
+    yield* parsePaidAt(input.paidAt)
     const invoice = yield* loadInvoice(input.invoiceId)
-    const { balanceDue } = computeSettlement(invoice)
+    const { before: { balanceDue }, balanceAfter } = yield* planManualPayment(invoice, input)
     return {
       summary: `Record a ${money(input.amount, invoice.currency)} ${input.method.replaceAll("_", " ")} payment on ${documentRef("invoice", invoice.number)}`,
-      version: fingerprint([invoice.currency, invoice.totalGross.toString(), balanceDue.toString()]),
+      version: fingerprint([invoice.id, invoice.number, invoice.status === "draft", invoice.status === "credited", invoice.currency, invoice.totalGross.toString(), balanceDue.toString()]),
+      consequences: {
+        records: [{ kind: "payment_record", documentId: invoice.id, revision: balanceDue.toFixed(2) }],
+        messages: [], manualSteps: ["record_received_money"], refreshWhen: "payment_balance",
+      },
       details: {
         number: invoice.number,
         customer: invoice.contact.name,
         amount: input.amount.toFixed(2),
         currency: invoice.currency,
         balanceDue: balanceDue.toFixed(2),
+        balanceAfter: balanceAfter.toFixed(2),
+        invoiceId: invoice.id,
         paidAt: input.paidAt,
         method: input.method,
       },

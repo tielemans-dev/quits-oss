@@ -233,3 +233,48 @@ Deposits are lines included in the agreed total. Passing `deliverables` to an up
 lines; omitting it preserves them. `deliverable_update` accepts only draft offer fields and the
 expected date; fulfillment and billing transitions arrive in later releases. The included templates
 are examples, not legal advice.
+
+### Consequence previews
+
+Call `command_preview` with `{ commandType, command, includeDocument? }` for `invoice.send`,
+`payment.record`, `agreement.send` or `agreement.issue`. The signed-in application query
+`agents.preview` also supports the human-only `agreement.record_acceptance` action. Command
+validation and permissions still apply. An agent cannot preview human-only acceptance.
+
+The response contains `previewVersion`, the parsed input, review facts, expected records,
+message recipients, future invoice eligibility and manual steps. Set `includeDocument: true`
+to request a PDF as `{ mimeType: "application/pdf", base64 }`. A payment preview has no PDF;
+its facts show the target invoice, payment amount, currency, balance before and balance after.
+A document number and issuance date that do not exist yet are assigned only at execution.
+Previewing allocates no number and creates no receipt, approval, payment, reservation, artifact,
+email or collection request. Rendered bytes are returned without storing them.
+
+Pass the response's `previewVersion` as `expectedPreviewVersion` on the command tool to refuse
+execution after a relevant change. The binding includes the organization, caller, command type,
+parsed input and command-specific reviewed context. A changed input needs a new preview. Each
+prepared command still has its own `clientRequestId` and approval. There is no batch approval.
+Signed-in callers can execute the same reviewed command through `agents.executePreview` with
+its `expectedPreviewVersion` and a `clientRequestId`.
+Full-access keys execute immediately unless their own supplied preview binding is stale;
+previews do not turn those keys into approval-required keys. Retrying a recorded
+`clientRequestId` returns the original result before reevaluating a preview.
+
+Invoice reviews bind printed content, customer and recipient, currency and amounts, valuation,
+current payment details, branding and delivery availability. Payment reviews bind the invoice
+identity, currency, total and outstanding balance. An unrelated invoice note edit does not
+invalidate a payment review. Agreement issuance binds its frozen offer and intended recipient;
+internal acceptance also binds the notification recipients and existing invoice drafts.
+Permissions are checked again and revoked keys cannot preview or run a pending approval.
+A stale review fails with `changed_since_review`; invalid current state can instead fail its
+command validation, such as an already-paid invoice or an expired offer.
+
+The approvals inbox shows the frozen review PDF and consequences. Opening that PDF requires
+the document's read permission in the same organization. Customer agreement pages show the
+reviewed offer revision, acceptance notification recipients and the separate invoicing and
+payment steps. Public responses omit internal acceptance evidence, private notes and costs.
+Agreement acceptance creates no invoice drafts and does not collect money. Schedule lines
+can become eligible for a separately created prepayment draft, which cannot be issued yet,
+or for a sale draft after an explicit separate choice.
+
+See [consequence preview validation](consequence-preview-validation.md) for the pending
+moderated comprehension study.
