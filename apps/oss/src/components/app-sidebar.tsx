@@ -23,7 +23,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from './ui/sidebar'
-import { QuitsMark } from './brand/quits-mark'
+import { QuitsWordmark } from './brand/quits-wordmark'
 import { UserMenu } from './user-menu'
 import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { useI18n } from '../lib/i18n/react'
@@ -60,8 +60,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1">
-          <QuitsMark className="size-7" />
-          <span className="text-lg font-heading tracking-heading">Quits</span>
+          <QuitsWordmark className="text-[22px]" />
         </div>
       </SidebarHeader>
       <SidebarContent>

@@ -1,28 +1,28 @@
-import { useId, type ComponentProps } from "react"
+import type { ComponentProps } from "react"
 
 import { cn } from "../../lib/utils"
 
 /**
- * The Quits mark: a lowercase q cut out of an ink tile. The tile is `currentColor` and the q is
- * transparent, so the surface behind shows through and the mark reads in light and dark mode
- * without a second version. Keep it in step with `public/favicon.svg`.
+ * The Quits mark: a q standing on a double rule, white on a Kvit-blå tile. The double rule is the
+ * signature, the bookkeeping sign for "settled": two bars under a total. The bars sit on whole
+ * pixels at 16px so the mark holds as a favicon. Keep it in step with `public/favicon.svg`.
+ *
+ * The tile follows `--brand`, so it is the brand colour in the app and ink on a public document
+ * page (see styles.css).
  */
 export function QuitsMark({ className, ...props }: ComponentProps<"svg">) {
-  const maskId = `quits-mark-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`
-
   return (
     <svg
       viewBox="0 0 32 32"
       aria-hidden="true"
+      fill="none"
       className={cn("size-8 shrink-0", className)}
       {...props}
     >
-      <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
-        <rect width="32" height="32" fill="#fff" />
-        <circle cx="15.8" cy="13.4" r="6.2" fill="none" stroke="#000" strokeWidth="3.4" />
-        <path d="M22 9V24.8" stroke="#000" strokeWidth="3.4" strokeLinecap="round" />
-      </mask>
-      <rect width="32" height="32" rx="8" fill="currentColor" mask={`url(#${maskId})`} />
+      <rect width="32" height="32" rx="8" style={{ fill: "var(--brand)" }} />
+      <circle cx="14" cy="11.5" r="4.7" stroke="#fff" strokeWidth="3.2" />
+      <path d="M19.7 7V18.3" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M7 23H25M7 27H25" stroke="#fff" strokeWidth="2" />
     </svg>
   )
 }
