@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { FALLBACK_AI_MODELS } from "../../../lib/ai/invoice-draft"
 import { aiRouter } from "../ai"
 import { settingsRouter } from "../settings"
+import { resetRuntimeServices, setRuntimeServices } from "../../../lib/runtime/services"
 
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
@@ -113,6 +114,41 @@ describe("ai router provider handling", () => {
     await expect(
       caller.generateInvoiceDraft({ prompt: "Invoice Acme for three hours of consulting" })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })
+  })
+})
+
+describe("managed AI", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetRuntimeServices()
+  })
+
+  it("refuses managed drafting without an active subscription when one is required", async () => {
+    const complete = vi.fn()
+    mocks.aiCapabilities = {
+      ...defaultAiCapabilities,
+      byok: false,
+      managed: true,
+      managedRequiresSubscription: true,
+    }
+    mocks.findUnique.mockResolvedValue({ aiModel: null })
+    setRuntimeServices({
+      managedAiProvider: { id: "managed", complete },
+      billingProvider: {
+        getSubscription: async () => ({ status: "past_due", priceId: null }),
+        assertInvoiceCreationAllowed: async () => {},
+      },
+    })
+
+    const caller = aiRouter.createCaller(createContext())
+    await expect(
+      caller.generateInvoiceDraft({
+        prompt: "Invoice Acme for three hours of consulting",
+        mode: "managed",
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })
+    expect(complete).not.toHaveBeenCalled()
+    resetRuntimeServices()
   })
 })
 

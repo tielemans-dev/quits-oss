@@ -19,6 +19,7 @@ import { resolveDraftItemUnitPrice } from "../../lib/ai/pricing"
 import { prisma } from "../../lib/db"
 import { decryptSecret } from "../../lib/secrets"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import { getBillingProvider } from "../../lib/runtime/services"
 import { authorizedProcedure, router } from "../init"
 
 const aiGenerateInvoiceDraftInputSchema = z.object({
@@ -143,6 +144,15 @@ export const aiRouter = router({
         } catch (error) {
           if (error instanceof AiProviderError) throw toTrpcAiError(error)
           throw error
+        }
+        if (capabilities.aiInvoiceDraft.managedRequiresSubscription) {
+          const subscription = await getBillingProvider().getSubscription(ctx.organizationId)
+          if (subscription.status !== "active") {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: "Managed AI needs an active subscription",
+            })
+          }
         }
       } else {
         const settings = await readOrgAiSettings(ctx.organizationId)

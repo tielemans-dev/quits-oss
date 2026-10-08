@@ -156,7 +156,9 @@ function NewInvoicePage() {
     try {
       const result = await trpc.ai.generateInvoiceDraft.mutate({
         prompt,
-        mode: "byok",
+        // Use the organisation's own provider when the distribution allows one; otherwise the
+        // distribution's managed provider.
+        mode: aiInvoiceDraft?.byok || aiInvoiceDraft?.localAgent ? "byok" : "managed",
       })
       const draft = result.draft
 

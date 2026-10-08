@@ -244,7 +244,7 @@ export const settingsRouter = router({
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
-          select: { countryCode: true },
+          select: { countryCode: true, aiProvider: true, aiBaseUrl: true },
         })
         const resolvedCountry = normalizeCountryCode(
           settingsInput.countryCode ?? current?.countryCode
@@ -260,12 +260,20 @@ export const settingsRouter = router({
           })
         }
 
+        // A saved key belongs to the provider and endpoint it was entered for. Never send it to a
+        // different one: changing either without entering a new key clears the old key.
+        const aiDestinationChanged =
+          (settingsInput.aiProvider !== undefined &&
+            settingsInput.aiProvider !== current?.aiProvider) ||
+          (aiBaseUrl !== undefined && (aiBaseUrl || null) !== (current?.aiBaseUrl ?? null))
+        const dropSavedAiKey = clearAiApiKey || (aiDestinationChanged && !aiApiKey)
+
         const settingsUpdateData = {
           ...settingsInput,
           baseCurrency,
           ...(aiBaseUrl !== undefined ? { aiBaseUrl: aiBaseUrl || null } : {}),
           ...(aiApiKey ? { aiApiKeyEnc: encryptSecret(aiApiKey) } : {}),
-          ...(clearAiApiKey ? { aiApiKeyEnc: null } : {}),
+          ...(dropSavedAiKey ? { aiApiKeyEnc: null } : {}),
           ...(stripePublishableKey !== undefined
             ? { stripePublishableKey: stripePublishableKey || null }
             : {}),
