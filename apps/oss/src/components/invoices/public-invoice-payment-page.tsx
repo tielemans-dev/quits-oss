@@ -120,11 +120,11 @@ function PublicInvoiceDocument({
   // Credited in full: nothing is owed, so the page says so instead of "Payment received".
   const credited = invoice.status === "credited"
   const statusLabel = credited
-    ? t("status.credited")
+    ? t("public.invoice.status.credited")
     : paymentState === "paid"
-      ? t("status.paid")
+      ? t("public.invoice.status.paid")
       : amountPaid > 0
-        ? t("status.partially_paid")
+        ? t("public.invoice.status.partiallyPaid")
         : t("public.invoice.status.open")
 
   return (
@@ -211,7 +211,7 @@ function PublicInvoiceDocument({
                   t("public.document.notProvided")
                 }
               />
-              <InfoBlock label={t("pdf.total")} value={money(total)} />
+              <InfoBlock label={t("public.document.total")} value={money(total)} />
               {credited ? (
                 <InfoBlock label={t("public.invoice.credited")} value={money(amountCredited)} />
               ) : null}

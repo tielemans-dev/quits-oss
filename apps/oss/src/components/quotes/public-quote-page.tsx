@@ -188,7 +188,7 @@ function PublicQuoteDocument({
 
             {quote.notes ? (
               <div className="grid gap-2">
-                <h2 className="text-sm font-medium text-muted-foreground">{t("pdf.notes")}</h2>
+                <h2 className="text-sm font-medium text-muted-foreground">{t("public.document.notes")}</h2>
                 <p className="whitespace-pre-wrap text-sm">{quote.notes}</p>
               </div>
             ) : null}
@@ -223,7 +223,7 @@ function PublicQuoteDocument({
                   t("public.document.notProvided")
                 }
               />
-              <InfoBlock label={t("pdf.total")} value={money(toNumber(quote.totalGross))} />
+              <InfoBlock label={t("public.document.total")} value={money(toNumber(quote.totalGross))} />
             </div>
 
             {decisionState === "pending" ? (
