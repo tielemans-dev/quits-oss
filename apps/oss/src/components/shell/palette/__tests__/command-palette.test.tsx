@@ -217,4 +217,32 @@ describe("command palette", () => {
     fireEvent.keyDown(input, { key: "Escape" })
     expect(signals[1].aborted).toBe(true)
   })
+
+  it("keeps sections of different providers apart even when they share an id", () => {
+    for (const id of ["one", "two"]) {
+      registerPaletteProvider({
+        id,
+        order: 1,
+        sections: () => [
+          { id: "results", heading: `Resultater ${id}`, items: [{ id: `${id}:1`, label: `Svar ${id}`, perform: () => undefined }] },
+        ],
+      })
+    }
+    render(<Harness can={everything} />)
+
+    expect(screen.getByRole("group", { name: "Resultater one" })).toBeTruthy()
+    expect(screen.getByRole("group", { name: "Resultater two" })).toBeTruthy()
+    const ids = [...document.querySelectorAll("[id]")].map((element) => element.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it("shows the plain search placeholder until a provider promises more", () => {
+    render(<Harness can={everything} />)
+    expect(screen.getByRole("combobox").getAttribute("placeholder")).toBe("Søg eller gå til…")
+    cleanup()
+
+    registerPaletteProvider({ id: "draft", order: 1, placeholderKey: "shell.search.placeholderDraft", sections: () => [] })
+    render(<Harness can={everything} />)
+    expect(screen.getByRole("combobox").getAttribute("placeholder")).toBe("Søg, eller skriv en faktura…")
+  })
 })

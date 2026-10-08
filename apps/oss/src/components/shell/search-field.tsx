@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react'
 
 import { useI18n } from '../../lib/i18n/react'
+import { useSearchPlaceholderKey } from './palette'
 import { cn } from '../../lib/utils'
 
 /**
@@ -9,6 +10,7 @@ import { cn } from '../../lib/utils'
  */
 export function SearchField({ onOpen, className }: { onOpen: () => void; className?: string }) {
   const { t } = useI18n()
+  const placeholderKey = useSearchPlaceholderKey()
   return (
     <button
       type="button"
@@ -25,7 +27,7 @@ export function SearchField({ onOpen, className }: { onOpen: () => void; classNa
       <Search className="size-4 shrink-0" aria-hidden="true" />
       <span className="min-w-0 flex-1 truncate">
         <span className="sm:hidden">{t('shell.search.placeholderShort')}</span>
-        <span className="max-sm:hidden">{t('shell.search.placeholder')}</span>
+        <span className="max-sm:hidden">{t(placeholderKey)}</span>
       </span>
       <kbd
         aria-hidden="true"

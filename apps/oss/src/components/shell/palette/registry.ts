@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
+import type { TranslationKey } from '../../../lib/i18n/messages'
 import type { PaletteProvider } from './types'
 
 /**
@@ -32,6 +33,18 @@ export function useRegisteredPaletteProviders(): readonly PaletteProvider[] {
     () => providers,
     () => providers
   )
+}
+
+/**
+ * The placeholder for the search field and the palette input: plain search unless a registered
+ * provider promises more (see `PaletteProvider.placeholderKey`).
+ */
+export function useSearchPlaceholderKey(): TranslationKey {
+  const registered = useRegisteredPaletteProviders()
+  const promising = registered
+    .filter((provider) => provider.placeholderKey)
+    .sort((a, b) => a.order - b.order)[0]
+  return promising?.placeholderKey ?? 'shell.search.placeholder'
 }
 
 export function resetPaletteProvidersForTesting(): void {

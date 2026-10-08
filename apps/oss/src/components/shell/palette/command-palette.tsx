@@ -5,7 +5,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { cn } from '../../../lib/utils'
 import { useI18n } from '../../../lib/i18n/react'
 import { builtinPaletteProviders, reservedProviderIds } from './builtin-providers'
-import { useRegisteredPaletteProviders } from './registry'
+import { useRegisteredPaletteProviders, useSearchPlaceholderKey } from './registry'
 import type { PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
 
 type Props = {
@@ -63,7 +63,10 @@ function useSections(
     const seen = new Set<string>()
     return [...providers]
       .sort((a, b) => a.order - b.order)
-      .flatMap((provider) => resolved[provider.id] ?? [])
+      .flatMap((provider) =>
+        // Section ids only have to be unique within a provider; they become keys and DOM ids.
+        (resolved[provider.id] ?? []).map((section) => ({ ...section, id: `${provider.id}:${section.id}` }))
+      )
       .map((section) => ({
         ...section,
         // Item ids are DOM ids and the keyboard's handle on an item: the first one keeps it.
@@ -88,6 +91,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled }: Prop
   const returnFocusTo = useRef<HTMLElement | null>(null)
 
   const registered = useRegisteredPaletteProviders()
+  const placeholderKey = useSearchPlaceholderKey()
   // An extension cannot take a built-in's id: both would render under the same section.
   const providers = useMemo(
     () => [...builtinPaletteProviders, ...registered.filter((provider) => !reservedProviderIds.has(provider.id))],
@@ -191,7 +195,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled }: Prop
               aria-autocomplete="list"
               aria-activedescendant={effectiveActiveId ? `${listboxId}-${effectiveActiveId}` : undefined}
               aria-label={t('shell.palette.inputLabel')}
-              placeholder={t('shell.search.placeholder')}
+              placeholder={t(placeholderKey)}
               autoComplete="off"
               spellCheck={false}
               value={query}

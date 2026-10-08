@@ -69,6 +69,13 @@ export type PaletteSection = {
 
 export type PaletteProvider = {
   id: string
+  /**
+   * A search placeholder that promises what this provider can do ("Søg, eller skriv en faktura…"
+   * for drafting from a sentence). While the provider is registered, the top bar's search field
+   * and the palette's input show it instead of the plain "search or jump to". With several, the
+   * one with the lowest `order` wins.
+   */
+  placeholderKey?: TranslationKey
   /** Lower comes first. Built-ins use 100 (create) and 200 (navigate); free-text drafting should use less than 100. */
   order: number
   /**

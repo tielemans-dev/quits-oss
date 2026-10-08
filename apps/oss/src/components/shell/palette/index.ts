@@ -1,6 +1,6 @@
 export { CommandPalette } from './command-palette'
 export { matchItems } from './match'
-export { registerPaletteProvider, useRegisteredPaletteProviders } from './registry'
+export { registerPaletteProvider, useRegisteredPaletteProviders, useSearchPlaceholderKey } from './registry'
 export type {
   PaletteActions,
   PaletteCapability,
