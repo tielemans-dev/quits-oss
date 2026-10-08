@@ -8,7 +8,8 @@ if (!mailbox) throw new Error("Supply a synthetic client action mailbox file")
 /** Capture synthetic email on the app's existing listener, without a second test-server port. */
 export default defineConfig({
   ...base,
-  // Browser tests do not need the devtools event-bus listener.
+  // This test environment removes every @tanstack/devtools:* plugin, including source
+  // instrumentation and the event-bus listener. Product Vite configuration is unchanged.
   plugins: [
     (base.plugins ?? []).flat().filter((plugin) => !(plugin && typeof plugin === "object" && "name" in plugin && plugin.name.startsWith("@tanstack/devtools:"))) as PluginOption[],
     {

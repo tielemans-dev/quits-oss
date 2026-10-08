@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useState, type ReactNode } from "react"
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import type { ClientActionRequest } from "@quits/contracts/client-actions"
 import {
   AgreementDetail,
@@ -50,12 +50,19 @@ export const Route = createFileRoute("/c/$token")({
 })
 
 function ClientActionRoute() {
-  const initial = Route.useLoaderData()
+  const initial = Route.useLoaderData({ structuralSharing: false })
   const { token } = Route.useParams()
+  const { item } = Route.useSearch()
+  const [context, setContext] = useState({ token, item, loaded: initial, generation: 0 })
+  // A fresh loader result is authoritative even when token and item have not changed. Reset
+  // before committing children so old details, forms and requests cannot survive that result.
+  if (context.token !== token || context.item !== item || context.loaded !== initial) {
+    setContext({ token, item, loaded: initial, generation: context.generation + 1 })
+  }
   const locale = initial.kind === "ready" ? initial.page.locale : initial.locale
   return (
     <LocalizedDocument locale={locale}>
-      <ClientActionContent key={token} />
+      <ClientActionContent key={context.generation} loaded={initial} />
     </LocalizedDocument>
   )
 }
@@ -68,31 +75,57 @@ const DONE_KEYS = {
   "invoice.pay": "clientActions.done.paid",
 } as const satisfies Record<ClientActionRequest["type"], TranslationKey>
 
-function ClientActionContent() {
+function ClientActionContent({ loaded }: { loaded: ClientActionState }) {
   const { token } = Route.useParams()
   const { item } = Route.useSearch()
   const navigate = Route.useNavigate()
-  const loaded = Route.useLoaderData()
   const { t } = useI18n()
   const [state, setState] = useState<ClientActionState>(loaded)
   const [notice, setNotice] = useState<{ tone: "ok" | "problem"; text: string } | null>(null)
   const [payingId, setPayingId] = useState<string | null>(null)
 
-  // Opening another record (or the browser's back button) loads fresh state for it.
-  useEffect(() => {
-    setState(loaded)
-  }, [loaded])
+  const active = useRef(false)
+  const latestRequest = useRef(0)
+  useLayoutEffect(() => {
+    active.current = true
+    return () => {
+      active.current = false
+      latestRequest.current += 1
+    }
+  }, [])
+  const ownsResponse = (requestId: number) => active.current && latestRequest.current === requestId
+
+  async function refreshVerification() {
+    if (!active.current) return
+    const requestId = ++latestRequest.current
+    setPayingId(null)
+    setNotice(null)
+    try {
+      const next = await getClientActionState({ data: { token, item: item ?? null } })
+      if (ownsResponse(requestId)) setState(next)
+    } catch {
+      if (ownsResponse(requestId)) setNotice({ tone: "problem", text: t("clientActions.refused.failed") })
+    }
+  }
 
   function open(ref: ClientActionRef | null) {
+    latestRequest.current += 1
+    setPayingId(null)
     setNotice(null)
     void navigate({ search: ref ? { item: `${ref.kind}:${ref.recordId}` } : {} })
     if (typeof window !== "undefined") window.scrollTo({ top: 0 })
   }
 
   async function perform(request: ClientActionRequest) {
+    if (!active.current) return false
+    const requestId = ++latestRequest.current
+    setPayingId(request.type === "invoice.pay" ? request.invoiceId : null)
     setNotice(null)
     try {
       const { outcome, state: next } = await submitClientAction({ data: { token, request, item: item ?? null } })
+      // Discarding a response does not undo the server command. Only its current caller may
+      // update this page or leave it for checkout.
+      if (!ownsResponse(requestId)) return false
       setState(next)
       if (outcome.status === "ok") {
         if (outcome.checkoutUrl) {
@@ -105,15 +138,14 @@ function ClientActionContent() {
       setNotice({ tone: "problem", text: t(`clientActions.refused.${outcome.status}`) })
       return false
     } catch {
-      setNotice({ tone: "problem", text: t("clientActions.refused.failed") })
+      if (ownsResponse(requestId)) setNotice({ tone: "problem", text: t("clientActions.refused.failed") })
       return false
     } finally {
-      setPayingId(null)
+      if (ownsResponse(requestId)) setPayingId(null)
     }
   }
 
   function pay(invoiceId: string) {
-    setPayingId(invoiceId)
     void perform({ type: "invoice.pay", invoiceId })
   }
 
@@ -145,13 +177,14 @@ function ClientActionContent() {
       <VerificationGate
         emailHint={page.verification.emailHint}
         requestCode={() => requestClientActionCode({ data: { token } })}
-        submitCode={(code) => submitClientActionCode({ data: { token, code } })}
-        onVerified={() => {
-          // Read the cookie on the server again. A local success flag must never outlive it.
-          void getClientActionState({ data: { token, item: item ?? null } })
-            .then(setState)
-            .catch(() => setNotice({ tone: "problem", text: t("clientActions.refused.failed") }))
+        submitCode={async (code) => {
+          if (!active.current) return { status: "inactive" }
+          const requestId = ++latestRequest.current
+          setPayingId(null)
+          const result = await submitClientActionCode({ data: { token, code } })
+          return ownsResponse(requestId) ? result : { status: "inactive" }
         }}
+        onVerified={() => void refreshVerification()}
       />
     ) : null
   const hrefFor = (ref: ClientActionRef) => `/c/${encodeURIComponent(token)}?item=${ref.kind}:${encodeURIComponent(ref.recordId)}`

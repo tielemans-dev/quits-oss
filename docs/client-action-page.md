@@ -177,3 +177,16 @@ projections, nullable draft numbers and invoice balances. The payment seams are
 `loadPublicInvoice`, `serializePublicInvoiceSession`'s optional logo path, and
 `resolvePublicInvoiceCheckout`'s optional return URL. Embedded document components retain their
 standalone defaults.
+
+### Browser test environment
+
+`vite.client-actions.config.ts` captures synthetic email on the app listener and removes all
+`@tanstack/devtools:*` plugins, including source instrumentation and the event-bus listener.
+It is a test development environment, not the ordinary development configuration. Browser
+checks reject every console error, page error and crash. Earlier seller hydration diagnostics
+have no established cause; current unfiltered evidence does not explain those historical errors.
+
+The client route resets local forms, notices and request ownership when its token, selected
+record or loader result changes. Only the latest request in that context may apply a response,
+clear payment progress or navigate to checkout. Discarding an obsolete response does not cancel
+or roll back a server command. Server authorization and replay rules still apply on submission.

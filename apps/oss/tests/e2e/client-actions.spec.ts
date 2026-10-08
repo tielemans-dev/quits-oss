@@ -368,3 +368,54 @@ test("expired delivery review stays closed after reload and client-link renewal"
   expect(await prisma.deliverable.findUniqueOrThrow({ where: { id: data.line.id } })).toMatchObject({ status: "delivered", acceptedAt: null })
   await context.close()
 })
+
+test("a delayed delivery response cannot replace a newer agreement page", async ({ page, browser }) => {
+  const data = await seed()
+  await loginAsAdmin(page)
+  const url = await createLinkAsSeller(page, data.contact.id, "Project approver")
+  const { page: approver, context } = await visitor(browser)
+  let release!: () => void
+  const held = new Promise<void>((resolve) => { release = resolve })
+  let received = false
+  try {
+    await approver.goto(url)
+    await waitForClientReady(approver)
+    await approver.getByRole("link", { name: "Review and sign off" }).click()
+    await approver.getByRole("button", { name: "Email me a code" }).click()
+    await expect.poll(() => capturedMessages().length).toBe(1)
+    await approver.getByLabel("Six-digit code").fill(capturedMessages()[0]!.html.match(/>(\d{6})</)![1]!)
+    await approver.getByRole("button", { name: "Verify", exact: true }).click()
+    await expect(approver.getByRole("heading", { name: "Confirm it is you before approving" })).toHaveCount(0)
+
+    // Execute the actual command, then hold only its HTTP response. UI supersession must not
+    // be mistaken for cancellation or rollback of the completed server decision.
+    await approver.route("**/_serverFn/**", async (route) => {
+      if (!route.request().postData()?.includes("deliverable.accept")) { await route.continue(); return }
+      const response = await route.fetch()
+      received = true
+      await held
+      await route.fulfill({ response })
+    })
+    await approver.getByRole("checkbox", { name: "I have reviewed and accept this delivery." }).check()
+    await approver.getByRole("button", { name: "Accept delivery", exact: true }).click()
+    await expect.poll(() => received).toBe(true)
+    expect(await prisma.deliverable.findUniqueOrThrow({ where: { id: data.line.id } })).toMatchObject({ status: "accepted", acceptedRevision: 1 })
+    await approver.getByRole("link", { name: "Back to your documents" }).click()
+    await approver.getByRole("link", { name: "Review and decide" }).click()
+    await expect(approver).toHaveURL(new RegExp(`item=agreement(:|%3A)${data.open.id}`))
+    await expect(approver.getByLabel("Your full name")).toBeVisible()
+    const finished = approver.waitForEvent("requestfinished", { predicate: (request) => request.postData()?.includes("deliverable.accept") ?? false })
+    release()
+    await finished
+    // Let React process the response before asserting the visible record and notice.
+    await approver.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+    await expect(approver.getByLabel("Your full name")).toBeVisible()
+    await expect(approver.getByText("Thank you. The delivery is signed off.")).toHaveCount(0)
+    await expect(approver.getByRole("button", { name: "Accept delivery", exact: true })).toHaveCount(0)
+    await screenshot(approver, "deferred-delivery-new-agreement")
+  } finally {
+    release()
+    await approver.unrouteAll({ behavior: "wait" })
+    await context.close()
+  }
+})
