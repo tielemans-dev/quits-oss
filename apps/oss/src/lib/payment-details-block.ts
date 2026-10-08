@@ -6,17 +6,19 @@ export type PaymentDetailsBlock = {
   title: string
   rows: Array<{ label: string; value: string }>
   note: string | null
-  reference: { label: string; value: string }
+  /** Null while the reference is not known yet: a draft has no invoice number. */
+  reference: { label: string; value: string } | null
 }
 
 /**
- * The "Payment details" block of an invoice, or null when there is nothing to pay to. The invoice
- * number is the payment reference, so a bank transfer can be matched to the invoice. The PDF and
- * the settings preview both build the block here, so they cannot drift apart.
+ * The "Payment details" block of an invoice, or null when there is nothing to pay to. The payment
+ * reference (the invoice's own, else its number) lets a bank transfer be matched to the invoice;
+ * pass null while there is none yet, as for a draft, and the row is left out. The PDF and the
+ * settings preview both build the block here, so they cannot drift apart.
  */
 export function buildPaymentDetailsBlock(
   details: { bankAccount?: BankAccountSnapshot | null; note?: string | null } | null | undefined,
-  invoiceNumber: string,
+  paymentReference: string | null,
   locale: string | null | undefined
 ): PaymentDetailsBlock | null {
   if (!details || !hasPaymentDetails(details)) return null
@@ -35,6 +37,8 @@ export function buildPaymentDetailsBlock(
       value?.trim() ? [{ label: translate(key, locale), value: value.trim() }] : []
     ),
     note: details.note?.trim() || null,
-    reference: { label: translate("pdf.paymentReference", locale), value: invoiceNumber },
+    reference: paymentReference?.trim()
+      ? { label: translate("pdf.paymentReference", locale), value: paymentReference.trim() }
+      : null,
   }
 }

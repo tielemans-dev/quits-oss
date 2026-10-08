@@ -27,13 +27,34 @@ export type EinvoiceParty = PostalAddress & {
   email: string | null
 }
 
-/** Bank transfer instructions (PEPPOL BG-16/BG-17): a credit transfer to an IBAN. */
+/**
+ * Bank transfer instructions (PEPPOL BG-16/BG-17), already resolved to what the XML carries.
+ * `buildEinvoicePayment` chooses the means code and the account by seller and buyer country.
+ */
 export type EinvoicePayment = {
-  iban: string
-  bic: string | null
-  /** The payer's remittance information (BT-83): the invoice number. */
+  /** UNCL 4461 payment means code (BT-81). */
+  meansCode: string
+  /** The account to pay (BT-84): an IBAN or a Danish account number. */
+  accountId: string
+  /** The account holder (BT-85). */
+  accountName: string | null
+  /** The bank branch (BT-86): a BIC or a Danish reg.nr. */
+  branchId: string | null
+  /** The payer's remittance information (BT-83): the invoice's payment reference. */
   reference: string
 }
+
+/** UNCL 4461 code 30: credit transfer, without the SEPA scheme's EUR-only rules. */
+export const PAYMENT_MEANS_CREDIT_TRANSFER = "30"
+/** UNCL 4461 code 42: payment to bank account (the account and its branch are both given). */
+export const PAYMENT_MEANS_BANK_ACCOUNT = "42"
+/** UNCL 4461 code 58: SEPA credit transfer. */
+export const PAYMENT_MEANS_SEPA_CREDIT_TRANSFER = "58"
+
+/** DK-R-005: the payment means codes allowed when supplier and customer are both Danish. */
+const DK_ALLOWED_PAYMENT_MEANS = new Set(["1", "10", "31", "42", "48", "49", "50", "58", "59", "93", "97"])
+/** DK-R-006: for these codes both the account and its branch are mandatory. */
+const DK_PAYMENT_MEANS_NEEDING_BRANCH = new Set(["31", "42"])
 
 export type EinvoiceLine = {
   description: string
@@ -65,7 +86,7 @@ export type EinvoiceDocument = {
   note: string | null
   seller: EinvoiceParty
   buyer: EinvoiceParty
-  /** Invoices only, and only when the seller has an IBAN. Danish reg.nr./account numbers are not mapped. The means code follows the document currency. */
+  /** Invoices only, and only when the seller has an account that can be paid from the buyer's country. */
   payment?: EinvoicePayment | null
   lines: EinvoiceLine[]
   /** Gross total stored on the document; differences to the line-derived total become rounding. */
@@ -115,6 +136,15 @@ export function validateEinvoice(document: EinvoiceDocument): EinvoiceMissingFie
   if (buyer.legalId && !isValidLegalIdentifier(buyer.legalId)) missing.push("buyer.legalIdInvalid")
   if (!buyer.electronicAddress) missing.push("buyer.electronicAddress")
   else if (!isValidElectronicAddress(buyer.electronicAddress)) missing.push("buyer.electronicAddressInvalid")
+
+  // DK-R-005 and DK-R-006 apply when both the supplier and the customer are in Denmark.
+  if (document.kind === "invoice" && document.payment && seller.countryCode === "DK" && buyer.countryCode === "DK") {
+    const { meansCode, accountId, branchId } = document.payment
+    if (!DK_ALLOWED_PAYMENT_MEANS.has(meansCode)) missing.push("seller.paymentMeansCode")
+    if (DK_PAYMENT_MEANS_NEEDING_BRANCH.has(meansCode) && (!accountId.trim() || !branchId?.trim())) {
+      missing.push("seller.paymentAccountBranch")
+    }
+  }
 
   if (document.kind === "creditNote" && !document.billingReference) {
     missing.push("creditNote.invoiceReference")
@@ -236,28 +266,16 @@ function partyElement(party: EinvoiceParty): XmlElement {
   )
 }
 
-/** UNCL 4461 code 58: SEPA credit transfer. */
-const PAYMENT_MEANS_SEPA_CREDIT_TRANSFER = "58"
-/** UNCL 4461 code 30: credit transfer, without the SEPA scheme's EUR-only rules. */
-const PAYMENT_MEANS_CREDIT_TRANSFER = "30"
-
-/**
- * SEPA credit transfers are euro payments, so only an invoice in EUR claims that scheme. Any other
- * currency (a DKK invoice paid to a Danish IBAN, say) is a plain credit transfer to the same IBAN.
- */
-function paymentMeansCode(currency: string): string {
-  return currency.trim().toUpperCase() === "EUR" ? PAYMENT_MEANS_SEPA_CREDIT_TRANSFER : PAYMENT_MEANS_CREDIT_TRANSFER
-}
-
-function paymentMeansElement(payment: EinvoicePayment, currency: string): XmlElement {
+function paymentMeansElement(payment: EinvoicePayment): XmlElement {
   return cac(
     "PaymentMeans",
-    cbc("PaymentMeansCode", paymentMeansCode(currency)),
+    cbc("PaymentMeansCode", payment.meansCode),
     cbc("PaymentID", payment.reference),
     cac(
       "PayeeFinancialAccount",
-      cbc("ID", payment.iban),
-      payment.bic ? cac("FinancialInstitutionBranch", cbc("ID", payment.bic)) : null
+      cbc("ID", payment.accountId),
+      payment.accountName ? cbc("Name", payment.accountName) : null,
+      payment.branchId ? cac("FinancialInstitutionBranch", cbc("ID", payment.branchId)) : null
     )
   )
 }
@@ -344,7 +362,7 @@ export function buildUblDocument(document: EinvoiceDocument): string {
     isInvoice && document.deliveryDate
       ? cac("Delivery", cbc("ActualDeliveryDate", document.deliveryDate))
       : null,
-    isInvoice && document.payment ? paymentMeansElement(document.payment, document.currency) : null,
+    isInvoice && document.payment ? paymentMeansElement(document.payment) : null,
     cac(
       "TaxTotal",
       money("TaxAmount", totals.tax),

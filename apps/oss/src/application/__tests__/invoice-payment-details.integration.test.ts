@@ -112,7 +112,15 @@ const sellerOf = async (id: string) =>
     expect(rendered.pdf.invoice.bankAccount).toEqual(bankAccount)
     expect(rendered.pdf.invoice.paymentNote).toBe(paymentNote)
     expect(rendered.pdf.invoice.number).toBe(row.number)
-    expect(rendered.ubl?.payment).toEqual({ iban: "DK5000400440116243", bic: "DABADKKK", reference: row.number })
+    // The test customer has no country, so this is not a Danish domestic invoice: IBAN, not the reg.nr.
+    expect(rendered.ubl?.payment).toEqual({
+      meansCode: "30",
+      accountId: "DK5000400440116243",
+      accountName: "Nordic Design ApS",
+      branchId: "DABADKKK",
+      reference: row.number,
+    })
+    expect(rendered.pdf.invoice.paymentReference).toBe(row.number)
   })
 
   it("keeps an issued invoice unchanged when the settings change afterwards", async () => {
@@ -131,7 +139,7 @@ const sellerOf = async (id: string) =>
     const frozen = await storedRenderInput(context, first.id)
     expect(frozen.pdf.invoice.bankAccount).toEqual(bankAccount)
     expect(frozen.pdf.invoice.paymentNote).toBe(paymentNote)
-    expect(frozen.ubl?.payment?.iban).toBe("DK5000400440116243")
+    expect(frozen.ubl?.payment?.accountId).toBe("DK5000400440116243")
 
     // An invoice issued after the change carries the new account.
     const second = await draft(context)
@@ -140,7 +148,7 @@ const sellerOf = async (id: string) =>
       bankAccount: { iban: otherIban, bic: "NWBKGB2L" },
       paymentNote: "New account",
     })
-    expect((await storedRenderInput(context, second.id)).ubl?.payment?.iban).toBe(otherIban)
+    expect((await storedRenderInput(context, second.id)).ubl?.payment?.accountId).toBe(otherIban)
     expect((await sellerOf(first.id))?.bankAccount).toEqual(bankAccount)
   })
 
@@ -163,6 +171,29 @@ const sellerOf = async (id: string) =>
     expect((await storedRenderInput(context, invoice.id)).pdf.invoice.bankAccount).toMatchObject({ iban: otherIban })
   })
 
+  it("uses the invoice's own payment reference, and leaves the reference out of a draft preview", async () => {
+    const context = await setup()
+    const withReference = await draft(context)
+    await prisma.invoice.update({ where: { id: withReference.id }, data: { paymentReference: " +71 1234 5678 " } })
+    const withoutReference = await draft(context)
+
+    const preview = async (id: string) =>
+      (JSON.parse(await (await documentPdf("invoice", id, context.org.organizationId)).text()) as RenderInput & { kind: "invoice" }).pdf.invoice
+    // A draft has no number: no reference row rather than "draft".
+    expect((await preview(withoutReference.id)).paymentReference).toBeNull()
+    expect((await preview(withReference.id)).paymentReference).toBe("+71 1234 5678")
+
+    await issue(context, withReference.id)
+    await issue(context, withoutReference.id)
+    const custom = await storedRenderInput(context, withReference.id)
+    expect(custom.pdf.invoice.paymentReference).toBe("+71 1234 5678")
+    expect(custom.ubl?.payment?.reference).toBe("+71 1234 5678")
+    const numbered = await storedRenderInput(context, withoutReference.id)
+    const number = (await prisma.invoice.findUniqueOrThrow({ where: { id: withoutReference.id } })).number
+    expect(numbered.pdf.invoice.paymentReference).toBe(number)
+    expect(numbered.ubl?.payment?.reference).toBe(number)
+  })
+
   it("adds no payment details for an organization that has entered none", async () => {
     const context = await setup({ details: null })
     const invoice = await draft(context)
@@ -173,7 +204,7 @@ const sellerOf = async (id: string) =>
     expect(seller && ("bankAccount" in seller || "paymentNote" in seller)).toBe(false)
     const rendered = await storedRenderInput(context, invoice.id)
     // The render input is exactly what it was before this feature existed.
-    expect("bankAccount" in rendered.pdf.invoice || "paymentNote" in rendered.pdf.invoice).toBe(false)
+    expect(["bankAccount", "paymentNote", "paymentReference"].some((key) => key in rendered.pdf.invoice)).toBe(false)
     expect(rendered.ubl && "payment" in rendered.ubl).toBe(false)
   })
 

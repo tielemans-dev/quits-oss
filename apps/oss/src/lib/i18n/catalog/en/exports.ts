@@ -21,6 +21,10 @@ export const enExportsMessages = {
     "Your Peppol electronic address. It is derived from your VAT number for supported countries.",
   "exports.einvoice.missing.seller.electronicAddressInvalid":
     "Your Peppol electronic address is not valid. Check your VAT number (Settings).",
+  "exports.einvoice.missing.seller.paymentMeansCode":
+    "The payment means is not allowed between two Danish parties (DK-R-005). Check your bank details (Settings).",
+  "exports.einvoice.missing.seller.paymentAccountBranch":
+    "A Danish bank transfer needs both the account and the bank branch (DK-R-006): add the registration number and account number (Settings).",
   "exports.einvoice.missing.buyer.name": "The customer's name.",
   "exports.einvoice.missing.buyer.country": "The customer's country (use a country name or 2-letter code).",
   "exports.einvoice.missing.buyer.address": "The customer's street address or city.",

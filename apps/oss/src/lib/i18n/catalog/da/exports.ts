@@ -21,6 +21,10 @@ export const daExportsMessages = {
     "Jeres elektroniske Peppol-adresse. Den udledes af momsnummeret for understøttede lande.",
   "exports.einvoice.missing.seller.electronicAddressInvalid":
     "Jeres elektroniske Peppol-adresse er ugyldig. Kontrollér momsnummeret (Indstillinger).",
+  "exports.einvoice.missing.seller.paymentMeansCode":
+    "Betalingsmåden er ikke tilladt mellem to danske parter (DK-R-005). Kontrollér jeres bankoplysninger (Indstillinger).",
+  "exports.einvoice.missing.seller.paymentAccountBranch":
+    "En dansk bankoverførsel skal have både konto og bankfilial (DK-R-006): tilføj registreringsnummer og kontonummer (Indstillinger).",
   "exports.einvoice.missing.buyer.name": "Kundens navn.",
   "exports.einvoice.missing.buyer.country": "Kundens land (brug et landenavn eller en landekode på 2 bogstaver).",
   "exports.einvoice.missing.buyer.address": "Kundens adresse eller by.",

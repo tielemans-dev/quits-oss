@@ -23,6 +23,9 @@ import {
   type TaxIdLike,
 } from "./parties"
 import {
+  PAYMENT_MEANS_BANK_ACCOUNT,
+  PAYMENT_MEANS_CREDIT_TRANSFER,
+  PAYMENT_MEANS_SEPA_CREDIT_TRANSFER,
   buildUblDocument,
   validateEinvoice,
   type EinvoiceDocument,
@@ -106,16 +109,47 @@ export function buildSellerParty(source: SellerSource): EinvoiceParty {
 }
 
 /**
- * SEPA credit transfer instructions for an invoice, from the bank account frozen on it. Only an
- * IBAN can be sent; the Danish reg.nr. and account number have no place in Peppol BIS.
+ * The bank transfer instructions of an invoice, from the bank account frozen on it. Which account
+ * can be sent depends on where the buyer pays from:
+ *
+ * - Danish seller and buyer (DK-R-005/006 apply): the reg.nr. and account number as code 42, else
+ *   an IBAN with BIC as code 58 (EUR) or 42 (other currencies). Code 42 needs the account and its
+ *   branch, so an IBAN without a BIC cannot be sent in a non-EUR invoice.
+ * - Any other pair: only an IBAN travels, as code 58 (SEPA) in EUR and code 30 otherwise. The Danish
+ *   reg.nr. and account number are no use to a foreign bank, so they are left out.
  */
 export function buildEinvoicePayment(
   bankAccount: BankAccountSnapshot | null | undefined,
-  invoiceNumber: string
+  context: {
+    /** The payer's remittance information: the invoice's payment reference. */
+    reference: string
+    currency: string
+    sellerCountry: string | null
+    buyerCountry: string | null
+  }
 ): EinvoicePayment | null {
+  const { reference, currency } = context
   const iban = normalizeIban(bankAccount?.iban ?? "")
+  const bic = normalizeBic(bankAccount?.bic ?? "") || null
+  const regNumber = bankAccount?.regNumber?.trim() ?? ""
+  const accountNumber = bankAccount?.accountNumber?.trim() ?? ""
+  const accountName = bankAccount?.accountHolder?.trim() || null
+  const isEur = currency.trim().toUpperCase() === "EUR"
+  const domestic = context.sellerCountry === "DK" && context.buyerCountry === "DK"
+
+  if (domestic && regNumber && accountNumber) {
+    return { meansCode: PAYMENT_MEANS_BANK_ACCOUNT, accountId: accountNumber, accountName, branchId: regNumber, reference }
+  }
   if (!iban) return null
-  return { iban, bic: normalizeBic(bankAccount?.bic ?? "") || null, reference: invoiceNumber }
+  if (isEur) {
+    return { meansCode: PAYMENT_MEANS_SEPA_CREDIT_TRANSFER, accountId: iban, accountName, branchId: bic, reference }
+  }
+  if (!domestic) {
+    return { meansCode: PAYMENT_MEANS_CREDIT_TRANSFER, accountId: iban, accountName, branchId: bic, reference }
+  }
+  return bic
+    ? { meansCode: PAYMENT_MEANS_BANK_ACCOUNT, accountId: iban, accountName, branchId: bic, reference }
+    : null
 }
 
 /** Buyer party: snapshot values first, the live contact for anything missing and for the endpoint. */
@@ -184,6 +218,18 @@ export async function loadEinvoiceDocument(
     if (!invoice) throw new EinvoiceSourceNotFound(kind, id)
     const buyer = buildBuyerParty(parseBuyerSnapshot(invoice.buyerSnapshot), invoice.contact)
     const sellerSnapshot = parseSellerSnapshot(invoice.sellerSnapshot)
+    const sellerParty = buildSellerParty({
+      snapshot: sellerSnapshot,
+      settings: seller.settings,
+      taxIds: seller.taxIds,
+      documentCountryCode: invoice.countryCode,
+    })
+    const payment = buildEinvoicePayment(sellerSnapshot?.bankAccount, {
+      reference: invoice.paymentReference?.trim() || invoice.number,
+      currency: invoice.currency,
+      sellerCountry: sellerParty.countryCode,
+      buyerCountry: buyer.countryCode,
+    })
 
     return {
       kind,
@@ -197,14 +243,9 @@ export async function loadEinvoiceDocument(
       orderReference: invoice.purchaseOrderRef,
       billingReference: null,
       note: invoice.notes,
-      seller: buildSellerParty({
-        snapshot: sellerSnapshot,
-        settings: seller.settings,
-        taxIds: seller.taxIds,
-        documentCountryCode: invoice.countryCode,
-      }),
+      seller: sellerParty,
       buyer,
-      payment: buildEinvoicePayment(sellerSnapshot?.bankAccount, invoice.number),
+      ...(payment ? { payment } : {}),
       calculationVersion: invoice.calculationVersion,
       frozenGroups: invoice.calculationVersion === "v2" ? frozenVatGroups(invoice) : undefined,
       lines: invoice.items.map(exportLine),

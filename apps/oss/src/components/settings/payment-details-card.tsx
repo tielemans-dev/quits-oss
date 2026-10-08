@@ -179,9 +179,11 @@ function PaymentDetailsPreview({ values, locale }: { values: Values; locale: str
             ))}
           </dl>
           {block.note && <p className="mt-1.5 whitespace-pre-line text-xs text-muted-foreground">{block.note}</p>}
-          <p className="mt-2 border-t pt-2">
-            {block.reference.label}: <span className="font-semibold">{block.reference.value}</span>
-          </p>
+          {block.reference && (
+            <p className="mt-2 border-t pt-2">
+              {block.reference.label}: <span className="font-semibold">{block.reference.value}</span>
+            </p>
+          )}
         </div>
       ) : (
         <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">

@@ -207,6 +207,11 @@ export type InvoiceForPdf = {
    */
   bankAccount?: BankAccountSnapshot | null
   paymentNote?: string | null
+  /**
+   * What the payer writes on the transfer: the invoice's own reference, else its number. Null
+   * leaves the row out (a draft has no number yet); absent means the invoice number.
+   */
+  paymentReference?: string | null
   contact: {
     name: string
     email?: string | null
@@ -268,7 +273,7 @@ export function InvoicePdfDocument({
   const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null
   const paymentDetails = buildPaymentDetailsBlock(
     { bankAccount: invoice.bankAccount, note: invoice.paymentNote },
-    invoice.number,
+    invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference,
     locale
   )
 
@@ -388,10 +393,12 @@ export function InvoicePdfDocument({
               </View>
             ))}
             {paymentDetails.note && <Text style={styles.paymentNote}>{paymentDetails.note}</Text>}
-            <Text style={styles.paymentReference}>
-              {paymentDetails.reference.label}:{" "}
-              <Text style={styles.paymentReferenceValue}>{paymentDetails.reference.value}</Text>
-            </Text>
+            {paymentDetails.reference && (
+              <Text style={styles.paymentReference}>
+                {paymentDetails.reference.label}:{" "}
+                <Text style={styles.paymentReferenceValue}>{paymentDetails.reference.value}</Text>
+              </Text>
+            )}
           </View>
         )}
 
