@@ -246,7 +246,7 @@ describeIfDatabase("invoices.list response", () => {
     await cleanupTestOrganizations({ where: { id: { in: createdOrganizationIds } } })
   })
 
-  it("returns the fields the invoice list page uses, newest first with id breaking ties", async () => {
+  it("returns every invoice column plus the derived fields, newest first with id breaking ties", async () => {
     const { organizationId, contactId, caller } = await createOrganization()
     const createdAt = new Date("2026-10-01T12:00:00.000Z")
     await prisma.invoice.create({ data: invoiceData(organizationId, contactId, { id: `inv-a-${organizationId}`, createdAt }) })
@@ -262,23 +262,12 @@ describeIfDatabase("invoices.list response", () => {
       `inv-a-${organizationId}`,
       `inv-c-${organizationId}`,
     ])
+    // The response is unchanged from before the query work: every invoice column, the contact
+    // name and the derived amounts and payment link.
     const [first] = invoices
     expect(Object.keys(first ?? {}).sort()).toEqual(
       [
-        "id",
-        "number",
-        "status",
-        "paymentStatus",
-        "issueDate",
-        "dueDate",
-        "currency",
-        "subtotalNet",
-        "totalTax",
-        "totalGross",
-        "amountPaid",
-        "amountCredited",
-        "publicPaymentIssuedAt",
-        "publicPaymentKeyVersion",
+        ...Object.values(Prisma.InvoiceScalarFieldEnum),
         "contact",
         "subtotal",
         "taxAmount",
@@ -290,6 +279,8 @@ describeIfDatabase("invoices.list response", () => {
     expect(first).toMatchObject({
       status: "draft",
       currency: expect.any(String),
+      organizationId,
+      contactId,
       contact: { name: "Buyer" },
       subtotal: 100,
       total: 125,

@@ -107,27 +107,10 @@ export const invoicesRouter = router({
       }
       if (input?.status) where.status = input.status
 
-      // The list page renders only these columns. Excluding the JSON snapshot and evidence
-      // columns keeps the response small; the rows are not loaded with their items either.
+      // The response keeps every invoice column: external tRPC callers may read any of them.
       const invoices = await prisma.invoice.findMany({
         where,
-        select: {
-          id: true,
-          number: true,
-          status: true,
-          paymentStatus: true,
-          issueDate: true,
-          dueDate: true,
-          currency: true,
-          subtotalNet: true,
-          totalTax: true,
-          totalGross: true,
-          amountPaid: true,
-          amountCredited: true,
-          publicPaymentIssuedAt: true,
-          publicPaymentKeyVersion: true,
-          contact: { select: { name: true } },
-        },
+        include: { contact: { select: { name: true } } },
         // id breaks createdAt ties so the order is stable; invoice(organizationId, createdAt, id) serves it.
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       })
