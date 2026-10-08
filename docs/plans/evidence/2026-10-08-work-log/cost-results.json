@@ -1,0 +1,452 @@
+{
+  "assumptions": {
+    "checked": "2026-10-08",
+    "currency": "USD",
+    "dkkPerUsd": 6.5,
+    "vatRate": 0.25,
+    "fxStatus": "scenario assumption, not a market quote",
+    "sttUsdPerMinute": 0.0043,
+    "sttModel": "Deepgram Nova-3 monolingual Danish pre-recorded",
+    "sttBillingSeconds": 1,
+    "sttMinimumSeconds": 1,
+    "sttMinimumStatus": "one-second minimum is a conservative scenario assumption; minimum invoice/top-up not confirmed",
+    "llmModel": "anthropic/claude-haiku-5.5",
+    "llmInputUsdPerMillion": 0.11,
+    "llmOutputUsdPerMillion": 0.55,
+    "llmPriceStatus": "additional provider rows list 10% uplift, used as planning allowance; exact EU + ZDR route/account not verified",
+    "llmBusinessCreditFee": 0.08,
+    "llmInputLimitPerCall": 100000,
+    "audioBytesPerMinute": 240000,
+    "transcriptBytesPerCall": 12000,
+    "audioRetentionDays": 1,
+    "transcriptRetentionDays": 30,
+    "storageUsdPerGbMonth": 0.03,
+    "storageStatus": "planning allowance, not vendor quote",
+    "infrastructureDkkPerActive": 2,
+    "supportDkkPerActive": 5,
+    "paymentFractionOfGross": 0.02,
+    "paymentFixedDkkPerCharge": 1.8,
+    "overheadStatus": "planning allowances; no negotiated payment/hosting/support quote"
+  },
+  "scenarios": [
+    {
+      "name": "light",
+      "minutes": 20,
+      "calls": 20,
+      "inputTokensPerCall": 1200,
+      "outputTokensPerCall": 300,
+      "extraCalls": 2,
+      "sttRetryFraction": 0.02
+    },
+    {
+      "name": "typical",
+      "minutes": 120,
+      "calls": 80,
+      "inputTokensPerCall": 2000,
+      "outputTokensPerCall": 500,
+      "extraCalls": 12,
+      "sttRetryFraction": 0.05
+    },
+    {
+      "name": "heavy",
+      "minutes": 600,
+      "calls": 300,
+      "inputTokensPerCall": 3500,
+      "outputTokensPerCall": 800,
+      "extraCalls": 90,
+      "sttRetryFraction": 0.1
+    }
+  ],
+  "results": [
+    {
+      "name": "light",
+      "minutes": 20,
+      "calls": 22,
+      "sttSeconds": 1224,
+      "inputTokens": 26400,
+      "outputTokens": 6600,
+      "newAudioBytes": 4800000,
+      "newTranscriptBytes": 240000,
+      "storedByteMonths": 400000,
+      "sttUsd": 0.08771999999999999,
+      "llmUsdBeforeFee": 0.006534,
+      "llmUsd": 0.007056720000000001,
+      "storageUsd": 0.000012,
+      "providerDkk": 0.6161266799999999,
+      "operatingDkk": 7.61612668
+    },
+    {
+      "name": "typical",
+      "minutes": 120,
+      "calls": 92,
+      "sttSeconds": 7560,
+      "inputTokens": 184000,
+      "outputTokens": 46000,
+      "newAudioBytes": 28800000,
+      "newTranscriptBytes": 960000,
+      "storedByteMonths": 1920000,
+      "sttUsd": 0.5418,
+      "llmUsdBeforeFee": 0.04554,
+      "llmUsd": 0.0491832,
+      "storageUsd": 0.0000576,
+      "providerDkk": 3.8417651999999993,
+      "operatingDkk": 10.8417652
+    },
+    {
+      "name": "heavy",
+      "minutes": 600,
+      "calls": 390,
+      "sttSeconds": 39600,
+      "inputTokens": 1365000,
+      "outputTokens": 312000,
+      "newAudioBytes": 144000000,
+      "newTranscriptBytes": 3600000,
+      "storedByteMonths": 8400000,
+      "sttUsd": 2.838,
+      "llmUsdBeforeFee": 0.32175,
+      "llmUsd": 0.34749,
+      "storageUsd": 0.000252,
+      "providerDkk": 20.707323000000002,
+      "operatingDkk": 27.707323000000002
+    }
+  ],
+  "options": [
+    {
+      "name": "base inclusion",
+      "grossDkk": 99,
+      "includedMinutesPerOrg": 120,
+      "description": "Hypothetical full base subscription, no incremental feature revenue",
+      "oneActiveUserMargins": [
+        {
+          "scenario": "light",
+          "grossDkk": 99,
+          "netDkk": 79.2,
+          "paymentDkk": 3.7800000000000002,
+          "operatingDkk": 7.61612668,
+          "contributionDkk": 67.80387332000001,
+          "contributionPercent": 85.61095116161617
+        },
+        {
+          "scenario": "typical",
+          "grossDkk": 99,
+          "netDkk": 79.2,
+          "paymentDkk": 3.7800000000000002,
+          "operatingDkk": 10.8417652,
+          "contributionDkk": 64.5782348,
+          "contributionPercent": 81.53817525252525
+        },
+        {
+          "scenario": "heavy",
+          "grossDkk": 99,
+          "netDkk": 79.2,
+          "paymentDkk": 3.7800000000000002,
+          "operatingDkk": 27.707323000000002,
+          "contributionDkk": 47.712677,
+          "contributionPercent": 60.24327904040404
+        }
+      ],
+      "breakEvenMinutesOneActive": 2137.1425822692136,
+      "atIncludedCap": {
+        "grossDkk": 99,
+        "netDkk": 79.2,
+        "paymentDkk": 3.7800000000000002,
+        "operatingDkk": 10.8417652,
+        "contributionDkk": 64.5782348,
+        "contributionPercent": 81.53817525252525
+      }
+    },
+    {
+      "name": "higher tier increment",
+      "grossDkk": 50,
+      "includedMinutesPerOrg": 600,
+      "description": "149 DKK total, 50 DKK incremental over hypothetical 99 DKK base",
+      "oneActiveUserMargins": [
+        {
+          "scenario": "light",
+          "grossDkk": 50,
+          "netDkk": 40,
+          "paymentDkk": 2.8,
+          "operatingDkk": 7.61612668,
+          "contributionDkk": 29.583873320000002,
+          "contributionPercent": 73.95968330000001
+        },
+        {
+          "scenario": "typical",
+          "grossDkk": 50,
+          "netDkk": 40,
+          "paymentDkk": 2.8,
+          "operatingDkk": 10.8417652,
+          "contributionDkk": 26.358234800000005,
+          "contributionPercent": 65.895587
+        },
+        {
+          "scenario": "heavy",
+          "grossDkk": 50,
+          "netDkk": 40,
+          "paymentDkk": 2.8,
+          "operatingDkk": 27.707323000000002,
+          "contributionDkk": 9.492677,
+          "contributionPercent": 23.7316925
+        }
+      ],
+      "breakEvenMinutesOneActive": 943.3163692565076,
+      "atIncludedCap": {
+        "grossDkk": 50,
+        "netDkk": 40,
+        "paymentDkk": 2.8,
+        "operatingDkk": 26.208826,
+        "contributionDkk": 10.991174000000004,
+        "contributionPercent": 27.477935000000013
+      }
+    },
+    {
+      "name": "usage pack",
+      "grossDkk": 29,
+      "includedMinutesPerOrg": 300,
+      "description": "One explicit prepaid pack, no automatic overage purchase",
+      "oneActiveUserMargins": [
+        {
+          "scenario": "light",
+          "grossDkk": 29,
+          "netDkk": 23.2,
+          "paymentDkk": 2.38,
+          "operatingDkk": 7.61612668,
+          "contributionDkk": 13.20387332,
+          "contributionPercent": 56.91324706896552
+        },
+        {
+          "scenario": "typical",
+          "grossDkk": 29,
+          "netDkk": 23.2,
+          "paymentDkk": 2.38,
+          "operatingDkk": 10.8417652,
+          "contributionDkk": 9.978234800000001,
+          "contributionPercent": 43.0096327586207
+        },
+        {
+          "scenario": "heavy",
+          "grossDkk": 29,
+          "netDkk": 23.2,
+          "paymentDkk": 2.38,
+          "operatingDkk": 27.707323000000002,
+          "contributionDkk": -6.887323000000002,
+          "contributionPercent": -29.686737068965527
+        }
+      ],
+      "breakEvenMinutesOneActive": 431.6765636796336,
+      "atIncludedCap": {
+        "grossDkk": 29,
+        "netDkk": 23.2,
+        "paymentDkk": 2.38,
+        "operatingDkk": 16.604413,
+        "contributionDkk": 4.215586999999999,
+        "contributionPercent": 18.170633620689653
+      }
+    }
+  ],
+  "marginalDkkPerMinute": 0.032014709999999995,
+  "sensitivity": [
+    {
+      "name": "twice typical audio, same extraction calls",
+      "minutes": 240,
+      "calls": 92,
+      "sttSeconds": 15120,
+      "inputTokens": 184000,
+      "outputTokens": 46000,
+      "newAudioBytes": 57600000,
+      "newTranscriptBytes": 960000,
+      "storedByteMonths": 2880000,
+      "sttUsd": 1.0836,
+      "llmUsdBeforeFee": 0.04554,
+      "llmUsd": 0.0491832,
+      "storageUsd": 0.0000864,
+      "providerDkk": 7.3636524,
+      "operatingDkk": 14.3636524
+    },
+    {
+      "name": "four times typical output tokens",
+      "minutes": 120,
+      "calls": 92,
+      "sttSeconds": 7560,
+      "inputTokens": 184000,
+      "outputTokens": 184000,
+      "newAudioBytes": 28800000,
+      "newTranscriptBytes": 960000,
+      "storedByteMonths": 1920000,
+      "sttUsd": 0.5418,
+      "llmUsdBeforeFee": 0.12144000000000002,
+      "llmUsd": 0.13115520000000003,
+      "storageUsd": 0.0000576,
+      "providerDkk": 4.3745832,
+      "operatingDkk": 11.3745832
+    },
+    {
+      "name": "50 percent extra extraction calls and STT retries",
+      "minutes": 120,
+      "calls": 120,
+      "sttSeconds": 10800,
+      "inputTokens": 240000,
+      "outputTokens": 60000,
+      "newAudioBytes": 28800000,
+      "newTranscriptBytes": 960000,
+      "storedByteMonths": 1920000,
+      "sttUsd": 0.774,
+      "llmUsdBeforeFee": 0.0594,
+      "llmUsd": 0.064152,
+      "storageUsd": 0.0000576,
+      "providerDkk": 5.4483624,
+      "operatingDkk": 12.4483624
+    },
+    {
+      "name": "30 day audio and 365 day transcript retention",
+      "minutes": 120,
+      "calls": 92,
+      "sttSeconds": 7560,
+      "inputTokens": 184000,
+      "outputTokens": 46000,
+      "newAudioBytes": 28800000,
+      "newTranscriptBytes": 960000,
+      "storedByteMonths": 40480000,
+      "sttUsd": 0.5418,
+      "llmUsdBeforeFee": 0.04554,
+      "llmUsd": 0.0491832,
+      "storageUsd": 0.0012144,
+      "providerDkk": 3.8492843999999993,
+      "operatingDkk": 10.849284399999998
+    },
+    {
+      "name": "FX 20 percent higher",
+      "minutes": 120,
+      "calls": 92,
+      "sttSeconds": 7560,
+      "inputTokens": 184000,
+      "outputTokens": 46000,
+      "newAudioBytes": 28800000,
+      "newTranscriptBytes": 960000,
+      "storedByteMonths": 1920000,
+      "sttUsd": 0.5418,
+      "llmUsdBeforeFee": 0.04554,
+      "llmUsd": 0.0491832,
+      "storageUsd": 0.0000576,
+      "providerDkk": 4.610118239999999,
+      "operatingDkk": 11.610118239999998
+    },
+    {
+      "name": "STT price doubled",
+      "minutes": 120,
+      "calls": 92,
+      "sttSeconds": 7560,
+      "inputTokens": 184000,
+      "outputTokens": 46000,
+      "newAudioBytes": 28800000,
+      "newTranscriptBytes": 960000,
+      "storedByteMonths": 1920000,
+      "sttUsd": 1.0836,
+      "llmUsdBeforeFee": 0.04554,
+      "llmUsd": 0.0491832,
+      "storageUsd": 0.0000576,
+      "providerDkk": 7.3634652,
+      "operatingDkk": 14.3634652
+    },
+    {
+      "name": "Speechmatics calculator Melia 0.24 USD/hour, unverified route",
+      "minutes": 120,
+      "calls": 92,
+      "sttSeconds": 7560,
+      "inputTokens": 184000,
+      "outputTokens": 46000,
+      "newAudioBytes": 28800000,
+      "newTranscriptBytes": 960000,
+      "storedByteMonths": 1920000,
+      "sttUsd": 0.504,
+      "llmUsdBeforeFee": 0.04554,
+      "llmUsd": 0.0491832,
+      "storageUsd": 0.0000576,
+      "providerDkk": 3.5960652,
+      "operatingDkk": 10.5960652
+    },
+    {
+      "name": "Speechmatics Enhanced calculator 0.75 USD/hour, unverified route",
+      "minutes": 120,
+      "calls": 92,
+      "sttSeconds": 7560,
+      "inputTokens": 184000,
+      "outputTokens": 46000,
+      "newAudioBytes": 28800000,
+      "newTranscriptBytes": 960000,
+      "storedByteMonths": 1920000,
+      "sttUsd": 1.5750000000000002,
+      "llmUsdBeforeFee": 0.04554,
+      "llmUsd": 0.0491832,
+      "storageUsd": 0.0000576,
+      "providerDkk": 10.557565200000003,
+      "operatingDkk": 17.557565200000003
+    }
+  ],
+  "mix": {
+    "proportions": {
+      "light": 0.5,
+      "typical": 0.4,
+      "heavy": 0.1
+    },
+    "meanOperatingDkk": 10.91550172,
+    "heavyShareOfMinutes": 0.5084745762711864
+  },
+  "organizations": [
+    {
+      "activeUsers": 1,
+      "grossBaseDkk": 99,
+      "uncappedTypicalCostDkk": 10.8417652,
+      "grossDkk": 99,
+      "netDkk": 79.2,
+      "paymentDkk": 3.7800000000000002,
+      "operatingDkk": 10.8417652,
+      "contributionDkk": 64.5782348,
+      "contributionPercent": 81.53817525252525,
+      "maximumTypicalActiveUsersAtZeroContribution": 6.956431781053514
+    },
+    {
+      "activeUsers": 3,
+      "grossBaseDkk": 99,
+      "uncappedTypicalCostDkk": 32.5252956,
+      "grossDkk": 99,
+      "netDkk": 79.2,
+      "paymentDkk": 3.7800000000000002,
+      "operatingDkk": 32.5252956,
+      "contributionDkk": 42.8947044,
+      "contributionPercent": 54.1599803030303,
+      "maximumTypicalActiveUsersAtZeroContribution": 6.956431781053514
+    },
+    {
+      "activeUsers": 10,
+      "grossBaseDkk": 99,
+      "uncappedTypicalCostDkk": 108.41765199999999,
+      "grossDkk": 99,
+      "netDkk": 79.2,
+      "paymentDkk": 3.7800000000000002,
+      "operatingDkk": 108.41765199999999,
+      "contributionDkk": -32.99765199999999,
+      "contributionPercent": -41.663702020202,
+      "maximumTypicalActiveUsersAtZeroContribution": 6.956431781053514
+    }
+  ],
+  "formulas": {
+    "providerDkk": "FX * (billedMinutes * STTrate + (inputTokens * inputRate + outputTokens * outputRate) / 1e6 * 1.08 + bytesRetained / 1e9 * storageRate)",
+    "operatingDkk": "providerDkk + 2 infrastructure + 5 support per active user",
+    "contributionDkk": "grossPrice / 1.25 - grossPrice * 0.02 - 1.8 per charge - operatingDkk",
+    "organization": "one organization subscription pays for all active users; sum costs, do not multiply subscription revenue"
+  },
+  "exclusions": [
+    "base invoicing costs",
+    "engineering and sales",
+    "corporate tax",
+    "refunds and chargebacks",
+    "provider minimum top-ups and credit cash timing",
+    "unrecoverable input VAT",
+    "email ingress and attachments",
+    "egress and request charges beyond infrastructure allowance",
+    "negotiated contracts"
+  ],
+  "checks": 8,
+  "status": "conditional estimate, no observed customer usage or deployed provider-route verification"
+}
