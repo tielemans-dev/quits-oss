@@ -221,6 +221,30 @@ describeIfDatabase("MCP endpoint", () => {
       })
     })
 
+    it("advertises and round-trips the buyer order reference through MCP", async () => {
+      const org = await setup()
+      const client = await connect((await keyFor(org, "full_access", drafting)).secret)
+      const listing = await client.listTools()
+      for (const name of ["invoice_create_draft", "invoice_update_draft"]) {
+        const tool = listing.tools.find(tool => tool.name === name)
+        expect(tool?.inputSchema.properties).toHaveProperty("purchaseOrderRef")
+        expect(tool?.inputSchema.required).not.toContain("purchaseOrderRef")
+      }
+      const contact = await call(client, "contact_create", { name: "Buyer", clientRequestId: "ref-contact" })
+      const draft = await call(client, "invoice_create_draft", {
+        contactId: contact.value.result.id, dueDate: "2026-12-01", supplyDate: "2026-12-01",
+        purchaseOrderRef: " PO-agent ", items: [{ description: "Work", quantity: "1", unitPrice: "100" }], clientRequestId: "ref-create",
+      })
+      expect(draft.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: "PO-agent" } })
+      const id = draft.value.result.id
+      const updated = await call(client, "invoice_update_draft", { id, expectedRevision: 0, purchaseOrderRef: " PO-update ", clientRequestId: "ref-update" })
+      expect(updated.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: "PO-update" } })
+      expect((await call(client, "invoice_get", { id })).value.purchaseOrderRef).toBe("PO-update")
+      const cleared = await call(client, "invoice_update_draft", { id, expectedRevision: 1, purchaseOrderRef: " ", clientRequestId: "ref-clear" })
+      expect(cleared.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: null } })
+      await client.close()
+    })
+
     it("queues invoice_send for approval and reports completion after a person approves", async () => {
       const org = await setup()
       const client = await connect((await keyFor(org, "approval_required", drafting)).secret)

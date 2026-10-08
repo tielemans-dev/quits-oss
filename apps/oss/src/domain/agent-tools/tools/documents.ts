@@ -85,6 +85,7 @@ export type InvoiceRow = {
   lastEmailAttemptOutcome?: string | null
   lastEmailAttemptMessage?: string | null
   notes?: string | null
+  purchaseOrderRef?: string | null
   quoteId?: string | null
   recurringInvoiceId?: string | null
   createdAt: Date
@@ -109,6 +110,7 @@ export function presentInvoice(invoice: InvoiceRow) {
     supplyDate: invoice.supplyDate ?? null,
     valuation: invoice.valuation ?? { rateSource: "unknown" },
     issuanceSnapshot: invoice.issuanceSnapshot ?? null,
+    purchaseOrderRef: invoice.purchaseOrderRef ?? null,
     scheduleSaleChoice: invoice.scheduleSaleChoice ?? null,
     contact: invoice.contact
       ? { id: invoice.contact.id ?? invoice.contactId, name: invoice.contact.name, email: invoice.contact.email }

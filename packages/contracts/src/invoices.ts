@@ -56,6 +56,17 @@ export const invoiceUpdateLineV2InputSchema = invoiceUpdateLineInputSchema.exten
   unitPrice: unitPriceDecimalSchema,
 })
 
+/** The buyer's order identifier (BT-13). Omission preserves an existing draft value. */
+export const purchaseOrderRefInputSchema = z.string().trim().refine(value => {
+  // UBL is XML 1.0. Reject characters its writer would discard instead of changing an identifier.
+  for (const char of value) {
+    const code = char.codePointAt(0)!
+    if (code === 0x9 || code === 0xa || code === 0xd) continue
+    if (code < 0x20 || (code >= 0xd800 && code <= 0xdfff) || code === 0xfffe || code === 0xffff) return false
+  }
+  return true
+}, "Order reference must contain only XML 1.0 characters").nullable().transform(value => value || null)
+
 const currencySchema = z.string().trim().regex(/^[A-Z]{3}$/)
 
 export const invoiceCreateDraftInputSchema = z.object({
@@ -64,6 +75,7 @@ export const invoiceCreateDraftInputSchema = z.object({
   supplyDate: calendarDateInputSchema.optional(),
   currency: currencySchema.optional(),
   notes: z.string().trim().max(5000).optional(),
+  purchaseOrderRef: purchaseOrderRefInputSchema.optional(),
   taxRate: documentTaxRateSchema.default(0),
   vatEvidence: draftVatEvidenceSchema.optional(),
   items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
@@ -77,6 +89,7 @@ export const invoiceUpdateDraftInputSchema = z.object({
   supplyDate: calendarDateInputSchema.optional(),
   currency: currencySchema.optional(),
   notes: z.string().trim().max(5000).optional(),
+  purchaseOrderRef: purchaseOrderRefInputSchema.optional(),
   taxRate: documentTaxRateSchema.optional(),
   vatEvidence: draftVatEvidenceSchema.optional(),
   items: z.array(invoiceUpdateLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys).optional(),
@@ -115,13 +128,14 @@ export type InvoicePaymentProgress = z.infer<typeof invoicePaymentProgressSchema
 
 export const invoiceCreateFromDeliverablesInputSchema = z.strictObject({
   agreementId: z.string().min(1),
+  purchaseOrderRef: purchaseOrderRefInputSchema.optional(),
   deliverableIds: z.array(z.string().min(1)).min(1).max(100),
   issueDate: dateInputSchema.optional(),
   dueDate: calendarDateInputSchema.optional(),
   // The explicit choice is recorded on the sale draft and the reservation event.
   scheduleAsSale: z.boolean().optional(),
 })
-export const invoiceAddDeliverablesInputSchema = invoiceCreateFromDeliverablesInputSchema.omit({ issueDate: true, dueDate: true }).extend({ id: z.string().min(1), expectedRevision: z.number().int().nonnegative().optional() })
+export const invoiceAddDeliverablesInputSchema = invoiceCreateFromDeliverablesInputSchema.omit({ issueDate: true, dueDate: true, purchaseOrderRef: true }).extend({ id: z.string().min(1), expectedRevision: z.number().int().nonnegative().optional() })
 
 /** One request ID per user intent; retain it when retrying an uncertain response. */
 export const invoiceMarkPaidInputSchema = z.object({

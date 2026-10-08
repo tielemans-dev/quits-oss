@@ -36,7 +36,7 @@ export const invoiceTools: AgentTool[] = [
   defineCommandTool({ name: "invoice_record_base_valuation", title: "Record reviewed historical valuation", description: "Human review only. Records a historical base rate with an evidence note. Agents receive human_review_required.", command: recordBaseValuation, input: recordBaseValuationInputSchema, present: presentInvoice }),
 
   defineCommandTool({ name: "invoice_create_from_deliverables", title: "Invoice deliverables",
-    description: "Reserves billable deliverables and creates drafts atomically. Returns { saleInvoiceId?, prepaymentInvoiceId? }. Schedule lines create prepayment drafts whose issuance is not supported yet. Set scheduleAsSale only on explicit instruction to invoice schedule lines as sales; that choice is recorded. Nothing is sent.",
+    description: "Reserves billable deliverables and creates drafts atomically. Returns { saleInvoiceId?, prepaymentInvoiceId? }. Optional purchaseOrderRef sets the buyer's order reference on both drafts. Schedule lines create prepayment drafts whose issuance is not supported yet. Set scheduleAsSale only on explicit instruction to invoice schedule lines as sales; that choice is recorded. Nothing is sent.",
     command: createInvoiceFromDeliverables, input: invoiceCreateFromDeliverablesInputSchema }),
   defineCommandTool({ name: "deliverable_release_reservation", title: "Release deliverable from draft",
     description: "Removes one reserved deliverable from the draft invoice that holds it, so it can be billed elsewhere. Requires expectedAllocation (invoiceId, invoiceItemId, generation) from the reviewed allocation. Refused with allocation_changed if the holder changed; refresh before retrying. Refused for work on an issued invoice. Nothing is sent. Returns { invoiceId, invoiceNumber, remainingLines }.",
@@ -103,7 +103,7 @@ export const invoiceTools: AgentTool[] = [
       "Creates a draft invoice for a contact. Drafts are free: nothing is sent and no approval is " +
       "needed. A draft has no invoice number (number is null): the number is assigned when the invoice " +
       "is sent, so deleting a draft never leaves a gap in the numbering. unitPrice follows the organization's pricesIncludeTax setting (see organization_read); " +
-      "taxRate is a percentage. dueDate is YYYY-MM-DD.",
+      "taxRate is a percentage. dueDate is YYYY-MM-DD. purchaseOrderRef is the buyer's order reference (BT-13); surrounding whitespace is trimmed, and an empty string or null clears it.",
     command: createInvoiceDraft,
     input: invoiceCreateDraftV2InputSchema,
     present: presentInvoice,
@@ -113,7 +113,7 @@ export const invoiceTools: AgentTool[] = [
     name: "invoice_update_draft",
     title: "Update draft invoice",
     description:
-      "Edits a draft invoice. Passing items replaces all line items. Only drafts can be edited.",
+      "Edits a draft invoice. Passing items replaces all line items. Only drafts can be edited. purchaseOrderRef sets the buyer's order reference (BT-13); an empty string or null clears it. Pass expectedRevision from the loaded draft to reject stale edits.",
     command: updateInvoiceDraft,
     input: invoiceUpdateDraftV2InputSchema,
     present: presentInvoice,

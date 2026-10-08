@@ -51,6 +51,7 @@ export function documentFingerprint(
     totalTax: { toString(): string }
     totalGross: { toString(): string }
     notes: string | null
+    purchaseOrderRef?: string | null
     contactId: string
     buyerSnapshot: unknown
     sellerSnapshot?: unknown
@@ -71,6 +72,7 @@ export function documentFingerprint(
     document.totalTax.toString(),
     document.totalGross.toString(),
     document.notes,
+    document.purchaseOrderRef ?? null,
     document.items.map((item) => [
       item.description,
       item.quantity.toString(),

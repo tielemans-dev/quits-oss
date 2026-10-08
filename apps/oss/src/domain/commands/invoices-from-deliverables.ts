@@ -47,6 +47,7 @@ export const createInvoiceFromDeliverables = defineCommand({
         timezone: agreement.timezone, taxRegime: agreement.taxRegime, pricesIncludeTax: agreement.pricesIncludeTax,
         sellerSnapshot: agreement.sellerSnapshot ?? Prisma.DbNull, buyerSnapshot: agreement.buyerSnapshot ?? Prisma.DbNull,
         vatEvidence: agreement.vatEvidence ?? Prisma.DbNull,
+        purchaseOrderRef: input.purchaseOrderRef,
         ...(saleIds.length ? { scheduleSaleChoice: { deliverableIds: saleIds, actor: actorKey(command.actor), commandId: command.commandId, at: command.now.toISOString() } } : {}),
         items: { create: rows },
       }, include }))
