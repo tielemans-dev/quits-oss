@@ -44,6 +44,15 @@ describe("resolveRuntimeDistribution", () => {
     })
   })
 
+  it("takes billing from the root route's installation outside the app layout, not the browser's constants", () => {
+    expect(
+      resolveRuntimeDistribution({ installation: { distribution: "cloud", billingEnabled: true } })
+    ).toMatchObject({ isCloud: true, billingEnabled: true })
+    expect(
+      resolveRuntimeDistribution({ installation: { distribution: "cloud", billingEnabled: false } })
+    ).toMatchObject({ isCloud: true, billingEnabled: false })
+  })
+
   it("prefers the layout's answer over the installation's", () => {
     expect(
       resolveRuntimeDistribution({

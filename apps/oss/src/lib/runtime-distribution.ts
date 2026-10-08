@@ -6,8 +6,8 @@ export type Distribution = "cloud" | "selfhost"
 /**
  * What the running server says about its own deployment. The server knows it from its runtime
  * environment; a browser has no `process` and usually no build-time variable, so the server hands
- * the value over in the route context instead (see `getAppLayoutSession` and the root route's
- * `installation`).
+ * the value over in the route context instead (see `getAppLayoutSession`, and the root route's
+ * `installation` for routes outside the app layout).
  */
 export type RuntimeDistribution = {
   distribution: Distribution
@@ -29,7 +29,7 @@ export function readRuntimeDistribution(): RuntimeDistribution {
 
 type DistributionContext = {
   runtime?: Partial<RuntimeDistribution> | null
-  installation?: { distribution?: string | null } | null
+  installation?: { distribution?: string | null; billingEnabled?: boolean | null } | null
 } | null | undefined
 
 function normalizeDistribution(value: string | null | undefined): Distribution | undefined {
@@ -48,7 +48,12 @@ export function resolveRuntimeDistribution(context: DistributionContext): Resolv
     normalizeDistribution(context?.runtime?.distribution) ??
     normalizeDistribution(context?.installation?.distribution) ??
     (isCloudDistribution ? "cloud" : "selfhost")
-  const billingEnabled = context?.runtime?.billingEnabled ?? (distribution === "cloud" && buildBillingEnabled)
+  // Outside the app layout only the root's `installation` is in context; it carries the server's
+  // billing answer too, so the build-time constant (always false in a browser) is a last resort.
+  const billingEnabled =
+    context?.runtime?.billingEnabled ??
+    context?.installation?.billingEnabled ??
+    (distribution === "cloud" && buildBillingEnabled)
 
   return {
     distribution,

@@ -101,4 +101,7 @@ export async function ensureInstallationState(
 export type InstallationStatus = Pick<
   InstallationStateRecord,
   "isSetupComplete" | "distribution" | "setupVersion"
->
+> & {
+  /** Whether this deployment bills. Known to the server only; a browser build cannot tell. */
+  billingEnabled: boolean
+}
