@@ -1,7 +1,7 @@
 /** Invented fixtures using the documented shapes, never real provider/account evidence. */
 export const customer = { customerNumber: 7, name: "Synthetic customer", balance: 125, currency: "DKK" }
 export const invoice = { bookedInvoiceNumber: 10, customer: { customerNumber: 7 }, date: "2026-10-01", currency: "DKK", exchangeRate: 100, netAmount: 100, vatAmount: 25, grossAmount: 125, grossAmountInBaseCurrency: 125, remainder: 125, remainderInBaseCurrency: 125, pdf: { download: "https://restapi.e-conomic.com/invoices/booked/10/pdf" } }
-export const entry = { entryNumber: 99, accountNumber: 5600, customerNumber: 7, customerInvoiceNumber: 10, amount: 125, amountInBaseCurrency: 125, currencyCode: "DKK", remainder: 125, date: "2026-10-01", type: 1, voucherNumber: 10 }
+export const entry = { entryNumber: 99, accountNumber: 5600, customerNumber: 7, customerInvoiceNumber: 10, amount: 125, amountInBaseCurrency: 125, currencyCode: "DKK", remainder: 125, date: "2026-10-01T00:00:00", type: 1, voucherNumber: 10 }
 export const attachment = { number: 5, accountingYear: "2026", voucherNumber: 10, pageCount: 1 }
 export const year = { year: "2026", fromDate: "2026-01-01", toDate: "2026-12-31" }
 export function fixtureResponse(url: URL): Response {

@@ -20,6 +20,13 @@ export function date(value: unknown): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(result) || !Number.isFinite(Date.parse(result)) || new Date(result).toISOString().slice(0, 10) !== result) throw new EconomicError("invalid_response")
   return result
 }
+/** BookedEntries uses date-time, often a local midnight without an offset. Do not infer a zone. */
+export function sourceDateTime(value: unknown): string {
+  const result = text(value)
+  if (!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:0\d|1[0-3]):[0-5]\d|[+-]14:00)?$/.test(result)) throw new EconomicError("invalid_response")
+  date(result.slice(0, 10))
+  return result
+}
 export function currency(value: unknown): string {
   const result = text(value)
   try { requireCurrencyExponent(result) } catch { throw new EconomicError("invalid_response") }
@@ -64,14 +71,14 @@ export function normalize(kind: Kind, input: unknown, baseCurrency: string): Sou
       data = { customerId: integer(object(row.customer).customerNumber), date: date(row.date), dueDate: row.dueDate === undefined ? null : date(row.dueDate), currency: code, exchangeRate: decimal(row.exchangeRate), vatTreatment: "unclassified", residualBasis: "source_snapshot_only" }
       for (const key of ["netAmount", "vatAmount", "grossAmount", "remainder"]) data[key] = minor(row[key], code)
       for (const key of ["grossAmountInBaseCurrency", "remainderInBaseCurrency"]) data[key] = minor(row[key], baseCurrency)
-      data.roundingAmount = row.roundingAmount === undefined ? null : minor(row.roundingAmount, code)
+      data.roundingAmountInBaseCurrency = row.roundingAmount === undefined ? null : minor(row.roundingAmount, baseCurrency)
       data.pdf = row.pdf === undefined ? null : text(object(row.pdf).download)
       break
     }
     case "entry": {
       sourceId = integer(row.entryNumber)
       const code = row.currencyCode == null ? baseCurrency : currency(row.currencyCode)
-      data = { accountNumber: integer(row.accountNumber), currency: code, date: date(row.date), type: integer(row.type), amount: minor(row.amount, code), amountInBaseCurrency: minor(row.amountInBaseCurrency, baseCurrency), remainder: row.remainder == null ? null : minor(row.remainder, code) }
+      data = { accountNumber: integer(row.accountNumber), currency: code, date: sourceDateTime(row.date), type: integer(row.type), amount: minor(row.amount, code), amountInBaseCurrency: minor(row.amountInBaseCurrency, baseCurrency), remainder: row.remainder == null ? null : minor(row.remainder, code) }
       for (const key of ["voucherNumber", "customerNumber", "customerInvoiceNumber"]) data[key] = row[key] == null ? null : integer(row[key])
       break
     }
@@ -79,13 +86,13 @@ export function normalize(kind: Kind, input: unknown, baseCurrency: string): Sou
       const from = integer(row.fromEntry), to = integer(row.toEntry)
       sourceId = `${from}:${to}`
       // These are full entry amounts, never allocations. Currency requires the entry join.
-      data = { fromEntry: from, toEntry: to, fromEntryDate: date(row.fromEntryDate), toEntryDate: date(row.toEntryDate) }
+      data = { fromEntry: from, toEntry: to, fromEntryDate: sourceDateTime(row.fromEntryDate), toEntryDate: sourceDateTime(row.toEntryDate) }
       for (const key of ["fromEntryAmount", "fromEntryAmountDKK", "toEntryAmount", "toEntryAmountDKK"]) data[key] = decimal(row[key])
       break
     }
     case "attachment":
       sourceId = integer(row.number)
-      data = { accountingYear: text(row.accountingYear), voucherNumber: integer(row.voucherNumber), pageCount: integer(row.pageCount) }
+      data = { accountingYear: text(row.accountingYear), voucherNumber: integer(row.voucherNumber), pageCount: row.pageCount == null ? null : integer(row.pageCount) }
       break
     case "year":
       sourceId = text(row.year)

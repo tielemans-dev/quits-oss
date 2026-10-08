@@ -15,7 +15,7 @@ describe("e-conomic read transport", () => {
 })
 
 import { safeUrl } from "../client"
-import { minor } from "../shapes"
+import { minor, sourceDateTime } from "../shapes"
 import { extract, planWriteback, preflight } from "../extraction"
 import { fixtureFetch, fixtureResponse, invoice } from "./fixtures"
 
@@ -125,5 +125,41 @@ describe("REST collection count controls", () => {
   it("refuses a missing next page when the supplied total proves records are missing", async () => {
     const transport = (async input => new URL(String(input)).pathname === "/customers" ? Response.json({ collection: [{ customerNumber: 7, name: "Synthetic" }], pagination: { results: 2 } }) : fixtureResponse(new URL(String(input)))) as typeof fetch
     await expect(extract(make(transport), "123")).rejects.toMatchObject({ code: "source_drift" })
+  })
+})
+
+describe("foreign-currency source rounding", () => {
+  it("keeps rounding in agreement base currency even for zero-exponent invoices", async () => {
+    const transport = (async input => new URL(String(input)).pathname === "/invoices/booked" ? Response.json({ collection: [{ ...invoice, currency: "JPY", roundingAmount: 0.25 }], pagination: {} }) : fixtureResponse(new URL(String(input)))) as typeof fetch
+    const result = await extract(make(transport), "123")
+    expect(result.manifest.records.find(row => row.kind === "invoice")?.data).toMatchObject({ currency: "JPY", grossAmount: "125", roundingAmountInBaseCurrency: "25" })
+  })
+})
+
+
+describe("documented nullable attachment metadata", () => {
+  it("accepts null pageCount without inventing a page count", async () => {
+    const transport = (async input => new URL(String(input)).pathname.endsWith("/AttachedDocuments") ? Response.json({ items: [{ number: 5, accountingYear: "2026", voucherNumber: 10, pageCount: null }] }) : fixtureResponse(new URL(String(input)))) as typeof fetch
+    const result = await extract(make(transport), "123")
+    expect(result.manifest.records.find(row => row.kind === "attachment")?.data.pageCount).toBeNull()
+    expect(result.manifest.records.find(row => row.kind === "entry")?.data.date).toBe("2026-10-01T00:00:00")
+  })
+})
+
+
+describe("documented cursor emptiness and source timestamps", () => {
+  it("accepts explicit null cursor items when independent counts are zero", async () => {
+    const transport = (async input => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith("/count")) return Response.json(0)
+      if (url.hostname === "apis.e-conomic.com") return Response.json({ items: null, cursor: null })
+      return fixtureResponse(url)
+    }) as typeof fetch
+    const result = await extract(make(transport), "123")
+    expect(result.manifest.records.filter(row => ["entry", "pair", "attachment"].includes(row.kind))).toEqual([])
+  })
+  it("preserves source date-times without inventing a timezone and refuses invalid dates", () => {
+    for (const valid of ["2026-10-01T00:00:00", "2026-10-01T12:34:56.1234567Z", "2026-10-01T00:00:00+02:00"]) expect(sourceDateTime(valid)).toBe(valid)
+    for (const invalid of ["2026-02-31T00:00:00", "2026-10-01T24:00:00", "2026-10-01T00:00:00+14:01", "2026-10-01"]) expect(() => sourceDateTime(invalid)).toThrow()
   })
 })

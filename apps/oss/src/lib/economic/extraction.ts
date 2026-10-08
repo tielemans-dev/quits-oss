@@ -33,7 +33,7 @@ export async function preflight(client: EconomicClient) {
 }
 function collection(input: unknown, surface: Surface) {
   const page = object(input)
-  const items = surface === "rest" ? page.collection : page.items
+  const items = surface === "rest" ? page.collection : page.items === null ? [] : page.items
   if (!Array.isArray(items) || items.length > 1000) throw new EconomicError("invalid_response", surface)
   const pagination = surface === "rest" ? object(page.pagination) : null
   const total = pagination?.results === undefined ? null : integer(pagination.results)

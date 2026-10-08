@@ -85,7 +85,12 @@ units and exponential notation. Money is handed off as integer minor-unit string
 in the saved source payload. Decimal spelling is preserved. Unknown additional provider
 fields remain in the hashed source object; required mapped fields are validated. This is
 strict validation of the mapped shape, not a claim that every optional API field is modeled.
-No floating-point amount conversion or settlement allocation occurs.
+Rounding is retained as `roundingAmountInBaseCurrency`, using the agreement base currency,
+including for foreign zero-exponent invoices. No floating-point amount conversion or
+settlement allocation occurs. BookedEntries date-times retain their exact source timestamp,
+including an absent timezone; REST business dates remain date-only. Nullable attachment
+page counts remain null. Explicit null cursor items mean an empty page, still subject to
+independent count and continuation checks; missing items are refused.
 
 `EconomicSourceEvidence` identities are organization/provider/account/kind/source ID. The
 composite foreign key also binds organization and account to the connection. Database checks
