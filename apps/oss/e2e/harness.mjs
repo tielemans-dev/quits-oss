@@ -24,6 +24,30 @@ export function assertNoEnvFiles(directories) {
   }
 }
 
+// The overall startup deadline is fixed and independent of the per-probe timeout: a probe is
+// capped by the time remaining, so slow probes can never extend the wait. The deadline equals
+// the original budget of 120 attempts sleeping 500ms between them.
+export const READY_DEADLINE_MS = 60_000
+// A first render on a busy host can take several seconds, so one probe may wait this long.
+export const READY_PROBE_TIMEOUT_MS = 5_000
+
+/** Polls `url` until it answers 2xx/3xx. Resolves quietly when `signal` aborts; rejects at the deadline. */
+export async function waitForReady(url, { deadlineMs = READY_DEADLINE_MS, probeTimeoutMs = READY_PROBE_TIMEOUT_MS, intervalMs = 500, signal } = {}) {
+  const started = performance.now()
+  const remaining = () => deadlineMs - (performance.now() - started)
+  while (remaining() > 0) {
+    if (signal?.aborted) return
+    const timeout = AbortSignal.timeout(Math.ceil(Math.min(probeTimeoutMs, remaining())))
+    try {
+      const response = await fetch(url, { redirect: 'manual', signal: signal ? AbortSignal.any([timeout, signal]) : timeout })
+      if (response.status >= 200 && response.status < 400) return
+    } catch { /* Not listening yet, or the probe timed out. */ }
+    const pause = Math.min(intervalMs, Math.max(remaining(), 0))
+    await new Promise(resolve => setTimeout(resolve, pause))
+  }
+  if (!signal?.aborted) throw new Error(`Timed out after ${deadlineMs}ms waiting for ${url}`)
+}
+
 /** Owns only the container and child processes it creates. Never uses DATABASE_URL from the caller. */
 export async function createHarness({ cwd, logDir }) {
   rmSync(logDir, { recursive: true, force: true })
@@ -84,18 +108,10 @@ export async function createHarness({ cwd, logDir }) {
     const stopped = launched.done.then(() => { throw new Error(`${command} server stopped`) })
     stopped.catch(() => {})
     servers.push(stopped)
-    let finished = false
-    const ready = async () => {
-      for (let attempt = 0; attempt < 120 && !finished; attempt++) {
-        try {
-          const response = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(1000) })
-          if (response.status >= 200 && response.status < 400) return
-        } catch { /* Not listening yet. */ }
-        await new Promise(resolve => setTimeout(resolve, 500))
-      }
-      throw new Error(`Timed out waiting for ${url}; see ${logDir}`)
-    }
-    try { await Promise.race([ready(), stopped]) } finally { finished = true }
+    const finished = new AbortController()
+    const ready = waitForReady(url, { signal: finished.signal })
+      .catch(error => { throw new Error(`${error.message}; see ${logDir}`) })
+    try { await Promise.race([ready, stopped]) } finally { finished.abort() }
   }
   try {
     execFileSync('docker', ['run', '--detach', '--rm', '--name', container,
