@@ -1,4 +1,5 @@
 import { enAgreementsMessages } from "./agreements"
+import { enPaymentDetailsMessages } from "./payment-details"
 import { enPaymentsMessages } from "./payments"
 import { enCreditNotesMessages } from "./credit-notes"
 import { enRemindersMessages } from "./reminders"
@@ -28,6 +29,7 @@ import { enUserMessages } from "./user"
 
 export const enCatalog = {
   ...enAgreementsMessages,
+  ...enPaymentDetailsMessages,
   ...enPaymentsMessages,
   ...enCreditNotesMessages,
   ...enRemindersMessages,
