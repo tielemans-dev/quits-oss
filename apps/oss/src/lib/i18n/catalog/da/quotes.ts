@@ -13,7 +13,7 @@ export const daQuotesMessages = {
   "quotes.number.draftHeading": "Tilbudskladde",
   "quotes.number.willBe": "Får nummer {number}, når det sendes. Nummeret er ikke reserveret: et andet tilbud kan blive sendt først.",
   "quotes.number.assignedOnSend": "Får sit nummer, når det sendes.",
-  "quotes.table.contact": "Kontakt",
+  "quotes.table.contact": "Kunde",
   "quotes.table.issueDate": "Udstedelsesdato",
   "quotes.table.expiryDate": "Udløbsdato",
   "quotes.table.total": "Total",
@@ -79,7 +79,7 @@ export const daQuotesMessages = {
     "Tilføj en gyldig kunde-e-mailadresse før afsendelse, eller del det offentlige tilbudslink manuelt.",
   "quotes.detail.email.fallback.invalidRecipient.descriptionNoLink":
     "Tilføj en gyldig kunde-e-mailadresse før du sender dette tilbud.",
-  "quotes.detail.email.fallback.invalidRecipient.fix": "Ret kontakt",
+  "quotes.detail.email.fallback.invalidRecipient.fix": "Ret kunde",
   "quotes.detail.email.fallback.providerMissing.title":
     "E-maillevering er ikke konfigureret",
   "quotes.detail.email.fallback.providerMissing.description":

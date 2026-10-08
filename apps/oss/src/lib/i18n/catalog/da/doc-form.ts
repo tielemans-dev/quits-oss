@@ -1,8 +1,8 @@
 export const daDocFormMessages = {
-  "docForm.contact": "Kontakt",
-  "docForm.loadingContacts": "Indlæser kontakter...",
-  "docForm.noContacts": "Ingen kontakter fundet. Opret en kontakt først.",
-  "docForm.selectContact": "Vælg en kontakt",
+  "docForm.contact": "Kunde",
+  "docForm.loadingContacts": "Indlæser kunder...",
+  "docForm.noContacts": "Ingen kunder fundet. Opret en kunde først.",
+  "docForm.selectContact": "Vælg en kunde",
   "docForm.selectDate": "Vælg en dato",
   "docForm.clear": "Ryd",
   "docForm.lineItems": "Linjer",
@@ -24,7 +24,7 @@ export const daDocFormMessages = {
   "docForm.action.saveChanges": "Gem ændringer",
   "docForm.action.saveDraft": "Gem som kladde",
   "docForm.action.saveSend": "Gem og send",
-  "docForm.validation.contactRequired": "Vælg venligst en kontakt",
+  "docForm.validation.contactRequired": "Vælg venligst en kunde",
   "docForm.validation.itemDescriptionRequired":
     "Alle linjer skal have en beskrivelse",
 } as const

@@ -18,7 +18,7 @@ export const daInvoicesMessages = {
   "invoices.table.number": "Nummer",
   "invoices.row.link": "Faktura {number}, {customer}",
   "invoices.row.linkDraft": "Fakturakladde, {customer}",
-  "invoices.table.contact": "Kontakt",
+  "invoices.table.contact": "Kunde",
   "invoices.table.issueDate": "Udstedelsesdato",
   "invoices.table.dueDate": "Forfaldsdato",
   "invoices.table.total": "Total",
@@ -59,7 +59,7 @@ export const daInvoicesMessages = {
   "invoices.new.ai.error.providerFailed":
     "AI-tjenesten kunne ikke nås. Prøv igen om lidt.",
   "invoices.new.ai.info.contactNotMatched":
-    "Kladde genereret. Kontakt \"{name}\" blev ikke matchet automatisk.",
+    "Kladde genereret. Kunde \"{name}\" blev ikke matchet automatisk.",
   "invoices.detail.editTitle": "Rediger faktura",
   "invoices.detail.companyLogoAlt": "Virksomhedslogo",
   "invoices.detail.warning.emailSkipped":
@@ -106,7 +106,7 @@ export const daInvoicesMessages = {
     "Tilføj en gyldig kunde-e-mailadresse før afsendelse, eller del betalingslinket manuelt.",
   "invoices.detail.email.fallback.invalidRecipient.descriptionNoLink":
     "Tilføj en gyldig kunde-e-mailadresse før du sender denne faktura.",
-  "invoices.detail.email.fallback.invalidRecipient.fix": "Ret kontakt",
+  "invoices.detail.email.fallback.invalidRecipient.fix": "Ret kunde",
   "invoices.detail.email.fallback.providerMissing.title":
     "E-maillevering er ikke konfigureret",
   "invoices.detail.email.fallback.providerMissing.description":

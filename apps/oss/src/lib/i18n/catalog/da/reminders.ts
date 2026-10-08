@@ -48,7 +48,7 @@ export const daRemindersMessages = {
   "reminders.panel.unconfirmed": "E-mailudbyderen bekræftede aldrig leveringen af påmindelsen. Kunden har måske modtaget den, måske ikke.",
   "reminders.panel.empty": "Ingen påmindelser endnu.",
   "reminders.panel.notEligible": "Påmindelser sendes kun for udstedte fakturaer med et udestående beløb.",
-  "reminders.panel.noEmail": "Tilføj en e-mailadresse til kontakten for at sende påmindelser.",
+  "reminders.panel.noEmail": "Tilføj en e-mailadresse til kunden for at sende påmindelser.",
   "reminders.panel.error.load": "Kunne ikke indlæse påmindelser.",
   "reminders.panel.error.action": "Påmindelseshandlingen mislykkedes.",
   "reminders.panel.column.when": "Hvornår",

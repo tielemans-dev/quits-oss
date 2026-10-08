@@ -23,7 +23,7 @@ describe("i18n translate", () => {
   })
 
   it("returns localized contacts labels", () => {
-    expect(translate("contacts.title", "en-US")).toBe("Contacts")
+    expect(translate("contacts.title", "en-US")).toBe("Customers")
     expect(translate("contacts.title", "da-DK")).toBe("Kunder")
   })
 
@@ -73,8 +73,8 @@ describe("i18n translate", () => {
   })
 
   it("returns localized shared document form labels", () => {
-    expect(translate("docForm.contact", "en-US")).toBe("Contact")
-    expect(translate("docForm.contact", "da-DK")).toBe("Kontakt")
+    expect(translate("docForm.contact", "en-US")).toBe("Customer")
+    expect(translate("docForm.contact", "da-DK")).toBe("Kunde")
   })
 
   it("returns localized invoice ai action labels", () => {

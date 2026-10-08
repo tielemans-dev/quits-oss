@@ -1,8 +1,8 @@
 export const enDocFormMessages = {
-  "docForm.contact": "Contact",
-  "docForm.loadingContacts": "Loading contacts...",
-  "docForm.noContacts": "No contacts found. Create one first.",
-  "docForm.selectContact": "Select a contact",
+  "docForm.contact": "Customer",
+  "docForm.loadingContacts": "Loading customers...",
+  "docForm.noContacts": "No customers found. Create one first.",
+  "docForm.selectContact": "Select a customer",
   "docForm.selectDate": "Select a date",
   "docForm.clear": "Clear",
   "docForm.lineItems": "Line Items",
@@ -24,7 +24,7 @@ export const enDocFormMessages = {
   "docForm.action.saveChanges": "Save Changes",
   "docForm.action.saveDraft": "Save as Draft",
   "docForm.action.saveSend": "Save & Send",
-  "docForm.validation.contactRequired": "Please select a contact",
+  "docForm.validation.contactRequired": "Please select a customer",
   "docForm.validation.itemDescriptionRequired":
     "All line items must have a description",
 } as const

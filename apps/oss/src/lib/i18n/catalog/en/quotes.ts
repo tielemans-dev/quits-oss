@@ -13,7 +13,7 @@ export const enQuotesMessages = {
   "quotes.number.draftHeading": "Draft quote",
   "quotes.number.willBe": "Numbered {number} when sent. The number is not reserved: another quote may be sent first.",
   "quotes.number.assignedOnSend": "Gets its number when sent.",
-  "quotes.table.contact": "Contact",
+  "quotes.table.contact": "Customer",
   "quotes.table.issueDate": "Issue Date",
   "quotes.table.expiryDate": "Expiry Date",
   "quotes.table.total": "Total",
@@ -77,7 +77,7 @@ export const enQuotesMessages = {
     "Add a valid customer email address before sending, or share the public quote link manually.",
   "quotes.detail.email.fallback.invalidRecipient.descriptionNoLink":
     "Add a valid customer email address before sending this quote.",
-  "quotes.detail.email.fallback.invalidRecipient.fix": "Fix contact",
+  "quotes.detail.email.fallback.invalidRecipient.fix": "Fix customer",
   "quotes.detail.email.fallback.providerMissing.title":
     "Email delivery is not configured",
   "quotes.detail.email.fallback.providerMissing.description":
