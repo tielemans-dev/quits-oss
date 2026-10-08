@@ -1,3 +1,5 @@
+import { TRPCError } from "@trpc/server"
+import { loadDocumentView } from "../../domain/documents/view"
 import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
 import { z } from "zod"
 import {
@@ -69,6 +71,12 @@ function serializeDocumentForUi<
 }
 
 export const quotesRouter = router({
+  view: authorizedProcedure("quote:read").input(z.object({ id: z.string().min(1) })).query(async ({ ctx, input }) => {
+    const result = await loadDocumentView(ctx.actor, "quote", input.id)
+    if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" })
+    return result
+  }),
+
   list: authorizedProcedure("quote:read")
     .input(
       z

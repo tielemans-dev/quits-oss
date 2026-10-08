@@ -74,8 +74,8 @@ export const documentViewLineVatSchema = z.strictObject({
 export const documentViewLineSchema = z.strictObject({
   /**
    * Unique within the document. The key the client gave the line when it has one, otherwise the
-   * stored id (or its position). Stored ids are replaced on every save today, so a key that stays
-   * the same across autosaves needs a persisted client key, which comes with the server view (PR 2).
+   * stored id (or its position). Stored ids can be replaced on save; the
+   * server persists the client key so the line keeps its identity across autosaves.
    */
   key: z.string().min(1),
   /** Internal; the public view drops it. */
