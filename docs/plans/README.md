@@ -9,3 +9,4 @@
 7. Browser smoke coverage - add Playwright coverage for setup, auth, public quote, invoice payment, and document sending
 8. Structured observability - add JSONL logging for payment, onboarding, email, and public document flows
 9. `2026-10-06-invoicing-lifecycle-and-agent-api-design.md` - domain command core, credit notes, payments, reminders, recurring invoices, e-invoice and accounting exports, audit log, and the MCP agent API
+10. `2026-10-08-canonical-payment-schedule-design.md` - proposed: one versioned owner per payment schedule, advances, collection installments and recurring instructions (issue #25); contract prototype in `apps/oss/src/domain/payment-plans/`
