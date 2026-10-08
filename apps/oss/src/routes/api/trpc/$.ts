@@ -3,9 +3,10 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { LEGACY_ORGANIZATION_HEADER, ORGANIZATION_HEADER } from "../../../lib/organization-request"
 
 async function handleTrpcRequest(request: Request) {
-  const [{ appRouter }, { auth }] = await Promise.all([
+  const [{ appRouter }, { auth }, { createRequestContext }] = await Promise.all([
     import("../../../trpc/router"),
     import("../../../lib/auth"),
+    import("../../../trpc/init"),
   ])
 
   return fetchRequestHandler({
@@ -18,7 +19,7 @@ async function handleTrpcRequest(request: Request) {
       })
       // The client's intended organization, checked against the session in orgProcedure.
       const requestedOrganizationId = (request.headers.get(ORGANIZATION_HEADER) ?? request.headers.get(LEGACY_ORGANIZATION_HEADER))?.trim() || null
-      return { session, requestedOrganizationId }
+      return createRequestContext(session, requestedOrganizationId)
     },
   })
 }

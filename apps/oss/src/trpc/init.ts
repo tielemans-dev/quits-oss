@@ -3,7 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server"
 import superjson from "superjson"
 import { DomainRefusal } from "./outcome"
 import { auth } from "../lib/auth"
-import { actorCan } from "../domain/actor"
+import { actorCan, type UserActor } from "../domain/actor"
 import type { Permission } from "../domain/permissions"
 import { resolveUserActor } from "../domain/user-actor"
 import { isCloudDistribution } from "../lib/distribution"
@@ -21,9 +21,15 @@ export type Context = {
    * it sent one. Only compared with the session's active organization; never used to authorize.
    */
   requestedOrganizationId?: string | null
+  /** Shared only by queries within this HTTP request; never reused across requests or mutations. */
+  queryActors?: Map<string, Promise<UserActor | null>>
 }
 
 export { ORGANIZATION_CHANGED_MESSAGE }
+
+export function createRequestContext(session: Context["session"], requestedOrganizationId: string | null): Context {
+  return { session, requestedOrganizationId, queryActors: new Map() }
+}
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -90,7 +96,7 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   })
 })
 
-export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+export const orgProcedure = protectedProcedure.use(async ({ ctx, next, type }) => {
   if (!ctx.organizationId) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -101,12 +107,24 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   // A request started while another organization was active must not be applied to this one.
   assertRequestedOrganization(ctx.requestedOrganizationId, ctx.organizationId)
 
-  const actor = await resolveUserActor({
-    organizationId: ctx.organizationId,
+  const organizationId = ctx.organizationId
+  const loadActor = () => resolveUserActor({
+    organizationId,
     userId: ctx.user.id,
     userName: ctx.user.name,
     userEmail: ctx.user.email,
   })
+  // A read batch has one authenticated session, but each procedure used to fetch the same
+  // membership independently. Store the pending promise so concurrent procedures share it.
+  // Mutations still check membership for each operation; no authorization survives a request.
+  const key = JSON.stringify([ctx.organizationId, ctx.user.id])
+  const cache = type === "query" ? ctx.queryActors : undefined
+  let pendingActor = cache?.get(key)
+  if (!pendingActor) {
+    pendingActor = loadActor()
+    cache?.set(key, pendingActor)
+  }
+  const actor = await pendingActor
   if (!actor) {
     throw new TRPCError({
       code: "FORBIDDEN",
