@@ -142,7 +142,7 @@ describe("PublicQuotePage", () => {
       expect(html).toContain("2\u00a0×\u00a0625,00 kr.")
       expect(html).toContain("1. mar. 2026")
       expect(html).toContain("15. mar. 2026")
-      expect(html).toContain('lang="da"')
+      expect(html).toContain('lang="da-DK"')
       expect(html).not.toContain("Accept quote")
       expect(html).not.toContain("$")
     })

@@ -75,7 +75,7 @@ describe("PublicInvoicePaymentPage", () => {
     expect(html).toContain("$1,250.00")
     expect(html).toContain("Mar 1, 2026")
     expect(html).toContain("Mar 15, 2026")
-    expect(html).toContain('lang="en"')
+    expect(html).toContain('lang="en-US"')
   })
 
   it("shows the balance due after a partial payment", () => {
@@ -203,7 +203,7 @@ describe("PublicInvoicePaymentPage", () => {
       expect(html).toContain("2\u00a0×\u00a0625,00 kr.")
       expect(html).toContain("1. mar. 2026")
       expect(html).toContain("15. mar. 2026")
-      expect(html).toContain('lang="da"')
+      expect(html).toContain('lang="da-DK"')
       expect(html).not.toContain("Pay now")
       expect(html).not.toContain("Invoice from")
       expect(html).not.toContain("$")

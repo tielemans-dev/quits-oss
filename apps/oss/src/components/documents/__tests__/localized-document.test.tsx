@@ -81,7 +81,7 @@ describe("LocalizedDocument", () => {
       </I18nProvider>
     )
 
-    expect(container.querySelector("[lang]")?.getAttribute("lang")).toBe("da")
+    expect(container.querySelector("[lang]")?.getAttribute("lang")).toBe("da-DK")
     expect(document.documentElement.lang).toBe("en")
   })
 

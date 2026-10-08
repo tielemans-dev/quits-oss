@@ -62,7 +62,7 @@ test("presents the invoice in Danish, with kroner and the seller's logo, when th
   await expect(page.getByText(/^1\.250,00\s*kr\.$/).first()).toBeVisible()
   await expect(page.getByText("9. mar. 2026")).toBeVisible()
   await expect(page.getByText("23. mar. 2026")).toBeVisible()
-  await expect(page.locator("[lang=da]").first()).toBeVisible()
+  await expect(page.locator("[lang=da-DK]").first()).toBeVisible()
 
   // The seller's logo and name head the page; the product's name appears nowhere.
   await expect(page.locator("header img")).toHaveAttribute("src", tinyLogoDataUrl)
