@@ -3,7 +3,7 @@ import { prisma } from "../../db"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import { EconomicConnector } from "../service"
 import { canonical } from "../shapes"
-import { sha256 } from "../client"
+import { parseExactJson, sha256 } from "../client"
 import { fixtureFetch, fixtureResponse } from "./fixtures"
 
 const credentials = { appSecret: "synthetic-app-secret", grantToken: "synthetic-grant-secret" }
@@ -126,6 +126,8 @@ async function setup(transport = fixtureFetch) {
     await expect(prisma.economicSourceEvidence.update({ where: { id: row.id }, data: { artifactBytes: new Uint8Array([1]) } })).rejects.toThrow()
     await connector.disconnect(actor, connected.generation)
     expect(await connector.readArtifact(actor, row.id)).toMatchObject({ artifactHash: row.artifactHash })
+    await expect(prisma.economicConnection.update({ where: { id: connected.connectionId }, data: { accountVerified: false } })).rejects.toThrow()
+    await expect(prisma.economicConnection.update({ where: { id: connected.connectionId }, data: { accountId: "456" } })).rejects.toThrow()
   })
   it("rolls back changed source revisions without replacing originals", async () => {
     let changed = false
@@ -163,5 +165,119 @@ async function setup(transport = fixtureFetch) {
     expect(outcomes.filter(r => r.status === "fulfilled")).toHaveLength(1)
     expect(await connector.readReport(actor, abandoned.id)).toMatchObject({ state: "interrupted" })
   })
+
+  it.each([false, true])("corrects an unverified first agreement after disconnect=%s and stops after self", async disconnectFirst => {
+    const calls = vi.fn(fixtureFetch)
+    const { actor, connector } = await setup(calls)
+    await expect(connector.connect(actor, "456", credentials, null)).rejects.toMatchObject({ code: "account_mismatch" })
+    expect.soft(calls.mock.calls.map(([url]) => new URL(String(url)).pathname)).toEqual(["/self"])
+    if (disconnectFirst) await connector.disconnect(actor, 1)
+    const corrected = await connector.connect(actor, "123", credentials, disconnectFirst ? 2 : 1)
+    expect(corrected).toMatchObject({ accountId: "123", readable: true, generation: disconnectFirst ? 3 : 2 })
+    expect(await connector.readState(actor)).toMatchObject({ accountVerified: true })
+    await connector.disconnect(actor, corrected.generation)
+    await expect(connector.connect(actor, "456", credentials, corrected.generation + 1)).rejects.toMatchObject({ code: "account_mismatch" })
+  })
+  it("keeps a verified binding when later role probes or reconnect fail", async () => {
+    let mode: "roles" | "ok" | "wrong" = "roles"
+    const transport = (async input => {
+      const url = new URL(String(input))
+      if (mode === "wrong" && url.pathname === "/self") return Response.json({ agreementNumber: 456, settings: { baseCurrency: "DKK" } })
+      if (mode === "roles" && url.pathname !== "/self") return new Response(null, { status: 403 })
+      return fixtureResponse(url)
+    }) as typeof fetch
+    const { actor, connector } = await setup(transport)
+    expect(await connector.connect(actor, "123", credentials, null)).toMatchObject({ readable: false })
+    await expect(connector.connect(actor, "456", credentials, 1)).rejects.toMatchObject({ code: "account_mismatch" })
+    mode = "wrong"
+    await expect(connector.connect(actor, "123", credentials, 1)).rejects.toMatchObject({ code: "account_mismatch" })
+    await expect(connector.connect(actor, "456", credentials, 2)).rejects.toMatchObject({ code: "account_mismatch" })
+    mode = "ok"
+    expect(await connector.connect(actor, "123", credentials, 2)).toMatchObject({ readable: true })
+  })
+  it("preserves exact typed source JSON and verifiable hashes through PostgreSQL", async () => {
+    let changed = false
+    const source = () => `{"customerNumber":7,"name":"Synthetic","balance":90071992547409.93,"extension":${changed ? '{"lexeme":"1.00"}' : '1.00'},"nested":[null,true,"1.00",{"lexeme":"1.00"},-0,1e3]}`
+    const transport = (async input => new URL(String(input)).pathname === "/customers" ? new Response(`{"collection":[${source()}],"pagination":{"results":1}}`, { headers: { "content-type": "application/json" } }) : fixtureResponse(new URL(String(input)))) as typeof fetch
+    const { actor, connector, organizationId } = await setup(transport)
+    const connected = await connector.connect(actor, "123", credentials, null)
+    const operation = await connector.dryRun(actor, connected.generation, "typed-original")
+    const row = await prisma.economicSourceEvidence.findFirstOrThrow({ where: { organizationId, kind: "customer" } })
+    const saved = row.data as { source: unknown; normalized: { balanceBase: string } }
+    expect.soft(typeof saved.source).toBe("string")
+    if (typeof saved.source === "string") {
+      expect(parseExactJson(saved.source)).toEqual(parseExactJson(source()))
+      expect(row.sourceHash).toBe(sha256(saved.source))
+    }
+    expect(saved.normalized.balanceBase).toBe("9007199254740993")
+    const report = await connector.readReport(actor, operation.id)
+    expect(report?.manifestHash).toBe(sha256(canonical(report?.manifest)))
+    changed = true
+    const next = await connector.connect(actor, "123", credentials, connected.generation)
+    const outcome = await connector.dryRun(actor, next.generation, "typed-change")
+    expect.soft(outcome.state).toBe("failed")
+    expect.soft(await connector.readReport(actor, outcome.id)).toMatchObject({ failureCode: "source_drift" })
+    expect(await prisma.economicSourceEvidence.findUnique({ where: { id: row.id } })).toEqual(row)
+  })
+  it("expires a queued PostgreSQL fence, disconnects, and never retries the old grant", async () => {
+    const deferred = () => { let resolve!: () => void; const promise = new Promise<void>(r => { resolve = r }); return { promise, resolve } }
+    const firstStarted = deferred(), firstRelease = deferred(), holderReady = deferred(), holderRelease = deferred(), slowStarted = deferred(), slowRelease = deferred()
+    let active = false, attempts = 0, slowSignal: AbortSignal | null | undefined
+    const events: Array<{ name: string; ms: number; attempts: number }> = []
+    let began = 0
+    const event = (name: string) => events.push({ name, ms: Date.now() - began, attempts })
+    const transport = (async (input, init) => {
+      if (active) {
+        attempts++
+        if (attempts === 1) { firstStarted.resolve(); await firstRelease.promise }
+        if (attempts === 2) {
+          event("slow_attempt_admitted"); slowSignal = init?.signal; slowStarted.resolve()
+          // Deliberately ignores abort, so the actual Prisma timeout must release the row lock.
+          await slowRelease.promise
+          event("late_429_after_disconnect")
+          return new Response(null, { status: 429, headers: { "retry-after": "0" } })
+        }
+      }
+      return fixtureResponse(new URL(String(input)))
+    }) as typeof fetch
+    const { actor, connector, organizationId } = await setup(transport)
+    const connected = await connector.connect(actor, "123", credentials, null)
+    active = true; began = Date.now()
+    const waitForLock = async () => {
+      for (let i = 0; i < 500; i++) {
+        const rows = await prisma.$queryRaw<Array<{ count: bigint }>>`SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%SELECT id FROM organization%'`
+        if (Number(rows[0]?.count)) return
+        await new Promise(resolve => setTimeout(resolve, 5))
+      }
+      throw new Error("Expected a PostgreSQL row-lock waiter")
+    }
+    const running = connector.dryRun(actor, connected.generation, "expired-fence")
+    await firstStarted.promise
+    const holder = prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM organization WHERE id = ${organizationId} FOR UPDATE`
+      holderReady.resolve(); await holderRelease.promise
+    }, { timeout: 30_000 })
+    try {
+      await waitForLock(); firstRelease.resolve(); await holderReady.promise
+      await waitForLock(); event("read_queued_on_holder")
+      await new Promise(resolve => setTimeout(resolve, 12_000))
+      holderRelease.resolve(); await holder; await slowStarted.promise
+      const disconnect = connector.disconnect(actor, connected.generation)
+      await waitForLock(); event("disconnect_queued")
+      await disconnect; event("disconnect_committed_after_transaction_expiry")
+      const atDisconnect = attempts
+      expect.soft(slowSignal?.aborted).toBe(true)
+      slowRelease.resolve()
+      expect((await running).state).toBe("interrupted")
+      expect(atDisconnect).toBe(2)
+      expect(attempts).toBe(atDisconnect)
+      expect(await prisma.economicSourceEvidence.count({ where: { organizationId } })).toBe(0)
+      expect(await connector.readState(actor)).toMatchObject({ state: "disconnected", generation: connected.generation + 1 })
+    } finally {
+      firstRelease.resolve(); holderRelease.resolve(); slowRelease.resolve()
+      await Promise.allSettled([holder, running])
+      console.log(JSON.stringify({ regression: "queued-fence-expiry", events }))
+    }
+  }, 30_000)
 
 })

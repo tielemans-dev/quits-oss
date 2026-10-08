@@ -8,8 +8,10 @@ export async function account(client: EconomicClient) {
   const self = object(await client.json("rest", "self"))
   return { accountId: integer(self.agreementNumber), baseCurrency: currency(object(self.settings).baseCurrency) }
 }
-export async function preflight(client: EconomicClient) {
+export async function preflight(client: EconomicClient, expectedAccount: string, onVerified: () => Promise<void> = async () => {}) {
   const identity = await account(client)
+  if (identity.accountId !== expectedAccount) throw new EconomicError("account_mismatch")
+  await onVerified()
   const probes: Probe[] = []
   for (const [area, surface, path, count] of [
     ["sales", "rest", "customers?pagesize=1", false],
@@ -105,6 +107,6 @@ export async function extract(client: EconomicClient, expectedAccount: string) {
   }
   const after = await account(client)
   if (canonical(before) !== canonical(after)) throw new EconomicError("source_drift")
-  const manifest = { contract: "quits.economic.read-staging/1", provider: "economic", accountId: before.accountId, baseCurrency: before.baseCurrency, apiVersions: API_VERSIONS, origin: "historical_import", intent: "dry_run_only", writeback: false, snapshotGuarantee: "two_equal_reads_not_atomic", unresolvedChecks: ["source_freeze_confirmation", "rest_independent_counts", "unpaid_total_semantics", "ledger_document_reconciliation", "qualified_mapping"], reconciliation: "not_performed", extractedAt: new Date().toISOString(), records, artifacts: artifacts.map(({ content: _content, ...metadata }) => metadata), reads: client.evidence }
+  const manifest = { contract: "quits.economic.read-staging/2", sourceEncoding: "canonical-json-text", provider: "economic", accountId: before.accountId, baseCurrency: before.baseCurrency, apiVersions: API_VERSIONS, origin: "historical_import", intent: "dry_run_only", writeback: false, snapshotGuarantee: "two_equal_reads_not_atomic", unresolvedChecks: ["source_freeze_confirmation", "rest_independent_counts", "unpaid_total_semantics", "ledger_document_reconciliation", "qualified_mapping"], reconciliation: "not_performed", extractedAt: new Date().toISOString(), records, artifacts: artifacts.map(({ content: _content, ...metadata }) => metadata), reads: client.evidence }
   return { manifest, artifacts, hash: sha256(canonical(manifest)) }
 }

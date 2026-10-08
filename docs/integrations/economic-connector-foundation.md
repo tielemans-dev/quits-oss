@@ -21,14 +21,18 @@ No body-supplied actor, user ID or organization ID is an authentication mechanis
   membership, confirms `/self` agrees with the explicit account, then probes sales and
   bookkeeping reads separately. Pass null for the first generation. Reconnect uses the
   current generation and invalidates old pending work. One agreement per organization is
-  supported. Changing agreements and combining two grants are unsupported.
+  supported. Before `/self` verifies the account, `accountVerified` is false and the admin
+  may correct the expected agreement using the current generation, with or without disconnect.
+  A mismatch stops before all other probes. Successful `/self` verification permanently binds
+  the account, even if later role probes fail. SQL also prevents clearing verification or
+  changing a verified agreement. Combining two grants is unsupported.
 - `dryRun(actor, generation, requestKey)` returns a durable operation ID and state. Repeating
   the same key/generation returns the saved operation, including pending or failed outcomes.
   It never automatically resumes an abandoned worker. Reconnect explicitly interrupts it;
   a new generation performs a full extraction. Different concurrent keys are refused.
 - `disconnect(actor, generation)` fences further access and drops encrypted credentials.
-  An admitted read finishes first, bounded to ten seconds including its retries. Disconnect
-  does not recall a request already sent. After it commits, old requests cannot start and
+  An admitted attempt finishes or loses its fence first. Backoff holds no row lock and every
+  retry checks the generation again. Disconnect does not recall a request already sent. After it commits, old requests cannot start and
   old extraction results cannot commit. Saved evidence and issued documents remain intact.
 - `readState`, `readReport` and `readArtifact` are available to current admins and accountants,
   scoped by organization. Members and agents have no connector access. These functions have
@@ -44,8 +48,13 @@ Production operators must configure the existing encryption secret before wiring
 Each HTTP admission checks the live connection generation and membership under the same
 organization row lock used by reconnect/disconnect. This intentionally serializes connector
 requests and can briefly contend with other organization updates. The transaction timeout
-is fifteen seconds and each admitted HTTP request is limited to ten seconds. A whole
-extraction has a sixty-second transport budget. Large accounts can fail the bounds; there is
+is fifteen seconds. A separate fourteen-second fence deadline starts before pool and row-lock
+wait, aborts the HTTP signal and rejects late callback results. Each attempt checks that deadline
+immediately before transport and after awaits. This matters because Prisma timeout releases locks
+without cancelling its JavaScript callback. Each retry obtains a new fence; an expired callback
+cannot send a retry with the old grant. Each HTTP read has a ten-second budget from its first
+admitted attempt, including backoff and later admission waits. A whole extraction has a
+sixty-second transport budget. Large accounts can fail the bounds; there is
 no claim of arbitrary account size or resumable source pagination.
 
 ## Data, versions and restrictions
@@ -54,7 +63,7 @@ The runtime pins REST as unversioned, BookedEntries 6.0.0 and Documents 4.0.1. S
 [economic-connector-sources.json](economic-connector-sources.json) and the unchanged accepted
 [API snapshot](../migration/economic/api-snapshot.json) and
 [extraction matrix](../migration/economic/extraction-matrix.json).
-The existing discovery normalizer and its 126 tests are unchanged. The #77 checker remains
+The discovery normalizer and its expanded 186 tests are inherited unchanged from the pinned parent. The #77 checker remains
 pinned to `6d9c9fcbd678bf4800ad5c21bea791779acdbab2`; this runtime does not rewrite that evidence
 or pretend its deliberately synthetic contract accepts real provider extracts.
 
@@ -75,15 +84,21 @@ PDF links must identify the exact staged invoice. Redirects are never followed. 
 always GET, including on the public demo. There are no provider mutation methods to enable.
 At most 500 attempts, 100 pages per collection, 32 MB total, 2 MB per JSON response and 9 MB
 per PDF are allowed. HTTP 429 and 500 get at most three attempts, with at most two seconds
-per retry delay. Long Retry-After values stop the operation instead of retrying early.
+per retry delay. Both delta-seconds and HTTP-date Retry-After values are honored. A requested
+wait above the cap or remaining deadline stops the operation instead of retrying early.
 Numeric call cost is recorded, not used to invent a provider rate entitlement.
 
 JSON numeric tokens retain their decimal lexeme and remain distinct from JSON strings.
 Required amounts reject numeric strings, unsupported currency precision, fractional minor
 units and exponential notation. Money is handed off as integer minor-unit strings using
-`@quits/shared/currency`. Raw source numbers are represented as `{ "lexeme": "125.00" }`
-in the saved source payload. Decimal spelling is preserved. Unknown additional provider
-fields remain in the hashed source object; required mapped fields are validated. This is
+`@quits/shared/currency`. Manifest contract `quits.economic.read-staging/2` records
+`sourceEncoding: "canonical-json-text"`. Each record's `source` is the complete JSON text,
+with sorted object keys and original numeric lexemes, such as `125.00`. Its `sourceHash` hashes
+that exact string. Storing source JSON as text prevents JSONB from changing decimal spelling
+or conflating a number with an ordinary provider object. `parseExactJson(source)` recovers
+its JSON types and exact numbers. Ordinary strings, arrays and objects cannot impersonate
+numeric tokens. Unknown additional provider fields remain in that text; required mapped
+fields are validated. This is
 strict validation of the mapped shape, not a claim that every optional API field is modeled.
 Rounding is retained as `roundingAmountInBaseCurrency`, using the agreement base currency,
 including for foreign zero-exponent invoices. No floating-point amount conversion or
@@ -101,7 +116,7 @@ reused. There is no revision-approval or deletion API; explicit reviewed revisio
 future work. These records are structurally separate from invoice and accounting-export
 queries, so neither reconnect nor retry can turn history into new exportable revenue.
 
-The report retains raw source objects, normalized source fields, API versions, canonical
+The report retains canonical source JSON text, normalized source fields, API versions, canonical
 source hashes, page-body hashes, byte counts, extraction time, document identity and PDF
 fetch state. It is bound to a hash of the saved manifest including local evidence IDs.
 Source metadata and all artifact bytes commit atomically with the operation outcome.
@@ -131,7 +146,8 @@ are required by this patch. Suggested state/action requirements are exact about 
 | State | Required information and allowed action |
 | --- | --- |
 | Not connected | Show one-account and one-grant limits, documented plan names, and “Quits will only read; e-conomic cannot restrict this connection to reading.” Ask the admin to confirm the agreement number before submitting credentials. |
-| Connecting | Show read-only preflight pending. No import, post or synchronization action. |
+| Connecting | Show read-only preflight pending and whether the account is verified. No import, post or synchronization action. |
+| Unverified account mismatch | Show the attempted agreement and allow the admin to correct it using the current generation. No resource probes have run. Once verified, the agreement cannot be changed. |
 | Missing role/no access | Show sales versus bookkeeping probe failures; do not infer plan entitlement from HTTP status. Ask for an appropriate grant or use the still-unimplemented export fallback. Sales-only and Bookkeeping-only grants cannot provide a complete connection individually. |
 | Connected/empty | Show confirmed agreement, base currency and each probe outcome. Zero on one endpoint does not mean every source collection is empty. PDF-role access is not verified by connection alone. Offer read-only extraction. |
 | Pending extraction | Show durable operation identity. Retry/poll the same key to observe state. A second extraction key is refused while this one is pending. After a crashed worker, offer explicit reconnect/new full extraction, not “resume”. |
@@ -150,8 +166,9 @@ The following stay open independently of this foundation:
 
 1. Qualified identifiers, currency/precision, VAT code, numbering, sale/credit relationship,
    fee, settlement and original-document mapping. No posting endpoint has been chosen.
-2. Integration with the eventual merged #72 settlement API and #32 provenance. This branch
-   contains neither parent's money commits nor an approximation of funding/allocation semantics.
+2. Connector integration with the merged #72 settlement API and eventual #32 provenance.
+   Main's settlement receipts are preserved, but this connector does not map source entries
+   into those receipts or approximate funding/allocation semantics.
 3. Exactly-once sale/credit/accounting results, uncertain provider write outcomes, durable
    writeback retries, read-back verification, originals archive export and transfer completeness.
 4. Authenticated route integration, Kvit screens, accounting exception workflow, independent
@@ -166,6 +183,11 @@ The following stay open independently of this foundation:
 
 The accepted Danish decision was read from the sibling discovery checkout only. No sibling
 code was imported. Frozen invoice PDF/UBL references, tax/currency semantics, payment snapshots
-and nullable draft numbering remain unchanged. The pinned parent includes main #75, #79 and
-Kvit #81. Parent review, fresh independent review and later current-main integration remain
+and nullable draft numbering remain unchanged. The sole pinned parent is #70 at
+`8378ce4b2c95f52a3632506ad94429683784e2fe`, based on main
+`24911db4c37a0a40db9edc20a983b0450542ae1d`, including dashboard #102.
+The unmerged connector migration is provisionally `20261014080000_economic_connection`.
+At the actual merge turn, recompute its timestamp to the next free position after then-current
+main and queued predecessors, regenerate Prisma, and repeat fresh and main-schema upgrades.
+Never rename an existing main migration. Parent review, fresh independent review and later current-main integration remain
 required before publication or merge. Only the parent publishes a draft or updates issues.

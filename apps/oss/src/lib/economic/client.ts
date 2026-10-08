@@ -53,6 +53,14 @@ export function safeUrl(surface: Surface, link: string): URL {
   return url
 }
 
+export type ReadLease = { signal: AbortSignal; assertActive: () => void }
+function retryDelay(header: string | null, attempt: number): number {
+  if (header && /^\d+$/.test(header)) return Number(header) * 1000
+  // HTTP permits both delta-seconds and an HTTP-date. Unknown values use bounded backoff.
+  const date = header ? Date.parse(header) : NaN
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : 250 * 2 ** attempt
+}
+
 export type ReadEvidence = { surface: Surface; path: string; sha256: string; bytes: number; callCost: number | null }
 export class EconomicClient {
   readonly evidence: ReadEvidence[] = []
@@ -61,8 +69,8 @@ export class EconomicClient {
   private readonly deadline: number
   constructor(private readonly credentials: Credentials, private readonly runtime: {
     fetch?: typeof fetch
-    /** Run the HTTP request while holding a durable connection-generation fence. */
-    fence?: <T>(read: () => Promise<T>) => Promise<T>
+    /** Admit one attempt, including its body read. Every retry needs a fresh generation check. */
+    fence?: <T>(read: (lease?: ReadLease) => Promise<T>) => Promise<T>
     timeoutMs?: number
     maxBytes?: number
     maxCalls?: number
@@ -70,26 +78,30 @@ export class EconomicClient {
 
   private async read(surface: Surface, link: string, pdf: boolean) {
     const url = safeUrl(surface, link)
-    const run = async () => {
-      const requestDeadline = Math.min(this.deadline, Date.now() + 10_000)
-      for (let attempt = 0; attempt < 3; attempt++) {
+    let requestDeadline: number | undefined
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const run = async (lease?: ReadLease): Promise<{ body: Buffer } | { delay: number }> => {
+        requestDeadline ??= Math.min(this.deadline, Date.now() + 10_000)
         const remaining = requestDeadline - Date.now()
         if (remaining <= 0 || ++this.calls > Math.min(this.runtime.maxCalls ?? 500, 500)) throw new EconomicError("limit_exceeded", surface)
         const controller = new AbortController()
         const timer = setTimeout(() => controller.abort(), Math.min(remaining, 10_000))
+        const signal = lease ? AbortSignal.any([controller.signal, lease.signal]) : controller.signal
+        const check = () => { lease?.assertActive(); signal.throwIfAborted() }
         try {
+          check()
           const response = await (this.runtime.fetch ?? fetch)(url, {
-            method: "GET", redirect: "manual", signal: controller.signal,
+            method: "GET", redirect: "manual", signal,
             headers: { "X-AppSecretToken": this.credentials.appSecret, "X-AgreementGrantToken": this.credentials.grantToken, Accept: pdf ? "application/pdf" : "application/json" },
           })
+          check()
           if (response.status === 429 || response.status === 500) {
             await response.body?.cancel()
             if (attempt === 2) throw new EconomicError("provider_unavailable", surface)
-            const retry = response.headers.get("retry-after")
-            const delay = retry && /^\d+$/.test(retry) ? +retry * 1000 : 250 * 2 ** attempt
+            const delay = retryDelay(response.headers.get("retry-after"), attempt)
             if (delay > 2000 || Date.now() + delay >= requestDeadline) throw new EconomicError("limit_exceeded", surface)
-            await new Promise(resolve => setTimeout(resolve, delay))
-            continue
+            check()
+            return { delay }
           }
           if (response.status !== 200) {
             await response.body?.cancel()
@@ -108,6 +120,7 @@ export class EconomicClient {
           try {
             while (true) {
               const result = await reader.read()
+              check()
               if (result.done) break
               size += result.value.byteLength
               this.bytes += result.value.byteLength
@@ -115,20 +128,25 @@ export class EconomicClient {
               chunks.push(result.value)
             }
           } finally { await reader.cancel().catch(() => {}); reader.releaseLock() }
+          check()
           const body = Buffer.concat(chunks)
           if (pdf && body.subarray(0, 5).toString() !== "%PDF-") throw new EconomicError("invalid_response", surface)
           const cost = response.headers.get("x-callcost")
           this.evidence.push({ surface, path: url.pathname, sha256: sha256(body), bytes: size, callCost: cost && /^\d{1,8}$/.test(cost) ? +cost : null })
-          return body
+          return { body }
         } catch (error) {
+          lease?.assertActive()
           if (error instanceof EconomicError) throw error
           // Never propagate fetch errors, request objects, provider bodies or credentials.
           throw new EconomicError("provider_unavailable", surface)
         } finally { clearTimeout(timer) }
       }
-      throw new EconomicError("provider_unavailable", surface)
+      const result = this.runtime.fence ? await this.runtime.fence(run) : await run()
+      if ("body" in result) return result.body
+      // Backoff holds no database lock. Disconnect can finish before the next admission.
+      await new Promise(resolve => setTimeout(resolve, result.delay))
     }
-    return this.runtime.fence ? this.runtime.fence(run) : run()
+    throw new EconomicError("provider_unavailable", surface)
   }
   async json(surface: Surface, link: string) { return parseExactJson((await this.read(surface, link, false)).toString("utf8")) }
   async pdf(surface: Surface, link: string) { return this.read(surface, link, true) }

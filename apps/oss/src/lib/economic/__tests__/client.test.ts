@@ -45,7 +45,7 @@ describe("transport and extraction refusal boundaries", () => {
     for (const [amount, code] of [["12.001","DKK"],["12.00","XXX"],["12.00","KWD"]]) expect(() => minor(parseExactJson(amount!), code!)).toThrow()
   })
   it("reports missing bookkeeping access independently of sales", async () => {
-    const result = await preflight(make((async input => String(input).includes("/count") ? new Response(null, { status: 403 }) : fixtureResponse(new URL(String(input)))) as typeof fetch))
+    const result = await preflight(make((async input => String(input).includes("/count") ? new Response(null, { status: 403 }) : fixtureResponse(new URL(String(input)))) as typeof fetch), "123")
     expect(result.readable).toBe(false)
     expect(result.probes.filter(p => p.state === "missing_role").map(p => p.area)).toEqual(["bookkeeping", "bookkeeping"])
   })

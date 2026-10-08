@@ -47,9 +47,10 @@ export function minor(value: unknown, code: string): string {
   return (amount.startsWith("-") ? -abs : abs).toString()
 }
 export type Kind = "customer" | "invoice" | "entry" | "pair" | "attachment" | "year"
-export type SourceRecord = { kind: Kind; sourceId: string; sourceHash: string; source: Record<string, unknown>; data: Record<string, unknown> }
+export type SourceRecord = { kind: Kind; sourceId: string; sourceHash: string; source: string; data: Record<string, unknown> }
 /** Stable hashes compare source records without relying on property order. */
 export function canonical(value: unknown): string {
+  if (value instanceof ExactNumber) return value.lexeme
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`
   if (value && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k,v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`
   return JSON.stringify(value)
@@ -101,5 +102,7 @@ export function normalize(kind: Kind, input: unknown, baseCurrency: string): Sou
       break
   }
   if (!sourceId) throw new EconomicError("invalid_response")
-  return { kind, sourceId, sourceHash: sha256(canonical(row)), source: row, data }
+  // Keep the complete canonical JSON as text: JSONB must not coerce exact numbers or erase types.
+  const source = canonical(row)
+  return { kind, sourceId, sourceHash: sha256(source), source, data }
 }

@@ -1,11 +1,12 @@
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client"
 import type { UserActor } from "../../domain/actor"
 import { decryptSecret, encryptSecret } from "../secrets"
-import { API_VERSIONS, EconomicClient, EconomicError, sha256, type Credentials } from "./client"
+import { API_VERSIONS, EconomicClient, EconomicError, sha256, type Credentials, type ReadLease } from "./client"
 import { extract, preflight } from "./extraction"
 import { canonical } from "./shapes"
 
 type Tx = Prisma.TransactionClient
+const TRANSACTION_TIMEOUT_MS = 15_000
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 
 /** Internal server API. Callers supply an authenticated UserActor, never request body identities. */
@@ -23,14 +24,32 @@ export class EconomicConnector {
       await tx.$queryRaw`SELECT id FROM organization WHERE id = ${actor.organizationId} FOR UPDATE`
       await this.authorize(tx, actor, write)
       return fn(tx)
-    }, { timeout: 15_000, maxWait: 15_000 })
+    }, { timeout: TRANSACTION_TIMEOUT_MS, maxWait: 15_000 })
   }
-  private async fence<T>(actor: UserActor, connectionId: string, generation: number, read: () => Promise<T>) {
-    return this.locked(actor, async tx => {
-      const current = await tx.economicConnection.findUnique({ where: { organizationId: actor.organizationId } })
-      if (!current || current.id !== connectionId || current.generation !== generation || !["connecting", "connected"].includes(current.state)) throw new EconomicError("stale_connection")
-      return read()
-    })
+  private async fence<T>(actor: UserActor, connectionId: string, generation: number, read: (lease: ReadLease) => Promise<T>) {
+    // Start before pool/row-lock wait. Cancel before the 15s transaction can release its lock.
+    // Prisma timeout does not cancel the JavaScript callback, so a late callback must also check time.
+    const lifetime = TRANSACTION_TIMEOUT_MS - 1_000
+    const expiresAt = Date.now() + lifetime
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), lifetime)
+    const lease: ReadLease = {
+      signal: controller.signal,
+      assertActive: () => {
+        if (controller.signal.aborted || Date.now() >= expiresAt) {
+          controller.abort()
+          throw new EconomicError("stale_connection")
+        }
+      },
+    }
+    try {
+      return await this.locked(actor, async tx => {
+        const current = await tx.economicConnection.findUnique({ where: { organizationId: actor.organizationId } })
+        if (!current || current.id !== connectionId || current.generation !== generation || !["connecting", "connected"].includes(current.state)) throw new EconomicError("stale_connection")
+        lease.assertActive()
+        return read(lease)
+      })
+    } finally { clearTimeout(timer); controller.abort() }
   }
   async connect(actor: UserActor, expectedAccount: string, credentials: Credentials, expectedGeneration: number | null) {
     if (!/^[1-9]\d{0,14}$/.test(expectedAccount)) throw new EconomicError("invalid_response")
@@ -38,18 +57,22 @@ export class EconomicConnector {
     const encryptedCredentials = encryptSecret(JSON.stringify(credentials))
     const connection = await this.locked(actor, async tx => {
       const prior = await tx.economicConnection.findUnique({ where: { organizationId: actor.organizationId } })
-      if (prior && prior.accountId !== expectedAccount) throw new EconomicError("account_mismatch")
+      if (prior?.accountVerified && prior.accountId !== expectedAccount) throw new EconomicError("account_mismatch")
       if ((prior?.generation ?? null) !== expectedGeneration) throw new EconomicError("stale_connection")
       if (prior) {
         await tx.economicReadOperation.updateMany({ where: { connectionId: prior.id, state: "pending" }, data: { state: "interrupted", failureCode: "stale_connection", finishedAt: new Date() } })
-        return tx.economicConnection.update({ where: { id: prior.id }, data: { generation: { increment: 1 }, encryptedCredentials, state: "connecting", preflight: PrismaNull } })
+        return tx.economicConnection.update({ where: { id: prior.id }, data: { accountId: expectedAccount, generation: { increment: 1 }, encryptedCredentials, state: "connecting", preflight: PrismaNull } })
       }
       return tx.economicConnection.create({ data: { organizationId: actor.organizationId, accountId: expectedAccount, encryptedCredentials } })
     })
     const client = new EconomicClient(credentials, { fetch: this.transport, fence: read => this.fence(actor, connection.id, connection.generation, read) })
     try {
-      const result = await preflight(client)
-      if (result.accountId !== expectedAccount) throw new EconomicError("account_mismatch")
+      const result = await preflight(client, expectedAccount, async () => {
+        await this.locked(actor, async tx => {
+          const changed = await tx.economicConnection.updateMany({ where: { id: connection.id, generation: connection.generation, state: "connecting" }, data: { accountVerified: true } })
+          if (!changed.count) throw new EconomicError("stale_connection")
+        })
+      })
       await this.locked(actor, async tx => {
         const changed = await tx.economicConnection.updateMany({ where: { id: connection.id, generation: connection.generation, state: "connecting" }, data: { state: result.readable ? "connected" : result.probes.some(p => p.state === "revoked") ? "revoked" : "failed", preflight: json(result), encryptedCredentials: result.readable ? encryptedCredentials : null } })
         if (!changed.count) throw new EconomicError("stale_connection")
@@ -73,7 +96,7 @@ export class EconomicConnector {
     })
   }
   async readState(actor: UserActor) {
-    return this.locked(actor, async tx => tx.economicConnection.findUnique({ where: { organizationId: actor.organizationId }, select: { id: true, accountId: true, generation: true, state: true, preflight: true, operations: { orderBy: { createdAt: "desc" }, take: 20, select: { id: true, generation: true, state: true, failureCode: true, manifestHash: true, createdAt: true } } } }), false)
+    return this.locked(actor, async tx => tx.economicConnection.findUnique({ where: { organizationId: actor.organizationId }, select: { id: true, accountId: true, accountVerified: true, generation: true, state: true, preflight: true, operations: { orderBy: { createdAt: "desc" }, take: 20, select: { id: true, generation: true, state: true, failureCode: true, manifestHash: true, createdAt: true } } } }), false)
   }
   async readReport(actor: UserActor, operationId: string) {
     return this.locked(actor, async tx => tx.economicReadOperation.findFirst({ where: { id: operationId, connection: { organizationId: actor.organizationId } }, select: { id: true, state: true, failureCode: true, failureContext: true, manifest: true, manifestHash: true } }), false)

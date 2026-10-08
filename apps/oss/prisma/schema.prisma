@@ -1137,6 +1137,7 @@ model EconomicConnection {
   organizationId String @unique
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   accountId String
+  accountVerified Boolean @default(false)
   generation Int @default(1)
   state String @default("connecting")
   encryptedCredentials String?
