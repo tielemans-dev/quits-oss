@@ -1,5 +1,6 @@
 import { agreementPublicDecisionSchema, deliverablePublicDecisionSchema } from "@quits/contracts/agreements"
 import { prisma } from "../db"
+import { publicPresentationSettingsSelect } from "../documents/public-presentation"
 import { InvalidState } from "../../domain/errors"
 import { executeCommand } from "../../domain/execute"
 import { recordAgreementCustomerDecision } from "../../domain/commands/agreement-lifecycle"
@@ -19,6 +20,8 @@ export async function loadPublicAgreementByToken(
     where: { id: payload.agreementId },
     include: {
       deliverables: { orderBy: { sortOrder: "asc" } },
+      // Language, timezone, name and logo of the seller, for presenting the page.
+      organization: { select: { settings: { select: publicPresentationSettingsSelect } } },
     },
   })
   if (
@@ -45,6 +48,36 @@ export async function loadPublicAgreementByToken(
   )
     return null
   return { agreement, payload }
+}
+/**
+ * The seller's logo for a page opened from an agreement link.
+ *
+ * The link must still be genuine, unexpired and of the current key version, but not in a state that
+ * allows an action: the page keeps showing the seller's logo after the customer has accepted or
+ * declined, when the link they opened is no longer one to decide with.
+ */
+export async function loadPublicAgreementLogoByToken(
+  token: string,
+  secret = getAgreementPublicSecret(),
+  now = new Date(),
+) {
+  const payload = verifyAgreementPublicToken(token, secret)
+  if (!payload || now >= new Date(payload.exp)) return null
+  const agreement = await prisma.agreement.findUnique({
+    where: { id: payload.agreementId },
+    select: {
+      offerSnapshot: true,
+      publicAccessKeyVersion: true,
+      organization: { select: { settings: { select: publicPresentationSettingsSelect } } },
+    },
+  })
+  if (
+    !agreement ||
+    !agreement.offerSnapshot ||
+    agreement.publicAccessKeyVersion !== payload.keyVersion
+  )
+    return null
+  return { companyLogo: agreement.organization.settings?.companyLogo ?? null }
 }
 export async function decidePublicAgreementByToken(
   token: string,

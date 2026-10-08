@@ -1,6 +1,6 @@
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
-import type { Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { signInvoicePaymentToken } from "../../src/lib/payments/public"
 import { signQuotePublicToken } from "../../src/lib/quotes/public"
@@ -55,6 +55,15 @@ export const danishLocale: SeedLocale = {
 /** A 1x1 transparent PNG, to stand in for an uploaded company logo. */
 export const tinyLogoDataUrl =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+
+/**
+ * A 1x1 PNG followed by about 1.4 MB of padding, base64 encoded to under the 2,000,000 characters
+ * settings accept. Decoders stop at the end of the image, so it still renders.
+ */
+export const largeLogoDataUrl = `data:image/png;base64,${Buffer.concat([
+  Buffer.from(tinyLogoDataUrl.split(",")[1]!, "base64"),
+  Buffer.alloc(1_400_000),
+]).toString("base64")}`
 
 export type PublicSeedOptions = {
   /** Language, country, timezone and currency of the seller and of the document. */
@@ -298,4 +307,27 @@ export function uniqueEmail(prefix: string) {
 export async function waitForClientReady(page: Page) {
   await page.waitForLoadState("networkidle")
   await page.waitForTimeout(250)
+}
+
+/**
+ * The seller's logo on a page opened from a link comes from the token-checked logo route of that
+ * link and never from the page itself: neither the server HTML nor the hydration data carries it.
+ */
+export async function expectLogoServedFromRoute(page: Page, kind: "pay" | "q" | "a", logoDataUrl = tinyLogoDataUrl) {
+  const logo = page.locator("header img")
+  await expect(logo).toHaveAttribute("src", new RegExp(`^/${kind}/[^/]+/logo$`))
+  await expect
+    .poll(() => logo.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth))
+    .toBeGreaterThan(0)
+
+  const response = await page.request.get((await logo.getAttribute("src"))!)
+  expect(response.status()).toBe(200)
+  expect(response.headers()["content-type"]).toBe("image/png")
+  expect(response.headers()["cache-control"]).toBe("private, max-age=300")
+  expect(response.headers()["x-content-type-options"]).toBe("nosniff")
+  expect((await response.body()).toString("base64")).toBe(logoDataUrl.split(",")[1])
+
+  const html = await (await page.request.get(page.url())).text()
+  expect(html).not.toContain("data:image")
+  return html
 }

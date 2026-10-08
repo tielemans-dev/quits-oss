@@ -66,7 +66,7 @@ describe("public session serialization", () => {
       invoice: invoiceRow,
       paymentState: "unpaid",
       stripeEnabled: true,
-    })
+    }, "tok.en")
 
     expect(session.invoice.totalGross).toBe(250)
     expect(session.invoice.balanceDue).toBe(100)
@@ -110,7 +110,7 @@ describe("public session serialization", () => {
       },
       paymentState: "unpaid",
       stripeEnabled: true,
-    })
+    }, "tok.en")
 
     expect(session.locale).toBe("da-DK")
     expect(session.invoice.timezone).toBe("Europe/Copenhagen")
@@ -148,7 +148,7 @@ describe("public session serialization", () => {
       },
       paymentState: "unpaid",
       stripeEnabled: false,
-    })
+    }, "tok.en")
 
     expect(session.locale).toBe("da-DK")
     expect(session.invoice.timezone).toBe("Europe/Copenhagen")
@@ -196,7 +196,7 @@ describe("public session serialization", () => {
         invoices: [],
       },
       decisionState: "pending",
-    })
+    }, "tok.en")
 
     expect(session.quote.totalGross).toBe(100)
     expect(session.quote.items[0]?.lineGross).toBe(100)
@@ -236,13 +236,75 @@ describe("public session serialization", () => {
         },
       },
       decisionState: "pending",
-    })
+    }, "tok.en")
 
     expect(session.locale).toBe("da-DK")
     expect(session.quote.timezone).toBe("Europe/Copenhagen")
     expect(session.seller).toEqual({
       name: "Frozen Name ApS",
-      logo: "data:image/png;base64,AAAA",
+      logo: "/q/tok.en/logo",
     })
+  })
+
+  it("keeps an uploaded logo out of the page data of an invoice and a quote", () => {
+    const logo = `data:image/png;base64,${"A".repeat(200_000)}`
+    const settings = { locale: "en-US", timezone: "UTC", companyName: "Acme", companyLogo: logo }
+    const invoice = serializePublicInvoiceSession({
+      invoice: {
+        id: "invoice-1",
+        number: "INV-0001",
+        status: "sent",
+        paymentStatus: "unpaid",
+        issueDate: new Date("2026-03-09T00:00:00.000Z"),
+        dueDate: new Date("2026-03-23T00:00:00.000Z"),
+        totalGross: decimal(100),
+        amountPaid: decimal(0),
+        amountCredited: decimal(0),
+        totalTax: decimal(0),
+        subtotalNet: decimal(100),
+        currency: "USD",
+        locale: "en-US",
+        timezone: "UTC",
+        notes: null,
+        sellerSnapshot: null,
+        buyerSnapshot: null,
+        contact: { name: "Kunde", email: null, company: null },
+        items: [],
+        organization: { settings },
+      },
+      paymentState: "unpaid",
+      stripeEnabled: false,
+    }, "tok.en")
+    const quote = serializePublicQuoteSession({
+      quote: {
+        id: "quote-1",
+        number: "QTE-0001",
+        status: "sent",
+        issueDate: new Date("2026-03-09T00:00:00.000Z"),
+        expiryDate: new Date("2026-03-23T00:00:00.000Z"),
+        totalGross: decimal(100),
+        totalTax: decimal(0),
+        subtotalNet: decimal(100),
+        currency: "USD",
+        locale: "en-US",
+        timezone: "UTC",
+        notes: null,
+        sellerSnapshot: null,
+        buyerSnapshot: null,
+        publicDecisionAt: null,
+        publicRejectionReason: null,
+        contact: { name: "Kunde", email: null, company: null },
+        items: [],
+        invoices: [],
+        organization: { settings },
+      },
+      decisionState: "pending",
+    }, "tok.en")
+
+    expect(invoice.seller.logo).toBe("/pay/tok.en/logo")
+    expect(quote.seller.logo).toBe("/q/tok.en/logo")
+    expect(JSON.stringify(invoice)).not.toContain("data:image")
+    expect(JSON.stringify(quote)).not.toContain("data:image")
+    expect(JSON.stringify(invoice).length).toBeLessThan(5_000)
   })
 })

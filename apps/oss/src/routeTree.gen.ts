@@ -33,13 +33,16 @@ import { Route as AppInvoicesIndexRouteImport } from './routes/_app/invoices/ind
 import { Route as AppCreditNotesIndexRouteImport } from './routes/_app/credit-notes/index'
 import { Route as AppContactsIndexRouteImport } from './routes/_app/contacts/index'
 import { Route as AppAgreementsIndexRouteImport } from './routes/_app/agreements/index'
+import { Route as QTokenLogoRouteImport } from './routes/q.$token_.logo'
 import { Route as PayTokenPdfRouteImport } from './routes/pay.$token_.pdf'
+import { Route as PayTokenLogoRouteImport } from './routes/pay.$token_.logo'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe-webhook'
 import { Route as ApiCronTickRouteImport } from './routes/api/cron/tick'
 import { Route as ApiCronMarkOverdueRouteImport } from './routes/api/cron/mark-overdue'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ATokenPdfRouteImport } from './routes/a.$token_.pdf'
+import { Route as ATokenLogoRouteImport } from './routes/a.$token_.logo'
 import { Route as AppRecurringScheduleIdRouteImport } from './routes/_app/recurring/$scheduleId'
 import { Route as AppQuotesNewRouteImport } from './routes/_app/quotes/new'
 import { Route as AppQuotesQuoteIdRouteImport } from './routes/_app/quotes/$quoteId'
@@ -175,9 +178,19 @@ const AppAgreementsIndexRoute = AppAgreementsIndexRouteImport.update({
   path: '/agreements/',
   getParentRoute: () => AppRoute,
 } as any)
+const QTokenLogoRoute = QTokenLogoRouteImport.update({
+  id: '/q/$token_/logo',
+  path: '/q/$token/logo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PayTokenPdfRoute = PayTokenPdfRouteImport.update({
   id: '/pay/$token_/pdf',
   path: '/pay/$token/pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayTokenLogoRoute = PayTokenLogoRouteImport.update({
+  id: '/pay/$token_/logo',
+  path: '/pay/$token/logo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
@@ -209,6 +222,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 const ATokenPdfRoute = ATokenPdfRouteImport.update({
   id: '/a/$token_/pdf',
   path: '/a/$token/pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ATokenLogoRoute = ATokenLogoRouteImport.update({
+  id: '/a/$token_/logo',
+  path: '/a/$token/logo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRecurringScheduleIdRoute = AppRecurringScheduleIdRouteImport.update({
@@ -316,13 +334,16 @@ export interface FileRoutesByFullPath {
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
   '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
+  '/a/$token/logo': typeof ATokenLogoRoute
   '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/pay/$token/logo': typeof PayTokenLogoRoute
   '/pay/$token/pdf': typeof PayTokenPdfRoute
+  '/q/$token/logo': typeof QTokenLogoRoute
   '/agreements/': typeof AppAgreementsIndexRoute
   '/contacts/': typeof AppContactsIndexRoute
   '/credit-notes/': typeof AppCreditNotesIndexRoute
@@ -362,13 +383,16 @@ export interface FileRoutesByTo {
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
   '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
+  '/a/$token/logo': typeof ATokenLogoRoute
   '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/pay/$token/logo': typeof PayTokenLogoRoute
   '/pay/$token/pdf': typeof PayTokenPdfRoute
+  '/q/$token/logo': typeof QTokenLogoRoute
   '/agreements': typeof AppAgreementsIndexRoute
   '/contacts': typeof AppContactsIndexRoute
   '/credit-notes': typeof AppCreditNotesIndexRoute
@@ -410,13 +434,16 @@ export interface FileRoutesById {
   '/_app/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/_app/quotes/new': typeof AppQuotesNewRoute
   '/_app/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
+  '/a/$token_/logo': typeof ATokenLogoRoute
   '/a/$token_/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/pay/$token_/logo': typeof PayTokenLogoRoute
   '/pay/$token_/pdf': typeof PayTokenPdfRoute
+  '/q/$token_/logo': typeof QTokenLogoRoute
   '/_app/agreements/': typeof AppAgreementsIndexRoute
   '/_app/contacts/': typeof AppContactsIndexRoute
   '/_app/credit-notes/': typeof AppCreditNotesIndexRoute
@@ -458,13 +485,16 @@ export interface FileRouteTypes {
     | '/quotes/$quoteId'
     | '/quotes/new'
     | '/recurring/$scheduleId'
+    | '/a/$token/logo'
     | '/a/$token/pdf'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/pay/$token/logo'
     | '/pay/$token/pdf'
+    | '/q/$token/logo'
     | '/agreements/'
     | '/contacts/'
     | '/credit-notes/'
@@ -504,13 +534,16 @@ export interface FileRouteTypes {
     | '/quotes/$quoteId'
     | '/quotes/new'
     | '/recurring/$scheduleId'
+    | '/a/$token/logo'
     | '/a/$token/pdf'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/pay/$token/logo'
     | '/pay/$token/pdf'
+    | '/q/$token/logo'
     | '/agreements'
     | '/contacts'
     | '/credit-notes'
@@ -551,13 +584,16 @@ export interface FileRouteTypes {
     | '/_app/quotes/$quoteId'
     | '/_app/quotes/new'
     | '/_app/recurring/$scheduleId'
+    | '/a/$token_/logo'
     | '/a/$token_/pdf'
     | '/api/auth/$'
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
     | '/api/trpc/$'
+    | '/pay/$token_/logo'
     | '/pay/$token_/pdf'
+    | '/q/$token_/logo'
     | '/_app/agreements/'
     | '/_app/contacts/'
     | '/_app/credit-notes/'
@@ -582,13 +618,16 @@ export interface RootRouteChildren {
   ApiMcpRoute: typeof ApiMcpRoute
   PayTokenRoute: typeof PayTokenRoute
   QTokenRoute: typeof QTokenRoute
+  ATokenLogoRoute: typeof ATokenLogoRoute
   ATokenPdfRoute: typeof ATokenPdfRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCronMarkOverdueRoute: typeof ApiCronMarkOverdueRoute
   ApiCronTickRoute: typeof ApiCronTickRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
+  PayTokenLogoRoute: typeof PayTokenLogoRoute
   PayTokenPdfRoute: typeof PayTokenPdfRoute
+  QTokenLogoRoute: typeof QTokenLogoRoute
   ApiAgreementsAgreementIdPdfRoute: typeof ApiAgreementsAgreementIdPdfRoute
   AppApprovalsApprovalIdPreviewDotpdfRoute: typeof AppApprovalsApprovalIdPreviewDotpdfRoute
   ApiDocumentsKindDocumentIdPdfRoute: typeof ApiDocumentsKindDocumentIdPdfRoute
@@ -764,11 +803,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgreementsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/q/$token_/logo': {
+      id: '/q/$token_/logo'
+      path: '/q/$token/logo'
+      fullPath: '/q/$token/logo'
+      preLoaderRoute: typeof QTokenLogoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pay/$token_/pdf': {
       id: '/pay/$token_/pdf'
       path: '/pay/$token/pdf'
       fullPath: '/pay/$token/pdf'
       preLoaderRoute: typeof PayTokenPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pay/$token_/logo': {
+      id: '/pay/$token_/logo'
+      path: '/pay/$token/logo'
+      fullPath: '/pay/$token/logo'
+      preLoaderRoute: typeof PayTokenLogoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/trpc/$': {
@@ -811,6 +864,13 @@ declare module '@tanstack/react-router' {
       path: '/a/$token/pdf'
       fullPath: '/a/$token/pdf'
       preLoaderRoute: typeof ATokenPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/a/$token_/logo': {
+      id: '/a/$token_/logo'
+      path: '/a/$token/logo'
+      fullPath: '/a/$token/logo'
+      preLoaderRoute: typeof ATokenLogoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/recurring/$scheduleId': {
@@ -982,13 +1042,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpRoute: ApiMcpRoute,
   PayTokenRoute: PayTokenRoute,
   QTokenRoute: QTokenRoute,
+  ATokenLogoRoute: ATokenLogoRoute,
   ATokenPdfRoute: ATokenPdfRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCronMarkOverdueRoute: ApiCronMarkOverdueRoute,
   ApiCronTickRoute: ApiCronTickRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
+  PayTokenLogoRoute: PayTokenLogoRoute,
   PayTokenPdfRoute: PayTokenPdfRoute,
+  QTokenLogoRoute: QTokenLogoRoute,
   ApiAgreementsAgreementIdPdfRoute: ApiAgreementsAgreementIdPdfRoute,
   AppApprovalsApprovalIdPreviewDotpdfRoute:
     AppApprovalsApprovalIdPreviewDotpdfRoute,

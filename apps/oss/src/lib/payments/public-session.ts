@@ -7,8 +7,9 @@ import {
   publicInvoiceCheckoutResultSchema,
   publicInvoiceTokenInputSchema,
 } from "@quits/contracts/payments"
-import { resolvePublicPresentation } from "../documents/public-presentation"
 import { invalidLinkLocale } from "../documents/public-invalid-link"
+import { publicLogoPath } from "../documents/public-logo"
+import { resolvePublicPresentation } from "../documents/public-presentation"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -20,6 +21,7 @@ function toDateString(value: Date | string) {
   return value instanceof Date ? value.toISOString() : value
 }
 
+/** `token` is the link the page was opened with: an uploaded logo is served from its logo route. */
 export function serializePublicInvoiceSession(session: {
   invoice: {
     id: string
@@ -65,7 +67,7 @@ export function serializePublicInvoiceSession(session: {
   }
   paymentState: "unpaid" | "paid"
   stripeEnabled: boolean
-}) {
+}, token: string) {
   const { invoice } = session
   const totalGross = toNumber(invoice.totalGross)
   const amountPaid = toNumber(invoice.amountPaid)
@@ -79,6 +81,7 @@ export function serializePublicInvoiceSession(session: {
   const presentation = resolvePublicPresentation({
     document: { locale: invoice.locale, timezone: invoice.timezone, sellerSnapshot },
     settings: invoice.organization?.settings,
+    logoPath: publicLogoPath("pay", token),
   })
 
   return {
@@ -133,7 +136,7 @@ export const getPublicInvoiceSession = createServerFn({ method: "GET" })
 
     return {
       kind: "ready",
-      ...serializePublicInvoiceSession(session),
+      ...serializePublicInvoiceSession(session, data.token),
     } as const
   })
 

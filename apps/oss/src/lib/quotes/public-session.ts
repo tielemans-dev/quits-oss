@@ -7,8 +7,9 @@ import {
 import {
   publicQuoteTokenInputSchema,
 } from "@quits/contracts/quotes"
-import { resolvePublicPresentation } from "../documents/public-presentation"
 import { invalidLinkLocale } from "../documents/public-invalid-link"
+import { publicLogoPath } from "../documents/public-logo"
+import { resolvePublicPresentation } from "../documents/public-presentation"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -24,6 +25,7 @@ function toDateString(value: Date | string | null) {
   return value instanceof Date ? value.toISOString() : value
 }
 
+/** `token` is the link the page was opened with: an uploaded logo is served from its logo route. */
 export function serializePublicQuoteSession(session: {
   quote: {
     id: string
@@ -72,12 +74,13 @@ export function serializePublicQuoteSession(session: {
     }>
   }
   decisionState: "pending" | "accepted" | "rejected"
-}) {
+}, token: string) {
   const { quote } = session
   const sellerSnapshot = parseSellerSnapshot(quote.sellerSnapshot)
   const presentation = resolvePublicPresentation({
     document: { locale: quote.locale, timezone: quote.timezone, sellerSnapshot },
     settings: quote.organization?.settings,
+    logoPath: publicLogoPath("q", token),
   })
 
   return {
@@ -130,7 +133,7 @@ export const getPublicQuoteSession = createServerFn({ method: "GET" })
 
     return {
       kind: "ready",
-      ...serializePublicQuoteSession(session),
+      ...serializePublicQuoteSession(session, data.token),
     } as const
   })
 
@@ -154,7 +157,7 @@ export const submitPublicQuoteDecision = createServerFn({ method: "POST" })
 
       return {
         kind: "ready",
-        ...serializePublicQuoteSession(session),
+        ...serializePublicQuoteSession(session, data.token),
       } as const
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "retry_later") {

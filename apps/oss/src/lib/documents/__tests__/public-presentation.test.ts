@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { resolvePublicPresentation } from "../public-presentation"
+import { resolvePublicPresentation as resolve } from "../public-presentation"
+
+const logoPath = "/pay/tok/logo"
+const resolvePublicPresentation = (input: Omit<Parameters<typeof resolve>[0], "logoPath">) =>
+  resolve({ ...input, logoPath })
 
 describe("resolvePublicPresentation", () => {
   it("takes the language and timezone from the document, not the organization", () => {
@@ -61,14 +65,29 @@ describe("resolvePublicPresentation", () => {
     expect(seller.name).toBeNull()
   })
 
-  it("only passes on a logo that can be shown in an image", () => {
+  it("passes an http(s) logo on as stored and points an uploaded one at the logo route", () => {
     const logo = (companyLogo: string | null) =>
       resolvePublicPresentation({ document: {}, settings: { companyLogo } }).seller.logo
 
-    expect(logo("data:image/png;base64,AAAA")).toBe("data:image/png;base64,AAAA")
+    expect(logo("data:image/png;base64,AAAA")).toBe(logoPath)
+    expect(logo("data:image/svg+xml;base64,AAAA")).toBe(logoPath)
     expect(logo("https://acme.example/logo.svg")).toBe("https://acme.example/logo.svg")
+  })
+
+  it("never puts an uploaded logo into the presentation", () => {
+    const upload = `data:image/png;base64,${"A".repeat(5000)}`
+    const presentation = resolvePublicPresentation({ document: {}, settings: { companyLogo: upload } })
+
+    expect(JSON.stringify(presentation)).not.toContain("data:image")
+  })
+
+  it("drops a logo that cannot be shown in an image", () => {
+    const logo = (companyLogo: string | null) =>
+      resolvePublicPresentation({ document: {}, settings: { companyLogo } }).seller.logo
+
     expect(logo("javascript:alert(1)")).toBeNull()
     expect(logo("data:text/html;base64,AAAA")).toBeNull()
+    expect(logo("data:image/bmp;base64,AAAA")).toBeNull()
     expect(logo("")).toBeNull()
     expect(logo(null)).toBeNull()
   })

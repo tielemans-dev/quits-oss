@@ -340,7 +340,7 @@ describeIfDatabase("public invoice links after settlement changes", () => {
       const session = await loadPublicInvoiceByToken(token, paymentSecret)
       expect(session).not.toBeNull()
       if (!session) return
-      const page = serializePublicInvoiceSession(session)
+      const page = serializePublicInvoiceSession(session, token)
       expect(page.paymentState).toBe("paid")
       expect(page.invoice).toMatchObject({ status: "credited", amountCredited: 100, balanceDue: 0 })
 

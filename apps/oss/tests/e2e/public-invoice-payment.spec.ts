@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import {
   danishLocale,
+  expectLogoServedFromRoute,
+  largeLogoDataUrl,
   resetDatabase,
   seedCompletedSetup,
   seedPublicInvoice,
@@ -65,11 +67,30 @@ test("presents the invoice in Danish, with kroner and the seller's logo, when th
   await expect(page.locator("[lang=da-DK]").first()).toBeVisible()
 
   // The seller's logo and name head the page; the product's name appears nowhere.
-  await expect(page.locator("header img")).toHaveAttribute("src", tinyLogoDataUrl)
+  await expectLogoServedFromRoute(page, "pay")
   await expect(page.locator("header").getByText("E2E Org")).toBeVisible()
   await expect(page.getByText("Pay now")).toHaveCount(0)
   await expect(page.getByText("Quits")).toHaveCount(0)
   await expect(page).toHaveTitle("Faktura INV-E2E-0001 · E2E Org")
+})
+
+test("does not embed a large uploaded logo in the page, which is served from the logo route", async ({
+  page,
+}) => {
+  const invoice = await seedPublicInvoice({ companyLogo: largeLogoDataUrl })
+
+  await page.goto(invoice.url)
+  await waitForClientReady(page)
+
+  const html = await expectLogoServedFromRoute(page, "pay", largeLogoDataUrl)
+  // About 1.9 MB of logo would otherwise be sent twice, in the markup and in the hydration data.
+  expect(html.length).toBeLessThan(100_000)
+})
+
+test("answers 404 on the logo route for a link that is not valid", async ({ page }) => {
+  await seedPublicInvoice({ companyLogo: tinyLogoDataUrl })
+
+  expect((await page.request.get("/pay/not-a-real-token/logo")).status()).toBe(404)
 })
 
 test("keeps the document's language whatever the visitor's browser prefers", async ({ browser }) => {
@@ -115,8 +136,15 @@ test("answers an invalid link in the visitor's language, as there is no document
   await seedCompletedSetup()
   const danish = await browser.newContext({ locale: "da-DK" })
   const danishPage = await danish.newPage()
-  await danishPage.goto("/pay/not-a-real-token")
+  const response = await danishPage.goto("/pay/not-a-real-token")
   await expect(danishPage.getByText("Dette betalingslink er ugyldigt eller udløbet.")).toBeVisible()
+  // The answer depends on the visitor's language: no cache keeps it for another visitor.
+  expect(response?.headers()["cache-control"]).toBe("private, no-store")
+  // Nitro replaces `Vary` when the client accepts compression, so look at an uncompressed request.
+  const uncompressed = await danishPage.request.get("/pay/not-a-real-token", {
+    headers: { "Accept-Encoding": "identity" },
+  })
+  expect(uncompressed.headers()["vary"]).toContain("Accept-Language")
   await danish.close()
 
   const english = await browser.newContext({ locale: "en-US" })

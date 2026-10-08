@@ -1,4 +1,4 @@
-import { canRenderLogo } from "./logo"
+import { publicLogoSource } from "./public-logo"
 
 /**
  * How a document opened from a link is presented to the person who received it.
@@ -16,7 +16,10 @@ export const DEFAULT_PUBLIC_TIMEZONE = "UTC"
 export type PublicSeller = {
   /** The company name frozen on the document, or the organization's current one. Never a product name. */
   name: string | null
-  /** A logo that can be shown in an `<img>`: an inline image or an http(s) URL. */
+  /**
+   * The `src` of a logo that can be shown in an `<img>`: an http(s) URL as stored, or the logo
+   * route of the document's link for an uploaded image. Never the uploaded image itself.
+   */
   logo: string | null
 }
 
@@ -73,10 +76,11 @@ export function resolvePublicPresentation(input: {
   }
   /** The seller organization's current settings. */
   settings?: PublicPresentationSettings | null
+  /** Where the link of this document serves an uploaded logo from. */
+  logoPath: string
 }): PublicPresentation {
-  const { document, settings } = input
+  const { document, settings, logoPath } = input
   const name = document.sellerSnapshot?.companyName?.trim() || settings?.companyName?.trim() || null
-  const logo = settings?.companyLogo?.trim()
 
   return {
     locale: usableLocale(document.locale) ?? usableLocale(settings?.locale) ?? DEFAULT_PUBLIC_LOCALE,
@@ -84,6 +88,6 @@ export function resolvePublicPresentation(input: {
       usableTimeZone(document.timezone) ??
       usableTimeZone(settings?.timezone) ??
       DEFAULT_PUBLIC_TIMEZONE,
-    seller: { name, logo: canRenderLogo(logo) ? logo : null },
+    seller: { name, logo: publicLogoSource(settings?.companyLogo, logoPath) },
   }
 }
