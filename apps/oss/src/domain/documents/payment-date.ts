@@ -37,4 +37,3 @@ export const parsePaidAt = (value: string) =>
     }
     return paidAt
   })
-
