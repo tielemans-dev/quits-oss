@@ -58,6 +58,7 @@ export const eventRegistry = {
   "invoice.email_unconfirmed": { version: 1, schema: unconfirmed },
   "invoice.email_failed": { version: 1, schema: failed },
   "invoice.credited": { version: 1, schema: z.object({ number: s, creditNoteId: s, creditNoteNumber: s }).strict() },
+  "invoice.marked_paid": { version: 1, schema: z.object({ paymentId: s, undoUntil: date }).strict() },
   "invoice.paid": { version: 1, schema: z.object({ number: s, amountPaid: s, currency: s }).strict() },
   "invoice.became_overdue": { version: 1, schema: z.object({ number: s, previousStatus: s, dueDate: date, balanceDue: n }).strict() },
   "invoice.reminders_paused": { version: 1, schema: number },

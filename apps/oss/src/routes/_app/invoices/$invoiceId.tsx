@@ -429,7 +429,7 @@ function InvoiceDetailPage() {
     if (!invoice) return
     setActing(true)
     try {
-      await trpc.invoices.markPaid.mutate({ id: invoice.id })
+      await trpc.invoices.markPaid.mutate({ invoiceId: invoice.id, requestId: crypto.randomUUID() })
       await reloadInvoice()
     } catch (err) {
       setError(

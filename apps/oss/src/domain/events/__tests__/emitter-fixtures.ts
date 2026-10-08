@@ -7,7 +7,7 @@ import { moneyEmitterState } from "./money-emitter-state"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
-  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "settlements", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "billing-allocation", "payment-details"].map((name) => `commands/${name}.ts`),
+  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "paid-moment", "settlements", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "billing-allocation", "payment-details"].map((name) => `commands/${name}.ts`),
   "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "documents/numbering.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
@@ -80,6 +80,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     decision: { decision: variant === "decline" ? "decline" : "accept", acceptedByName: "Customer", reason: optional ? "Not needed" : undefined },
     next: { publicRejectionReason: optional ? "Not needed" : null },
     current: optional, overpaidBy: { ...money, greaterThan: () => optional },
+    applied: { payment: { id: "payment-1" } }, undoUntil: "2026-01-15T12:10:00.000Z",
     payment: { id: "payment-1", invoiceId: "invoice-1", amount: money, currency: "USD" },
     amount: money, refreshed: { settlement: { balanceDue: money, amountPaid: money, paymentStatus: "paid" }, invoice: record },
     priced: { totalGross: 100 }, built: { totalGross: 100 }, number: "DOC-0001", recipient: manual && ["agreements/issuance.ts", "commands/invoices.ts", "commands/quotes.ts"].includes(expression.source) ? null : "customer@example.test",

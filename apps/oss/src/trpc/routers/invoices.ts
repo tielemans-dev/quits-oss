@@ -25,7 +25,8 @@ import {
   sendInvoice,
   updateInvoiceDraft,
 } from "../../domain/commands/invoices"
-import { recordPayment } from "../../domain/commands/payments"
+import { markInvoicePaid, undoInvoiceMarkPaid } from "../../domain/commands/paid-moment"
+import { invoicePaidMomentResultSchema } from "@quits/contracts/invoices"
 import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { executeCommand } from "../../domain/execute"
@@ -318,35 +319,17 @@ export const invoicesRouter = router({
     return { count: marked }
   }),
 
-  /** Shortcut that records a payment for the remaining balance through `payment.record`. */
   markPaid: authorizedProcedure("payment:create")
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const invoice = await prisma.invoice.findFirstOrThrow({
-        where: { id: input.id, organizationId: ctx.organizationId },
-      })
+    .input(markInvoicePaid.input)
+    .output(invoicePaidMomentResultSchema)
+    .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(markInvoicePaid, input, {
+      actor: ctx.actor, clientRequestId: `invoice.mark_paid:${input.requestId}`,
+    }))),
 
-      if (invoice.status !== "sent" && invoice.status !== "viewed" && invoice.status !== "overdue") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Only sent or overdue invoices can be marked as paid",
-        })
-      }
-
-      const { balanceDue } = settlementForUi(invoice)
-      const result = unwrapOutcome(
-        await executeCommand(
-          recordPayment,
-          {
-            invoiceId: invoice.id,
-            amount: balanceDue,
-            paidAt: new Date().toISOString(),
-            method: "other",
-          },
-          { actor: ctx.actor }
-        )
-      )
-
-      return { ...result.invoice, ...settlementForUi(result.invoice) }
-    }),
+  undoMarkPaid: authorizedProcedure("payment:void")
+    .input(undoInvoiceMarkPaid.input)
+    .output(invoicePaidMomentResultSchema)
+    .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(undoInvoiceMarkPaid, input, {
+      actor: ctx.actor, clientRequestId: `invoice.undo_mark_paid:${input.requestId}`,
+    }))),
 })

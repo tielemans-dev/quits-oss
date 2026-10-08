@@ -113,7 +113,7 @@ describeIfDatabase("invoice payment links", () => {
       expect(loaded?.invoice.id).toBe(invoice.id)
       expect(loaded?.paymentState).toBe("unpaid")
 
-      await caller.invoices.markPaid({ id: invoice.id })
+      await caller.invoices.markPaid({ invoiceId: invoice.id, requestId: crypto.randomUUID() })
 
       const paidState = await loadPublicInvoiceByToken(
         decodeURIComponent(token ?? ""),

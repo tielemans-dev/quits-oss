@@ -18,6 +18,7 @@ export const daPaymentsMessages = {
   "payments.state.recorded": "Registreret",
   "payments.state.voided": "Annulleret",
   "payments.state.voidedReason": "Annulleret: {reason}",
+  "payments.method.manual": "Manuel",
   "payments.method.bank_transfer": "Bankoverførsel",
   "payments.method.card": "Kort",
   "payments.method.cash": "Kontant",

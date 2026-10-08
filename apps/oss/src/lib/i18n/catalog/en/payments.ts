@@ -18,6 +18,7 @@ export const enPaymentsMessages = {
   "payments.state.recorded": "Recorded",
   "payments.state.voided": "Voided",
   "payments.state.voidedReason": "Voided: {reason}",
+  "payments.method.manual": "Manual",
   "payments.method.bank_transfer": "Bank transfer",
   "payments.method.card": "Card",
   "payments.method.cash": "Cash",

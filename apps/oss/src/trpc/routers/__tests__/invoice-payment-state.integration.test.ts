@@ -97,14 +97,14 @@ describeIfDatabase("invoice payment state", () => {
       const overdue = await caller.invoices.get({ id: invoice.id })
       expect(overdue.status).toBe("overdue")
 
-      const paid = await caller.invoices.markPaid({ id: invoice.id })
+      const paid = await caller.invoices.markPaid({ invoiceId: invoice.id, requestId: crypto.randomUUID() })
 
-      expect(paid.status).toBe("paid")
-      expect(paid.paymentStatus).toBe("paid")
-      expect(paid.paidAt).toBeTruthy()
+      expect(paid.invoiceStatus).toBe("paid")
+      expect(paid.balance.amount).toBe("0.00")
+      expect(paid.undoUntil).toBeTruthy()
 
-      await expect(caller.invoices.markPaid({ id: invoice.id })).rejects.toThrow(
-        "Only sent or overdue invoices can be marked as paid"
+      await expect(caller.invoices.markPaid({ invoiceId: invoice.id, requestId: crypto.randomUUID() })).rejects.toThrow(
+        "The invoice is already settled"
       )
 
       const reloaded = await caller.invoices.get({ id: invoice.id })

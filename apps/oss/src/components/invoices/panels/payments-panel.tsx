@@ -46,6 +46,7 @@ const MANUAL_METHODS: PaymentMethod[] = ["bank_transfer", "card", "cash", "other
 
 function methodLabelKey(method: string): TranslationKey {
   switch (method) {
+    case "manual":
     case "bank_transfer":
     case "card":
     case "cash":
