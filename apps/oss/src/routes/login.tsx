@@ -16,6 +16,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { z } from 'zod'
 import { useI18n } from '../lib/i18n/react'
+import { invalidateAppLayoutSession } from '../lib/app-layout-session'
 import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { getOrganizationAccessState } from '../lib/organization-access'
 import { toInternalRedirectPath } from '../lib/redirect-target'
@@ -56,6 +57,8 @@ function LoginPage() {
     setLoading(false)
 
     if (result.data) {
+      // The next page load must not reuse an answer given before signing in.
+      invalidateAppLayoutSession()
       // Every way out of here is a new page load, so the app layout sets the organization this
       // tab acts for from the new session and nothing of an earlier session survives.
       const redirectPath = toInternalRedirectPath(redirect) ?? '/'

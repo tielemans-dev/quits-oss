@@ -77,12 +77,15 @@ vi.mock("../../trpc/client", () => ({
   },
 }))
 
+import { invalidateAppLayoutSession, reuseAppLayoutSession } from "../../lib/app-layout-session"
+import { trpc } from "../../trpc/client"
 import { Route } from "../_app/onboarding"
 
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
 
 afterEach(() => {
   cleanup()
+  invalidateAppLayoutSession()
   navigate.mockReset()
   invalidate.mockReset()
   useSessionMock.mockReset()
@@ -158,5 +161,61 @@ describe("OnboardingPage cloud flow", () => {
     expect(screen.getByLabelText("VAT/CVR number")).toBeTruthy()
 
     expect(screen.getByText("Advanced defaults")).toBeTruthy()
+  })
+
+  it("drops the layout's cached session once onboarding is completed, so the next page is not sent back", async () => {
+    useSessionMock.mockReturnValue({
+      data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } },
+    })
+    onboardingStatusQuery.mockResolvedValue({
+      status: "in_progress",
+      isComplete: false,
+      missing: [],
+      values: {
+        companyName: "Acme",
+        companyAddress: "1 Main Street",
+        companyEmail: "billing@example.com",
+        countryCode: "US",
+        invoicingIdentity: "registered_business",
+        locale: "en-US",
+        timezone: "UTC",
+        defaultCurrency: "USD",
+        taxRegime: "us_sales_tax",
+        pricesIncludeTax: false,
+        invoicePrefix: "INV",
+        quotePrefix: "QTE",
+        primaryTaxId: "US123",
+        primaryTaxIdScheme: "vat",
+      },
+    })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: [] } as never)
+    vi.mocked(trpc.onboarding.completeManual.mutate).mockResolvedValue({ isComplete: true } as never)
+    const load = vi.fn(async () => ({ session: { user: "u_1" }, cloudOnboardingComplete: false }))
+    await reuseAppLayoutSession(load)
+
+    render(<RouteComponent />)
+    await waitFor(() => expect(onboardingStatusQuery).toHaveBeenCalled())
+    fireEvent.click(await screen.findByRole("button", { name: "Finish onboarding" }))
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }))
+    await reuseAppLayoutSession(load)
+    expect(load).toHaveBeenCalledTimes(2)
+  })
+
+  it("drops the layout's cached session when the status shows onboarding is already complete", async () => {
+    useSessionMock.mockReturnValue({
+      data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } },
+    })
+    onboardingStatusQuery.mockResolvedValue({ status: "complete", isComplete: true, missing: [], values: null })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    const load = vi.fn(async () => ({ session: { user: "u_1" }, cloudOnboardingComplete: false }))
+    await reuseAppLayoutSession(load)
+
+    render(<RouteComponent />)
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }))
+    await reuseAppLayoutSession(load)
+    expect(load).toHaveBeenCalledTimes(2)
   })
 })

@@ -93,6 +93,7 @@ vi.mock("../ui/dropdown-menu", () => ({
   ),
 }))
 
+import { invalidateAppLayoutSession, reuseAppLayoutSession } from "../../lib/app-layout-session"
 import { THEME_STORAGE_KEY, resetThemeForTesting } from "../../lib/theme"
 import {
   getRequestOrganizationId,
@@ -106,6 +107,7 @@ afterEach(() => {
   window.localStorage.clear()
   document.documentElement.classList.remove("dark")
   resetThemeForTesting()
+  invalidateAppLayoutSession()
   resetRequestOrganizationForTesting()
   state.sessionOrganizationId = "org_a"
   state.setActive.mockReset()
@@ -201,5 +203,20 @@ describe("user menu organizations", () => {
 
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light")
     expect(document.documentElement.classList.contains("dark")).toBe(false)
+  })
+
+  it("drops the layout's cached session when signing out, so no stale identity survives", async () => {
+    initializeRequestOrganizationId("org_a")
+    state.signOut.mockResolvedValue({ data: {} })
+    const load = vi.fn(async () => ({ session: { user: "u_1" } }))
+    await reuseAppLayoutSession(load)
+    render(<UserMenu />)
+
+    await act(async () => {
+      fireEvent.click(await screen.findByText("user.signOut"))
+    })
+    await reuseAppLayoutSession(load)
+
+    expect(load).toHaveBeenCalledTimes(2)
   })
 })

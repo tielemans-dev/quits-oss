@@ -4,6 +4,7 @@ import type { RuntimeCapabilities } from '@quits/contracts/runtime'
 import { useEffect, useState } from 'react'
 import { authClient, useSession } from '../../lib/auth-client'
 import { switchActiveOrganization } from '../../lib/active-organization'
+import { invalidateAppLayoutSession } from '../../lib/app-layout-session'
 import { useRuntimeDistribution } from '../../lib/runtime-distribution'
 import {
   getOrganizationAccessState,
@@ -232,6 +233,8 @@ function OnboardingPage() {
         )
 
         if (status.isComplete) {
+          // The layout may still hold an earlier "incomplete" answer, which would send us back here.
+          invalidateAppLayoutSession()
           navigate({ to: '/' })
         }
       })
@@ -415,6 +418,8 @@ function OnboardingPage() {
       setMissingFields(Array.isArray(draft.missing) ? draft.missing : [])
 
       await trpc.onboarding.completeManual.mutate({ method })
+      // The layout must see onboarding as complete now, not after its reuse window.
+      invalidateAppLayoutSession()
       navigate({ to: '/' })
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Unable to complete onboarding'
