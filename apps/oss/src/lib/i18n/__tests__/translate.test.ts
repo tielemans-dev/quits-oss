@@ -9,7 +9,7 @@ describe("i18n translate", () => {
   })
 
   it("returns danish translation when locale is da", () => {
-    expect(translate("nav.dashboard", "da-DK")).toBe("Oversigt")
+    expect(translate("nav.dashboard", "da-DK")).toBe("Overblik")
   })
 
   it("falls back to english translation", () => {
@@ -24,7 +24,7 @@ describe("i18n translate", () => {
 
   it("returns localized contacts labels", () => {
     expect(translate("contacts.title", "en-US")).toBe("Contacts")
-    expect(translate("contacts.title", "da-DK")).toBe("Kontakter")
+    expect(translate("contacts.title", "da-DK")).toBe("Kunder")
   })
 
   it("interpolates contact delete confirmation", () => {

@@ -96,7 +96,6 @@ vi.mock("../ui/dropdown-menu", () => ({
 import { invalidateAppLayoutSession, reuseAppLayoutSession } from "../../lib/app-layout-session"
 import { THEME_STORAGE_KEY, resetThemeForTesting } from "../../lib/theme"
 import {
-  getRequestOrganizationId,
   initializeRequestOrganizationId,
   resetRequestOrganizationForTesting,
 } from "../../lib/active-organization"
@@ -115,53 +114,7 @@ afterEach(() => {
   state.loadPage.mockReset()
 })
 
-function organizationButton(name: string) {
-  return screen.getByText(name).closest("button") as HTMLButtonElement
-}
-
-describe("user menu organizations", () => {
-  it("cannot select the organization this tab and the session both act for", async () => {
-    initializeRequestOrganizationId("org_a")
-    render(<UserMenu />)
-
-    expect((await screen.findByText("Northwind")).closest("button")?.disabled).toBe(true)
-    expect(organizationButton("Contoso").disabled).toBe(false)
-  })
-
-  it("switches with a full page load", async () => {
-    initializeRequestOrganizationId("org_a")
-    state.setActive.mockResolvedValue({ data: {}, error: null })
-    render(<UserMenu />)
-
-    const other = await screen.findByText("Contoso")
-    await act(async () => {
-      fireEvent.click(other)
-    })
-
-    expect(state.setActive).toHaveBeenCalledWith({ organizationId: "org_b" })
-    expect(state.loadPage).toHaveBeenCalledWith("/")
-    expect(getRequestOrganizationId()).toBe("org_a")
-  })
-
-  it("lets the session's organization be selected when another tab switched to it", async () => {
-    initializeRequestOrganizationId("org_a")
-    state.sessionOrganizationId = "org_b"
-    state.setActive.mockResolvedValue({ data: {}, error: null })
-    render(<UserMenu />)
-
-    // This tab still acts for Northwind, so it stays checked, but nothing is locked.
-    expect((await screen.findByText("Northwind")).closest("button")?.disabled).toBe(false)
-    const sessionOrganization = organizationButton("Contoso")
-    expect(sessionOrganization.disabled).toBe(false)
-
-    await act(async () => {
-      fireEvent.click(sessionOrganization)
-    })
-
-    expect(state.setActive).toHaveBeenCalledWith({ organizationId: "org_b" })
-    expect(state.loadPage).toHaveBeenCalledWith("/")
-  })
-
+describe("user menu", () => {
   it("signs out with a full page load", async () => {
     initializeRequestOrganizationId("org_a")
     state.signOut.mockResolvedValue({ data: {} })

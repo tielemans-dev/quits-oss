@@ -1,9 +1,6 @@
-import { useNavigate } from '@tanstack/react-router'
-import { Check, ChevronsUpDown, LogOut, Monitor, Moon, Plus, Sun } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ChevronsUpDown, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 
 import { authClient, useSession } from '../lib/auth-client'
-import { switchActiveOrganization, useRequestOrganizationId } from '../lib/active-organization'
 import { invalidateAppLayoutSession } from '../lib/app-layout-session'
 import { loadPage } from '../lib/page-navigation'
 import { parseThemePreference, useTheme, type ThemePreference } from '../lib/theme'
@@ -46,39 +43,13 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-type Organization = {
-  id: string
-  name: string
-  slug: string
-  createdAt: Date
-  logo?: string | null
-  metadata?: unknown
-}
-
 export function UserMenu() {
   const { t } = useI18n()
-  const navigate = useNavigate()
   const { isMobile } = useSidebar()
   const { data: session } = useSession()
   const { preference: themePreference, setPreference: setThemePreference } = useTheme()
 
   const user = session?.user
-  const sessionOrgId = session?.session?.activeOrganizationId ?? null
-  // The organization this page acts for. It differs from the session's when another tab switched
-  // organization; then every organization, the session's included, can be selected to load it.
-  const tabOrgId = useRequestOrganizationId()
-  const currentOrgId = tabOrgId ?? sessionOrgId
-  const inSync = currentOrgId === sessionOrgId
-
-  const [orgs, setOrgs] = useState<Organization[]>([])
-
-  useEffect(() => {
-    authClient.organization.list().then((result) => {
-      if (result.data) {
-        setOrgs(result.data)
-      }
-    })
-  }, [])
 
   async function handleSignOut() {
     await authClient.signOut()
@@ -88,19 +59,7 @@ export function UserMenu() {
     loadPage('/login')
   }
 
-  async function handleSwitchOrg(organizationId: string) {
-    if (inSync && organizationId === currentOrgId) {
-      return
-    }
-
-    // Loads a new page acting for the organization once the session switched to it.
-    await switchActiveOrganization(organizationId)
-  }
-
   if (!user) return null
-
-  const currentOrg = orgs.find((o) => o.id === currentOrgId)
-  const otherOrgs = orgs.filter((o) => o.id !== currentOrgId)
 
   return (
     <SidebarMenu>
@@ -112,7 +71,7 @@ export function UserMenu() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="size-8 rounded-lg">
-                <AvatarFallback className="rounded-lg">
+                <AvatarFallback className="rounded-lg bg-brand-soft text-brand-text">
                   {getInitials(user.name ?? user.email)}
                 </AvatarFallback>
               </Avatar>
@@ -150,41 +109,6 @@ export function UserMenu() {
                 </div>
               </div>
             </DropdownMenuLabel>
-            {orgs.length > 0 && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="px-2 py-1 text-xs text-muted-foreground">
-                  {t('user.organizations')}
-                </DropdownMenuLabel>
-                {currentOrg && (
-                  <DropdownMenuItem
-                    className="gap-2"
-                    disabled={inSync}
-                    onClick={() => handleSwitchOrg(currentOrg.id)}
-                  >
-                    <Check className="size-4 shrink-0" />
-                    <span className="truncate">{currentOrg.name}</span>
-                  </DropdownMenuItem>
-                )}
-                {otherOrgs.map((org) => (
-                  <DropdownMenuItem
-                    key={org.id}
-                    className="gap-2"
-                    onClick={() => handleSwitchOrg(org.id)}
-                  >
-                    <span className="size-4 shrink-0" />
-                    <span className="truncate">{org.name}</span>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuItem
-                  className="gap-2 text-muted-foreground"
-                  onClick={() => navigate({ to: '/onboarding' })}
-                >
-                  <Plus className="size-4 shrink-0" />
-                  <span>{t('user.createOrganization')}</span>
-                </DropdownMenuItem>
-              </>
-            )}
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="px-2 py-1 text-xs text-muted-foreground">
               {t('user.theme')}

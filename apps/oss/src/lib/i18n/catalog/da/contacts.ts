@@ -1,5 +1,5 @@
 export const daContactsMessages = {
-  "contacts.title": "Kontakter",
+  "contacts.title": "Kunder",
   "contacts.loading": "Indlæser...",
   "contacts.field.name": "Navn",
   "contacts.field.email": "E-mail",
