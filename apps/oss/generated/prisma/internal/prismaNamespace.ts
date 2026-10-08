@@ -420,7 +420,9 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  RecoveryState: 'RecoveryState',
+  BackupRecord: 'BackupRecord'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -436,7 +438,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
+    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate" | "recoveryState" | "backupRecord"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3178,6 +3180,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    RecoveryState: {
+      payload: Prisma.$RecoveryStatePayload<ExtArgs>
+      fields: Prisma.RecoveryStateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RecoveryStateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RecoveryStateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload>
+        }
+        findFirst: {
+          args: Prisma.RecoveryStateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RecoveryStateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload>
+        }
+        findMany: {
+          args: Prisma.RecoveryStateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload>[]
+        }
+        create: {
+          args: Prisma.RecoveryStateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload>
+        }
+        createMany: {
+          args: Prisma.RecoveryStateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RecoveryStateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload>[]
+        }
+        delete: {
+          args: Prisma.RecoveryStateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload>
+        }
+        update: {
+          args: Prisma.RecoveryStateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload>
+        }
+        deleteMany: {
+          args: Prisma.RecoveryStateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RecoveryStateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RecoveryStateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload>[]
+        }
+        upsert: {
+          args: Prisma.RecoveryStateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryStatePayload>
+        }
+        aggregate: {
+          args: Prisma.RecoveryStateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRecoveryState>
+        }
+        groupBy: {
+          args: Prisma.RecoveryStateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RecoveryStateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RecoveryStateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RecoveryStateCountAggregateOutputType> | number
+        }
+      }
+    }
+    BackupRecord: {
+      payload: Prisma.$BackupRecordPayload<ExtArgs>
+      fields: Prisma.BackupRecordFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BackupRecordFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BackupRecordFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload>
+        }
+        findFirst: {
+          args: Prisma.BackupRecordFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BackupRecordFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload>
+        }
+        findMany: {
+          args: Prisma.BackupRecordFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload>[]
+        }
+        create: {
+          args: Prisma.BackupRecordCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload>
+        }
+        createMany: {
+          args: Prisma.BackupRecordCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BackupRecordCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload>[]
+        }
+        delete: {
+          args: Prisma.BackupRecordDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload>
+        }
+        update: {
+          args: Prisma.BackupRecordUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload>
+        }
+        deleteMany: {
+          args: Prisma.BackupRecordDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BackupRecordUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BackupRecordUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload>[]
+        }
+        upsert: {
+          args: Prisma.BackupRecordUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRecordPayload>
+        }
+        aggregate: {
+          args: Prisma.BackupRecordAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBackupRecord>
+        }
+        groupBy: {
+          args: Prisma.BackupRecordGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BackupRecordGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BackupRecordCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BackupRecordCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -4070,6 +4220,35 @@ export const IssuanceCandidateScalarFieldEnum = {
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
 
 
+export const RecoveryStateScalarFieldEnum = {
+  id: 'id',
+  operationsMode: 'operationsMode',
+  heldReason: 'heldReason',
+  heldAt: 'heldAt',
+  restoredFrom: 'restoredFrom',
+  restoreReport: 'restoreReport',
+  enabledAt: 'enabledAt',
+  lastSchedulerTickAt: 'lastSchedulerTickAt',
+  lastSchedulerTickOk: 'lastSchedulerTickOk',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RecoveryStateScalarFieldEnum = (typeof RecoveryStateScalarFieldEnum)[keyof typeof RecoveryStateScalarFieldEnum]
+
+
+export const BackupRecordScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind',
+  bundleId: 'bundleId',
+  manifestSha256: 'manifestSha256',
+  formatVersion: 'formatVersion',
+  summary: 'summary',
+  createdAt: 'createdAt'
+} as const
+
+export type BackupRecordScalarFieldEnum = (typeof BackupRecordScalarFieldEnum)[keyof typeof BackupRecordScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -4374,6 +4553,8 @@ export type GlobalOmitConfig = {
   eventConsumerDelivery?: Prisma.EventConsumerDeliveryOmit
   artifactStaging?: Prisma.ArtifactStagingOmit
   issuanceCandidate?: Prisma.IssuanceCandidateOmit
+  recoveryState?: Prisma.RecoveryStateOmit
+  backupRecord?: Prisma.BackupRecordOmit
 }
 
 /* Types for Logging */

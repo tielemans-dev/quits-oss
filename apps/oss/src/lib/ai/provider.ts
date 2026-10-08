@@ -1,4 +1,5 @@
 import { readProductEnv } from "@quits/shared/runtimeEnv"
+import { readOperationsHold } from "../operations-hold"
 import { getRuntimeCapabilities } from "../runtime/extensions"
 import { getRuntimeEnv } from "../runtime/platform"
 import { getManagedAiProvider } from "../runtime/services"
@@ -157,6 +158,10 @@ export function registerAiProviderFactories(factories: ProviderFactories) {
  * chosen provider, and `not_configured` when required settings are missing.
  */
 export function resolveOrgAiProvider(settings: OrgAiSettings): AiProvider {
+  return withoutOperationsHold(resolveUnguardedOrgAiProvider(settings))
+}
+
+function resolveUnguardedOrgAiProvider(settings: OrgAiSettings): AiProvider {
   const capabilities = getRuntimeCapabilities().aiInvoiceDraft
   if (!providerFactories) {
     throw new AiProviderError({
@@ -219,7 +224,35 @@ export function resolveManagedAiProvider(): AiProvider {
   if (!getRuntimeCapabilities().aiInvoiceDraft.managed || !provider) {
     throw disabled("managed", "Managed AI is not enabled for this distribution")
   }
-  return provider
+  return withoutOperationsHold(provider)
+}
+
+/**
+ * A held installation (see `lib/operations-hold`) makes no AI requests: they leave the machine,
+ * may cost money, and a restored copy must not act as the original.
+ */
+function withoutOperationsHold(provider: AiProvider): AiProvider {
+  const assertLive = async () => {
+    const hold = await readOperationsHold()
+    if (hold.held) {
+      throw disabled(provider.id, `Operations are on hold, so AI requests are disabled. ${hold.reason}`)
+    }
+  }
+  return {
+    ...provider,
+    complete: async (request) => {
+      await assertLive()
+      return provider.complete(request)
+    },
+    ...(provider.listModels
+      ? {
+          listModels: async () => {
+            await assertLive()
+            return provider.listModels!()
+          },
+        }
+      : {}),
+  }
 }
 
 function disabled(providerId: string, message: string) {

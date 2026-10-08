@@ -228,3 +228,16 @@ export type ArtifactStaging = Prisma.ArtifactStagingModel
  * 
  */
 export type IssuanceCandidate = Prisma.IssuanceCandidateModel
+/**
+ * Model RecoveryState
+ * Whether this installation may act on the outside world. A restore leaves it `held`: scheduled
+ * work, queued jobs, email, payment-provider calls and AI calls stay off until an operator
+ * reviews the pending work and enables operations (`recovery enable-operations`). One row.
+ */
+export type RecoveryState = Prisma.RecoveryStateModel
+/**
+ * Model BackupRecord
+ * Backups and verifications made with the recovery tool against this database, so the app can
+ * report how old the newest verified backup is. Holds counts and digests, never backup content.
+ */
+export type BackupRecord = Prisma.BackupRecordModel

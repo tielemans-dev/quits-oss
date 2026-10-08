@@ -9,6 +9,12 @@ export const Route = createFileRoute("/api/payments/stripe-webhook")({
           return new Response("Missing Stripe signature", { status: 400 })
         }
 
+        // A held installation must not record payments. 503 makes Stripe retry after operations resume.
+        const { isOperationsHeld } = await import("../../../lib/operations-hold")
+        if (await isOperationsHeld()) {
+          return new Response("Operations are on hold", { status: 503 })
+        }
+
         const payload = await request.text()
 
         try {

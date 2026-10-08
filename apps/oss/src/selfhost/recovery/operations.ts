@@ -1,0 +1,134 @@
+import { createHash } from "node:crypto"
+import type { Client } from "pg"
+import { RecoveryError } from "./format"
+import { queryFn, type QueryFn } from "./pgdb"
+import type { GateName, RestoreReport } from "./restore"
+
+export type PendingWorkReview = {
+  restoredFrom: { bundleId: string; createdAt: string; appVersion: string } | null
+  gates: RestoreReport["gates"] | null
+  jobs: Array<{ type: string; status: string; count: number; withPriorAttempts: number; oldestRunAfter: string | null }>
+  remindersDue: number
+  recurringDue: number
+  eventDeliveriesPending: number
+  /** What prevents the same work from running twice, in the terms an operator can act on. */
+  duplicateExecutionControls: string[]
+  warnings: string[]
+}
+
+const CONTROLS = [
+  "Reminders: one row per invoice and offset; a reminder that already has a sent time is never sent again.",
+  "Recurring invoices: one invoice per schedule and run date is enforced by the database.",
+  "Queued jobs: a job with a dedupe key can exist only once; a job that was `running` at backup time is reclaimed after 15 minutes and retried.",
+  "Email: Resend drops a repeat of the same idempotency key for 23 hours; SMTP cannot deduplicate, so an email whose first attempt may have reached the relay is not retried.",
+  "Nothing prevents two installations from running the same schedule: stop the source scheduler before enabling operations here.",
+]
+
+/** The state of pending work an operator reviews before enabling operations. */
+export async function reviewPendingWork(query: QueryFn): Promise<PendingWorkReview> {
+  const state = (await query(`SELECT "restoredFrom", "restoreReport" FROM recovery_state WHERE id = 'default'`))[0]
+  const report = (state?.restoreReport ?? null) as RestoreReport | null
+  const restoredFrom = (state?.restoredFrom ?? null) as PendingWorkReview["restoredFrom"]
+  const jobs = await query(`
+    SELECT type, status, count(*)::int AS n, count(*) FILTER (WHERE attempts > 0)::int AS prior, min("runAfter") AS oldest
+    FROM job WHERE status IN ('pending','running') GROUP BY type, status ORDER BY type, status`)
+  const scalar = async (sql: string) => Number((await query(sql))[0]?.n ?? 0)
+  const review: PendingWorkReview = {
+    restoredFrom,
+    gates: report?.gates ?? null,
+    jobs: jobs.map((row) => ({
+      type: String(row.type),
+      status: String(row.status),
+      count: Number(row.n),
+      withPriorAttempts: Number(row.prior),
+      oldestRunAfter: row.oldest instanceof Date ? row.oldest.toISOString() : row.oldest ? String(row.oldest) : null,
+    })),
+    remindersDue: await scalar(`SELECT count(*)::int AS n FROM invoice_reminder WHERE "sentAt" IS NULL AND "scheduledFor" <= now()`),
+    recurringDue: await scalar(`SELECT count(*)::int AS n FROM recurring_invoice WHERE status = 'active' AND "nextRunAt" <= now()`),
+    eventDeliveriesPending: await scalar(`SELECT count(*)::int AS n FROM event_consumer_delivery WHERE status IN ('pending','claimed')`),
+    duplicateExecutionControls: CONTROLS,
+    warnings: [],
+  }
+  if (review.jobs.some((job) => job.status === "running")) {
+    review.warnings.push("Jobs were running when the backup was taken. The source may have completed them; cancel them unless you are sure it did not.")
+  }
+  if (review.jobs.some((job) => job.type === "email.deliver" && job.withPriorAttempts > 0)) {
+    review.warnings.push("Some queued emails were already attempted at least once. After the 23-hour idempotency window a retry could send a duplicate.")
+  }
+  return review
+}
+
+/** Changes whenever the pending work changes, so approval always refers to what was reviewed. */
+export function reviewToken(review: PendingWorkReview) {
+  const { restoredFrom, jobs, remindersDue, recurringDue, eventDeliveriesPending } = review
+  return createHash("sha256")
+    .update(JSON.stringify({ restoredFrom, jobs, remindersDue, recurringDue, eventDeliveriesPending }))
+    .digest("hex")
+    .slice(0, 16)
+}
+
+export type EnableOptions = {
+  client: Client
+  reviewToken: string
+  /** What to do with queued and running jobs; there is deliberately no default. */
+  jobs: "keep" | "cancel"
+  /** The operator asserts the source installation's scheduler and workers are stopped. */
+  sourceStopped: boolean
+  /** Gates whose failure or skip the operator knowingly accepts. */
+  acceptedGates?: readonly GateName[]
+  now?: Date
+}
+
+/**
+ * The only way out of a held restore. It requires a review token for the work as it stands now,
+ * an explicit choice for queued jobs, a statement that the source is stopped, and passing gates.
+ */
+export async function enableOperations(options: EnableOptions) {
+  const query = queryFn(options.client)
+  const state = (await query(`SELECT "operationsMode", "restoreReport" FROM recovery_state WHERE id = 'default'`))[0]
+  if (!state || state.operationsMode === "live") {
+    throw new RecoveryError("not_held", "Operations are not on hold; nothing to enable.")
+  }
+  const report = state.restoreReport as RestoreReport | null
+  const accepted = new Set(options.acceptedGates ?? [])
+  const failing = report
+    ? (Object.entries(report.gates) as Array<[GateName, string]>).filter(([name, result]) => result !== "pass" && !accepted.has(name))
+    : [["integrity", "unknown"] as [GateName, string]]
+  if (failing.length) {
+    throw new RecoveryError(
+      "gates_not_passed",
+      `Verification did not pass for: ${failing.map(([name, result]) => `${name} (${result})`).join(", ")}.`,
+      "Restore again after fixing the cause. To proceed anyway, name each gate with --accept-gate <name>."
+    )
+  }
+  if (!options.sourceStopped) {
+    throw new RecoveryError("source_not_confirmed", "Confirm that the source installation's scheduler and workers are stopped.", "Stop them, then pass --source-stopped.")
+  }
+  const review = await reviewPendingWork(query)
+  if (options.reviewToken !== reviewToken(review)) {
+    throw new RecoveryError("review_stale", "The review token does not match the pending work as it is now.", "Run `recovery review` again, read it, and pass the new token.")
+  }
+
+  const now = options.now ?? new Date()
+  await options.client.query("BEGIN")
+  try {
+    let cancelled = 0
+    if (options.jobs === "cancel") {
+      const result = await options.client.query(
+        `UPDATE job SET status = 'failed', "claimToken" = NULL, "lastError" = 'Cancelled at cutover after restore', "updatedAt" = $1 WHERE status IN ('pending','running')`,
+        [now]
+      )
+      cancelled = result.rowCount ?? 0
+    }
+    await options.client.query(
+      `UPDATE recovery_state SET "operationsMode" = 'live', "heldReason" = NULL, "enabledAt" = $1, "updatedAt" = $1,
+         "restoreReport" = jsonb_set(coalesce("restoreReport", '{}'::jsonb), '{enabled}', $2::jsonb) WHERE id = 'default'`,
+      [now, JSON.stringify({ at: now.toISOString(), jobs: options.jobs, cancelled, acceptedGates: [...accepted], reviewToken: options.reviewToken })]
+    )
+    await options.client.query("COMMIT")
+    return { cancelledJobs: cancelled }
+  } catch (error) {
+    await options.client.query("ROLLBACK").catch(() => undefined)
+    throw error
+  }
+}

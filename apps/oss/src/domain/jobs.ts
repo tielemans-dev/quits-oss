@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks"
 import { randomUUID } from "node:crypto"
 import type { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
+import { isOperationsHeld } from "../lib/operations-hold"
 import { appLogger } from "../lib/observability"
 
 /** A job that fails on its last attempt is failed for good; handlers can tell when no retry is left. */
@@ -152,7 +153,8 @@ async function runJobBatch(ids: readonly string[], now: Date, deadline?: number)
  * it does nothing: the sweep running that handler picks the new jobs up.
  */
 export async function runJobsNow(ids: string[], now = new Date()) {
-  if (insideJob.getStore()) {
+  // A held installation (a restore awaiting review) leaves queued jobs untouched.
+  if (insideJob.getStore() || (await isOperationsHeld())) {
     return { processed: 0, succeeded: 0, retrying: 0, failed: 0, deferred: ids.length } satisfies JobBatchResult
   }
   return runJobBatch(ids, now)
@@ -205,6 +207,11 @@ export async function runDueJobs(
   input: { now?: Date; limit?: number; timeBudgetMs?: number } & JobScope = {}
 ) {
   const now = input.now ?? new Date()
+  if (await isOperationsHeld()) {
+    // Nothing is claimed, retried or reclaimed: the queue stays exactly as it was restored.
+    const pending = await prisma.job.count({ where: { ...scopeFilter(input), status: "pending" } })
+    return { processed: 0, succeeded: 0, retrying: 0, failed: 0, deferred: pending, reclaimed: 0 }
+  }
   const deadline = Date.now() + (input.timeBudgetMs ?? DEFAULT_JOBS_TIME_BUDGET_MS)
   const reclaimed = await reclaimStaleJobs(now, input)
   const limit = input.limit ?? DEFAULT_JOBS_PER_SWEEP
