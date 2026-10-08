@@ -40,6 +40,14 @@ describe("shell hotkeys", () => {
     expect(handlers.openNewMenu).toHaveBeenCalledTimes(1)
   })
 
+  it("does not treat Shift+N as N, but still opens the palette with / where it needs Shift", () => {
+    render(<Host />)
+    fireEvent.keyDown(document.body, { key: "N", shiftKey: true })
+    expect(handlers.openNewMenu).not.toHaveBeenCalled()
+    fireEvent.keyDown(document.body, { key: "/", shiftKey: true })
+    expect(handlers.openPalette).toHaveBeenCalledTimes(1)
+  })
+
   it("leaves single keys alone while a field has the keyboard", () => {
     render(
       <Host>

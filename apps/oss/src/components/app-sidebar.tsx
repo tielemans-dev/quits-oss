@@ -53,6 +53,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 
 export function AppSidebar() {
   const { t } = useI18n()
+  const { setOpenMobile } = useSidebar()
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
   const { billingEnabled } = useRuntimeDistribution()
@@ -75,7 +76,12 @@ export function AppSidebar() {
             aria-hidden="true"
             className="bg-brand-glow pointer-events-none absolute inset-x-0 top-0 h-56 md:hidden"
           />
-          <Link to="/" aria-label="quits" className="relative ml-2 w-fit rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+          <Link
+            to="/"
+            aria-label="quits"
+            onClick={() => setOpenMobile(false)}
+            className="relative ml-2 w-fit rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          >
             <QuitsWordmark className="text-[22px]" />
           </Link>
           <OrgSwitcher className="relative" />

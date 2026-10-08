@@ -26,7 +26,8 @@ type Handlers = {
 /**
  * The shell's keyboard shortcuts: ⌘K / Ctrl+K toggles the palette from anywhere (even while
  * typing), and `/` opens it and `N` opens the "+ Ny" menu when no field or overlay has the
- * keyboard. Modified presses other than ⌘K / Ctrl+K are left to the browser.
+ * keyboard. Modified presses other than ⌘K / Ctrl+K are left to the browser. `/` may need Shift
+ * on some keyboards (Danish), so only `N` ignores it.
  */
 export function useShellHotkeys({ togglePalette, openPalette, openNewMenu }: Handlers): void {
   useEffect(() => {
@@ -45,7 +46,7 @@ export function useShellHotkeys({ togglePalette, openPalette, openNewMenu }: Han
       if (key === '/') {
         event.preventDefault()
         openPalette()
-      } else if (key === 'n') {
+      } else if (key === 'n' && !event.shiftKey) {
         event.preventDefault()
         openNewMenu()
       }

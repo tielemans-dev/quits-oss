@@ -1,13 +1,23 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const router = vi.hoisted(() => ({ context: undefined as unknown, pathname: "/" }))
+const router = vi.hoisted(() => ({ context: undefined as unknown, pathname: "/", setOpenMobile: vi.fn() }))
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to, ...props }: { children: unknown; to: string; "aria-current"?: "page" }) => (
-    <a href={to} aria-current={props["aria-current"]}>
+  Link: ({
+    children,
+    to,
+    ...props
+  }: {
+    children: unknown
+    to: string
+    "aria-current"?: "page"
+    "aria-label"?: string
+    onClick?: () => void
+  }) => (
+    <a href={to} aria-current={props["aria-current"]} aria-label={props["aria-label"]} onClick={props.onClick}>
       {children as never}
     </a>
   ),
@@ -36,7 +46,7 @@ vi.mock("../ui/sidebar", () => {
     SidebarMenu: Pass,
     SidebarMenuItem: Pass,
     SidebarMenuButton: Pass,
-    useSidebar: () => ({ setOpenMobile: () => undefined }),
+    useSidebar: () => ({ setOpenMobile: router.setOpenMobile }),
   }
 })
 
@@ -46,6 +56,7 @@ afterEach(() => {
   cleanup()
   router.context = undefined
   router.pathname = "/"
+  router.setOpenMobile.mockReset()
 })
 
 describe("sidebar billing entry", () => {
@@ -90,6 +101,15 @@ describe("sidebar navigation", () => {
 
     const current = screen.getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page")
     expect(current.map((link) => link.getAttribute("href"))).toEqual(["/invoices"])
+  })
+
+  it("closes the mobile drawer when a page or the logo is chosen", () => {
+    render(<AppSidebar />)
+
+    fireEvent.click(screen.getByRole("link", { name: "quits" }))
+    fireEvent.click(screen.getByText("nav.quotes"))
+    expect(router.setOpenMobile).toHaveBeenCalledTimes(2)
+    expect(router.setOpenMobile).toHaveBeenCalledWith(false)
   })
 
   it("has a landmark for the pages", () => {
