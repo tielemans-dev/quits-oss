@@ -114,15 +114,33 @@ Tool failures are returned as MCP tool errors with `{ "error": { "tag", "message
 Invoices and quotes are numbered when they are issued, not when the draft is created, so deleting a
 draft never leaves a gap in the series.
 
-- `number` on an invoice or quote is `null` while it is a draft. It is set by `invoice_send` and
-  `quote_send` (and by `invoice_send` for drafts created from deliverables, quotes or a recurring
-  schedule). Read it from the tool's result or from `invoice_get` / `quote_get` afterwards.
-- A draft created before this change already has a number and keeps it when it is sent.
+> **Breaking for typed clients.** `number` on an invoice or quote changed from `string` to
+> `string | null`. It is `null` while the document is a draft. A client generated from the previous
+> schema, or one that assumes a non-empty string, must accept `null` before upgrading.
+
+- `number` is set by `invoice_send` and `quote_send` (and by `invoice_send` for drafts created from
+  deliverables, quotes or a recurring schedule). Read it from the tool's result or from
+  `invoice_get` / `quote_get` afterwards.
+- A draft created before this change already has a number and keeps it when it is sent. Such
+  legacy drafts are issued with their old number, which is lower than the number the next new
+  draft receives, so issue dates and numbers can be out of order across them.
+- A draft whose email was refused after it took its number keeps that number for the retry.
+- Deleting a draft that has a number leaves a gap in the series. It is recorded as a
+  `document.number_voided` event with `reason: "draft_deleted"` and shows in the activity log.
 - Do not guess or reserve the next number. The `invoice_send` approval summary names a draft as
   "draft invoice"; the number it receives is only known once it is sent.
 - `quote_convert_to_invoice` and `quote.invoices[].number` can also be `null` for the same reason.
 - The field name is unchanged, so clients that treat `number` as an opaque string only need to
   accept `null` for drafts.
+- If many documents are issued at once, a send can fail with `ExternalFailure` and code
+  `number_contention` after several attempts. Nothing was changed; call the tool again with the
+  same `clientRequestId`.
+- Event payloads were widened accordingly. `number` can now be `null` in `invoice.draft_created`,
+  `invoice.draft_deleted`, `quote.draft_created`, `quote.draft_deleted` and
+  `recurring.invoice_generated`, and `invoiceNumber` in `quote.converted`. `document.number_voided`
+  can name a `quote` and can omit `reservationId`. Consumers of these events must accept both.
+
+Rolling this change back is covered in [number-at-issuance-rollback.md](number-at-issuance-rollback.md).
 
 ## Tools
 
