@@ -162,8 +162,9 @@ const sellerOf = async (id: string) =>
     expect(seller).not.toBeNull()
     expect(seller && "bankDetails" in seller).toBe(false)
     const rendered = await storedRenderInput(context, invoice.id)
-    expect(rendered.pdf.invoice.bankDetails).toBeNull()
-    expect(rendered.ubl?.payment).toBeNull()
+    // The render input is exactly what it was before this feature existed.
+    expect("bankDetails" in rendered.pdf.invoice).toBe(false)
+    expect(rendered.ubl && "payment" in rendered.ubl).toBe(false)
   })
 
   it("keeps parsing and rendering an invoice issued before bank details existed", async () => {

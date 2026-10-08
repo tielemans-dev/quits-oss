@@ -88,7 +88,7 @@ export const prospectiveRenderInput = (input: {
     const pdfInvoice: InvoiceForPdf = {
       number: input.number, status: "sent", issueDate: base.issuedAt, dueDate: invoice.dueDate.toISOString(),
       subtotal: num(invoice.subtotalNet), taxAmount: num(invoice.totalTax), total: num(invoice.totalGross),
-      currency: invoice.currency, notes: invoice.notes, bankDetails: seller.bankDetails ?? null,
+      currency: invoice.currency, notes: invoice.notes, ...(seller.bankDetails ? { bankDetails: seller.bankDetails } : {}),
       contact: { ...buyer, name: buyer?.name ?? invoice.contact.name },
       items: invoice.items.map(line => ({ description: line.description, quantity: num(line.quantity),
         unitPrice: num(line.unitPriceGross), total: num(line.lineGross) })),

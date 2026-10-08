@@ -13,6 +13,7 @@ export function frozenEinvoiceInput(input: {
   lines: Array<{ description: string; quantity: string; unitPriceNet: string; lineNet: string; taxRate: string; taxCategory: string; vatTreatment?: string; vatCountry?: string | null; vatReasonCode?: string | null; vatRateInput?: string | null }>;
 }): EinvoiceDocument {
   const buyer = buildBuyerParty(input.money.buyer, input.contact)
+  const payment = input.kind === "invoice" ? buildEinvoicePayment(input.money.seller.bankDetails, input.money.number) : null
   return {
     kind: input.kind, issued: true, calculationVersion: input.money.calculation.version,
     frozenGroups: input.money.vatGroups, number: input.money.number, issueDate: input.money.issueDate,
@@ -20,7 +21,8 @@ export function frozenEinvoiceInput(input: {
     buyerReference: input.orderReference || buyer.name, orderReference: input.orderReference,
     billingReference: input.billingReference, note: input.note,
     seller: buildSellerParty({ snapshot: input.money.seller, settings: null, taxIds: [], documentCountryCode: input.countryCode }), buyer,
-    payment: input.kind === "invoice" ? buildEinvoicePayment(input.money.seller.bankDetails, input.money.number) : null,
+    // Left out entirely without an IBAN, so documents of organizations without payment details hash as before.
+    ...(payment ? { payment } : {}),
     lines: input.lines.map(line => ({ ...line, groupKey: vatGroupKey({ treatment: line.vatTreatment ?? line.taxCategory, country: line.vatCountry ?? null, reasonCode: line.vatReasonCode ?? null, rate: line.vatRateInput ?? percentageToFraction(line.taxRate) }) })), storedGross: input.money.totals.gross, amountPaid: "0",
   }
 }
