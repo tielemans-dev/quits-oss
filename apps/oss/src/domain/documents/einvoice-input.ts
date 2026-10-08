@@ -1,5 +1,5 @@
 import { vatGroupKey, percentageToFraction } from "@quits/shared/pricing"
-import { buildBuyerParty, buildSellerParty } from "../../lib/exports/einvoice"
+import { buildBuyerParty, buildEinvoicePayment, buildSellerParty } from "../../lib/exports/einvoice"
 import type { EinvoiceDocument } from "../../lib/exports/ubl"
 import type { InvoiceMoneySnapshot } from "./money-snapshot"
 
@@ -20,6 +20,7 @@ export function frozenEinvoiceInput(input: {
     buyerReference: input.orderReference || buyer.name, orderReference: input.orderReference,
     billingReference: input.billingReference, note: input.note,
     seller: buildSellerParty({ snapshot: input.money.seller, settings: null, taxIds: [], documentCountryCode: input.countryCode }), buyer,
+    payment: input.kind === "invoice" ? buildEinvoicePayment(input.money.seller.bankDetails, input.money.number) : null,
     lines: input.lines.map(line => ({ ...line, groupKey: vatGroupKey({ treatment: line.vatTreatment ?? line.taxCategory, country: line.vatCountry ?? null, reasonCode: line.vatReasonCode ?? null, rate: line.vatRateInput ?? percentageToFraction(line.taxRate) }) })), storedGross: input.money.totals.gross, amountPaid: "0",
   }
 }

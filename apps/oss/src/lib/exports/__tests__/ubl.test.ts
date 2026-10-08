@@ -168,6 +168,58 @@ describe("UBL e-invoice", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order)
   })
 
+  describe("payment means", () => {
+    const payment = { iban: "DK5000400440116243", bic: "DABADKKK", reference: "INV-0007" }
+
+    it("writes a SEPA credit transfer to the seller's IBAN with the invoice number as reference", () => {
+      const xml = buildUblDocument(invoice({ payment }))
+
+      expect(between(xml, "cbc:PaymentMeansCode")).toEqual(["58"])
+      expect(between(xml, "cbc:PaymentID")).toEqual(["INV-0007"])
+      expect(xml).toMatch(
+        /<cac:PaymentMeans>\s*<cbc:PaymentMeansCode>58<\/cbc:PaymentMeansCode>\s*<cbc:PaymentID>INV-0007<\/cbc:PaymentID>\s*<cac:PayeeFinancialAccount>\s*<cbc:ID>DK5000400440116243<\/cbc:ID>\s*<cac:FinancialInstitutionBranch>\s*<cbc:ID>DABADKKK<\/cbc:ID>\s*<\/cac:FinancialInstitutionBranch>\s*<\/cac:PayeeFinancialAccount>\s*<\/cac:PaymentMeans>/
+      )
+    })
+
+    it("places the payment means between the delivery and the tax total", () => {
+      const xml = buildUblDocument(invoice({ deliveryDate: "2026-10-01", payment }))
+      const order = ["cac:AccountingCustomerParty", "cac:Delivery", "cac:PaymentMeans", "cac:TaxTotal"].map((needle) =>
+        xml.indexOf(needle)
+      )
+      expect(order.every((index) => index >= 0)).toBe(true)
+      expect([...order].sort((a, b) => a - b)).toEqual(order)
+    })
+
+    it("omits the BIC branch when there is no BIC", () => {
+      const xml = buildUblDocument(invoice({ payment: { ...payment, bic: null } }))
+      expect(between(xml, "cbc:ID")).toContain("DK5000400440116243")
+      expect(xml).not.toContain("FinancialInstitutionBranch")
+    })
+
+    it("writes no payment means without an IBAN", () => {
+      expect(buildUblDocument(invoice())).not.toContain("PaymentMeans")
+      expect(buildUblDocument(invoice({ payment: null }))).not.toContain("PaymentMeans")
+    })
+
+    it("leaves credit notes without payment means", () => {
+      const xml = buildUblDocument(
+        invoice({
+          kind: "creditNote",
+          number: "CN-0001",
+          dueDate: null,
+          billingReference: { number: "INV-0007", issueDate: "2026-10-01" },
+          amountPaid: 0,
+          payment,
+        })
+      )
+      expect(xml).not.toContain("PaymentMeans")
+    })
+
+    it("does not change the missing-data check", () => {
+      expect(validateEinvoice(invoice({ payment }))).toEqual([])
+    })
+  })
+
   it("writes a credit note with a billing reference to the invoice", () => {
     const xml = buildUblDocument(
       invoice({

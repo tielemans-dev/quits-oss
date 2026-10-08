@@ -10,6 +10,7 @@ import {
   type SellerSnapshot,
 } from "@quits/contracts/documents"
 import type { EinvoiceDocumentKind, EinvoiceExportResult } from "@quits/contracts/exports"
+import { normalizeBic, normalizeIban, type BankDetailsSnapshot } from "@quits/contracts/payment-details"
 import { prisma } from "../db"
 import { formatIsoDate, safeFileName } from "./format"
 import {
@@ -21,7 +22,13 @@ import {
   vatIdentifier,
   type TaxIdLike,
 } from "./parties"
-import { buildUblDocument, validateEinvoice, type EinvoiceDocument, type EinvoiceParty } from "./ubl"
+import {
+  buildUblDocument,
+  validateEinvoice,
+  type EinvoiceDocument,
+  type EinvoiceParty,
+  type EinvoicePayment,
+} from "./ubl"
 
 export class EinvoiceArtifactUnavailable extends Error {
   readonly code = "stored_artifact_unavailable"
@@ -98,6 +105,19 @@ export function buildSellerParty(source: SellerSource): EinvoiceParty {
   }
 }
 
+/**
+ * SEPA credit transfer instructions for an invoice, from the bank details frozen on it. Only an
+ * IBAN can be sent; the Danish reg.nr. and account number have no place in Peppol BIS.
+ */
+export function buildEinvoicePayment(
+  bankDetails: BankDetailsSnapshot | null | undefined,
+  invoiceNumber: string
+): EinvoicePayment | null {
+  const iban = normalizeIban(bankDetails?.iban ?? "")
+  if (!iban) return null
+  return { iban, bic: normalizeBic(bankDetails?.bic ?? "") || null, reference: invoiceNumber }
+}
+
 /** Buyer party: snapshot values first, the live contact for anything missing and for the endpoint. */
 export function buildBuyerParty(snapshot: BuyerSnapshot | null, contact: ContactRow): EinvoiceParty {
   const pick = (key: "company" | "address" | "city" | "state" | "zip" | "country" | "email") =>
@@ -163,6 +183,7 @@ export async function loadEinvoiceDocument(
     })
     if (!invoice) throw new EinvoiceSourceNotFound(kind, id)
     const buyer = buildBuyerParty(parseBuyerSnapshot(invoice.buyerSnapshot), invoice.contact)
+    const sellerSnapshot = parseSellerSnapshot(invoice.sellerSnapshot)
 
     return {
       kind,
@@ -177,12 +198,13 @@ export async function loadEinvoiceDocument(
       billingReference: null,
       note: invoice.notes,
       seller: buildSellerParty({
-        snapshot: parseSellerSnapshot(invoice.sellerSnapshot),
+        snapshot: sellerSnapshot,
         settings: seller.settings,
         taxIds: seller.taxIds,
         documentCountryCode: invoice.countryCode,
       }),
       buyer,
+      payment: buildEinvoicePayment(sellerSnapshot?.bankDetails, invoice.number),
       calculationVersion: invoice.calculationVersion,
       frozenGroups: invoice.calculationVersion === "v2" ? frozenVatGroups(invoice) : undefined,
       lines: invoice.items.map(exportLine),

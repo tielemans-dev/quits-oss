@@ -27,6 +27,14 @@ export type EinvoiceParty = PostalAddress & {
   email: string | null
 }
 
+/** Bank transfer instructions (PEPPOL BG-16/BG-17): SEPA credit transfer to an IBAN. */
+export type EinvoicePayment = {
+  iban: string
+  bic: string | null
+  /** The payer's remittance information (BT-83): the invoice number. */
+  reference: string
+}
+
 export type EinvoiceLine = {
   description: string
   quantity: DecimalLike
@@ -57,6 +65,8 @@ export type EinvoiceDocument = {
   note: string | null
   seller: EinvoiceParty
   buyer: EinvoiceParty
+  /** Invoices only, and only when the seller has an IBAN. Danish reg.nr./account numbers are not mapped. */
+  payment?: EinvoicePayment | null
   lines: EinvoiceLine[]
   /** Gross total stored on the document; differences to the line-derived total become rounding. */
   storedGross: DecimalLike
@@ -226,6 +236,22 @@ function partyElement(party: EinvoiceParty): XmlElement {
   )
 }
 
+/** UNCL 4461 code 58: SEPA credit transfer. */
+const PAYMENT_MEANS_SEPA_CREDIT_TRANSFER = "58"
+
+function paymentMeansElement(payment: EinvoicePayment): XmlElement {
+  return cac(
+    "PaymentMeans",
+    cbc("PaymentMeansCode", PAYMENT_MEANS_SEPA_CREDIT_TRANSFER),
+    cbc("PaymentID", payment.reference),
+    cac(
+      "PayeeFinancialAccount",
+      cbc("ID", payment.iban),
+      payment.bic ? cac("FinancialInstitutionBranch", cbc("ID", payment.bic)) : null
+    )
+  )
+}
+
 function classifiedTaxCategory(line: EinvoiceLine, document: EinvoiceDocument) {
   if (document.calculationVersion === "v2") {
     const group = document.frozenGroups?.find((group) => group.key === line.groupKey)
@@ -308,6 +334,7 @@ export function buildUblDocument(document: EinvoiceDocument): string {
     isInvoice && document.deliveryDate
       ? cac("Delivery", cbc("ActualDeliveryDate", document.deliveryDate))
       : null,
+    isInvoice && document.payment ? paymentMeansElement(document.payment) : null,
     cac(
       "TaxTotal",
       money("TaxAmount", totals.tax),
