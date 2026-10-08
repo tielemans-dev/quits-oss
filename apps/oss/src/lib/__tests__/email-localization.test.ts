@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   buildInvitationEmailContent,
+  buildInvoiceEmailContent,
   buildQuoteEmailContent,
 } from "../email"
 
@@ -54,4 +55,25 @@ describe("email localization", () => {
     expect(result.html).toContain("Accepter invitation")
     expect(result.html).toContain("Denne invitation udløber om 48 timer.")
   })
+})
+
+
+describe("document email calendar dates", () => {
+  it.each(["America/New_York", "Pacific/Pago_Pago", "Europe/Copenhagen"])(
+    "keeps due and expiry dates in both the subject and body in %s", timezone => {
+      const document = {
+        number: "DOC-0001", issueDate: "2026-10-01T00:00:00.000Z",
+        subtotal: 100, taxAmount: 0, total: 100, currency: "USD", notes: null, items: [],
+      }
+      const org = { companyName: "Seller", locale: "en-US", timezone }
+      const invoice = buildInvoiceEmailContent({
+        invoice: { ...document, dueDate: "2028-02-29T00:00:00.000Z" }, org, contactName: "Buyer",
+      })
+      const quote = buildQuoteEmailContent({
+        quote: { ...document, expiryDate: "2027-03-14T00:00:00.000Z" }, org, contactName: "Buyer",
+      })
+      for (const text of [invoice.subject, invoice.html]) expect(text).toContain("February 29, 2028")
+      for (const text of [quote.subject, quote.html]) expect(text).toContain("March 14, 2027")
+    }
+  )
 })
