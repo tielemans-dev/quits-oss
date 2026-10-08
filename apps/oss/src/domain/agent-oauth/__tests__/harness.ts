@@ -13,7 +13,7 @@ import {
   handleOAuthEndpointRequest,
   handleProtectedResourceMetadataRequest,
 } from "../http"
-import { decideConsent, type ConsentDecision, type McpOAuthContext } from "../server"
+import { decideConsent, describeConsentRequest, type ConsentDecision, type McpOAuthContext } from "../server"
 import { InMemoryMcpOAuthStore } from "../store"
 import { chatGptClientMetadata, claudeCodeClientMetadata, fakeMetadataFetcher } from "./fixtures"
 
@@ -91,7 +91,9 @@ export async function authorizeInBrowser(
     // An error redirect straight back to the client.
     return consentUrl
   }
-  const { redirectTo } = await decideConsent(context, user, consentUrl.searchParams.get("request")!, decision)
+  const requestId = consentUrl.searchParams.get("request")!
+  const review = await describeConsentRequest(context, user, requestId, "harness-session")
+  const { redirectTo } = await decideConsent(context, user, requestId, { ...decision, reviewId: review.reviewId }, "harness-session")
   return new URL(redirectTo)
 }
 

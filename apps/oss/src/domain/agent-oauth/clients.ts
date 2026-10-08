@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto"
 import { lookup } from "node:dns/promises"
 import { isIP } from "node:net"
 import { z } from "zod"
+import ipaddr from "ipaddr.js"
 import type { McpOAuthConfig } from "./config"
 import { isAcceptableRedirectUri } from "./redirect-uris"
 import type { McpOAuthStore, RegisteredClient } from "./store"
@@ -107,36 +108,92 @@ export function isMetadataDocumentClientId(clientId: string) {
   }
 }
 
-function isPrivateAddress(address: string) {
-  if (isIP(address) === 6) {
-    const lower = address.toLowerCase()
-    if (lower.startsWith("::ffff:")) return isPrivateAddress(lower.slice(7))
-    return lower === "::" || lower === "::1" || /^f[cd]/.test(lower) || /^fe[89ab]/.test(lower)
+function isPublicAddress(address: string) {
+  try {
+    // process() normalizes *both* dotted and hexadecimal IPv4-mapped IPv6 before
+    // classifying the IPv4 address. URL.hostname canonicalizes to hexadecimal.
+    const parsed = ipaddr.process(address)
+    if (parsed.range() !== "unicast") return false
+    const bytes = parsed.toByteArray()
+    // ipaddr.js 1.x does not classify the IPv4 benchmarking block.
+    if (parsed.kind() === "ipv4" && bytes[0] === 198 && (bytes[1]! & 0xfe) === 18) return false
+    // Conservatively exclude IETF special-purpose and documentation blocks not
+    // classified by ipaddr.js 1.x, including IPv6 benchmarking and ORCHID.
+    if (parsed instanceof ipaddr.IPv6 && (
+      parsed.match(ipaddr.IPv6.parseCIDR("2001::/23")) ||
+      parsed.match(ipaddr.IPv6.parseCIDR("3fff::/20"))
+    )) return false
+    // Only global IPv6 unicast; exclude legacy site-local and translation ranges.
+    return parsed.kind() === "ipv4" || (parsed.toByteArray()[0]! & 0xe0) === 0x20
+  } catch {
+    return false
   }
-  const [a, b] = address.split(".").map(Number)
-  return (
-    a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b! >= 16 && b! <= 31) ||
-    (a === 192 && b === 168) || (a === 100 && b! >= 64 && b! <= 127) || a! >= 224
-  )
 }
 
-/**
- * Fetches a metadata document without following redirects, refusing hosts that resolve to private
- * or loopback addresses (server-side request forgery) and bodies over 5 KiB.
- */
-export type MetadataDocumentFetcher = (url: URL) => Promise<Response>
+/** Bound unabortable DNS and test transports as well as fetch and body reads. */
+function untilAborted<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason)
+    signal.addEventListener("abort", abort, { once: true })
+    operation.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort))
+    if (signal.aborted) abort()
+  })
+}
 
-export const fetchMetadataDocument: MetadataDocumentFetcher = async (url) => {
-  const host = url.hostname.replace(/^\[|\]$/g, "")
-  const addresses = isIP(host) ? [host] : (await lookup(host, { all: true })).map((entry) => entry.address)
-  if (addresses.length === 0 || addresses.some(isPrivateAddress)) {
+/** Fetch without redirects, accepting only public addresses. The caller bounds the body. */
+export type MetadataDocumentFetcher = (url: URL, signal?: AbortSignal) => Promise<Response>
+
+export const fetchMetadataDocument: MetadataDocumentFetcher = async (url, signal = AbortSignal.timeout(METADATA_TIMEOUT_MS)) => {
+  if (url.protocol !== "https:" || url.username || url.password) {
     throw new ClientRegistrationError("invalid_client", "The client metadata host is not allowed")
   }
-  return fetch(url, {
+  const host = url.hostname.replace(/^\[|\]$/g, "")
+  const addresses = isIP(host)
+    ? [host]
+    : (await untilAborted(lookup(host, { all: true }), signal)).map((entry) => entry.address)
+  if (addresses.length === 0 || !addresses.every(isPublicAddress)) {
+    throw new ClientRegistrationError("invalid_client", "The client metadata host is not allowed")
+  }
+  signal.throwIfAborted()
+  return untilAborted(fetch(url, {
     redirect: "error",
     headers: { accept: "application/json" },
-    signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
-  })
+    signal,
+  }), signal)
+}
+
+async function readMetadata(clientId: string, fetcher: MetadataDocumentFetcher) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(new Error("Metadata deadline exceeded")), METADATA_TIMEOUT_MS)
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+  try {
+    const response = await untilAborted(fetcher(new URL(clientId), controller.signal), controller.signal)
+    reader = response.body?.getReader()
+    if (!response.ok) {
+      throw new ClientRegistrationError("invalid_client", `The client metadata document returned ${response.status}`)
+    }
+    const chunks: Uint8Array[] = []
+    let size = 0
+    while (reader) {
+      const { done, value } = await untilAborted(reader.read(), controller.signal)
+      if (done) break
+      size += value.byteLength
+      if (size > METADATA_MAX_BYTES) {
+        throw new ClientRegistrationError("invalid_client", "The client metadata document is too large")
+      }
+      chunks.push(value)
+    }
+    return { response, text: Buffer.concat(chunks, size).toString("utf8") }
+  } catch (error) {
+    // Do not wait for a hostile peer to acknowledge cancellation.
+    void reader?.cancel().catch(() => {})
+    controller.abort(error)
+    if (error instanceof ClientRegistrationError) throw error
+    throw new ClientRegistrationError("invalid_client", "The client metadata document could not be fetched")
+  } finally {
+    clearTimeout(timeout)
+    reader?.releaseLock()
+  }
 }
 
 function cacheSeconds(response: Response) {
@@ -150,20 +207,7 @@ async function loadMetadataDocumentClient(
   fetcher: MetadataDocumentFetcher,
   now: Date
 ): Promise<RegisteredClient> {
-  let response: Response
-  try {
-    response = await fetcher(new URL(clientId))
-  } catch (error) {
-    if (error instanceof ClientRegistrationError) throw error
-    throw new ClientRegistrationError("invalid_client", "The client metadata document could not be fetched")
-  }
-  if (!response.ok) {
-    throw new ClientRegistrationError("invalid_client", `The client metadata document returned ${response.status}`)
-  }
-  const text = await response.text()
-  if (new TextEncoder().encode(text).byteLength > METADATA_MAX_BYTES) {
-    throw new ClientRegistrationError("invalid_client", "The client metadata document is too large")
-  }
+  const { response, text } = await readMetadata(clientId, fetcher)
   let body: unknown
   try {
     body = JSON.parse(text)

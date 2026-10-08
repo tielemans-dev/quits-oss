@@ -51,7 +51,7 @@ function callerFor(org: Org, role: "admin" | "member" | "accountant") {
   return appRouter.createCaller({
     session: {
       user: { id: userId, email: `${userId}@test.quits.invalid`, name: userId },
-      session: { activeOrganizationId: org.organizationId },
+      session: { id: "integration-session", activeOrganizationId: org.organizationId },
     },
   } as never)
 }
@@ -190,6 +190,35 @@ describeIfDatabase("MCP sign-in authorization prototype", () => {
     })
   })
 
+  describe("authenticated consent binding", () => {
+    it("rejects another active organization in the same real user's session, then grants only the reviewed organization", async () => {
+      const orgA = await setup()
+      const orgB = await setup()
+      const owner = orgA.actors.admin
+      await ensureTestMembership(orgB.organizationId, owner.userId, "admin")
+      const authorize = new URL(`${ISSUER}/api/mcp/oauth/authorize`)
+      authorize.search = new URLSearchParams({ response_type: "code", client_id: chatGptClientMetadata.client_id,
+        redirect_uri: CHATGPT_REDIRECT, code_challenge: pkcePair().challenge, code_challenge_method: "S256", resource: MCP_URL }).toString()
+      const location = (await appFetch(authorize)).headers.get("location")!
+      const requestId = new URL(location).searchParams.get("request")!
+      const session = { user: { id: owner.userId, email: "admin@test.quits.invalid", name: "Admin" },
+        session: { id: "browser-session", activeOrganizationId: orgA.organizationId } }
+      const caller = appRouter.createCaller({ session } as never)
+      const review = await caller.connectors.consentRequest({ requestId })
+      expect(review.organizationName).toContain(orgA.organizationId.slice(0, 8))
+      session.session.activeOrganizationId = orgB.organizationId
+      await expect(caller.connectors.decide({ requestId, reviewId: review.reviewId, ...approve("read_only") })).rejects.toThrow("review changed")
+      await expect(caller.connectors.consentRequest({ requestId })).rejects.toThrow("review changed")
+      expect(await prisma.agentKey.count({ where: { organizationId: { in: [orgA.organizationId, orgB.organizationId] } } })).toBe(0)
+      session.session.activeOrganizationId = orgA.organizationId
+      const result = await caller.connectors.decide({ requestId, reviewId: review.reviewId, ...approve("read_only") })
+      expect(new URL(result.redirectTo).searchParams.has("code")).toBe(true)
+      const keys = await prisma.agentKey.findMany({ where: { createdByUserId: owner.userId } })
+      expect(keys).toHaveLength(1)
+      expect(keys[0]?.organizationId).toBe(orgA.organizationId)
+    })
+  })
+
   describe("local proof of connection", () => {
     it("connects a Claude Code-style client (MCP SDK, metadata document, loopback redirect)", async () => {
       const org = await setup()
@@ -209,7 +238,7 @@ describeIfDatabase("MCP sign-in authorization prototype", () => {
       expect(authorizationUrl.searchParams.get("code_challenge_method")).toBe("S256")
 
       const consentUrl = new URL((await appFetch(new Request(authorizationUrl))).headers.get("location")!)
-      const consent = await describeConsentRequest(context, org.actors.admin, consentUrl.searchParams.get("request")!)
+      const consent = await describeConsentRequest(context, org.actors.admin, consentUrl.searchParams.get("request")!, "harness-session")
       expect(consent).toMatchObject({
         client: { name: "Claude Code", registration: "metadata_document" },
         redirectHost: `localhost:${port}`,
@@ -418,6 +447,33 @@ describeIfDatabase("MCP sign-in authorization prototype", () => {
       expect((await refreshed.json()).error).toBe("invalid_grant")
       const approval = await prisma.approvalRequest.findUniqueOrThrow({ where: { id: queued.value.approvalRequestId } })
       expect(approval.status).toBe("expired")
+    })
+
+    it.each(["access_token", "refresh_token"] as const)("client revocation of %s disconnects only its installation and expires pending work", async (tokenKind) => {
+      const org = await setup()
+      const tokens = await connectLikeChatGpt(context, org.actors.admin, approve("drafting_with_approved_sending"))
+      const invoiceId = await draftInvoice(tokens.access_token, "disconnect")
+      const queued = await rawToolCall(tokens.access_token, "invoice_send", {
+        id: invoiceId, allowSendWithoutEmail: true, clientRequestId: "pending-disconnect",
+      })
+      const other = await connectLikeChatGpt(context, org.actors.admin, approve("read_only"))
+      const revoke = (clientId = chatGptClientMetadata.client_id) => appFetch(`${ISSUER}/api/mcp/oauth/revoke`, {
+        method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ client_id: clientId, token: tokens[tokenKind] }).toString(),
+      })
+      expect((await revoke(claudeCodeClientMetadata.client_id)).status).toBe(200)
+      expect((await rawMcp(tokens.access_token, "initialize", initializeParams)).response.status).toBe(200)
+      expect((await revoke()).status).toBe(200)
+      expect((await revoke()).status).toBe(200)
+      expect((await rawMcp(tokens.access_token, "initialize", initializeParams)).response.status).toBe(401)
+      expect((await refreshTokens(tokens)).status).toBe(400)
+      expect((await rawMcp(other.access_token, "initialize", initializeParams)).response.status).toBe(200)
+      const pending = await prisma.approvalRequest.findUniqueOrThrow({ where: { id: queued.value.approvalRequestId } })
+      expect(pending.status).toBe("expired")
+      const key = await prisma.agentKey.findUniqueOrThrow({ where: { id: pending.agentKeyId } })
+      expect(key.revokedAt).not.toBeNull()
+      await callerFor(org, "admin").agents.decide({ approvalRequestId: pending.id, decision: "approve" }).catch(() => {})
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).status).toBe("draft")
     })
 
     it("removing the owner from the organization blocks calls, refresh and pending work", async () => {

@@ -41,6 +41,8 @@ function ConsentPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
+    setConsent(null)
+    setConfirmFullAccess(false)
     if (!requestId) {
       setError(t('connectors.consent.error.load'))
       return
@@ -68,17 +70,18 @@ function ConsentPage() {
   }, [requestId, t])
 
   async function decide(decision: 'approve' | 'deny') {
-    if (!requestId) return
+    if (!requestId || !consent) return
     setSubmitting(true)
     setError(null)
     try {
       const { redirectTo } = await trpc.connectors.decide.mutate(
         decision === 'deny'
-          ? { requestId, decision }
-          : { requestId, decision, presetId, confirmFullAccess },
+          ? { requestId, reviewId: consent.reviewId, decision }
+          : { requestId, reviewId: consent.reviewId, decision, presetId, confirmFullAccess },
       )
       window.location.assign(redirectTo)
     } catch {
+      setConsent(null)
       setError(t('connectors.consent.error.decide'))
       setSubmitting(false)
     }

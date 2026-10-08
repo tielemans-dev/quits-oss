@@ -4,7 +4,7 @@ export const daConnectorsMessages = {
   "connectors.consent.description": "{client} beder om at arbejde i {organization} på dine vegne.",
   "connectors.consent.loading": "Henter forespørgslen...",
   "connectors.consent.error.load": "Forespørgslen er ikke længere gyldig. Start forfra i din AI-app.",
-  "connectors.consent.error.decide": "Forbindelsen kunne ikke gennemføres. Prøv igen.",
+  "connectors.consent.error.decide": "Forbindelsen kunne ikke oprettes. Din session, organisation eller adgang kan have ændret sig. Start igen fra din AI-app.",
   "connectors.consent.returnTo": "Når du har valgt, sendes din browser tilbage til {host}.",
   "connectors.consent.loopbackWarning":
     "Appen modtager svaret på din egen computer ({host}). Ethvert program på computeren kan udgive sig for at være den, så fortsæt kun, hvis du selv har startet forbindelsen.",

@@ -4,7 +4,7 @@ export const enConnectorsMessages = {
   "connectors.consent.description": "{client} is asking to work in {organization} on your behalf.",
   "connectors.consent.loading": "Loading the connection request...",
   "connectors.consent.error.load": "This connection request is no longer valid. Start again from your AI app.",
-  "connectors.consent.error.decide": "Could not complete the connection. Try again.",
+  "connectors.consent.error.decide": "Could not complete the connection. Your session, organization or access may have changed. Start again from your AI app.",
   "connectors.consent.returnTo": "After you decide, your browser returns to {host}.",
   "connectors.consent.loopbackWarning":
     "This app receives the answer on your own computer ({host}). Any program on this computer could claim to be it, so only continue if you started this connection yourself.",

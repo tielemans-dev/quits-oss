@@ -13,6 +13,7 @@ import {
   type MetadataDocumentFetcher,
 } from "./clients"
 import { CONSENT_PATH, OAUTH_BASE_PATH, readMcpOAuthConfig, type McpOAuthConfig } from "./config"
+import { disconnectInstallation } from "./revocation"
 import { runAccessTokenVerifiers } from "./extension"
 import { isLoopbackOnly, matchRedirectUri } from "./redirect-uris"
 import {
@@ -27,7 +28,7 @@ import {
   supportedScopes,
   type ConnectorPresetId,
 } from "./scopes"
-import { InMemoryMcpOAuthStore, type McpOAuthStore, type RegisteredClient, type TokenFamily } from "./store"
+import { InMemoryMcpOAuthStore, type McpOAuthStore, type PendingAuthorization, type RegisteredClient, type TokenFamily } from "./store"
 
 /**
  * PROTOTYPE (issue #31): an OAuth 2.1 authorization server and resource-server checks so MCP
@@ -298,15 +299,13 @@ async function loadPending(context: McpOAuthContext, requestId: string) {
   return { pending, client }
 }
 
-/** What the consent page shows: who is asking, where the browser returns, and what each choice grants. */
-export async function describeConsentRequest(context: McpOAuthContext, user: UserActor, requestId: string) {
-  const { pending, client } = await loadPending(context, requestId)
+async function consentView(user: UserActor, pending: PendingAuthorization, client: RegisteredClient) {
   const organization = await prisma.organization.findUnique({
     where: { id: user.organizationId },
     select: { name: true },
   })
   return {
-    requestId,
+    requestId: pending.id,
     client: {
       name: client.clientName,
       uri: client.clientUri,
@@ -327,6 +326,29 @@ export async function describeConsentRequest(context: McpOAuthContext, user: Use
   }
 }
 
+function consentChanged() {
+  return new ValidationFailed({ message: "The connection review changed. Start again from your AI app." })
+}
+
+function reviewDigest(view: Awaited<ReturnType<typeof consentView>>, pending: PendingAuthorization) {
+  const { review: _review, ...request } = pending
+  return hash(JSON.stringify({ view, request }))
+}
+
+/** Bind exactly what this signed-in session sees before it can decide. */
+export async function describeConsentRequest(context: McpOAuthContext, user: UserActor, requestId: string, sessionId: string) {
+  if (!sessionId) throw consentChanged()
+  const { pending, client } = await loadPending(context, requestId)
+  const view = await consentView(user, pending, client)
+  const review = {
+    id: randomBytes(24).toString("base64url"),
+    userId: user.userId, sessionId, organizationId: user.organizationId,
+    digest: reviewDigest(view, pending),
+  }
+  if (!(await context.store.bindConsentReview(requestId, review))) throw consentChanged()
+  return { ...view, reviewId: review.id }
+}
+
 export type ConsentDecision =
   | { decision: "deny" }
   | { decision: "approve"; presetId: ConnectorPresetId; confirmFullAccess?: boolean }
@@ -339,10 +361,16 @@ export async function decideConsent(
   context: McpOAuthContext,
   user: UserActor,
   requestId: string,
-  input: ConsentDecision
+  input: ConsentDecision & { reviewId: string },
+  sessionId: string
 ): Promise<{ redirectTo: string; agentKeyId: string | null }> {
-  const { client } = await loadPending(context, requestId)
-  const pending = await context.store.takePendingAuthorization(requestId)
+  const { client, pending: reviewed } = await loadPending(context, requestId)
+  const binding = reviewed.review
+  if (!binding || !sessionId || binding.id !== input.reviewId || binding.userId !== user.userId ||
+      binding.sessionId !== sessionId || binding.organizationId !== user.organizationId) throw consentChanged()
+  const view = await consentView(user, reviewed, client)
+  if (binding.digest !== reviewDigest(view, reviewed) || !matchRedirectUri(reviewed.redirectUri, client.redirectUris)) throw consentChanged()
+  const pending = await context.store.takePendingAuthorization(requestId, input.reviewId)
   if (!pending) {
     throw new NotFound({ message: "This connection request was already answered", entity: "oauthRequest" })
   }
@@ -442,6 +470,10 @@ async function issueTokens(
       rotatedAt: null,
     })
   }
+  const current = await context.store.getFamily(family.id)
+  if (!current || current.revokedAt) {
+    return oauthError(400, "invalid_grant", "This connection was revoked")
+  }
   return Response.json(
     {
       access_token: accessToken,
@@ -490,13 +522,6 @@ async function exchangeCode(context: McpOAuthContext, client: RegisteredClient, 
   }
 
   const familyId = randomUUID()
-  if (!(await context.store.markCodeUsed(hash(code), now, familyId))) {
-    return oauthError(400, "invalid_grant", "The authorization code was already used")
-  }
-  const actor = await liveInstallation(stored.agentKeyId, now)
-  if (!actor) {
-    return oauthError(400, "invalid_grant", "This connection was revoked or its owner no longer has access")
-  }
   const family: TokenFamily = {
     id: familyId,
     clientId: stored.clientId,
@@ -509,7 +534,14 @@ async function exchangeCode(context: McpOAuthContext, client: RegisteredClient, 
     createdAt: now,
     revokedAt: null,
   }
-  await context.store.saveFamily(family)
+  if (!(await context.store.consumeCode(hash(code), now, family))) {
+    return oauthError(400, "invalid_grant", "The authorization code was already used")
+  }
+  const actor = await liveInstallation(stored.agentKeyId, now)
+  if (!actor) {
+    await context.store.revokeFamily(family.id, now)
+    return oauthError(400, "invalid_grant", "This connection was revoked or its owner no longer has access")
+  }
   return issueTokens(context, client, family, effectiveScopes(actor, stored.scopes))
 }
 
@@ -588,7 +620,7 @@ export async function handleToken(context: McpOAuthContext, request: Request) {
   }
 }
 
-/** RFC 7009. Revoking either token ends that connection's tokens; the agent key stays listed. */
+/** RFC 7009 disconnects this installation, including pending approvals. */
 export async function handleRevoke(context: McpOAuthContext, request: Request) {
   const form = await readForm(request)
   if (!form) return oauthError(400, "invalid_request", "Send the request as application/x-www-form-urlencoded")
@@ -599,7 +631,9 @@ export async function handleRevoke(context: McpOAuthContext, request: Request) {
   const familyId = refreshToken?.familyId ?? accessToken?.familyId
   const family = familyId ? await context.store.getFamily(familyId) : null
   if (family && sameString(family.clientId, clientId)) {
-    await context.store.revokeFamily(family.id, context.now())
+    const now = context.now()
+    await context.store.revokeFamily(family.id, now)
+    await disconnectInstallation(family, now)
   }
   // Unknown tokens are not an error (RFC 7009 section 2.2).
   return new Response(null, { status: 200, headers: noStore })

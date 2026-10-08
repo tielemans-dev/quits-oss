@@ -51,7 +51,7 @@ idempotency receipts.
 | `resource` (RFC 8707) in authorize and token requests; server MUST validate audience | Authorize refuses a missing or foreign `resource` (`invalid_target`); every access token stores its resource and `/api/mcp` rejects a token for any other resource |
 | Invalid/expired tokens → `401`; insufficient scope → `403` with `error="insufficient_scope"`, `scope`, `resource_metadata` | Implemented. All missing scopes for the call are sent in one challenge (one tool, one permission) |
 | Clients and AS SHOULD support CIMD; DCR deprecated, MAY | CIMD on, DCR on by default, each switchable |
-| AS MUST validate CIMD `client_id` equality, structure, redirect URIs; SHOULD guard SSRF, cache per HTTP headers | All implemented: no redirects followed, 5 KiB limit, 5 s timeout, private/loopback/link-local/CGNAT/multicast addresses refused, cache 5 min to 24 h from `max-age` |
+| AS MUST validate CIMD `client_id` equality, structure, redirect URIs; SHOULD guard SSRF, cache per HTTP headers | No redirects followed; at most 5 KiB retained for parsing, streaming cancellation on overflow; one 5 s deadline for DNS, fetch and body; non-public addresses refused, including canonical hexadecimal IPv4-mapped IPv6; cache 5 min to 24 h from `max-age` |
 | AS MUST show redirect hostname; SHOULD warn for loopback-only redirects | Consent shows the return host, the client id and how the client identified itself, and a warning for loopback redirects |
 | Exact redirect matching; loopback port-agnostic | Exact string match; for `http://localhost`, `127.0.0.1` and `[::1]` only the port is ignored, host/path/query must match |
 | Redirect URIs only `https` or `localhost` | Enforced at DCR and CIMD validation and at authorize |
@@ -112,14 +112,21 @@ proofs against client *profiles*, not proofs with the shipping clients.
 | Revoking the agent key (Settings, Agent keys) | Next MCP call `401`; refresh `invalid_grant`; pending approvals from the key expire (existing behaviour) |
 | Owner removed from the organization | Same: calls `401`, refresh `invalid_grant`, approving queued work fails `Forbidden` |
 | Owner demoted | Calls go on with only what the new role allows; queued work needing a lost permission fails when approved; refresh returns the reduced scope |
-| Client revokes a token (RFC 7009) | That token family ends; the agent key stays listed until a person revokes it |
+| Client revokes either token (RFC 7009) | Disconnects that installation: token family revoked, agent key revoked, pending approvals and their receipts expired. The key stays listed as revoked. An unrelated installation is unchanged |
 | Re-consent (step-up) | Creates a second installation. Production should replace the earlier one for the same person, organization and client |
 
 ### Organization binding
 
-A connection is created for the person's active organization and can only act there. Tokens carry
-no organization choice; the agent key fixes it. The consent page names the organization. A
-production consent page should let people with several organizations choose explicitly.
+The first consent render binds the request to the authenticated user, session id and active
+organization. Each render gets a new random review id and a digest of the displayed client,
+organization, requested scopes and role-filtered preset modes/scopes. Submission must present that
+review id through the same session and organization, and the recomputed view must still match.
+Another render invalidates the earlier review. The store compares and consumes the review
+atomically, so concurrent decisions cannot create two installations. Changes fail closed and ask
+the person to restart from the client. An organization picker remains future work.
+
+Tokens carry no organization choice; the consented agent key fixes it. Switching organizations
+in another browser tab after reading consent cannot change where that consent grants access.
 
 ## Settings flow
 
@@ -137,11 +144,11 @@ keeps naming the agent the same way.
 
 | Threat | Mitigation in the prototype | Residual / production work |
 | --- | --- | --- |
-| Authorization code interception | PKCE S256 required; codes single use, 5 min, bound to redirect and client | none beyond spec |
+| Authorization code interception/replay | PKCE S256; 5 min codes bound to redirect/client. Code consumption and family creation are atomic. Both stale concurrent reads and replays during live membership lookup revoke the winning family; token issuance checks revocation again | Durable storage must implement the atomic store contract transactionally |
 | Open redirect / code sent to attacker | Client and redirect validated before any redirect; exact match; error page instead of redirect on mismatch | none |
 | Localhost impersonation (any local process can bind the loopback port) | Loopback warning on consent; host shown | Inherent to native clients; MAY add attestation later |
 | Consent phishing with a look-alike DCR client name | Consent says the name is self-asserted for DCR clients and shows the client id and return host | Production may restrict DCR or allowlist CIMD domains |
-| SSRF via CIMD fetch | HTTPS only, DNS-resolved private/loopback/link-local/CGNAT refused, no redirects, size and time limits | DNS rebinding between check and fetch remains; production should pin the resolved address or use an egress proxy. Runtimes without a DNS lookup API need another guard |
+| SSRF via CIMD fetch | HTTPS only; `ipaddr.js` normalizes mapped IPv6 and rejects non-public addresses, with conservative exclusions for special-purpose ranges absent from its installed version. Every DNS answer must be public; no redirects; bounded streaming and a total deadline | DNS rebinding between check and fetch remains; production should pin the resolved address or use an egress proxy. Runtimes without a DNS lookup API need another guard |
 | DCR abuse (unbounded registrations) | Field limits; switch to disable | Production needs rate limits and expiry of unused registrations |
 | Token theft | Short access tokens, rotated refresh tokens with reuse detection, hashing at rest, `no-store` | Sender-constrained tokens (DPoP) not attempted |
 | Token for another resource / confused deputy | `resource` required and validated at authorize, token, and every MCP call | none |
@@ -149,7 +156,7 @@ keeps naming the agent the same way.
 | Scope escalation by the client | Mode chosen by the person; scopes capped by role; refresh cannot widen; `agent:*` never grantable | none |
 | Escalation by role change after consent | Role is read live on every call and at approval time | none |
 | Duplicate execution | Receipts keyed per installation; refresh keeps the key; separate installations never share receipts | none |
-| CSRF on consent | Decision goes through the app's authenticated API with the existing session and organization checks; request ids are 192-bit random and single use | Production should bind the pending request to the session that opened it |
+| Consent changed in another tab/session | Random single-use request and review ids; first render binds user, session and organization; decision compares the displayed client/grant digest and atomically consumes that review | Production must preserve the same compare-and-consume contract in durable storage |
 | Browser DNS rebinding against `/api/mcp` | Existing `Origin` check runs before authentication | none |
 | In-memory prototype store | n/a | Single process only, lost on restart. Must become database tables before any deployment |
 
@@ -211,7 +218,7 @@ discovery and token endpoints.
    `agent_key.oauthClientId`, replacing the `connector:` display-prefix marker. Migrations only add.
 2. **Store.** A Prisma implementation of `McpOAuthStore`; transactional code and refresh rotation
    (`UPDATE ... WHERE rotatedAt IS NULL`); cleanup of expired rows on the scheduler tick.
-3. **Consent.** Session-bound pending requests; organization picker; replace an earlier
+3. **Consent.** Persist the prototype's session-bound review and digest checks; organization picker; replace an earlier
    installation of the same client for the same person and organization on step-up; Danish copy
    reviewed by a native speaker.
 4. **Settings.** "Connected apps" section described above.
@@ -219,8 +226,9 @@ discovery and token endpoints.
    pinning for metadata fetches; structured logs for grant, refresh, reuse detection and revocation.
 6. **Client polish.** `_meta["mcp/www_authenticate"]` on refused tool calls for ChatGPT's
    step-up UI; optional `private_key_jwt` for ChatGPT's CIMD client.
-7. **Verification.** Browser E2E for login → consent → callback; real-client proofs with Claude
-   Code locally and with claude.ai and ChatGPT against a public test deployment.
+7. **Verification.** Retain browser regression tests for login, consent, rejection, callback,
+   organization changes and Settings revocation. Obtain real-client evidence locally and with
+   claude.ai and ChatGPT against a public test deployment.
 8. **Release.** Remove the prototype flag only after 1 to 7; document the sign-in path in
    `docs/agent-api.md` next to agent keys, which remain supported.
 
@@ -244,5 +252,29 @@ PostgreSQL):
 - Unit tests for redirect matching, presets and scope parsing, CIMD validation, SSRF refusal and
   size limits, and DCR validation.
 
-Not tested: the shipping Claude, Claude Code and ChatGPT clients; the consent page in a browser;
-multi-process deployment; performance under the clients' endpoint time budgets.
+Browser regressions are in `tests/shared/mcp-oauth.spec.ts`. The shared disposable runner enables
+the prototype only for its test app. It captures consent, stale-consent and Settings screenshots.
+Round-2 verification also checks mapped IP literals and mixed DNS answers before fetch, early
+stream cancellation, stalled DNS/body deadlines, both code-replay interleavings, authenticated
+organization switching, and RFC 7009 disconnect with pending approvals.
+
+The metadata parser retains at most 5 KiB. It rejects the first chunk that crosses that limit
+and cancels the stream. The transport can deliver that crossing chunk and prefetch another;
+5 KiB is not a claim that only 5 KiB can cross the socket or enter transport buffers. The parent
+32 KiB probe now stops after two chunks read plus one prefetched, 12 KiB total produced. A test
+stream with prefetch disabled stops at the second 4 KiB chunk. DNS lookup itself may finish after
+the deadline because the platform lookup is not cancellable; the result cannot initiate a fetch.
+DNS rebinding between validation and the network connection remains a deployment blocker.
+
+RFC 7009 disconnect deliberately ends pending work, including when the owner has left the
+organization. A supplied token hash and matching client id authorize only that installation's
+revocation. Settings and client revocation both keep an auditable revoked key. Replay detection
+ends the token family; it does not itself withdraw separately queued approvals. Those remain
+subject to the live installation, owner-role and stale-review checks. Use disconnect or Settings
+revocation to withdraw pending work.
+
+Still unverified: shipping hosted Claude and ChatGPT clients, multi-process deployment and
+performance under the clients' endpoint time budgets. Protocol fixtures do not prove client
+support, and client selection still needs evidence from Danish target users. The verifier hook
+remains non-exported and lacks an issuer-metadata override; a stable hosted contract is not yet
+accepted. Keep hosted implementation queued pending review.

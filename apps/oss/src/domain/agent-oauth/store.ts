@@ -24,6 +24,15 @@ export type RegisteredClient = {
   expiresAt: Date | null
 }
 
+export type ConsentReview = {
+  id: string
+  userId: string
+  sessionId: string
+  organizationId: string
+  /** Hash of the displayed client, organization, request and grant choices. */
+  digest: string
+}
+
 /** A validated authorization request waiting for the person to decide on the consent page. */
 export type PendingAuthorization = {
   id: string
@@ -33,6 +42,7 @@ export type PendingAuthorization = {
   codeChallenge: string
   resource: string
   requestedScopes: Permission[]
+  review?: ConsentReview
   createdAt: Date
   expiresAt: Date
 }
@@ -89,14 +99,15 @@ export interface McpOAuthStore {
   saveClient(client: RegisteredClient): Promise<void>
   getClient(clientId: string): Promise<RegisteredClient | null>
   savePendingAuthorization(request: PendingAuthorization): Promise<void>
-  /** Returns and removes the request, so a consent can be decided once. */
-  takePendingAuthorization(id: string): Promise<PendingAuthorization | null>
+  /** Atomically bind the first review; subsequent reviews must have the same identity. */
+  bindConsentReview(id: string, review: ConsentReview): Promise<boolean>
+  /** Compare the displayed review and remove the request atomically. */
+  takePendingAuthorization(id: string, reviewId: string): Promise<PendingAuthorization | null>
   getPendingAuthorization(id: string): Promise<PendingAuthorization | null>
   saveCode(code: AuthorizationCode): Promise<void>
   getCode(codeHash: string): Promise<AuthorizationCode | null>
-  /** Marks a code used; false when it was already used (a replay). */
-  markCodeUsed(codeHash: string, usedAt: Date, familyId: string | null): Promise<boolean>
-  saveFamily(family: TokenFamily): Promise<void>
+  /** Atomically consume a code AND create its family. Reuse revokes the winning family. */
+  consumeCode(codeHash: string, usedAt: Date, family: TokenFamily): Promise<boolean>
   getFamily(id: string): Promise<TokenFamily | null>
   revokeFamily(id: string, at: Date): Promise<void>
   saveRefreshToken(token: RefreshToken): Promise<void>
@@ -125,8 +136,17 @@ export class InMemoryMcpOAuthStore implements McpOAuthStore {
   async savePendingAuthorization(request: PendingAuthorization) {
     this.pending.set(request.id, request)
   }
-  async takePendingAuthorization(id: string) {
+  async bindConsentReview(id: string, review: ConsentReview) {
+    const request = this.pending.get(id)
+    if (!request) return false
+    const bound = request.review
+    if (bound && (bound.userId !== review.userId || bound.sessionId !== review.sessionId || bound.organizationId !== review.organizationId)) return false
+    this.pending.set(id, { ...request, review })
+    return true
+  }
+  async takePendingAuthorization(id: string, reviewId: string) {
     const request = this.pending.get(id) ?? null
+    if (!reviewId || request?.review?.id !== reviewId) return null
     this.pending.delete(id)
     return request
   }
@@ -139,14 +159,19 @@ export class InMemoryMcpOAuthStore implements McpOAuthStore {
   async getCode(codeHash: string) {
     return this.codes.get(codeHash) ?? null
   }
-  async markCodeUsed(codeHash: string, usedAt: Date, familyId: string | null) {
+  async consumeCode(codeHash: string, usedAt: Date, family: TokenFamily) {
+    // No await between reading, consuming and creating the family. A persistent store
+    // must implement this contract in one transaction with a compare-and-set/row lock.
     const code = this.codes.get(codeHash)
-    if (!code || code.usedAt) return false
-    this.codes.set(codeHash, { ...code, usedAt, familyId })
-    return true
-  }
-  async saveFamily(family: TokenFamily) {
+    if (!code) return false
+    if (code.usedAt) {
+      const issued = code.familyId ? this.families.get(code.familyId) : null
+      if (issued && !issued.revokedAt) this.families.set(issued.id, { ...issued, revokedAt: usedAt })
+      return false
+    }
+    this.codes.set(codeHash, { ...code, usedAt, familyId: family.id })
     this.families.set(family.id, family)
+    return true
   }
   async getFamily(id: string) {
     return this.families.get(id) ?? null

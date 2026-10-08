@@ -19,15 +19,16 @@ export const connectorsRouter = router({
   consentRequest: orgProcedure
     .input(z.object({ requestId: requestIdSchema }))
     .query(({ ctx, input }) =>
-      describeConsentRequest(requireContext(), ctx.actor, input.requestId).catch(rethrowDomainError)
+      describeConsentRequest(requireContext(), ctx.actor, input.requestId, ctx.session.session.id).catch(rethrowDomainError)
     ),
 
   decide: orgProcedure
     .input(
       z.discriminatedUnion("decision", [
-        z.object({ requestId: requestIdSchema, decision: z.literal("deny") }),
+        z.object({ requestId: requestIdSchema, reviewId: requestIdSchema, decision: z.literal("deny") }),
         z.object({
           requestId: requestIdSchema,
+          reviewId: requestIdSchema,
           decision: z.literal("approve"),
           presetId: z.enum(["read_only", "drafting_only", "drafting_with_approved_sending", "full_access"]),
           confirmFullAccess: z.boolean().optional(),
@@ -36,7 +37,7 @@ export const connectorsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { requestId, ...decision } = input
-      const { redirectTo } = await decideConsent(requireContext(), ctx.actor, requestId, decision).catch(
+      const { redirectTo } = await decideConsent(requireContext(), ctx.actor, requestId, decision, ctx.session.session.id).catch(
         rethrowDomainError
       )
       return { redirectTo }
