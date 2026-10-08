@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import {
@@ -216,6 +216,9 @@ function SettingsPage() {
   // Controlled so a typed key never outlives the destination it was typed for: it is cleared after
   // saving and whenever the provider or base URL changes.
   const [aiApiKeyDraft, setAiApiKeyDraft] = useState("")
+  // Bumped whenever the AI destination changes, so a model list still loading for the old
+  // destination is discarded instead of replacing the new one.
+  const aiModelsRequest = useRef(0)
   const [aiModel, setAiModel] = useState(DEFAULT_AI_MODEL)
   const [clearAiApiKey, setClearAiApiKey] = useState(false)
   const [clearStripeSecretKey, setClearStripeSecretKey] = useState(false)
@@ -330,10 +333,14 @@ function SettingsPage() {
     : []
 
   async function loadAiModels() {
+    const requestId = ++aiModelsRequest.current
     setLoadingAiModels(true)
     setAiModelsError(null)
     try {
       const result = await trpc.ai.listModels.query()
+      if (requestId !== aiModelsRequest.current) {
+        return
+      }
       const nextModels: string[] = Array.isArray(result.models)
         ? result.models.flatMap((model) =>
             typeof model === "string" ? [model] : []
@@ -344,9 +351,13 @@ function SettingsPage() {
         setAiModels(nextModels)
       }
     } catch {
-      setAiModelsError(t("settings.error.loadModelsFailed"))
+      if (requestId === aiModelsRequest.current) {
+        setAiModelsError(t("settings.error.loadModelsFailed"))
+      }
     } finally {
-      setLoadingAiModels(false)
+      if (requestId === aiModelsRequest.current) {
+        setLoadingAiModels(false)
+      }
     }
   }
 
@@ -418,6 +429,11 @@ function SettingsPage() {
     // With no provider the organisation may choose (managed-only distributions), leave the AI
     // settings untouched rather than submitting a provider the server would reject.
     const sendAiSettings = aiProviderOptions.length > 0
+    if (sendAiSettings && aiProvider !== "cli_agent" && !aiModelInput) {
+      setSaving(false)
+      setError(t("settings.aiModel.required"))
+      return
+    }
     const stripePublishableKeyInput = ((form.get("stripePublishableKey") as string) || "").trim()
     const stripeSecretKeyInput = ((form.get("stripeSecretKey") as string) || "").trim()
     const stripeWebhookSecretInput = ((form.get("stripeWebhookSecret") as string) || "").trim()
@@ -1212,6 +1228,8 @@ function SettingsPage() {
                     value={aiProvider}
                     onValueChange={(value) => {
                       const nextProvider = value as AiProviderId
+                      aiModelsRequest.current += 1
+                      setLoadingAiModels(false)
                       setAiProvider(nextProvider)
                       setAiApiKeyDraft("")
                       // A model id from one provider rarely exists on another. Start from that
@@ -1259,6 +1277,8 @@ function SettingsPage() {
                       onChange={(e) => {
                         setAiBaseUrl(e.target.value)
                         setAiApiKeyDraft("")
+                        aiModelsRequest.current += 1
+                        setLoadingAiModels(false)
                       }}
                     />
                     <p className="text-xs text-muted-foreground">

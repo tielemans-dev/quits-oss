@@ -222,6 +222,34 @@ describe("settings router AI provider handling", () => {
     mocks.aiCapabilities = { ...defaultAiCapabilities }
   })
 
+  it("requires a model when switching to another provider", async () => {
+    mocks.txFindUnique.mockResolvedValue({
+      countryCode: "DK",
+      aiProvider: "openrouter",
+      aiBaseUrl: null,
+    })
+    const caller = settingsRouter.createCaller(createContext())
+
+    await expect(
+      caller.update({ aiProvider: "openai_compatible", aiBaseUrl: "http://localhost:11434/v1" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Choose a model for the new AI provider" })
+  })
+
+  it("rejects an AI endpoint host the operator has not allowed", async () => {
+    vi.stubEnv("QUITS_AI_CUSTOM_ENDPOINT_HOSTS", "localhost:11434")
+    mocks.txFindUnique.mockResolvedValue({
+      countryCode: "DK",
+      aiProvider: "openai_compatible",
+      aiBaseUrl: "http://localhost:11434/v1",
+    })
+    const caller = settingsRouter.createCaller(createContext())
+
+    await expect(
+      caller.update({ aiBaseUrl: "http://169.254.169.254/latest" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    vi.unstubAllEnvs()
+  })
+
   it("rejects switching to the local agent when the runtime does not enable it", async () => {
     mocks.txFindUnique.mockResolvedValue({
       countryCode: "DK",

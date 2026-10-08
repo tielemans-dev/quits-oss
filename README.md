@@ -232,6 +232,7 @@ Long-running Node processes keep reset email delivery in the background. Runtime
 | `QUITS_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
 | `QUITS_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
 | `QUITS_AI_CUSTOM_ENDPOINT_ENABLED` | Lets organisations point invoice drafting at any OpenAI-compatible endpoint | No (`true` self-hosted, `false` cloud) |
+| `QUITS_AI_CUSTOM_ENDPOINT_HOSTS` | Comma-separated hosts (optionally `host:port`) that custom AI endpoints may use, e.g. `localhost:11434,llm.internal`. When unset, any host is allowed. Set it on installs shared by several organisations, because an organisation admin can otherwise make the server send requests to any address it can reach | No |
 | `QUITS_AI_LOCAL_AGENT_ENABLED` | Lets organisations draft invoices with a CLI agent on the server; needs `QUITS_AI_LOCAL_AGENT_COMMAND` | No (defaults to `false`, self-hosted only) |
 | `QUITS_AI_LOCAL_AGENT_COMMAND` | Command that runs the agent, e.g. `claude -p --tools "" --strict-mcp-config`. It must not be able to use tools; see below. The prompt is sent on stdin; the command is split on whitespace with simple quotes and run without a shell | Only when `QUITS_AI_LOCAL_AGENT_ENABLED=true` |
 | `QUITS_AI_LOCAL_AGENT_TIMEOUT_MS` | Time limit for one agent call in milliseconds, clamped to 5000–600000 | No (defaults to `120000`) |

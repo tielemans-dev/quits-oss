@@ -16,6 +16,7 @@ import {
 import { getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
 import {
   AI_PROVIDER_KINDS,
+  isAiEndpointHostAllowed,
   isAiProviderKind,
   type AiProviderKind,
 } from "../../lib/ai/provider"
@@ -279,6 +280,26 @@ export const settingsRouter = router({
             settingsInput.aiProvider !== current?.aiProvider) ||
           (aiBaseUrl !== undefined && (aiBaseUrl || null) !== (current?.aiBaseUrl ?? null))
         const dropSavedAiKey = clearAiApiKey || (aiDestinationChanged && !aiApiKey)
+
+        if (aiBaseUrl && !isAiEndpointHostAllowed(aiBaseUrl)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This AI endpoint's host is not allowed on this server",
+          })
+        }
+        // A model saved for one provider rarely exists on another, so a switch needs a model too.
+        // The local agent picks its own model.
+        if (
+          settingsInput.aiProvider !== undefined &&
+          settingsInput.aiProvider !== current?.aiProvider &&
+          settingsInput.aiProvider !== "cli_agent" &&
+          !settingsInput.aiModel
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Choose a model for the new AI provider",
+          })
+        }
 
         const settingsUpdateData = {
           ...settingsInput,

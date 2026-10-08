@@ -1,4 +1,6 @@
+import { readProductEnv } from "@quits/shared/runtimeEnv"
 import { getRuntimeCapabilities } from "../runtime/extensions"
+import { getRuntimeEnv } from "../runtime/platform"
 import { getManagedAiProvider } from "../runtime/services"
 
 /**
@@ -41,6 +43,35 @@ export const DEFAULT_AI_MODEL = "openai/gpt-4o-mini"
 
 export function isAiProviderKind(value: unknown): value is AiProviderKind {
   return typeof value === "string" && (AI_PROVIDER_KINDS as readonly string[]).includes(value)
+}
+
+/**
+ * Whether the operator allows custom AI endpoints on this URL's host.
+ *
+ * `AI_CUSTOM_ENDPOINT_HOSTS` is a comma-separated list of hosts, optionally with a port
+ * (`localhost:11434, llm.internal`). When it is unset, any host is allowed: on a single-organisation
+ * install the admin is the operator. Set it on shared installs, where organisation admins must not
+ * make the server send requests to arbitrary addresses.
+ */
+export function isAiEndpointHostAllowed(
+  baseUrl: string,
+  env: Record<string, string | undefined> = getRuntimeEnv()
+) {
+  const allowed = (readProductEnv(env, "AI_CUSTOM_ENDPOINT_HOSTS") ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
+  if (allowed.length === 0) {
+    return true
+  }
+  let url: URL
+  try {
+    url = new URL(baseUrl)
+  } catch {
+    return false
+  }
+  const hostname = url.hostname.toLowerCase()
+  return allowed.includes(hostname) || allowed.includes(url.host.toLowerCase())
 }
 
 export type AiProviderErrorCode =
@@ -142,6 +173,9 @@ export function resolveOrgAiProvider(settings: OrgAiSettings): AiProvider {
           providerId: settings.provider,
           message: "Set the AI endpoint base URL in Settings before using AI",
         })
+      }
+      if (!isAiEndpointHostAllowed(settings.baseUrl)) {
+        throw disabled(settings.provider, "This AI endpoint's host is not allowed on this server")
       }
       return providerFactories.openaiCompatible({
         id: "openai_compatible",

@@ -34,6 +34,46 @@ const modelsResponseSchema = z.object({
 const COMPLETION_TIMEOUT_MS = 120_000
 const MODELS_TIMEOUT_MS = 15_000
 
+// A completion or model list is small. The caps keep a broken or hostile endpoint from making the
+// server buffer an unbounded body.
+const RESPONSE_MAX_BYTES = 2 * 1024 * 1024
+const ERROR_BODY_MAX_BYTES = 16 * 1024
+
+class ResponseTooLargeError extends Error {}
+
+/** Reads a response body as text, stopping with an error once it exceeds `maxBytes`. */
+async function readCappedText(response: Response, maxBytes: number) {
+  if (!response.body) {
+    return ""
+  }
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    total += value.byteLength
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {})
+      throw new ResponseTooLargeError(`Response body exceeds ${maxBytes} bytes`)
+    }
+    chunks.push(value)
+  }
+  return new TextDecoder().decode(concatChunks(chunks, total))
+}
+
+function concatChunks(chunks: Uint8Array[], total: number) {
+  const bytes = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return bytes
+}
+
 /** Appends a route to the base URL's path, keeping any query string (for example `?api-version=`). */
 export function endpointUrl(baseUrl: string, endpoint: string) {
   const url = new URL(baseUrl)
@@ -95,7 +135,7 @@ export function createOpenAiCompatibleProvider(input: {
     }
 
     if (!response.ok) {
-      const errorBody = await response.text().catch(() => "")
+      const errorBody = await readCappedText(response, ERROR_BODY_MAX_BYTES).catch(() => "")
       throw new AiProviderError({
         code: "http",
         providerId: input.id,
@@ -105,12 +145,15 @@ export function createOpenAiCompatibleProvider(input: {
 
     let payload: unknown
     try {
-      payload = await response.json()
+      payload = JSON.parse(await readCappedText(response, RESPONSE_MAX_BYTES))
     } catch (cause) {
       throw new AiProviderError({
         code: "invalid_response",
         providerId: input.id,
-        message: `${providerName} ${options.endpoint} returned invalid JSON`,
+        message:
+          cause instanceof ResponseTooLargeError
+            ? `${providerName} ${options.endpoint} returned more than ${RESPONSE_MAX_BYTES} bytes`
+            : `${providerName} ${options.endpoint} returned invalid JSON`,
         cause,
       })
     }

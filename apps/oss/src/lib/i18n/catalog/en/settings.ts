@@ -157,6 +157,7 @@ export const enSettingsMessages = {
     "Saved key will be removed when you save settings.",
   "settings.aiApiKey.undo": "Undo",
   "settings.aiApiKey.optionalHelp": "Optional for local endpoints such as Ollama.",
+  "settings.aiModel.required": "Enter the model to use with this AI provider.",
   "settings.aiModel.customHelp":
     "Type a model name or pick one of the suggestions from the endpoint.",
   "settings.aiProvider.label": "Provider",

@@ -9,8 +9,26 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function stubFetch(response: Partial<Response> & { json?: () => Promise<unknown> }) {
-  const mock = vi.fn(async () => response as Response)
+/** Stubs fetch with a real Response built from a JSON value or a text body. */
+function stubFetch(response: {
+  ok: boolean
+  status?: number
+  json?: () => Promise<unknown>
+  text?: () => Promise<string>
+}) {
+  const mock = vi.fn(async () => {
+    let body: string
+    if (response.json) {
+      try {
+        body = JSON.stringify(await response.json())
+      } catch {
+        body = "{not json"
+      }
+    } else {
+      body = (await response.text?.()) ?? ""
+    }
+    return new Response(body, { status: response.status ?? (response.ok ? 200 : 500) })
+  })
   global.fetch = mock as unknown as typeof fetch
   return mock
 }
@@ -245,6 +263,18 @@ describe("createOpenAiCompatibleProvider", () => {
       code: "http",
       providerId: "openai_compatible",
       message: expect.stringContaining("AI endpoint"),
+    })
+  })
+})
+
+describe("response size limits", () => {
+  it("rejects a response body larger than the cap", async () => {
+    global.fetch = vi.fn(
+      async () => new Response("x".repeat(3 * 1024 * 1024), { status: 200 })
+    ) as unknown as typeof fetch
+
+    await expect(openRouter().complete(completionRequest)).rejects.toMatchObject({
+      code: "invalid_response",
     })
   })
 })
