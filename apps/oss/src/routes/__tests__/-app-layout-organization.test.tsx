@@ -12,6 +12,8 @@ const state = vi.hoisted(() => ({
   sessionOrganizationId: "org_a" as string | null,
   outletRenders: [] as Array<string | null>,
   reloadPage: vi.fn(),
+  settingsQuery: vi.fn(async () => ({ locale: "en-US" })),
+  setLocale: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-router", async () => {
@@ -59,10 +61,8 @@ vi.mock("../../components/shell/app-main", () => ({
     </>
   ),
 }))
-vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ setLocale: vi.fn(), t: (key: string) => key }) }))
-vi.mock("../../trpc/client", () => ({
-  trpc: { settings: { get: { query: () => new Promise(() => undefined) } } },
-}))
+vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ setLocale: state.setLocale, t: (key: string) => key }) }))
+vi.mock("../../lib/organization-settings-query", () => ({ loadOrganizationSettings: state.settingsQuery }))
 
 import { invalidateAppLayoutSession } from "../../lib/app-layout-session"
 import {
@@ -87,6 +87,8 @@ afterEach(() => {
   state.sessionOrganizationId = "org_a"
   state.outletRenders = []
   state.reloadPage.mockReset()
+  state.settingsQuery.mockClear()
+  state.setLocale.mockClear()
   vi.restoreAllMocks()
 })
 
@@ -100,6 +102,18 @@ function layoutFor(organizationId: string) {
 }
 
 describe("app layout request organization", () => {
+  it("loads locale once after organization initialization, without refetching as the session settles", async () => {
+    state.sessionOrganizationId = null
+    const view = render(<route.component />)
+    await act(async () => { await Promise.resolve() })
+    expect(state.settingsQuery).toHaveBeenCalledTimes(1)
+    state.sessionOrganizationId = "org_a"
+    view.rerender(<route.component />)
+    await act(async () => { await Promise.resolve() })
+    expect(state.settingsQuery).toHaveBeenCalledTimes(1)
+    expect(state.setLocale).toHaveBeenCalledWith("en-US")
+  })
+
   it("sets the organization of the loaded page once the layout has committed", () => {
     render(<route.component />)
     expect(getRequestOrganizationId()).toBe("org_a")

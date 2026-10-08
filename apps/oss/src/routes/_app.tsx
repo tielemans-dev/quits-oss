@@ -17,7 +17,7 @@ import { SidebarProvider } from '../components/ui/sidebar'
 import { AppSidebar } from '../components/app-sidebar'
 import { AppMain } from '../components/shell/app-main'
 import { useI18n } from '../lib/i18n/react'
-import { trpc } from '../trpc/client'
+import { loadOrganizationSettings } from '../lib/organization-settings-query'
 
 export const Route = createFileRoute('/_app')({
   beforeLoad: async ({ location }) => {
@@ -60,7 +60,6 @@ function AppLayout() {
   const { setLocale } = useI18n()
   const { data: session, isPending } = useSession()
   const layoutContext = Route.useRouteContext()
-  const activeOrgId = session?.session.activeOrganizationId ?? null
   const loadedOrgId = layoutContext.activeOrganizationId ?? null
   const sessionUserId = session?.user?.id ?? null
 
@@ -88,8 +87,9 @@ function AppLayout() {
   }, [loadedOrgId])
 
   useEffect(() => {
+    if (!organizationReady || !loadedOrgId) return
     let cancelled = false
-    trpc.settings.get.query()
+    loadOrganizationSettings()
       .then((settings) => {
         if (!cancelled && settings.locale) {
           setLocale(settings.locale)
@@ -102,7 +102,7 @@ function AppLayout() {
     return () => {
       cancelled = true
     }
-  }, [setLocale, activeOrgId])
+  }, [setLocale, organizationReady, loadedOrgId])
 
   return (
     <SidebarProvider>

@@ -1,84 +1,87 @@
 // @vitest-environment jsdom
+import { act, cleanup, renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { act, cleanup, renderHook } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-
-const roleQuery = vi.hoisted(() => ({
-  state: { data: undefined, error: null } as { data?: { role: string }; error: unknown },
-  refetch: vi.fn(),
+const auth = vi.hoisted(() => ({
+  session: { data: { user: { id: 'u1' }, session: { activeOrganizationId: 'org1' } }, isPending: false } as { data: { user: { id: string }; session: { activeOrganizationId: string } } | null; isPending: boolean },
+  organizationId: 'org1', getRole: vi.fn(), listeners: new Set<() => void>(),
 }))
-
-vi.mock("../../../lib/auth-client", () => ({
-  authClient: { useActiveMemberRole: () => ({ ...roleQuery.state, refetch: roleQuery.refetch }) },
+vi.mock('../../../lib/auth-client', () => ({
+  useSession: () => auth.session,
+  authClient: {
+    organization: { getActiveMemberRole: auth.getRole },
+    $store: { atoms: { $activeMemberRoleSignal: { listen: (callback: () => void) => { auth.listeners.add(callback); return () => auth.listeners.delete(callback) } } } },
+  },
 }))
-
-import { useShellPermissions } from "../use-shell-permissions"
+vi.mock('../../../lib/active-organization', () => ({ useRequestOrganizationId: () => auth.organizationId }))
+import { useShellPermissions } from '../use-shell-permissions'
 
 beforeEach(() => {
   vi.useFakeTimers()
+  auth.session = { data: { user: { id: 'u1' }, session: { activeOrganizationId: 'org1' } }, isPending: false }
+  auth.organizationId = 'org1'
+  auth.getRole.mockReset().mockResolvedValue({ data: { role: 'member' }, error: null })
 })
+afterEach(() => { cleanup(); vi.useRealTimers() })
+const flush = () => act(async () => { await Promise.resolve() })
 
-afterEach(() => {
-  cleanup()
-  vi.useRealTimers()
-  roleQuery.state = { data: undefined, error: null }
-  roleQuery.refetch.mockReset()
-})
-
-describe("shell permissions", () => {
-  it("offers nothing while the role is loading", () => {
-    const { result } = renderHook(() => useShellPermissions())
-    expect(result.current.ready).toBe(false)
-    expect(result.current.can("invoice:create")).toBe(false)
-  })
-
-  it("follows the role: a member creates, an accountant does not", () => {
-    roleQuery.state = { data: { role: "member" }, error: null }
-    const member = renderHook(() => useShellPermissions())
-    expect(member.result.current.ready).toBe(true)
-    expect(member.result.current.can("invoice:create")).toBe(true)
-
-    roleQuery.state = { data: { role: "accountant" }, error: null }
-    const accountant = renderHook(() => useShellPermissions())
-    expect(accountant.result.current.can("invoice:create")).toBe(false)
-    expect(accountant.result.current.can("contact:create")).toBe(false)
-  })
-
-  it("keeps the last known role when a later request fails", () => {
-    roleQuery.state = { data: { role: "accountant" }, error: null }
+describe('shell permissions', () => {
+  it('waits for the session, then reads the explicit organization only once across rerenders', async () => {
+    auth.session.isPending = true
     const { result, rerender } = renderHook(() => useShellPermissions())
-
-    roleQuery.state = { data: undefined, error: new Error("offline") }
+    expect(result.current.can('invoice:create')).toBe(false)
+    expect(auth.getRole).not.toHaveBeenCalled()
+    auth.session.isPending = false
     rerender()
-
-    expect(result.current.can("invoice:create")).toBe(false)
-    expect(result.current.can("quote:create")).toBe(false)
+    await flush()
+    rerender()
+    await flush()
+    expect(auth.getRole).toHaveBeenCalledExactlyOnceWith({ query: { organizationId: 'org1' } })
+    expect(result.current.can('invoice:create')).toBe(true)
   })
 
-  it("fails closed when the role was never read, and asks again", async () => {
-    roleQuery.state = { data: undefined, error: new Error("offline") }
+  it('refreshes after an explicit role change and retains a known role on transient failure', async () => {
+    auth.getRole.mockResolvedValue({ data: { role: 'accountant' } })
     const { result } = renderHook(() => useShellPermissions())
-
+    await flush()
+    expect(result.current.can('invoice:create')).toBe(false)
+    auth.getRole.mockResolvedValue({ error: { message: 'offline' } })
+    await act(async () => { for (const listener of auth.listeners) listener() })
+    expect(auth.getRole).toHaveBeenCalledTimes(2)
     expect(result.current.ready).toBe(true)
-    expect(result.current.can("invoice:create")).toBe(false)
-    expect(roleQuery.refetch).not.toHaveBeenCalled()
-
-    await act(async () => {
-      vi.advanceTimersByTime(10_000)
-    })
-    expect(roleQuery.refetch).toHaveBeenCalledTimes(1)
+    expect(result.current.can('invoice:create')).toBe(false)
   })
 
-  it("stops asking after a few tries", async () => {
-    roleQuery.state = { data: undefined, error: new Error("offline") }
-    const { rerender } = renderHook(() => useShellPermissions())
+  it('never keeps another identity role or accepts its late response', async () => {
+    let resolve!: (value: unknown) => void
+    auth.getRole.mockReturnValue(new Promise(r => { resolve = r }))
+    const { result, rerender } = renderHook(() => useShellPermissions())
+    auth.session.data = null
+    rerender()
+    await act(async () => { resolve({ data: { role: 'admin' } }) })
+    expect(result.current.can('invoice:create')).toBe(false)
+    expect(result.current.ready).toBe(false)
+  })
 
-    for (let attempt = 0; attempt < 8; attempt++) {
-      await act(async () => {
-        vi.advanceTimersByTime(10_000)
-      })
-      rerender()
-    }
-    expect(roleQuery.refetch).toHaveBeenCalledTimes(5)
+  it('fails closed when another tab changes organization', async () => {
+    const { result, rerender } = renderHook(() => useShellPermissions())
+    await flush()
+    expect(result.current.can('invoice:create')).toBe(true)
+    auth.session.data!.session.activeOrganizationId = 'org2'
+    rerender()
+    expect(result.current.can('invoice:create')).toBe(false)
+    expect(auth.getRole).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails closed and limits retries to five after the initial attempt', async () => {
+    auth.getRole.mockRejectedValue(new Error('offline'))
+    const { result, unmount } = renderHook(() => useShellPermissions())
+    await flush()
+    expect(result.current.ready).toBe(true)
+    expect(result.current.can('invoice:create')).toBe(false)
+    for (let i = 0; i < 8; i++) await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+    expect(auth.getRole).toHaveBeenCalledTimes(6)
+    unmount()
+    expect(auth.listeners.size).toBe(0)
   })
 })
