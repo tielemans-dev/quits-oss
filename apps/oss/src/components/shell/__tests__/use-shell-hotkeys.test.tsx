@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select"
 
 import { useShellHotkeys } from "../use-shell-hotkeys"
 
@@ -73,6 +75,50 @@ describe("shell hotkeys", () => {
     dialog.setAttribute("data-state", "closed")
     fireEvent.keyDown(document.body, { key: "n", altKey: true })
     expect(handlers.openNewMenu).not.toHaveBeenCalled()
+    fireEvent.keyDown(document.body, { key: "n" })
+    expect(handlers.openNewMenu).toHaveBeenCalledTimes(1)
+  })
+
+  it("leaves typeahead to an open Select: N on an option does not open the menu", async () => {
+    // Radix Select measures and scrolls in ways jsdom lacks.
+    window.HTMLElement.prototype.scrollIntoView = () => undefined
+    window.HTMLElement.prototype.hasPointerCapture = () => false
+    window.HTMLElement.prototype.releasePointerCapture = () => undefined
+    render(
+      <Host>
+        <Select defaultOpen>
+          <SelectTrigger>
+            <SelectValue placeholder="Vælg" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="nordlys">Nordlys</SelectItem>
+            <SelectItem value="norden">Norden</SelectItem>
+          </SelectContent>
+        </Select>
+      </Host>
+    )
+
+    const option = screen.getByRole("option", { name: "Nordlys" })
+    fireEvent.keyDown(option, { key: "n" })
+    fireEvent.keyDown(option, { key: "/" })
+    expect(handlers.openNewMenu).not.toHaveBeenCalled()
+    expect(handlers.openPalette).not.toHaveBeenCalled()
+    // Radix focuses the chosen item on a timer; let it fire before the test unmounts the Select.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    })
+  })
+
+  it("treats an open popup list as owning the keyboard, and a closed one as not", () => {
+    render(<Host />)
+    const list = document.createElement("div")
+    list.setAttribute("role", "listbox")
+    list.setAttribute("data-state", "open")
+    document.body.appendChild(list)
+    fireEvent.keyDown(document.body, { key: "n" })
+    expect(handlers.openNewMenu).not.toHaveBeenCalled()
+
+    list.setAttribute("data-state", "closed")
     fireEvent.keyDown(document.body, { key: "n" })
     expect(handlers.openNewMenu).toHaveBeenCalledTimes(1)
   })

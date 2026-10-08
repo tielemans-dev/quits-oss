@@ -7,14 +7,27 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.getAttribute('role') === 'textbox'
 }
 
-/** An open dialog, menu or drawer owns the keyboard: single-key shortcuts must not reach past it. */
+/**
+ * What counts as holding the keyboard: a dialog, a menu, or a popup list such as an open Select
+ * (focus sits on one of its options and typing selects by letter). A closing overlay lingers for
+ * its exit animation and no longer holds it.
+ */
+const OPEN_OVERLAY = [
+  '[role="dialog"]',
+  '[role="alertdialog"]',
+  '[role="menu"]',
+  '[role="menuitem"]',
+  '[role="listbox"]',
+  '[role="option"]',
+]
+  .map((selector) => `${selector}:not([data-state="closed"])`)
+  // Any other Radix popup (popover, combobox list, tooltip-like content) while it is open.
+  .concat('[data-radix-popper-content-wrapper] [data-state="open"]')
+  .join(', ')
+
+/** An open overlay owns the keyboard: single-key shortcuts must not reach past it. */
 function overlayIsOpen(): boolean {
-  // A closing overlay lingers for its exit animation and no longer holds the keyboard.
-  return (
-    document.querySelector(
-      '[role="dialog"]:not([data-state="closed"]), [role="menu"]:not([data-state="closed"]), [role="alertdialog"]:not([data-state="closed"])'
-    ) !== null
-  )
+  return document.querySelector(OPEN_OVERLAY) !== null
 }
 
 type Handlers = {
