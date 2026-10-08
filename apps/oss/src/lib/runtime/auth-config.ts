@@ -18,6 +18,16 @@ import { cleanupExpiredVerifications } from "../auth/verification-cleanup"
 import { selectedEmailProvider, readSmtpConfiguration, requireSmtpFromEmail } from "../email-provider-config"
 import { ac, accountant, admin, member } from "../permissions"
 
+/**
+ * How long a browser may answer `getSession` from its signed, httpOnly session cookie without
+ * reading the session row. This bounds how long a revoked session keeps working: signing out
+ * clears the browser's cookie at once, but a session revoked elsewhere (another device, or a
+ * password reset) stays usable in any browser that holds its cached copy for at most this many
+ * seconds. Organization membership is still read from the database on every organization request,
+ * so removing a member takes effect immediately.
+ */
+export const SESSION_COOKIE_CACHE_MAX_AGE_SECONDS = 60
+
 export type AuthHooks = {
   /** Keep background delivery alive for the runtime's request lifetime (e.g. an execution context). */
   runInBackground?: (task: Promise<void>) => void
@@ -126,6 +136,9 @@ export function buildQuitsAuthOptions(input: {
     ...(betterAuthUrl ? { baseURL: betterAuthUrl } : {}),
     // Every native verification reader, including GET reset callbacks, must use the same policy.
     verification: { disableCleanup: true },
+    session: {
+      cookieCache: { enabled: true, maxAge: SESSION_COOKIE_CACHE_MAX_AGE_SECONDS },
+    },
     rateLimit: {
       customRules: {
         // Recovery uses atomic database admission below. Do not also use post-response memory
@@ -154,7 +167,9 @@ export function buildQuitsAuthOptions(input: {
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         // Auth traffic drains expired records in bounded batches, outside row-locked transactions.
-        await cleanupExpiredVerifications(input.prisma)
+        // Session reads run on every app request and take no verification locks, so they skip the
+        // drain (one write round trip before every request). Recovery paths still drain first.
+        if (ctx.path !== "/get-session") await cleanupExpiredVerifications(input.prisma)
         if (ctx.path !== "/request-password-reset" && ctx.path !== "/reset-password") return
         const clientKey = hooks.getRecoveryClientKey
           ? await hooks.getRecoveryClientKey(ctx.request)

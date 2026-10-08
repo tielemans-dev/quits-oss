@@ -3,7 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server"
 import superjson from "superjson"
 import { DomainRefusal } from "./outcome"
 import { auth } from "../lib/auth"
-import { actorCan } from "../domain/actor"
+import { actorCan, type UserActor } from "../domain/actor"
 import type { Permission } from "../domain/permissions"
 import { resolveUserActor } from "../domain/user-actor"
 import { isCloudDistribution } from "../lib/distribution"
@@ -21,6 +21,12 @@ export type Context = {
    * it sent one. Only compared with the session's active organization; never used to authorize.
    */
   requestedOrganizationId?: string | null
+  /**
+   * Membership lookups started for this HTTP request, keyed by organization and user. A batch
+   * shares one context, so each membership is read once however many procedures it calls.
+   * Scoped to one request: it is never reused across requests.
+   */
+  actorCache?: Map<string, Promise<UserActor | null>>
 }
 
 export { ORGANIZATION_CHANGED_MESSAGE }
@@ -89,6 +95,26 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   })
 })
 
+/**
+ * The user's actor in an organization, looked up once per request. A failed lookup is not cached,
+ * so a later procedure in the same batch retries it.
+ */
+function resolveActorOnce(
+  cache: Context["actorCache"],
+  input: Parameters<typeof resolveUserActor>[0]
+): Promise<UserActor | null> {
+  if (!cache) return resolveUserActor(input)
+  const key = `${input.organizationId}\u0000${input.userId}`
+  const cached = cache.get(key)
+  if (cached) return cached
+  const lookup = resolveUserActor(input)
+  cache.set(key, lookup)
+  lookup.catch(() => {
+    if (cache.get(key) === lookup) cache.delete(key)
+  })
+  return lookup
+}
+
 export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   if (!ctx.organizationId) {
     throw new TRPCError({
@@ -100,7 +126,7 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   // A request started while another organization was active must not be applied to this one.
   assertRequestedOrganization(ctx.requestedOrganizationId, ctx.organizationId)
 
-  const actor = await resolveUserActor({
+  const actor = await resolveActorOnce(ctx.actorCache, {
     organizationId: ctx.organizationId,
     userId: ctx.user.id,
     userName: ctx.user.name,

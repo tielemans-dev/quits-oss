@@ -18,7 +18,7 @@ async function handleTrpcRequest(request: Request) {
       })
       // The client's intended organization, checked against the session in orgProcedure.
       const requestedOrganizationId = (request.headers.get(ORGANIZATION_HEADER) ?? request.headers.get(LEGACY_ORGANIZATION_HEADER))?.trim() || null
-      return { session, requestedOrganizationId }
+      return { session, requestedOrganizationId, actorCache: new Map() }
     },
   })
 }
