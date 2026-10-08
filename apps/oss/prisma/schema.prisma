@@ -725,6 +725,7 @@ model RecurringInvoice {
   currency       String
   taxRate        Decimal      @db.Decimal(5, 2)
   notes          String?
+  purchaseOrderRef String?
   items          Json
   vatEvidence    Json?
   lastRunAt      DateTime?

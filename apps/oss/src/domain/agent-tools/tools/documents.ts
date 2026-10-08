@@ -159,6 +159,7 @@ export type QuoteRow = {
   publicAccessKeyVersion: number
   publicDecisionAt?: Date | null
   publicRejectionReason?: string | null
+  purchaseOrderRef?: string | null
   notes?: string | null
   createdAt: Date
   updatedAt: Date
@@ -187,6 +188,7 @@ export function presentQuote(quote: QuoteRow) {
     rejectionReason: quote.publicRejectionReason ?? null,
     publicViewUrl: safely(() => getPublicQuoteUrl(quote)),
     notes: quote.notes ?? null,
+    purchaseOrderRef: quote.purchaseOrderRef ?? null,
     createdAt: quote.createdAt,
     updatedAt: quote.updatedAt,
     ...(quote.items ? { items: presentLines(quote.items) } : {}),

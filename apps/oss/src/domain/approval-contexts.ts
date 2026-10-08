@@ -340,6 +340,7 @@ export const recurringApproval = (
         schedule.remainingRuns,
         schedule.dueInDays,
         schedule.notes,
+        schedule.purchaseOrderRef,
         schedule.autoSend,
       ]),
       details: {
@@ -352,6 +353,7 @@ export const recurringApproval = (
         remainingRuns: schedule.remainingRuns,
         paymentTerms: `Due in ${schedule.dueInDays} day${schedule.dueInDays === 1 ? "" : "s"}`,
         notes: schedule.notes,
+        purchaseOrderRef: schedule.purchaseOrderRef,
         currency: schedule.currency,
       },
     }
