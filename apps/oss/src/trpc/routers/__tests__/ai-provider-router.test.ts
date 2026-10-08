@@ -17,6 +17,7 @@ vi.mock("../../../lib/db", () => ({
     orgSettings: { findUnique: mocks.findUnique },
     contact: { findMany: mocks.findMany },
     catalogItem: { findMany: vi.fn(async () => []) },
+    recoveryState: { findUnique: vi.fn(async () => null) },
     $transaction: vi.fn(async (run: (tx: unknown) => unknown) =>
       run({ orgSettings: { findUnique: mocks.txFindUnique } })
     ),
