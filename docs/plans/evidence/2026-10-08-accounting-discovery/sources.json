@@ -338,10 +338,11 @@
       "accessed_at_utc": "2026-10-08T16:11:04.722084+00:00",
       "http_status": 200,
       "raw_response_sha256": "a53acee5dda8864a67c228d49315c348c2f6d6fd2b6e48d33d37ac285df0e4bb",
-      "sections_read": "Sections 4, 6–10; especially 8.1–8.3 and 10.2",
+      "sections_read": "Sections 4, 6–10; especially 8.1–8.3, 8.5 and 10.2",
       "excerpts": [
         "Du kan senest den 7. i betalingsmåneden afvise en kommende betaling eller anmode om\ntilbageførsel af en gennemført betaling i den pågældende måned.\n\n\n\n                                                                                         ",
-        "Din afmelding af en betalingsaftale får virkning hurtigst muligt. En afmelding får senest virkning\nfor betalinger, der skal finde sted tre bankdage efter, at Mastercard Payment Services har\nmodtaget din afmelding fra dit pengeinstitut eller"
+        "Din afmelding af en betalingsaftale får virkning hurtigst muligt. En afmelding får senest virkning\nfor betalinger, der skal finde sted tre bankdage efter, at Mastercard Payment Services har\nmodtaget din afmelding fra dit pengeinstitut eller",
+        "Hvis den dag, hvor fristen udløber, ikke er en bankdag, er fristen den første bankdag herefter."
       ]
     },
     {

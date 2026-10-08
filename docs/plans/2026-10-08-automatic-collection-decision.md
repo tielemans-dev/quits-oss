@@ -93,8 +93,11 @@ Do not add fees to a customer's authorized charge just because a payout is lower
 - SEPA refunds can be partial, within 180 days; processing fees are not refunded under the cited
   policy. A bank dispute can coexist with a merchant refund and cause two credits [P7]. Preserve
   both actual facts and an exception; never silently drop the second outflow.
-- Betalingsservice P10 §8 allows rejecting or returning the **whole** payment by the 7th of its
-  payment month, received by the bank by 16:00 on that day. §8.2's later eight-week amount
+- Betalingsservice P10 §8.1 allows rejecting or returning the **whole** payment by the 7th of its
+  payment month, received by the bank by 16:00 on the deadline day. Under §8.5, a deadline that
+  falls on a non-banking day extends to the first banking day afterward. For example, Saturday
+  7 November 2026 extends to Monday 9 November. Any future adapter or payer-facing explanation
+  must apply a Danish banking calendar to the §8 deadlines. §8.2's later eight-week amount
   objection requires an unapproved exact amount and an amount exceeding reasonable expectation.
   §8.3 allows objections to unauthorized/incorrect payments as soon as known, no later than
   13 months. Do not label its eight-week rule unconditional like Stripe SEPA's.
