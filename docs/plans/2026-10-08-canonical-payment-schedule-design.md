@@ -315,6 +315,17 @@ remain unchanged; the new instruction identifies governed drafts for regeneratio
 are a conservative proposal, pending legal review. Term consent also requires renewal of any
 saved-method authority; it never enables charging by itself.
 
+Authority interval checks also ignore the displayed preview count. They check actual UTC run
+dates using the executor's cadence and anchor clamping. A finite date or count limit ends the
+check at the last authorized run, so a short month after that limit does not require renewal.
+For an open or longer term, monthly and yearly checks stop only when the run's Gregorian year
+modulo 400, month and day repeat. The Gregorian calendar repeats every 400 years, and the fixed
+cadence and anchor then produce the same intervals again. This proves coverage of all later
+intervals, including leap years, non-leap centuries and restored month-end anchors. Weekly
+intervals are constant, so one interval proves their spacing. There is no sampled invoice
+horizon. A single remaining charge has no interval to check. Currency and the fixed charge
+amount are checked separately, and the authority still needs an explicit version reference.
+
 ## Recurring generation versus saved-method charging
 
 Generation creates and optionally sends an invoice. Charging pulls money. They are separate

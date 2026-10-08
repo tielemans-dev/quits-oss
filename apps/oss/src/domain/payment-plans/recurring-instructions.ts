@@ -29,6 +29,41 @@ export function previewRuns(instruction: RecurringInstruction, from: string, cou
 const intervalDays = (instruction: RecurringInstruction) =>
   instruction.intervalCount * { week: 7, month: 365.25 / 12, year: 365.25 }[instruction.intervalUnit]
 
+/**
+ * Check every interval in the term, independently of the display preview. Gregorian month/year
+ * dates and their clamping repeat every 400 years. Once a run's year modulo 400, month and day
+ * repeat, every later interval repeats too. Weekly intervals are constant. This is a complete
+ * calendar cycle, not a sampled horizon; finite date/count limits stop it earlier.
+ */
+function recurringAuthorityRenewal(authority: CollectionAuthority, instruction: RecurringInstruction) {
+  const first = previewRuns(instruction, instruction.effectiveFrom, 1)[0]
+  const renewal = authorityRenewal(authority, first
+    ? [{ key: { kind: "date", date: first.runDate }, amount: BigInt(first.periodGrossMinor) }]
+    : [], instruction.currency)
+  if (!first || authority.minDaysBetweenCharges === 0) return renewal
+
+  const anchor = anchorDayOf(parseCalendarDate(instruction.anchorDate))
+  const ends = instruction.end.type === "on_date" ? parseCalendarDate(instruction.end.endsAt) : null
+  const phases = new Set<string>()
+  let run = parseCalendarDate(first.runDate), runCount = 1
+  while (instruction.end.type !== "after_runs" || runCount < instruction.end.runs) {
+    const phase = `${run.getUTCFullYear() % 400}:${run.getUTCMonth()}:${run.getUTCDate()}`
+    if (phases.has(phase)) break
+    phases.add(phase)
+    const successor = advanceRunDate(run, instruction.intervalCount, instruction.intervalUnit, anchor)
+    if (ends && successor > ends) break
+    if ((successor.getTime() - run.getTime()) / 86_400_000 < authority.minDaysBetweenCharges) {
+      renewal.renewalRequired = true
+      renewal.reasons.push("Charges are closer together than authorized")
+      break
+    }
+    if (instruction.intervalUnit === "week") break
+    run = successor
+    runCount += 1
+  }
+  return renewal
+}
+
 /** Consent is independent of the UI preview length. Unprovable end-kind changes are conservative. */
 function termConsentReason(current: RecurringInstruction, next: RecurringInstruction): string | null {
   const firstAfter = previewRuns(next, next.effectiveFrom, 1)[0]
@@ -101,7 +136,7 @@ export function recurringAmendmentImpact(current: RecurringInstruction, next: Re
   if (termReason) reasons.push(termReason)
 
   const renewal = authority && authority.status === "active" && current.collection.kind === "saved_method" && current.collection.authorityId === authority.authorityId
-    ? authorityRenewal(authority, previewRuns(next, next.effectiveFrom, 3).map((run) => ({ key: { kind: "date" as const, date: run.runDate }, amount: BigInt(run.periodGrossMinor) })), next.currency)
+    ? recurringAuthorityRenewal(authority, next)
     : null
   if (renewal && termReason) {
     renewal.renewalRequired = true
