@@ -1,0 +1,2613 @@
+{
+  "asOf": "2026-10-08",
+  "association": [
+    {
+      "case": "paid",
+      "refusals": [
+        {
+          "expected": "customer_mismatch",
+          "stateUnchanged": true
+        },
+        {
+          "expected": "project_not_found",
+          "stateUnchanged": true
+        },
+        {
+          "expected": "association_changed",
+          "stateUnchanged": true
+        }
+      ],
+      "steps": [
+        {
+          "after": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 100000,
+                  "currency": "DKK",
+                  "id": "payment-paid",
+                  "invoiceId": "invoice-paid",
+                  "receiptAmountMinor": 100000,
+                  "receiptId": "receipt-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-paid.pdf",
+                  "sha256": "970fe65d89865445669cef6132845f399061686930620e26781b89846462f727"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-paid.ubl",
+                  "sha256": "4735b38282a3baabd2de13999c6c0d5d6a931430dfe81691d8adf5a416377ade"
+                }
+              ],
+              "cashNetMinor": 98500,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-paid",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-paid",
+                "organizationId": "org-A",
+                "paidMinor": 100000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "paid",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 1500,
+                  "grossMinor": 100000,
+                  "id": "receipt-paid",
+                  "netMinor": 98500,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-A",
+              "revision": 1
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 100000,
+                  "currency": "DKK",
+                  "id": "payment-paid",
+                  "invoiceId": "invoice-paid",
+                  "receiptAmountMinor": 100000,
+                  "receiptId": "receipt-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-paid.pdf",
+                  "sha256": "970fe65d89865445669cef6132845f399061686930620e26781b89846462f727"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-paid.ubl",
+                  "sha256": "4735b38282a3baabd2de13999c6c0d5d6a931430dfe81691d8adf5a416377ade"
+                }
+              ],
+              "cashNetMinor": 98500,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-paid",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-paid",
+                "organizationId": "org-A",
+                "paidMinor": 100000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "paid",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 1500,
+                  "grossMinor": 100000,
+                  "id": "receipt-paid",
+                  "netMinor": 98500,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": null,
+              "revision": 0
+            }
+          },
+          "operation": "assign",
+          "protectedSha256After": "33fd13bb3b1e78cb3808aecb5fe3b9ccf7d72d6f53e653e28b9808a83b27232a",
+          "protectedSha256Before": "33fd13bb3b1e78cb3808aecb5fe3b9ccf7d72d6f53e653e28b9808a83b27232a",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          }
+        },
+        {
+          "after": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 100000,
+                  "currency": "DKK",
+                  "id": "payment-paid",
+                  "invoiceId": "invoice-paid",
+                  "receiptAmountMinor": 100000,
+                  "receiptId": "receipt-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-paid.pdf",
+                  "sha256": "970fe65d89865445669cef6132845f399061686930620e26781b89846462f727"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-paid.ubl",
+                  "sha256": "4735b38282a3baabd2de13999c6c0d5d6a931430dfe81691d8adf5a416377ade"
+                }
+              ],
+              "cashNetMinor": 98500,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-paid",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-paid",
+                "organizationId": "org-A",
+                "paidMinor": 100000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "paid",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 1500,
+                  "grossMinor": 100000,
+                  "id": "receipt-paid",
+                  "netMinor": 98500,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-B",
+              "revision": 2
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 100000,
+                  "currency": "DKK",
+                  "id": "payment-paid",
+                  "invoiceId": "invoice-paid",
+                  "receiptAmountMinor": 100000,
+                  "receiptId": "receipt-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-paid.pdf",
+                  "sha256": "970fe65d89865445669cef6132845f399061686930620e26781b89846462f727"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-paid.ubl",
+                  "sha256": "4735b38282a3baabd2de13999c6c0d5d6a931430dfe81691d8adf5a416377ade"
+                }
+              ],
+              "cashNetMinor": 98500,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-paid",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-paid",
+                "organizationId": "org-A",
+                "paidMinor": 100000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "paid",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 1500,
+                  "grossMinor": 100000,
+                  "id": "receipt-paid",
+                  "netMinor": 98500,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-A",
+              "revision": 1
+            }
+          },
+          "operation": "correct",
+          "protectedSha256After": "33fd13bb3b1e78cb3808aecb5fe3b9ccf7d72d6f53e653e28b9808a83b27232a",
+          "protectedSha256Before": "33fd13bb3b1e78cb3808aecb5fe3b9ccf7d72d6f53e653e28b9808a83b27232a",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          }
+        },
+        {
+          "after": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 100000,
+                  "currency": "DKK",
+                  "id": "payment-paid",
+                  "invoiceId": "invoice-paid",
+                  "receiptAmountMinor": 100000,
+                  "receiptId": "receipt-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-paid.pdf",
+                  "sha256": "970fe65d89865445669cef6132845f399061686930620e26781b89846462f727"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-paid.ubl",
+                  "sha256": "4735b38282a3baabd2de13999c6c0d5d6a931430dfe81691d8adf5a416377ade"
+                }
+              ],
+              "cashNetMinor": 98500,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-paid",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-paid",
+                "organizationId": "org-A",
+                "paidMinor": 100000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "paid",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 1500,
+                  "grossMinor": 100000,
+                  "id": "receipt-paid",
+                  "netMinor": 98500,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": null,
+              "revision": 3
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 100000,
+                  "currency": "DKK",
+                  "id": "payment-paid",
+                  "invoiceId": "invoice-paid",
+                  "receiptAmountMinor": 100000,
+                  "receiptId": "receipt-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-paid.pdf",
+                  "sha256": "970fe65d89865445669cef6132845f399061686930620e26781b89846462f727"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-paid.ubl",
+                  "sha256": "4735b38282a3baabd2de13999c6c0d5d6a931430dfe81691d8adf5a416377ade"
+                }
+              ],
+              "cashNetMinor": 98500,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-paid",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-paid",
+                "organizationId": "org-A",
+                "paidMinor": 100000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "paid",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 1500,
+                  "grossMinor": 100000,
+                  "id": "receipt-paid",
+                  "netMinor": 98500,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-B",
+              "revision": 2
+            }
+          },
+          "operation": "remove",
+          "protectedSha256After": "33fd13bb3b1e78cb3808aecb5fe3b9ccf7d72d6f53e653e28b9808a83b27232a",
+          "protectedSha256Before": "33fd13bb3b1e78cb3808aecb5fe3b9ccf7d72d6f53e653e28b9808a83b27232a",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          }
+        }
+      ]
+    },
+    {
+      "case": "partly-paid",
+      "refusals": [
+        {
+          "expected": "customer_mismatch",
+          "stateUnchanged": true
+        },
+        {
+          "expected": "project_not_found",
+          "stateUnchanged": true
+        },
+        {
+          "expected": "association_changed",
+          "stateUnchanged": true
+        }
+      ],
+      "steps": [
+        {
+          "after": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 40000,
+                  "currency": "DKK",
+                  "id": "payment-partly-paid",
+                  "invoiceId": "invoice-partly-paid",
+                  "receiptAmountMinor": 40000,
+                  "receiptId": "receipt-partly-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d706172746c792d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-partly-paid.pdf",
+                  "sha256": "dee5b62df835eb3230f8ab3b7b586ad598e414b8dbe540f4fa62f78351e83f93"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d706172746c792d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-partly-paid.ubl",
+                  "sha256": "974712f05e99f2a77506453f09220a66b966f55d58109cd120a0804b9c6ac23d"
+                }
+              ],
+              "cashNetMinor": 45000,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-partly-paid",
+                "dueDate": "2026-10-31",
+                "dueSlot": false,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-partly-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-partly-paid",
+                "organizationId": "org-A",
+                "paidMinor": 40000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-partly-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "sent",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 5000,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 45000,
+                  "id": "receipt-partly-paid",
+                  "netMinor": 45000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-partly-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-A",
+              "revision": 1
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 40000,
+                  "currency": "DKK",
+                  "id": "payment-partly-paid",
+                  "invoiceId": "invoice-partly-paid",
+                  "receiptAmountMinor": 40000,
+                  "receiptId": "receipt-partly-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d706172746c792d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-partly-paid.pdf",
+                  "sha256": "dee5b62df835eb3230f8ab3b7b586ad598e414b8dbe540f4fa62f78351e83f93"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d706172746c792d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-partly-paid.ubl",
+                  "sha256": "974712f05e99f2a77506453f09220a66b966f55d58109cd120a0804b9c6ac23d"
+                }
+              ],
+              "cashNetMinor": 45000,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-partly-paid",
+                "dueDate": "2026-10-31",
+                "dueSlot": false,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-partly-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-partly-paid",
+                "organizationId": "org-A",
+                "paidMinor": 40000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-partly-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "sent",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 5000,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 45000,
+                  "id": "receipt-partly-paid",
+                  "netMinor": 45000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-partly-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": null,
+              "revision": 0
+            }
+          },
+          "operation": "assign",
+          "protectedSha256After": "e4a1440c10808121bb03cc58cce6fb84fcebf6e3670d5db42b59cbbc5473300b",
+          "protectedSha256Before": "e4a1440c10808121bb03cc58cce6fb84fcebf6e3670d5db42b59cbbc5473300b",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": true,
+            "outstandingMinor": 60000
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": true,
+            "outstandingMinor": 60000
+          }
+        },
+        {
+          "after": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 40000,
+                  "currency": "DKK",
+                  "id": "payment-partly-paid",
+                  "invoiceId": "invoice-partly-paid",
+                  "receiptAmountMinor": 40000,
+                  "receiptId": "receipt-partly-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d706172746c792d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-partly-paid.pdf",
+                  "sha256": "dee5b62df835eb3230f8ab3b7b586ad598e414b8dbe540f4fa62f78351e83f93"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d706172746c792d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-partly-paid.ubl",
+                  "sha256": "974712f05e99f2a77506453f09220a66b966f55d58109cd120a0804b9c6ac23d"
+                }
+              ],
+              "cashNetMinor": 45000,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-partly-paid",
+                "dueDate": "2026-10-31",
+                "dueSlot": false,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-partly-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-partly-paid",
+                "organizationId": "org-A",
+                "paidMinor": 40000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-partly-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "sent",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 5000,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 45000,
+                  "id": "receipt-partly-paid",
+                  "netMinor": 45000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-partly-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-B",
+              "revision": 2
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 40000,
+                  "currency": "DKK",
+                  "id": "payment-partly-paid",
+                  "invoiceId": "invoice-partly-paid",
+                  "receiptAmountMinor": 40000,
+                  "receiptId": "receipt-partly-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d706172746c792d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-partly-paid.pdf",
+                  "sha256": "dee5b62df835eb3230f8ab3b7b586ad598e414b8dbe540f4fa62f78351e83f93"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d706172746c792d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-partly-paid.ubl",
+                  "sha256": "974712f05e99f2a77506453f09220a66b966f55d58109cd120a0804b9c6ac23d"
+                }
+              ],
+              "cashNetMinor": 45000,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-partly-paid",
+                "dueDate": "2026-10-31",
+                "dueSlot": false,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-partly-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-partly-paid",
+                "organizationId": "org-A",
+                "paidMinor": 40000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-partly-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "sent",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 5000,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 45000,
+                  "id": "receipt-partly-paid",
+                  "netMinor": 45000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-partly-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-A",
+              "revision": 1
+            }
+          },
+          "operation": "correct",
+          "protectedSha256After": "e4a1440c10808121bb03cc58cce6fb84fcebf6e3670d5db42b59cbbc5473300b",
+          "protectedSha256Before": "e4a1440c10808121bb03cc58cce6fb84fcebf6e3670d5db42b59cbbc5473300b",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": true,
+            "outstandingMinor": 60000
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": true,
+            "outstandingMinor": 60000
+          }
+        },
+        {
+          "after": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 40000,
+                  "currency": "DKK",
+                  "id": "payment-partly-paid",
+                  "invoiceId": "invoice-partly-paid",
+                  "receiptAmountMinor": 40000,
+                  "receiptId": "receipt-partly-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d706172746c792d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-partly-paid.pdf",
+                  "sha256": "dee5b62df835eb3230f8ab3b7b586ad598e414b8dbe540f4fa62f78351e83f93"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d706172746c792d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-partly-paid.ubl",
+                  "sha256": "974712f05e99f2a77506453f09220a66b966f55d58109cd120a0804b9c6ac23d"
+                }
+              ],
+              "cashNetMinor": 45000,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-partly-paid",
+                "dueDate": "2026-10-31",
+                "dueSlot": false,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-partly-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-partly-paid",
+                "organizationId": "org-A",
+                "paidMinor": 40000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-partly-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "sent",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 5000,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 45000,
+                  "id": "receipt-partly-paid",
+                  "netMinor": 45000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-partly-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": null,
+              "revision": 3
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 40000,
+                  "currency": "DKK",
+                  "id": "payment-partly-paid",
+                  "invoiceId": "invoice-partly-paid",
+                  "receiptAmountMinor": 40000,
+                  "receiptId": "receipt-partly-paid",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d706172746c792d70616964",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-partly-paid.pdf",
+                  "sha256": "dee5b62df835eb3230f8ab3b7b586ad598e414b8dbe540f4fa62f78351e83f93"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d706172746c792d70616964",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-partly-paid.ubl",
+                  "sha256": "974712f05e99f2a77506453f09220a66b966f55d58109cd120a0804b9c6ac23d"
+                }
+              ],
+              "cashNetMinor": 45000,
+              "credits": [],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 0,
+                "currency": "DKK",
+                "deliverableId": "work-partly-paid",
+                "dueDate": "2026-10-31",
+                "dueSlot": false,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-partly-paid",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-partly-paid",
+                "organizationId": "org-A",
+                "paidMinor": 40000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-partly-paid"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "sent",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 5000,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 45000,
+                  "id": "receipt-partly-paid",
+                  "netMinor": 45000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-partly-paid"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-B",
+              "revision": 2
+            }
+          },
+          "operation": "remove",
+          "protectedSha256After": "e4a1440c10808121bb03cc58cce6fb84fcebf6e3670d5db42b59cbbc5473300b",
+          "protectedSha256Before": "e4a1440c10808121bb03cc58cce6fb84fcebf6e3670d5db42b59cbbc5473300b",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": true,
+            "outstandingMinor": 60000
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": true,
+            "outstandingMinor": 60000
+          }
+        }
+      ]
+    },
+    {
+      "case": "credited",
+      "refusals": [
+        {
+          "expected": "customer_mismatch",
+          "stateUnchanged": true
+        },
+        {
+          "expected": "project_not_found",
+          "stateUnchanged": true
+        },
+        {
+          "expected": "association_changed",
+          "stateUnchanged": true
+        }
+      ],
+      "steps": [
+        {
+          "after": {
+            "protected": {
+              "allocations": [],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6372656469746564",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-credited.pdf",
+                  "sha256": "5bcceddee55809cfdc6296c2bf7c616e2e620c10d4fca61aeb148ae9734bb639"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6372656469746564",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-credited.ubl",
+                  "sha256": "7749be9d66c3747266a81c80ce75bc7fa33fb59b56fc4be4f3b19468f0a12276"
+                }
+              ],
+              "cashNetMinor": 0,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6372656469746564",
+                  "artifactSha256": "2c880915aed42d607519cdc456ca69bac9f5dbf67ff49ab0b42c59256bc79e8b",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 100000,
+                  "id": "credit-credited",
+                  "invoiceId": "invoice-credited",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 100000,
+                "currency": "DKK",
+                "deliverableId": "work-credited",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-credited",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-credited",
+                "organizationId": "org-A",
+                "paidMinor": 0,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-credited"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "credited",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-A",
+              "revision": 1
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6372656469746564",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-credited.pdf",
+                  "sha256": "5bcceddee55809cfdc6296c2bf7c616e2e620c10d4fca61aeb148ae9734bb639"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6372656469746564",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-credited.ubl",
+                  "sha256": "7749be9d66c3747266a81c80ce75bc7fa33fb59b56fc4be4f3b19468f0a12276"
+                }
+              ],
+              "cashNetMinor": 0,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6372656469746564",
+                  "artifactSha256": "2c880915aed42d607519cdc456ca69bac9f5dbf67ff49ab0b42c59256bc79e8b",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 100000,
+                  "id": "credit-credited",
+                  "invoiceId": "invoice-credited",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 100000,
+                "currency": "DKK",
+                "deliverableId": "work-credited",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-credited",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-credited",
+                "organizationId": "org-A",
+                "paidMinor": 0,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-credited"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "credited",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": null,
+              "revision": 0
+            }
+          },
+          "operation": "assign",
+          "protectedSha256After": "d47e58eb40e5a066c9fb5ab38f875a71f3afde620332d87e252cbcb2397fa7f0",
+          "protectedSha256Before": "d47e58eb40e5a066c9fb5ab38f875a71f3afde620332d87e252cbcb2397fa7f0",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          }
+        },
+        {
+          "after": {
+            "protected": {
+              "allocations": [],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6372656469746564",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-credited.pdf",
+                  "sha256": "5bcceddee55809cfdc6296c2bf7c616e2e620c10d4fca61aeb148ae9734bb639"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6372656469746564",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-credited.ubl",
+                  "sha256": "7749be9d66c3747266a81c80ce75bc7fa33fb59b56fc4be4f3b19468f0a12276"
+                }
+              ],
+              "cashNetMinor": 0,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6372656469746564",
+                  "artifactSha256": "2c880915aed42d607519cdc456ca69bac9f5dbf67ff49ab0b42c59256bc79e8b",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 100000,
+                  "id": "credit-credited",
+                  "invoiceId": "invoice-credited",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 100000,
+                "currency": "DKK",
+                "deliverableId": "work-credited",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-credited",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-credited",
+                "organizationId": "org-A",
+                "paidMinor": 0,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-credited"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "credited",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-B",
+              "revision": 2
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6372656469746564",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-credited.pdf",
+                  "sha256": "5bcceddee55809cfdc6296c2bf7c616e2e620c10d4fca61aeb148ae9734bb639"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6372656469746564",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-credited.ubl",
+                  "sha256": "7749be9d66c3747266a81c80ce75bc7fa33fb59b56fc4be4f3b19468f0a12276"
+                }
+              ],
+              "cashNetMinor": 0,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6372656469746564",
+                  "artifactSha256": "2c880915aed42d607519cdc456ca69bac9f5dbf67ff49ab0b42c59256bc79e8b",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 100000,
+                  "id": "credit-credited",
+                  "invoiceId": "invoice-credited",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 100000,
+                "currency": "DKK",
+                "deliverableId": "work-credited",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-credited",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-credited",
+                "organizationId": "org-A",
+                "paidMinor": 0,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-credited"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "credited",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-A",
+              "revision": 1
+            }
+          },
+          "operation": "correct",
+          "protectedSha256After": "d47e58eb40e5a066c9fb5ab38f875a71f3afde620332d87e252cbcb2397fa7f0",
+          "protectedSha256Before": "d47e58eb40e5a066c9fb5ab38f875a71f3afde620332d87e252cbcb2397fa7f0",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          }
+        },
+        {
+          "after": {
+            "protected": {
+              "allocations": [],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6372656469746564",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-credited.pdf",
+                  "sha256": "5bcceddee55809cfdc6296c2bf7c616e2e620c10d4fca61aeb148ae9734bb639"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6372656469746564",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-credited.ubl",
+                  "sha256": "7749be9d66c3747266a81c80ce75bc7fa33fb59b56fc4be4f3b19468f0a12276"
+                }
+              ],
+              "cashNetMinor": 0,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6372656469746564",
+                  "artifactSha256": "2c880915aed42d607519cdc456ca69bac9f5dbf67ff49ab0b42c59256bc79e8b",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 100000,
+                  "id": "credit-credited",
+                  "invoiceId": "invoice-credited",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 100000,
+                "currency": "DKK",
+                "deliverableId": "work-credited",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-credited",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-credited",
+                "organizationId": "org-A",
+                "paidMinor": 0,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-credited"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "credited",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": null,
+              "revision": 3
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6372656469746564",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-credited.pdf",
+                  "sha256": "5bcceddee55809cfdc6296c2bf7c616e2e620c10d4fca61aeb148ae9734bb639"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6372656469746564",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-credited.ubl",
+                  "sha256": "7749be9d66c3747266a81c80ce75bc7fa33fb59b56fc4be4f3b19468f0a12276"
+                }
+              ],
+              "cashNetMinor": 0,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6372656469746564",
+                  "artifactSha256": "2c880915aed42d607519cdc456ca69bac9f5dbf67ff49ab0b42c59256bc79e8b",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 100000,
+                  "id": "credit-credited",
+                  "invoiceId": "invoice-credited",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 100000,
+                "currency": "DKK",
+                "deliverableId": "work-credited",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-credited",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-credited",
+                "organizationId": "org-A",
+                "paidMinor": 0,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-credited"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "credited",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-B",
+              "revision": 2
+            }
+          },
+          "operation": "remove",
+          "protectedSha256After": "d47e58eb40e5a066c9fb5ab38f875a71f3afde620332d87e252cbcb2397fa7f0",
+          "protectedSha256Before": "d47e58eb40e5a066c9fb5ab38f875a71f3afde620332d87e252cbcb2397fa7f0",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": false,
+            "openBalanceEligible": false,
+            "outstandingMinor": 0
+          }
+        }
+      ]
+    },
+    {
+      "case": "overdue",
+      "refusals": [
+        {
+          "expected": "customer_mismatch",
+          "stateUnchanged": true
+        },
+        {
+          "expected": "project_not_found",
+          "stateUnchanged": true
+        },
+        {
+          "expected": "association_changed",
+          "stateUnchanged": true
+        }
+      ],
+      "steps": [
+        {
+          "after": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 20000,
+                  "currency": "DKK",
+                  "id": "payment-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "receiptAmountMinor": 20000,
+                  "receiptId": "receipt-overdue",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6f766572647565",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-overdue.pdf",
+                  "sha256": "df6ef81b23a71897ac4280a8b34bcda55f6038c157f3c99e5a59c5b0504d3a1d"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6f766572647565",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-overdue.ubl",
+                  "sha256": "cf9d6de8da68734e5e706050b64c309ac907455c7d0e131f5702449ff05e3909"
+                }
+              ],
+              "cashNetMinor": 20000,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6f766572647565",
+                  "artifactSha256": "a70bad4bb1b79a50bc5e54f2a2d26b651ca28d7194719cfc530a828bcc88ffe8",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 10000,
+                  "id": "credit-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 10000,
+                "currency": "DKK",
+                "deliverableId": "work-overdue",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-overdue",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-overdue",
+                "organizationId": "org-A",
+                "paidMinor": 20000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-overdue"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "overdue",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 20000,
+                  "id": "receipt-overdue",
+                  "netMinor": 20000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-overdue"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-A",
+              "revision": 1
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 20000,
+                  "currency": "DKK",
+                  "id": "payment-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "receiptAmountMinor": 20000,
+                  "receiptId": "receipt-overdue",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6f766572647565",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-overdue.pdf",
+                  "sha256": "df6ef81b23a71897ac4280a8b34bcda55f6038c157f3c99e5a59c5b0504d3a1d"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6f766572647565",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-overdue.ubl",
+                  "sha256": "cf9d6de8da68734e5e706050b64c309ac907455c7d0e131f5702449ff05e3909"
+                }
+              ],
+              "cashNetMinor": 20000,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6f766572647565",
+                  "artifactSha256": "a70bad4bb1b79a50bc5e54f2a2d26b651ca28d7194719cfc530a828bcc88ffe8",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 10000,
+                  "id": "credit-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 10000,
+                "currency": "DKK",
+                "deliverableId": "work-overdue",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-overdue",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-overdue",
+                "organizationId": "org-A",
+                "paidMinor": 20000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-overdue"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "overdue",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 20000,
+                  "id": "receipt-overdue",
+                  "netMinor": 20000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-overdue"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": null,
+              "revision": 0
+            }
+          },
+          "operation": "assign",
+          "protectedSha256After": "15759e0f8ba3ddcb5e641939f0d7470235cebc36f8492f4196bcf9bf8e4de864",
+          "protectedSha256Before": "15759e0f8ba3ddcb5e641939f0d7470235cebc36f8492f4196bcf9bf8e4de864",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": true,
+            "openBalanceEligible": true,
+            "outstandingMinor": 70000
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": true,
+            "openBalanceEligible": true,
+            "outstandingMinor": 70000
+          }
+        },
+        {
+          "after": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 20000,
+                  "currency": "DKK",
+                  "id": "payment-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "receiptAmountMinor": 20000,
+                  "receiptId": "receipt-overdue",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6f766572647565",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-overdue.pdf",
+                  "sha256": "df6ef81b23a71897ac4280a8b34bcda55f6038c157f3c99e5a59c5b0504d3a1d"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6f766572647565",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-overdue.ubl",
+                  "sha256": "cf9d6de8da68734e5e706050b64c309ac907455c7d0e131f5702449ff05e3909"
+                }
+              ],
+              "cashNetMinor": 20000,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6f766572647565",
+                  "artifactSha256": "a70bad4bb1b79a50bc5e54f2a2d26b651ca28d7194719cfc530a828bcc88ffe8",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 10000,
+                  "id": "credit-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 10000,
+                "currency": "DKK",
+                "deliverableId": "work-overdue",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-overdue",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-overdue",
+                "organizationId": "org-A",
+                "paidMinor": 20000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-overdue"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "overdue",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 20000,
+                  "id": "receipt-overdue",
+                  "netMinor": 20000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-overdue"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-B",
+              "revision": 2
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 20000,
+                  "currency": "DKK",
+                  "id": "payment-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "receiptAmountMinor": 20000,
+                  "receiptId": "receipt-overdue",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6f766572647565",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-overdue.pdf",
+                  "sha256": "df6ef81b23a71897ac4280a8b34bcda55f6038c157f3c99e5a59c5b0504d3a1d"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6f766572647565",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-overdue.ubl",
+                  "sha256": "cf9d6de8da68734e5e706050b64c309ac907455c7d0e131f5702449ff05e3909"
+                }
+              ],
+              "cashNetMinor": 20000,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6f766572647565",
+                  "artifactSha256": "a70bad4bb1b79a50bc5e54f2a2d26b651ca28d7194719cfc530a828bcc88ffe8",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 10000,
+                  "id": "credit-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 10000,
+                "currency": "DKK",
+                "deliverableId": "work-overdue",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-overdue",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-overdue",
+                "organizationId": "org-A",
+                "paidMinor": 20000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-overdue"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "overdue",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 20000,
+                  "id": "receipt-overdue",
+                  "netMinor": 20000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-overdue"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-A",
+              "revision": 1
+            }
+          },
+          "operation": "correct",
+          "protectedSha256After": "15759e0f8ba3ddcb5e641939f0d7470235cebc36f8492f4196bcf9bf8e4de864",
+          "protectedSha256Before": "15759e0f8ba3ddcb5e641939f0d7470235cebc36f8492f4196bcf9bf8e4de864",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": true,
+            "openBalanceEligible": true,
+            "outstandingMinor": 70000
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": true,
+            "openBalanceEligible": true,
+            "outstandingMinor": 70000
+          }
+        },
+        {
+          "after": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 20000,
+                  "currency": "DKK",
+                  "id": "payment-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "receiptAmountMinor": 20000,
+                  "receiptId": "receipt-overdue",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6f766572647565",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-overdue.pdf",
+                  "sha256": "df6ef81b23a71897ac4280a8b34bcda55f6038c157f3c99e5a59c5b0504d3a1d"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6f766572647565",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-overdue.ubl",
+                  "sha256": "cf9d6de8da68734e5e706050b64c309ac907455c7d0e131f5702449ff05e3909"
+                }
+              ],
+              "cashNetMinor": 20000,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6f766572647565",
+                  "artifactSha256": "a70bad4bb1b79a50bc5e54f2a2d26b651ca28d7194719cfc530a828bcc88ffe8",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 10000,
+                  "id": "credit-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 10000,
+                "currency": "DKK",
+                "deliverableId": "work-overdue",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-overdue",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-overdue",
+                "organizationId": "org-A",
+                "paidMinor": 20000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-overdue"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "overdue",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 20000,
+                  "id": "receipt-overdue",
+                  "netMinor": 20000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-overdue"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": null,
+              "revision": 3
+            }
+          },
+          "before": {
+            "protected": {
+              "allocations": [
+                {
+                  "amountMinor": 20000,
+                  "currency": "DKK",
+                  "id": "payment-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "receiptAmountMinor": 20000,
+                  "receiptId": "receipt-overdue",
+                  "voidedAt": null
+                }
+              ],
+              "artifacts": [
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d5044463a696e766f6963652d6f766572647565",
+                  "kind": "pdf",
+                  "ref": "fixture/invoice-overdue.pdf",
+                  "sha256": "df6ef81b23a71897ac4280a8b34bcda55f6038c157f3c99e5a59c5b0504d3a1d"
+                },
+                {
+                  "bytesHex": "53594e5448455449432d4f50415155452d41525449464143542d4e4f542d412d56414c49442d55424c3a696e766f6963652d6f766572647565",
+                  "kind": "ubl",
+                  "ref": "fixture/invoice-overdue.ubl",
+                  "sha256": "cf9d6de8da68734e5e706050b64c309ac907455c7d0e131f5702449ff05e3909"
+                }
+              ],
+              "cashNetMinor": 20000,
+              "credits": [
+                {
+                  "artifactBytesHex": "53594e5448455449432d4352454449542d41525449464143543a6f766572647565",
+                  "artifactSha256": "a70bad4bb1b79a50bc5e54f2a2d26b651ca28d7194719cfc530a828bcc88ffe8",
+                  "buyerId": "buyer-A",
+                  "grossMinor": 10000,
+                  "id": "credit-overdue",
+                  "invoiceId": "invoice-overdue",
+                  "status": "issued"
+                }
+              ],
+              "invoice": {
+                "agreementId": "agreement-A",
+                "allocationGeneration": 0,
+                "contactId": "buyer-A",
+                "creditedMinor": 10000,
+                "currency": "DKK",
+                "deliverableId": "work-overdue",
+                "dueDate": "2026-10-01",
+                "dueSlot": true,
+                "exponent": 2,
+                "grossMinor": 100000,
+                "id": "invoice-overdue",
+                "issuanceSnapshot": {
+                  "buyer": {
+                    "id": "buyer-A",
+                    "name": "Synthetic A"
+                  },
+                  "currency": "DKK",
+                  "gross": "1000.00",
+                  "net": "800.00",
+                  "pricesIncludeTax": false,
+                  "seller": {
+                    "id": "org-A"
+                  },
+                  "tax": "200.00",
+                  "vatRate": "0.25"
+                },
+                "issueDate": "2026-09-20",
+                "number": "INV-overdue",
+                "organizationId": "org-A",
+                "paidMinor": 20000,
+                "paymentDetailsSnapshot": {
+                  "reference": "PAY-overdue"
+                },
+                "policyEnabled": true,
+                "publicPaymentKeyVersion": 1,
+                "recipientValid": true,
+                "remindersPaused": false,
+                "status": "overdue",
+                "supplyDate": "2026-09-20"
+              },
+              "receipts": [
+                {
+                  "availableMinor": 0,
+                  "contactId": "buyer-A",
+                  "currency": "DKK",
+                  "evidence": "fixture-only",
+                  "feeMinor": 0,
+                  "grossMinor": 20000,
+                  "id": "receipt-overdue",
+                  "netMinor": 20000,
+                  "organizationId": "org-A",
+                  "paidAt": "2026-09-30",
+                  "reference": "bank-overdue"
+                }
+              ],
+              "refunds": [],
+              "reminderHistory": []
+            },
+            "reporting": {
+              "projectId": "project-B",
+              "revision": 2
+            }
+          },
+          "operation": "remove",
+          "protectedSha256After": "15759e0f8ba3ddcb5e641939f0d7470235cebc36f8492f4196bcf9bf8e4de864",
+          "protectedSha256Before": "15759e0f8ba3ddcb5e641939f0d7470235cebc36f8492f4196bcf9bf8e4de864",
+          "settlementAfter": {
+            "automaticReminderReadyUnderFixturePolicy": true,
+            "openBalanceEligible": true,
+            "outstandingMinor": 70000
+          },
+          "settlementBefore": {
+            "automaticReminderReadyUnderFixturePolicy": true,
+            "openBalanceEligible": true,
+            "outstandingMinor": 70000
+          }
+        }
+      ]
+    }
+  ],
+  "economics": {
+    "incompleteProject": {
+      "knownActualHours": 27,
+      "totalHighHours": null,
+      "totalLowHours": null,
+      "unknownTaskIds": [
+        "unfinished-overrun",
+        "unestimated"
+      ]
+    },
+    "separateMoneyMeasures": {
+      "actualDirectCostMinor": 410000,
+      "actualLaborCostMinor": 360000,
+      "allocatedMinor": 400000,
+      "cashNetMinor": 390000,
+      "currency": "DKK",
+      "excludedFromContribution": [
+        "overhead",
+        "tax",
+        "FX",
+        "processor fees",
+        "scope changes"
+      ],
+      "exponent": 2,
+      "externalCostMinor": 50000,
+      "fixedFeeNetMinor": 1200000,
+      "forecastContributionHighMinor": 730000,
+      "forecastContributionLowMinor": 670000,
+      "forecastDirectCostHighMinor": 530000,
+      "forecastDirectCostLowMinor": 470000,
+      "grossReceiptMinor": 400000,
+      "internalCostRateMinorPerHour": 30000,
+      "issuedCreditNetMinor": 100000,
+      "issuedNetMinorBeforeCredits": 800000,
+      "netIssuedGrossMinor": 875000,
+      "netIssuedMinor": 700000,
+      "outstandingMinor": 475000,
+      "processorFeeMinor": 10000,
+      "projectedHourlyBillableValueHighMinor": 1600000,
+      "projectedHourlyBillableValueLowMinor": 1400000,
+      "remainingCostHighMinor": 120000,
+      "remainingCostLowMinor": 60000
+    },
+    "tasks": [
+      {
+        "actualHours": 12,
+        "complete": false,
+        "estimateEvidence": null,
+        "high": null,
+        "id": "unfinished-overrun",
+        "low": null,
+        "originalEstimateHours": 10,
+        "result": {
+          "remainingHighHours": null,
+          "remainingLowHours": null,
+          "state": "unknown_remaining",
+          "totalHighHours": null,
+          "totalLowHours": null
+        }
+      },
+      {
+        "actualHours": 12,
+        "complete": false,
+        "estimateEvidence": "synthetic owner scenario, as of 2026-10-08",
+        "high": 4,
+        "id": "overrun-owner-scenario",
+        "low": 2,
+        "originalEstimateHours": 10,
+        "result": {
+          "remainingHighHours": 4,
+          "remainingLowHours": 2,
+          "state": "owner_scenario",
+          "totalHighHours": 16,
+          "totalLowHours": 14
+        }
+      },
+      {
+        "actualHours": 12,
+        "complete": true,
+        "estimateEvidence": null,
+        "high": null,
+        "id": "completed-overrun",
+        "low": null,
+        "originalEstimateHours": 10,
+        "result": {
+          "remainingHighHours": 0,
+          "remainingLowHours": 0,
+          "state": "complete",
+          "totalHighHours": 12,
+          "totalLowHours": 12
+        }
+      },
+      {
+        "actualHours": 4,
+        "complete": false,
+        "estimateEvidence": null,
+        "high": null,
+        "id": "incomplete-under-estimate",
+        "low": null,
+        "originalEstimateHours": 10,
+        "result": {
+          "remainingHighHours": null,
+          "remainingLowHours": null,
+          "state": "unknown_remaining",
+          "totalHighHours": null,
+          "totalLowHours": null
+        }
+      },
+      {
+        "actualHours": 3,
+        "complete": false,
+        "estimateEvidence": null,
+        "high": null,
+        "id": "unestimated",
+        "low": null,
+        "originalEstimateHours": null,
+        "result": {
+          "remainingHighHours": null,
+          "remainingLowHours": null,
+          "state": "unknown_remaining",
+          "totalHighHours": null,
+          "totalLowHours": null
+        }
+      },
+      {
+        "actualHours": 12,
+        "complete": false,
+        "estimateEvidence": "synthetic owner scenario, as of 2026-10-08",
+        "high": 0,
+        "id": "explicit-zero-remaining",
+        "low": 0,
+        "originalEstimateHours": 10,
+        "result": {
+          "remainingHighHours": 0,
+          "remainingLowHours": 0,
+          "state": "owner_scenario",
+          "totalHighHours": 12,
+          "totalLowHours": 12
+        }
+      }
+    ],
+    "warning": "Hourly billable value is a separate pricing scenario, not additive to the fixed fee. Contribution is not accounting profit."
+  },
+  "evidenceClass": "hypothetical metadata and economics fixtures; not application behavior or customer evidence"
+}
