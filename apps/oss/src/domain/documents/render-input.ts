@@ -1,5 +1,5 @@
 import { frozenEinvoiceInput } from "./einvoice-input"
-import { frozenVatRows, vatRowsByRate } from "./frozen-vat-groups"
+import { frozenVatRowsOrUndefined, vatRowsByRate } from "./frozen-vat-groups"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { formatIsoDate } from "../../lib/exports/format"
 import { requireVatIssuance } from "./vat-issuance"
@@ -89,6 +89,7 @@ export const prospectiveRenderInput = (input: {
     const money = input.preview ? undefined : yield* Effect.try({ try: () => invoiceMoneySnapshot(invoice, { ...(input.commandInput as { supplyDate?: string; exchangeRate?: string; rateDate?: string }), number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, seller: seller ?? buildSellerSnapshot(settings, sellerTaxIds), buyer }), catch: error => error instanceof InvalidState ? error : new InvalidState({ code: "money_snapshot_unavailable", message: "The document's currency or frozen money components cannot be valued" }) })
     // The reference a bank transfer is matched by: the invoice's own, else its number. A draft preview has no number yet.
     const paymentReference = invoice.paymentReference?.trim() || (input.preview ? null : input.number)
+    const vatRows = frozenVatRowsOrUndefined(invoice)
     // The date the issued invoice carries, which the issuing command may have set; else the draft's.
     const supplyDate = money ? money.supplyDate : invoice.supplyDate?.toISOString().slice(0, 10) ?? null
     // All PDF fields, including branding and the intended customer, are frozen here.
@@ -103,7 +104,7 @@ export const prospectiveRenderInput = (input: {
       // The lines state amounts on the document's own price basis, so prices excluding VAT add up to the subtotal.
       pricesIncludeTax: invoice.pricesIncludeTax,
       ...(supplyDate ? { supplyDate } : {}),
-      vatRows: frozenVatRows(invoice),
+      ...(vatRows ? { vatRows } : {}),
       items: invoice.items.map(line => { const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), line)
         return { description: line.description, quantity: num(line.quantity), unitPrice: num(shown.unitPrice), total: num(shown.amount) } }),
     }
@@ -138,8 +139,8 @@ export const prospectiveRenderInput = (input: {
       invoice: { number: issuedNumber(invoice), issueDate: invoice.issueDate.toISOString() },
       // Credit notes mirror the basis of the invoice they credit.
       pricesIncludeTax: invoice.pricesIncludeTax,
-      vatRows: vatRowsByRate((built.creditedGroups ?? []).map(group => ({ rate: group.original.rate,
-        net: group.creditedNet, tax: group.creditedTax, gross: group.creditedGross })), invoice.currency),
+      ...(built.creditedGroups?.length ? { vatRows: vatRowsByRate(built.creditedGroups.map(group => ({ rate: group.original.rate,
+        net: group.creditedNet, tax: group.creditedTax, gross: group.creditedGross })), invoice.currency) } : {}),
       items: built.lines.map(line => { const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), line)
         return { description: line.description, quantity: line.quantity, unitPrice: shown.unitPrice, total: shown.amount } }),
     }

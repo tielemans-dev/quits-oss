@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { Prisma } from "../../../../generated/prisma/client"
 import { priceDocumentV2 } from "../../../domain/documents/pricing"
-import { frozenVatRows, vatRowsByRate } from "../../../domain/documents/frozen-vat-groups"
+import { frozenVatRows, frozenVatRowsOrUndefined, vatRowsByRate } from "../../../domain/documents/frozen-vat-groups"
 import { lineAmounts, lineColumnKeys, priceBasis, printableVatRows } from "../line-amounts"
 
 const D = Prisma.Decimal
@@ -205,3 +205,22 @@ describe("frozenVatRows", () => {
     expect(rows).toEqual([{ ratePercent: "25", net: "1314", tax: "329", gross: "1643" }])
   })
 })
+
+describe("frozenVatRowsOrUndefined", () => {
+  const line = { vatTreatment: "exempt", vatReasonCode: null, vatCountry: null, vatRateInput: "0", taxRate: "0", lineNet: "10.00", lineTax: "0.00", lineGross: "10.00" }
+
+  it("has no rows for a draft whose VAT classification is unfinished, instead of throwing", () => {
+    expect(() => frozenVatRows({ currency: "DKK", items: [line] })).toThrow()
+    expect(frozenVatRowsOrUndefined({ currency: "DKK", items: [line] })).toBeUndefined()
+  })
+
+  it("has no rows for a document without lines", () => {
+    expect(frozenVatRowsOrUndefined({ currency: "DKK", items: [] })).toBeUndefined()
+  })
+
+  it("has the rows of a finished one", () => {
+    expect(frozenVatRowsOrUndefined({ currency: "DKK", items: [{ ...line, vatReasonCode: "other" }] }))
+      .toEqual([{ ratePercent: "0", net: "10.00", tax: "0.00", gross: "10.00" }])
+  })
+})
+

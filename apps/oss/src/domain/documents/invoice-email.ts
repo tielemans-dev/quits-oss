@@ -1,5 +1,4 @@
 import { Effect } from "effect"
-import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { z } from "zod"
 import {
   readDocumentSendingDomainState,
@@ -11,6 +10,7 @@ import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { InvalidState } from "../errors"
+import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 
 type Decimalish = { toNumber(): number }
 

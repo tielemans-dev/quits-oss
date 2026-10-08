@@ -284,7 +284,7 @@ export function InvoicePdfDocument({
   const timezone = org.timezone
   const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null
   const columns = lineColumnKeys(invoice.pricesIncludeTax === undefined ? undefined : priceBasis(invoice.pricesIncludeTax))
-  const vatRows = invoice.vatRows ? printableVatRows(invoice.vatRows) : null
+  const vatRows = invoice.vatRows?.length ? printableVatRows(invoice.vatRows) : null
   const paymentDetails = buildPaymentDetailsBlock(
     { bankAccount: invoice.bankAccount, note: invoice.paymentNote },
     invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference,

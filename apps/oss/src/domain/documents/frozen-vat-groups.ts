@@ -66,3 +66,16 @@ export function vatRowsByRate(
 /** The VAT of an issued or draft document by rate, from its stored lines. */
 export const frozenVatRows = (document: Parameters<typeof frozenVatGroups>[0]) =>
   vatRowsByRate(frozenVatGroups(document), document.currency)
+
+/**
+ * The same for a document that may not group: a draft with an unfinished VAT classification fails
+ * the group schema. It then has no rows, and the reader sees the single tax amount instead.
+ */
+export function frozenVatRowsOrUndefined(document: Parameters<typeof frozenVatGroups>[0]) {
+  try {
+    const rows = frozenVatRows(document)
+    return rows.length ? rows : undefined
+  } catch {
+    return undefined
+  }
+}

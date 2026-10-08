@@ -93,6 +93,11 @@ describe("invoice PDF lines", () => {
     expect(text.indexOf("Moms (25 %)")).toBeLessThan(text.lastIndexOf("Total"))
   })
 
+  it("falls back to the single tax amount when the rows are empty", () => {
+    const text = invoiceText({ ...danish, vatRows: [] }, { locale: "da-DK" })
+    expect(text).toEqual(expect.arrayContaining(["Moms", "3.625,00 kr."]))
+  })
+
   it("prints no VAT row for a document without VAT", () => {
     const text = invoiceText({ ...danish, taxAmount: 0, vatRows: [{ ratePercent: "0", net: "14500.00", tax: "0.00", gross: "14500.00" }] }, { locale: "da-DK" })
     expect(text.filter((entry) => entry.startsWith("Moms"))).toEqual([])

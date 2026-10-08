@@ -1,6 +1,6 @@
-import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { buildQuoteEmailContent, composeMessage } from "../../lib/email"
 import { documentEmailOrg, resolveInvoiceEmailContext } from "./invoice-email"
+import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 
 export { requireRecipientEmail } from "./invoice-email"
 

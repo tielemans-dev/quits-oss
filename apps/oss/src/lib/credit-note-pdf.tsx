@@ -103,7 +103,7 @@ export function CreditNotePdfDocument({
   const logo = seller.logo
   const money = (amount: number) => formatCurrency(amount, creditNote.currency, locale)
   const columns = lineColumnKeys(creditNote.pricesIncludeTax === undefined ? undefined : priceBasis(creditNote.pricesIncludeTax))
-  const vatRows = creditNote.vatRows ? printableVatRows(creditNote.vatRows) : null
+  const vatRows = creditNote.vatRows?.length ? printableVatRows(creditNote.vatRows) : null
 
   return (
     <Document creationDate={new Date(creditNote.issueDate)} modificationDate={new Date(creditNote.issueDate)}>

@@ -1,4 +1,4 @@
-import { frozenVatRows } from "../../domain/documents/frozen-vat-groups"
+import { frozenVatRowsOrUndefined } from "../../domain/documents/frozen-vat-groups"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 
 type Amount = { toNumber: () => number }
@@ -17,16 +17,8 @@ export function lineDisplayForUi(
 }
 
 export function documentDisplayForUi(
-  document: Parameters<typeof frozenVatRows>[0] & { pricesIncludeTax: boolean }
+  document: Parameters<typeof frozenVatRowsOrUndefined>[0] & { pricesIncludeTax: boolean }
 ) {
-  return { priceBasis: priceBasis(document.pricesIncludeTax), vatRows: safeVatRows(document) }
+  return { priceBasis: priceBasis(document.pricesIncludeTax), vatRows: frozenVatRowsOrUndefined(document) }
 }
 
-/** A document whose stored lines cannot be grouped still renders; it just shows a single VAT row. */
-function safeVatRows(document: Parameters<typeof frozenVatRows>[0]) {
-  try {
-    return frozenVatRows(document)
-  } catch {
-    return []
-  }
-}
