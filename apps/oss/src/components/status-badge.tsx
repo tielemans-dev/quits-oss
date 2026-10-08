@@ -40,7 +40,14 @@ export function ToneBadge({
         className
       )}
     >
-      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
+      <span
+        aria-hidden
+        className={cn(
+          "size-2 shrink-0 rounded-full",
+          // Muted and neutral differ in shape, not colour: muted is a ring, neutral a solid dot.
+          tone === "muted" ? "border-[1.5px] border-current" : "bg-current"
+        )}
+      />
       {children}
     </span>
   )

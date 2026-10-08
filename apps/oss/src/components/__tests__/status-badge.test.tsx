@@ -42,6 +42,22 @@ describe("StatusBadge", () => {
     expect(dot?.className).toContain("bg-current")
   })
 
+  it("draws muted as a ring and every other tone as a solid dot", () => {
+    render(
+      <>
+        <StatusBadge domain="invoice" status="credited" />
+        <StatusBadge domain="invoice" status="draft" />
+      </>
+    )
+
+    const ring = screen.getByText("Credited").querySelector("[aria-hidden]")
+    expect(ring?.className).toContain("border-current")
+    expect(ring?.className).not.toContain("bg-current")
+    const solid = screen.getByText("Draft").querySelector("[aria-hidden]")
+    expect(solid?.className).toContain("bg-current")
+    expect(solid?.className).not.toContain("border-current")
+  })
+
   it("translates the label", () => {
     state.locale = "da-DK"
     render(<StatusBadge domain="invoice" status="partially_paid" />)
