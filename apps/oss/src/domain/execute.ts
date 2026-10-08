@@ -284,7 +284,10 @@ export async function executeCommand<Input, Result>(
       if (["invoice.send", "credit_note.issue", "agreement.send", "agreement.issue"].includes(definition.type) && !issuanceStagingId) {
         throw new HandlerFailed(new InvalidState({ code: "issuance_required", message: "Issue documents through issueDocument with a renderer and artifact store" }))
       }
-      // Issuance, completion and sweep acquire the organization lock before document locks.
+      // Issuance, completion and sweep acquire the organization lock before document locks. This
+      // happens for every command, before its handler runs: a handler that takes a number (invoice,
+      // quote, credit note or agreement issuance) then holds the lock that serializes the counters
+      // before it locks the document, the same order as `queueForApproval` and `readInScope`.
       await lockArtifactOrganization(tx, organizationId)
       let issuance: import("./services").CommandScope["issuance"]
       if (issuanceStagingId) {
@@ -446,6 +449,7 @@ export async function executeCommand<Input, Result>(
     }
 
     const outcome = failure(provisionalId, error.domainError)
+    const staleNumber = error.domainError._tag === "InvalidState" && error.domainError.code === NUMBER_CHANGED
     const winner = await recordFailedReceipt<Result>(definition.type, outcome, {
       organizationId,
       key,
@@ -453,9 +457,8 @@ export async function executeCommand<Input, Result>(
       resumeReceiptId: options.resumeReceiptId,
       // A stale document number is not the caller's failure: leaving no receipt lets the same
       // request id prepare the document again with the current number.
-      transient:
-        error.domainError._tag === "ExternalFailure" ||
-        (error.domainError._tag === "InvalidState" && error.domainError.code === NUMBER_CHANGED),
+      transient: error.domainError._tag === "ExternalFailure" || staleNumber,
+      staleNumber,
     })
     return winner ?? outcome
   }
@@ -474,6 +477,8 @@ async function recordFailedReceipt<Result>(
     clientRequestId: string | undefined
     resumeReceiptId: string | undefined
     transient: boolean
+    /** The failure is a document number that moved on; the issuance is prepared again, not finished. */
+    staleNumber?: boolean
   }
 ): Promise<CommandOutcome<Result> | null> {
   const data = {
@@ -484,6 +489,10 @@ async function recordFailedReceipt<Result>(
   }
 
   if (context.resumeReceiptId) {
+    // An approved command that lost its number is tried again at once. Recording the loss would show
+    // a failure to anyone polling the receipt between tries, and a failed receipt can never be
+    // approved again. The receipt keeps awaiting approval until an attempt really ends.
+    if (context.staleNumber) return null
     await prisma.commandReceipt.update({ where: { id: context.resumeReceiptId }, data })
     return null
   }
