@@ -78,3 +78,31 @@ jobs:
 
       - name: Verify packed package artifact
         run: node scripts/check-packed-build.mjs
+
+  shared-browser:
+    name: Shared product browser scenarios
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - name: Install Chromium
+        working-directory: apps/oss
+        run: bunx playwright install --with-deps chromium
+      - name: Test the built app with disposable PostgreSQL
+        run: bun run test:e2e:shared
+      - name: Upload browser reports and runtime logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-browser-results
+          path: |
+            apps/oss/playwright-report/shared
+            apps/oss/test-results
+          retention-days: 7

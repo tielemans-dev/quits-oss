@@ -83,6 +83,12 @@
         "vite-tsconfig-paths": "^5.1.4",
         "vitest": "^3.0.5",
       },
+      "peerDependencies": {
+        "@playwright/test": "^1.56.0",
+      },
+      "optionalPeers": [
+        "@playwright/test",
+      ],
     },
     "packages/contracts": {
       "name": "@quits/contracts",

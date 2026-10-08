@@ -19,6 +19,6 @@ export default defineConfig({
     // first use; vitest's 5s default times out under load (locally and on CI).
     testTimeout: 30_000,
     hookTimeout: 30_000,
-    exclude: [...configDefaults.exclude, "tests/e2e/**", globalStateTests],
+    exclude: [...configDefaults.exclude, "tests/e2e/**", "tests/shared/**", globalStateTests],
   },
 })

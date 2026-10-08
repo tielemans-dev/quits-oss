@@ -22,10 +22,8 @@ function createPrismaClient() {
 }
 
 function getNodePrisma() {
-  if (process.env.NODE_ENV === "production") {
-    return createPrismaClient()
-  }
-
+  // Node requests share a process and pool in production as well as development.
+  // Worker runtimes supply their own request-scoped platform implementation.
   globalThis.__prisma ??= createPrismaClient()
   return globalThis.__prisma
 }
