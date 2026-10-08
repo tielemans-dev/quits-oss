@@ -7,6 +7,7 @@ import { createTestOrganization, hasTestDatabase } from "../../test-utils/organi
 import { actorKey } from "../actor"
 import { createContact } from "../commands/contacts"
 import { executeCommand } from "../execute"
+import { acquireBoundedAdvisoryLock } from "../../lib/transaction-timeouts"
 
 const describeWithDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -38,6 +39,41 @@ async function expectNoWaiters(blocker: number) {
 }
 
 describeWithDatabase("server-side advisory lock bounds", () => {
+  it("restores the configured row-lock timeout after advisory admission", async () => {
+    await prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT set_config('lock_timeout', '7s', true)`
+      await acquireBoundedAdvisoryLock(tx, randomUUID())
+      const [row] = await tx.$queryRaw<Array<{ value: string }>>`SELECT current_setting('lock_timeout') AS value`
+      expect(row.value).toBe("7s")
+    })
+  })
+
+  it("does not apply the admission deadline to a later organization row lock", async () => {
+    const org = await createTestOrganization()
+    let release!: () => void
+    let ready!: () => void
+    const unlocked = new Promise<void>(resolve => { release = resolve })
+    const locked = new Promise<void>(resolve => { ready = resolve })
+    const holder = prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM org_settings WHERE "organizationId" = ${org.organizationId} FOR UPDATE`
+      ready()
+      await unlocked
+    }, { timeout: 15_000 })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([locked, holder.then(() => { throw new Error("Row holder ended early") })])
+      timer = setTimeout(release, 3500)
+      const result = await executeCommand(createContact, { name: "Row lock fixture" }, {
+        actor: org.actors.admin, clientRequestId: randomUUID(),
+      })
+      expect(result.status).toBe("completed")
+    } finally {
+      clearTimeout(timer)
+      release()
+      try { await holder } finally { await org.cleanup() }
+    }
+  })
+
   it("aborts a blocked command without side effects, then permits an idempotent retry", async () => {
     const org = await createTestOrganization()
     const clientRequestId = randomUUID()
