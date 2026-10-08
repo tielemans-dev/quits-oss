@@ -80,20 +80,25 @@ export function registerProductScenarios(test, expect) {
     return { url: page.url(), due, ...totals }
   }
 
-  async function expectInvoiceDetail(page, { customer, lines, total, subtotal, tax, status = 'Draft' }) {
+  async function expectInvoiceDetail(page, { customer, lines, total, subtotal, tax, taxPercent, status = 'Draft' }) {
     await expect(page.getByRole('heading', { level: 1, name: 'Draft invoice', exact: true })).toBeVisible()
     await expect(page.getByText(status, { exact: true })).toBeVisible()
     await expect(page.getByText(customer, { exact: true })).toBeVisible()
+    // The organization's prices exclude tax, so the lines state net amounts that add up to the subtotal.
+    await expect(page.getByRole('columnheader', { name: 'Unit Price excl. tax', exact: true })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Amount excl. tax', exact: true })).toBeVisible()
+    expect(lines.reduce((sum, line) => sum + line.quantity * line.unitPriceCents, 0)).toBe(subtotal)
     for (const line of lines) {
       const row = page.getByRole('row').filter({ hasText: line.description })
       await expect(row).toBeVisible()
-      // Line amounts are not asserted: the table shows tax-inclusive prices beside a net subtotal.
       await expect(row.getByRole('cell').nth(1)).toHaveText(String(line.quantity))
+      await expect(row.getByRole('cell').nth(2)).toHaveText(usd(line.unitPriceCents))
+      await expect(row.getByRole('cell').nth(3)).toHaveText(usd(line.quantity * line.unitPriceCents))
     }
     // The table header also says "Total", so scope to the block that holds the subtotal.
     const totals = summaryOf(page)
     await expect(totals.getByText('Subtotal', { exact: true }).locator('xpath=..')).toContainText(usd(subtotal))
-    await expect(totals.getByText('Tax', { exact: true }).locator('xpath=..')).toContainText(usd(tax))
+    await expect(totals.getByText(`Tax (${taxPercent}%)`, { exact: true }).locator('xpath=..')).toContainText(usd(tax))
     await expect(totals.getByText('Total', { exact: true }).locator('xpath=..')).toContainText(usd(total))
   }
 
