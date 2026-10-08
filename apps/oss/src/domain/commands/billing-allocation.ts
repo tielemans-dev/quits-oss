@@ -40,7 +40,7 @@ export const releaseDeliverableReservation = defineCommand({
     const choice = invoice.scheduleSaleChoice as { deliverableIds?: string[] } | null
     yield* Effect.promise(() => db.invoiceItem.delete({ where: { id: item.id } }))
     yield* Effect.promise(() => db.invoice.update({ where: { id: invoice.id }, data: {
-      ...frozenTotals(remaining),
+      editRevision: { increment: 1 }, ...frozenTotals(remaining),
       ...(choice?.deliverableIds?.includes(line.id) ? { scheduleSaleChoice: { ...choice, deliverableIds: choice.deliverableIds.filter(id => id !== line.id) } } : {}),
     } }))
     yield* releaseLines(input.agreementId, invoice.id, [item])

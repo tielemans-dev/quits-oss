@@ -266,7 +266,7 @@ existing payment methods. Its permissions and approval flow are unchanged.
 ### Draft revisions and line keys
 
 Invoice and quote drafts carry `editRevision`, initially `0`. Every draft edit increments it,
-including notes-only edits, linked invoice edits, adding deliverables, and changing a draft payment
+including notes-only edits, linked invoice edits, adding or releasing deliverables, and changing a draft payment
 schedule to a sale. Pass `expectedRevision` on updates to refuse an outdated save with
 `InvalidState` / `stale_draft`. Omitting it preserves the previous update behavior. A refused save
 changes neither the document nor its revision and emits no draft-update event.

@@ -14,7 +14,10 @@ import { Command, Db } from "../services"
 import { peekNextDocumentNumber } from "./numbering"
 import { impliedTaxRate } from "./pricing"
 
-type Row = Omit<InvoiceItem, "invoiceId" | "deliverableId" | "clientKey"> & { deliverableId?: string | null; clientKey?: string | null }
+type Row = Pick<InvoiceItem,
+  "id" | "description" | "quantity" | "quantityInput" | "unitPriceInput" | "unitPriceNet" | "unitPriceGross" |
+  "vatTreatment" | "vatRateInput" | "taxRate" | "vatCountry" | "vatReasonCode" | "lineNet" | "lineTax" | "lineGross"
+> & { deliverableId?: string | null; clientKey?: string | null }
 type DocumentRows = Pick<Invoice,
   "status" | "number" | "locale" | "timezone" | "currency" | "pricesIncludeTax" | "calculationVersion" |
   "sellerSnapshot" | "buyerSnapshot" | "vatEvidence" | "contactId" | "notes" | "issueDate" |
