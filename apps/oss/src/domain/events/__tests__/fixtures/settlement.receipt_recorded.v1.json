@@ -1,0 +1,27 @@
+{
+  "type": "settlement.receipt_recorded",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/settlements.ts",
+      "typeExpression": "\"settlement.receipt_recorded\"",
+      "payloadExpression": "{\n      receiptId: receipt.id, contactId: receipt.contactId, currency: receipt.currency, grossAmount: gross.toFixed(2), netAmount: net.toFixed(2), feeAmount: fee.toFixed(2), paidAt: paidAt.toISOString(), method: receipt.method, reference: receipt.reference,\n      reason: input.reason, evidence: input.evidence, feeReason: input.feeEvidence?.reason ?? null, feeEvidence: input.feeEvidence?.evidence ?? null,\n    }",
+      "variant": "default",
+      "payload": {
+        "receiptId": "receipt-1",
+        "contactId": "contact-1",
+        "currency": "USD",
+        "grossAmount": "200.00",
+        "netAmount": "100.00",
+        "feeAmount": "100.00",
+        "paidAt": "2026-01-15T12:00:00.000Z",
+        "method": "bank_transfer",
+        "reference": "BANK-1",
+        "reason": "Correction",
+        "evidence": "https://evidence.example.test/statement/1",
+        "feeReason": "Processor fee",
+        "feeEvidence": "https://evidence.example.test/fees/1"
+      }
+    }
+  ]
+}

@@ -44,6 +44,7 @@ export const daExportsMessages = {
   "exports.accounting.dataset": "Data",
   "exports.accounting.dataset.invoices": "Fakturaer",
   "exports.accounting.dataset.creditNotes": "Kreditnotaer",
+  "exports.accounting.dataset.settlements": "Afregningshændelser",
   "exports.accounting.dataset.payments": "Betalinger",
   "exports.accounting.download": "Download CSV",
   "exports.accounting.preparing": "Forbereder...",

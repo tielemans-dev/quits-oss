@@ -231,7 +231,7 @@ const futurePaymentDate = () =>
  * so it is stored as the instant that day starts there. Accounting exports group payments by the
  * same time zone, which keeps an October 1 payment in October. Full timestamps are kept as is.
  */
-const parsePaidAt = (value: string) =>
+export const parsePaidAt = (value: string) =>
   Effect.gen(function* () {
     const db = yield* Db
     const { organizationId, now } = yield* Command
@@ -432,6 +432,9 @@ export const voidPayment = defineCommand({
       const payment = yield* Effect.promise(() =>
         db.payment.findUniqueOrThrow({ where: { id: found.id } })
       )
+      if (payment.receiptId) {
+        return yield* new InvalidState({ message: "Reverse this receipt allocation with linked evidence", code: "receipt_allocation_requires_reversal" })
+      }
       if (payment.voidedAt) {
         return yield* new InvalidState({
           message: "This payment is already voided",

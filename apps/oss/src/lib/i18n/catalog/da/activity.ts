@@ -72,4 +72,12 @@ export const daActivityMessages = {
   "activity.event.invoice.dispute_acknowledged": "Bekræftede ønskede ændringer før afsendelse af faktura {number}",
   "activity.event.deliverable.accepted": "Levering {deliveryRevision} godkendt",
   "activity.event.deliverable.delivered": "Arbejde leveret til godkendelse, revision {deliveryRevision}",
+  "activity.aggregate.settlementReceipt": "Kundeindbetaling",
+  "activity.event.settlement.receipt_recorded": "Indbetaling {reference}: brutto {grossAmount}, gebyr {feeAmount}, netto {netAmount} {currency}",
+  "activity.event.settlement.allocated": "Fordelt {invoiceAmount} {invoiceCurrency}; fakturasaldo {balanceDue}",
+  "activity.event.settlement.changed.refund": "Refunderet {amount} {currency}",
+  "activity.event.settlement.changed.customer_credit": "Klassificeret {amount} {currency} som kundetilgodehavende",
+  "activity.event.settlement.changed.reverse_allocation": "Tilbageført fordeling på {invoiceAmount} {invoiceCurrency}",
+  "activity.event.settlement.changed.reverse_refund": "Tilbageført refusion på {amount} {currency}",
+  "activity.event.settlement.changed.reverse_receipt": "Tilbageført indbetaling på {amount} {currency}",
 } as const

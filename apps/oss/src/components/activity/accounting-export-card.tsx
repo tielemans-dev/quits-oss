@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "../ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 
-const DATASETS: AccountingDataset[] = ["invoices", "creditNotes", "payments"]
+const DATASETS: AccountingDataset[] = ["invoices", "creditNotes", "payments", "settlements"]
 
 function isoDate(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0")

@@ -72,4 +72,12 @@ export const enActivityMessages = {
   "activity.event.invoice.dispute_acknowledged": "Acknowledged requested changes before sending invoice {number}",
   "activity.event.deliverable.accepted": "Delivery {deliveryRevision} accepted",
   "activity.event.deliverable.delivered": "Work delivered for sign-off, revision {deliveryRevision}",
+  "activity.aggregate.settlementReceipt": "Customer receipt",
+  "activity.event.settlement.receipt_recorded": "Receipt {reference}: gross {grossAmount}, fee {feeAmount}, net {netAmount} {currency}",
+  "activity.event.settlement.allocated": "Allocated {invoiceAmount} {invoiceCurrency}; invoice balance {balanceDue}",
+  "activity.event.settlement.changed.refund": "Refunded {amount} {currency}",
+  "activity.event.settlement.changed.customer_credit": "Classified {amount} {currency} as customer credit",
+  "activity.event.settlement.changed.reverse_allocation": "Reversed allocation of {invoiceAmount} {invoiceCurrency}",
+  "activity.event.settlement.changed.reverse_refund": "Reversed refund of {amount} {currency}",
+  "activity.event.settlement.changed.reverse_receipt": "Reversed receipt of {amount} {currency}",
 } as const

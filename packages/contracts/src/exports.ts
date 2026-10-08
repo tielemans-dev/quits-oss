@@ -216,7 +216,7 @@ export const einvoiceExportResultSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(false), missing: z.array(einvoiceMissingFieldSchema).min(1) }),
 ])
 
-export const accountingDatasetSchema = z.enum(["invoices", "creditNotes", "payments"])
+export const accountingDatasetSchema = z.enum(["invoices", "creditNotes", "payments", "settlements"])
 
 /** Inclusive calendar-date range, interpreted in the organization's time zone. */
 export const accountingExportInputSchema = z
@@ -240,6 +240,7 @@ export const accountingExportResultSchema = z.object({
  * so spreadsheets and accounting imports built on an export keep working.
  */
 export const ACCOUNTING_EXPORT_COLUMNS = {
+  settlements: ["event_id", "schema_version", "occurred_at", "event_type", "actor_type", "actor_id", "command_id", "payload_json"],
   invoices: [
     "number",
     "issue_date",
@@ -275,6 +276,11 @@ export const ACCOUNTING_EXPORT_COLUMNS = {
     "reference",
     "voided",
     "void_reason",
+    "payment_id",
+    "receipt_id",
+    "receipt_amount",
+    "receipt_currency",
+    "record_kind",
   ],
 } as const satisfies Record<AccountingDataset, readonly string[]>
 

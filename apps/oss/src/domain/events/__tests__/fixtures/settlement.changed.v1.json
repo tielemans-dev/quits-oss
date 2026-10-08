@@ -1,0 +1,96 @@
+{
+  "type": "settlement.changed",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/settlements.ts",
+      "typeExpression": "\"settlement.changed\"",
+      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "variant": "default",
+      "payload": {
+        "action": "refund",
+        "receiptId": "receipt-1",
+        "targetId": "target-1",
+        "currency": "USD",
+        "amount": "100.00",
+        "invoiceId": "invoice-1",
+        "invoiceAmount": "100.00",
+        "invoiceCurrency": "USD",
+        "reason": "Correction",
+        "evidence": "https://evidence.example.test/statement/1"
+      }
+    },
+    {
+      "source": "commands/settlements.ts",
+      "typeExpression": "\"settlement.changed\"",
+      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "variant": "no_optional",
+      "payload": {
+        "action": "reverse_refund",
+        "receiptId": "receipt-1",
+        "targetId": "target-1",
+        "currency": "USD",
+        "amount": "100.00",
+        "invoiceId": "invoice-1",
+        "invoiceAmount": "100.00",
+        "invoiceCurrency": "USD",
+        "reason": "Correction",
+        "evidence": "https://evidence.example.test/statement/1"
+      }
+    },
+    {
+      "source": "commands/settlements.ts",
+      "typeExpression": "\"settlement.changed\"",
+      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "variant": "user",
+      "payload": {
+        "action": "customer_credit",
+        "receiptId": "receipt-1",
+        "targetId": "target-1",
+        "currency": "USD",
+        "amount": "100.00",
+        "invoiceId": "invoice-1",
+        "invoiceAmount": "100.00",
+        "invoiceCurrency": "USD",
+        "reason": "Correction",
+        "evidence": "https://evidence.example.test/statement/1"
+      }
+    },
+    {
+      "source": "commands/settlements.ts",
+      "typeExpression": "\"settlement.changed\"",
+      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "variant": "decline",
+      "payload": {
+        "action": "reverse_allocation",
+        "receiptId": "receipt-1",
+        "targetId": "target-1",
+        "currency": "USD",
+        "amount": "100.00",
+        "invoiceId": "invoice-1",
+        "invoiceAmount": "100.00",
+        "invoiceCurrency": "USD",
+        "reason": "Correction",
+        "evidence": "https://evidence.example.test/statement/1"
+      }
+    },
+    {
+      "source": "commands/settlements.ts",
+      "typeExpression": "\"settlement.changed\"",
+      "payloadExpression": "{\n      action: input.action, receiptId: receipt.id, targetId, currency: receipt.currency, amount: amount.toFixed(2), invoiceId, invoiceAmount, invoiceCurrency,\n      reason: input.reason, evidence: input.evidence,\n    }",
+      "variant": "completed",
+      "payload": {
+        "action": "reverse_receipt",
+        "receiptId": "receipt-1",
+        "targetId": "target-1",
+        "currency": "USD",
+        "amount": "100.00",
+        "invoiceId": "invoice-1",
+        "invoiceAmount": "100.00",
+        "invoiceCurrency": "USD",
+        "reason": "Correction",
+        "evidence": "https://evidence.example.test/statement/1"
+      }
+    }
+  ]
+}

@@ -108,3 +108,47 @@ export type PaymentRecordInput = z.infer<typeof paymentRecordInputSchema>
 export type PaymentVoidInput = z.infer<typeof paymentVoidInputSchema>
 export type PaymentListInput = z.infer<typeof paymentListInputSchema>
 export type StripeCheckoutSession = z.infer<typeof stripeCheckoutSessionSchema>
+
+/** Settlement commands use exact major-unit strings; unsupported currency precision is refused. */
+export const settlementAmountSchema = z.string().regex(/^(0|[1-9]\d{0,9})(\.\d{1,2})?$/)
+export const settlementEvidenceSchema = z.object({
+  reason: z.string().trim().min(1).max(500),
+  evidence: z.string().trim().url().max(2000).refine(value => /^https?:\/\//.test(value), "Use an HTTP or HTTPS evidence link"),
+}).strict()
+const settlementRequest = { requestId: z.string().trim().min(1).max(100) }
+export const receiptRecordInputSchema = z.object({
+  ...settlementRequest,
+  contactId: z.string().min(1),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  netAmount: settlementAmountSchema,
+  feeAmount: settlementAmountSchema.default("0"),
+  paidAt: paymentDateSchema,
+  method: paymentMethodSchema,
+  reference: z.string().trim().min(1).max(200),
+  ...settlementEvidenceSchema.shape,
+  feeEvidence: settlementEvidenceSchema.optional(),
+}).strict()
+export const receiptAllocateInputSchema = z.object({
+  ...settlementRequest,
+  receiptId: z.string().min(1),
+  allocations: z.array(z.object({
+    invoiceId: z.string().min(1),
+    /** Quantity consumed in receipt currency. */
+    receiptAmount: settlementAmountSchema,
+    /** Debt discharged in invoice currency. Equal to receiptAmount for the same currency. */
+    invoiceAmount: settlementAmountSchema,
+    exchangeEvidence: settlementEvidenceSchema.optional(),
+  }).strict()).min(1).max(100),
+  ...settlementEvidenceSchema.shape,
+}).strict()
+export const receiptActionInputSchema = z.discriminatedUnion("action", [
+  z.object({ ...settlementRequest, action: z.literal("refund"), receiptId: z.string().min(1), amount: settlementAmountSchema, ...settlementEvidenceSchema.shape }).strict(),
+  z.object({ ...settlementRequest, action: z.literal("customer_credit"), receiptId: z.string().min(1), ...settlementEvidenceSchema.shape }).strict(),
+  z.object({ ...settlementRequest, action: z.literal("reverse_allocation"), paymentId: z.string().min(1), ...settlementEvidenceSchema.shape }).strict(),
+  z.object({ ...settlementRequest, action: z.literal("reverse_refund"), refundId: z.string().min(1), ...settlementEvidenceSchema.shape }).strict(),
+  z.object({ ...settlementRequest, action: z.literal("reverse_receipt"), receiptId: z.string().min(1), ...settlementEvidenceSchema.shape }).strict(),
+  z.object({ ...settlementRequest, action: z.enum(["writeoff", "discount"]), invoiceId: z.string().min(1), amount: settlementAmountSchema, ...settlementEvidenceSchema.shape }).strict(),
+])
+export type ReceiptRecordInput = z.infer<typeof receiptRecordInputSchema>
+export type ReceiptAllocateInput = z.infer<typeof receiptAllocateInputSchema>
+export type ReceiptActionInput = z.infer<typeof receiptActionInputSchema>

@@ -65,6 +65,14 @@ export function ActivityList({ events, showAggregate = false }: ActivityListProp
               ) : null}
               <span className="break-words">{describeActivity(event, t)}</span>
             </div>
+            {event.type.startsWith("settlement.") ? <div className="grid gap-1 text-sm">
+              {([['reason', 'evidence'], ['feeReason', 'feeEvidence'], ['exchangeReason', 'exchangeEvidence']] as const).map(([reasonKey, evidenceKey]) => {
+                const reason = event.payload[reasonKey]
+                const evidence = event.payload[evidenceKey]
+                return typeof reason === "string" && typeof evidence === "string" && /^https?:\/\//.test(evidence)
+                  ? <a key={evidenceKey} href={evidence} target="_blank" rel="noreferrer" className="break-words underline">{reason}</a> : null
+              })}
+            </div> : null}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <ActorLine event={event} />
               {event.approvedBy ? (
