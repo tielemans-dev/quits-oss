@@ -74,7 +74,7 @@ No conversion uses a current exchange rate or an invoice's historical rate for c
 `unvalued` is an informational subset of `buckets`, not an additional total. For invoices it
 contains balances whose invoice has no frozen base valuation, an unknown valuation, a null base
 amount, or a valuation in a different base currency than the current organization setting.
-Payments have no stored base valuation on this baseline, so all received-money buckets also
+Legacy payments and settlement receipts have no stored base valuation, so all received-money buckets also
 appear in `unvalued`. Every amount remains included in the primary native-currency buckets.
 
 An empty total is `{ count: 0, buckets: [], unvalued: [] }`. An empty organization has twelve empty
@@ -107,13 +107,24 @@ arrays, and `drafts: { count: 0, newestId: null, newestKind: null }`. The UI can
   Other totals omit the optional bucket field. The top-level maximum stays unchanged.
   The dashboard never updates lifecycle statuses.
   A list's stored badge can lag the scheduler; its balance and the underlying overdue predicate agree.
-- Received money is non-voided payments by `paidAt`, from the start of each local month through
-  `asOf`. Future-dated payments are excluded. The series starts eleven months before the current
-  month and includes the partial current month. Counts are payment records, not invoices or
-  customers. `paidThisMonth` uses the same aggregate as the last series entry. Credit notes reduce
-  debt, never cash received.
+- Received money is non-voided legacy payments (`receiptId IS NULL`) plus active settlement
+  receipts (`reversedAt IS NULL`), by `paidAt`, from the start of each local month through `asOf`.
+  A receipt contributes its `netAmount` once, even if split across invoices or left unallocated.
+  Its gross, processor fee and allocation rows are never added as more cash. Counts are legacy
+  payment records plus receipt records, including fee-only receipts with zero net, not invoices
+  or allocations. Future-dated records are excluded. The series starts eleven months before the
+  current month and includes the partial current month. `paidThisMonth` uses the same aggregate
+  as the last series entry. Receipt reversals and legacy payment voids remove the original record
+  from its payment month; a corrected receipt contributes only its active replacement, on the
+  replacement's payment date. This is a current-state projection, not historical reconstruction
+  of what was known at a past `asOf`. Refunds are separate outflows and do not reduce this received
+  money metric; reversing a refund likewise adds no receipt. Customer-credit classification,
+  allocation reversals and credit notes do not create or remove cash receipts.
 - The streak walks currently payment-settled, positive-value issued invoices, descending by their
-  latest active payment's `paidAt`, then descending id. It stops at the first late or credit-assisted
+  latest active payment's `paidAt`, then descending id. Payment includes receipt allocations in
+  the invoice currency; their `paidAt` comes from the receipt, not the allocation date. Evidenced
+  fees can make full debt settlement exceed net cash, without breaking an on-time streak. It stops
+  at the first late or credit-assisted
   settlement. A qualifying invoice has payments covering its original gross and the last payment's
   local calendar date on or before its due date. Unsettled, zero-value and entirely credit-closed
   invoices are excluded. Voids and backdated payments can change this current-state streak. The
@@ -187,7 +198,7 @@ proven refusal. The outbox retains its existing retry/idempotency behavior.
 ## Queries and indexes
 
 The helper executes six SELECTs in a repeatable-read transaction: settings, narrow invoice rows
-with contacts and the current reminder slot, SQL payment sums grouped by currency and local month,
+with contacts and the current reminder slot, SQL legacy-payment/receipt sums grouped by currency and local month,
 old draft/expiring quotes, one complete draft count/newest aggregate, and eight allowed events joined
 to scoped document/contact display fields. tRPC membership resolution adds its existing query.
 Transaction control statements are separate. There are no per-invoice round trips, line-item loads
@@ -199,35 +210,41 @@ The existing indexes were checked against PostgreSQL on port 55473:
 - `invoice(organizationId, status)` bounds the organization's invoice scan.
 - `contact` primary key serves the contact joins; the organization id is checked on both sides.
 - `invoice_reminder(invoiceId, offsetDays)` is unique and serves the current reminder slot join.
-- `payment(organizationId, paidAt)` bounds the twelve-month receipt aggregation.
+- `payment(organizationId, paidAt)` bounds the twelve-month legacy payment aggregation.
+- `settlement_receipt(organizationId, paidAt)` is added by `20261014020000_dashboard_receipt_months`
+  to bound the receipt side of that same SQL aggregate. Both branches filter dates before summing.
 - `quote(organizationId, status)` bounds eligible quotes; expiry sorting is local to that result.
 - `domain_event(organizationId, sequence)` is unique and supports newest-first activity.
   `domain_event(organizationId, type)` also supports the event-type allowlist filter. The activity
   joins resolve at most eight events through primary keys, with organization checks on every join.
 
-No new index or migration is needed for these access paths. The database integration test asserts
-exactly six SELECTs with one invoice and 501 invoices, seeds payment and credit rows, reconciles
-with `invoices.list`, and uses a non-UTC PostgreSQL session to check timestamp handling.
+The database integration test asserts exactly six SELECTs with one invoice and with 501 invoices
+plus 500 receipts, seeds allocations and credit rows, reconciles with `invoices.list`, and uses a
+non-UTC PostgreSQL session to check timestamp handling. Command-driven fixtures also compare
+outstanding, overdue and incoming against `invoices.get` and `payments.list`, across legacy
+payments, full and split allocations, corrections, reversals, partial payments and credit notes.
 
-## Adapting after the research PRs merge
+## Settlement and activity adapters
 
-### Receipt allocations, PR #72
+### Receipt allocations, PR #72 (integrated)
 
-Change `moneyReceived` only for money semantics. Union active legacy payments (`receiptId IS NULL`,
-`voidedAt IS NULL`) with active `SettlementReceipt` rows (`reversedAt IS NULL`). Sum `netAmount` once
-per receipt, in its own currency, by `paidAt`; count each receipt once, including unallocated funds.
-Do not add allocation `Payment.amount` or `receiptAmount` as receipts, and do not use `grossAmount`
-for the bank-money figure. Fees explain the difference between debt settled and cash received.
-Refunds are outflows, so this received-money metric does not subtract them. Receipt reversals remove
-erroneous receipts just as voids remove legacy payments. Add split-allocation, cross-currency,
-fee, unallocated-fund and reversal fixtures. Check/add `(organizationId, paidAt)` on
-`settlement_receipt`; the reviewed diff only has organization/contact and organization/reference
-indexes. Extend `recentActivity`'s allowed aggregate types with `settlement_receipt` if receipt
-activity is wanted on the dashboard.
+`moneyReceived` follows the [receipt model](settlement-receipts.md) with one SQL `UNION ALL` of
+active legacy payments and active receipt net amounts, grouped once by native currency/month.
+The compatibility `dashboard.stats` endpoint uses this same helper without a lower date bound,
+adding its monthly subtotals for all-time cash revenue. Its response shape remains unchanged.
+`receiptBalanceFromTotals` measures available gross
+funding after allocations and refunds, so it is not the source of a cash-received figure.
 
-`amountStillOwed` and the streak retain `computeSettlement` and the refreshed invoice totals.
-PR #72 deliberately keeps payment allocations as the debt-discharge records and refreshes those
-same columns. Keep tests for reversed allocations reopening debt.
+`amountStillOwed` and the streak reuse `computeSettlement` and the invoice totals maintained by
+`refreshInvoiceSettlement`. Legacy payments and active allocation `Payment.amount` discharge
+invoice debt; allocation `receiptAmount` consumes funding in its own currency. A DKK 100 invoice
+paid through a DKK 95 net receipt with an evidenced DKK 5 fee is fully settled and can extend the
+streak, while cash received is DKK 95. Reversing an allocation recomputes debt and removes a
+reopened invoice from the streak; it does not reverse the receipt's cash. No exchange rate or
+alternative settlement arithmetic is introduced here.
+
+The activity contract/allowlist is unchanged. Receipt events require an explicit future addition
+and corresponding UI labels if they are wanted on the dashboard.
 
 ### Operation journal, PR #74
 

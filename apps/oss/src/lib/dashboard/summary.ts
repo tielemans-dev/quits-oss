@@ -44,8 +44,9 @@ type InvoiceRow = {
 }
 
 /**
- * The invoice list and payment status own this arithmetic. Keep this boundary when #72 lands:
- * receipt allocations continue to maintain amountPaid/amountCredited through refreshInvoiceSettlement.
+ * Invoice detail, list and payment status share this arithmetic. Receipt allocation Payment.amount
+ * discharges invoice debt; refreshInvoiceSettlement maintains amountPaid/amountCredited after
+ * allocations, reversals and credits. Receipt net cash must never replace these debt quantities.
  * No relation loads, money conversion, or alternative SQL settlement formula here.
  */
 export function amountStillOwed(invoice: Parameters<typeof computeSettlement>[0]) {
@@ -90,17 +91,27 @@ async function openDrafts(db: Db, actor: UserActor): Promise<DashboardSummary["d
 }
 
 /**
- * Active payment rows are receipts on this baseline. After #72, union legacy Payment rows
- * (receiptId IS NULL) with active SettlementReceipt.netAmount, once per receipt, by paidAt.
- * Never sum receipt allocations as cash. Count is receipt/payment records, not invoice count.
+ * Cash received: active legacy payments plus active receipt netAmount, once per record, by paidAt.
+ * Include unallocated funds; never count allocation rows, fees or gross settlement as more cash.
+ * Reversals/voids remove the original record from its payment month; corrections use the active
+ * replacement. Refunds are separate outflows, not negative receipts. No receipt has a frozen base
+ * valuation, so callers retain native currencies and include all cash in the unvalued subset.
+ * A null start includes all history for the compatibility stats endpoint, using the same sources.
  */
-export async function moneyReceived(db: Db, organizationId: string, timezone: string, start: Date, now: Date) {
+export async function moneyReceived(db: Db, organizationId: string, timezone: string, start: Date | null, now: Date) {
+  const since = start === null ? Prisma.empty : Prisma.sql`AND "paidAt" >= ${utcTimestamp(start)}`
   return db.$queryRaw<Array<{ month: string; currency: string; amount: Prisma.Decimal; count: number }>>`
     SELECT to_char(("paidAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone}, 'YYYY-MM') AS month,
       currency, sum(amount) AS amount, count(*)::int AS count
-    FROM payment
-    WHERE "organizationId" = ${organizationId} AND "voidedAt" IS NULL
-      AND "paidAt" >= ${utcTimestamp(start)} AND "paidAt" <= ${utcTimestamp(now)}
+    FROM (
+      SELECT "paidAt", currency, amount FROM payment
+      WHERE "organizationId" = ${organizationId} AND "voidedAt" IS NULL AND "receiptId" IS NULL
+        ${since} AND "paidAt" <= ${utcTimestamp(now)}
+      UNION ALL
+      SELECT "paidAt", currency, "netAmount" AS amount FROM settlement_receipt
+      WHERE "organizationId" = ${organizationId} AND "reversedAt" IS NULL
+        ${since} AND "paidAt" <= ${utcTimestamp(now)}
+    ) received
     GROUP BY month, currency
   `
 }
@@ -154,6 +165,8 @@ export async function recentActivity(db: Db, organizationId: string): Promise<Da
  * "Payment-settled" means positive gross, positive money paid, and zero remaining balance.
  * A qualifying invoice has its entire ORIGINAL gross covered by payments (no credit reduction)
  * and its latest active payment's calendar date is on/before its due date in the org timezone.
+ * Payments include receipt allocations in invoice currency, dated by receipt.paidAt. Evidenced
+ * fees can settle debt in full despite lower net cash; netAmount is not a debt-settlement amount.
  * Stop at the first late or credit-assisted settlement. Unsettled invoices, zero-value invoices,
  * and invoices closed entirely by credit are excluded. Voids reopen invoices and remove them.
  * paidAt is maintained from the latest active payment by refreshInvoiceSettlement; this is a

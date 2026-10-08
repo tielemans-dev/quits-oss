@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { DASHBOARD_ACTIVITY_EVENT_TYPES, dashboardSummarySchema, type DashboardTotal } from "@quits/contracts/dashboard"
+import { type ReceiptRecordInput, type ReceiptAllocateInput, type ReceiptActionInput } from "@quits/contracts/payments"
 import { Prisma, PrismaClient } from "../../../../generated/prisma/client"
 import { prisma } from "../../../lib/db"
 import { dashboardSummary } from "../../../lib/dashboard/summary"
@@ -11,6 +12,8 @@ import { eventRegistry } from "../../../domain/events/registry"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import superjson, { type SuperJSONResult } from "superjson"
 
+const receiptEvidence = { reason: "Bank statement reconciled", evidence: "https://evidence.example.test/statement" }
+const decision = () => ({ requestId: randomUUID(), ...receiptEvidence })
 const NOW = new Date("2026-10-08T12:00:00Z")
 const zero = { count: 0, buckets: [], unvalued: [] }
 const amount = (total: DashboardTotal, currency = "DKK") => total.buckets.find(bucket => bucket.currency === currency)?.amount ?? "0.00"
@@ -42,7 +45,20 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     const payment = (invoiceId: string, paidAt: string, value = "10.00", currency = "DKK", voidedAt: Date | null = null) => prisma.payment.create({ data: {
       organizationId: org.organizationId, invoiceId, paidAt: new Date(paidAt), amount: value, currency, method: "bank_transfer", source: "user", voidedAt,
     } })
-    return { ...org, contact, admin, seed, payment, summary: (now = NOW) => dashboardSummary(prisma, org.actors.admin, now) }
+    const receipt = (netAmount: string, overrides: Partial<ReceiptRecordInput> = {}) => admin.payments.recordReceipt({
+      ...decision(), contactId: contact.id, currency: "DKK", netAmount, feeAmount: "0",
+      paidAt: "2026-10-04", reference: randomUUID(), method: "bank_transfer", ...overrides,
+    })
+    const allocate = async (receiptId: string, allocations: ReceiptAllocateInput["allocations"]) => {
+      const input = { ...decision(), receiptId, allocations }
+      const preview = await admin.payments.previewAllocation(input)
+      return admin.payments.allocateReceipt({ ...input, previewToken: preview.previewToken })
+    }
+    const change = async (input: ReceiptActionInput) => {
+      const preview = await admin.payments.previewReceiptChange(input)
+      return admin.payments.changeReceipt({ ...input, previewToken: preview.previewToken })
+    }
+    return { ...org, contact, admin, seed, payment, receipt, allocate, change, summary: (now = NOW) => dashboardSummary(prisma, org.actors.admin, now) }
   }
 
   it("returns empty results for every invoice-reading role without writes", async () => {
@@ -91,6 +107,134 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect((await check("79.85")).paidThisMonth).toEqual(zero)
     await org.admin.creditNotes.issue({ invoiceId: invoice.id, mode: "full", reason: "Remaining return" })
     expect(amount((await org.summary()).outstanding)).toBe("0.00")
+  })
+
+  it("counts a split receipt once at net, including its unallocated cash", async () => {
+    const org = await setup()
+    const first = await org.seed(), second = await org.seed()
+    const receipt = await org.receipt("145", { feeAmount: "5", feeEvidence: receiptEvidence })
+    await org.allocate(receipt.receiptId, [
+      { invoiceId: first.id, receiptAmount: "50", invoiceAmount: "50" },
+      { invoiceId: second.id, receiptAmount: "75", invoiceAmount: "75" },
+    ])
+    const result = await org.summary()
+    expect(result.paidThisMonth.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "145.00", count: 1 }])
+    expect(result.receivedByMonth.at(-1)).toMatchObject(result.paidThisMonth)
+    expect(result.paidThisMonth.unvalued).toEqual(result.paidThisMonth.buckets)
+    expect(amount(result.outstanding)).toBe("75.00")
+    expect((await org.admin.dashboard.stats()).currencyBuckets).toEqual([
+      { currency: "DKK", totalRevenue: "145", outstanding: "75" },
+    ])
+  })
+
+  it("reconciles receipt corrections, credits and legacy payments with invoice details and the list", async () => {
+    const org = await setup()
+    const legacy = await org.seed({ dueDate: new Date("2026-10-01") })
+    const fee = await org.seed({ dueDate: new Date("2026-10-03") })
+    const splitA = await org.seed({ dueDate: new Date("2026-10-04") })
+    const splitB = await org.seed({ dueDate: new Date("2026-10-05") })
+    const corrected = await org.seed({ dueDate: new Date("2026-10-06") })
+    const partial = await org.seed({ dueDate: new Date("2026-10-07") })
+    const voided = await org.seed({ dueDate: new Date("2026-10-07") })
+    const credited = await org.admin.invoices.create({ contactId: org.contact.id, currency: "DKK", dueDate: "2026-10-06", items: [{ description: "Work", quantity: 1, unitPrice: 100 }] })
+    await org.admin.invoices.send({ id: credited.id, allowSendWithoutEmail: true })
+    for (const [invoiceId, value, paidAt] of [[legacy.id, 100, "2026-09-30"], [credited.id, 20, "2026-10-04"], [partial.id, 25, "2026-10-06"]] as const) {
+      await org.admin.payments.record({ invoiceId, amount: value, paidAt, method: "bank_transfer" })
+    }
+    await org.admin.creditNotes.issue({ invoiceId: credited.id, mode: "amount", amount: 30, reason: "Partial return" })
+    const wrongLegacy = await org.admin.payments.record({ invoiceId: voided.id, amount: 10, paidAt: "2026-10-01", method: "cash" })
+    await org.admin.payments.void({ paymentId: wrongLegacy.payment.id, reason: "Duplicate" })
+    const feeReceipt = await org.receipt("95", { feeAmount: "5", feeEvidence: receiptEvidence, paidAt: "2026-10-02" })
+    await org.allocate(feeReceipt.receiptId, [{ invoiceId: fee.id, receiptAmount: "100", invoiceAmount: "100" }])
+    const splitReceipt = await org.receipt("120", { paidAt: "2026-10-03" })
+    const split = await org.allocate(splitReceipt.receiptId, [
+      { invoiceId: splitA.id, receiptAmount: "100", invoiceAmount: "100" },
+      { invoiceId: splitB.id, receiptAmount: "20", invoiceAmount: "20" },
+    ])
+    const wrongReceipt = await org.receipt("100", { paidAt: "2026-10-05" })
+    const wrongAllocation = await org.allocate(wrongReceipt.receiptId, [{ invoiceId: corrected.id, receiptAmount: "100", invoiceAmount: "100" }])
+    expect((await org.summary()).streak).toBe(4)
+    await org.change({ ...decision(), action: "reverse_allocation", paymentId: wrongAllocation.paymentIds[0]! })
+    await org.change({ ...decision(), action: "reverse_receipt", receiptId: wrongReceipt.receiptId })
+    const replacement = await org.receipt("30", { paidAt: "2026-10-04" })
+    await org.allocate(replacement.receiptId, [{ invoiceId: corrected.id, receiptAmount: "30", invoiceAmount: "30" }])
+
+    const expected = new Map([[legacy.id, "0.00"], [fee.id, "0.00"], [splitA.id, "0.00"], [splitB.id, "80.00"], [corrected.id, "70.00"], [credited.id, "50.00"], [partial.id, "75.00"], [voided.id, "100.00"]])
+    const result = await org.summary()
+    const list = await org.admin.invoices.list()
+    let detailTotal = new Prisma.Decimal(0)
+    for (const [id, balance] of expected) {
+      const detail = await org.admin.invoices.get({ id })
+      const payments = await org.admin.payments.list({ invoiceId: id })
+      expect(detail.balanceDue.toFixed(2)).toBe(balance)
+      expect(payments.balanceDue.toFixed(2)).toBe(balance)
+      expect(list.find(row => row.id === id)?.balanceDue.toFixed(2)).toBe(balance)
+      expect(result.incoming.find(row => row.documentId === id)?.amount.amount ?? "0.00").toBe(balance)
+      detailTotal = detailTotal.plus(String(detail.balanceDue))
+    }
+    expect(detailTotal.toFixed(2)).toBe("375.00")
+    expect(result.outstanding.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "375.00", count: 5 }])
+    expect(result.overdue.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "375.00", count: 5, oldestDaysOverdue: 3 }])
+    expect(result.paidThisMonth.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "290.00", count: 5 }])
+    expect(result.receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "100.00", count: 1 }])
+    // Fee-inclusive debt settlement qualifies, although cash received is only 95, not 100.
+    expect(result.streak).toBe(3)
+    expect((await org.admin.dashboard.stats()).totalRevenue).toBe(390)
+    await org.change({ ...decision(), action: "reverse_allocation", paymentId: split.paymentIds[0]! })
+    const reopened = await org.summary()
+    expect(amount(reopened.outstanding)).toBe("475.00")
+    expect(amount(reopened.overdue)).toBe("475.00")
+    expect((await org.admin.invoices.get({ id: splitA.id })).balanceDue).toBe(100)
+    expect(reopened.paidThisMonth).toEqual(result.paidThisMonth)
+    expect(reopened.streak).toBe(2)
+  })
+
+  it("keeps receipt currencies and local month boundaries, excluding foreign, future and old receipts", async () => {
+    const org = await setup(), other = await setup()
+    const invoice = await org.seed({ totalGross: "300", subtotalNet: "300" })
+    const euro = await org.receipt("30", { currency: "EUR", feeAmount: "1", feeEvidence: receiptEvidence })
+    await org.allocate(euro.receiptId, [{ invoiceId: invoice.id, receiptAmount: "20", invoiceAmount: "150", exchangeEvidence: receiptEvidence }])
+    await other.receipt("999", { currency: "EUR" })
+    await org.receipt("7", { currency: "JPY" })
+    await org.receipt("10", { paidAt: "2026-09-30T21:59:59.999Z" })
+    await org.receipt("20", { paidAt: "2026-09-30T22:00:00Z" })
+    // A fee-only receipt still counts once, with zero cash received.
+    await org.receipt("0", { feeAmount: "3", feeEvidence: receiptEvidence })
+    await org.receipt("11", { paidAt: "2025-10-31T23:00:00Z" })
+    await org.receipt("888", { paidAt: "2025-10-31T22:59:59.999Z" })
+    await org.receipt("777", { paidAt: "2026-10-08T13:00:00Z" })
+    const result = await org.summary()
+    expect(result.paidThisMonth.buckets).toEqual([
+      { currency: "DKK", exponent: 2, amount: "20.00", count: 2 },
+      { currency: "EUR", exponent: 2, amount: "30.00", count: 1 },
+      { currency: "JPY", exponent: 0, amount: "7", count: 1 },
+    ])
+    expect(result.paidThisMonth.count).toBe(4)
+    expect(result.paidThisMonth.unvalued).toEqual(result.paidThisMonth.buckets)
+    expect(result.receivedByMonth.at(-1)).toMatchObject(result.paidThisMonth)
+    expect(result.receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "10.00", count: 1 }])
+    expect(result.receivedByMonth[0]).toMatchObject({ month: "2025-11", buckets: [{ currency: "DKK", exponent: 2, amount: "11.00", count: 1 }] })
+    expect(result.receivedByMonth.slice(1, -2).every(row => row.count === 0)).toBe(true)
+    expect(result.hasOtherCurrencies).toBe(true)
+    expect(amount(result.outstanding)).toBe("150.00")
+    expect((await org.admin.invoices.get({ id: invoice.id })).balanceDue).toBe(150)
+  })
+
+  it("keeps cash receipts through refunds and reclassification, removing reversed receipts from their original month", async () => {
+    const org = await setup()
+    const receipt = await org.receipt("90", { paidAt: "2026-09-01" })
+    const refund = await org.change({ ...decision(), action: "refund", receiptId: receipt.receiptId, amount: "10" })
+    await org.change({ ...decision(), action: "customer_credit", receiptId: receipt.receiptId })
+    const afterRefund = await org.summary()
+    expect(afterRefund.paidThisMonth).toEqual(zero)
+    expect(afterRefund.receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "90.00", count: 1 }])
+    await org.change({ ...decision(), action: "reverse_refund", refundId: refund.targetId })
+    expect((await org.summary()).receivedByMonth).toEqual(afterRefund.receivedByMonth)
+    await org.change({ ...decision(), action: "reverse_receipt", receiptId: receipt.receiptId })
+    expect((await org.summary()).receivedByMonth.every(row => row.count === 0)).toBe(true)
+    expect((await org.admin.dashboard.stats()).totalRevenue).toBe(0)
+    await org.receipt("40", { paidAt: "2026-09-01" })
+    expect((await org.summary()).receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "40.00", count: 1 }])
   })
 
   it("keeps currencies separate and missing, unknown and wrong-base valuations visible", async () => {
@@ -393,7 +537,7 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect((await refusal(invoice.id)).reason).toBe("already_reminded")
   })
 
-  it("uses six SELECTs for one and 501 invoices with bounded lists, independent of SQL timezone", async () => {
+  it("uses six SELECTs for one and 501 invoices plus 500 receipts, independent of SQL timezone", async () => {
     const org = await setup()
     const invoice = await org.seed()
     await org.admin.payments.record({ invoiceId: invoice.id, amount: 1.25, paidAt: "2026-09-30T22:00:00Z", method: "cash" })
@@ -415,8 +559,17 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
         organizationId: org.organizationId, contactId: org.contact.id, number: `LOAD-${index}`, status: "sent", currency: "DKK", dueDate: new Date("2026-10-01"), subtotalNet: "100", totalGross: "100", amountPaid: "20.10", amountCredited: "10.20",
       }))
       await prisma.invoice.createMany({ data: rows })
+      await prisma.settlementReceipt.createMany({ data: rows.map(row => ({
+        id: `receipt-${row.id}`, organizationId: org.organizationId, contactId: org.contact.id,
+        currency: "DKK", grossAmount: "20.10", netAmount: "19.10", feeAmount: "1.00",
+        paidAt: new Date("2026-09-01"), method: "cash", reference: row.id, ...receiptEvidence,
+        feeReason: receiptEvidence.reason, feeEvidence: receiptEvidence.evidence,
+        actorKey: `user:${org.actors.admin.userId}`, commandId: randomUUID(),
+      })) })
       await prisma.payment.createMany({ data: rows.map(row => ({
         organizationId: org.organizationId, invoiceId: row.id, currency: "DKK", amount: "20.10",
+        receiptId: `receipt-${row.id}`, receiptAmount: "20.10",
+        allocationReason: receiptEvidence.reason, allocationEvidence: receiptEvidence.evidence,
         paidAt: new Date("2026-09-01"), source: "user", method: "cash",
       })) })
       await prisma.creditNote.createMany({ data: rows.map(row => ({
@@ -425,6 +578,7 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
         locale: "en-US", timezone: "Europe/Copenhagen", taxRegime: "us_sales_tax", subtotalNet: "10.20", totalGross: "10.20",
       })) })
       const summary = await measure()
+      expect(summary.receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "9550.00", count: 500 }])
       expect(summary.outstanding.count).toBe(501)
       expect(amount(summary.outstanding)).toBe("34948.75")
       expect(summary.incoming).toHaveLength(8)

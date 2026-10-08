@@ -636,6 +636,7 @@ model SettlementReceipt {
   refunds        SettlementRefund[]
 
   @@index([organizationId, contactId])
+  @@index([organizationId, paidAt])
   @@unique([organizationId, reference])
   @@map("settlement_receipt")
 }
