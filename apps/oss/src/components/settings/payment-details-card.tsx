@@ -149,7 +149,7 @@ function PaymentDetailsPreview({ values, locale }: { values: Values; locale: str
           <p className="mb-1.5 text-xs uppercase tracking-wide text-muted-foreground">{block.title}</p>
           <dl className="grid gap-0.5">
             {block.rows.map((row) => (
-              <div key={row.label} className="grid grid-cols-[7rem_1fr] gap-2">
+              <div key={row.label} className="grid grid-cols-[7rem_1fr] items-baseline gap-2">
                 <dt className="text-xs text-muted-foreground">{row.label}</dt>
                 <dd className="break-words">{row.value}</dd>
               </div>

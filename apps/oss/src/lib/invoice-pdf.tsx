@@ -151,7 +151,8 @@ const styles = StyleSheet.create({
   },
   paymentRow: {
     flexDirection: "row",
-    marginBottom: 2,
+    alignItems: "baseline",
+    marginBottom: 3,
   },
   paymentLabel: {
     width: 90,

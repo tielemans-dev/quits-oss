@@ -7,7 +7,7 @@ export const enPaymentDetailsMessages = {
   "settings.paymentDetails.group.dk.hint": "For customers paying from a Danish bank account.",
   "settings.paymentDetails.group.intl.title": "International transfers",
   "settings.paymentDetails.group.intl.hint": "For payments from abroad (SEPA and SWIFT).",
-  "settings.paymentDetails.regNumber.label": "Registration no. (reg.nr.)",
+  "settings.paymentDetails.regNumber.label": "Reg. no. (reg.nr.)",
   "settings.paymentDetails.accountNumber.label": "Account no. (kontonr.)",
   "settings.paymentDetails.iban.label": "IBAN",
   "settings.paymentDetails.bic.label": "BIC",
