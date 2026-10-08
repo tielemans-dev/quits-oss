@@ -107,9 +107,27 @@ export const invoicesRouter = router({
       }
       if (input?.status) where.status = input.status
 
+      // The list page renders only these columns. Excluding the JSON snapshot and evidence
+      // columns keeps the response small; the rows are not loaded with their items either.
       const invoices = await prisma.invoice.findMany({
         where,
-        include: { contact: { select: { name: true } } },
+        select: {
+          id: true,
+          number: true,
+          status: true,
+          paymentStatus: true,
+          issueDate: true,
+          dueDate: true,
+          currency: true,
+          subtotalNet: true,
+          totalTax: true,
+          totalGross: true,
+          amountPaid: true,
+          amountCredited: true,
+          publicPaymentIssuedAt: true,
+          publicPaymentKeyVersion: true,
+          contact: { select: { name: true } },
+        },
         orderBy: { createdAt: "desc" },
       })
 

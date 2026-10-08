@@ -6,12 +6,42 @@ import { requireCurrencyExponent } from "@quits/shared/currency"
 
 export const dashboardRouter = router({
   stats: authorizedProcedure("invoice:read").query(async ({ ctx }) => {
+    // Select only what the aggregation and the recent-invoice rows read. Invoice rows carry
+    // large JSON snapshots that this query never uses.
     const [payments, invoices, totalContacts, recentInvoices, settings] = await Promise.all([
       prisma.payment.groupBy({ by: ["currency"], where: { organizationId: ctx.organizationId, voidedAt: null }, _sum: { amount: true } }),
-      prisma.invoice.findMany({ where: { organizationId: ctx.organizationId, status: { not: "draft" } }, include: { creditNotes: { where: { status: "issued" }, select: { valuation: true } } } }),
+      prisma.invoice.findMany({
+        where: { organizationId: ctx.organizationId, status: { not: "draft" } },
+        select: {
+          currency: true,
+          status: true,
+          valuation: true,
+          totalGross: true,
+          amountPaid: true,
+          amountCredited: true,
+          creditNotes: { where: { status: "issued" }, select: { valuation: true } },
+        },
+      }),
       prisma.contact.count({ where: { organizationId: ctx.organizationId } }),
-      prisma.invoice.findMany({ where: { organizationId: ctx.organizationId }, include: { contact: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 10 }),
-      prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId } }),
+      prisma.invoice.findMany({
+        where: { organizationId: ctx.organizationId },
+        select: {
+          id: true,
+          number: true,
+          currency: true,
+          status: true,
+          paymentStatus: true,
+          totalGross: true,
+          amountPaid: true,
+          amountCredited: true,
+          issueDate: true,
+          dueDate: true,
+          contact: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
+      prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { baseCurrency: true } }),
     ])
     const buckets = new Map<string, { revenue: Prisma.Decimal; outstanding: Prisma.Decimal }>()
     const bucket = (currency: string) => {

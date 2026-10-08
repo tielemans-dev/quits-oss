@@ -388,6 +388,7 @@ model Invoice {
   @@index([organizationId, paymentStatus])
   @@index([organizationId, publicPaymentIssuedAt])
   @@index([organizationId, dueDate])
+  @@index([organizationId, createdAt])
   @@map("invoice")
 }
 
@@ -675,6 +676,7 @@ model DomainEvent {
 
   @@unique([organizationId, sequence])
   @@index([organizationId, aggregateType, aggregateId])
+  @@index([organizationId, type])
   @@map("domain_event")
 }
 
