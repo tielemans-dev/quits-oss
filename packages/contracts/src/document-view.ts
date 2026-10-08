@@ -72,7 +72,11 @@ export const documentViewLineVatSchema = z.strictObject({
 })
 
 export const documentViewLineSchema = z.strictObject({
-  /** Stable per line, and unique within the document. Not an identifier of anything stored. */
+  /**
+   * Unique within the document. The key the client gave the line when it has one, otherwise the
+   * stored id (or its position). Stored ids are replaced on every save today, so a key that stays
+   * the same across autosaves needs a persisted client key, which comes with the server view (PR 2).
+   */
   key: z.string().min(1),
   /** Internal; the public view drops it. */
   id: nullableString,
@@ -80,7 +84,7 @@ export const documentViewLineSchema = z.strictObject({
   /** Quantity and price exactly as entered; on an issued line, the frozen inputs. */
   quantity: z.string().max(40),
   unitPrice: z.string().max(40),
-  /** The unit price excluding VAT: the price as entered, unrounded, on tax-exclusive documents; derived at two decimals on tax-inclusive ones. Null when the line cannot be calculated. */
+  /** The unit price excluding VAT: the price as entered on tax-exclusive documents, or taken out of the VAT on tax-inclusive ones (at least two decimals). Null when the line cannot be calculated. */
   unitPriceNet: moneySchema.nullable(),
   /** Null only when a draft's classification cannot be determined. */
   vat: documentViewLineVatSchema.nullable(),

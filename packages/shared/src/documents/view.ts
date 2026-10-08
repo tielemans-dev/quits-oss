@@ -7,10 +7,10 @@ import type {
 import type { BuyerSnapshot, DocumentTaxId, SellerSnapshot } from "@quits/contracts/documents"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { hasBankAccount, hasPaymentDetails } from "@quits/contracts/payment-details"
-import { decimalStringSchema, draftVatClassificationSchema } from "@quits/contracts/vat"
+import { decimalStringSchema, draftVatClassificationSchema, nonnegativeDecimalStringSchema } from "@quits/contracts/vat"
 import type { DraftVatEvidence, VatEvidence, VatReasonCode, VatTreatment } from "@quits/contracts/vat"
 import { requireCurrencyExponent } from "../currency"
-import { decimalReferencePrices, documentVat, previewDraft, vatGroupKey } from "../pricing"
+import { documentVat, previewDraft, vatGroupKey } from "../pricing"
 
 // Isolated from callers' Decimal configuration, like the pricing engine.
 const D = Decimal.clone({ precision: 1024, rounding: Decimal.ROUND_HALF_UP })
@@ -57,20 +57,16 @@ function uniqueKeys(keys: string[]): string[] {
 
 /**
  * The unit price excluding VAT. On a tax-exclusive document that is the price as entered, unrounded:
- * it is the legal unit price. On a tax-inclusive one it is derived from the line's own amounts, at
- * two decimals. Null when the line has no amounts, or the price cannot be derived.
+ * it is the legal unit price. On a tax-inclusive one it is the entered price taken out of the line's
+ * VAT, `unitPrice / (1 + rate)`, rounded half-up to the entered price's decimals (at least two).
+ * It does not depend on the quantity. Null when the price or the rate cannot be read.
  */
-function unitPriceNetOf(
-  pricesIncludeTax: boolean, unitPrice: string, quantity: string, net: string | null, gross: string | null
-): string | null {
-  if (net === null || gross === null) return null
-  if (!pricesIncludeTax) return decimalStringSchema.safeParse(unitPrice).success ? unitPrice : null
-  try {
-    if (!new D(quantity).gt(0)) return null
-    return decimalReferencePrices(quantity, net, gross).unitPriceNet
-  } catch {
-    return null
-  }
+function unitPriceNetOf(pricesIncludeTax: boolean, unitPrice: string, rate: string): string | null {
+  if (!decimalStringSchema.safeParse(unitPrice).success) return null
+  if (!pricesIncludeTax) return unitPrice
+  if (!nonnegativeDecimalStringSchema.safeParse(rate).success) return null
+  const places = Math.max(2, unitPrice.split(".")[1]?.length ?? 0)
+  return new D(unitPrice).div(new D(rate).plus(1)).toDecimalPlaces(places, D.ROUND_HALF_UP).toFixed(places)
 }
 
 function taxIdsView(taxIds: readonly DocumentTaxId[] | undefined): DocumentViewTaxId[] {
@@ -119,9 +115,9 @@ function notesView(notes: string | null | undefined) {
 const lineVat = (vat: { treatment: VatTreatment; rate: string; reasonCode: VatReasonCode | null; country: string | null }): DocumentViewLineVat =>
   ({ treatment: vat.treatment, rate: canonicalRate(vat.rate), reasonCode: vat.reasonCode, country: vat.country })
 
-function lineAmounts(quantity: string, unitPrice: string, net: Decimal, tax: Decimal, gross: Decimal, pricesIncludeTax: boolean, exponent: number) {
+function lineAmounts(unitPrice: string, rate: string, net: Decimal, tax: Decimal, gross: Decimal, pricesIncludeTax: boolean, exponent: number) {
   const amounts = { net: fixed(net, exponent), tax: fixed(tax, exponent), gross: fixed(gross, exponent) }
-  return { ...amounts, unitPriceNet: unitPriceNetOf(pricesIncludeTax, unitPrice, quantity, amounts.net, amounts.gross), amount: pricesIncludeTax ? amounts.gross : amounts.net }
+  return { ...amounts, unitPriceNet: unitPriceNetOf(pricesIncludeTax, unitPrice, rate), amount: pricesIncludeTax ? amounts.gross : amounts.net }
 }
 
 const noAmounts = { net: null, tax: null, gross: null, amount: null, unitPriceNet: null } as const
@@ -146,12 +142,18 @@ export type DraftViewLineInput = {
   /** Required with `stored`: the line's complete classification. */
   vat?: DocumentLineInput["vat"]
   /**
-   * The amounts the line was stored with. It renders them as they are and is never repriced: an
-   * agreement-linked line, or any line of a draft still on the legacy calculation. Strings at most at
-   * the currency's exponent, as stored.
+   * The amounts the line was stored with, as strings at most at the currency's exponent.
+   *
+   * - A locked (agreement-linked) line always renders them, and is never repriced.
+   * - The unlocked lines render theirs only when EVERY unlocked line has them; otherwise all unlocked
+   *   lines are repriced together, because pricing groups lines and a partial mix would not add up.
+   * - A legacy draft needs them on every line.
+   *
+   * The server passes `stored` and `vat` for every persisted row. The editor drops `stored` from all
+   * unlocked lines on the first edit, since from then on the draft is repriced.
    */
   stored?: { net: string; tax: string; gross: string }
-  /** The line cannot be edited (agreement-linked). */
+  /** The line cannot be edited (agreement-linked). It keeps `stored` whatever the other lines do. */
   locked?: boolean
 }
 
@@ -164,7 +166,8 @@ export type DraftViewInput = {
   pricesIncludeTax: boolean
   /**
    * How the stored draft was priced. A `legacy_per_line` draft is issued from its stored amounts, so
-   * it shows them: every line needs `stored`. Once it is edited it is repriced, and is passed as `v2`.
+   * it shows them: every line needs `stored`, and a line without it does not calculate. Once it is
+   * edited it is repriced: pass `v2`, and no `stored` on its unlocked lines.
    */
   calculationVersion: "v2" | "legacy_per_line"
   /** The document's VAT rate in percent; lines without their own classification use it. */
@@ -189,11 +192,13 @@ export type DraftViewInput = {
 type StoredLine = { net: Decimal; tax: Decimal; gross: Decimal; vat: ReturnType<typeof draftVatClassificationSchema.parse> }
 
 /** `null` when the stored line cannot be read exactly; it then stops the document from calculating. */
-function readStored(line: DraftViewLineInput, exponent: number): StoredLine | null {
+function readStored(line: DraftViewLineInput, exponent: number, legacyUnlocked: boolean): StoredLine | null {
   if (!line.stored || !line.vat) return null
-  // A legacy line written without a classification is "standard" at 0 %, which nothing accepts: it is out of scope.
-  const legacyZero = line.vat.treatment === "standard" && line.vat.rate !== undefined && !/[1-9]/.test(line.vat.rate)
-  const vat = draftVatClassificationSchema.safeParse(legacyZero ? { ...line.vat, treatment: "out_of_scope", reasonCode: null } : line.vat)
+  // A legacy 0 % line written as "standard" is unclassified, as the migration made the ones it found
+  // (`unclassified_zero`, which issuance refuses). Agreement-locked lines were converted when they were
+  // copied onto the invoice, so they are read as they are.
+  const legacyZero = legacyUnlocked && line.vat.treatment === "standard" && line.vat.rate !== undefined && !/[1-9]/.test(line.vat.rate)
+  const vat = draftVatClassificationSchema.safeParse(legacyZero ? { ...line.vat, treatment: "unclassified_zero", reasonCode: null } : line.vat)
   if (!vat.success) return null
   const amounts: Decimal[] = []
   for (const value of [line.stored.net, line.stored.tax, line.stored.gross]) {
@@ -218,12 +223,17 @@ type GroupSums = { treatment: VatTreatment; rate: string; reasonCode: VatReasonC
 export function buildDraftView(input: DraftViewInput): DocumentView {
   const exponent = requireCurrencyExponent(input.currency)
   const legacy = input.calculationVersion === "legacy_per_line"
-  const keys = uniqueKeys(input.lines.map((line, index) => line.clientKey || line.id || `line-${index}`))
+  const keys = uniqueKeys(input.lines.map((line, index) => line.clientKey || line.id || `line-${index + 1}`))
+  const isLocked = (line: DraftViewLineInput) => !!line.locked && !!line.stored
+  // Stored amounts stand for the unlocked lines only if every one of them has them (see `stored`).
+  const unlockedStored = input.lines.filter((line) => !isLocked(line)).every((line) => line.stored)
   const prepared = input.lines.map((line, index) => ({
     line,
     key: keys[index]!,
     // undefined: priced from its inputs. null: stored, but unreadable. A legacy draft prices nothing.
-    stored: line.stored || legacy ? readStored(line, exponent) : undefined,
+    stored: legacy || isLocked(line) || (unlockedStored && line.stored)
+      ? readStored(line, exponent, legacy && !isLocked(line))
+      : undefined,
   }))
 
   const calculated = calculate(input, prepared.map((entry) => entry.stored), exponent)
@@ -233,13 +243,13 @@ export function buildDraftView(input: DraftViewInput): DocumentView {
     const base = { key, id: line.id || null, description: line.description, quantity, unitPrice: asEntered(line.unitPrice), locked: line.locked ?? false }
     if (stored !== undefined) {
       return stored
-        ? { ...base, vat: lineVat(stored.vat), ...lineAmounts(quantity, base.unitPrice, stored.net, stored.tax, stored.gross, input.pricesIncludeTax, exponent) }
+        ? { ...base, vat: lineVat(stored.vat), ...lineAmounts(base.unitPrice, stored.vat.rate, stored.net, stored.tax, stored.gross, input.pricesIncludeTax, exponent) }
         : { ...base, vat: null, ...noAmounts }
     }
     const result = calculated?.lines[nextCalculated++]
     return {
       ...base, vat: result ? lineVat(result.vat) : enteredVat(line, input.taxRate),
-      ...(result ? lineAmounts(quantity, base.unitPrice, new D(result.net), new D(result.tax), new D(result.gross), input.pricesIncludeTax, exponent) : noAmounts),
+      ...(result ? lineAmounts(base.unitPrice, result.vat.rate, new D(result.net), new D(result.tax), new D(result.gross), input.pricesIncludeTax, exponent) : noAmounts),
     }
   })
 
@@ -258,7 +268,8 @@ export function buildDraftView(input: DraftViewInput): DocumentView {
     vatEvidence: evidenceView(input.vatEvidence), notes: notesView(input.notes),
     paymentDetails: paymentDetailsView(input.seller, reference || null, input.kind),
     correction: null,
-    calculation: { version: input.calculationVersion, staleLegacy: legacy },
+    // An agreement-linked legacy draft is never upgraded (its locked lines stay as issued), so it is not stale.
+    calculation: { version: input.calculationVersion, staleLegacy: legacy && !input.lines.some((line) => line.locked) },
   }
 }
 
@@ -441,7 +452,7 @@ export function buildIssuedView(snapshot: IssuedMoneySnapshot, extras: IssuedVie
   const lines: DocumentViewLine[] = snapshot.lines.map((line, index) => ({
     key: keys[index]!, id: line.lineId, description: line.description,
     quantity: line.quantityInput, unitPrice: line.unitPriceInput,
-    unitPriceNet: unitPriceNetOf(pricesIncludeTax, line.unitPriceInput, line.quantityInput, line.net, line.gross),
+    unitPriceNet: unitPriceNetOf(pricesIncludeTax, line.unitPriceInput, line.vat.rate),
     vat: lineVat(line.vat),
     net: line.net, tax: line.tax, gross: line.gross, amount: pricesIncludeTax ? line.gross : line.net,
     locked: true,

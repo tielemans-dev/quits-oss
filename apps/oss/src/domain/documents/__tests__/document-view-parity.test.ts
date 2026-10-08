@@ -166,6 +166,15 @@ function expectParity(document: Document, label: string) {
   return { view, issued }
 }
 
+/** The draft with the stored amounts of every line, as the server will pass them. */
+const withStoredLines = (document: Document, only?: (index: number) => boolean): Document => ({
+  ...document,
+  lines: document.lines.map((line, index) => {
+    const item = document.items[index]!
+    return line.stored || (only && !only(index)) ? line : { ...line, vat: rowVat(item), stored: storedAmounts(item) }
+  }),
+})
+
 // ---- named cases ----
 
 const standard25 = { treatment: "standard", rate: "0.25", country: "DK" } as const
@@ -207,6 +216,35 @@ describe("the draft view against the app's own writers", () => {
     const { view } = expectParity(document, "legacy")
     expect(view.totals).toMatchObject({ net: "0.20", tax: "0.06", gross: "0.26" })
     expect(view.calculation).toEqual({ version: "legacy_per_line", staleLegacy: true })
+  })
+
+  it("reads the rows the legacy migration wrote: unclassified zero, with a two-decimal quantity", () => {
+    const migrated = storedItem({
+      description: "Fixed fee", quantity: 3, unitPriceNet: 100, unitPriceGross: 100, lineNet: 300, lineTax: 0, lineGross: 300, taxRate: 0,
+      taxCategory: "standard", sortOrder: 0, vatTreatment: "unclassified_zero", quantityInput: "3.00", unitPriceInput: "100.00", inputPrecision: "backfilled", vatRateInput: null,
+    }, "migrated")
+    const document: Document = {
+      currency: "DKK", pricesIncludeTax: false, calculationVersion: "legacy_per_line", items: [migrated], taxRate: "0",
+      totals: { net: "300", tax: "0", gross: "300" },
+      lines: [{ id: "migrated", description: "Fixed fee", quantity: enteredQuantity(migrated), unitPrice: enteredPrice(migrated, false), vat: rowVat(migrated), stored: storedAmounts(migrated) }],
+    }
+    const { view } = expectParity(document, "migrated legacy row")
+    expect(view.lines[0]).toMatchObject({ quantity: "3.00", unitPrice: "100.00", unitPriceNet: "100.00", vat: { treatment: "unclassified_zero", rate: "0", reasonCode: null } })
+    expect(view.calculation).toEqual({ version: "legacy_per_line", staleLegacy: true })
+  })
+
+  it("reprices every unlocked line together unless all of them are stored", () => {
+    const document = v2Document({
+      currency: "DKK", taxRate: "25", pricesIncludeTax: true,
+      items: [{ description: "Penny", quantity: "1", unitPrice: "0.01" }, { description: "Penny", quantity: "1", unitPrice: "0.01" }],
+    })
+    // The server stores 0.01 tax for the pair. Pricing the second line alone would give 0.00.
+    expect(document.totals.tax).toBe("0.01")
+    const all = expectParity(withStoredLines(document), "all stored").view
+    expect(all.totals?.tax).toBe("0.01")
+    const partial = buildDraftView(toInput(withStoredLines(document, (index) => index === 1)))
+    expect(partial.totals?.tax).toBe("0.01")
+    expect(partial).toEqual(buildDraftView(toInput(document)))
   })
 
   it("reads a legacy agreement's zero-rate line as out of scope, as the invoice copy does", () => {
@@ -301,6 +339,12 @@ describe("generated drafts", () => {
     for (let index = 0; index < cases; index++) {
       const { label, document } = generate(r, index)
       expectParity(document, label)
+      if (document.calculationVersion === "v2" && !document.lines.some((l) => l.locked || l.stored)) {
+        // Stored on every line is the same draft; stored on some is repriced as a whole.
+        const repriced = buildDraftView(toInput(document))
+        expect(buildDraftView(toInput(withStoredLines(document))), label).toEqual(repriced)
+        expect(buildDraftView(toInput(withStoredLines(document, (i) => i === document.lines.length - 1))), label).toEqual(repriced)
+      }
       if (document.calculationVersion === "legacy_per_line") {
         legacy++
         // A v2 repricing of the same inputs is a different number for some of them: this is what the

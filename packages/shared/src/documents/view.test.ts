@@ -93,7 +93,27 @@ describe("buildDraftView", () => {
     // Nothing calculated, nothing to show.
     expect(buildDraftView(draft([line("")])).lines[0]!.unitPriceNet).toBeNull()
     expect(buildDraftView(draft([line("1,5")])).lines[0]!.unitPriceNet).toBeNull()
-    expect(buildDraftView(draft([line("100", { quantity: "0" })], { pricesIncludeTax: true })).lines[0]!.unitPriceNet).toBeNull()
+    // The quantity does not matter: a zero quantity has a price on either basis.
+    expect(buildDraftView(draft([line("100", { quantity: "0" })])).lines[0]!.unitPriceNet).toBe("100")
+    expect(buildDraftView(draft([line("125", { quantity: "0" })], { pricesIncludeTax: true })).lines[0]!.unitPriceNet).toBe("100.00")
+  })
+
+  it("takes an inclusive unit price out of the VAT whatever the quantity", () => {
+    // The old derivation divided the rounded line net by the quantity: 980.00, 79.98 and 800.00 here.
+    const price = (unitPrice: string, quantity: string, extra: Partial<DraftViewInput> = {}) =>
+      buildDraftView(draft([line(unitPrice, { quantity })], { pricesIncludeTax: true, ...extra })).lines[0]!.unitPriceNet
+    expect(price("1234.56", "0.001")).toBe("987.65")
+    expect(price("100", "0.333333")).toBe("80.00")
+    expect(price("999.99", "0.01")).toBe("799.99")
+    expect(price("1234.56", "1000")).toBe("987.65")
+    // A zero rate keeps the entered price, with its decimals.
+    expect(price("12.345", "1", { taxRate: "0" })).toBe("12.345")
+    expect(price("12.3456", "2", { taxRate: "0" })).toBe("12.3456")
+    expect(price("12.345", "1", { lines: [line("12.345", { vat: exempt })] })).toBe("12.345")
+    // At least two decimals, more when the entered price has them; half-up.
+    expect(price("12.345", "1")).toBe("9.876")
+    expect(price("0.05", "1")).toBe("0.04")
+    expect(price("0.06", "1")).toBe("0.05")
   })
 
   it("keeps an exclusive unit price of three or four decimals unrounded", () => {
@@ -104,9 +124,9 @@ describe("buildDraftView", () => {
         expect(first!.net).toMatch(/^\d+\.\d{2}$/)
       }
     }
-    // The same price on an inclusive document is derived (rounded to cents) from the line's net.
+    // The same price on an inclusive document is taken out of the VAT.
     const [inclusive] = buildDraftView(draft([line("12.345")], { pricesIncludeTax: true })).lines
-    expect(inclusive).toMatchObject({ unitPrice: "12.345", unitPriceNet: "9.88" })
+    expect(inclusive).toMatchObject({ unitPrice: "12.345", unitPriceNet: "9.876" })
     expect(documentViewSchema.parse(buildDraftView(draft([line("12.3456", { quantity: "2" })])))).toBeTruthy()
   })
 
@@ -125,18 +145,18 @@ describe("buildDraftView", () => {
   describe("line keys", () => {
     it("prefers the client key, which outlives the id a save replaces, then the id", () => {
       const before = buildDraftView(draft([line("1", { id: "item-1", clientKey: "k1" }), line("2", { id: "item-2" }), line("3")]))
-      expect(before.lines.map(({ key, id }) => ({ key, id }))).toEqual([{ key: "k1", id: "item-1" }, { key: "item-2", id: "item-2" }, { key: "line-2", id: null }])
+      expect(before.lines.map(({ key, id }) => ({ key, id }))).toEqual([{ key: "k1", id: "item-1" }, { key: "item-2", id: "item-2" }, { key: "line-3", id: null }])
       // The save recreated the line under a new id; its row keeps its key.
       const after = buildDraftView(draft([line("1", { id: "item-9", clientKey: "k1" })]))
       expect(after.lines[0]).toMatchObject({ key: "k1", id: "item-9" })
     })
 
     it("keeps keys unique, deterministically", () => {
-      const lines = [line("1", { clientKey: "line-1" }), line("2"), line("3", { clientKey: "a" }), line("4", { clientKey: "a" }), line("5", { clientKey: "a~2" })]
+      const lines = [line("1", { clientKey: "line-2" }), line("2"), line("3", { clientKey: "a" }), line("4", { clientKey: "a" }), line("5", { clientKey: "a~2" })]
       const keys = buildDraftView(draft(lines)).lines.map((l) => l.key)
       expect(new Set(keys).size).toBe(lines.length)
       expect(keys).toEqual(buildDraftView(draft(lines)).lines.map((l) => l.key))
-      expect(keys.slice(0, 2)).toEqual(["line-1", "line-1~2"])
+      expect(keys.slice(0, 2)).toEqual(["line-2", "line-2~2"])
     })
   })
 
@@ -273,6 +293,31 @@ describe("buildDraftView", () => {
     }
   })
 
+  describe("stored amounts on unlocked lines", () => {
+    const withStored = (unitPrice: string, stored?: { net: string; tax: string; gross: string }): DraftViewLineInput =>
+      line(unitPrice, { vat: { treatment: "standard", rate: "0.25" }, ...(stored ? { stored } : {}) })
+
+    it("uses them only when every unlocked line has them", () => {
+      // Two inclusive lines of 0.01 at 25 %: priced together the group's tax is 0.01 (0.01 + 0.00).
+      const both = [withStored("0.01", { net: "0.01", tax: "0.01", gross: "0.01" }), withStored("0.01", { net: "0.01", tax: "0.00", gross: "0.01" })]
+      const repriced = buildDraftView(draft(both.map(({ stored: _stored, ...rest }) => rest), { pricesIncludeTax: true }))
+      expect(repriced.totals).toMatchObject({ tax: "0.01", gross: "0.02" })
+      expect(buildDraftView(draft(both, { pricesIncludeTax: true })).totals).toEqual(repriced.totals)
+      // Only the second is stored: all unlocked lines are repriced together, not 0.00 + 0.00.
+      const partial = buildDraftView(draft([{ ...both[0]!, stored: undefined }, both[1]!], { pricesIncludeTax: true }))
+      expect(partial.totals).toEqual(repriced.totals)
+      expect(partial.lines).toEqual(repriced.lines.map((l, i) => ({ ...l, key: partial.lines[i]!.key })))
+    })
+
+    it("lets a locked line keep its stored amounts whatever the others do", () => {
+      const locked = { ...withStored("0.10", { net: "0.10", tax: "0.03", gross: "0.13" }), locked: true }
+      const view = buildDraftView(draft([locked, withStored("0.10")]))
+      expect(view.lines[0]).toMatchObject({ tax: "0.03", locked: true })
+      expect(view.lines[1]).toMatchObject({ tax: "0.03", locked: false })
+      expect(view.totals).toMatchObject({ net: "0.20", tax: "0.06" })
+    })
+  })
+
   describe("a draft still on the legacy calculation", () => {
     // Two lines of 0.10 net at 25 %: each line's tax rounded on its own (0.03), where v2 rounds the group (0.05).
     const legacyLine = (key: string): DraftViewLineInput =>
@@ -290,11 +335,20 @@ describe("buildDraftView", () => {
       expect(documentViewSchema.parse(view)).toEqual(view)
     })
 
-    it("reads a legacy zero rate written as standard as out of scope", () => {
+    it("reads a legacy zero rate written as standard as unclassified, like the migration did", () => {
       const zero: DraftViewLineInput = { ...legacyLine("z"), vat: { treatment: "standard", rate: "0" }, stored: { net: "0.10", tax: "0.00", gross: "0.10" } }
       const view = legacy([zero])
-      expect(view.lines[0]!.vat).toEqual({ treatment: "out_of_scope", rate: "0", reasonCode: null, country: null })
-      expect(view.vatGroups[0]).toMatchObject({ treatment: "out_of_scope", rate: "0", reasonCode: null })
+      expect(view.lines[0]!.vat).toEqual({ treatment: "unclassified_zero", rate: "0", reasonCode: null, country: null })
+      expect(view.vatGroups[0]).toMatchObject({ treatment: "unclassified_zero", rate: "0", reasonCode: null })
+      // The migration's own rows are read as they are.
+      const migrated = legacy([{ ...zero, vat: { treatment: "unclassified_zero", rate: "0" } }])
+      expect(migrated.lines[0]!.vat).toEqual(view.lines[0]!.vat)
+    })
+
+    it("leaves an agreement-locked line as it is: the invoice copy already converted it", () => {
+      const zero: DraftViewLineInput = { ...legacyLine("z"), locked: true, vat: { treatment: "standard", rate: "0" }, stored: { net: "0.10", tax: "0.00", gross: "0.10" } }
+      expect(legacy([zero]).totals).toBeNull()
+      expect(legacy([{ ...zero, vat: { treatment: "out_of_scope", rate: "0" } }]).vatGroups[0]).toMatchObject({ treatment: "out_of_scope" })
     })
 
     it("does not reprice a line that has no stored amounts", () => {
@@ -303,10 +357,10 @@ describe("buildDraftView", () => {
       expect(view.lines[1]).toMatchObject({ net: null, amount: null })
     })
 
-    it("keeps an agreement-linked line of a legacy agreement locked", () => {
-      const view = legacy([{ ...legacyLine("a"), locked: true }])
-      expect(view.lines[0]!.locked).toBe(true)
-      expect(view.calculation.version).toBe("legacy_per_line")
+    it("keeps an agreement-linked line of a legacy agreement locked, and that draft never goes stale", () => {
+      const view = legacy([{ ...legacyLine("a"), locked: true }, legacyLine("b")])
+      expect(view.lines.map((l) => l.locked)).toEqual([true, false])
+      expect(view.calculation).toEqual({ version: "legacy_per_line", staleLegacy: false })
     })
   })
 
@@ -415,13 +469,14 @@ describe("buildIssuedView", () => {
     expect(view.vatGroups[0]!.rate).toBe("0.25")
   })
 
-  it("gives each line's unit price excluding VAT from its net and quantity", () => {
-    expect(buildIssuedView(snapshot(), extras).lines.map((l) => l.unitPriceNet)).toEqual(["33.33", "10.00"])
+  it("takes each line's unit price excluding VAT from the frozen price and rate", () => {
+    // Inclusive: 33.33 less 25 % VAT, and a 0 % line unchanged. The quantity does not enter into it.
+    expect(buildIssuedView(snapshot(), extras).lines.map((l) => l.unitPriceNet)).toEqual(["26.66", "10.00"])
     const s = snapshot()
     const [first, second] = s.lines
-    s.lines = [{ ...first!, quantityInput: "0" }]
-    expect(buildIssuedView(s, extras).lines[0]!.unitPriceNet).toBeNull()
-    // Tax-exclusive: the frozen entered price, unrounded, whatever the line's net.
+    s.lines = [{ ...first!, quantityInput: "0" }, { ...first!, lineId: "l3", unitPriceInput: "12.345", vat: { ...first!.vat, rate: "0", treatment: "out_of_scope", country: null } }]
+    expect(buildIssuedView(s, extras).lines.map((l) => l.unitPriceNet)).toEqual(["26.66", "12.345"])
+    // Tax-exclusive: the frozen entered price, unrounded.
     s.calculation.pricesIncludeTax = false
     s.lines = [{ ...first!, unitPriceInput: "12.3456", quantityInput: "3" }, { ...second!, unitPriceInput: "10" }]
     expect(buildIssuedView(s, extras).lines.map((l) => l.unitPriceNet)).toEqual(["12.3456", "10"])
