@@ -70,14 +70,15 @@ ship Claude connectors; ChatGPT apps are the other mass-market surface) and gene
 
 | Client | How it identifies itself | Redirect | Needs from Quits | Prototype status |
 | --- | --- | --- | --- | --- |
-| Claude Code | CIMD `https://claude.ai/oauth/claude-code-client-metadata` (public, refresh) | Loopback, random port: `http://localhost:<port>/callback` | Port-agnostic loopback match for `localhost` and `127.0.0.1`; CIMD only if AS lists `client_id_metadata_document_supported` **and** `none` | **Profile tested locally** with the MCP TypeScript SDK client and the real metadata document as a fixture. The real Claude Code binary was not run against the prototype (needs an interactive browser sign-in) |
+| Claude Code | CIMD `https://claude.ai/oauth/claude-code-client-metadata` (public, refresh) | Loopback, random port: `http://localhost:<port>/callback` | Port-agnostic loopback match for `localhost` and `127.0.0.1`; CIMD only if AS lists `client_id_metadata_document_supported` **and** `none` | **Claude Code 2.1.293 connected locally** using its own discovery, CIMD and browser sign-in. CLI health showed Connected; Settings revocation changed it to Needs authentication. SDK profile tests remain as regression coverage |
 | claude.ai, Claude Desktop, mobile, Cowork | CIMD (Anthropic-hosted) or DCR | `https://claude.ai/api/mcp/auth_callback` (may move to `claude.com`) | Public HTTPS server reachable from Anthropic's egress range; `401` to start; first `authorization_servers` entry only; 10 s discovery/token budget, 30 s for refresh; `invalid_grant` on dead refresh tokens | DCR path tested with the SDK client. **Not tested with the real hosted client**: it cannot reach a local server without a public HTTPS tunnel |
 | ChatGPT (apps / connectors) | CIMD `https://chatgpt.com/oauth/client.json` (prefers `private_key_jwt`, accepts `none`), or DCR | Stable `https://chatgpt.com/connector_platform_oauth_redirect` when `iss` is supported, else `https://chatgpt.com/connector/oauth/{callback_id}` | `iss` on success and error; S256; `resource` copied into the token; no machine-to-machine grants | **Profile tested locally** by a raw-HTTP client written from the specs with the real metadata document as a fixture. Real ChatGPT not tested (needs a public HTTPS server and a developer-mode workspace). Quits authenticates it as a public client; `private_key_jwt` is not supported. ChatGPT's per-tool `_meta["mcp/www_authenticate"]` step-up is not implemented |
 | Clients without OAuth, or stdio-only via `mcp-remote` | Agent key | none | `Authorization: Bearer quits_ak_...` | Unchanged; covered by the existing endpoint tests and one test with the prototype switched on |
 | VS Code / GitHub Copilot, Cursor, Microsoft Copilot Studio | not researched | Cursor has used a custom-scheme redirect, which the MCP spec does not allow | | Unknown. Custom-scheme redirects are refused by design |
 
-Both local proofs complete without pasting a long-lived general-purpose key. They are protocol
-proofs against client *profiles*, not proofs with the shipping clients.
+The profile tests complete without pasting a long-lived general-purpose key. A separate local
+proof now covers the shipping Claude Code client. **The acceptance criterion requiring two
+selected shipping clients remains partial**; profile fixtures do not count as a second client.
 
 ## Grant model
 
@@ -227,8 +228,8 @@ discovery and token endpoints.
 6. **Client polish.** `_meta["mcp/www_authenticate"]` on refused tool calls for ChatGPT's
    step-up UI; optional `private_key_jwt` for ChatGPT's CIMD client.
 7. **Verification.** Retain browser regression tests for login, consent, rejection, callback,
-   organization changes and Settings revocation. Obtain real-client evidence locally and with
-   claude.ai and ChatGPT against a public test deployment.
+   organization changes and Settings revocation. Extend the local Claude Code evidence to a
+   second selected shipping client and test claude.ai and ChatGPT against a public test deployment.
 8. **Release.** Remove the prototype flag only after 1 to 7; document the sign-in path in
    `docs/agent-api.md` next to agent keys, which remain supported.
 
@@ -272,6 +273,17 @@ revocation. Settings and client revocation both keep an auditable revoked key. R
 ends the token family; it does not itself withdraw separately queued approvals. Those remain
 subject to the live installation, owner-role and stale-review checks. Use disconnect or Settings
 revocation to withdraw pending work.
+
+On 8 October 2026, the installed **Claude Code 2.1.293** completed a local connection to
+`http://127.0.0.1:4311/api/mcp`. Its `mcp login --no-browser` command generated the authorization
+request using its real CIMD identity and opened a random-port localhost callback. Quits fetched
+the metadata document from Anthropic. A browser signed in
+to a disposable test organization and granted read-only access. The callback displayed
+“Authentication successful”; the CLI reported that authentication succeeded and `mcp get`
+showed “Connected.” Revoking the connection in Settings changed that same CLI check to
+“Needs authentication.” No bearer key was pasted, no model was invoked and no vendor account
+credentials were needed. The client configuration was isolated and deleted after verification.
+This proves local HTTP issuer acceptance for that version, not hosted-client support.
 
 Still unverified: shipping hosted Claude and ChatGPT clients, multi-process deployment and
 performance under the clients' endpoint time budgets. Protocol fixtures do not prove client
