@@ -34,6 +34,10 @@ with a browser user-agent returned the public documentation. No credentials or a
 | D4 | [FAQ](https://developer.dinero.dk/documentation/faq/), “What is a købsbilag / purchase voucher?” and “What endpoint should I use?” | Dinero recommends purchase vouchers for expenses and distinguishes ledger items. File arrival alone does not prove a booked expense or a billable cost. |
 | D5 | [Getting started](https://developer.dinero.dk/documentation/getting-started/), “Visma Connect”; [Authorization](https://developer.dinero.dk/documentation/authorization/), “Forth” | OAuth is user-based, not organization-based. Scopes include read/write/offline access. A valid Pro trial/paid or Total license is required for the API except `/organizations`. Confirm the selected organization and current entitlement, not just successful login. |
 
+Dinero's upload description mentions owning-organization information, but its `FileSavedReadModel`
+schema defines only `FileGuid`. Verify the actual response during the consented pilot; do not rely
+on a returned organization field to establish ownership.
+
 The API evidence supports linking an existing remote voucher/file identity and, later, a narrowly
 controlled attachment transfer. It does not establish an e-conomic generic inbox endpoint, email
 forwarding address, provider-side deduplication guarantee, byte-preserving storage or retention after
