@@ -8,6 +8,7 @@ import { paymentCommands } from "./payments"
 import { creditNoteCommands } from "./credit-notes"
 import { reminderCommands } from "./reminders"
 import { recurringCommands } from "./recurring"
+import { paymentDetailsCommands } from "./payment-details"
 
 /** Every command that can be queued for approval must be listed here. */
 export const allCommands: readonly AnyCommandDefinition[] = [
@@ -20,4 +21,5 @@ export const allCommands: readonly AnyCommandDefinition[] = [
   ...creditNoteCommands,
   ...reminderCommands,
   ...recurringCommands,
+  ...paymentDetailsCommands,
 ]

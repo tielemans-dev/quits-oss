@@ -1,11 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import {
-  BANK_ACCOUNT_FIELDS,
+  PAYMENT_DETAILS_FIELDS,
   PAYMENT_NOTE_MAX_LENGTH,
   formatIban,
   paymentDetailsInputSchema,
-  type BankAccountField,
   type PaymentDetails,
+  type PaymentDetailsField,
   type PaymentDetailsInput,
 } from "@quits/contracts/payment-details"
 import { useActiveOrganizationId } from "../../lib/active-organization"
@@ -18,10 +18,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Textarea } from "../ui/textarea"
-
-/** The form's fields: the bank account's, and the organization-level payment note. */
-type PaymentDetailsField = BankAccountField | "note"
-const PAYMENT_DETAILS_FIELDS: readonly PaymentDetailsField[] = [...BANK_ACCOUNT_FIELDS, "note"]
 
 type Values = Record<PaymentDetailsField, string>
 type FieldError = "invalid" | "required"

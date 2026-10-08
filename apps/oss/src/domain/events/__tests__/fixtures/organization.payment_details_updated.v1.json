@@ -1,0 +1,26 @@
+{
+  "type": "organization.payment_details_updated",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/payment-details.ts",
+      "typeExpression": "\"organization.payment_details_updated\"",
+      "payloadExpression": "{ changes }",
+      "variant": "default",
+      "payload": {
+        "changes": [
+          {
+            "field": "iban",
+            "before": "****6243",
+            "after": "****1100"
+          },
+          {
+            "field": "note",
+            "before": null,
+            "after": "****"
+          }
+        ]
+      }
+    }
+  ]
+}

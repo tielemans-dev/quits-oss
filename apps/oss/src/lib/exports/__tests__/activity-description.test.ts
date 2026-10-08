@@ -22,6 +22,25 @@ describe("activity descriptions", () => {
     expect(sent({ number: "INV-1" })).toBe("Invoice INV-1 sent")
   })
 
+  it("names the payment details that changed, without showing their values", () => {
+    const event = {
+      type: "organization.payment_details_updated",
+      aggregateType: "organization",
+      payload: {
+        changes: [
+          { field: "iban", before: "****6243", after: "****1100" },
+          { field: "regNumber", before: "0040", after: "5000" },
+          { field: "note", before: null, after: "****" },
+        ],
+      },
+    }
+    expect(describeActivity(event, en)).toBe("Payment details changed: IBAN, Reg. no., Payment note")
+    expect(describeActivity(event, da)).toBe("Betalingsoplysninger ændret: IBAN, Reg.nr., Betalingsnote")
+    expect(describeActivity(event, en)).not.toContain("6243")
+    expect(aggregateLabel("organization", en)).toBe("Organization")
+    expect(aggregateLabel("organization", da)).toBe("Organisation")
+  })
+
   it("tolerates missing payload values and unknown event types", () => {
     expect(describeActivity({ type: "invoice.sent", aggregateType: "invoice", payload: {} }, en)).toBe("Invoice sent")
     expect(describeActivity({ type: "payment.recorded", aggregateType: "payment", payload: {} }, en)).toBe(

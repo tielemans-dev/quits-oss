@@ -10,3 +10,6 @@ import "./features/approvals"
 import "./features/agreement-expiry"
 
 import "./features/artifact-sweep"
+
+// Job handlers that are not tied to a scheduled task, so a tick can run what a command queued.
+import "./payment-details-notification"

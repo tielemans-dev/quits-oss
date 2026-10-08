@@ -5,6 +5,7 @@ import {
 } from "@quits/contracts/agreements"
 import { commandErrorSchema } from "@quits/contracts/agent"
 import { paymentMethodSchema } from "@quits/contracts/payments"
+import { PAYMENT_DETAILS_FIELDS } from "@quits/contracts/payment-details"
 import { z } from "zod"
 
 const s = z.string()
@@ -87,6 +88,8 @@ export const eventRegistry = {
   "recurring.run_failed": { version: 1, schema: z.object({ runDate: s, error: commandError }).strict() },
   "recurring.auto_send_failed": { version: 1, schema: z.object({ invoiceId: s, error: commandError }).strict() },
   "reminders.policy_updated": { version: 1, schema: z.object({ enabled: z.boolean(), offsetsDays: z.array(i) }).strict() },
+  // Masked before/after values only (see lib/payment-details-audit.ts): the log never holds a full IBAN or account number.
+  "organization.payment_details_updated": { version: 1, schema: z.object({ changes: z.array(z.object({ field: z.enum(PAYMENT_DETAILS_FIELDS), before: nullableString, after: nullableString }).strict()).min(1) }).strict() },
   "agreement.draft_created": { version: 2, schema: z.object({ title: s, contactId: s, totalGross: n, sourceQuoteId: nullableString }).strict() },
   "agreement_template.created": { version: 1, schema: z.object({ name: s, isDefault: z.boolean() }).strict() },
   "agreement_template.updated": { version: 1, schema: fields },

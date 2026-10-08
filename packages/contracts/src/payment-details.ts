@@ -173,6 +173,10 @@ export const bankAccountSchema = z.object(bankAccountShape).superRefine((value, 
 export type BankAccountInput = z.input<typeof bankAccountSchema>
 export type BankAccount = z.output<typeof bankAccountSchema>
 
+/** Every field of the payment details: the bank account's, then the organization-level note. */
+export const PAYMENT_DETAILS_FIELDS = [...BANK_ACCOUNT_FIELDS, "note"] as const
+export type PaymentDetailsField = (typeof PAYMENT_DETAILS_FIELDS)[number]
+
 /** True when at least one account field is filled in. */
 export function hasBankAccount(
   account: Partial<Record<BankAccountField, string | null | undefined>> | null | undefined
