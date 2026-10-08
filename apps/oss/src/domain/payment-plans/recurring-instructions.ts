@@ -29,6 +29,26 @@ export function previewRuns(instruction: RecurringInstruction, from: string, cou
 const intervalDays = (instruction: RecurringInstruction) =>
   instruction.intervalCount * { week: 7, month: 365.25 / 12, year: 365.25 }[instruction.intervalUnit]
 
+/** Consent is independent of the UI preview length. Unprovable end-kind changes are conservative. */
+function termConsentReason(current: RecurringInstruction, next: RecurringInstruction): string | null {
+  const firstAfter = previewRuns(next, next.effectiveFrom, 1)[0]
+  if (!firstAfter) return null
+  const firstBefore = previewRuns(current, next.effectiveFrom, 1)[0]
+  if (!firstBefore) return "Restarts an instruction with no remaining authorized runs"
+  if (current.end.type === "none") return null
+  if (next.end.type === "none") return "Removes the agreed end condition"
+  if (current.end.type !== next.end.type) return "Changes the kind of end condition; consent is required to replace the agreed limit"
+  if (current.end.type === "on_date" && next.end.type === "on_date" && next.end.endsAt > current.end.endsAt)
+    return "Extends the agreed end date"
+  if (current.end.type === "after_runs" && next.end.type === "after_runs") {
+    // Counts belong to each version's effective date, not the lifetime instruction. Keeping the
+    // same count on a later version can therefore add runs. Compare all remaining authorized runs.
+    const remaining = previewRuns(current, next.effectiveFrom, current.end.runs).length
+    if (next.end.runs > remaining) return "Adds runs beyond the remaining agreed count"
+  }
+  return null
+}
+
 export type RecurringImpact = {
   refusals: PlanRefusal[]
   /** Runs generated before the effective date keep the version they were generated under. */
@@ -75,7 +95,18 @@ export function recurringAmendmentImpact(current: RecurringInstruction, next: Re
     reasons.push(`Price rises from ${formatMinor(current.periodGrossMinor, current.currency)} to ${formatMinor(next.periodGrossMinor, next.currency)} ${next.currency} per period`)
   if (intervalDays(next) < intervalDays(current)) reasons.push("Invoices come more often")
   if (next.dueInDays < current.dueInDays) reasons.push("Payment terms are shorter")
-  if (before[0] && after[0] && after[0].runDate < before[0].runDate) reasons.push(`The next invoice comes earlier, on ${after[0].runDate}`)
+  const firstBefore = previewRuns(current, next.effectiveFrom, 1)[0], firstAfter = previewRuns(next, next.effectiveFrom, 1)[0]
+  if (firstBefore && firstAfter && firstAfter.runDate < firstBefore.runDate) reasons.push(`The next invoice comes earlier, on ${firstAfter.runDate}`)
+  const termReason = termConsentReason(current, next)
+  if (termReason) reasons.push(termReason)
+
+  const renewal = authority && authority.status === "active" && current.collection.kind === "saved_method" && current.collection.authorityId === authority.authorityId
+    ? authorityRenewal(authority, previewRuns(next, next.effectiveFrom, 3).map((run) => ({ key: { kind: "date" as const, date: run.runDate }, amount: BigInt(run.periodGrossMinor) })), next.currency)
+    : null
+  if (renewal && termReason) {
+    renewal.renewalRequired = true
+    renewal.reasons.push("The amended term needs authority for additional or changed service obligations")
+  }
 
   return {
     refusals,
@@ -84,8 +115,6 @@ export function recurringAmendmentImpact(current: RecurringInstruction, next: Re
     futureRuns,
     consent: { required: reasons.length > 0, reasons },
     requiresHumanActivation: current.delivery === "draft_only" && next.delivery === "auto_send",
-    authority: authority && authority.status === "active" && current.collection.kind === "saved_method" && current.collection.authorityId === authority.authorityId
-      ? authorityRenewal(authority, after.map((run) => ({ key: { kind: "date" as const, date: run.runDate }, amount: BigInt(run.periodGrossMinor) })), next.currency)
-      : null,
+    authority: renewal,
   }
 }

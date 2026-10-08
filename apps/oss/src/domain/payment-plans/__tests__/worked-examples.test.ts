@@ -54,7 +54,7 @@ describe("example A: a fixed-price website split 50/50 into two sale invoices", 
 
   it("refuses a second invoice for a step and an invoice outside the plan", () => {
     const inv1 = { invoiceId: "INV-0001", stepId: "first_half", grossMinor: dkk("12500"), taxMinor: dkk("2500"), creditedMinor: "0" }
-    expect(obligationPosition({ ...base, receipts: [], saleInvoices: [inv1, { ...inv1, invoiceId: "INV-0009" }] })).toMatchObject({ ok: false, refusals: [{ code: "duplicate_step" }] })
+    expect(obligationPosition({ ...base, receipts: [], saleInvoices: [inv1, { ...inv1, invoiceId: "INV-0009" }] })).toMatchObject({ ok: false, refusals: expect.arrayContaining([expect.objectContaining({ code: "duplicate_step" })]) })
     expect(obligationPosition({ ...base, receipts: [], saleInvoices: [{ invoiceId: "INV-0010", stepId: "full_price", grossMinor: dkk("25000"), taxMinor: dkk("5000"), creditedMinor: "0" }] }))
       .toMatchObject({ ok: false, refusals: [{ code: "stale_plan_reference" }] })
     // A fully credited step invoice may be replaced by one new invoice for the same step.
@@ -102,7 +102,7 @@ describe("example B: a fixed-price service with a 30% advance", () => {
     expect(partial).toMatchObject({ advanceAvailableMinor: 500_000n, receivableMinor: 4_000_000n, remainingMinor: 3_500_000n })
     expect(obligationPosition({ obligation, plan: v1, saleInvoices: [finalInvoice], refunds: [],
       receipts: [{ receiptId: "r_adv", method: "card", grossMinor: dkk("15000"), for: { kind: "advance", advanceId: "advance" } }],
-      applications: [{ receiptId: "r_adv", invoiceId: "INV-0003", grossMinor: dkk("15000") }, { receiptId: "r_adv", invoiceId: "INV-0003", grossMinor: dkk("1") }] }))
+      applications: [{ receiptId: "r_adv", invoiceId: "INV-0003", grossMinor: dkk("15001") }] }))
       .toMatchObject({ ok: false, refusals: [{ code: "over_application" }] })
   })
 

@@ -204,6 +204,7 @@ export type PlanRefusalCode =
   | "stale_plan_reference" | "amount_requires_plan_amendment" | "earlier_due_requires_consent" | "recurring_cannot_split_fixed_obligation"
   | "no_pending_amendment" | "consent_does_not_match" | "mixed_step_sources" | "vat_groups_unavailable"
   | "received_advance_immutable" | "double_counted" | "over_application" | "trigger_not_fulfillable"
+  | "invalid_position" | "duplicate_position_entry"
   | "exception_reason_required" | "effective_date_in_past" | "duplicate_instruction"
 export type PlanRefusal = { code: PlanRefusalCode; detail: string }
 export const refuse = (code: PlanRefusalCode, detail: string): PlanRefusal => ({ code, detail })

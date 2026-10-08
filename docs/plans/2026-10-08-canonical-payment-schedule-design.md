@@ -67,6 +67,31 @@ becoming authoritative.
   *communication pause* stops reminders and messages (today's `Invoice.remindersPaused`); an
   *authority suspension or revocation* stops charges. Pausing one never pauses another.
 
+### Invoice corrections and obligation reductions
+
+An **invoice correction** reverses a document without forgiving the agreed debt. An
+**obligation reduction** is an explicit concession that forgives part of that debt. A credit
+note can contain either or both; the amount credited alone does not identify the business effect.
+
+The position prototype accepts each invoice's cumulative `creditedMinor` and the subset
+`obligationReductionMinor`. The latter defaults to zero, so a credit never silently forgives
+debt. This subset belongs to the supplied original obligation version. Do not carry it forward
+again after an agreement revision already incorporates the reduction. A future persistence
+adapter must preserve the concession evidence and translate that revision explicitly.
+
+For an agreed DKK 100.00, fully crediting the original DKK 100.00 invoice and issuing an unpaid
+replacement leaves DKK 100.00 receivable and DKK 100.00 remaining. Without the replacement,
+DKK 100.00 remains uninvoiced. Crediting DKK 25.00 as a concession leaves DKK 75.00 payable,
+receivable and remaining. A full concession leaves zero payable and prevents a replacement
+from rebilling the forgiven debt. Tests execute all four cases. Corrected invoices retain their
+original receipts; an overpayment on one invoice and debt on its replacement remain separately
+visible until a later posting resolves them. The prototype does not transfer or refund direct
+invoice payments.
+
+`taxMinor` is the original invoice tax. Full credits reverse it in full. Partial credits require
+`creditedTaxMinor` from the frozen credit calculation; the prototype does not guess a tax rate.
+These invoice credits do not decide the tax treatment of advances, which still belongs to #24.
+
 ## Which instructions may coexist
 
 | Combination | Relation | Rule |
@@ -96,14 +121,15 @@ plan), and the advance row by the arrangement schema.
    A v2 payment-schedule line can never be a billing step.
 4. Advances never exceed the billable obligation and are never revenue. A receipt is for an invoice
    or for an advance, never both. Applied plus refunded advance money never exceeds what was
-   received; applications to an invoice never exceed what it bills.
+   received; applications to an invoice never exceed its credited balance less direct payments.
 5. Collection installments total the invoice's payable gross, with strictly increasing due dates
    no earlier than the issue date.
 6. Issued invoices, paid installments, received advances and prior acceptance evidence never
    change. A plan edit that would change them is refused; corrections use credit notes, refunds or
    a new agreement revision ([#42](https://github.com/tielemans-dev/quits-oss/issues/42)).
 7. A sale invoice from a plan stores `{ planId, version, stepId }`. One live invoice per step; a
-   fully credited step invoice may be replaced by one new invoice for that step.
+   fully credited step invoice may be replaced by one new invoice for that step only when this
+   does not rebill an obligation reduction.
 8. Automations reference the current version; they never propose one (`automation_cannot_amend`).
    Agent proposals follow the existing approval rules for outward-facing commands.
 9. Money is integer minor units at the currency's exponent (0 to 2). Sub-minor input is refused,
@@ -124,6 +150,36 @@ rounding rule; it reuses the two the ledger-ready money model already fixed:
   payable rounding follow the credit-note cumulative entitlement rule (`creditComponents`). The
   shares together reproduce every frozen group component exactly, including inclusive-price
   payable rounding.
+
+### Position snapshot validation and conservation
+
+`positionInputSchema` parses every amount before arithmetic. The calculator then validates the
+plan against the exact obligation owner, revision or artifact, currency, steps and totals.
+The caller must obtain the authoritative plan and settlement snapshot atomically. A pure
+calculator cannot discover a newer database version; `checkPlanRef` and the existing adoption
+compare-and-set checks remain required at command boundaries.
+
+Invoice ids and receipt ids must be unique. Applications are cumulative totals keyed by the
+receipt/invoice pair; refunds are cumulative totals keyed by receipt. These arrays are not
+append-only event feeds. An adapter must deduplicate posted events by their ledger identities
+before aggregation. Duplicate aggregate keys, missing targets, malformed or negative amounts,
+zero receipt/application/refund amounts, excessive credits, and reductions exceeding credits
+are refused. Only advance receipts can fund applications and refunds here. An application
+must name an invoice in this obligation and fit its unpaid balance after direct payments.
+Advance overpayments may remain available and are reported explicitly; they are not revenue.
+
+For every successful snapshot:
+
+- Received advances equal applied advances plus refunded advances plus available advances.
+- Payable obligation equals billable gross less explicit obligation reductions.
+- Remaining equals payable obligation less direct receipts less advances retained after refunds.
+- Remaining also equals uninvoiced plus invoice receivables less invoice overpayments less
+  available advances. Applications move money between buckets without changing remaining.
+
+Concessions cannot exceed their credited amounts, and net invoices plus concessions cannot
+exceed a step's amount. Partial correction and rebilling with changed scope require an explicit
+agreement/plan revision; this prototype only replaces an entire credited step at its original
+amount. It does not infer a scope amendment from a credit note.
 
 ## Versions, concurrency and consent
 
@@ -238,6 +294,26 @@ claims AGR-1 is refused. Raising the price to DKK 1,800.00 net (2,250.00 gross) 
 keeps INV-0004 and INV-0005 unchanged, rebuilds a January draft if one was already generated,
 previews the next three runs at 2,250.00, and requires customer consent. Switching collection to
 a saved method is refused as an amendment: it needs an authority and its own consent.
+
+### Recurring term amendments
+
+Consent checks use the agreed term independently of the displayed preview count. Extending an
+end date, removing a finite end, adding runs beyond the remaining agreed count, or restarting
+an instruction with no remaining runs requires consent. Switching between a date limit and a
+count limit also requires consent conservatively, even when the first few dates match. A later
+end date requires consent even if the cadence produces no extra run in that small extension.
+An unchanged or shortened date limit, a reduced remaining count, or adding a finite end to an
+open-ended instruction needs no term consent. Price, cadence and earlier-payment checks still
+apply separately.
+
+`after_runs` counts from each version's `effectiveFrom`, including authorized periods whose
+invoices have not yet been generated. For October through December with a count of three, a
+November amendment must specify two remaining runs to retain the December end. Keeping three
+adds January and requires consent. A new run after either a date or count limit has expired is
+a restart, including when the new price is lower. Historical instructions and issued invoices
+remain unchanged; the new instruction identifies governed drafts for regeneration. These rules
+are a conservative proposal, pending legal review. Term consent also requires renewal of any
+saved-method authority; it never enables charging by itself.
 
 ## Recurring generation versus saved-method charging
 
