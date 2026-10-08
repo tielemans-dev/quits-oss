@@ -1,6 +1,12 @@
+import type { z } from "zod"
+import { agreementStatusSchema } from "@quits/contracts/agreements"
+import { agreementOfferTotals } from "../../lib/agreements/offer-totals"
 import type { PublicAgreementDto } from "../../lib/agreements/public"
+import type { PublicSeller } from "../../lib/documents/public-presentation"
+import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
 import { formatCurrency, formatDate, formatNumber } from "../../lib/i18n/format"
+import { PublicSellerHeader } from "../documents/public-seller-header"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
@@ -8,6 +14,7 @@ import { Textarea } from "../ui/textarea"
 import { AcceptanceRecord } from "./acceptance-record"
 
 export function PublicAgreementPage({
+  seller,
   document,
   scope,
   token,
@@ -21,6 +28,7 @@ export function PublicAgreementPage({
   busy,
   error,
 }: {
+  seller: PublicSeller
   document: PublicAgreementDto
   scope: "read" | "decide"
   token: string
@@ -37,12 +45,14 @@ export function PublicAgreementPage({
   const { t, locale } = useI18n()
   const { snapshot } = document
   const v2 = "offerFormatVersion" in snapshot ? snapshot : null
+  const totals = agreementOfferTotals(snapshot)
   // Money and dates follow the language the page is shown in, which is the offer's own locale.
   const money = (amount: string) => formatCurrency(Number(amount), snapshot.currency, locale)
   // Validity, agreed and expected dates are calendar dates: shown as stored, not shifted by a timezone.
   const calendarDate = (value: string) => formatDate(value, locale, "UTC")
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-12 grid min-w-0 gap-6 [overflow-wrap:anywhere]">
+      <PublicSellerHeader seller={seller} />
       <header>
         <p className="text-sm text-muted-foreground">
           {t("agreements.document")} {document.number}
@@ -90,16 +100,16 @@ export function PublicAgreementPage({
         ))}
         <p>
           {t("agreements.subtotal")}:{" "}
-          {money(v2?.serviceTotal.net ?? snapshot.subtotalNet)}
+          {money(totals.net)}
         </p>
         <p>
           {t("agreements.tax")}:{" "}
-          {money(v2?.serviceTotal.tax ?? snapshot.totalTax)}
+          {money(totals.tax)}
         </p>
-        {v2 && Number(v2.serviceTotal.payableRounding) !== 0 && <p>{t("agreements.payableRounding")}: {money(v2.serviceTotal.payableRounding)}</p>}
+        {totals.payableRounding && <p>{t("agreements.payableRounding")}: {money(totals.payableRounding)}</p>}
         <p>
-          {t(v2 ? "agreements.serviceTotal" : "agreements.total")}:{" "}
-          {money(v2?.serviceTotal.gross ?? snapshot.totalGross)}
+          {t(totals.isV2 ? "agreements.serviceTotal" : "agreements.total")}:{" "}
+          {money(totals.gross)}
         </p>
         {v2 && <section className="grid gap-3">
           <h2 className="text-xl font-semibold">{t("agreements.paymentSchedule")}</h2>
@@ -180,17 +190,22 @@ export function PublicAgreementPage({
   )
 }
 
-const AGREEMENT_STATUSES = [
-  "draft",
-  "sent",
-  "accepted",
-  "declined",
-  "expired",
-  "completed",
-  "cancelled",
-] as const
+/**
+ * Typed against the contract's status enum: a new status without a label fails typecheck here
+ * instead of reaching the page as a raw stored value.
+ */
+const AGREEMENT_STATUS_LABELS = {
+  draft: "public.agreement.status.draft",
+  sent: "public.agreement.status.sent",
+  accepted: "public.agreement.status.accepted",
+  declined: "public.agreement.status.declined",
+  expired: "public.agreement.status.expired",
+  completed: "public.agreement.status.completed",
+  cancelled: "public.agreement.status.cancelled",
+} as const satisfies Record<z.infer<typeof agreementStatusSchema>, TranslationKey>
 
 function agreementStatusLabel(status: string, t: ReturnType<typeof useI18n>["t"]) {
-  const known = AGREEMENT_STATUSES.find((candidate) => candidate === status)
-  return known ? t(`public.agreement.status.${known}`) : status
+  const known = agreementStatusSchema.safeParse(status)
+  // A stored value the contract does not know (a newer row read by an older page) stays visible.
+  return known.success ? t(AGREEMENT_STATUS_LABELS[known.data]) : status
 }

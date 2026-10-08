@@ -1,29 +1,63 @@
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { z } from "zod"
+import { readAgreementOfferSnapshot } from "@quits/contracts/agreements"
 import { invalidLinkLocale } from "../documents/public-invalid-link"
+import { publicLogoPath } from "../documents/public-logo"
+import { resolvePublicPresentation } from "../documents/public-presentation"
+import type { loadPublicAgreementByToken } from "./public-access"
 import { publicAgreementDto, publicDeliverableDto } from "./public"
+
+/**
+ * An agreement opened from a link, as its page shows it: in the language the offer was written in
+ * and with the seller's identity, both through the same rules as the invoice and quote pages.
+ * `token` is the link the page was opened with: an uploaded logo is served from its logo route.
+ */
+export function serializePublicAgreementSession(
+  session: NonNullable<Awaited<ReturnType<typeof loadPublicAgreementByToken>>>,
+  token: string,
+) {
+  const { agreement, payload } = session
+  const snapshot = readAgreementOfferSnapshot(agreement.offerSnapshot)
+  const { locale, seller } = resolvePublicPresentation({
+    document: {
+      locale: snapshot.locale,
+      timezone: snapshot.timezone,
+      sellerSnapshot: snapshot.sellerSnapshot,
+    },
+    settings: agreement.organization?.settings,
+    logoPath: publicLogoPath("a", token),
+  })
+  if (payload.scope === "sign_off") {
+    const line = agreement.deliverables.find((current) => current.id === payload.deliverableId)!
+    return {
+      kind: "ready",
+      scope: "sign_off",
+      locale,
+      seller,
+      deliverable: publicDeliverableDto(agreement, line),
+    } as const
+  }
+  return {
+    kind: "ready",
+    scope: payload.scope,
+    locale,
+    seller,
+    document: publicAgreementDto(agreement),
+    readLink: null,
+  } as const
+}
 
 export const getPublicAgreementSession = createServerFn({ method: "GET" })
   .inputValidator(z.object({ token: z.string().min(1).max(4096) }).strict())
   .handler(async ({ data }) => {
     const { loadPublicAgreementByToken } = await import("./public-access")
     const session = await loadPublicAgreementByToken(data.token)
-    // No document to take a language from: answer in the visitor's.
     if (!session) {
+      // No document to take a language from: answer in the visitor's.
       return { kind: "invalid", locale: invalidLinkLocale() } as const
     }
-    if (session.payload.scope === "sign_off") {
-      const deliverableId = session.payload.deliverableId
-      const line = session.agreement.deliverables.find(line => line.id === deliverableId)!
-      return { kind: "ready", scope: "sign_off", deliverable: publicDeliverableDto(session.agreement, line) } as const
-    }
-    return {
-      kind: "ready",
-      document: publicAgreementDto(session.agreement),
-      scope: session.payload.scope,
-      readLink: null,
-    } as const
+    return serializePublicAgreementSession(session, data.token)
   })
 export const submitPublicAgreementDecision = createServerFn({ method: "POST" })
   // Business validation follows the rate limiter, so refused decisions still count.

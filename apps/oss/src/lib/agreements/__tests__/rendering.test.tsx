@@ -73,6 +73,7 @@ describe("agreement page, PDF and email share the restricted terms", () => {
     const page = renderToStaticMarkup(
       <I18nProvider>
         <PublicAgreementPage
+          seller={{ name: null, logo: null }}
           document={{
             expectedDates: [],
             number: "AGR-1",

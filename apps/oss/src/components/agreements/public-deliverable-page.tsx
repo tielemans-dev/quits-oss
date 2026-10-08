@@ -1,14 +1,16 @@
 import { useState } from "react"
 import type { PublicDeliverableDto } from "../../lib/agreements/public"
 import { submitPublicDeliverableDecision } from "../../lib/agreements/public-session"
+import type { PublicSeller } from "../../lib/documents/public-presentation"
 import { formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
+import { PublicSellerHeader } from "../documents/public-seller-header"
 import { Button } from "../ui/button"
 import { Label } from "../ui/label"
 import { Textarea } from "../ui/textarea"
 import { Badge } from "../ui/badge"
 
-export function PublicDeliverablePage({ token, initial }: { token: string; initial: PublicDeliverableDto }) {
+export function PublicDeliverablePage({ token, initial, seller }: { token: string; initial: PublicDeliverableDto; seller: PublicSeller }) {
   const { t, locale } = useI18n()
   const [line, setLine] = useState(initial)
   const [note, setNote] = useState("")
@@ -32,6 +34,7 @@ export function PublicDeliverablePage({ token, initial }: { token: string; initi
   }
   if (invalid) return <main className="mx-auto max-w-lg px-4 py-20"><h1 className="text-2xl font-semibold">{t("agreements.invalidLink")}</h1></main>
   return <main className="mx-auto max-w-2xl px-4 py-12 grid gap-6 [overflow-wrap:anywhere]">
+    <PublicSellerHeader seller={seller} />
     <header className="grid gap-2">
       <p>{t("agreements.document")} {line.agreementNumber}: {line.agreementTitle}</p>
       <h1 className="text-3xl font-semibold">{line.title}</h1>

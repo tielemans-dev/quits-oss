@@ -59,10 +59,13 @@ const document: PublicAgreementDto = {
   declineReason: null,
 }
 
+const seller = { name: "Acme ApS", logo: "/a/fixture/logo" }
+
 function agreementPage(locale: string, doc: PublicAgreementDto = document) {
   return renderToStaticMarkup(
     <LocalizedDocument locale={locale}>
       <PublicAgreementPage
+        seller={seller}
         document={doc}
         scope="read"
         token="fixture"
@@ -99,6 +102,17 @@ describe("public agreement page in Danish", () => {
     expect(agreementPage("da-DK", { ...document, status: "completed" })).toContain("<p>Gennemført</p>")
   })
 
+  it("shows the seller's logo and name above the agreement", () => {
+    const html = agreementPage("da-DK")
+
+    expect(html).toContain('src="/a/fixture/logo"')
+    expect(html.indexOf("/a/fixture/logo")).toBeLessThan(html.indexOf("Hjemmeside"))
+  })
+
+  it("shows a status the contract does not know as stored rather than failing", () => {
+    expect(agreementPage("da-DK", { ...document, status: "archived" })).toContain("<p>archived</p>")
+  })
+
   it("uses the same layout in English with US formats", () => {
     const html = agreementPage("en-US", {
       ...document,
@@ -114,7 +128,6 @@ describe("public deliverable page", () => {
   const deliverable: PublicDeliverableDto = {
     agreementNumber: "AGR-1",
     agreementTitle: "Hjemmeside",
-    locale: "da-DK",
     title: "Design",
     description: "Layout",
     status: "delivered",
@@ -130,7 +143,7 @@ describe("public deliverable page", () => {
   it("writes the agreed and expected dates in the agreement's language", () => {
     const html = renderToStaticMarkup(
       <LocalizedDocument locale="da-DK">
-        <PublicDeliverablePage token="fixture" initial={deliverable} />
+        <PublicDeliverablePage token="fixture" initial={deliverable} seller={seller} />
       </LocalizedDocument>
     )
 
@@ -138,5 +151,16 @@ describe("public deliverable page", () => {
     expect(html).toContain("Forventet dato: 15. april 2027")
     expect(html).toContain("Leveret")
     expect(html).not.toContain("2027-03-01")
+  })
+
+  it("shows the seller's logo and name above the delivery", () => {
+    const html = renderToStaticMarkup(
+      <LocalizedDocument locale="da-DK">
+        <PublicDeliverablePage token="fixture" initial={deliverable} seller={seller} />
+      </LocalizedDocument>
+    )
+
+    expect(html).toContain('src="/a/fixture/logo"')
+    expect(html).toContain("Acme ApS")
   })
 })

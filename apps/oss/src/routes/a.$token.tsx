@@ -8,21 +8,32 @@ import { PublicDeliverablePage } from "../components/agreements/public-deliverab
 import { PublicAgreementPage } from "../components/agreements/public-agreement-page"
 import { LocalizedDocument } from "../components/documents/localized-document"
 import { useI18n } from "../lib/i18n/react"
+import { translate } from "../lib/i18n/translate"
 export const Route = createFileRoute("/a/$token")({
   loader: ({ params }) => getPublicAgreementSession({ data: { token: params.token } }),
+  // The tab shows the agreement and its sender, never the product name.
+  head: ({ loaderData }) => {
+    if (!loaderData) return {}
+    if (loaderData.kind === "invalid") {
+      return { meta: [{ title: translate("agreements.invalidLink", loaderData.locale) }] }
+    }
+    const number =
+      loaderData.scope === "sign_off"
+        ? loaderData.deliverable.agreementNumber
+        : loaderData.document.number
+    const title = [`${translate("agreements.document", loaderData.locale)} ${number}`, loaderData.seller.name]
+      .filter(Boolean)
+      .join(" · ")
+    return { meta: [{ title }] }
+  },
   component: AgreementRoute,
 })
 function AgreementRoute() {
   const initial = Route.useLoaderData()
-  // The page speaks the language the agreement was written in, not the visitor's browser's.
-  const locale =
-    initial.kind === "invalid"
-      ? initial.locale
-      : initial.scope === "sign_off"
-        ? initial.deliverable.locale
-        : initial.document.snapshot.locale
+  // The page speaks the language the agreement was written in, not the visitor's browser's. The
+  // server decides it and it stays fixed for the life of the page, whatever a later state carries.
   return (
-    <LocalizedDocument locale={locale}>
+    <LocalizedDocument locale={initial.locale}>
       <AgreementRouteContent />
     </LocalizedDocument>
   )
@@ -69,9 +80,13 @@ function AgreementRouteContent() {
         <h1 className="text-2xl font-semibold">{t("agreements.invalidLink")}</h1>
       </main>
     )
-  if (state.scope === "sign_off") return <PublicDeliverablePage token={token} initial={state.deliverable} />
+  // The seller does not change with a decision; the logo address belongs to the link opened.
+  const seller = initial.kind === "ready" ? initial.seller : { name: null, logo: null }
+  if (state.scope === "sign_off")
+    return <PublicDeliverablePage token={token} initial={state.deliverable} seller={seller} />
   return (
     <PublicAgreementPage
+      seller={seller}
       document={state.document}
       scope={state.scope}
       token={state.readLink?.token ?? token}
