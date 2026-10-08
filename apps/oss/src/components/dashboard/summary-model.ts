@@ -151,6 +151,30 @@ export function presentChart(summary: Summary): ChartModel {
   }
 }
 
+/**
+ * The invoice drafts that are still drafts, newest first, as far as the summary can tell. It has
+ * no list of drafts, so they are found in the activity (a draft created and not since deleted or
+ * sent) and in the attention list (drafts older than a week). Activity holds the latest eight
+ * events, so a long-forgotten draft may be missing; the page never claims a count it cannot know.
+ */
+export function openInvoiceDrafts(summary: Pick<Summary, "activity" | "attention">): string[] {
+  const gone = new Set<string>()
+  const drafts: string[] = []
+  for (const event of summary.activity) {
+    if (event.aggregateType !== "invoice") continue
+    if (["invoice.draft_deleted", "invoice.issued", "invoice.sent"].includes(event.type)) gone.add(event.aggregateId)
+    if (event.type === "invoice.draft_created" && !gone.has(event.aggregateId) && !drafts.includes(event.aggregateId)) {
+      drafts.push(event.aggregateId)
+    }
+  }
+  for (const item of summary.attention) {
+    if (item.kind === "invoice" && item.reason === "draft_older_than_7_days" && !drafts.includes(item.documentId)) {
+      drafts.push(item.documentId)
+    }
+  }
+  return drafts
+}
+
 /** Streaks of one are just an invoice that was paid; only a run is worth a line. */
 export const STREAK_MINIMUM = 2
 

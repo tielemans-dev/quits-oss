@@ -1,8 +1,5 @@
 export const daDashboardMessages = {
   "dashboard.loading": "Indlæser overblikket...",
-  "dashboard.subtitle.active.one": "1 faktura venter på betaling",
-  "dashboard.subtitle.active.other": "{count} fakturaer venter på betaling",
-  "dashboard.subtitle.kvit": "Alt er betalt. Du er kvit.",
   "dashboard.subtitle.start": "Her samles dine penge, så snart du har sendt en faktura.",
 
   "dashboard.error.title": "Overblikket kunne ikke indlæses",
@@ -57,7 +54,13 @@ export const daDashboardMessages = {
   "dashboard.remind.sent": "Påmindelse sendt",
   "dashboard.remind.pending": "Påmindelsen er sat i kø",
   "dashboard.remind.unconfirmed": "Levering ikke bekræftet",
-  "dashboard.remind.error": "Påmindelsen kunne ikke sendes",
+  "dashboard.remind.error": "Påmindelsen blev ikke sendt",
+  "dashboard.remind.error.alreadyReminded": "Der er allerede sendt en påmindelse i dag",
+  "dashboard.remind.error.noRecipient": "Kunden har ingen e-mailadresse",
+  "dashboard.remind.error.emailUnavailable": "E-mail er ikke sat op endnu",
+  "dashboard.remind.error.notRemindable": "Fakturaen er ikke åben længere",
+  "dashboard.remind.error.forbidden": "Din rolle må ikke sende påmindelser",
+  "dashboard.remind.error.notFound": "Fakturaen findes ikke længere",
 
   "dashboard.incoming.title": "På vej ind",
   "dashboard.incoming.all": "Alle fakturaer",
@@ -119,5 +122,6 @@ export const daDashboardMessages = {
   "dashboard.start.description":
     "Så snart den første faktura er sendt, viser Quits her, hvor mange penge der er på vej ind.",
   "dashboard.start.action.invoices": "Se fakturaer",
-  "dashboard.start.action.new": "Ny faktura",
+  "dashboard.start.action.continue": "Fortsæt kladden",
+  "dashboard.start.action.drafts": "Se kladder",
 } as const

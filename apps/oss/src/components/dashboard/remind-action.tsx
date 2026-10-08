@@ -3,7 +3,28 @@ import { Check, Loader2 } from "lucide-react"
 import { Button } from "../ui/button"
 import { cn } from "../../lib/utils"
 import { useI18n } from "../../lib/i18n/react"
-import type { ReminderState } from "./use-reminders"
+import type { TranslationKey } from "../../lib/i18n/messages"
+import type { ReminderFailure, ReminderState } from "./use-reminders"
+
+const FAILURE_KEY = {
+  alreadyReminded: "dashboard.remind.error.alreadyReminded",
+  noRecipient: "dashboard.remind.error.noRecipient",
+  emailUnavailable: "dashboard.remind.error.emailUnavailable",
+  notRemindable: "dashboard.remind.error.notRemindable",
+  forbidden: "dashboard.remind.error.forbidden",
+  notFound: "dashboard.remind.error.notFound",
+  unknown: "dashboard.remind.error",
+} as const satisfies Record<ReminderFailure, TranslationKey>
+
+/** The refusal in words, from the catalogue: the server's own text is never shown. */
+export function ReminderFailureNote({ failure, className }: { failure: ReminderFailure; className?: string }) {
+  const { t } = useI18n()
+  return (
+    <span role="alert" className={cn("text-tone-danger text-xs", className)}>
+      {t(FAILURE_KEY[failure])}
+    </span>
+  )
+}
 
 /**
  * The reminder action of a row. Idle, it is a button; while sending, a disabled one; once sent, a
@@ -63,11 +84,7 @@ export function RemindAction({
         {sending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
         {sending ? t("dashboard.remind.sending") : t("dashboard.attention.action.remind")}
       </Button>
-      {state?.status === "error" ? (
-        <span role="alert" className="text-tone-danger text-xs">
-          {state.message ?? t("dashboard.remind.error")}
-        </span>
-      ) : null}
+      {state?.status === "error" ? <ReminderFailureNote failure={state.failure} /> : null}
     </span>
   )
 }

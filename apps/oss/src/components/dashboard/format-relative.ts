@@ -1,4 +1,5 @@
 import { normalizeLocale, normalizeTimeZone } from "../../lib/i18n/locale"
+import { resolveLanguage } from "../../lib/i18n/translate"
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -25,6 +26,31 @@ export function formatRelativeTime(
   return new Intl.DateTimeFormat(resolved, { day: "numeric", month: "short", timeZone: zone }).format(
     new Date(iso)
   )
+}
+
+/**
+ * The day the summary was taken, in the organization's time zone, as a heading line: "Torsdag 8.
+ * oktober" or "Thursday 8 October". Built from the parts of the date rather than a locale pattern,
+ * so it reads the same in every ICU version ("torsdag den 8. oktober" in some).
+ */
+export function formatLongDate(
+  iso: string,
+  locale: string | null | undefined,
+  timeZone: string | null | undefined
+): string {
+  const danish = resolveLanguage(locale) === "da"
+  const parts = new Intl.DateTimeFormat(danish ? "da-DK" : "en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: normalizeTimeZone(timeZone),
+  }).formatToParts(new Date(iso))
+  const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? ""
+  const weekday = part("weekday")
+  const text = danish
+    ? `${weekday} ${part("day")}. ${part("month")}`
+    : `${weekday} ${part("day")} ${part("month")}`
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 /** "oktober", for the month the summary was taken in. */

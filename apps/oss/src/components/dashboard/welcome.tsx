@@ -5,6 +5,7 @@ import { useI18n } from "../../lib/i18n/react"
 import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
 import { Panel } from "../kvit/panel"
+import { DocLink } from "./doc-link"
 import { DoubleRule } from "./double-rule"
 
 /** The same two buttons on both start states, so the first action is never a hunt. */
@@ -37,7 +38,7 @@ function GhostDashboard() {
         <span className="mt-4 flex h-1.5 gap-0.5 rounded-full">
           <span className="w-1/3 rounded-full bg-white" />
           <span className="w-1/2 rounded-full bg-white/40" />
-          <span className="w-1/6 rounded-full bg-[#ffa396]" />
+          <span className="w-1/6 rounded-full bg-[#ffbfb5]" />
         </span>
       </div>
       <div className="border-hairline bg-panel flex h-16 items-end gap-1 rounded-xl border p-3">
@@ -111,9 +112,11 @@ export function FirstRun() {
 
 /**
  * In between: drafts or other first steps exist, but nothing has been sent, so no money is owed
- * and a "0,00 kr." would say nothing. It stands where the hero will be and points at the next step.
+ * and a "0,00 kr." would say nothing. It stands where the hero will be and points at the next step:
+ * with one draft, to carry on with it; with several, to the list of them; with none known, to the
+ * invoices. The top bar already has "Ny", so this card does not offer it again.
  */
-export function GettingStarted({ className }: { className?: string }) {
+export function GettingStarted({ drafts, className }: { drafts: string[]; className?: string }) {
   const { t } = useI18n()
   return (
     <Panel data-slot="dashboard-getting-started" className={cn("flex flex-col justify-center p-5 sm:p-6", className)}>
@@ -123,15 +126,24 @@ export function GettingStarted({ className }: { className?: string }) {
       <h2 className="text-lg font-bold tracking-[-0.02em] sm:text-xl">{t("dashboard.start.title")}</h2>
       <p className="text-muted-foreground mt-1.5 max-w-md text-sm">{t("dashboard.start.description")}</p>
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <Button asChild>
-          <Link to="/invoices">{t("dashboard.start.action.invoices")}</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link to="/invoices/new">
-            <Plus />
-            {t("dashboard.start.action.new")}
-          </Link>
-        </Button>
+        {drafts.length === 1 ? (
+          <>
+            <Button asChild>
+              <DocLink kind="invoice" id={drafts[0]!}>
+                {t("dashboard.start.action.continue")}
+              </DocLink>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/invoices">{t("dashboard.start.action.invoices")}</Link>
+            </Button>
+          </>
+        ) : (
+          <Button asChild>
+            <Link to="/invoices">
+              {drafts.length > 1 ? t("dashboard.start.action.drafts") : t("dashboard.start.action.invoices")}
+            </Link>
+          </Button>
+        )}
       </div>
     </Panel>
   )

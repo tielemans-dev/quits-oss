@@ -207,24 +207,62 @@ describe("reminder action", () => {
     await waitFor(() => expect(screen.getByText("Påmindelse sendt")).toBeTruthy())
   })
 
-  it("shows the server's refusal and lets the person try again", async () => {
-    const send = vi.fn(async () => {
-      throw new Error("Der er allerede sendt en påmindelse i dag")
-    })
+  const refusal = (data: { reason?: string; code?: string }) =>
+    Object.assign(new Error("Server English that must never reach the screen"), { data })
+
+  it.each([
+    [{ reason: "already_reminded", code: "BAD_REQUEST" }, "Der er allerede sendt en påmindelse i dag"],
+    [{ reason: "missing_recipient", code: "BAD_REQUEST" }, "Kunden har ingen e-mailadresse"],
+    [{ reason: "email_unavailable", code: "BAD_REQUEST" }, "E-mail er ikke sat op endnu"],
+    [{ reason: "not_remindable", code: "BAD_REQUEST" }, "Fakturaen er ikke åben længere"],
+    [{ code: "FORBIDDEN" }, "Din rolle må ikke sende påmindelser"],
+    [{ code: "NOT_FOUND" }, "Fakturaen findes ikke længere"],
+  ])("words the refusal %j from the catalogue, and lets the person try again", async (data, text) => {
     const settled = vi.fn()
-    renderView(activeSummary(), send, settled)
+    renderView(activeSummary(), async () => {
+      throw refusal(data)
+    }, settled)
     fireEvent.click(screen.getByRole("button", { name: "Send påmindelse" }))
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Der er allerede sendt en påmindelse i dag"))
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe(text))
+    expect(screen.queryByText(/Server English/)).toBeNull()
     expect(screen.getByRole("button", { name: "Send påmindelse" })).toBeTruthy()
     expect(settled).toHaveBeenCalledTimes(1)
   })
 
-  it("falls back to a plain message when the refusal has none", async () => {
+  it("never shows raw server text: a refusal without a known code gets the generic line", async () => {
+    renderView(activeSummary(), async () => {
+      throw refusal({ code: "INTERNAL_SERVER_ERROR" })
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Send påmindelse" }))
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Påmindelsen blev ikke sendt"))
+    expect(screen.queryByText(/Server English/)).toBeNull()
+  })
+
+  it("falls back to the generic line when the failure has no shape at all", async () => {
     renderView(activeSummary(), async () => {
       throw "boom"
     })
     fireEvent.click(screen.getByRole("button", { name: "Send påmindelse" }))
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Påmindelsen kunne ikke sendes"))
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Påmindelsen blev ikke sendt"))
+  })
+
+  it("keeps the refusal on screen when the reload takes the reminder away", async () => {
+    const send = vi.fn(async () => {
+      throw refusal({ reason: "already_reminded" })
+    })
+    const view = renderView(activeSummary(), send)
+    fireEvent.click(screen.getByRole("button", { name: "Send påmindelse" }))
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy())
+    const reloaded = activeSummary()
+    reloaded.attention[0] = { ...reloaded.attention[0]!, canRemind: false }
+    view.rerender(
+      <I18nProvider locale="da-DK">
+        <DashboardView summary={reloaded} sendReminder={send} />
+      </I18nProvider>
+    )
+    expect(screen.queryByRole("button", { name: "Send påmindelse" })).toBeNull()
+    expect(screen.getByRole("alert").textContent).toBe("Der er allerede sendt en påmindelse i dag")
+    expect(screen.getAllByRole("link", { name: "Åbn faktura" }).length).toBeGreaterThan(0)
   })
 
   it("is not offered where the server says no", () => {
@@ -249,5 +287,108 @@ describe("reminder action", () => {
       </I18nProvider>
     )
     expect(screen.queryByRole("button", { name: "Send påmindelse" })).toBeNull()
+  })
+})
+
+describe("page subtitle", () => {
+  const subtitle = (container: HTMLElement) => container.querySelector("[data-slot=page-header] p")!.textContent
+
+  it("is the date in the organization's time zone, not a count", () => {
+    const { container } = renderView(activeSummary())
+    expect(subtitle(container)).toBe("Torsdag 8. oktober")
+    // The hero counts the invoices; the subtitle must not count them again, in another number.
+    expect(subtitle(container)).not.toMatch(/faktura/)
+  })
+
+  it("reads the day in the summary's zone, so it can differ from UTC", () => {
+    const summary = activeSummary({ asOf: "2026-10-08T23:30:00.000Z" })
+    expect(subtitle(renderView(summary).container)).toBe("Fredag 9. oktober")
+    cleanup()
+    expect(subtitle(renderView({ ...summary, timezone: "UTC" }).container)).toBe("Torsdag 8. oktober")
+  })
+
+  it("is the same line when everything is paid", () => {
+    const summary = activeSummary({ outstanding: emptyTotal(), overdue: { ...emptyTotal(), oldestDaysOverdue: 0 }, incoming: [], attention: [] })
+    expect(subtitle(renderView(summary).container)).toBe("Torsdag 8. oktober")
+  })
+
+  it("keeps the first-run and drafts lines", () => {
+    expect(subtitle(renderView(emptySummary()).container)).toBe("Her samles dine penge, så snart du har sendt en faktura.")
+  })
+
+  it("is written out in English as well", () => {
+    const { container } = render(
+      <I18nProvider locale="en-US">
+        <DashboardView summary={activeSummary()} sendReminder={async () => ({ delivery: "sent" })} />
+      </I18nProvider>
+    )
+    expect(subtitle(container)).toBe("Thursday 8 October")
+  })
+})
+
+describe("attention rules", () => {
+  it("gives only invoices that are asked for a rule: not drafts, not quotes", () => {
+    const base = activeSummary()
+    const quote = {
+      documentId: "quote-1",
+      number: "T-2026-014",
+      customerName: "Nordlys ApS",
+      amount: { currency: "DKK", amount: "56000.00", exponent: 2 },
+      kind: "quote" as const,
+      reason: "quote_expiring" as const,
+      canRemind: false,
+    }
+    const failed = { ...base.attention[0]!, documentId: "inv-failed", reason: "email_failed" as const, canRemind: false }
+    const { container } = renderView({ ...base, attention: [...base.attention, quote, failed] })
+    const rules = Array.from(
+      container.querySelectorAll("[data-slot=dashboard-attention] [data-slot=amount]")
+    ).map((el) => el.getAttribute("data-rule"))
+    // overdue invoice, invoice draft, quote, failed email
+    expect(rules).toEqual(["single", "none", "none", "single"])
+  })
+})
+
+describe("getting started actions", () => {
+  const drafted = (ids: string[]) =>
+    emptySummary({
+      activity: ids.map((id, index) => ({
+        id: `e${index}`,
+        sequence: ids.length - index,
+        type: "invoice.draft_created",
+        aggregateType: "invoice",
+        aggregateId: id,
+        occurredAt: "2026-10-07T10:00:00.000Z",
+      })),
+    })
+
+  it("continues the one draft, with the invoice list second and no second 'new'", () => {
+    renderView(drafted(["d1"]))
+    expect(screen.getByRole("link", { name: "Fortsæt kladden" }).getAttribute("href")).toBe("/invoices/d1")
+    expect(screen.getByRole("link", { name: "Se fakturaer" }).getAttribute("href")).toBe("/invoices")
+    expect(screen.queryByRole("link", { name: "Ny faktura" })).toBeNull()
+  })
+
+  it("continues the newest draft when only one is open", () => {
+    // d2 was created, then deleted; d1 is the one left.
+    const summary = drafted(["d1"])
+    summary.activity.unshift({ id: "x2", sequence: 9, type: "invoice.draft_deleted", aggregateType: "invoice", aggregateId: "d2", occurredAt: "2026-10-07T12:00:00.000Z" })
+    summary.activity.push({ id: "x1", sequence: 0, type: "invoice.draft_created", aggregateType: "invoice", aggregateId: "d2", occurredAt: "2026-10-06T12:00:00.000Z" })
+    renderView(summary)
+    expect(screen.getByRole("link", { name: "Fortsæt kladden" }).getAttribute("href")).toBe("/invoices/d1")
+  })
+
+  it("sends several drafts to the list", () => {
+    renderView(drafted(["d1", "d2"]))
+    expect(screen.getByRole("link", { name: "Se kladder" }).getAttribute("href")).toBe("/invoices")
+    expect(screen.queryByRole("link", { name: "Fortsæt kladden" })).toBeNull()
+  })
+
+  it("points at the invoices when no draft is known", () => {
+    const summary = emptySummary({
+      activity: [{ id: "e1", sequence: 1, type: "quote.sent", aggregateType: "quote", aggregateId: "q", occurredAt: "2026-10-07T10:00:00.000Z" }],
+    })
+    renderView(summary)
+    expect(screen.getByRole("link", { name: "Se fakturaer" }).getAttribute("href")).toBe("/invoices")
+    expect(screen.queryByRole("link", { name: "Fortsæt kladden" })).toBeNull()
   })
 })

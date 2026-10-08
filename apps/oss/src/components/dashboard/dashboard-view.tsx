@@ -4,13 +4,13 @@ import { useI18n } from "../../lib/i18n/react"
 import { PageHeader } from "../kvit/page-header"
 import { ActivityFeed } from "./activity-feed"
 import { AttentionList } from "./attention-list"
-import { formatMonthName } from "./format-relative"
+import { formatLongDate, formatMonthName } from "./format-relative"
 import { HeroCard } from "./hero-card"
-import { tCount, type Translate } from "./i18n"
 import { IncomingList } from "./incoming-list"
 import { ReceivedChart } from "./received-chart"
 import {
   classifyDashboard,
+  openInvoiceDrafts,
   localToday,
   presentChart,
   presentHero,
@@ -20,12 +20,17 @@ import {
 import { useReminders, type SendReminder } from "./use-reminders"
 import { FirstRun, GettingStarted } from "./welcome"
 
-export function dashboardSubtitle(state: DashboardState, summary: Summary | null, t: Translate): string {
-  if (state === "kvit") return t("dashboard.subtitle.kvit")
-  if (state === "active" && summary) {
-    return tCount(t, "dashboard.subtitle.active", summary.outstanding.count)
-  }
-  return t("dashboard.subtitle.start")
+/**
+ * With money on the page the subtitle is the date, in the organization's time zone (the summary's
+ * own, so server and browser agree), and repeats nothing the hero says. Before there is any, it
+ * says what the page will become.
+ */
+export function dashboardSubtitle(
+  state: DashboardState,
+  summary: Summary,
+  locale: string,
+): string | null {
+  return state === "active" || state === "kvit" ? formatLongDate(summary.asOf, locale, summary.timezone) : null
 }
 
 /** The title block, shared by the loaded page, the skeleton and the error. */
@@ -56,6 +61,7 @@ export function DashboardView({
 
   const hero = useMemo(() => presentHero(summary), [summary])
   const chart = useMemo(() => presentChart(summary), [summary])
+  const drafts = useMemo(() => openInvoiceDrafts(summary), [summary])
   const today = localToday(summary.asOf, summary.timezone)
   const monthName = formatMonthName(summary.asOf, locale, summary.timezone)
   const inAttention = useMemo(
@@ -65,7 +71,7 @@ export function DashboardView({
 
   return (
     <>
-      <DashboardHeader subtitle={dashboardSubtitle(state, summary, t)} />
+      <DashboardHeader subtitle={dashboardSubtitle(state, summary, locale) ?? t("dashboard.subtitle.start")} />
 
       {state === "first-run" ? (
         // A wrapper, because the page container strips the padding of its direct children.
@@ -82,7 +88,10 @@ export function DashboardView({
           <div className="grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @4xl:items-start">
             <div className="contents @4xl:flex @4xl:flex-col @4xl:gap-4">
               {state === "getting-started" ? (
-                <GettingStarted className="@2xl:col-span-2 @4xl:col-span-1" />
+                <GettingStarted
+                  drafts={drafts}
+                  className="@2xl:col-span-2 @4xl:col-span-1"
+                />
               ) : (
                 <HeroCard
                   hero={hero}

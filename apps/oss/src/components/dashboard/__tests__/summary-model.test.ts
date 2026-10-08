@@ -5,12 +5,14 @@ import {
   classifyDashboard,
   dueLabel,
   localToday,
+  openInvoiceDrafts,
   overdueDaysFor,
   presentChart,
   presentHero,
   streakVisible,
   toMinor,
 } from "../summary-model"
+import { reminderFailure } from "../use-reminders"
 import { activeSummary, bucket, emptySummary, emptyTotal, money, MONTHS, total } from "./fixtures"
 
 describe("classifyDashboard", () => {
@@ -179,5 +181,56 @@ describe("attention", () => {
 
   it("keeps money exact in documents", () => {
     expect(overdue!.amount).toEqual(money("DKK", "8750.00"))
+  })
+})
+
+describe("openInvoiceDrafts", () => {
+  const ev = (id: string, type: string, aggregateId: string) => ({
+    id,
+    sequence: 0,
+    type,
+    aggregateType: "invoice",
+    aggregateId,
+    occurredAt: "2026-10-07T10:00:00.000Z",
+  })
+
+  it("finds drafts from newest to oldest, without the ones deleted or sent since", () => {
+    const activity = [
+      ev("5", "invoice.draft_deleted", "b"),
+      ev("4", "invoice.draft_created", "c"),
+      ev("3", "invoice.sent", "a"),
+      ev("2", "invoice.draft_created", "b"),
+      ev("1", "invoice.draft_created", "a"),
+    ]
+    expect(openInvoiceDrafts({ activity, attention: [] })).toEqual(["c"])
+  })
+
+  it("adds drafts older than a week from the attention list, after the newer ones", () => {
+    const [, draft] = activeSummary().attention
+    expect(openInvoiceDrafts({ activity: [ev("1", "invoice.draft_created", "n")], attention: [draft!] })).toEqual([
+      "n",
+      "inv-draft",
+    ])
+  })
+
+  it("does not take a draft quote for an invoice draft", () => {
+    const [, draft] = activeSummary().attention
+    expect(openInvoiceDrafts({ activity: [], attention: [{ ...draft!, kind: "quote" }] })).toEqual([])
+  })
+})
+
+describe("reminderFailure", () => {
+  it("reads a domain refusal by its reason and any other error by its code", () => {
+    expect(reminderFailure({ data: { reason: "already_reminded", code: "BAD_REQUEST" } })).toBe("alreadyReminded")
+    expect(reminderFailure({ data: { reason: "missing_recipient" } })).toBe("noRecipient")
+    expect(reminderFailure({ data: { code: "FORBIDDEN" } })).toBe("forbidden")
+    expect(reminderFailure({ data: { code: "NOT_FOUND" } })).toBe("notFound")
+  })
+
+  it("never keys on message text", () => {
+    expect(reminderFailure(new Error("A reminder for this invoice was already sent today"))).toBe("unknown")
+    expect(reminderFailure({ data: { reason: "something_new", code: "INTERNAL_SERVER_ERROR" } })).toBe("unknown")
+    expect(reminderFailure(null)).toBe("unknown")
+    expect(reminderFailure("boom")).toBe("unknown")
   })
 })

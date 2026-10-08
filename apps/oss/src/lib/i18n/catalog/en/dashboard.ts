@@ -1,8 +1,5 @@
 export const enDashboardMessages = {
   "dashboard.loading": "Loading your overview...",
-  "dashboard.subtitle.active.one": "1 invoice is waiting to be paid",
-  "dashboard.subtitle.active.other": "{count} invoices are waiting to be paid",
-  "dashboard.subtitle.kvit": "Everything is paid. You're quits.",
   "dashboard.subtitle.start": "Your money will gather here as soon as you send an invoice.",
 
   "dashboard.error.title": "The overview could not be loaded",
@@ -57,7 +54,13 @@ export const enDashboardMessages = {
   "dashboard.remind.sent": "Reminder sent",
   "dashboard.remind.pending": "Reminder queued",
   "dashboard.remind.unconfirmed": "Delivery not confirmed",
-  "dashboard.remind.error": "The reminder could not be sent",
+  "dashboard.remind.error": "The reminder was not sent",
+  "dashboard.remind.error.alreadyReminded": "A reminder was already sent today",
+  "dashboard.remind.error.noRecipient": "The customer has no email address",
+  "dashboard.remind.error.emailUnavailable": "Email is not set up yet",
+  "dashboard.remind.error.notRemindable": "The invoice is no longer open",
+  "dashboard.remind.error.forbidden": "Your role cannot send reminders",
+  "dashboard.remind.error.notFound": "The invoice no longer exists",
 
   "dashboard.incoming.title": "On its way in",
   "dashboard.incoming.all": "All invoices",
@@ -119,5 +122,6 @@ export const enDashboardMessages = {
   "dashboard.start.description":
     "As soon as the first invoice is sent, Quits shows here how much money is on its way in.",
   "dashboard.start.action.invoices": "See invoices",
-  "dashboard.start.action.new": "New invoice",
+  "dashboard.start.action.continue": "Continue the draft",
+  "dashboard.start.action.drafts": "See drafts",
 } as const

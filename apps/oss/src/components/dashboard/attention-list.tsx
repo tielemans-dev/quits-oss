@@ -8,7 +8,7 @@ import { Panel } from "../kvit/panel"
 import { Button } from "../ui/button"
 import { DocLink } from "./doc-link"
 import { tCount, type Translate } from "./i18n"
-import { RemindAction } from "./remind-action"
+import { ReminderFailureNote, RemindAction } from "./remind-action"
 import { attentionAction, overdueDaysFor, type AttentionItem, type IncomingItem } from "./summary-model"
 import type { ReminderState } from "./use-reminders"
 
@@ -18,6 +18,14 @@ const reasonStyle: Record<AttentionItem["reason"], { icon: LucideIcon; tone: str
   quote_expiring: { icon: Hourglass, tone: "bg-tone-warning/14 text-tone-warning" },
   email_failed: { icon: MailWarning, tone: "bg-tone-danger/14 text-tone-danger" },
   email_unconfirmed: { icon: MailQuestion, tone: "bg-tone-warning/14 text-tone-warning" },
+}
+
+/**
+ * Only invoices carry rules, as in the lists: money asked for gets a single one. A draft or a quote
+ * has not asked for anything yet.
+ */
+export function attentionRule(item: AttentionItem): "none" | "single" {
+  return item.kind === "invoice" && item.reason !== "draft_older_than_7_days" ? "single" : "none"
 }
 
 /** The sentence under the customer: why this row is here. */
@@ -82,6 +90,7 @@ export function AttentionList({
             const style = reasonStyle[item.reason]
             const Icon = style.icon
             const action = attentionAction(item)
+            const refusal = reminders[item.documentId]
             return (
               <li
                 key={`${item.kind}-${item.documentId}-${item.reason}`}
@@ -107,7 +116,7 @@ export function AttentionList({
                       currency={item.amount.currency}
                       locale={locale}
                       size="sm"
-                      rule={item.reason === "draft_older_than_7_days" ? "none" : "single"}
+                      rule={attentionRule(item)}
                       className="-mt-0.5 -mb-1.5"
                     />
                   </div>
@@ -115,17 +124,21 @@ export function AttentionList({
                     {attentionReason(item, overdueDaysFor(item, incoming), t)}
                   </p>
                   <div className="relative z-10 mt-2">
-                    {action === "remind" ? (
+                    {action === "remind" || reminders[item.documentId]?.status === "sent" ? (
                       <RemindAction
                         state={reminders[item.documentId]}
                         onRemind={() => onRemind(item.documentId)}
                       />
                     ) : (
-                      <Button asChild variant="outline" size="sm">
-                        <DocLink kind={item.kind} id={item.documentId}>
-                          {attentionOpenLabel(item, t)}
-                        </DocLink>
-                      </Button>
+                      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <Button asChild variant="outline" size="sm">
+                          <DocLink kind={item.kind} id={item.documentId}>
+                            {attentionOpenLabel(item, t)}
+                          </DocLink>
+                        </Button>
+                        {/* The refusal stays after the reload took the reminder away (it was already sent today). */}
+                        {refusal?.status === "error" ? <ReminderFailureNote failure={refusal.failure} /> : null}
+                      </span>
                     )}
                   </div>
                 </div>
