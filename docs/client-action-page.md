@@ -190,3 +190,7 @@ The client route resets local forms, notices and request ownership when its toke
 record or loader result changes. Only the latest request in that context may apply a response,
 clear payment progress or navigate to checkout. Discarding an obsolete response does not cancel
 or roll back a server command. Server authorization and replay rules still apply on submission.
+When payment supersedes a pending code submission, the gate discards that submission's result
+or error without reporting link revocation. Its form becomes available for another attempt;
+current server refusals and errors still show their normal recovery messages. Real-router tests
+cover each code outcome, and a browser case holds verification behind a newer payment request.

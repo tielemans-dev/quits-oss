@@ -18,7 +18,8 @@ export function VerificationGate({
 }: {
   emailHint: string | null
   requestCode: () => Promise<CodeRequestResult>
-  submitCode: (code: string) => Promise<CodeCheckResult>
+  // Supersession is local UI ownership, never a server claim about the link or code.
+  submitCode: (code: string) => Promise<CodeCheckResult | { status: "superseded" }>
   onVerified: () => void
   compact?: boolean
 }) {
@@ -50,6 +51,7 @@ export function VerificationGate({
     setMessage(null)
     try {
       const result = await submitCode(code)
+      if (result.status === "superseded") return
       if (result.status === "verified") {
         setMessage(t("clientActions.gate.verified"))
         onVerified()

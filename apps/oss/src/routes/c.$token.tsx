@@ -178,11 +178,16 @@ function ClientActionContent({ loaded }: { loaded: ClientActionState }) {
         emailHint={page.verification.emailHint}
         requestCode={() => requestClientActionCode({ data: { token } })}
         submitCode={async (code) => {
-          if (!active.current) return { status: "inactive" }
+          if (!active.current) return { status: "superseded" }
           const requestId = ++latestRequest.current
           setPayingId(null)
-          const result = await submitClientActionCode({ data: { token, code } })
-          return ownsResponse(requestId) ? result : { status: "inactive" }
+          try {
+            const result = await submitClientActionCode({ data: { token, code } })
+            return ownsResponse(requestId) ? result : { status: "superseded" }
+          } catch (error) {
+            if (!ownsResponse(requestId)) return { status: "superseded" }
+            throw error
+          }
         }}
         onVerified={() => void refreshVerification()}
       />

@@ -419,3 +419,86 @@ test("a delayed delivery response cannot replace a newer agreement page", async 
     await context.close()
   }
 })
+
+test("a code response superseded by payment leaves no stale gate message", async ({ page, browser }) => {
+  const data = await seed()
+  await loginAsAdmin(page)
+  await page.goto(`/contacts/${data.contact.id}`)
+  await waitForClientReady(page)
+  await page.getByRole("button", { name: "Create client link", exact: true }).click()
+  await page.getByRole("button", { name: "Project approver", exact: true }).click()
+  await page.getByLabel("INV-CLIENT-0001", { exact: true }).selectOption("pay")
+  await page.getByRole("button", { name: "Create link", exact: true }).click()
+  const url = await page.getByTestId("created-client-link").getByRole("textbox").inputValue()
+  const { page: guest, context } = await visitor(browser)
+  let releaseCode!: () => void, releasePayment!: () => void
+  const heldCode = new Promise<void>((resolve) => { releaseCode = resolve })
+  const heldPayment = new Promise<void>((resolve) => { releasePayment = resolve })
+  let codeReceived = false, paymentReceived = false
+  try {
+    await guest.goto(`${url}?item=invoice:${data.invoice.id}`)
+    await waitForClientReady(guest)
+    const gate = guest.getByRole("region", { name: "Confirm it is you before approving" })
+    const pay = guest.getByRole("button", { name: "Pay now", exact: true })
+    await expect(pay).toBeEnabled()
+    await gate.getByRole("button", { name: "Email me a code" }).click()
+    await expect.poll(() => capturedMessages().length).toBe(1)
+    const code = capturedMessages()[0]!.html.match(/>(\d{6})</)![1]!
+    await gate.getByLabel("Six-digit code").fill(code)
+
+    // The initial page offers Pay. Removing synthetic credentials now exercises the real
+    // unavailable response without contacting a payment provider.
+    await prisma.orgSettings.update({ where: { organizationId: data.setup.organizationId }, data: { stripeSecretKeyEnc: null } })
+    await guest.route("**/_serverFn/**", async (route) => {
+      const body = route.request().postData() ?? ""
+      if (body.includes('"code"')) {
+        codeReceived = true
+        await heldCode
+        await route.fulfill({ response: await route.fetch() })
+      } else if (body.includes("invoice.pay")) {
+        // Take the real payment snapshot before the verification cookie is issued.
+        const response = await route.fetch()
+        paymentReceived = true
+        await heldPayment
+        await route.fulfill({ response })
+      } else await route.continue()
+    })
+    await gate.getByRole("button", { name: "Verify", exact: true }).click()
+    await expect.poll(() => codeReceived).toBe(true)
+    await pay.click()
+    await expect.poll(() => paymentReceived).toBe(true)
+    await expect(pay).toBeDisabled()
+
+    const codeFinished = guest.waitForEvent("requestfinished", { predicate: (request) => request.postData()?.includes('"code"') ?? false })
+    releaseCode()
+    await codeFinished
+    // Enabled Verify proves the old continuation and its finally have run, not just the network.
+    await expect(gate.getByRole("button", { name: "Verify", exact: true })).toBeEnabled()
+    await expect(gate.getByRole("status")).toHaveText("")
+    await expect(pay).toBeDisabled()
+    expect((await context.cookies()).some((cookie) => cookie.name.startsWith("qca_"))).toBe(true)
+    await screenshot(guest, "superseded-code-payment-pending")
+
+    releasePayment()
+    await expect(guest.getByRole("alert")).toHaveText("This can no longer be done.")
+    await expect(gate).toBeVisible()
+    await expect(gate.getByRole("status")).toHaveText("")
+    expect(await prisma.clientActionLink.findFirstOrThrow({ where: { verification: "email_code" } })).toMatchObject({ revokedAt: null })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: data.invoice.id } })).toMatchObject({ stripeCheckoutSessionId: null, paymentStatus: "unpaid" })
+    await screenshot(guest, "superseded-code-current-payment-notice")
+
+    // Discarding feedback did not roll back verification on the server. A new code and current
+    // verification still refresh this page normally after the payment refusal.
+    await gate.getByRole("button", { name: "Send a new code" }).click()
+    await expect.poll(() => capturedMessages().length).toBe(2)
+    await gate.getByLabel("Six-digit code").fill(capturedMessages()[1]!.html.match(/>(\d{6})</)![1]!)
+    await gate.getByRole("button", { name: "Verify", exact: true }).click()
+    await expect(gate).toHaveCount(0)
+    await expect(guest.getByRole("alert")).toHaveCount(0)
+  } finally {
+    releaseCode()
+    releasePayment()
+    await guest.unrouteAll({ behavior: "wait" })
+    await context.close()
+  }
+})
