@@ -1,9 +1,20 @@
-import { ZodError } from "zod"
 import { frozenVatGroupSchema, type FrozenVatGroup } from "@quits/contracts/pricing"
 import { vatGroupKey, percentageToFraction, fractionToPercentage } from "@quits/shared/pricing"
 import { toDecimal } from "../../lib/exports/format"
 import { documentFractionDigits } from "./pricing"
 import type { VatRow } from "../../lib/documents/line-amounts"
+
+/**
+ * A line whose VAT classification does not make a valid group (an exempt line without a reason,
+ * say). Raised here rather than as the schema's own error so callers can tell it apart without
+ * depending on which copy of zod the schema was built with.
+ */
+export class UnfinishedVatClassification extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "UnfinishedVatClassification"
+  }
+}
 
 /** Issued lines and evidence are frozen. Recover groups by summing them, never reprice inputs. */
 export function frozenVatGroups(document: {
@@ -28,11 +39,16 @@ export function frozenVatGroups(document: {
       rate: line.vatRateInput ?? percentageToFraction(line.taxRate.toString()),
     }
     const key = vatGroupKey(vat)
-    const group = groups.get(key) ?? frozenVatGroupSchema.parse({
-      ...vat, key, exponent, baseExponent: exponent, net: "0", tax: "0", gross: "0", payableRounding: "0",
-      netBase: null, taxBase: null, grossBase: null, payableRoundingBase: null,
-      ...(document.vatEvidence ? { evidence: document.vatEvidence } : {}),
-    })
+    let group = groups.get(key)
+    if (!group) {
+      const parsed = frozenVatGroupSchema.safeParse({
+        ...vat, key, exponent, baseExponent: exponent, net: "0", tax: "0", gross: "0", payableRounding: "0",
+        netBase: null, taxBase: null, grossBase: null, payableRoundingBase: null,
+        ...(document.vatEvidence ? { evidence: document.vatEvidence } : {}),
+      })
+      if (!parsed.success) throw new UnfinishedVatClassification(parsed.error.message)
+      group = parsed.data
+    }
     group.net = toDecimal(group.net).plus(line.lineNet.toString()).toFixed(exponent)
     group.tax = toDecimal(group.tax).plus(line.lineTax.toString()).toFixed(exponent)
     group.gross = toDecimal(group.gross).plus(line.lineGross.toString()).toFixed(exponent)
@@ -92,7 +108,7 @@ export function frozenVatRowsOrUndefined(document: Parameters<typeof frozenVatGr
     rows = frozenVatRows(document)
   } catch (error) {
     // Only an unclassifiable draft is expected here; any other failure is a defect to surface.
-    if (error instanceof ZodError) return undefined
+    if (error instanceof UnfinishedVatClassification) return undefined
     throw error
   }
   return rowsMatchingTotals(rows, document)

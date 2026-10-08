@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { Prisma } from "../../../../generated/prisma/client"
 import { priceDocumentV2 } from "../../../domain/documents/pricing"
-import { frozenVatRows, frozenVatRowsOrUndefined, vatRowsByRate } from "../../../domain/documents/frozen-vat-groups"
+import { UnfinishedVatClassification, frozenVatRows, frozenVatRowsOrUndefined, vatRowsByRate } from "../../../domain/documents/frozen-vat-groups"
 import { lineAmounts, lineColumnKeys, priceBasis, printableVatRows } from "../line-amounts"
 
 const D = Prisma.Decimal
@@ -211,7 +211,7 @@ describe("frozenVatRowsOrUndefined", () => {
   const totals = { currency: "DKK", subtotalNet: "10.00", totalTax: "0.00" }
 
   it("has no rows for a draft whose VAT classification is unfinished, instead of throwing", () => {
-    expect(() => frozenVatRows({ ...totals, items: [line] })).toThrow()
+    expect(() => frozenVatRows({ ...totals, items: [line] })).toThrow(UnfinishedVatClassification)
     expect(frozenVatRowsOrUndefined({ ...totals, items: [line] })).toBeUndefined()
   })
 
@@ -232,6 +232,15 @@ describe("frozenVatRowsOrUndefined", () => {
 
   it("has no rows when their net is not the stored subtotal", () => {
     expect(frozenVatRowsOrUndefined({ currency: "DKK", subtotalNet: "99.00", totalTax: "0.00", items: [{ ...line, vatReasonCode: "other" }] })).toBeUndefined()
+  })
+
+  it("recognises an unfinished classification by its own error, not by the schema library's", () => {
+    // A schema built by another copy of zod throws an error this module's ZodError would not match.
+    let thrown: unknown
+    try { frozenVatRows({ ...totals, items: [line] }) } catch (error) { thrown = error }
+    expect(thrown).toBeInstanceOf(UnfinishedVatClassification)
+    expect(thrown).not.toHaveProperty("issues")
+    expect((thrown as Error).name).toBe("UnfinishedVatClassification")
   })
 
   it("lets an error that is not a validation failure through", () => {
