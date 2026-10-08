@@ -225,8 +225,10 @@ export async function loadEinvoiceDocument(
       taxIds: seller.taxIds,
       documentCountryCode: invoice.countryCode,
     })
+    // A draft has no number yet. Its export is never produced: `document.notIssued` is reported.
+    const number = invoice.number ?? ""
     const payment = buildEinvoicePayment(sellerSnapshot?.bankAccount, {
-      reference: invoice.paymentReference?.trim() || invoice.number,
+      reference: invoice.paymentReference?.trim() || number,
       currency: invoice.currency,
       sellerCountry: sellerParty.countryCode,
       buyerCountry: buyer.countryCode,
@@ -235,8 +237,7 @@ export async function loadEinvoiceDocument(
     return {
       kind,
       issued: invoice.status !== "draft",
-      // A draft has no number yet. Its export is never produced: `document.notIssued` is reported.
-      number: invoice.number ?? "",
+      number,
       issueDate: formatIsoDate(invoice.issueDate, invoice.timezone),
       dueDate: formatIsoDate(invoice.dueDate, invoice.timezone),
       deliveryDate: invoice.supplyDate ? formatIsoDate(invoice.supplyDate, invoice.timezone) : null,
