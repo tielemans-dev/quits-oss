@@ -2,46 +2,43 @@
 
 @import 'tw-animate-css';
 
-/* Schibsted Grotesk (variable), bundled with the app so no font is fetched from a CDN. */
-@import '@fontsource-variable/schibsted-grotesk';
-
 /*
- * Geist (variable weight, latin only) for figures that must align, through the `num` utility.
- * Schibsted Grotesk's tabular figures give the comma and period a full digit's width, which makes
- * money read like a typewriter; Geist keeps punctuation narrow and still aligns. Characters outside
- * the latin range fall back to the Schibsted stack.
+ * Both families are bundled with the app (SIL OFL 1.1), so no font is fetched from a CDN.
+ * Schibsted Grotesk (variable, 400-900) is the UI, display and figure face; Geist Mono (variable)
+ * is for micro-labels, invoice numbers and CVR through the `mono-label` utility and `font-mono`.
  */
-@font-face {
-  font-family: 'Geist Variable';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 900;
-  src: url('@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
-    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
+@import '@fontsource-variable/schibsted-grotesk';
+@import '@fontsource-variable/geist-mono';
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * The Quits interface is monochrome: ink on warm paper. Colour is reserved for meaning (the status
- * tones below) and, on documents, for the user's own brand. There is no Quits accent colour.
+ * Kvit. Ink on bone (light) or blue-black (dark), with one electric colour, Kvit-blå, kept for
+ * brand moments: the primary action, the focus ring, links and the active item. It is a surface
+ * at most twice per screen. The other colours carry meaning only (the status tones below) or
+ * come from the user's own data (a customer's mark, a document's seller brand).
+ *
+ * The shadcn names (--background, --card, --primary, ...) stay and are mapped to Kvit values, so
+ * every shadcn component restyles itself. The Kvit names (--canvas, --panel, --panel-raised,
+ * --hairline, --brand, ...) are the same surfaces under the names the design uses.
  */
 
 @theme {
   --font-sans:
     'Schibsted Grotesk Variable', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', sans-serif;
+  --font-mono:
+    'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, Consolas,
+    monospace;
 
-  /* Figures that must align (money, quantities, totals); see the `num` utility. */
-  --font-num:
-    'Geist Variable', 'Schibsted Grotesk Variable', ui-sans-serif, system-ui,
-    -apple-system, 'Segoe UI', sans-serif;
+  /* One strong weight: headings and emphasised text share it. */
+  --font-weight-heading: 700;
+  --font-weight-bold: 700;
+  --tracking-heading: -0.02em;
 
-  /* One strong weight: headings and emphasised figures share it. */
-  --font-weight-heading: 650;
-  --font-weight-bold: 650;
-  --tracking-heading: -0.015em;
+  /* A light panel gets a hairline and a 1px lift; dark panels get no shadow (see --shadow-ink). */
+  --shadow-xs: var(--shadow-ink);
+  --shadow-sm: var(--shadow-ink);
 }
 
 body {
@@ -52,108 +49,153 @@ body {
 }
 
 code {
-  font-family:
-    source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-family: var(--font-mono);
 }
 
 :root {
   color-scheme: light;
 
-  --background: oklch(0.99 0.003 90);
-  --foreground: oklch(0.22 0.012 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.012 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.012 260);
-  --primary: oklch(0.24 0.014 260);
-  --primary-foreground: oklch(0.99 0.003 90);
-  --secondary: oklch(0.96 0.004 90);
-  --secondary-foreground: oklch(0.22 0.012 260);
-  --muted: oklch(0.96 0.004 90);
-  --muted-foreground: oklch(0.52 0.012 260);
-  --accent: oklch(0.95 0.005 90);
-  --accent-foreground: oklch(0.22 0.012 260);
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.55 0.2 27);
-  --border: oklch(0.91 0.005 90);
-  --input: oklch(0.89 0.006 90);
-  --ring: oklch(0.55 0.02 260);
-  --radius: 0.5rem;
-  --sidebar: oklch(0.975 0.004 90);
-  --sidebar-foreground: oklch(0.22 0.012 260);
-  --sidebar-primary: oklch(0.24 0.014 260);
-  --sidebar-primary-foreground: oklch(0.99 0.003 90);
-  --sidebar-accent: oklch(0.94 0.005 90);
-  --sidebar-accent-foreground: oklch(0.22 0.012 260);
-  --sidebar-border: oklch(0.91 0.005 90);
-  --sidebar-ring: oklch(0.55 0.02 260);
+  /* Surfaces: bone canvas, white panels. */
+  --canvas: #f5f4f0;
+  --panel: #ffffff;
+  --panel-raised: #ffffff;
+  --hairline: rgb(16 18 27 / 8%);
+
+  /* Brand: Kvit-blå. --brand-text is the brand colour as text on a surface. */
+  --brand: #3b3bf0;
+  --brand-foreground: #ffffff;
+  --brand-text: #3b3bf0;
+  --brand-soft: rgb(59 59 240 / 14%);
+  --brand-glow: radial-gradient(
+    ellipse 70% 60% at 0% 0%,
+    rgb(75 75 255 / 10%),
+    transparent 70%
+  );
+
+  --shadow-ink: 0 1px 2px 0 rgb(16 18 27 / 6%);
+
+  --background: var(--canvas);
+  --foreground: #0f1117;
+  --card: var(--panel);
+  --card-foreground: #0f1117;
+  --popover: var(--panel-raised);
+  --popover-foreground: #0f1117;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: #eceae4;
+  --secondary-foreground: #0f1117;
+  --muted: #eeede8;
+  /* Spec #6b7080, one step darker so it reads at 4.5:1 on the bone canvas. */
+  --muted-foreground: #686d7d;
+  --accent: #eceae4;
+  --accent-foreground: #0f1117;
+  --destructive: #c23a2e;
+  --destructive-foreground: #c23a2e;
+  --border: var(--hairline);
+  --input: rgb(16 18 27 / 20%);
+  --ring: var(--brand);
+  --radius: 0.625rem;
+  --sidebar: var(--canvas);
+  --sidebar-foreground: #0f1117;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: rgb(16 18 27 / 5%);
+  --sidebar-accent-foreground: #0f1117;
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--brand);
 
   /*
-   * Status tones: each is a text colour. A badge fills with the tone mixed into transparent
-   * (12% here, 18% in dark mode), see StatusBadge. Every tone reaches 4.5:1 over its own tint on
-   * the card colour. Warning and muted are a little darker than first drawn (L 0.53 and 0.52) so
-   * that they do.
+   * Status tones: each is a text colour. A badge fills with the tone mixed into transparent at
+   * 14% (see StatusBadge), with the label at full strength. Every tone reaches 4.5:1 over its own
+   * tint on a white panel. Mapping to the design: success is settled, danger is overdue, info is
+   * sent, progress is viewed, neutral is draft.
    */
-  --tone-neutral: oklch(0.5 0.012 260);
-  --tone-info: oklch(0.5 0.14 250);
-  --tone-progress: oklch(0.5 0.15 295);
-  --tone-success: oklch(0.5 0.12 155);
-  --tone-warning: oklch(0.53 0.13 70);
-  --tone-danger: oklch(0.52 0.19 27);
-  --tone-muted: oklch(0.52 0.008 260);
+  --tone-neutral: #565b6b;
+  --tone-info: #3b3bf0;
+  --tone-progress: #09677d;
+  --tone-success: #0a7048;
+  --tone-warning: #7c5200;
+  --tone-danger: #b02f25;
+  --tone-muted: #5e6372;
 
-  /* Charts use the tone hues so they match the rest of the interface. */
-  --chart-1: oklch(0.6 0.14 250);
-  --chart-2: oklch(0.6 0.12 155);
-  --chart-3: oklch(0.72 0.13 70);
-  --chart-4: oklch(0.6 0.15 295);
-  --chart-5: oklch(0.6 0.19 27);
+  /* Charts use the tone hues so they match the rest of the interface; the first is the brand. */
+  --chart-1: #4b4bff;
+  --chart-2: #1fa56b;
+  --chart-3: #d98f1b;
+  --chart-4: #1a8fb0;
+  --chart-5: #d2463a;
 }
 
 .dark {
   color-scheme: dark;
 
-  --background: oklch(0.17 0.008 260);
-  --foreground: oklch(0.95 0.004 90);
-  --card: oklch(0.205 0.009 260);
-  --card-foreground: oklch(0.95 0.004 90);
-  --popover: oklch(0.205 0.009 260);
-  --popover-foreground: oklch(0.95 0.004 90);
-  --primary: oklch(0.95 0.004 90);
-  --primary-foreground: oklch(0.2 0.01 260);
-  --secondary: oklch(0.245 0.01 260);
-  --secondary-foreground: oklch(0.95 0.004 90);
-  --muted: oklch(0.245 0.01 260);
-  --muted-foreground: oklch(0.7 0.01 260);
-  --accent: oklch(0.27 0.011 260);
-  --accent-foreground: oklch(0.95 0.004 90);
-  --destructive: oklch(0.65 0.19 25);
-  --destructive-foreground: oklch(0.65 0.19 25);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 13%);
-  --ring: oklch(0.6 0.02 260);
-  --sidebar: oklch(0.19 0.009 260);
-  --sidebar-foreground: oklch(0.95 0.004 90);
-  --sidebar-primary: oklch(0.95 0.004 90);
-  --sidebar-primary-foreground: oklch(0.2 0.01 260);
-  --sidebar-accent: oklch(0.25 0.01 260);
-  --sidebar-accent-foreground: oklch(0.95 0.004 90);
-  --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.6 0.02 260);
+  --canvas: #0b0c10;
+  --panel: #13151b;
+  --panel-raised: #1a1d25;
+  --hairline: rgb(255 255 255 / 7%);
 
-  --tone-neutral: oklch(0.75 0.01 260);
-  --tone-info: oklch(0.78 0.11 250);
-  --tone-progress: oklch(0.78 0.12 295);
-  --tone-success: oklch(0.78 0.13 155);
-  --tone-warning: oklch(0.82 0.13 80);
-  --tone-danger: oklch(0.75 0.15 25);
-  --tone-muted: oklch(0.68 0.008 260);
+  --brand: #4b4bff;
+  --brand-foreground: #ffffff;
+  --brand-text: #8c8cff;
+  --brand-soft: rgb(75 75 255 / 14%);
+  --brand-glow: radial-gradient(
+    ellipse 70% 60% at 0% 0%,
+    rgb(75 75 255 / 22%),
+    transparent 70%
+  );
 
-  --chart-1: oklch(0.78 0.11 250);
-  --chart-2: oklch(0.78 0.13 155);
-  --chart-3: oklch(0.82 0.13 80);
-  --chart-4: oklch(0.78 0.12 295);
-  --chart-5: oklch(0.75 0.15 25);
+  /* No shadows in dark mode: depth is the surface step and the hairline. */
+  --shadow-ink: 0 0 #0000;
+
+  --foreground: #f2f3f5;
+  --card-foreground: #f2f3f5;
+  --popover-foreground: #f2f3f5;
+  --secondary: #1a1d25;
+  --secondary-foreground: #f2f3f5;
+  --muted: #171a21;
+  --muted-foreground: #8a8f9c;
+  --accent: #1f222b;
+  --accent-foreground: #f2f3f5;
+  --destructive: #ff7a6b;
+  --destructive-foreground: #ff7a6b;
+  --input: rgb(255 255 255 / 13%);
+  --ring: #7b7bff;
+  --sidebar-foreground: #f2f3f5;
+  --sidebar-accent: rgb(255 255 255 / 5%);
+  --sidebar-accent-foreground: #f2f3f5;
+  --sidebar-ring: #7b7bff;
+
+  --tone-neutral: #c9ccd6;
+  --tone-info: #8c8cff;
+  --tone-progress: #5ccbe6;
+  --tone-success: #7ce0b0;
+  --tone-warning: #f2b550;
+  --tone-danger: #ff8a7c;
+  --tone-muted: #8a8f9c;
+
+  --chart-1: #6e6eff;
+  --chart-2: #7ce0b0;
+  --chart-3: #f2b550;
+  --chart-4: #5ccbe6;
+  --chart-5: #ff8a7c;
+}
+
+/*
+ * Public recipient pages (/pay, /q, /a) are a seller's document, not our interface: forced light,
+ * and nothing of Kvit-blå on them. The head script and ThemeProvider put data-document on <html>
+ * (see lib/theme.ts); this rewrites every token that carries the brand to bone and ink, and the
+ * "sent" tone to a plain steel blue.
+ */
+html[data-document] {
+  --brand: #0f1117;
+  --brand-foreground: #f5f4f0;
+  --brand-text: #0f1117;
+  --brand-soft: rgb(15 17 23 / 8%);
+  --brand-glow: none;
+  --ring: #0f1117;
+  --sidebar-ring: #0f1117;
+  --tone-info: #2a5a9c;
+  --chart-1: #2a5a9c;
 }
 
 @theme inline {
@@ -176,15 +218,24 @@ code {
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-hairline: var(--hairline);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-text: var(--brand-text);
+  --color-brand-soft: var(--brand-soft);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  /* 6, 8, 10 and 12px: panels (rounded-xl) are 12px. */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 2px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -221,12 +272,45 @@ code {
     outline-offset: 2px;
   }
   ::selection {
-    background-color: color-mix(in oklab, var(--foreground) 14%, transparent);
+    background-color: color-mix(in oklab, var(--brand) 28%, transparent);
   }
 }
 
-/* Tabular figures in Geist, for money, quantities, totals and number columns only. */
+/*
+ * Money, quantities and totals. Schibsted Grotesk's tabular figures (`tnum`) also widen the
+ * period, comma and colon to a full digit, so "89.625,00" turns into "89 . 625 , 00". Its default
+ * figures are proportional but only the "1" is narrower, so a right-aligned column still lines up.
+ * `num` therefore sets lining, proportional figures and leaves the separators alone. A column
+ * that needs strict tabular digits should render its separators outside the `tabular-nums` span
+ * (what the Amount component does); never put `tabular-nums` on a whole formatted amount.
+ */
 @utility num {
-  font-family: var(--font-num);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums proportional-nums;
+}
+
+/*
+ * A hero figure: Schibsted 800, tight. Set the size with a text-* class. Proportional for the
+ * reason above; add `tabular-nums` only on a string that holds no separators.
+ */
+@utility figure {
+  font-weight: 800;
+  font-variant-numeric: lining-nums proportional-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+/* A micro-label: Geist Mono, 11px, uppercase, +8% tracking. Colour is the muted text colour. */
+@utility mono-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* The brand glow behind the sidebar and the organisation identity; see --brand-glow. */
+@utility bg-brand-glow {
+  background-image: var(--brand-glow);
 }

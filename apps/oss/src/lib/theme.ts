@@ -26,8 +26,8 @@ const DARK_QUERY = "(prefers-color-scheme: dark)"
  * than the OS setting.
  */
 export const THEME_COLORS: Record<ResolvedTheme, string> = {
-  light: "#fcfcf9",
-  dark: "#0d1013",
+  light: "#f5f4f0",
+  dark: "#0b0c10",
 }
 
 /**
@@ -62,9 +62,9 @@ export function resolveTheme(input: {
  */
 export const themeInitScript = `(function(){var s=null;try{s=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY
-)})}catch(e){}var d=!${PUBLIC_DOCUMENT_PATH.toString()}.test(location.pathname)&&(s==="dark"||(s!=="light"&&typeof matchMedia==="function"&&matchMedia(${JSON.stringify(
+)})}catch(e){}var p=${PUBLIC_DOCUMENT_PATH.toString()}.test(location.pathname),d=!p&&(s==="dark"||(s!=="light"&&typeof matchMedia==="function"&&matchMedia(${JSON.stringify(
   DARK_QUERY
-)}).matches));document.documentElement.classList.toggle("dark",d);var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement("meta");m.name="theme-color";document.head.appendChild(m)}m.content=d?${JSON.stringify(
+)}).matches));document.documentElement.classList.toggle("dark",d);document.documentElement.toggleAttribute("data-document",p);var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement("meta");m.name="theme-color";document.head.appendChild(m)}m.content=d?${JSON.stringify(
   THEME_COLORS.dark
 )}:${JSON.stringify(THEME_COLORS.light)}})()`
 
@@ -95,7 +95,11 @@ function setThemeColor(theme: ResolvedTheme) {
   meta.content = THEME_COLORS[theme]
 }
 
-/** Puts the `dark` class and the `theme-color` meta on the document to match the preference, for the page at `pathname`. */
+/**
+ * Puts the `dark` class and the `theme-color` meta on the document to match the preference, for
+ * the page at `pathname`. A public document page also gets `data-document` on <html>, which styles.css
+ * uses to keep the brand colour off a seller's document.
+ */
 export function applyTheme(
   pathname: string = window.location.pathname,
   preference: ThemePreference = getPreference()
@@ -106,6 +110,7 @@ export function applyTheme(
     pathname,
   })
   document.documentElement.classList.toggle("dark", theme === "dark")
+  document.documentElement.toggleAttribute("data-document", isPublicDocumentPath(pathname))
   setThemeColor(theme)
   return theme
 }
