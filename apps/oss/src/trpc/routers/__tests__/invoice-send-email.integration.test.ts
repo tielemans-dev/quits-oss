@@ -490,4 +490,70 @@ describeIfDatabase("invoice send email delivery", () => {
       await cleanupTestOrganizations({ where: { id: orgId } })
     }
   })
+
+  describe("language of the email", () => {
+    const envKeys = ["QUITS_APP_ORIGIN", "QUITS_PUBLIC_PAYMENT_SECRET", "RESEND_API_KEY", "FROM_EMAIL"]
+
+    async function withEmailEnv(run: () => Promise<void>) {
+      const previous = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]))
+      process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+      process.env.QUITS_PUBLIC_PAYMENT_SECRET = "public-payment-secret-123456"
+      process.env.RESEND_API_KEY = "resend_test_key"
+      process.env.FROM_EMAIL = "billing@example.com"
+      try {
+        await run()
+      } finally {
+        restoreEnv(previous)
+      }
+    }
+
+    const switchOrganizationToEnglish = (orgId: string) =>
+      prisma.orgSettings.update({
+        where: { organizationId: orgId },
+        data: { locale: "en-US", timezone: "America/New_York" },
+      })
+
+    it("sends and resends the language the draft was created in after the organization switches language", async () => {
+      await withEmailEnv(async () => {
+        const { orgId, caller, invoice } = await createInvoiceFixture()
+        try {
+          expect(invoice.locale).toBe("da-DK")
+          await switchOrganizationToEnglish(orgId)
+
+          await caller.invoices.send({ id: invoice.id })
+          const sent = vi.mocked(deliver).mock.calls[0]?.[0]
+          expect(sent?.subject).toMatch(/^Faktura /)
+          expect(sent?.subject).toContain("2.500,00\u00a0kr.")
+          expect(sent?.html).toContain("Hej Buyer Name, her er din faktura.")
+          expect(sent?.html).not.toContain("please find your invoice")
+
+          vi.mocked(deliver).mockClear()
+          await caller.invoices.resendEmail({ id: invoice.id })
+          const resent = vi.mocked(deliver).mock.calls[0]?.[0]
+          expect(resent?.subject).toBe(sent?.subject)
+          expect(resent?.html).toContain("Hej Buyer Name, her er din faktura.")
+        } finally {
+          await cleanupTestOrganizations({ where: { id: orgId } })
+        }
+      })
+    })
+
+    it("falls back to the organization's language for a legacy invoice without its own", async () => {
+      await withEmailEnv(async () => {
+        const { orgId, caller, invoice } = await createInvoiceFixture()
+        try {
+          await prisma.invoice.update({ where: { id: invoice.id }, data: { locale: "", timezone: "" } })
+          await switchOrganizationToEnglish(orgId)
+
+          await caller.invoices.send({ id: invoice.id })
+          const sent = vi.mocked(deliver).mock.calls[0]?.[0]
+          expect(sent?.subject).toMatch(/^Invoice /)
+          expect(sent?.html).toContain("Hi Buyer Name, please find your invoice below.")
+        } finally {
+          await cleanupTestOrganizations({ where: { id: orgId } })
+        }
+      })
+    })
+  })
+
 })

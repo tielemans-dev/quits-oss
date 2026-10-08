@@ -1,5 +1,5 @@
 import { buildQuoteEmailContent, composeMessage } from "../../lib/email"
-import { resolveInvoiceEmailContext } from "./invoice-email"
+import { documentEmailOrg, resolveInvoiceEmailContext } from "./invoice-email"
 
 export { requireRecipientEmail } from "./invoice-email"
 
@@ -10,6 +10,9 @@ type OrgEmailSettings = Parameters<typeof resolveInvoiceEmailContext>[0]
 export type QuoteForEmail = {
   id: string
   number: string
+  /** Copied from the organization when the draft was created; legacy rows may lack them. */
+  locale?: string | null
+  timezone?: string | null
   issueDate: Date
   expiryDate: Date
   currency: string
@@ -57,12 +60,7 @@ export function composeQuoteEmail(input: {
         total: item.lineGross.toNumber(),
       })),
     },
-    org: {
-      companyName: input.settings.companyName,
-      companyEmail: input.settings.companyEmail,
-      locale: input.settings.locale,
-      timezone: input.settings.timezone,
-    },
+    org: documentEmailOrg(quote, input.settings),
     contactName: quote.contact.name,
     publicQuoteUrl: input.publicQuoteUrl,
   })

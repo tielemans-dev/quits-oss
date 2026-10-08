@@ -18,7 +18,7 @@ import { enqueueEmailDelivery, registerDeliveryCompletion } from "../delivery/ou
 import { loadDocumentContext } from "../documents/context"
 import { fingerprint } from "../approval-contexts"
 import { lockDocument } from "../documents/locks"
-import { resolveInvoiceEmailContext } from "../documents/invoice-email"
+import { documentEmailOrg, resolveInvoiceEmailContext } from "../documents/invoice-email"
 import { computeSettlement } from "../documents/settlement"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
@@ -317,12 +317,7 @@ const queueReminderEmail = (input: {
         currency: invoice.currency,
         balanceDue: balanceDue.toNumber(),
       },
-      org: {
-        companyName: settings.companyName,
-        companyEmail: settings.companyEmail,
-        locale: invoice.locale || settings.locale,
-        timezone: invoice.timezone || settings.timezone,
-      },
+      org: documentEmailOrg(invoice, settings),
       contactName: invoice.contact.name,
       publicPaymentUrl,
     })

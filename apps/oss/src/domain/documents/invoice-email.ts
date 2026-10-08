@@ -26,6 +26,9 @@ type OrgEmailSettings = {
 export type InvoiceForEmail = {
   id: string
   number: string
+  /** Copied from the organization when the draft was created; legacy rows may lack them. */
+  locale?: string | null
+  timezone?: string | null
   issueDate: Date
   dueDate: Date
   currency: string
@@ -40,6 +43,23 @@ export type InvoiceForEmail = {
     unitPriceGross: Decimalish
     lineGross: Decimalish
   }>
+}
+
+/**
+ * The language and timezone of an email about one document: the ones the document was created
+ * with, so a later change to the organization's settings does not change what its customer is
+ * sent. Only legacy documents without their own fall back to the organization's current ones.
+ */
+export function documentEmailOrg(
+  document: { locale?: string | null; timezone?: string | null },
+  settings: Pick<OrgEmailSettings, "companyName" | "companyEmail" | "locale" | "timezone">,
+) {
+  return {
+    companyName: settings.companyName,
+    companyEmail: settings.companyEmail,
+    locale: document.locale || settings.locale,
+    timezone: document.timezone || settings.timezone,
+  }
 }
 
 /** Sender identity, delivery availability, and whether pay links can be issued. */
@@ -100,12 +120,7 @@ export function composeInvoiceEmail(input: {
         total: item.lineGross.toNumber(),
       })),
     },
-    org: {
-      companyName: input.settings.companyName,
-      companyEmail: input.settings.companyEmail,
-      locale: input.settings.locale,
-      timezone: input.settings.timezone,
-    },
+    org: documentEmailOrg(invoice, input.settings),
     contactName: invoice.contact.name,
     publicPaymentUrl: input.publicPaymentUrl,
   })
