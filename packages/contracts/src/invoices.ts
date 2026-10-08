@@ -15,9 +15,14 @@ export const documentVatInputSchema = z.strictObject({
   reasonCode: vatReasonCodeSchema.nullable().optional(),
 })
 
-export const calendarDateInputSchema = z
+const dateInputSchema = z
   .string()
   .refine((value) => !Number.isNaN(new Date(value).getTime()), "Invalid date")
+
+/** Keep datetime clients compatible, but store the calendar day they wrote, not their instant. */
+export const calendarDateInputSchema = dateInputSchema
+  .transform(value => /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : new Date(value).toISOString().slice(0, 10))
+  .pipe(z.iso.date())
 
 export const documentLineInputSchema = z.object({
   description: z.string().trim().min(1).max(500),
@@ -45,7 +50,7 @@ const currencySchema = z.string().trim().regex(/^[A-Z]{3}$/)
 export const invoiceCreateDraftInputSchema = z.object({
   contactId: z.string().trim().min(1),
   dueDate: calendarDateInputSchema,
-  supplyDate: z.iso.date().optional(),
+  supplyDate: calendarDateInputSchema.optional(),
   currency: currencySchema.optional(),
   notes: z.string().trim().max(5000).optional(),
   taxRate: documentTaxRateSchema.default(0),
@@ -57,7 +62,7 @@ export const invoiceUpdateDraftInputSchema = z.object({
   id: z.string().min(1),
   contactId: z.string().trim().min(1).optional(),
   dueDate: calendarDateInputSchema.optional(),
-  supplyDate: z.iso.date().optional(),
+  supplyDate: calendarDateInputSchema.optional(),
   currency: currencySchema.optional(),
   notes: z.string().trim().max(5000).optional(),
   taxRate: documentTaxRateSchema.optional(),
@@ -66,7 +71,7 @@ export const invoiceUpdateDraftInputSchema = z.object({
 })
 
 export const invoiceCreateDraftV2InputSchema = invoiceCreateDraftInputSchema.extend({
-  supplyDate: z.iso.date(),
+  supplyDate: calendarDateInputSchema,
   taxRate: documentTaxRateV2Schema.default("0"),
   items: z.array(documentLineV2InputSchema).min(1).max(100),
 })
@@ -81,9 +86,9 @@ export const invoiceSendInputSchema = z.object({
   id: z.string().min(1),
   allowSendWithoutEmail: z.boolean().optional(),
   acknowledgeDisputed: z.boolean().optional(),
-  supplyDate: z.iso.date().optional(),
+  supplyDate: calendarDateInputSchema.optional(),
   exchangeRate: z.string().max(40).regex(/^\d+(?:\.\d{1,12})?$/).refine(value => /[1-9]/.test(value)).optional(),
-  rateDate: z.iso.date().optional(),
+  rateDate: calendarDateInputSchema.optional(),
   vatReporting: z.strictObject({ rate: nonnegativeDecimalStringSchema, rateSource: z.string().min(1), taxBaseForReturn: nonnegativeDecimalStringSchema, taxForReturn: nonnegativeDecimalStringSchema }).optional(),
 })
 
@@ -99,7 +104,7 @@ export type InvoicePaymentProgress = z.infer<typeof invoicePaymentProgressSchema
 export const invoiceCreateFromDeliverablesInputSchema = z.strictObject({
   agreementId: z.string().min(1),
   deliverableIds: z.array(z.string().min(1)).min(1).max(100),
-  issueDate: calendarDateInputSchema.optional(),
+  issueDate: dateInputSchema.optional(),
   dueDate: calendarDateInputSchema.optional(),
   // The explicit choice is recorded on the sale draft and the reservation event.
   scheduleAsSale: z.boolean().optional(),

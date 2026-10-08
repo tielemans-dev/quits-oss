@@ -1011,7 +1011,7 @@ function InvoiceDetailPage() {
                   <span className="font-medium text-foreground">
                     {t("pdf.dueDate")}:
                   </span>{" "}
-                  {formatDate(invoice.dueDate, locale, orgSettings.timezone)}
+                  {formatDate(invoice.dueDate, locale, "UTC")}
                 </p>
                 {invoice.supplyDate && (
                   <p>

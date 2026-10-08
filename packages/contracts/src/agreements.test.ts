@@ -17,7 +17,7 @@ describe("agreement contracts", () => {
       deliverables: [],
       billingTrigger: "on_acceptance",
     })
-    for (const invalid of ["2026-02-30", "2026-10-31T10:00:00Z", "tomorrow"]) {
+    for (const invalid of ["2026-02-30", "tomorrow"]) {
       expect(
         agreementCreateDraftInputSchema.safeParse({ ...input, validUntil: invalid }).success,
       ).toBe(false)

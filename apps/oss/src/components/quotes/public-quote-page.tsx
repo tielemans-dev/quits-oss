@@ -154,7 +154,7 @@ function PublicQuoteDocument({
               <InfoBlock label={t("public.quote.issued")} value={format.date(quote.issueDate)} />
               <InfoBlock
                 label={t("public.quote.validUntil")}
-                value={format.date(quote.expiryDate)}
+                value={format.calendarDate(quote.expiryDate)}
               />
             </div>
 

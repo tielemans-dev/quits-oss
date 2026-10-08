@@ -55,6 +55,18 @@ function page(locale: string, children: ReactNode) {
 }
 
 describe("PublicQuotePage", () => {
+  it.each(["America/New_York", "Pacific/Pago_Pago", "Europe/Copenhagen"])(
+    "preserves calendar dates while localizing the issue instant in %s", timezone => {
+      const html = page("en-US", <PublicQuotePage token="signed-token" state={{
+        kind: "ready", decisionState: "pending", seller,
+        quote: { ...baseQuote, timezone },
+      }} />)
+      expect(html).toContain("Mar 15, 2026")
+      expect(html).not.toContain("Mar 14, 2026")
+      expect(html).toContain(timezone === "Europe/Copenhagen" ? "Mar 1, 2026" : "Feb 28, 2026")
+    }
+  )
+
   it("renders accept and reject actions while decision is pending", () => {
     const html = page(
       "en-US",

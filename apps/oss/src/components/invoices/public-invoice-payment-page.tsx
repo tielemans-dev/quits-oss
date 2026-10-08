@@ -144,7 +144,7 @@ function PublicInvoiceDocument({
             <div className="grid gap-4 sm:grid-cols-3">
               <InfoBlock label={t("public.document.status")} value={statusLabel} />
               <InfoBlock label={t("public.invoice.issued")} value={format.date(invoice.issueDate)} />
-              <InfoBlock label={t("public.invoice.due")} value={format.date(invoice.dueDate)} />
+              <InfoBlock label={t("public.invoice.due")} value={format.calendarDate(invoice.dueDate)} />
             </div>
 
             <div className="grid gap-3">

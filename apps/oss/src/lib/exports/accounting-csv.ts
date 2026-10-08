@@ -63,7 +63,7 @@ export function invoicesCsv(rows: readonly InvoiceExportRow[], timeZone: string)
     rows.map((row) => ({
       number: row.number,
       issue_date: formatIsoDate(row.issueDate, timeZone),
-      due_date: formatIsoDate(row.dueDate, timeZone),
+      due_date: row.dueDate.toISOString().slice(0, 10),
       customer: row.customer,
       currency: row.currency,
       net: amount(row.net),

@@ -22,6 +22,9 @@ export function useDocumentFormat(timeZone: string) {
       date(value: Date | string) {
         return formatDate(value, locale, timeZone, { month: "short" })
       },
+      calendarDate(value: Date | string) {
+        return formatDate(value, locale, "UTC", { month: "short" })
+      },
       number(value: number) {
         return formatNumber(value, locale)
       },

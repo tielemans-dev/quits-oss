@@ -1,16 +1,10 @@
 import { z } from "zod"
-import { documentLineInputSchema, documentLineV2InputSchema, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
+import { calendarDateInputSchema, documentLineInputSchema, documentLineV2InputSchema, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
 
 import { draftVatEvidenceSchema } from "./vat"
 
-/** A calendar date without time or timezone, e.g. `2026-01-31`. */
-export const recurringCalendarDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD")
-  .refine((value) => {
-    const date = new Date(`${value}T00:00:00.000Z`)
-    return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value)
-  }, "Invalid date")
+/** Calendar day, also accepting datetime clients without retaining their time or offset. */
+export const recurringCalendarDateSchema = calendarDateInputSchema
 
 export const recurringIntervalUnitSchema = z.enum(["week", "month", "year"])
 export const recurringStatusSchema = z.enum(["active", "paused", "ended"])

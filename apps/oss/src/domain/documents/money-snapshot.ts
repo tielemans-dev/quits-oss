@@ -28,7 +28,7 @@ export function invoiceMoneySnapshot(invoice: Omit<Invoice, "number"> & { items:
     documentId: invoice.id, number: input.number, purpose: invoice.purpose,
     occurredAt: input.issuedAt.toISOString(), postingDate: issueDate, issueDate,
     taxPointDate: reviewed ? null : issueDate, taxPointReason: reviewed ? "tax_point_review" : "invoice_issued",
-    supplyDate, dueDate: formatIsoDate(invoice.dueDate, invoice.timezone), currency: invoice.currency, exponent,
+    supplyDate, dueDate: invoice.dueDate.toISOString().slice(0, 10), currency: invoice.currency, exponent,
     valuation: { base: { minor: moneyMinor(sum("grossBase"), baseExponent), currency: input.baseCurrency, exponent: baseExponent }, rate, rateScale: rate.split(".")[1]?.length ?? 0, rateDate: same ? issueDate : input.rateDate!, rateSource: same ? "same_currency" : "user" },
     ...(input.vatReporting ? { vatReporting: input.vatReporting } : {}),
     lines: invoice.items.map(line => ({ lineId: line.id, description: line.description,

@@ -327,7 +327,7 @@ export function InvoicePdfDocument({
             <Text style={[styles.label, { marginTop: 6 }]}>
               {translate("pdf.dueDate", locale)}
             </Text>
-            <Text>{formatDate(invoice.dueDate, locale, timezone)}</Text>
+            <Text>{formatDate(invoice.dueDate, locale, "UTC")}</Text>
             {invoice.supplyDate && (
               <>
                 <Text style={[styles.label, { marginTop: 6 }]}>

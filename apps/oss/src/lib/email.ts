@@ -284,7 +284,6 @@ export function buildInvoiceEmailContent({
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
-  const timezone = org.timezone
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:22px;">${t("pdf.invoice", locale)} ${safeInvoiceNumber}</h2>
     <p style="margin:0 0 24px;color:#6b7280;">${t("email.invoice.greeting", locale, { name: safeContactName })}</p>
@@ -297,7 +296,7 @@ export function buildInvoiceEmailContent({
       </div>
       <div style="text-align:right;">
         <div style="font-size:12px;color:#6b7280;text-transform:uppercase;margin-bottom:2px;">${t("pdf.dueDate", locale)}</div>
-        <div style="font-weight:500;">${formatDate(invoice.dueDate, locale, timezone)}</div>
+        <div style="font-weight:500;">${formatDate(invoice.dueDate, locale, "UTC")}</div>
       </div>
     </div>
 
@@ -318,7 +317,7 @@ export function buildInvoiceEmailContent({
     t("email.invoice.subject", locale, {
       number: invoice.number,
       total: formatCurrency(invoice.total, invoice.currency, locale),
-      dueDate: formatDate(invoice.dueDate, locale, timezone),
+      dueDate: formatDate(invoice.dueDate, locale, "UTC"),
     })
   )
   const fromAddressValue = `${safeFromName} <${safeFromEmail}>`
@@ -379,7 +378,6 @@ export function buildQuoteEmailContent({
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
-  const timezone = org.timezone
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:22px;">${t("email.quote.title", locale)} ${safeQuoteNumber}</h2>
     <p style="margin:0 0 24px;color:#6b7280;">${t("email.quote.greeting", locale, { name: safeContactName })}</p>
@@ -392,7 +390,7 @@ export function buildQuoteEmailContent({
       </div>
       <div style="text-align:right;">
         <div style="font-size:12px;color:#6b7280;text-transform:uppercase;margin-bottom:2px;">${t("email.quote.validUntil", locale)}</div>
-        <div style="font-weight:500;">${formatDate(quote.expiryDate, locale, timezone)}</div>
+        <div style="font-weight:500;">${formatDate(quote.expiryDate, locale, "UTC")}</div>
       </div>
     </div>
 
@@ -413,7 +411,7 @@ export function buildQuoteEmailContent({
     t("email.quote.subject", locale, {
       number: quote.number,
       total: formatCurrency(quote.total, quote.currency, locale),
-      expiryDate: formatDate(quote.expiryDate, locale, timezone),
+      expiryDate: formatDate(quote.expiryDate, locale, "UTC"),
     })
   )
   const fromAddressValue = `${safeFromName} <${safeFromEmail}>`

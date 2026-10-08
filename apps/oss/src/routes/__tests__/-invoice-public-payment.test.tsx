@@ -54,6 +54,18 @@ function page(locale: string, children: ReactNode) {
 }
 
 describe("PublicInvoicePaymentPage", () => {
+  it.each(["America/New_York", "Pacific/Pago_Pago", "Europe/Copenhagen"])(
+    "preserves calendar dates while localizing the issue instant in %s", timezone => {
+      const html = page("en-US", <PublicInvoicePaymentPage token="signed-token" state={{
+        kind: "ready", paymentState: "unpaid", stripeEnabled: true, seller,
+        invoice: { ...baseInvoice, timezone },
+      }} />)
+      expect(html).toContain("Mar 15, 2026")
+      expect(html).not.toContain("Mar 14, 2026")
+      expect(html).toContain(timezone === "Europe/Copenhagen" ? "Mar 1, 2026" : "Feb 28, 2026")
+    }
+  )
+
   it("renders a pay action while an invoice is unpaid", () => {
     const html = page(
       "en-US",
