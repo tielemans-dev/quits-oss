@@ -28,7 +28,8 @@ export function formatChangedBy(changedBy: Pick<PaymentDetailsChangedBy, "name" 
 
 /**
  * One payment detail that changed, with the values as the audit log and the notification email
- * show them: masked, never the full number (see `maskPaymentDetail`).
+ * show them: masked (see `maskPaymentDetail`). It is the change record that is masked; the
+ * settings and the invoices issued afterwards legitimately hold the full account.
  */
 export type PaymentDetailsChange = {
   field: PaymentDetailsField
