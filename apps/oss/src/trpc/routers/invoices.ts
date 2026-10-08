@@ -107,10 +107,12 @@ export const invoicesRouter = router({
       }
       if (input?.status) where.status = input.status
 
+      // The response keeps every invoice column: external tRPC callers may read any of them.
       const invoices = await prisma.invoice.findMany({
         where,
         include: { contact: { select: { name: true } } },
-        orderBy: { createdAt: "desc" },
+        // id breaks createdAt ties so the order is stable; invoice(organizationId, createdAt, id) serves it.
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       })
 
       return invoices.map((inv) => ({
