@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { normalizeCurrency } from "../lib/i18n/locale"
-import { trpc } from "../trpc/client"
+import { loadOrganizationSettings } from "../lib/organization-settings-query"
+import { useRequestOrganizationId } from "../lib/active-organization"
 
 type CurrencySettings = {
   defaultCurrency?: string | null
@@ -14,10 +15,11 @@ export function resolveOrgCurrency(settings?: CurrencySettings | null): string {
 export function useOrgCurrency() {
   const [currency, setCurrency] = useState<string>("USD")
 
+  const organizationId = useRequestOrganizationId()
   useEffect(() => {
+    if (!organizationId) return
     let cancelled = false
-    trpc.settings.get
-      .query()
+    loadOrganizationSettings()
       .then((settings) => {
         if (!cancelled) {
           setCurrency(resolveOrgCurrency(settings))
@@ -30,7 +32,7 @@ export function useOrgCurrency() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [organizationId])
 
   return currency
 }
