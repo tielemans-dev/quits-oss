@@ -1211,8 +1211,20 @@ function SettingsPage() {
                   <Select
                     value={aiProvider}
                     onValueChange={(value) => {
-                      setAiProvider(value as AiProviderId)
+                      const nextProvider = value as AiProviderId
+                      setAiProvider(nextProvider)
                       setAiApiKeyDraft("")
+                      // A model id from one provider rarely exists on another. Start from that
+                      // provider's own list; the saved model only applies to the saved provider.
+                      if (nextProvider !== aiProvider) {
+                        const nextModels = fallbackAiModelsFor(nextProvider)
+                        setAiModels(nextModels)
+                        setAiModel(
+                          nextProvider === settings?.aiProvider
+                            ? settings.aiModel
+                            : (nextModels[0] ?? "")
+                        )
+                      }
                     }}
                   >
                     <SelectTrigger id="aiProvider">

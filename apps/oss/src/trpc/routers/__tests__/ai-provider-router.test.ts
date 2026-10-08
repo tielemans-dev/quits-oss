@@ -174,9 +174,11 @@ describe("provider fallbacks and errors", () => {
       aiProvider: "openrouter",
       aiBaseUrl: null,
       aiApiKeyEnc: null,
-      aiModel: "openai/gpt-4o-mini",
+      aiModel: "llama3.2",
     })
-    setRuntimeServices({ managedAiProvider: { id: "managed", complete } })
+    setRuntimeServices({
+      managedAiProvider: { id: "managed", complete, defaultModel: "hosted/default" },
+    })
 
     const caller = aiRouter.createCaller(createContext())
     const result = await caller.generateInvoiceDraft({
@@ -184,7 +186,8 @@ describe("provider fallbacks and errors", () => {
     })
 
     expect(result.provider).toBe("managed")
-    expect(complete).toHaveBeenCalledTimes(1)
+    // The saved model belongs to the organisation's own provider; managed AI uses its own.
+    expect(complete).toHaveBeenCalledWith(expect.objectContaining({ model: "hosted/default" }))
     resetRuntimeServices()
   })
 

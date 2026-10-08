@@ -25,6 +25,11 @@ export type AiProvider = {
   complete: (request: AiCompletionRequest) => Promise<string>
   /** Lists selectable model ids. Absent when the provider has no model list. */
   listModels?: () => Promise<string[]>
+  /**
+   * Model to request when the organisation's saved model does not apply. A managed provider sets
+   * this, because the saved model was chosen for the organisation's own provider.
+   */
+  defaultModel?: string
 }
 
 /** Provider kinds an organisation can choose in settings. Stored in `OrgSettings.aiProvider`. */

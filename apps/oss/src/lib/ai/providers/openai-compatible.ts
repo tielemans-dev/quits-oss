@@ -34,6 +34,14 @@ const modelsResponseSchema = z.object({
 const COMPLETION_TIMEOUT_MS = 120_000
 const MODELS_TIMEOUT_MS = 15_000
 
+/** Appends a route to the base URL's path, keeping any query string (for example `?api-version=`). */
+export function endpointUrl(baseUrl: string, endpoint: string) {
+  const url = new URL(baseUrl)
+  url.pathname = `${url.pathname.replace(/\/+$/, "")}/${endpoint}`
+  url.hash = ""
+  return url.toString()
+}
+
 export function createOpenAiCompatibleProvider(input: {
   id: "openrouter" | "openai_compatible"
   baseUrl: string
@@ -50,7 +58,7 @@ export function createOpenAiCompatibleProvider(input: {
     /** Covers the whole exchange, including a slow body: the signal also aborts reading it. */
     timeoutMs: number
   }): Promise<T> {
-    const url = `${baseUrl}/${options.endpoint}`
+    const url = endpointUrl(baseUrl, options.endpoint)
     const body = options.body === undefined ? undefined : JSON.stringify(options.body)
 
     const headers: Record<string, string> = {}

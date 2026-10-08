@@ -150,7 +150,9 @@ export const aiRouter = router({
         })
       }
 
-      const useManaged = async (savedModel: string | null | undefined) => {
+      // The organisation's saved model was chosen for its own provider, so the managed provider
+      // always uses its own default model.
+      const useManaged = async () => {
         let managed: AiProvider
         try {
           managed = resolveManagedAiProvider()
@@ -167,17 +169,13 @@ export const aiRouter = router({
             })
           }
         }
-        return { provider: managed, model: savedModel || DEFAULT_AI_MODEL }
+        return { provider: managed, model: managed.defaultModel ?? DEFAULT_AI_MODEL }
       }
 
       let provider: AiProvider
       let model: string
       if (input.mode === "managed") {
-        const settings = await prisma.orgSettings.findUnique({
-          where: { organizationId: ctx.organizationId },
-          select: { aiModel: true },
-        })
-        ;({ provider, model } = await useManaged(settings?.aiModel))
+        ;({ provider, model } = await useManaged())
       } else {
         const settings = await readOrgAiSettings(ctx.organizationId)
         model = settings.model
@@ -190,7 +188,7 @@ export const aiRouter = router({
           if (error.code !== "not_configured" || !capabilities.aiInvoiceDraft.managed) {
             throw toTrpcAiError(error)
           }
-          ;({ provider, model } = await useManaged(settings.model))
+          ;({ provider, model } = await useManaged())
         }
       }
 

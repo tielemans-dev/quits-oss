@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AiProviderError } from "../../provider"
-import { createOpenAiCompatibleProvider } from "../openai-compatible"
+import { createOpenAiCompatibleProvider, endpointUrl } from "../openai-compatible"
 
 const originalFetch = global.fetch
 
@@ -246,5 +246,17 @@ describe("createOpenAiCompatibleProvider", () => {
       providerId: "openai_compatible",
       message: expect.stringContaining("AI endpoint"),
     })
+  })
+})
+
+describe("endpointUrl", () => {
+  it("appends the route to the path and keeps the query string", () => {
+    expect(endpointUrl("https://host/v1?tenant=x", "chat/completions")).toBe(
+      "https://host/v1/chat/completions?tenant=x"
+    )
+    expect(endpointUrl("http://localhost:11434/v1/", "models")).toBe(
+      "http://localhost:11434/v1/models"
+    )
+    expect(endpointUrl("https://host/v1#frag", "models")).toBe("https://host/v1/models")
   })
 })
