@@ -153,7 +153,7 @@ function QuotesListPage() {
                 >
                   <TableCell className="font-medium">
                     {quote.number ?? (
-                      <span className="font-normal text-muted-foreground">{t("quotes.number.draft")}</span>
+                      <span className="font-normal text-muted-foreground" aria-label={t("quotes.number.draft")}>—</span>
                     )}
                   </TableCell>
                   <TableCell>{quote.contact.name}</TableCell>

@@ -160,7 +160,7 @@ function InvoicesListPage() {
                 >
                   <TableCell className="font-medium">
                     {invoice.number ?? (
-                      <span className="font-normal text-muted-foreground">{t("invoices.number.draft")}</span>
+                      <span className="font-normal text-muted-foreground" aria-label={t("invoices.number.draft")}>—</span>
                     )}
                   </TableCell>
                   <TableCell>{invoice.contact.name}</TableCell>
