@@ -1,0 +1,19 @@
+{
+  "type": "delivery.provider_evidence",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "delivery/journal.ts",
+      "typeExpression": "\"delivery.provider_evidence\"",
+      "payloadExpression": "{ deliveryId: job.id, ...storedEvidence }",
+      "variant": "default",
+      "payload": {
+        "deliveryId": "delivery-1",
+        "evidenceId": "evidence-1",
+        "observedAt": "2026-01-15T12:00:00.000Z",
+        "outcome": "accepted",
+        "providerMessageId": "provider-1"
+      }
+    }
+  ]
+}

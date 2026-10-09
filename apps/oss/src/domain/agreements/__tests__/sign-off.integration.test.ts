@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("../../../lib/email", async () => ({ ...await vi.importActual<typeof import("../../../lib/email")>("../../../lib/email"), deliver: vi.fn() }))
+import { appRouter } from "../../../trpc/router"
 import { prisma } from "../../../lib/db"
 import { deliver, EmailSendError } from "../../../lib/email"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import type { AnyCommandDefinition } from "../../command"
+import { documentJournal } from "../../delivery/journal"
+import { deserializeResult } from "../../serialization"
 import { executeCommand, type CommandOutcome } from "../../execute"
 import { executeIssuanceCommand, issueDocument } from "../../../application/issuance"
 import { createAgreementDraft, updateDeliverable } from "../../commands/agreements"
@@ -56,6 +59,62 @@ const accept = { decision: "accept", confirmed: true }
 const changes = { decision: "request_changes", note: "  Please revise the heading  " }
 
 describe.runIf(hasTestDatabase)("customer delivery sign-off", () => {
+  it.each(["command", "router"] as const)("M102-L3 returns a valid no-email sign-off link through the unkeyed %s without persisting its token", async path => {
+    vi.stubEnv("RESEND_API_KEY", "")
+    const ctx = await setup(2)
+    const jobsBefore = await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })
+    vi.mocked(deliver).mockClear()
+    const input = { agreementId: ctx.agreement.id, id: ctx.agreement.deliverables[1]!.id }
+    const outcome = path === "command"
+      ? completed(await executeCommand(markDeliverableDelivered, input, { actor: ctx.actor, now }))
+      : await appRouter.createCaller({ session: { user: { id: ctx.actor.userId }, session: { activeOrganizationId: ctx.org.organizationId } } } as never).agreements.markDeliverableDelivered(input)
+    expect(outcome).toMatchObject({ status: "delivered", notificationDeliveryKey: null })
+    expect(verifyAgreementPublicToken(outcome.signOffLink.token, getAgreementPublicSecret())).toMatchObject({ scope: "sign_off", deliveryRevision: 1 })
+    expect(await loadPublicAgreementByToken(outcome.signOffLink.token)).not.toBeNull()
+    expect(await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })).toBe(jobsBefore)
+    const event = await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: ctx.org.organizationId, type: "deliverable.delivered", payload: { path: ["deliverableId"], equals: input.id } } })
+    const receipt = await prisma.commandReceipt.findUniqueOrThrow({ where: { id: event.commandId! } })
+    expect(receipt).toMatchObject({ commandType: "deliverable.mark_delivered", status: "completed", target: null, result: null })
+    expect((await documentJournal(ctx.actor, { documentType: "agreement", documentId: ctx.agreement.id })).commands).toContainEqual(expect.objectContaining({ id: receipt.id, state: "effects_completed" }))
+    expect(JSON.stringify([receipt, event])).not.toContain(outcome.signOffLink.token)
+    expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+  })
+  it("M102-L3 retains the complete keyed sign-off result and replays one command and event", async () => {
+    vi.stubEnv("RESEND_API_KEY", "")
+    const ctx = await setup(2)
+    const jobsBefore = await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })
+    vi.mocked(deliver).mockClear()
+    const input = { agreementId: ctx.agreement.id, id: ctx.agreement.deliverables[1]!.id }
+    const options = { actor: ctx.actor, now, clientRequestId: "keyed-sign-off" }
+    const first = await executeCommand(markDeliverableDelivered, input, options)
+    const replayed = await executeCommand(markDeliverableDelivered, input, options)
+    expect(replayed).toEqual(first)
+    const result = completed(first)
+    expect(verifyAgreementPublicToken(result.signOffLink.token, getAgreementPublicSecret())).toMatchObject({ scope: "sign_off", deliveryRevision: 1 })
+    const receipt = await prisma.commandReceipt.findUniqueOrThrow({ where: { id: first.commandId } })
+    expect(deserializeResult(receipt.result)).toMatchObject({ signOffLink: result.signOffLink, notificationDeliveryKey: null })
+    expect(await prisma.domainEvent.count({ where: { commandId: first.commandId, type: "deliverable.delivered" } })).toBe(1)
+    expect(await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })).toBe(jobsBefore)
+    expect(await prisma.deliverable.findUniqueOrThrow({ where: { id: input.id } })).toMatchObject({ deliveryRevision: 1 })
+  })
+  it("M102-L3 retains the complete no-email sign-off result after a resumed approval", async () => {
+    vi.stubEnv("RESEND_API_KEY", "")
+    const ctx = await setup(2)
+    const jobsBefore = await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })
+    vi.mocked(deliver).mockClear()
+    const input = { agreementId: ctx.agreement.id, id: ctx.agreement.deliverables[1]!.id }
+    const agent = await authenticateAgentSecret((await createAgentKey(ctx.actor, { name: "Worker", mode: "approval_required", scopes: ["deliverable:deliver"] })).secret)
+    const queued = await executeCommand(markDeliverableDelivered, input, { actor: agent, clientRequestId: "approved-sign-off", now })
+    if (queued.status !== "awaiting_approval") throw new Error("Expected approval")
+    const approved = await decideApproval({ approvalRequestId: queued.approvalRequestId, decider: ctx.actor, decision: "approve" })
+    const replayed = await executeCommand(markDeliverableDelivered, input, { actor: agent, clientRequestId: "approved-sign-off", now })
+    expect(replayed).toEqual(approved)
+    const result = completed(replayed)
+    expect(verifyAgreementPublicToken(result.signOffLink.token, getAgreementPublicSecret())).toMatchObject({ scope: "sign_off", deliveryRevision: 1 })
+    expect(deserializeResult((await prisma.commandReceipt.findUniqueOrThrow({ where: { id: queued.commandId } })).result)).toMatchObject({ signOffLink: result.signOffLink })
+    expect(await prisma.domainEvent.count({ where: { commandId: queued.commandId, type: "deliverable.delivered" } })).toBe(1)
+    expect(await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })).toBe(jobsBefore)
+  })
   it("notifies the frozen recipient; accepts a revision; replay at expiry preserves evidence and emits/emails once", async () => {
     const ctx = await setup()
     expect(verifyAgreementPublicToken(ctx.token, getAgreementPublicSecret())).toMatchObject({ scope: "sign_off", deliveryRevision: 1, exp: new Date(now.getTime() + 90 * 86400_000).toISOString() })

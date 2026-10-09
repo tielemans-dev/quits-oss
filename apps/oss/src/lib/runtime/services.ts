@@ -60,7 +60,27 @@ export type DocumentArtifactStore = {
   delete(ref: ArtifactRef): Promise<void>
 }
 
+/** A read-only lookup. Acceptance confirms provider submission, not arrival in an inbox.
+ * Unknown must never be interpreted as permission to send again. The adapter must look up
+ * this pinned provider and original key, and return a stable evidence ID for repeated evidence.
+ */
+export type EmailDeliveryStatusProvider = {
+  supports: (provider: "resend" | "smtp") => boolean
+  lookup: (input: {
+    organizationId: string
+    provider: "resend" | "smtp"
+    idempotencyKey: string
+    providerMessageId?: string
+  }) => Promise<{
+    evidenceId: string
+    observedAt: Date
+    outcome: "accepted" | "unknown"
+    providerMessageId?: string
+  }>
+}
+
 export type RuntimeServices = {
+  emailDeliveryStatusProvider?: EmailDeliveryStatusProvider
   documentRenderer?: DocumentRenderer
   documentArtifactStore?: DocumentArtifactStore
   billingProvider: BillingProvider
@@ -118,3 +138,5 @@ export function getDocumentArtifactStore() { return runtimeServices.documentArti
 export function getManagedAiProvider(): AiProvider | undefined {
   return runtimeServices.managedAiProvider
 }
+
+export function getEmailDeliveryStatusProvider() { return runtimeServices.emailDeliveryStatusProvider }

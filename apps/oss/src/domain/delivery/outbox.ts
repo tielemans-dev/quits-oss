@@ -95,7 +95,7 @@ const storedMessageSchema = z.object({
 })
 export type StoredEmailMessage = z.infer<typeof storedMessageSchema>
 
-const payloadSchema = z.object({
+export const deliveryPayloadSchema = z.object({
   message: storedMessageSchema,
   idempotencyKey: z.string().min(1),
   completion: z.object({ kind: z.string().min(1), target: z.record(z.string(), z.string()) }),
@@ -108,12 +108,31 @@ const payloadSchema = z.object({
   requests: z.number().int().optional(),
   /** Pinned before the first request. Legacy requests without this field used Resend. */
   provider: z.enum(["resend", "smtp"]).optional(),
+  recoveryOf: z.string().optional(),
+  manualReason: z.string().optional(),
+  manualReview: z.object({ mode: z.enum(["stored", "replacement"]), revision: z.string(), recipient: z.string(), publicLinkKeyVersion: z.string().nullable() }).optional(),
+  /** Untimestamped job runs archived before recording requests or resetting the run budget. */
+  legacyJobRuns: z.number().int().nonnegative().optional(),
+  attempts: z.array(z.object({
+    startedAt: z.string(),
+    outcome: z.enum(["started", "accepted", "rejected", "uncertain"]),
+    providerMessageId: z.string().optional(),
+  })).optional(),
+  evidence: z.array(z.object({
+    evidenceId: z.string(), observedAt: z.string(),
+    outcome: z.enum(["accepted", "unknown"]), providerMessageId: z.string().optional(),
+  })).optional(),
   /** A failure decided but not yet settled, kept so a retried settlement settles the same way. */
   decision: z
     .object({ reason: z.enum(["rejected", "unconfirmed", "withdrawn"]), message: z.string(), code: emailProviderFailureCodeSchema.optional() })
     .optional(),
 })
-type DeliveryPayload = z.infer<typeof payloadSchema>
+export type DeliveryPayload = z.infer<typeof deliveryPayloadSchema>
+
+/** Job runs are not provider requests. Keep older runs without inventing request timestamps. */
+export function legacyDeliveryJobRuns(payload: DeliveryPayload, earlierRuns: number) {
+  return (payload.legacyJobRuns ?? 0) + (payload.attempts?.length ? 0 : earlierRuns)
+}
 
 export type DeliveryFailure = {
   reason: "rejected" | "unconfirmed" | "withdrawn"
@@ -173,6 +192,9 @@ export const enqueueEmailDelivery = (input: {
   message: EmailMessage & StoredEmailMessage
   idempotencyKey: string
   completion: { kind: string; target: Record<string, string> }
+  recoveryOf?: string
+  manualReason?: string
+  manualReview?: DeliveryPayload["manualReview"]
 }) =>
   Effect.gen(function* () {
     const command = yield* Command
@@ -191,6 +213,8 @@ export const enqueueEmailDelivery = (input: {
       commandId: command.commandId,
       approvedByUserId: command.approvedByUserId,
       requests: 0,
+      ...(input.recoveryOf ? { recoveryOf: input.recoveryOf, manualReason: input.manualReason } : {}),
+      ...(input.manualReview ? { manualReview: input.manualReview } : {}),
     }
     const key = deliveryKey(input.idempotencyKey)
     command.enqueue({ type: EMAIL_DELIVERY_JOB, payload, dedupeKey: key })
@@ -202,10 +226,17 @@ export const enqueueEmailDelivery = (input: {
  * on, which no run holds) the abandoned-delivery sweep. A run that stalled past its lease no longer
  * matches, so it can neither record progress nor settle the document.
  */
-type JobFence = { id: string; organizationId: string; claimToken: string | null }
+type JobFence = { id: string; organizationId: string } & (
+  | { claimToken: string }
+  | { claimToken: null; payload: Prisma.JsonValue; updatedAt: Date }
+)
 
 function fenced(job: JobFence) {
-  return job.claimToken ? { id: job.id, claimToken: job.claimToken } : { id: job.id, claimToken: null, status: "failed" }
+  // Recovery can reset the run budget and return to failed/unclaimed with no result.
+  // Only sweeps compare the selected generation; a claimed runner writes its own payload.
+  return job.claimToken !== null
+    ? { id: job.id, claimToken: job.claimToken }
+    : { id: job.id, claimToken: null, status: "failed", updatedAt: job.updatedAt, payload: { equals: job.payload as Prisma.InputJsonValue } }
 }
 
 /** Provider messages are untrusted, including pinned decisions from older outbox jobs. */
@@ -213,6 +244,15 @@ function safeFailure(failure: DeliveryFailure): DeliveryFailure {
   if (failure.reason !== "rejected") return failure
   const code = failure.code ?? "email_provider_refused"
   return { ...failure, code, message: emailProviderFailureMessage(code) }
+}
+
+/** The outcome, legacy decision and old error are normalized in the same fenced write. */
+function settlementData(payload: DeliveryPayload, result: DeliveryResult) {
+  return {
+    result,
+    lastError: result.outcome === "delivered" ? null : `Email ${result.outcome}: ${result.message}`,
+    ...(payload.decision ? { payload: { ...payload, decision: safeFailure(payload.decision) } } : {}),
+  }
 }
 
 /**
@@ -234,7 +274,7 @@ async function settle(
       : { outcome: outcome.failure.reason, message: outcome.failure.message, ...(outcome.failure.code ? { code: outcome.failure.code } : {}) }
     const recorded = await tx.job.updateMany({
       where: { ...fenced(job), result: { equals: Prisma.DbNull } },
-      data: { result, ...(payload.decision ? { payload: { ...payload, decision: safeFailure(payload.decision) } } : {}) },
+      data: settlementData(payload, result),
     })
     if (recorded.count === 0) {
       throw new StaleJobClaimError(`Delivery job ${job.id} is no longer held by this run`)
@@ -304,7 +344,7 @@ const orphanedResult = (payload: DeliveryPayload, jobAttempts: number): Delivery
       : { outcome: "withdrawn", message: NOT_WAITING_MESSAGE }
 
 registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
-  const payload = payloadSchema.parse(job.payload)
+  const payload = deliveryPayloadSchema.parse(job.payload)
   const completion = completions.get(payload.completion.kind)
   if (!completion) {
     throw new Error(`No delivery completion registered for ${payload.completion.kind}`)
@@ -372,7 +412,10 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   }
 
   // Counted before the request, so a request whose outcome is lost is never mistaken for none.
-  const requested = { ...payload, requests: requests + 1, provider }
+  const requested: DeliveryPayload = { ...payload, requests: requests + 1, provider,
+    legacyJobRuns: legacyDeliveryJobRuns(payload, job.attempts - 1),
+    attempts: [...(payload.attempts ?? []), { startedAt: new Date().toISOString(), outcome: "started" }],
+  }
   await recordOnJob(job, requested)
   // Checked again after the writes above, which can stall: no request once the key may have lapsed.
   if (possiblyDelivered && Date.now() - job.createdAt.getTime() >= IDEMPOTENCY_WINDOW_MS) {
@@ -385,11 +428,13 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
       PROVIDER_TIMEOUT_MS
     )
   } catch (error) {
+    requested.attempts!.at(-1)!.outcome = isDefiniteRejection(error) ? "rejected" : "uncertain"
+    await recordOnJob(job, requested)
     if (isDefiniteRejection(error)) {
-      deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, providerCode: error.providerCode })
       // Only this SMTP classification proves the connection failed before submission.
       // Timeouts and lost responses remain uncertain, never a definite refusal.
       const code = error.providerCode === "smtp_unavailable" ? "email_provider_unreachable" : "email_provider_refused"
+      deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, code })
       // A refusal proves only that this request delivered nothing.
       return settleDecision(
         job,
@@ -401,14 +446,17 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
       )
     }
     if (provider === "smtp" || job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {
-      deliveryLogger.error("email.unconfirmed", { kind: payload.completion.kind, error })
+      deliveryLogger.error("email.unconfirmed", { kind: payload.completion.kind })
       return settleDecision(job, requested, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
     }
-    // Retried with backoff by the job runner, replaying the same message and key.
-    throw error
+    // The runner persists/logs this error. Retain uncertainty and the original-key retry,
+    // but never pass through a provider message, code or nested cause.
+    throw new Error(UNCONFIRMED_MESSAGE)
   }
 
   // Recorded first, so a settlement that fails is retried without sending again.
+  requested.attempts!.at(-1)!.outcome = "accepted"
+  requested.attempts!.at(-1)!.providerMessageId = accepted.id
   await recordOnJob(job, { ...requested, providerMessageId: accepted.id })
   await settle(job, payload, completion, { delivered: true })
 })
@@ -436,19 +484,24 @@ export async function settleAbandonedDeliveries(input: { organizationIds?: reado
   let failed = 0
   for (const job of abandoned) {
     try {
-      const payload = payloadSchema.parse(job.payload)
+      const payload = deliveryPayloadSchema.parse(job.payload)
       const completion = completions.get(payload.completion.kind)
       if (!completion) throw new Error(`No delivery completion registered for ${payload.completion.kind}`)
       if (!(await completion.pending(prisma, payload.completion.target))) {
         // Nothing left to settle; recorded so the sweep does not look at this job again.
-        await prisma.job.updateMany({
-          where: { ...fenced(job), result: { equals: Prisma.DbNull } },
-          data: { result: orphanedResult(payload, job.attempts) },
+        await prisma.$transaction(async tx => {
+          await lockArtifactOrganization(tx, job.organizationId)
+          const recorded = await tx.job.updateMany({
+            where: { ...fenced({ ...job, claimToken: null }), result: { equals: Prisma.DbNull } },
+            // Parsing also removes legacy provider extras from attempts and evidence.
+            data: { payload, ...settlementData(payload, orphanedResult(payload, job.attempts)) },
+          })
+          if (!recorded.count) throw new StaleJobClaimError(`Delivery job ${job.id} changed after selection`)
         })
         continue
       }
       await settle(
-        job,
+        { ...job, claimToken: null },
         payload,
         completion,
         payload.providerMessageId
@@ -495,3 +548,6 @@ registerDeliveryCompletion("agreement.notification", {
   delivered: async () => [],
   failed: async () => [],
 })
+
+/** Used by operator recovery after authorization. The original completion is reused. */
+export function getDeliveryCompletion(kind: string) { return completions.get(kind) }

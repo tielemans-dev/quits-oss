@@ -36,6 +36,7 @@ import {
   expireOrganizationAgreements,
   sweepPublicLinkAttempts,
 } from "../../features/agreement-expiry"
+import { documentJournal, manualResendCommand } from "../../delivery/journal"
 import { settleAbandonedDeliveries } from "../../delivery/outbox"
 import { retryEmailDeliveries, findEmailDeliveryJobs } from "../../../test-utils/email-outbox"
 import {
@@ -875,16 +876,44 @@ describe("agreement validity", () => {
     const issued = await ctx.get()
     expect(issued).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "unconfirmed" })
     expect(identity(issued)).toEqual(identity(pending))
+    rejected(await ctx.run(resendAgreement, { id }), "manual_resend_required")
     vi.mocked(deliver).mockRejectedValueOnce(
       new EmailSendError("validation_error", "bad recipient"),
     )
-    completed(await ctx.run(resendAgreement, { id }, new Date(now.getTime() + 1000)))
+    completed(await ctx.run(manualResendCommand("agreement"), {
+      documentType: "agreement", documentId: id, deliveryId: job.id,
+      reviewedTarget: (await documentJournal(ctx.actor, { documentType: "agreement", documentId: id })).deliveries.find((delivery) => delivery.id === job.id)!.manualTarget,
+      reason: "Recipient verified the original email and requested another copy",
+      acknowledgeDuplicateRisk: true, clientRequestId: "agreement-manual-recovery"
+    }, new Date(now.getTime() + 1000)))
     expect(await ctx.get()).toMatchObject({
       status: "sent",
       lastEmailAttemptOutcome: "failed",
       offerRevision: 1,
     })
     completed(await ctx.run(recallAgreement, { id }))
+  })
+  it("replaces an uncertain revoked agreement link with a reviewed recipient and preserves the frozen offer", async () => {
+    const ctx = await setup()
+    const id = ctx.agreement.id
+    vi.stubEnv("EMAIL_PROVIDER", "smtp")
+    vi.stubEnv("SMTP_HOST", "relay.example.test")
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("SMTP response lost"))
+    completed(await ctx.run(sendAgreement, { id }))
+    const before = await ctx.get()
+    expect(before.lastEmailAttemptOutcome).toBe("unconfirmed")
+    completed(await ctx.run(revokeAgreementLinks, { id }, new Date(now.getTime() + 1000)))
+    const scope = { documentType: "agreement" as const, documentId: id }
+    const source = (await documentJournal(ctx.actor, scope)).deliveries[0]!
+    expect(source).toMatchObject({ canManualResend: false, canReplaceEmail: true })
+    const result = await ctx.run(manualResendCommand("agreement"), { ...scope, deliveryId: source.id, mode: "replacement", reviewedTarget: source.replacementTarget!, reason: "Recipient checked and requested a current link", acknowledgeDuplicateRisk: true, clientRequestId: "replace-agreement" }, new Date(now.getTime() + 2000))
+    completed(result)
+    const after = await ctx.get()
+    expect(after).toMatchObject({ number: before.number, issueDate: before.issueDate, offerRevision: before.offerRevision, offerSnapshotHash: before.offerSnapshotHash, lastEmailAttemptOutcome: "sent" })
+    expect(after.publicAccessKeyVersion).toBeGreaterThan(before.publicAccessKeyVersion)
+    const replacement = await prisma.job.findFirstOrThrow({ where: { organizationId: ctx.org.organizationId, payload: { path: ["recoveryOf"], equals: source.id } } })
+    expect(replacement.payload).toMatchObject({ completion: { target: { publicLinkKeyVersion: String(after.publicAccessKeyVersion) } }, manualReview: { mode: "replacement", recipient: before.issuedToEmail } })
+    expect(vi.mocked(deliver)).toHaveBeenCalledTimes(2)
   })
   it("sweeps only attempts older than one day and limits quote decisions too", async () => {
     const ctx = await setup()

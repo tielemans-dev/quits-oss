@@ -1,3 +1,4 @@
+import { OperationJournal } from "../../../components/activity/operation-journal"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowLeft, Download, Mail } from "lucide-react"
@@ -335,6 +336,7 @@ function CreditNoteDetailPage() {
           )}
         </CardHeader>
       </Card>
+      <OperationJournal documentType="creditNote" documentId={creditNoteId} />
     </div>
   )
 }

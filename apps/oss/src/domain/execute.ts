@@ -68,6 +68,22 @@ function toJson(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue
 }
 
+/** Minimal reference only. The journal never reads command input or raw financial results. */
+function receiptTarget(commandType: string, input: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  if (!input || typeof input !== "object") return Prisma.DbNull
+  const value = input as { id?: unknown; documentId?: unknown; documentType?: unknown; invoiceId?: unknown }
+  const prefix = commandType.split(".")[0]
+  const documentType = prefix === "credit_note" ? "creditNote" : prefix
+  if (["invoice", "quote", "creditNote", "agreement"].includes(documentType) && typeof value.id === "string") {
+    return { documentType, documentId: value.id }
+  }
+  if (commandType === "delivery.manual_resend" && typeof value.documentId === "string" && typeof value.documentType === "string") {
+    return { documentType: value.documentType, documentId: value.documentId }
+  }
+  if (prefix === "reminder" && typeof value.invoiceId === "string") return { documentType: "invoice", documentId: value.invoiceId }
+  return Prisma.DbNull
+}
+
 type FailedOutcome = { status: "failed"; commandId: string; error: CommandError }
 
 function failure(commandId: string, error: DomainError): FailedOutcome {
@@ -185,6 +201,7 @@ export async function executeCommand<Input, Result>(
         clientRequestId,
         resumeReceiptId: options.resumeReceiptId,
         transient: false,
+        target: undefined,
       })
     }
     return outcome
@@ -402,17 +419,19 @@ export async function executeCommand<Input, Result>(
       )
 
       const receiptData = {
+        target: receiptTarget(definition.type, input),
         commandType: definition.type,
         status: "completed",
-        result: serializeResult(exit.value),
+        // Automatic history receipts need metadata, while keyed replay and approvals need results.
+        result: clientRequestId || options.resumeReceiptId ? serializeResult(exit.value) : Prisma.DbNull,
         error: Prisma.DbNull,
       }
 
       if (options.resumeReceiptId) {
         await tx.commandReceipt.update({ where: { id: options.resumeReceiptId }, data: receiptData })
-      } else if (clientRequestId) {
+      } else {
         await tx.commandReceipt.create({
-          data: { id: provisionalId, organizationId, actorKey: key, clientRequestId, ...receiptData },
+          data: { id: provisionalId, organizationId, actorKey: key, clientRequestId: clientRequestId ?? provisionalId, ...receiptData },
         })
       }
 
@@ -459,6 +478,7 @@ export async function executeCommand<Input, Result>(
       // A stale document number is not the caller's failure: leaving no receipt lets the same
       // request id prepare the document again with the current number.
       transient: error.domainError._tag === "ExternalFailure" || staleNumber,
+      target: receiptTarget(definition.type, input),
       staleNumber,
     })
     return winner ?? outcome
@@ -478,11 +498,13 @@ async function recordFailedReceipt<Result>(
     clientRequestId: string | undefined
     resumeReceiptId: string | undefined
     transient: boolean
+    target?: Prisma.InputJsonValue | typeof Prisma.DbNull
     /** The failure is a document number that moved on; the issuance is prepared again, not finished. */
     staleNumber?: boolean
   }
 ): Promise<CommandOutcome<Result> | null> {
   const data = {
+    target: context.target,
     commandType,
     status: "failed",
     result: Prisma.DbNull,
@@ -498,14 +520,12 @@ async function recordFailedReceipt<Result>(
     return null
   }
 
-  if (!context.clientRequestId) {
-    return null
-  }
+  const failedRequestId = context.clientRequestId ?? outcome.commandId
 
   // Transient failures (provider outages) stay retryable under the same key, but a concurrent
   // call that already succeeded still wins.
   if (context.transient) {
-    return loadReceiptOutcome<Result>(context.organizationId, context.key, context.clientRequestId)
+    return loadReceiptOutcome<Result>(context.organizationId, context.key, failedRequestId)
   }
 
   try {
@@ -514,7 +534,7 @@ async function recordFailedReceipt<Result>(
         id: outcome.commandId,
         organizationId: context.organizationId,
         actorKey: context.key,
-        clientRequestId: context.clientRequestId,
+        clientRequestId: failedRequestId,
         ...data,
       },
     })
@@ -523,7 +543,7 @@ async function recordFailedReceipt<Result>(
     if (!isUniqueViolation(error)) {
       throw error
     }
-    return loadReceiptOutcome<Result>(context.organizationId, context.key, context.clientRequestId)
+    return loadReceiptOutcome<Result>(context.organizationId, context.key, failedRequestId)
   }
 }
 
@@ -606,6 +626,7 @@ async function queueForApproval<Input, Result>(
           actorKey: context.key,
           clientRequestId: context.clientRequestId,
           commandType: definition.type,
+          target: receiptTarget(definition.type, input),
           status: "awaiting_approval",
         },
       })
