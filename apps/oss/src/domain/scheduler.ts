@@ -145,7 +145,8 @@ const databaseNow = Prisma.sql`(clock_timestamp() AT TIME ZONE 'UTC')`
  * registered within ceil(new / maxRegistrations) claims. Claims order by the last scan,
  * longest-waiting first. Registration and claiming advance the task's persisted queue time by
  * at least one stored millisecond, even when the database clock repeats or moves backwards.
- * This keeps finished work behind waiting work across restarts at any tick cadence. Concurrent
+ * This keeps finished work behind waiting work across restarts at any tick cadence. Claims lock
+ * their candidates before reading the queue frontier in a fresh statement snapshot. Concurrent
  * statements can share a queue time; organization id breaks their tie. A claim stamps its rows
  * with a token and an expiry; other claims skip rows with
  * a live claim and rows another transaction is claiming (`FOR UPDATE SKIP LOCKED`). Times come
@@ -193,9 +194,12 @@ export function scannedOrganizationSource(task: string, eligible: Prisma.Sql): O
         `
       }
       const token = randomUUID()
-      const rows = await prisma.$queryRaw<Array<{ organizationId: string; previousScannedAt: Date | null }>>`
-        WITH queue_clock AS MATERIALIZED (SELECT ${queueTime} AS "time"), candidates AS (
-          SELECT s."organizationId", s."scannedAt"
+      // FOR UPDATE can return rows newer than its statement snapshot, and other rows may have
+      // advanced while eligibility was being read. Lock the bounded batch first, then read the
+      // whole queue frontier in a fresh READ COMMITTED snapshot before stamping the batch.
+      const rows = await prisma.$transaction(async (db) => {
+        const candidates = await db.$queryRaw<Array<{ organizationId: string; previousScannedAt: Date | null }>>`
+          SELECT s."organizationId", s."scannedAt" AS "previousScannedAt"
           FROM "scheduler_scan" s
           WHERE s."task" = ${task}
             AND (s."claimedUntil" IS NULL OR s."claimedUntil" < ${databaseNow})
@@ -203,16 +207,23 @@ export function scannedOrganizationSource(task: string, eligible: Prisma.Sql): O
           ORDER BY s."scannedAt" ASC NULLS FIRST, s."organizationId" ASC
           LIMIT ${limit}
           FOR UPDATE SKIP LOCKED
-        )
-        UPDATE "scheduler_scan" s
-        SET "scannedAt" = q."time",
-            "claimToken" = ${token},
-            "claimedUntil" = ${databaseNow} + ${Math.max(0, Math.round(leaseMs))}::integer * INTERVAL '1 millisecond'
-        FROM candidates c CROSS JOIN queue_clock q
-        WHERE s."task" = ${task} AND s."organizationId" = c."organizationId"
-        RETURNING s."organizationId", c."scannedAt" AS "previousScannedAt"
-      `
-      // RETURNING has no order; work oldest first so a time budget cuts the most recently scanned.
+        `
+        if (candidates.length === 0) return candidates
+        // Every locked prior value is visible to this statement's task MAX. One common stamp
+        // keeps finished members behind any unreached member's restored place on release.
+        await db.$executeRaw`
+          WITH queue_clock AS MATERIALIZED (SELECT ${queueTime} AS "time")
+          UPDATE "scheduler_scan" s
+          SET "scannedAt" = q."time",
+              "claimToken" = ${token},
+              "claimedUntil" = ${databaseNow} + ${Math.max(0, Math.round(leaseMs))}::integer * INTERVAL '1 millisecond'
+          FROM queue_clock q
+          WHERE s."task" = ${task}
+            AND s."organizationId" IN (${Prisma.join(candidates.map((row) => row.organizationId))})
+        `
+        return candidates
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 5_000, timeout: 30_000 })
+      // Locking can return newer scan times; work oldest first using the actual locked prior values.
       const organizationIds = rows
         .sort(
           (a, b) =>

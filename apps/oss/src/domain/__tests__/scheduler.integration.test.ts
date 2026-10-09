@@ -1,6 +1,7 @@
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it } from "vitest"
+import { Client } from "pg"
 import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { overdueOrganizations } from "../features/overdue"
@@ -291,6 +292,107 @@ describeIfDatabase("scheduler against the database", () => {
     expect(concurrentScans.filter((row) => row.claimToken).every((row) => row.scannedAt! > frontier)).toBe(true)
     const stillHeld = await source.claim(6, options)
     expect(stillHeld.organizationIds.sort()).toEqual(claims.map((claim) => claim.organizationIds[0]!).sort())
+  })
+
+  /** Pause the actual claim after its statement snapshot, before it locks candidates. */
+  async function pausedSnapshotClaim(
+    task: string,
+    organizationIds: string[],
+    intervening: () => Promise<void>,
+    limit = organizationIds.length
+  ) {
+    const barrier = new Client({ connectionString: process.env.DATABASE_URL })
+    await barrier.connect()
+    let pending: ReturnType<OrganizationSource["claim"]> | undefined
+    let key: number | undefined
+    try {
+      const result = await barrier.query<{ key: number }>('SELECT pg_backend_pid() AS key')
+      key = result.rows[0]!.key
+      await barrier.query('SELECT pg_advisory_lock(1729, $1)', [key])
+      const gated = scannedOrganizationSource(task, Prisma.sql`
+        SELECT "id" AS "organizationId" FROM "organization"
+        CROSS JOIN (SELECT pg_advisory_xact_lock(1729, ${key}::integer)) gate
+        WHERE "id" IN (${Prisma.join(organizationIds)})
+      `)
+      pending = gated.claim(limit, { ...LEASE, maxRegistrations: 0 })
+      // Observe the SQL lock itself. No timing sleep, query mock or replaced clock.
+      void pending.catch(() => undefined)
+      let blocked = false
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const [row] = await prisma.$queryRaw<Array<{ blocked: boolean }>>`
+          SELECT EXISTS (
+            SELECT 1 FROM pg_locks WHERE locktype = 'advisory'
+              AND classid = 1729::oid AND objid = ${key}::oid AND objsubid = 2 AND NOT granted
+          ) AS blocked
+        `
+        if (row?.blocked) {
+          blocked = true
+          break
+        }
+      }
+      expect(blocked).toBe(true)
+      await intervening()
+      await barrier.query('SELECT pg_advisory_unlock(1729, $1)', [key])
+      return await pending
+    } finally {
+      if (key !== undefined) await barrier.query('SELECT pg_advisory_unlock(1729, $1)', [key])
+      if (pending) await pending.catch(() => undefined)
+      await barrier.end()
+    }
+  }
+
+  it.each([1, 2])("advances the whole %i-row batch beyond newer locked rows after an older statement snapshot", async (size) => {
+    const organizationIds = (await Promise.all(Array.from({ length: size }, () => organizationWithInvoices([])))).sort()
+    const { task, source, scans } = testSource(organizationIds)
+    await seedQueueFrontier(task, organizationIds)
+    const newerId = organizationIds[size - 1]!
+    const newer = scannedOrganizationSource(task, Prisma.sql`
+      SELECT "id" AS "organizationId" FROM "organization" WHERE "id" = ${newerId}
+    `)
+    let prior: Awaited<ReturnType<typeof scans>> = []
+    const resumed = await pausedSnapshotClaim(task, organizationIds, async () => {
+      // Two completed production claims make the locked row newer than the snapshot's MAX + 1ms.
+      for (let claimIndex = 0; claimIndex < 2; claimIndex += 1) {
+        const current = await newer.claim(1, { ...LEASE, maxRegistrations: 0 })
+        expect(current.organizationIds).toEqual([newerId])
+        await current.finish([newerId])
+      }
+      prior = await scans()
+    })
+    expect(resumed.organizationIds).toEqual(organizationIds)
+    const held = await scans()
+    const latestPrior = Math.max(...prior.map((row) => row.scannedAt!.getTime()))
+    expect(held.every((row) => row.scannedAt!.getTime() > latestPrior)).toBe(true)
+    expect(held.every((row) => row.claimedUntil!.getTime() < latestPrior)).toBe(true)
+    expect((await source.claim(size, { ...LEASE, maxRegistrations: 0 })).organizationIds).toEqual([])
+    await resumed.finish(organizationIds.slice(0, -1))
+    await resumed.release([newerId])
+    expect((await scans()).find((row) => row.organizationId === newerId)).toEqual(
+      prior.find((row) => row.organizationId === newerId)
+    )
+    // A finished lower-id batch member must queue behind the restored, newer prior place.
+    expect((await source.claim(1, { ...LEASE, maxRegistrations: 0 })).organizationIds).toEqual([newerId])
+  })
+
+  it("queues a resumed finished claim behind a newer released row outside its locked batch", async () => {
+    const organizationIds = (await Promise.all(Array.from({ length: 2 }, () => organizationWithInvoices([])))).sort()
+    const { task, source, scans } = testSource(organizationIds)
+    await seedQueueFrontier(task, organizationIds)
+    const waitingId = organizationIds[1]!
+    const other = scannedOrganizationSource(task, Prisma.sql`
+      SELECT "id" AS "organizationId" FROM "organization" WHERE "id" = ${waitingId}
+    `)
+    const resumed = await pausedSnapshotClaim(task, organizationIds, async () => {
+      const completed = await other.claim(1, { ...LEASE, maxRegistrations: 0 })
+      await completed.finish([waitingId])
+      const unreached = await other.claim(1, { ...LEASE, maxRegistrations: 0 })
+      await unreached.release([waitingId])
+    }, 1)
+    expect(resumed.organizationIds).toEqual([organizationIds[0]])
+    await resumed.finish(resumed.organizationIds)
+    const rows = await scans()
+    expect(rows[0]!.scannedAt!.getTime()).toBeGreaterThan(rows[1]!.scannedAt!.getTime())
+    expect((await source.claim(1, { ...LEASE, maxRegistrations: 0 })).organizationIds).toEqual([waitingId])
   })
 
   it("lets a tick take over an expired claim, and the stale claim cannot undo it", async () => {
