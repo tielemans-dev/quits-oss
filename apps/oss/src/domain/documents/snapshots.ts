@@ -3,10 +3,11 @@ import type { TaxId } from "../../lib/compliance"
 import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../../lib/payment-details"
 
 export function buildSellerSnapshot(
-  settings: { companyName: string | null; companyEmail: string | null; companyAddress: string | null },
+  settings: { countryCode?: string | null; companyName: string | null; companyEmail: string | null; companyAddress: string | null },
   taxIds: TaxId[]
 ): SellerSnapshot {
   return {
+    ...(settings.countryCode ? { countryCode: settings.countryCode } : {}),
     companyName: settings.companyName ?? null,
     companyEmail: settings.companyEmail ?? null,
     companyAddress: settings.companyAddress ?? null,

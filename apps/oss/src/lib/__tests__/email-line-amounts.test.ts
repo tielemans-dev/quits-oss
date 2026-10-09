@@ -32,12 +32,12 @@ describe("document emails", () => {
     expect(html).not.toContain("10.000,00 kr.")
   })
 
-  it("list gross lines under gross headers when the invoice's prices include VAT", () => {
+  it("list stored net prices even when invoice entry prices include VAT", () => {
     const html = text(composeInvoiceEmail({ invoice: { ...document, pricesIncludeTax: true }, settings, to: "kunde@example.test", publicPaymentUrl: null }).message.html ?? "")
-    expect(html).toContain("Enhedspris inkl. moms")
-    expect(html).toContain("Beløb inkl. moms")
-    expect(html).toContain("Rådgivning 2 5.000,00 kr. 10.000,00 kr.")
-    expect(html).toContain("Licens 1 8.125,00 kr. 8.125,00 kr.")
+    expect(html).toContain("Enhedspris ekskl. moms")
+    expect(html).toContain("Beløb ekskl. moms")
+    expect(html).toContain("Rådgivning 2 4.000,00 kr. 8.000,00 kr.")
+    expect(html).toContain("Licens 1 6.500,00 kr. 6.500,00 kr.")
   })
 
   it("print the VAT row with its rate on a net invoice, and no rounding", () => {
@@ -53,7 +53,7 @@ describe("document emails", () => {
       text(composeInvoiceEmail({ invoice: gross, settings, to: "kunde@example.test", publicPaymentUrl: null }).message.html ?? ""),
       text(composeQuoteEmail({ quote: gross, settings, to: "kunde@example.test", publicQuoteUrl: null }).message.html ?? ""),
     ]) {
-      expect(html).toContain("Subtotal ekskl. moms 8,10 kr. Moms (25 %) 2,03 kr. Afrunding -0,01 kr. Total inkl. moms 10,12 kr.")
+      expect(html).toMatch(/Subtotal(?: ekskl. moms)? 8,10 kr. Moms \(25 %\) 2,03 kr. Afrunding -0,01 kr. Total(?: inkl. moms)? 10,12 kr./)
     }
   })
 

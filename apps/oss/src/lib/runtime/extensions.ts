@@ -1,3 +1,5 @@
+import type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
+export type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
 import type {
   RuntimeCapabilities,
   RuntimeCapabilityPatch,
@@ -7,6 +9,7 @@ import { getRuntimeEnv, getRuntimePlatform } from "./platform"
 
 export type RuntimeExtension = {
   id: string
+  resolveInvoiceIssuancePolicy?: (context: InvoiceIssuancePolicyContext) => InvoiceIssuancePolicy | undefined | Promise<InvoiceIssuancePolicy | undefined>
   resolveCapabilities?: (
     baseCapabilities: Readonly<RuntimeCapabilities>
   ) => RuntimeCapabilityPatch | void

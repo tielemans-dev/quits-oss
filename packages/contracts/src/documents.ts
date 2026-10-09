@@ -13,6 +13,7 @@ export const documentTaxIdSchema = z.object({
  * `bankAccount` is always the one account the invoice is paid to.
  */
 export const sellerSnapshotSchema = z.object({
+  countryCode: z.string().nullable().optional(),
   companyName: z.string().nullable().optional(),
   companyEmail: z.string().nullable().optional(),
   companyAddress: z.string().nullable().optional(),
