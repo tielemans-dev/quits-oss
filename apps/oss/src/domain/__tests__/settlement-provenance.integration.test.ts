@@ -200,6 +200,45 @@ describe.skipIf(!hasTestDatabase)("settlement provenance", () => {
     }
   }
 
+  it("keeps evidence instants distinct from organization calendar payment dates", async () => {
+    const s = await setup()
+    await prisma.orgSettings.update({ where: { organizationId: s.org.organizationId }, data: { timezone: "Europe/Copenhagen" } })
+    const occurredAt = "2026-03-29T00:30:45.123Z"
+    const bank = await s.record({ occurredAt })
+    const confirmed = await s.confirm(bank)
+    const manual = await s.manual()
+    expect((await prisma.settlementEvidence.findUniqueOrThrow({ where: { id: bank.evidenceId } })).occurredAt.toISOString()).toBe(occurredAt)
+    expect((await prisma.settlementReceipt.findUniqueOrThrow({ where: { id: confirmed.receiptId } })).paidAt.toISOString()).toBe(occurredAt)
+    expect((await prisma.settlementReceipt.findUniqueOrThrow({ where: { id: manual.receiptId } })).paidAt.toISOString()).toBe("2026-01-14T23:00:00.000Z")
+    await s.allocate(confirmed.receiptId, "400")
+    expect((await prisma.payment.findFirstOrThrow({ where: { receiptId: confirmed.receiptId } })).paidAt.toISOString()).toBe(occurredAt)
+  })
+
+  it("keeps verified receipt cash separate from mark-paid undo and a later linked return", async () => {
+    const s = await setup()
+    const bank = await s.record({ netAmount: "400" })
+    const receipt = await s.confirm(bank)
+    await s.allocate(receipt.receiptId, "400")
+    const allocation = await prisma.payment.findFirstOrThrow({ where: { receiptId: receipt.receiptId } })
+    const input = { invoiceId: s.invoice.id, requestId: randomUUID() }
+    const marked = await s.caller.invoices.markPaid(input)
+    expect(await s.caller.invoices.markPaid(input)).toEqual(marked)
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: marked.paymentId } })).amount.toFixed(2)).toBe("600.00")
+    await expect(s.caller.invoices.undoMarkPaid({ invoiceId: s.invoice.id, paymentId: allocation.id, requestId: randomUUID() })).rejects.toThrow("Reverse this receipt allocation")
+    const undo = { invoiceId: s.invoice.id, paymentId: marked.paymentId, requestId: randomUUID() }
+    const undone = await s.caller.invoices.undoMarkPaid(undo)
+    expect(await s.caller.invoices.undoMarkPaid(undo)).toEqual(undone)
+    expect(undone.balance.amount).toBe("600.00")
+    expect(await prisma.payment.findUniqueOrThrow({ where: { id: allocation.id } })).toEqual(allocation)
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: marked.paymentId } })).voidReason).toBe("Fortrudt")
+    const returned = await s.record({ ...bank.input, requestId: randomUUID(), eventReference: randomUUID(), state: "returned", reversesEvidenceId: bank.evidenceId })
+    await s.act(s.decision({ action: "return", evidenceId: returned.evidenceId, receiptId: receipt.receiptId }))
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: s.invoice.id } })).amountPaid.toFixed(2)).toBe("0.00")
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: allocation.id } })).voidedAt).not.toBeNull()
+    expect(await s.caller.invoices.markPaid(input)).toEqual(marked)
+    expect(await prisma.settlementReceipt.count({ where: { organizationId: s.org.organizationId } })).toBe(1)
+  })
+
   it.each(["manual_first", "bank_first"])(
     "preserves one receipt, fee and debt in %s arrival order",
     async (order) => {
