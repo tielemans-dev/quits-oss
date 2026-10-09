@@ -191,7 +191,8 @@ amount. It does not infer a scope amendment from a credit note.
   the paid amount the proposer saw. A mismatch is `stale_plan_version` or `stale_settlement`.
 - **Consent rule (dominance).** An amendment needs recorded customer consent unless, at every
   point in time, the new version asks for no more money than the current one. Deferrals and
-  reductions are adopted with a notice. Dates compare by calendar. A deliverable event happens on
+  reductions proven safe are adopted with a notice. For ordinary billing steps and collection
+  installments, dates compare by calendar. A deliverable event happens on
   or after the obligation became binding, so a date is no later than an event due `n` days after it
   when the date is no later than the binding date plus `n`. An event precedes another event only
   on a superset of its deliverables at the same or later stage and term, and never precedes a
@@ -206,6 +207,29 @@ amount. It does not infer a scope amendment from a credit note.
   It is sufficient rather than necessary: an unproven change waits for consent even if a more
   precise event analysis might establish that it is favourable. Identical schedules, deferrals,
   and redistributions covered by earlier money remain consent-free.
+- **Advances and consent.** A requested advance is neither received money nor an application.
+  Gross due entries retain every advance request and every sale's full gross. They are bounds
+  on potential individual charges, not an aggregate cash balance. Adding those entries can
+  exceed the obligation; `obligationPosition` alone resolves actual cash and applications.
+  Applying the ordinary gross-money flow proof to an advance plan is insufficient because
+  receipt timing and invoice/application order can change which sale remains unpaid.
+  The sufficient consent-free rule therefore keeps both arrangements as `advance_then_billing`,
+  with identical advance ids, amounts, triggers, terms and order, and identical sale step ids,
+  amounts, sources, triggers and order. Only sale `dueInDays` may increase. Issuance and
+  application opportunities stay the same for each permitted history; each invoice's unpaid
+  amount stays the same and its payment deadline never moves earlier. Issued-step refusal still
+  applies. Labels and plan metadata do not change this proof.
+  Other advance edits require consent, including entering or leaving the arrangement, splitting
+  or reordering sales, moving issuance triggers, and changing advance requests. This can require
+  consent for favourable edits such as reducing an advance or moving a sale trigger later.
+  The prototype deliberately does not infer receipt or application facts to optimize these cases.
+  With DKK 500 requested for 8 October but unreceived, a new DKK 500 sale on 2 October remains
+  wholly payable and needs consent even if the old DKK 1,000 sale was due on 20 October.
+- **Advance authority bounds.** Maximum-charge, date and spacing checks include each sale's full
+  gross and due date, because a request never guarantees receipt or application. These bounds
+  can conservatively require renewal for charges that actual settlement would reduce or cancel.
+  They never authorize collecting advances and sales twice: a future executor must resolve the
+  actual unpaid balance from authoritative receipts and applications before any charge.
 - An amendment needing consent waits as the single **pending** version; the current version stays
   authoritative. Nothing else may amend the plan until the pending version is consented or
   withdrawn. Recording consent rechecks issued steps, receipts and payments, because they may have

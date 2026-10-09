@@ -48,22 +48,43 @@ function targetsOf(plan: PlanVersion): Target[] {
 }
 
 /**
- * What the customer is asked to pay, and when. Advances are applied to the next sale invoices in
- * plan order, so a sale step asks only for what the advance pool has not already covered.
+ * Potential gross requests, before settlement. An advance request is not a receipt or an
+ * application: an unpaid sale can still ask for its full gross. These entries bound each
+ * possible charge for authority checks; their sum is not cash owed on the obligation.
+ * Advance consent needs a separate history-preserving proof below, not gross-entry flow.
  */
 export function dueEntries(plan: PlanVersion, obligation: Obligation): DueEntry[] {
   const arrangement = plan.arrangement
   if (arrangement.kind === "collection_installments")
     return arrangement.installments.map((item) => ({ targetId: item.installmentId, key: dateKey(item.dueDate, 0), amount: BigInt(item.grossMinor) }))
-  let pool = arrangement.kind === "advance_then_billing" ? arrangement.advances.reduce((total, advance) => total + BigInt(advance.grossMinor), 0n) : 0n
   const advances = arrangement.kind === "advance_then_billing"
     ? arrangement.advances.map((advance) => ({ targetId: advance.advanceId, key: dueKey(obligation, advance.trigger, advance.dueInDays), amount: BigInt(advance.grossMinor) }))
     : []
-  return [...advances, ...arrangement.steps.map((step) => {
-    const applied = pool < BigInt(step.grossMinor) ? pool : BigInt(step.grossMinor)
-    pool -= applied
-    return { targetId: step.stepId, key: dueKey(obligation, step.trigger, step.dueInDays), amount: BigInt(step.grossMinor) - applied }
-  })]
+  return [...advances, ...arrangement.steps.map((step) => ({
+    targetId: step.stepId, key: dueKey(obligation, step.trigger, step.dueInDays), amount: BigInt(step.grossMinor),
+  }))]
+}
+
+/**
+ * Keep the same advance requests and sale issuance/application sequence. Only sale payment
+ * terms may be deferred. For each permitted receipt/application history, the same invoices
+ * have the same unpaid amounts and none is due earlier. Moving an issuance trigger, changing
+ * amounts or reordering steps can redirect applied money; gross dominance cannot prove safety.
+ * This sufficient rule deliberately requires consent for other potentially favourable edits.
+ */
+function preservesAdvanceHistory(current: PlanVersion, next: PlanVersion) {
+  const before = current.arrangement, after = next.arrangement
+  if (before.kind !== "advance_then_billing" || after.kind !== "advance_then_billing") return false
+  const advanceTerms = (arrangement: typeof before) => arrangement.advances.map((advance) =>
+    [advance.advanceId, advance.grossMinor, advance.trigger, advance.dueInDays])
+  return before.application === after.application &&
+    JSON.stringify(advanceTerms(before)) === JSON.stringify(advanceTerms(after)) &&
+    before.steps.length === after.steps.length && before.steps.every((step, index) => {
+      const kept = after.steps[index]!
+      return step.stepId === kept.stepId && step.grossMinor === kept.grossMinor &&
+        JSON.stringify(step.source) === JSON.stringify(kept.source) &&
+        JSON.stringify(step.trigger) === JSON.stringify(kept.trigger) && step.dueInDays <= kept.dueInDays
+    })
 }
 
 /**
@@ -127,6 +148,8 @@ function coveredByEarlierMoney(before: DueEntry[], after: DueEntry[]) {
  * money than the current one. Proven deferrals and reductions only need a notice.
  */
 export function consentReasons(current: PlanVersion, next: PlanVersion, obligation: Obligation) {
+  if (current.arrangement.kind === "advance_then_billing" || next.arrangement.kind === "advance_then_billing")
+    return preservesAdvanceHistory(current, next) ? [] : ["Cannot prove that advance receipt and application histories ask for no more money at every point in time"]
   const before = dueEntries(current, obligation), after = dueEntries(next, obligation)
   const cumulative = (entries: DueEntry[], key: DueKey) => entries.filter((entry) => noLater(entry.key, key)).reduce((total, entry) => total + entry.amount, 0n)
   const reasons: string[] = []
