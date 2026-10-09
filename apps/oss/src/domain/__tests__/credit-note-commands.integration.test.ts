@@ -389,7 +389,7 @@ describeIfDatabase("credit note commands", () => {
       expect(stored).toMatchObject({
         lastEmailAttemptOutcome: "failed",
         lastEmailAttemptCode: "send_failed",
-        lastEmailAttemptMessage: "The email provider refused the credit note email: Invalid recipient",
+        lastEmailAttemptMessage: "The email provider refused the email. Check the email configuration.",
       })
       const activity = await readActivity({
         organizationId: context.org.organizationId,

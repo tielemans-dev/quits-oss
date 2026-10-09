@@ -1,3 +1,5 @@
+import { dashboardSummarySchema } from "@quits/contracts/dashboard"
+import { dashboardSummary, moneyReceived } from "../../lib/dashboard/summary"
 import { router, authorizedProcedure } from "../init"
 import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
@@ -5,11 +7,13 @@ import { computeSettlement } from "../../domain/documents/settlement"
 import { requireCurrencyExponent } from "@quits/shared/currency"
 
 export const dashboardRouter = router({
+  summary: authorizedProcedure("invoice:read").output(dashboardSummarySchema)
+    .query(({ ctx }) => dashboardSummary(prisma, ctx.actor)),
   stats: authorizedProcedure("invoice:read").query(async ({ ctx }) => {
     // Select only what the aggregation and the recent-invoice rows read. Invoice rows carry
     // large JSON snapshots that this query never uses.
-    const [payments, invoices, totalContacts, recentInvoices, settings] = await Promise.all([
-      prisma.payment.groupBy({ by: ["currency"], where: { organizationId: ctx.organizationId, voidedAt: null }, _sum: { amount: true } }),
+    const [received, invoices, totalContacts, recentInvoices, settings] = await Promise.all([
+      moneyReceived(prisma, ctx.organizationId, "UTC", null, new Date()),
       prisma.invoice.findMany({
         where: { organizationId: ctx.organizationId, status: { not: "draft" } },
         select: {
@@ -48,7 +52,11 @@ export const dashboardRouter = router({
       if (!buckets.has(currency)) buckets.set(currency, { revenue: new Prisma.Decimal(0), outstanding: new Prisma.Decimal(0) })
       return buckets.get(currency)!
     }
-    for (const payment of payments) bucket(payment.currency).revenue = payment._sum.amount ?? new Prisma.Decimal(0)
+    // All-time cash sums the monthly subtotals; their grouping timezone cannot change that sum.
+    for (const receipt of received) {
+      const b = bucket(receipt.currency)
+      b.revenue = b.revenue.plus(receipt.amount)
+    }
     const baseCurrency = settings?.baseCurrency ?? "USD"
     let baseMinor = new Prisma.Decimal(0), excludedUnknownValuations = 0
     type Valuation = { base: { minor: string | null; currency: string }; rateSource: string }

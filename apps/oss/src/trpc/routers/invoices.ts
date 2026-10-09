@@ -1,4 +1,5 @@
 import { loadDocumentView } from "../../domain/documents/view"
+import { sanitizeDocumentEmailAttempt } from "../../domain/delivery/provider-failure"
 import { recordBaseValuation } from "../../domain/commands/base-valuation"
 import { randomUUID } from "node:crypto"
 import { createInvoiceFromDeliverables, addInvoiceDeliverables, invoiceScheduleAsSale } from "../../domain/commands/invoices-from-deliverables"
@@ -73,7 +74,7 @@ function serializeInvoiceForUi<
   },
 >(invoice: Invoice) {
   return {
-    ...invoice,
+    ...sanitizeDocumentEmailAttempt(invoice),
     ...documentDisplayForUi(invoice),
     subtotal: invoice.subtotalNet.toNumber(),
     taxAmount: invoice.totalTax.toNumber(),
@@ -135,7 +136,7 @@ export const invoicesRouter = router({
       })
 
       return invoices.map((inv) => ({
-        ...inv,
+        ...sanitizeDocumentEmailAttempt(inv),
         subtotal: inv.subtotalNet.toNumber(),
         taxAmount: inv.totalTax.toNumber(),
         total: inv.totalGross.toNumber(),
@@ -157,7 +158,7 @@ export const invoicesRouter = router({
       })
 
       return {
-        ...invoice,
+        ...sanitizeDocumentEmailAttempt(invoice),
         // A draft has no number yet. This is the number it would take if sent now; it is not reserved.
         nextNumber:
           invoice.status === "draft" && invoice.number === null

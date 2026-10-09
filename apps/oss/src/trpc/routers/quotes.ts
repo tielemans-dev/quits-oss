@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server"
 import { loadDocumentView } from "../../domain/documents/view"
+import { sanitizeDocumentEmailAttempt } from "../../domain/delivery/provider-failure"
 import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
 import { z } from "zod"
 import {
@@ -61,7 +62,7 @@ function serializeDocumentForUi<
   },
 >(document: Document) {
   return {
-    ...document,
+    ...sanitizeDocumentEmailAttempt(document),
     ...documentDisplayForUi(document),
     subtotal: document.subtotalNet.toNumber(),
     taxAmount: document.totalTax.toNumber(),
@@ -98,7 +99,7 @@ export const quotesRouter = router({
       })
 
       return quotes.map((quote) => ({
-        ...quote,
+        ...sanitizeDocumentEmailAttempt(quote),
         subtotal: quote.subtotalNet.toNumber(),
         taxAmount: quote.totalTax.toNumber(),
         total: quote.totalGross.toNumber(),
@@ -119,7 +120,7 @@ export const quotesRouter = router({
       })
 
       return {
-        ...quote,
+        ...sanitizeDocumentEmailAttempt(quote),
         // A draft has no number yet. This is the number it would take if sent now; it is not reserved.
         nextNumber:
           quote.status === "draft" && quote.number === null

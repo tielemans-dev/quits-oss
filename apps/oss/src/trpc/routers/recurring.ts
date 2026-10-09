@@ -1,3 +1,4 @@
+import { sanitizeDocumentEmailAttempt } from "../../domain/delivery/provider-failure"
 import { previewDraft } from "@quits/shared/pricing"
 import { TRPCError } from "@trpc/server"
 import {
@@ -73,7 +74,7 @@ const generatedInvoiceSelect = {
 function serializeGeneratedInvoice(
   invoice: Prisma.InvoiceGetPayload<{ select: typeof generatedInvoiceSelect }>
 ) {
-  return { ...invoice, total: invoice.totalGross.toNumber() }
+  return { ...sanitizeDocumentEmailAttempt(invoice), total: invoice.totalGross.toNumber() }
 }
 
 export const recurringRouter = router({

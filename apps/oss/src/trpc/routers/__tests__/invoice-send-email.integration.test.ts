@@ -383,7 +383,7 @@ describeIfDatabase("invoice send email delivery", () => {
 
     try {
       await expect(caller.invoices.send({ id: invoice.id })).rejects.toThrow(
-        "The email provider refused the invoice email: Domain is not verified"
+        "The email provider refused the email. Check the email configuration."
       )
 
       const reloaded = await prisma.invoice.findUniqueOrThrow({

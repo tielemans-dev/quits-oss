@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server"
+import { emailProviderFailureMessage } from "../../domain/delivery/provider-failure"
 import {
   invoiceRemindersPausedInputSchema,
   invoiceRemindersQuerySchema,
@@ -87,7 +88,11 @@ export const remindersRouter = router({
         sentAt: reminder.sentAt,
         status: storedStatus(reminder.outcome),
         manual: isManualReminder(reminder),
-        message: isManualReminder(reminder) ? null : reminder.outcomeMessage,
+        message: isManualReminder(reminder) ? null
+          : reminder.outcome === "failed"
+            ? emailProviderFailureMessage(reminder.outcomeMessage === emailProviderFailureMessage("email_provider_unreachable")
+              ? "email_provider_unreachable" : "email_provider_refused")
+            : reminder.outcomeMessage,
       }))
 
       if (policy.enabled && !invoice.remindersPaused && !blocker) {

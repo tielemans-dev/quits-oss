@@ -1,16 +1,9 @@
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import { actorCan } from "../../domain/actor"
-import type { Permission } from "../../domain/permissions"
-import { documentActivity, listActivity, type ActivityDocumentType } from "../../lib/exports/activity"
+import { DOCUMENT_READ_PERMISSION } from "../../domain/documents/read-permission"
+import { documentActivity, listActivity } from "../../lib/exports/activity"
 import { authorizedProcedure, orgProcedure, router } from "../init"
-
-const DOCUMENT_READ_PERMISSION: Record<ActivityDocumentType, Permission> = {
-  agreement: "agreement:read",
-  invoice: "invoice:read",
-  quote: "quote:read",
-  creditNote: "creditNote:read",
-}
 
 const sequenceSchema = z.number().int().nonnegative()
 

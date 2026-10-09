@@ -6,6 +6,7 @@ vi.mock("../../lib/email", async () => {
   return { ...actual, deliver: vi.fn().mockResolvedValue({ id: "email_123" }) }
 })
 
+import { appRouter } from "../../trpc/router"
 import { prisma } from "../../lib/db"
 import { deliver, EmailSendError } from "../../lib/email"
 import { deliverSmtp } from "../../lib/email-smtp-node"
@@ -278,11 +279,11 @@ describeIfDatabase("email outbox", () => {
       lastEmailAttemptOutcome: "failed",
       lastEmailAttemptCode: "send_failed",
     })
-    expect(invoice.lastEmailAttemptMessage).toContain("Domain is not verified")
+    expect(invoice.lastEmailAttemptMessage).toBe("The email provider refused the email. Check the email configuration.")
     // A refusal is a permanent failure of the job, counted as failed.
     expect(await deliveryJob(org.organizationId)).toMatchObject({
       status: "failed",
-      result: { outcome: "rejected", message: "Domain is not verified" },
+      result: { outcome: "rejected", code: "email_provider_refused", message: "The email provider refused the email. Check the email configuration." },
     })
     const edited = await executeIssuanceCommand(
       updateInvoiceDraft,
@@ -290,6 +291,55 @@ describeIfDatabase("email outbox", () => {
       { actor: org.actors.admin }
     )
     expect(edited.status).toBe("completed")
+  })
+
+  it("sanitizes legacy document delivery messages on list and detail reads", async () => {
+    const { org, invoiceId, contactId } = await setup()
+    const failure = { lastEmailAttemptAt: new Date(), lastEmailAttemptOutcome: "failed", lastEmailAttemptCode: "send_failed", lastEmailAttemptMessage: "provider secret sk-test-sensitive" }
+    await prisma.invoice.update({ where: { id: invoiceId }, data: failure })
+    const quote = await prisma.quote.create({ data: { organizationId: org.organizationId, contactId,
+      expiryDate: new Date("2099-12-01"), subtotalNet: "50", totalGross: "50", ...failure } })
+    const credit = await prisma.creditNote.create({ data: { organizationId: org.organizationId, contactId, invoiceId,
+      number: "CN-1", reason: "Return", currency: "DKK", countryCode: "US", locale: "en-US", timezone: "UTC",
+      taxRegime: "us_sales_tax", subtotalNet: "10", totalGross: "10", ...failure } })
+    const agreement = await prisma.agreement.create({ data: { organizationId: org.organizationId, contactId,
+      title: "Work", termsMarkdown: "Terms", validUntil: new Date("2099-12-01"), subtotalNet: "50", totalGross: "50", ...failure } })
+    const admin = appRouter.createCaller({ session: { user: { id: org.actors.admin.userId, name: "Admin", email: "admin@example.test" }, session: { activeOrganizationId: org.organizationId } } } as never)
+    const documents = [await admin.invoices.get({ id: invoiceId }), await admin.quotes.get({ id: quote.id }),
+      await admin.creditNotes.get({ id: credit.id }), await admin.agreements.get({ id: agreement.id })]
+    for (const document of documents) expect(document.lastEmailAttemptMessage).toBe("The email provider refused the email. Check the email configuration.")
+    expect(JSON.stringify([await admin.invoices.list(), await admin.quotes.list(), await admin.agreements.list()])).not.toContain("sk-test-sensitive")
+    for (const message of [
+      "The email could not be sent, and nothing was delivered. Send it again.",
+      "Email delivery is not configured, so nothing was sent. Send it again once it is.",
+      "Automatic sending failed: Contact has no email address",
+    ]) {
+      await prisma.invoice.update({ where: { id: invoiceId }, data: { lastEmailAttemptMessage: message } })
+      expect((await admin.invoices.get({ id: invoiceId })).lastEmailAttemptMessage).toBe(message)
+    }
+    await prisma.invoice.update({ where: { id: invoiceId }, data: { lastEmailAttemptMessage: "Automatic sending failed: provider secret sk-test-sensitive" } })
+    expect((await admin.invoices.get({ id: invoiceId })).lastEmailAttemptMessage)
+      .toBe("Automatic sending failed: The email provider refused the email. Check the email configuration.")
+
+  })
+
+  it("sanitizes a legacy provider refusal when the abandoned-delivery sweep settles it", async () => {
+    const { org, invoiceId } = await setup()
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("lost response"))
+    await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })
+    const job = await deliveryJob(org.organizationId)
+    await prisma.job.update({ where: { id: job.id }, data: {
+      status: "failed", claimToken: null,
+      payload: { ...(job.payload as object), decision: { reason: "rejected", message: "legacy provider secret: sk-test-sensitive" } },
+    } })
+    expect(await settleAbandonedDeliveries({ organizationIds: [org.organizationId] })).toMatchObject({ settled: 1, failed: 0 })
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+    expect(invoice.lastEmailAttemptMessage).toBe("The email provider refused the email. Check the email configuration.")
+    const settledJob = await deliveryJob(org.organizationId)
+    expect(settledJob.result).toMatchObject({ outcome: "rejected", code: "email_provider_refused", message: invoice.lastEmailAttemptMessage })
+    expect(settledJob.payload).toMatchObject({ decision: { reason: "rejected", code: "email_provider_refused", message: invoice.lastEmailAttemptMessage } })
+    expect(JSON.stringify(settledJob.payload)).not.toContain("sk-test-sensitive")
+    expect(JSON.stringify(await readActivity({ organizationId: org.organizationId, aggregateId: invoiceId }))).not.toContain("sk-test-sensitive")
   })
 
   it("replays the identical stored message and key after an uncertain failure", async () => {

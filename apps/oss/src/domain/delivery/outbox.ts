@@ -11,6 +11,7 @@ import { registerJobHandler, StaleJobClaimError, TerminalJobError } from "../job
 import { registerTickTask, type TickOptions } from "../scheduler"
 import { lockArtifactOrganization } from "../documents/artifacts"
 import { Command, type PendingEvent } from "../services"
+import { NEVER_SENT_MESSAGE, NOT_CONFIGURED_MESSAGE, emailProviderFailureCodeSchema, emailProviderFailureMessage, type EmailProviderFailureCode } from "./provider-failure"
 
 /**
  * The email outbox. A command that emails a customer renders the exact message, records that the
@@ -109,7 +110,7 @@ const payloadSchema = z.object({
   provider: z.enum(["resend", "smtp"]).optional(),
   /** A failure decided but not yet settled, kept so a retried settlement settles the same way. */
   decision: z
-    .object({ reason: z.enum(["rejected", "unconfirmed", "withdrawn"]), message: z.string() })
+    .object({ reason: z.enum(["rejected", "unconfirmed", "withdrawn"]), message: z.string(), code: emailProviderFailureCodeSchema.optional() })
     .optional(),
 })
 type DeliveryPayload = z.infer<typeof payloadSchema>
@@ -117,11 +118,13 @@ type DeliveryPayload = z.infer<typeof payloadSchema>
 export type DeliveryFailure = {
   reason: "rejected" | "unconfirmed" | "withdrawn"
   message: string
+  code?: EmailProviderFailureCode
 }
 
 const resultSchema = z.object({
   outcome: z.enum(["delivered", "rejected", "unconfirmed", "withdrawn"]),
   message: z.string().nullable(),
+  code: emailProviderFailureCodeSchema.optional(),
 })
 export type DeliveryResult = z.infer<typeof resultSchema>
 
@@ -205,6 +208,13 @@ function fenced(job: JobFence) {
   return job.claimToken ? { id: job.id, claimToken: job.claimToken } : { id: job.id, claimToken: null, status: "failed" }
 }
 
+/** Provider messages are untrusted, including pinned decisions from older outbox jobs. */
+function safeFailure(failure: DeliveryFailure): DeliveryFailure {
+  if (failure.reason !== "rejected") return failure
+  const code = failure.code ?? "email_provider_refused"
+  return { ...failure, code, message: emailProviderFailureMessage(code) }
+}
+
 /**
  * Settles the document and records the outcome on the job, in one transaction. The job is
  * claimed first, so a delivery settles at most once and only by whoever holds it.
@@ -215,15 +225,16 @@ async function settle(
   completion: DeliveryCompletion,
   outcome: { delivered: true } | { delivered: false; failure: DeliveryFailure }
 ) {
+  if (!outcome.delivered) outcome = { delivered: false, failure: safeFailure(outcome.failure) }
   const now = new Date()
   await prisma.$transaction(async (tx) => {
     await lockArtifactOrganization(tx, job.organizationId)
     const result: DeliveryResult = outcome.delivered
       ? { outcome: "delivered", message: null }
-      : { outcome: outcome.failure.reason, message: outcome.failure.message }
+      : { outcome: outcome.failure.reason, message: outcome.failure.message, ...(outcome.failure.code ? { code: outcome.failure.code } : {}) }
     const recorded = await tx.job.updateMany({
       where: { ...fenced(job), result: { equals: Prisma.DbNull } },
-      data: { result },
+      data: { result, ...(payload.decision ? { payload: { ...payload, decision: safeFailure(payload.decision) } } : {}) },
     })
     if (recorded.count === 0) {
       throw new StaleJobClaimError(`Delivery job ${job.id} is no longer held by this run`)
@@ -243,8 +254,6 @@ async function settle(
   })
 }
 
-const NOT_CONFIGURED_MESSAGE = "Email delivery is not configured, so nothing was sent. Send it again once it is."
-const NEVER_SENT_MESSAGE = "The email could not be sent, and nothing was delivered. Send it again."
 const UNCONFIRMED_MESSAGE =
   "The email provider never confirmed delivery, so the customer may or may not have received it."
 
@@ -266,6 +275,7 @@ async function settleDecision(
   completion: DeliveryCompletion,
   failure: DeliveryFailure
 ) {
+  failure = safeFailure(failure)
   if (!payload.decision) {
     await recordOnJob(job, { ...payload, decision: failure })
   }
@@ -377,6 +387,9 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   } catch (error) {
     if (isDefiniteRejection(error)) {
       deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, providerCode: error.providerCode })
+      // Only this SMTP classification proves the connection failed before submission.
+      // Timeouts and lost responses remain uncertain, never a definite refusal.
+      const code = error.providerCode === "smtp_unavailable" ? "email_provider_unreachable" : "email_provider_refused"
       // A refusal proves only that this request delivered nothing.
       return settleDecision(
         job,
@@ -384,7 +397,7 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
         completion,
         possiblyDelivered
           ? { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE }
-          : { reason: "rejected", message: error.message }
+          : { reason: "rejected", code, message: emailProviderFailureMessage(code) }
       )
     }
     if (provider === "smtp" || job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {

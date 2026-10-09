@@ -1,4 +1,6 @@
 import { TRPCError } from "@trpc/server"
+import { DomainRefusal } from "./outcome"
+import { emailProviderFailureMessage } from "../domain/delivery/provider-failure"
 import { readDeliveryResult } from "../domain/delivery/outbox"
 
 /**
@@ -11,9 +13,12 @@ import { readDeliveryResult } from "../domain/delivery/outbox"
 export async function readEmailDelivery(deliveryKey: string, noun: string) {
   const result = await readDeliveryResult(deliveryKey)
   if (result.outcome === "rejected") {
+    const code = result.code ?? "email_provider_refused"
+    const message = emailProviderFailureMessage(code)
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: `The email provider refused the ${noun} email: ${result.message ?? "no reason given"}`,
+      message,
+      cause: new DomainRefusal({ tag: "ExternalFailure", code, message }),
     })
   }
   if (result.outcome === "withdrawn") {

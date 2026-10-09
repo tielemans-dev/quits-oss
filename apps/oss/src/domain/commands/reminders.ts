@@ -250,7 +250,7 @@ registerDeliveryCompletion(REMINDER_COMPLETION, {
             { outcome: null, sentAt: null, outcomeMessage: null }
           : failure.reason === "withdrawn"
             ? { outcome: "skipped", outcomeMessage: failure.message }
-          : { outcome: "failed", outcomeMessage: `The email provider refused the reminder: ${failure.message}`.slice(0, 500) }
+          : { outcome: "failed", outcomeMessage: failure.message.slice(0, 500) }
     await tx.invoiceReminder.updateMany({ where, data })
     if (data.outcome === null) {
       await tx.job.create({
