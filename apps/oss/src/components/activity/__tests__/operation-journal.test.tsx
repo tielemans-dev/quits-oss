@@ -112,6 +112,15 @@ describe("operation journal recovery decisions", () => {
       screen.getByText(/customer may already have this email/i)
     ).toBeTruthy()
   })
+  it("shows older job runs beside the first recorded request without claiming complete timestamp history", async () => {
+    const history = fixture()
+    history.deliveries[0]!.legacyAttempts = 2
+    api.query.mockResolvedValue(history)
+    render(<OperationJournal documentType="invoice" documentId="invoice-1" />)
+    expect(await screen.findByText("Recorded attempt 1")).toBeTruthy()
+    expect(screen.getByText("2 older job runs. Individual request times were not recorded.")).toBeTruthy()
+    expect(screen.queryByText(/^Attempt 1$/)).toBeNull()
+  })
   it("requires both a reason and acknowledgement before queuing a manual resend", async () => {
     api.manualResend.mockResolvedValue(fixture())
     render(<OperationJournal documentType="invoice" documentId="invoice-1" />)

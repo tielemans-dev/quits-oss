@@ -273,6 +273,98 @@ suite("operation journal and bounded recovery", () => {
       ).toBe(outcome === "accepted" ? 1 : 0)
     }
   )
+  async function legacyQueuedDelivery(requests: number, runs: number) {
+    const context = await setup()
+    beforeJobWrite((args) => {
+      if ((args.data as { payload?: { requests?: number } }).payload?.requests === 1)
+        throw new Error("Interrupted before recording a provider request")
+    })
+    await executeIssuanceCommand(sendInvoice, { id: context.scope.documentId }, {
+      actor: context.actor, clientRequestId: "legacy-queued-send"
+    })
+    resetRuntimePlatform()
+    const job = await findJob(context.org.organizationId)
+    const payload = { ...(job.payload as Record<string, unknown>), requests }
+    delete payload.attempts
+    delete payload.legacyJobRuns
+    delete payload.provider
+    await prisma.job.update({ where: { id: job.id }, data: {
+      status: runs >= 5 ? "failed" : "pending", attempts: runs, runAfter: new Date(0),
+      payload: payload as Prisma.InputJsonObject
+    } })
+    expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+    return { ...context, job, payload, delivery: { ...context.scope, deliveryId: job.id } }
+  }
+
+  it.each(["scheduler", "recovery"] as const)(
+    "preserves untimestamped legacy job runs across repeated %s retries",
+    async mode => {
+      const { actor, scope, org, job, payload, delivery } = await legacyQueuedDelivery(2, 2)
+      expect((await documentJournal(actor, scope)).deliveries[0]).toMatchObject({
+        legacyAttempts: 2, attempts: []
+      })
+      vi.mocked(deliver).mockRejectedValueOnce(new Error("Resend response lost"))
+      const retry = async () => {
+        if (mode === "recovery") return recoverDelivery(actor, delivery)
+        await prisma.job.update({ where: { id: job.id }, data: { runAfter: new Date(0) } })
+        return runDueJobs({ organizationIds: [org.organizationId], limit: 1 })
+      }
+      const firstRetryStarted = new Date().toISOString()
+      await retry()
+      expect((await findJob(org.organizationId)).payload).toMatchObject({ requests: 3 })
+      expect(vi.mocked(deliver)).toHaveBeenCalledExactlyOnceWith(payload.message, {
+        idempotencyKey: payload.idempotencyKey, provider: "resend"
+      })
+      let projected = (await documentJournal(actor, scope)).deliveries[0]!
+      expect(projected.legacyAttempts).toBe(2)
+      expect(projected.attempts).toHaveLength(1)
+      expect(projected.attempts[0]!.startedAt >= firstRetryStarted).toBe(true)
+      expect(projected.attempts[0]).toMatchObject({ outcome: "uncertain", startedAt: expect.any(String) })
+      await retry()
+      projected = (await documentJournal(actor, scope)).deliveries[0]!
+      expect(projected.legacyAttempts).toBe(2)
+      expect(projected.attempts).toHaveLength(2)
+      expect(projected.attempts[1]).toMatchObject({ outcome: "accepted", startedAt: expect.any(String) })
+      expect(projected.state).toBe("delivery_confirmed")
+      const persisted = await findJob(org.organizationId)
+      expect(persisted.payload).toMatchObject({ requests: 4, idempotencyKey: payload.idempotencyKey, message: payload.message, commandId: payload.commandId, completion: payload.completion })
+      expect(vi.mocked(deliver)).toHaveBeenCalledTimes(2)
+      const keys = vi.mocked(deliver).mock.calls.map(call => call[1]?.idempotencyKey)
+      expect(keys).toEqual([payload.idempotencyKey, payload.idempotencyKey])
+      expect(await prisma.invoice.count({ where: { organizationId: org.organizationId } })).toBe(1)
+      expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, type: "invoice.sent" } })).toBe(1)
+    }
+  )
+
+  it("retains legacy runs when never-submitted recovery resets the job budget more than once", async () => {
+    const { actor, scope, org, job, payload, delivery } = await legacyQueuedDelivery(0, 5)
+    beforeJobWrite((args) => {
+      if ((args.data as { payload?: { requests?: number } }).payload?.requests === 1)
+        throw new Error("Interrupted before the first request marker")
+    })
+    await recoverDelivery(actor, delivery)
+    expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+    expect((await documentJournal(actor, scope)).deliveries[0]).toMatchObject({
+      legacyAttempts: 6, attempts: []
+    })
+    await recoverDelivery(actor, delivery)
+    expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+    expect((await documentJournal(actor, scope)).deliveries[0]).toMatchObject({
+      legacyAttempts: 7, attempts: []
+    })
+    resetRuntimePlatform()
+    await recoverDelivery(actor, delivery)
+    const projected = (await documentJournal(actor, scope)).deliveries[0]!
+    expect(projected.legacyAttempts).toBe(7)
+    expect(projected.attempts).toHaveLength(1)
+    expect(projected.state).toBe("delivery_confirmed")
+    expect(vi.mocked(deliver)).toHaveBeenCalledExactlyOnceWith(payload.message, {
+      idempotencyKey: payload.idempotencyKey, provider: "resend"
+    })
+    expect(await prisma.invoice.count({ where: { organizationId: org.organizationId } })).toBe(1)
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).payload).toMatchObject({ requests: 1 })
+  })
+
   it("distinguishes missing configuration from a delivery failure", async () => {
     const { actor, scope, org } = await setup()
     beforeJobWrite((args) => {
