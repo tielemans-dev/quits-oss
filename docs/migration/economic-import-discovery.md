@@ -17,7 +17,7 @@ No customer grant, token or credential was available or used. No write method wa
 Machine-readable companions in [`economic/`](./economic/):
 
 - [`api-snapshot.json`](./economic/api-snapshot.json): endpoints, fields, versions, roles and the executed probes, with the SHA-256 of each source page read.
-- [`extraction-matrix.json`](./economic/extraction-matrix.json): the field-level mapping, one row per field of the draft import contract.
+- [`extraction-matrix.json`](./economic/extraction-matrix.json): the field-level mapping of emitted draft fields, prospective importer requirements and required normalization inputs.
 - [`fixtures/synthetic-scenarios.json`](./economic/fixtures/synthetic-scenarios.json): 15 synthetic scenarios with hand-declared expectations.
 - Code: `scripts/economic-discovery/` (draft contract types, normaliser, matrix checker) and `scripts/__tests__/economic-discovery.test.ts`.
 
@@ -89,13 +89,18 @@ So, on the documentation alone: **read-only import is allowed on every plan; wri
 
 ## 4. Field-level extraction matrix
 
-[`economic/extraction-matrix.json`](./economic/extraction-matrix.json) has 48 rows, one per field of the draft contract, each with status, source endpoint and field, required roles, probes and notes. `scripts/economic-discovery/matrix.ts` fails the test run when a row cites an endpoint or field that is not in the snapshot, uses roles that differ from the permissions page or OpenAPI roles, or when a contract field has no row. Condensed:
+[`economic/extraction-matrix.json`](./economic/extraction-matrix.json) has 64 rows: 48 semantic mapping rows and 16 source-input rows. `inDraftContract` means the field is represented in the emitted TypeScript draft, not merely required by a future importer. Unsupported VAT treatment, credit links, payment method, match dates, FX differences and planned unpaid totals are explicitly absent. Exhaustive typed key maps group identity, exponent and diagnostic output fields under their semantic rows. Input rows describe extraction dependencies and are not output fields.
+
+Each row records status, source endpoint and field, required roles, probes and notes. `scripts/economic-discovery/matrix.ts` fails the test run when a row cites an endpoint or field that is not in the snapshot, uses roles that differ from the permissions page or OpenAPI roles, when a semantic field or required input has no row, or when an emitted-field flag disagrees with the typed draft.
+
+Derivation dependencies may reference mapped output fields or explicit input rows. New accounting-year input mappings use the existing saved REST field inventory and permission table; they claim no new provider execution. Condensed:
 
 | Quits field | Source | Status |
 | --- | --- | --- |
 | Contact: key, name, address, zip, city | REST `/customers` | executed (demo) |
 | Contact: email, country, VAT number, CVR, EAN | REST `/customers` | documented; optional; omitted when empty, so a populated value was never seen |
 | Document: number, dates, currency, rate, net, VAT, gross, base gross, customer | REST `/invoices/booked/:n` | executed (demo) |
+| Document: supply date | REST `delivery.deliveryDate` | documented; supplied value preserved, absent becomes null, never inferred from issue date |
 | Document: rounding | REST `roundingAmount` | executed; whether gross includes it is undocumented |
 | Document: original PDF | REST `/invoices/booked/:n/pdf` | executed (demo): `application/pdf` |
 | Document: kind (invoice or credit note) | sign of `grossAmount` | derived: the vendor documents negative totals for credit notes; there is no type field |
@@ -192,12 +197,20 @@ What the fixtures do **not** prove: that a real account returns this shape, that
 | Level | Check | Tolerance |
 | --- | --- | --- |
 | 0 completeness | REST booked-invoice count equals BookedEntries debtor lines with an invoice number; `/count` endpoints against pages read; every PDF fetched or listed missing; attachment count joined | exact |
-| 1 per document | debtor-line currency and customer match the invoice before comparing amounts; REST `remainder` equals the ledger-line `remainder`; invoice totals add up; the voucher's revenue, VAT and debtor lines net to zero | exact in the document currency; base totals within one minor unit |
+| 1 per document | debtor-line currency and customer match the invoice before comparing amounts; REST `remainder` equals the ledger-line `remainder`; invoice totals add up; the voucher's revenue, VAT and debtor lines net to zero | exact in the document currency; reported invoice base gross equals the debtor base sum exactly; voucher net within one base minor unit |
 | 2 per allocation | each pair endpoint exists; pair amounts equal entry amounts, including repeated/reversed evidence; cluster entries belong to one customer; clusters conserve; solved flows fit both entries and agree with their signs; every emitted endpoint is represented in import scope | exact |
 | 3 per customer and currency | per-document and ledger-item residual rows stay in their own currencies; compare the complete extraction's ledger residuals converted to base against `customer.balance`. Planned: compare unpaid booked-invoice residuals with the vendor unpaid-invoice total after verifying its scope and currency semantics | one base minor unit per partially applied foreign entry for the customer check; any other difference is reported with its amount. Unpaid-total tolerance requires verified endpoint semantics |
 | 4 after a Quits dry run | per customer, document and currency: Quits residual equals source residual; unapplied cash and open credits equal their source sums; allocations reproduce each entry's applied amount | exact, per currency; never netted across currencies |
 
-**Pass.** No `blocking` exception; every `degraded` exception acknowledged by an operator decision; every control-total difference recorded with its amount. `allRowsMatch` describes only the emitted reconciliation rows; a source-only row has a null match and makes it false. It is not an overall import approval. Customer controls cover the full extraction snapshot, including entries excluded at cutover; they must not be claimed as totals for imported history.
+A type 1 customer-ledger entry with a null or absent invoice number produces blocking `ledger_entry_without_invoice`. It remains in the full-snapshot customer control but creates no invented document or ledger item. All supplied entry customer references are checked before date or type exclusions, including post-cutover debtor entries.
+
+Reported invoice `grossAmountInBaseCurrency` is checked against the sum of debtor `amountInBaseCurrency`, including negative credit notes and foreign-currency documents. Both are converted to base minor units and must agree exactly. Sub-minor precision invalidates this proof even if rounding gives equal integers. A failure blocks, omits allocations involving that document and leaves its recomputed residual null. The validator infers no conversion from `exchangeRate`, and `roundingAmount` does not excuse disagreement between reported base gross amounts.
+
+A null or absent debtor voucher number produces degraded `voucher_number_missing`. The original invoice PDF and residual checks can still be available, but attachment completeness cannot be established. Empty `attachedDocumentNumbers` then means the join could not be made, not that the voucher has no attachments. Accounting year uses the first debtor entry's date within the inclusive extracted `fromDate` and `toDate` bounds, returning `year`. This remains the stated voucher-year assumption, not a vendor guarantee.
+
+Synthetic payload field validation recursively checks documented paths through objects and every array element. It rejects nested typos such as `pdf.dwonload` while accepting documented invoice line, product and unit shapes. This checks names against the saved inventory, not provider schema types or real-account behavior.
+
+**Pass.** No `blocking` exception; every `degraded` exception acknowledged by an operator decision; every control-total difference recorded with its amount. `allRowsMatch` describes only the emitted reconciliation rows; a source-only row has a null match and makes it false. It is not an overall import approval. An empty row set can still have `allRowsMatch: true` while blocking extraction exceptions reject the batch. Customer controls cover the full extraction snapshot, including entries excluded at cutover; they must not be claimed as totals for imported history.
 
 The validator executes levels 1 and 2, the customer-balance part of level 3, the join and PDF-evidence parts of level 0, and produces the reconciliation rows level 4 will compare against. `SourceBundle` has no unpaid-total input and the unpaid-invoice control-total comparison is **planned, not executed**. Before implementing it, verify whether the endpoint includes credits and which currency it returns, then compare it with the same complete snapshot scope. Never compare it with cutover-filtered records or net different currencies. Comparing page totals with the `/count` endpoints is also a planned extractor duty.
 
@@ -205,7 +218,7 @@ The validator executes levels 1 and 2, the customer-balance part of level 3, the
 
 | Criterion | State |
 | --- | --- |
-| Field-level extraction matrix linking each required field to an official endpoint or export column, recording unsupported cases | **Met for the API.** 48 rows, checked against a documentation snapshot. **Export columns are not met**: the vendor does not publish them and no export was obtained. |
+| Field-level extraction matrix linking each required field to an official endpoint or export column, recording unsupported cases | **Met for the API.** 64 rows, checked against a documentation snapshot and the typed draft, including normalization dependencies. **Export columns are not met**: the vendor does not publish them and no export was obtained. |
 | Fixture set: unpaid, fully paid, partially paid, credit allocation, unapplied cash, rounding, foreign currency, missing documents | **Met**, synthetic only (15 scenarios). |
 | Fixture verifies matched-pair amounts and joins rather than inferring from a paid flag; unsupported history reported | **Met** in the validator and its tests. Real-account behaviour unverified. |
 | Read-only access and writeback entitlements documented separately, including how to present an inaccessible account | **Met on documentation** (section 2). Plan gating **not tested** on any account. |

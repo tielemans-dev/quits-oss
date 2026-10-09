@@ -38,6 +38,7 @@ export type SourceBookedInvoice = {
   remainder: number
   remainderInBaseCurrency: number
   pdf?: { download: string }
+  delivery?: { deliveryDate?: string }
 }
 
 /** BookedEntries v6 item. `type` is the integer code from the OpenAPI enum. */
@@ -111,6 +112,7 @@ export type ExceptionCode =
   | "multiple_debtor_lines"
   | "debtor_line_amount_mismatch"
   | "debtor_line_currency_mismatch"
+  | "debtor_line_base_amount_mismatch"
   | "invoice_ledger_lines_unbalanced"
   | "remainder_disagreement"
   | "remainder_out_of_range"
@@ -128,6 +130,7 @@ export type ExceptionCode =
   | "original_pdf_missing"
   | "original_pdf_fetch_failed"
   | "voucher_year_unresolved"
+  | "voucher_number_missing"
   | "document_after_cutover"
   | "snapshot_residual_only"
   | "customer_balance_disagreement"
@@ -161,6 +164,8 @@ export type ImportDocument = {
   contactSourceId: string
   issueDate: string
   dueDate: string | null
+  /** Supplied delivery date only; never inferred from issueDate. */
+  supplyDate: string | null
   currency: string
   exponent: number
   net: number

@@ -1,5 +1,5 @@
 {
- "matrixVersion": 1,
+ "matrixVersion": 2,
  "checkedAt": "2026-10-08",
  "statusLegend": {
   "documented": "Field is in the vendor documentation snapshot. Not fetched from any customer account.",
@@ -376,9 +376,12 @@
      "Sales"
     ]
    },
-   "notes": "",
+   "notes": "Source-reported base gross must equal the sum of debtor amountInBaseCurrency in base minor units. Exact comparison, including credits and foreign currency. Unsupported sub-minor precision blocks proof. No rate-based conversion or roundingAmount allowance is inferred.",
    "executedProbeIds": [
     "rest-booked-invoices"
+   ],
+   "derivedFrom": [
+    "input.debtorBaseAmount"
    ]
   },
   {
@@ -444,7 +447,7 @@
   {
    "contractField": "document.vatTreatment",
    "entity": "document",
-   "inDraftContract": true,
+   "inDraftContract": false,
    "requirement": "required",
    "status": "unsupported",
    "source": {
@@ -457,7 +460,7 @@
      "Sales"
     ]
    },
-   "notes": "Imported documents must carry an unclassified treatment and be non-postable until an accountant decides.",
+   "notes": "Prospective importer requirement, absent from the emitted draft. Imported documents must carry an unclassified treatment and be non-postable until an accountant decides.",
    "unsupportedReason": "Only a rate and an amount per line are exposed. Treatment (standard, intra-community, export, exempt), reason codes and VIES evidence are not, so Quits' VAT evidence model cannot be populated from the API. recipient.vatZone gives a coarse hint."
   },
   {
@@ -481,11 +484,11 @@
   {
    "contractField": "document.correctsInvoice",
    "entity": "document",
-   "inDraftContract": true,
+   "inDraftContract": false,
    "requirement": "required",
    "status": "unsupported",
    "source": null,
-   "notes": "Credit-to-invoice relationships come only from allocations. Quits credit notes require an invoice today, so unlinked credits need the settlement-allocation model before they can be imported as credit notes.",
+   "notes": "Prospective importer requirement, absent from the emitted draft. Credit-to-invoice relationships come only from allocations. Quits credit notes require an invoice today, so unlinked credits need the settlement-allocation model before they can be imported as credit notes.",
    "unsupportedReason": "No field on a booked credit note references an original invoice (checked in the booked-invoice schema and on a demo invoice). The only link is a matched pair between the credit's ledger line and an invoice's ledger line; an unmatched credit has no link."
   },
   {
@@ -526,7 +529,7 @@
      "Bookkeeping"
     ]
    },
-   "notes": "Taken from the document's debtor line.",
+   "notes": "Taken from the document's debtor line. Null or absent voucher numbers produce degraded voucher_number_missing; the attachment join is unavailable rather than proven empty.",
    "executedProbeIds": [
     "be-list"
    ]
@@ -540,7 +543,10 @@
    "source": null,
    "notes": "BookedEntries has no accounting-year field, but the Documents API keys attachments on (accountingYear, voucherNumber). The year is derived by placing the entry date inside GET /accounting-years fromDate/toDate. That a voucher always sits in the year of its date is an assumption.",
    "derivedFrom": [
-    "document.issueDate"
+    "input.debtorDate",
+    "input.accountingYear",
+    "input.accountingYearFromDate",
+    "input.accountingYearToDate"
    ]
   },
   {
@@ -562,6 +568,12 @@
    "notes": "The entry with type 1, a customerNumber, and customerInvoiceNumber equal to the booked-invoice number. The revenue and VAT lines of the same voucher have no customerNumber and are not receivables.",
    "executedProbeIds": [
     "be-list"
+   ],
+   "derivedFrom": [
+    "input.entryType",
+    "input.entryCustomer",
+    "input.entryInvoiceNumber",
+    "document.number"
    ]
   },
   {
@@ -585,7 +597,13 @@
     "documents-list",
     "documents-pdf"
    ],
-   "exportFallback": "Voucher export (Alle indstillinger > Eksportér bilag), per accounting year, at most 100 per file, with an option to include attached documents."
+   "exportFallback": "Voucher export (Alle indstillinger > Eksport\u00e9r bilag), per accounting year, at most 100 per file, with an option to include attached documents.",
+   "derivedFrom": [
+    "document.voucherNumber",
+    "document.accountingYear",
+    "input.attachmentVoucher",
+    "input.attachmentYear"
+   ]
   },
   {
    "contractField": "document.sourceResidual",
@@ -617,8 +635,9 @@
    "source": null,
    "notes": "Gross minus solved allocations only when the invoice/debtor currency and customer joins are valid and the entire resolved match cluster is represented on or before cutover. Otherwise null with a source-only residual. An internal consistency check, not an independent proof of the vendor's remainder.",
    "derivedFrom": [
-    "document.gross",
-    "allocation.amount"
+    "input.entryAmount",
+    "allocation.amount",
+    "document.ledgerEntryNumbers"
    ]
   },
   {
@@ -792,11 +811,11 @@
   {
    "contractField": "ledgerItem.paymentMethod",
    "entity": "ledgerItem",
-   "inDraftContract": true,
+   "inDraftContract": false,
    "requirement": "optional",
    "status": "unsupported",
    "source": null,
-   "notes": "Quits Payment.method must be set to 'other' with the entry text in the note.",
+   "notes": "Prospective importer requirement, absent from the emitted draft. Quits Payment.method must be set to 'other' with the entry text in the note.",
    "unsupportedReason": "BookedEntries exposes only free text. No method, bank account or payment reference field exists for customer payments."
   },
   {
@@ -830,28 +849,34 @@
    "notes": "Pairs carry each entry's full amount, never the amount applied between them (observed). The applied amount per entry is amount minus remainder; pair amounts are solved by peeling leaves of the pair graph. Cycles have no unique solution and are reported.",
    "derivedFrom": [
     "allocation.entries",
-    "ledgerItem.sourceResidual",
-    "ledgerItem.amount"
+    "input.pairToEntry",
+    "input.pairFromAmount",
+    "input.pairToAmount",
+    "input.entryAmount",
+    "input.entryRemainder",
+    "input.entryCurrency",
+    "input.entryCustomer",
+    "input.entryType"
    ]
   },
   {
    "contractField": "allocation.matchedAt",
    "entity": "allocation",
-   "inDraftContract": true,
+   "inDraftContract": false,
    "requirement": "required",
    "status": "unsupported",
    "source": null,
-   "notes": "",
+   "notes": "Prospective importer requirement, absent from the emitted draft. ",
    "unsupportedReason": "Neither the pair nor the entry carries a match date or id. The residual as of a past date cannot be reconstructed, only the residual now."
   },
   {
    "contractField": "allocation.fxDifference",
    "entity": "allocation",
-   "inDraftContract": true,
+   "inDraftContract": false,
    "requirement": "required",
    "status": "unsupported",
    "source": null,
-   "notes": "",
+   "notes": "Prospective importer requirement, absent from the emitted draft. ",
    "unsupportedReason": "Not in the pair. The BookedEntries documentation mentions exchange-rate differences when matching in closed periods but does not say where the difference is recorded; unverified on a real foreign-currency account."
   },
   {
@@ -878,7 +903,7 @@
   {
    "contractField": "control.unpaidTotals",
    "entity": "control",
-   "inDraftContract": true,
+   "inDraftContract": false,
    "requirement": "optional",
    "status": "documented",
    "source": {
@@ -891,7 +916,7 @@
      "Sales"
     ]
    },
-   "notes": "Open-invoice total in base currency. Excludes unapplied cash and open credits that are not invoices."
+   "notes": "Prospective importer requirement, absent from the emitted draft. Open-invoice total in base currency. Excludes unapplied cash and open credits that are not invoices."
   },
   {
    "contractField": "extraction.cutover",
@@ -900,8 +925,296 @@
    "requirement": "required",
    "status": "unsupported",
    "source": null,
-   "notes": "",
+   "notes": "Extractor-supplied provenance includes cutoverDate, extractedAt, baseCurrency and pinned apiVersions. These are caller metadata, not values derived from a provider field.",
    "unsupportedReason": "The APIs have no notion of a cutover. It is a Quits-side decision: documents dated after it are excluded, and matches involving later entries are flagged."
+  },
+  {
+   "contractField": "input.debtorDate",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries",
+    "field": "date",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Date of the first debtor line, not the REST invoice issue date. Used to locate accounting-year bounds. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.accountingYear",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "rest",
+    "method": "GET",
+    "endpoint": "/accounting-years",
+    "field": "year",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Accounting-year identifier used by Documents. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.accountingYearFromDate",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "rest",
+    "method": "GET",
+    "endpoint": "/accounting-years",
+    "field": "fromDate",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Inclusive lower bound. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.accountingYearToDate",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "rest",
+    "method": "GET",
+    "endpoint": "/accounting-years",
+    "field": "toDate",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Inclusive upper bound. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.debtorBaseAmount",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries",
+    "field": "amountInBaseCurrency",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Sum over debtor lines only, checked against reported invoice base gross. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.entryCustomer",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries",
+    "field": "customerNumber",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Validate every supplied customer reference before type/date filtering. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.entryInvoiceNumber",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries",
+    "field": "customerInvoiceNumber",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Type 1 customer-ledger entries without this identity block; never fabricate one. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.entryType",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries",
+    "field": "type",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Classify customer-ledger lines. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.entryAmount",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries",
+    "field": "amount",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Full signed entry amount, not an allocation amount. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.entryRemainder",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries",
+    "field": "remainder",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Source remainder for each customer-ledger endpoint. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.entryCurrency",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries",
+    "field": "currencyCode",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Null or omitted uses extractor base currency. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.pairToEntry",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries/matched-pairs",
+    "field": "toEntry",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Other matching endpoint. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.pairFromAmount",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries/matched-pairs",
+    "field": "fromEntryAmount",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Validate full endpoint amount before deduplicating edges. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.pairToAmount",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "bookedEntries",
+    "method": "GET",
+    "endpoint": "/booked-entries/matched-pairs",
+    "field": "toEntryAmount",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Validate full endpoint amount before deduplicating edges. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.attachmentVoucher",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "documents",
+    "method": "GET",
+    "endpoint": "/AttachedDocuments",
+    "field": "voucherNumber",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Attachment join key. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
+  },
+  {
+   "contractField": "input.attachmentYear",
+   "entity": "input",
+   "inDraftContract": false,
+   "requirement": "required",
+   "status": "documented",
+   "source": {
+    "api": "documents",
+    "method": "GET",
+    "endpoint": "/AttachedDocuments",
+    "field": "accountingYear",
+    "requiredRoles": [
+     "SuperUser",
+     "Bookkeeping"
+    ]
+   },
+   "notes": "Attachment join key. Documented in the existing snapshot; this new mapping claims no additional executed provider probe."
   }
  ]
 }

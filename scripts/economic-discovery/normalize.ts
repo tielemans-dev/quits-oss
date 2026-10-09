@@ -111,7 +111,14 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
   // Customer-ledger lines. Only entries carrying a customer number are open items; the revenue and
   // VAT lines of the same voucher share the invoice number but are not receivables.
   const ledger = new Map<number, SourceBookedEntry>()
-  for (const e of src.entries) if (e.customerNumber != null) ledger.set(e.entryNumber, e)
+  for (const e of src.entries) {
+    // Validate the complete extraction before document, type or cutover filtering.
+    if (e.customerNumber == null) continue
+    if (!knownCustomers.has(e.customerNumber)) {
+      issues.add("contact_unknown", "blocking", `entry:${e.entryNumber}`, `Customer ${e.customerNumber} is not in the customer extraction`)
+    }
+    ledger.set(e.entryNumber, e)
+  }
   const entryCurrency = (e: SourceBookedEntry) => e.currencyCode ?? base
   const entryExp = (e: SourceBookedEntry) => exponentFor(entryCurrency(e), issues)
   const amountMinor = (e: SourceBookedEntry) => toMinor(e.amount, entryExp(e), issues, `entry:${e.entryNumber}`)
@@ -344,6 +351,17 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
     }
     for (const e of debtor) debtorEntryOfDocument.add(e.entryNumber)
     if (debtor.length > 0) {
+      // Both values are source-reported base amounts of the same debtor posting. Require exact
+      // agreement after conversion to base minor units; do not recompute FX from exchangeRate or
+      // allow roundingAmount to explain a disagreement between two reported gross amounts.
+      const baseIssues = new Collector()
+      const reportedBase = toMinor(inv.grossAmountInBaseCurrency, baseExp, baseIssues, key)
+      const debtorBase = debtor.reduce((sum, e) => sum + toMinor(e.amountInBaseCurrency, baseExp, baseIssues, `entry:${e.entryNumber}`), 0)
+      for (const issue of baseIssues.list) issues.add(issue.code, issue.severity, issue.subject, issue.detail)
+      if (reportedBase !== debtorBase || baseIssues.list.some((issue) => issue.severity === "blocking")) {
+        issues.add("debtor_line_base_amount_mismatch", "blocking", key, `Reported base gross ${reportedBase} and debtor base sum ${debtorBase} must agree in ${base} minor units without unsupported precision; no FX conversion is inferred`)
+        invalidDocumentJoins.add(key)
+      }
       if (currenciesMatch) {
         const sum = debtor.reduce((s, e) => s + amountMinor(e), 0)
         if (sum !== gross) {
@@ -385,6 +403,9 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
     const first = debtor[0]
     const voucher = first?.voucherNumber ?? null
     const year = first ? (src.accountingYears.find((y) => day(first.date) >= y.fromDate && day(first.date) <= y.toDate)?.year ?? null) : null
+    if (first && voucher == null) {
+      issues.add("voucher_number_missing", "degraded", key, "The debtor line has no voucher number; the Documents API join is unavailable, so an empty attachment list does not prove there are no attachments")
+    }
     if (first && year == null) {
       issues.add("voucher_year_unresolved", "degraded", key, `Entry date ${day(first.date)} is outside every extracted accounting year; the Documents API cannot be joined`)
     }
@@ -405,6 +426,7 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
       contactSourceId: `customer:${inv.customer.customerNumber}`,
       issueDate: day(inv.date),
       dueDate: inv.dueDate ? day(inv.dueDate) : null,
+      supplyDate: inv.delivery?.deliveryDate ? day(inv.delivery.deliveryDate) : null,
       currency: inv.currency,
       exponent: exp,
       net,
@@ -426,7 +448,9 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
 
   // Debtor lines whose invoice was not extracted.
   for (const e of ledger.values()) {
-    if (e.type === ENTRY_CUSTOMER_INVOICE && e.customerInvoiceNumber != null && !docNumbers.has(e.customerInvoiceNumber)) {
+    if (e.type === ENTRY_CUSTOMER_INVOICE && e.customerInvoiceNumber == null) {
+      issues.add("ledger_entry_without_invoice", "blocking", `entry:${e.entryNumber}`, "Customer invoice entry has no customerInvoiceNumber; its receivable cannot be represented without inventing a document identity")
+    } else if (e.type === ENTRY_CUSTOMER_INVOICE && e.customerInvoiceNumber != null && !docNumbers.has(e.customerInvoiceNumber)) {
       issues.add("ledger_entry_without_invoice", "blocking", `entry:${e.entryNumber}`, `Ledger line references invoice ${e.customerInvoiceNumber}, which GET /invoices/booked did not return`)
     }
   }
@@ -448,7 +472,6 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
     }
     if (day(e.date) > cutover) continue
     if (kind == null) continue
-    if (!knownCustomers.has(e.customerNumber!)) issues.add("contact_unknown", "blocking", subject, `Customer ${e.customerNumber} is not in the customer extraction`)
     const exp = entryExp(e)
     const rem = remainderOf(e)
     ledgerItems.push({

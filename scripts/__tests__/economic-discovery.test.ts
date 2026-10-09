@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { CONTRACT_FIELDS, validateMatrix, type Matrix, type Snapshot } from "../economic-discovery/matrix.ts"
+import { CONTRACT_FIELDS, INPUT_FIELDS, validateDocumentedPaths, validateMatrix, type Matrix, type Snapshot } from "../economic-discovery/matrix.ts"
 import { exponentFor, normalizeEconomic, toMinor } from "../economic-discovery/normalize.ts"
 import type { ImportBundle, SourceBundle } from "../economic-discovery/types.ts"
 
@@ -457,7 +457,7 @@ describe("money helpers", () => {
 describe("extraction matrix", () => {
   it("maps every contract field to a documented endpoint field, a derivation, or a stated gap", () => {
     expect(validateMatrix(matrix, snapshot)).toEqual([])
-    expect(matrix.rows).toHaveLength(CONTRACT_FIELDS.length)
+    expect(matrix.rows).toHaveLength(CONTRACT_FIELDS.length + INPUT_FIELDS.length)
   })
 
   it("only ever cites read (GET) operations, never the matching write", () => {
@@ -492,23 +492,22 @@ describe("extraction matrix", () => {
   it("keeps the Sales-only and Bookkeeping-only surfaces apart", () => {
     const rest = new Set(matrix.rows.filter((r) => r.source?.api === "rest").flatMap((r) => r.source!.requiredRoles))
     const entries = new Set(matrix.rows.filter((r) => r.source && r.source.api !== "rest").flatMap((r) => r.source!.requiredRoles))
-    expect([...rest].sort()).toEqual(["Sales", "SuperUser"])
+    expect([...rest].sort()).toEqual(["Bookkeeping", "Sales", "SuperUser"])
     expect([...entries].sort()).toEqual(["Bookkeeping", "SuperUser"])
   })
 })
 
 describe("fixtures use only documented field names", () => {
-  const top = (fields: string[]) => new Set(fields.map((f) => f.split(".")[0]!))
   it("matches the documentation snapshot for every payload", () => {
-    const customers = top(snapshot.rest["/customers"]!.fields)
-    const invoices = top(snapshot.rest["/invoices/booked/:bookedInvoiceNumber"]!.fields)
-    const entry = new Set(snapshot.openapi.BookedEntries.schemas.BookedEntry)
-    const pair = new Set(snapshot.openapi.BookedEntries.schemas.MatchedBookedEntriesPair)
-    const attached = new Set(snapshot.openapi.Documents.schemas.AttachedDocument)
-    const years = top(snapshot.rest["/accounting-years"]!.fields)
+    const customers = snapshot.rest["/customers"]!.fields
+    const invoices = snapshot.rest["/invoices/booked/:bookedInvoiceNumber"]!.fields
+    const entry = snapshot.openapi.BookedEntries.schemas.BookedEntry!
+    const pair = snapshot.openapi.BookedEntries.schemas.MatchedBookedEntriesPair!
+    const attached = snapshot.openapi.Documents.schemas.AttachedDocument!
+    const years = snapshot.rest["/accounting-years"]!.fields
     const unknown: string[] = []
-    const check = (label: string, obj: object, allowed: Set<string>) => {
-      for (const k of Object.keys(obj)) if (!allowed.has(k)) unknown.push(`${label}.${k}`)
+    const check = (label: string, obj: object, allowed: string[]) => {
+      unknown.push(...validateDocumentedPaths(obj, allowed).map((path) => `${label}.${path}`))
     }
     for (const s of fixtures.scenarios) {
       s.source.customers.forEach((c) => check("customer", c, customers))
@@ -528,5 +527,204 @@ describe("fixtures use only documented field names", () => {
       expect(s.source.extraction.apiVersions.bookedEntries).toBe(snapshot.openapi.BookedEntries.version)
       expect(s.source.extraction.apiVersions.documents).toBe(snapshot.openapi.Documents.version)
     }
+  })
+})
+
+
+describe("historical bot regressions", () => {
+  for (const omitted of [false, true]) {
+    it(`blocks a debtor with ${omitted ? "omitted" : "null"} invoice identity without inventing a document`, () => {
+      const s = clone(byName("unpaid").source)
+      s.bookedInvoices = []
+      s.entries = s.entries.filter((e) => e.customerNumber != null)
+      if (omitted) delete s.entries[0]!.customerInvoiceNumber
+      else s.entries[0]!.customerInvoiceNumber = null
+      const out = normalizeEconomic(s)
+      expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "ledger_entry_without_invoice", severity: "blocking", subject: `entry:${s.entries[0]!.entryNumber}` }))
+      expect(out.documents).toEqual([])
+      expect(out.ledgerItems).toEqual([])
+      expect(out.reconciliation.customerControls[0]!.ledgerResidualBase).toBe(125000)
+      // Empty reconciliation rows are not acceptance. The blocking exception rejects the batch.
+      expect(out.reconciliation.allRowsMatch).toBe(true)
+    })
+
+    it(`reports a ${omitted ? "omitted" : "null"} voucher join without fabricating attachments`, () => {
+      const s = clone(byName("unpaid").source)
+      const debtor = s.entries.find((e) => e.customerNumber != null)!
+      if (omitted) delete debtor.voucherNumber
+      else debtor.voucherNumber = null
+      const out = normalizeEconomic(s)
+      expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "voucher_number_missing", severity: "degraded", subject: "invoice:1001" }))
+      expect(out.documents[0]).toMatchObject({ voucherNumber: null, attachedDocumentNumbers: [] })
+      expect(out.documents[0]!.originalPdf.status).toBe("ok")
+      expect(out.reconciliation.allRowsMatch).toBe(true)
+    })
+  }
+
+  it("preserves an optional supplied delivery date and never fills it with the issue date", () => {
+    const s = clone(byName("unpaid").source)
+    // JSON fixtures and fetched provider data can contain this documented optional object.
+    Object.assign(s.bookedInvoices[0]!, { delivery: { deliveryDate: "2026-09-02" } })
+    expect(normalizeEconomic(s).documents[0]).toMatchObject({ supplyDate: "2026-09-02" })
+    delete (s.bookedInvoices[0] as unknown as { delivery?: object }).delivery
+    expect(normalizeEconomic(s).documents[0]).toMatchObject({ supplyDate: null })
+    Object.assign(s.bookedInvoices[0]!, { delivery: {} })
+    expect(normalizeEconomic(s).documents[0]).toMatchObject({ supplyDate: null })
+  })
+
+  for (const name of ["unpaid", "fully_paid", "foreign_currency", "credit_allocation"]) {
+    it(`blocks wrong base gross in ${name} and omits affected allocation proofs`, () => {
+      const s = clone(byName(name).source)
+      s.bookedInvoices[0]!.grossAmountInBaseCurrency = 1
+      const out = normalizeEconomic(s)
+      expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "debtor_line_base_amount_mismatch", severity: "blocking" }))
+      expect(out.documents[0]).toMatchObject({ baseGross: 100, recomputedResidual: null, residualBasis: "source_remainder_only" })
+      const affected = new Set(out.documents[0]!.ledgerEntryNumbers)
+      expect(out.allocations.some((allocation) => affected.has(allocation.debitEntry) || affected.has(allocation.creditEntry))).toBe(false)
+      expect(out.allocations).toHaveLength(byName(name).expect.allocations.length - (name === "unpaid" ? 0 : 1))
+      expect(out.reconciliation.allRowsMatch).toBe(false)
+    })
+  }
+
+  for (const type of [1, 2, 7, 8, 10, 6]) {
+    it(`checks unknown customer on post-cutover type ${type} before filtering`, () => {
+      const s = clone(byName("unpaid").source)
+      s.customers = []
+      s.bookedInvoices = []
+      s.entries = s.entries.filter((e) => e.customerNumber != null)
+      Object.assign(s.entries[0]!, { type, date: "2099-01-01", customerInvoiceNumber: null })
+      const out = normalizeEconomic(s)
+      expect(out.exceptions.filter((e) => e.code === "contact_unknown")).toEqual([
+        expect.objectContaining({ severity: "blocking", subject: `entry:${s.entries[0]!.entryNumber}` }),
+      ])
+      expect(out.documents).toEqual([])
+      expect(out.ledgerItems).toEqual([])
+      expect(out.reconciliation.allRowsMatch).toBe(true)
+    })
+  }
+
+  it("reports both document and debtor contact references without duplicate suppression", () => {
+    const s = clone(byName("unpaid").source)
+    s.customers = []
+    const out = normalizeEconomic(s)
+    expect(out.exceptions.filter((e) => e.code === "contact_unknown").map((e) => e.subject).sort()).toEqual([`entry:${s.entries.find((e) => e.customerNumber != null)!.entryNumber}`, "invoice:1001"])
+  })
+
+  it("rejects nested typos in realistic invoice objects and arrays", () => {
+    const fields = snapshot.rest["/invoices/booked/:bookedInvoiceNumber"]!.fields
+    expect(validateDocumentedPaths({ pdf: { dwonload: "https://synthetic.invalid" } }, fields)).toEqual(["pdf.dwonload"])
+    expect(validateDocumentedPaths({ customer: { custmerNumber: 1 }, lines: [{ product: { prodcutNumber: 1 } }] }, fields)).toEqual(["customer.custmerNumber", "lines.product.prodcutNumber"])
+    expect(validateDocumentedPaths({ lines: [{}, { unit: { nmae: "each" } }], invented: [] }, fields)).toEqual(["lines.unit.nmae", "invented"])
+    expect(validateDocumentedPaths({ pdf: { download: "https://synthetic.invalid" }, customer: { customerNumber: 1 }, delivery: {}, lines: [{ description: "item", product: { productNumber: "P1" }, unit: { name: "each" } }], notes: null }, fields)).toEqual([])
+  })
+
+  it("maps accounting-year dependencies to the actual source input fields", () => {
+    const row = matrix.rows.find((r) => r.contractField === "document.accountingYear")!
+    expect(row.derivedFrom).toEqual(["input.debtorDate", "input.accountingYear", "input.accountingYearFromDate", "input.accountingYearToDate"])
+    for (const [field, sourceField] of [["input.accountingYear", "year"], ["input.accountingYearFromDate", "fromDate"], ["input.accountingYearToDate", "toDate"]]) {
+      expect(matrix.rows.find((r) => r.contractField === field)?.source).toMatchObject({ endpoint: "/accounting-years", field: sourceField, requiredRoles: ["SuperUser", "Bookkeeping"] })
+    }
+    const bad = clone(matrix)
+    bad.rows.find((r) => r.contractField === "document.accountingYear")!.derivedFrom = ["input.nonexistent"]
+    expect(validateMatrix(bad, snapshot).join("\n")).toContain("derivedFrom input.nonexistent")
+  })
+
+  it("does not label prospective requirements as emitted draft fields", () => {
+    for (const field of ["document.vatTreatment", "document.correctsInvoice", "ledgerItem.paymentMethod", "allocation.matchedAt", "allocation.fxDifference", "control.unpaidTotals"]) {
+      expect(matrix.rows.find((r) => r.contractField === field)?.inDraftContract).toBe(false)
+    }
+    const bad = clone(matrix)
+    bad.rows.find((r) => r.contractField === "document.vatTreatment")!.inDraftContract = true
+    expect(validateMatrix(bad, snapshot).join("\n")).toContain("document.vatTreatment: inDraftContract")
+  })
+})
+
+
+describe("historical pair evidence over a connected cluster", () => {
+  for (const endpoint of ["fromEntryAmount", "toEntryAmount"] as const) {
+    for (const delta of [1, 0.001]) {
+      for (const traversal of ["original", "repeated", "reversed"]) {
+        it(`invalidates all three endpoints for ${endpoint} delta ${delta} in ${traversal} evidence`, () => {
+          const s = clone(byName("fully_paid").source)
+          const payment = s.entries.find((e) => e.type === 2)!
+          payment.amount = payment.amountInBaseCurrency = -300
+          s.entries.push({ ...payment, entryNumber: 99, amount: -325, amountInBaseCurrency: -325 })
+          const first = s.matchedPairs[0]!
+          first.toEntryAmount = first.toEntryAmountDKK = -300
+          const second = { ...first, toEntry: 99, toEntryAmount: -325, toEntryAmountDKK: -325 }
+          const invalid = traversal === "reversed" ? {
+            fromEntry: second.toEntry, fromEntryDate: second.toEntryDate, fromEntryAmount: second.toEntryAmount, fromEntryAmountDKK: second.toEntryAmountDKK,
+            toEntry: second.fromEntry, toEntryDate: second.fromEntryDate, toEntryAmount: second.fromEntryAmount, toEntryAmountDKK: second.fromEntryAmountDKK,
+          } : clone(second)
+          invalid[endpoint] += delta
+          s.matchedPairs = traversal === "original" ? [first, invalid] : [first, second, invalid, clone(invalid)]
+          const out = normalizeEconomic(s)
+          expect(out.exceptions).toContainEqual(expect.objectContaining({ severity: "blocking", code: delta === 1 ? "pair_references_unknown_entry" : "sub_minor_precision" }))
+          expect(out.clusters).toEqual([expect.objectContaining({ entries: [3, 4, 99], status: "inconsistent" })])
+          expect(out.allocations).toEqual([])
+          expect(out.reconciliation.rows).toHaveLength(3)
+          expect(out.reconciliation.rows.every((row) => row.recomputedResidual === null && row.sourceResidual === 0)).toBe(true)
+          expect(out.reconciliation.allRowsMatch).toBe(false)
+        })
+      }
+    }
+  }
+})
+
+
+describe("historical base and year validation controls", () => {
+  for (const target of ["invoice", "debtor"] as const) {
+    it(`withholds proof for sub-minor ${target} base gross even when rounded equal`, () => {
+      const s = clone(byName("fully_paid").source)
+      if (target === "invoice") s.bookedInvoices[0]!.grossAmountInBaseCurrency += 0.001
+      else s.entries.find((e) => e.customerNumber != null && e.type === 1)!.amountInBaseCurrency += 0.001
+      const out = normalizeEconomic(s)
+      expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "sub_minor_precision", severity: "blocking" }))
+      expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "debtor_line_base_amount_mismatch", severity: "blocking" }))
+      expect(out.allocations).toEqual([])
+      expect(out.documents[0]!.recomputedResidual).toBeNull()
+      expect(out.reconciliation.allRowsMatch).toBe(false)
+    })
+  }
+
+  it("blocks a corrupted negative credit base gross without changing its source sign", () => {
+    const s = clone(byName("credit_allocation").source)
+    const credit = s.bookedInvoices.find((invoice) => invoice.grossAmount < 0)!
+    credit.grossAmountInBaseCurrency = -1
+    const out = normalizeEconomic(s)
+    const document = out.documents.find((item) => item.number === String(credit.bookedInvoiceNumber))!
+    expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "debtor_line_base_amount_mismatch", severity: "blocking", subject: document.sourceKey }))
+    expect(document).toMatchObject({ kind: "credit_note", baseGross: -100, recomputedResidual: null })
+    expect(out.allocations.some((allocation) => document.ledgerEntryNumbers.includes(allocation.creditEntry))).toBe(false)
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+  })
+
+  it("requires exact reported base amounts even when roundingAmount is nonzero", () => {
+    const s = clone(byName("rounding").source)
+    s.bookedInvoices[1]!.grossAmountInBaseCurrency -= 0.01
+    const out = normalizeEconomic(s)
+    expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "debtor_line_base_amount_mismatch", severity: "blocking", subject: "invoice:1011" }))
+    expect(out.documents[1]!.recomputedResidual).toBeNull()
+  })
+
+  it("uses debtor date and inclusive accounting-year bounds rather than invoice issue date", () => {
+    const s = clone(byName("unpaid").source)
+    s.bookedInvoices[0]!.date = "2025-12-31"
+    s.entries.find((e) => e.customerNumber != null)!.date = "2026-01-01T00:00:00"
+    expect(normalizeEconomic(s).documents[0]).toMatchObject({ issueDate: "2025-12-31", accountingYear: "2026", attachedDocumentNumbers: [910010] })
+    s.entries.find((e) => e.customerNumber != null)!.date = "2025-12-31T00:00:00"
+    expect(normalizeEconomic(s).documents[0]).toMatchObject({ accountingYear: "2025", attachedDocumentNumbers: [] })
+  })
+
+  it("validates accounting-year roles, source fields and dependency row completeness", () => {
+    const bad = clone(matrix)
+    const row = bad.rows.find((r) => r.contractField === "input.accountingYearFromDate")!
+    row.source!.field = "startDate"
+    row.source!.requiredRoles = ["Sales"]
+    bad.rows = bad.rows.filter((r) => r.contractField !== "input.accountingYearToDate")
+    const problems = validateMatrix(bad, snapshot).join("\n")
+    expect(problems).toContain("has no documented field startDate")
+    expect(problems).toContain("differ from the permissions page")
+    expect(problems).toContain("input.accountingYearToDate: extraction input has no matrix row")
   })
 })
