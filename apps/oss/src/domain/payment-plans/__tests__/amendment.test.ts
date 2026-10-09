@@ -82,7 +82,7 @@ describe("billing step amendments on an agreement", () => {
     expect(planAmendmentImpact(v1, v2, obligation, facts).refusals).toMatchObject([{ code: "issued_step_immutable" }])
   })
 
-  it("needs consent to move money between a fixed date and a deliverable event, either way", () => {
+  it("needs consent between a later fixed due date and a potentially earlier deliverable event, in both directions", () => {
     const dated = plan(obligation, { kind: "billing_steps", steps: [shareStep("first", dkk("12500"), accepted), shareStep("second", dkk("12500"), { kind: "on_date", date: "2027-03-01" })] })
     const onEvent = { ...dated, version: 2, supersedes: 1, arrangement: { kind: "billing_steps" as const, steps: [
       shareStep("first", dkk("12500"), accepted), shareStep("second", dkk("12500"), onAccepted("website")),

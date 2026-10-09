@@ -196,8 +196,10 @@ amount. It does not infer a scope amendment from a credit note.
   or after the obligation became binding, so a date is no later than an event due `n` days after it
   when the date is no later than the binding date plus `n`. An event precedes another event only
   on a superset of its deliverables at the same or later stage and term, and never precedes a
-  fixed date. Moving money between a fixed date and a deliverable event therefore needs consent in
-  either direction: the event may come earlier or later than the date. The check is conservative:
+  fixed date. Moving money from a fixed due date at or before the event's earliest possible due
+  date into that event is a consent-free deferral. Moving money from an event to a fixed due date
+  cannot be proven nonaccelerating and needs consent, as does moving a later fixed due date into
+  an event that could fall due earlier. The check is conservative:
   when the order of due points cannot be known in advance, the customer must consent unless the
   prototype proves dominance for all event combinations. It assigns every new minor unit to a
   distinct old minor unit guaranteed due no later, using a capacity flow with residual reassignment.
