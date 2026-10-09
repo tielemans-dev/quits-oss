@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 
 import { cn } from "../../lib/utils"
-import { AMOUNT_UNAVAILABLE, formatAmountParts, type AmountValue } from "./amount-format"
+import { AMOUNT_UNAVAILABLE, formatAmountParts, type AmountPrecision, type AmountValue } from "./amount-format"
 
 export type AmountSize = "sm" | "md" | "hero"
 /** none: nothing yet (a draft). single: money asked for. double: money settled. */
@@ -48,6 +48,7 @@ export function Amount({
   paidFraction,
   statusLabel,
   ruleTone = "settled",
+  precision,
   className,
 }: {
   /** null (an amount that could not be written down, see `decimalFromNumber`) shows an em dash. */
@@ -62,12 +63,14 @@ export function Amount({
   statusLabel?: string
   /** settled draws the second rule in the success tone; current keeps it the text colour (on brand). */
   ruleTone?: "settled" | "current"
+  /** The source's own precision (a three-decimal currency, an unknown one); see `AmountPrecision`. */
+  precision?: AmountPrecision
   className?: string
 }) {
   const spec = sizes[size]
   const parts = useMemo(
-    () => (value === null ? null : formatAmountParts(value, currency, locale)),
-    [value, currency, locale]
+    () => (value === null ? null : formatAmountParts(value, currency, locale, precision)),
+    [value, currency, locale, precision?.exponent, precision?.source]
   )
 
   const drawn = rule === "double" ? clamp01(paidFraction ?? 1) : 1
