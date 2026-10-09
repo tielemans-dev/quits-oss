@@ -1,3 +1,4 @@
+import { provenanceCommands } from "./settlement-provenance"
 import { settlementCommands } from "./settlements"
 import { recordBaseValuation } from "./base-valuation"
 import { agreementCommands } from "./agreements"
@@ -26,6 +27,7 @@ export const allCommands: readonly AnyCommandDefinition[] = [
   ...billingAllocationCommands,
   ...paymentCommands,
   ...settlementCommands,
+  ...provenanceCommands,
   ...creditNoteCommands,
   ...reminderCommands,
   ...recurringCommands,

@@ -243,3 +243,18 @@ export type ArtifactStaging = Prisma.ArtifactStagingModel
  * 
  */
 export type IssuanceCandidate = Prisma.IssuanceCandidateModel
+/**
+ * Model SettlementEvidenceSource
+ *
+ */
+export type SettlementEvidenceSource = Prisma.SettlementEvidenceSourceModel
+/**
+ * Model SettlementEvidence
+ *
+ */
+export type SettlementEvidence = Prisma.SettlementEvidenceModel
+/**
+ * Model SettlementEvidenceDecision
+ *
+ */
+export type SettlementEvidenceDecision = Prisma.SettlementEvidenceDecisionModel

@@ -81,6 +81,8 @@ export const eventRegistry = {
   "credit_note.sent": { version: 1, schema: sent },
   "credit_note.email_unconfirmed": { version: 1, schema: unconfirmed },
   "credit_note.email_failed": { version: 1, schema: failed },
+  "settlement.evidence_recorded": { version: 1, schema: z.object({ evidenceId: s, sourceId: s, state: z.enum(["reported", "processing", "received", "returned"]), correctsEvidenceId: nullableString, reversesEvidenceId: nullableString }).strict() },
+  "settlement.evidence_decided": { version: 1, schema: z.object({ decisionId: s, sourceId: s, evidenceId: s, receiptId: s, action: z.enum(["match", "confirm", "unmatch", "reject_match", "return"]) }).strict() },
   "settlement.receipt_recorded": { version: 1, schema: z.object({ receiptId: s, contactId: s, currency: s, grossAmount: s, netAmount: s, feeAmount: s, paidAt: date, method: paymentMethodSchema, reference: s, reason: s, evidence: s, feeReason: nullableString, feeEvidence: nullableString }).strict() },
   "settlement.allocated": { version: 1, schema: z.object({ receiptId: s, paymentId: s, invoiceId: s, receiptCurrency: s, receiptAmount: s, invoiceCurrency: s, invoiceAmount: s, balanceDue: s, reason: s, evidence: s, exchangeReason: nullableString, exchangeEvidence: nullableString }).strict() },
   "settlement.changed": { version: 1, schema: z.object({ action: z.enum(["refund", "customer_credit", "reverse_allocation", "reverse_refund", "reverse_receipt"]), receiptId: s, targetId: s, currency: s, amount: s, invoiceId: nullableString, invoiceAmount: nullableString, invoiceCurrency: nullableString, reason: s, evidence: s }).strict() },

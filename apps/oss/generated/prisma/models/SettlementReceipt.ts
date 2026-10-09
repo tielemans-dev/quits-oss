@@ -348,6 +348,9 @@ export type SettlementReceiptWhereInput = {
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   payments?: Prisma.PaymentListRelationFilter
   refunds?: Prisma.SettlementRefundListRelationFilter
+  evidenceSources?: Prisma.SettlementEvidenceSourceListRelationFilter
+  createdFromSources?: Prisma.SettlementEvidenceSourceListRelationFilter
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionListRelationFilter
 }
 
 export type SettlementReceiptOrderByWithRelationInput = {
@@ -375,6 +378,9 @@ export type SettlementReceiptOrderByWithRelationInput = {
   contact?: Prisma.ContactOrderByWithRelationInput
   payments?: Prisma.PaymentOrderByRelationAggregateInput
   refunds?: Prisma.SettlementRefundOrderByRelationAggregateInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceOrderByRelationAggregateInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceOrderByRelationAggregateInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionOrderByRelationAggregateInput
 }
 
 export type SettlementReceiptWhereUniqueInput = Prisma.AtLeast<{
@@ -406,6 +412,9 @@ export type SettlementReceiptWhereUniqueInput = Prisma.AtLeast<{
   contact?: Prisma.XOR<Prisma.ContactScalarRelationFilter, Prisma.ContactWhereInput>
   payments?: Prisma.PaymentListRelationFilter
   refunds?: Prisma.SettlementRefundListRelationFilter
+  evidenceSources?: Prisma.SettlementEvidenceSourceListRelationFilter
+  createdFromSources?: Prisma.SettlementEvidenceSourceListRelationFilter
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionListRelationFilter
 }, "id" | "organizationId_reference">
 
 export type SettlementReceiptOrderByWithAggregationInput = {
@@ -485,6 +494,9 @@ export type SettlementReceiptCreateInput = {
   contact: Prisma.ContactCreateNestedOneWithoutSettlementReceiptsInput
   payments?: Prisma.PaymentCreateNestedManyWithoutReceiptInput
   refunds?: Prisma.SettlementRefundCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateInput = {
@@ -510,6 +522,9 @@ export type SettlementReceiptUncheckedCreateInput = {
   createdAt?: Date | string
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutReceiptInput
   refunds?: Prisma.SettlementRefundUncheckedCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptUpdateInput = {
@@ -535,6 +550,9 @@ export type SettlementReceiptUpdateInput = {
   contact?: Prisma.ContactUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutReceiptNestedInput
   refunds?: Prisma.SettlementRefundUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUpdateManyWithoutReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateInput = {
@@ -560,6 +578,9 @@ export type SettlementReceiptUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutReceiptNestedInput
   refunds?: Prisma.SettlementRefundUncheckedUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedUpdateManyWithoutReceiptNestedInput
 }
 
 export type SettlementReceiptCreateManyInput = {
@@ -849,6 +870,52 @@ export type SettlementReceiptUpdateOneWithoutPaymentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.SettlementReceiptUpdateToOneWithWhereWithoutPaymentsInput, Prisma.SettlementReceiptUpdateWithoutPaymentsInput>, Prisma.SettlementReceiptUncheckedUpdateWithoutPaymentsInput>
 }
 
+export type SettlementReceiptCreateNestedOneWithoutEvidenceSourcesInput = {
+  create?: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutEvidenceSourcesInput, Prisma.SettlementReceiptUncheckedCreateWithoutEvidenceSourcesInput>
+  connectOrCreate?: Prisma.SettlementReceiptCreateOrConnectWithoutEvidenceSourcesInput
+  connect?: Prisma.SettlementReceiptWhereUniqueInput
+}
+
+export type SettlementReceiptCreateNestedOneWithoutCreatedFromSourcesInput = {
+  create?: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutCreatedFromSourcesInput, Prisma.SettlementReceiptUncheckedCreateWithoutCreatedFromSourcesInput>
+  connectOrCreate?: Prisma.SettlementReceiptCreateOrConnectWithoutCreatedFromSourcesInput
+  connect?: Prisma.SettlementReceiptWhereUniqueInput
+}
+
+export type SettlementReceiptUpdateOneWithoutEvidenceSourcesNestedInput = {
+  create?: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutEvidenceSourcesInput, Prisma.SettlementReceiptUncheckedCreateWithoutEvidenceSourcesInput>
+  connectOrCreate?: Prisma.SettlementReceiptCreateOrConnectWithoutEvidenceSourcesInput
+  upsert?: Prisma.SettlementReceiptUpsertWithoutEvidenceSourcesInput
+  disconnect?: Prisma.SettlementReceiptWhereInput | boolean
+  delete?: Prisma.SettlementReceiptWhereInput | boolean
+  connect?: Prisma.SettlementReceiptWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SettlementReceiptUpdateToOneWithWhereWithoutEvidenceSourcesInput, Prisma.SettlementReceiptUpdateWithoutEvidenceSourcesInput>, Prisma.SettlementReceiptUncheckedUpdateWithoutEvidenceSourcesInput>
+}
+
+export type SettlementReceiptUpdateOneWithoutCreatedFromSourcesNestedInput = {
+  create?: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutCreatedFromSourcesInput, Prisma.SettlementReceiptUncheckedCreateWithoutCreatedFromSourcesInput>
+  connectOrCreate?: Prisma.SettlementReceiptCreateOrConnectWithoutCreatedFromSourcesInput
+  upsert?: Prisma.SettlementReceiptUpsertWithoutCreatedFromSourcesInput
+  disconnect?: Prisma.SettlementReceiptWhereInput | boolean
+  delete?: Prisma.SettlementReceiptWhereInput | boolean
+  connect?: Prisma.SettlementReceiptWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SettlementReceiptUpdateToOneWithWhereWithoutCreatedFromSourcesInput, Prisma.SettlementReceiptUpdateWithoutCreatedFromSourcesInput>, Prisma.SettlementReceiptUncheckedUpdateWithoutCreatedFromSourcesInput>
+}
+
+export type SettlementReceiptCreateNestedOneWithoutEvidenceDecisionsInput = {
+  create?: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutEvidenceDecisionsInput, Prisma.SettlementReceiptUncheckedCreateWithoutEvidenceDecisionsInput>
+  connectOrCreate?: Prisma.SettlementReceiptCreateOrConnectWithoutEvidenceDecisionsInput
+  connect?: Prisma.SettlementReceiptWhereUniqueInput
+}
+
+export type SettlementReceiptUpdateOneRequiredWithoutEvidenceDecisionsNestedInput = {
+  create?: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutEvidenceDecisionsInput, Prisma.SettlementReceiptUncheckedCreateWithoutEvidenceDecisionsInput>
+  connectOrCreate?: Prisma.SettlementReceiptCreateOrConnectWithoutEvidenceDecisionsInput
+  upsert?: Prisma.SettlementReceiptUpsertWithoutEvidenceDecisionsInput
+  connect?: Prisma.SettlementReceiptWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SettlementReceiptUpdateToOneWithWhereWithoutEvidenceDecisionsInput, Prisma.SettlementReceiptUpdateWithoutEvidenceDecisionsInput>, Prisma.SettlementReceiptUncheckedUpdateWithoutEvidenceDecisionsInput>
+}
+
 export type SettlementReceiptCreateWithoutOrganizationInput = {
   id?: string
   currency: string
@@ -871,6 +938,9 @@ export type SettlementReceiptCreateWithoutOrganizationInput = {
   contact: Prisma.ContactCreateNestedOneWithoutSettlementReceiptsInput
   payments?: Prisma.PaymentCreateNestedManyWithoutReceiptInput
   refunds?: Prisma.SettlementRefundCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutOrganizationInput = {
@@ -895,6 +965,9 @@ export type SettlementReceiptUncheckedCreateWithoutOrganizationInput = {
   createdAt?: Date | string
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutReceiptInput
   refunds?: Prisma.SettlementRefundUncheckedCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutOrganizationInput = {
@@ -971,6 +1044,9 @@ export type SettlementReceiptCreateWithoutContactInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutSettlementReceiptsInput
   payments?: Prisma.PaymentCreateNestedManyWithoutReceiptInput
   refunds?: Prisma.SettlementRefundCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutContactInput = {
@@ -995,6 +1071,9 @@ export type SettlementReceiptUncheckedCreateWithoutContactInput = {
   createdAt?: Date | string
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutReceiptInput
   refunds?: Prisma.SettlementRefundUncheckedCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutContactInput = {
@@ -1045,6 +1124,9 @@ export type SettlementReceiptCreateWithoutRefundsInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutSettlementReceiptsInput
   contact: Prisma.ContactCreateNestedOneWithoutSettlementReceiptsInput
   payments?: Prisma.PaymentCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutRefundsInput = {
@@ -1069,6 +1151,9 @@ export type SettlementReceiptUncheckedCreateWithoutRefundsInput = {
   reversedAt?: Date | string | null
   createdAt?: Date | string
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutRefundsInput = {
@@ -1109,6 +1194,9 @@ export type SettlementReceiptUpdateWithoutRefundsInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUpdateManyWithoutReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutRefundsInput = {
@@ -1133,6 +1221,9 @@ export type SettlementReceiptUncheckedUpdateWithoutRefundsInput = {
   reversedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedUpdateManyWithoutReceiptNestedInput
 }
 
 export type SettlementReceiptCreateWithoutPaymentsInput = {
@@ -1157,6 +1248,9 @@ export type SettlementReceiptCreateWithoutPaymentsInput = {
   organization: Prisma.OrganizationCreateNestedOneWithoutSettlementReceiptsInput
   contact: Prisma.ContactCreateNestedOneWithoutSettlementReceiptsInput
   refunds?: Prisma.SettlementRefundCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutPaymentsInput = {
@@ -1181,6 +1275,9 @@ export type SettlementReceiptUncheckedCreateWithoutPaymentsInput = {
   reversedAt?: Date | string | null
   createdAt?: Date | string
   refunds?: Prisma.SettlementRefundUncheckedCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedCreateNestedManyWithoutReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutPaymentsInput = {
@@ -1221,6 +1318,9 @@ export type SettlementReceiptUpdateWithoutPaymentsInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   contact?: Prisma.ContactUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   refunds?: Prisma.SettlementRefundUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUpdateManyWithoutReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutPaymentsInput = {
@@ -1245,6 +1345,381 @@ export type SettlementReceiptUncheckedUpdateWithoutPaymentsInput = {
   reversedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   refunds?: Prisma.SettlementRefundUncheckedUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedUpdateManyWithoutReceiptNestedInput
+}
+
+export type SettlementReceiptCreateWithoutEvidenceSourcesInput = {
+  id?: string
+  currency: string
+  grossAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt: Date | string
+  method: string
+  reference: string
+  reason: string
+  evidence: string
+  feeReason?: string | null
+  feeEvidence?: string | null
+  actorKey: string
+  commandId: string
+  creditReason?: string | null
+  creditEvidence?: string | null
+  reversedAt?: Date | string | null
+  createdAt?: Date | string
+  organization: Prisma.OrganizationCreateNestedOneWithoutSettlementReceiptsInput
+  contact: Prisma.ContactCreateNestedOneWithoutSettlementReceiptsInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutReceiptInput
+  refunds?: Prisma.SettlementRefundCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionCreateNestedManyWithoutReceiptInput
+}
+
+export type SettlementReceiptUncheckedCreateWithoutEvidenceSourcesInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  currency: string
+  grossAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt: Date | string
+  method: string
+  reference: string
+  reason: string
+  evidence: string
+  feeReason?: string | null
+  feeEvidence?: string | null
+  actorKey: string
+  commandId: string
+  creditReason?: string | null
+  creditEvidence?: string | null
+  reversedAt?: Date | string | null
+  createdAt?: Date | string
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutReceiptInput
+  refunds?: Prisma.SettlementRefundUncheckedCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutCreatedReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedCreateNestedManyWithoutReceiptInput
+}
+
+export type SettlementReceiptCreateOrConnectWithoutEvidenceSourcesInput = {
+  where: Prisma.SettlementReceiptWhereUniqueInput
+  create: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutEvidenceSourcesInput, Prisma.SettlementReceiptUncheckedCreateWithoutEvidenceSourcesInput>
+}
+
+export type SettlementReceiptCreateWithoutCreatedFromSourcesInput = {
+  id?: string
+  currency: string
+  grossAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt: Date | string
+  method: string
+  reference: string
+  reason: string
+  evidence: string
+  feeReason?: string | null
+  feeEvidence?: string | null
+  actorKey: string
+  commandId: string
+  creditReason?: string | null
+  creditEvidence?: string | null
+  reversedAt?: Date | string | null
+  createdAt?: Date | string
+  organization: Prisma.OrganizationCreateNestedOneWithoutSettlementReceiptsInput
+  contact: Prisma.ContactCreateNestedOneWithoutSettlementReceiptsInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutReceiptInput
+  refunds?: Prisma.SettlementRefundCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionCreateNestedManyWithoutReceiptInput
+}
+
+export type SettlementReceiptUncheckedCreateWithoutCreatedFromSourcesInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  currency: string
+  grossAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt: Date | string
+  method: string
+  reference: string
+  reason: string
+  evidence: string
+  feeReason?: string | null
+  feeEvidence?: string | null
+  actorKey: string
+  commandId: string
+  creditReason?: string | null
+  creditEvidence?: string | null
+  reversedAt?: Date | string | null
+  createdAt?: Date | string
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutReceiptInput
+  refunds?: Prisma.SettlementRefundUncheckedCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutReceiptInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedCreateNestedManyWithoutReceiptInput
+}
+
+export type SettlementReceiptCreateOrConnectWithoutCreatedFromSourcesInput = {
+  where: Prisma.SettlementReceiptWhereUniqueInput
+  create: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutCreatedFromSourcesInput, Prisma.SettlementReceiptUncheckedCreateWithoutCreatedFromSourcesInput>
+}
+
+export type SettlementReceiptUpsertWithoutEvidenceSourcesInput = {
+  update: Prisma.XOR<Prisma.SettlementReceiptUpdateWithoutEvidenceSourcesInput, Prisma.SettlementReceiptUncheckedUpdateWithoutEvidenceSourcesInput>
+  create: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutEvidenceSourcesInput, Prisma.SettlementReceiptUncheckedCreateWithoutEvidenceSourcesInput>
+  where?: Prisma.SettlementReceiptWhereInput
+}
+
+export type SettlementReceiptUpdateToOneWithWhereWithoutEvidenceSourcesInput = {
+  where?: Prisma.SettlementReceiptWhereInput
+  data: Prisma.XOR<Prisma.SettlementReceiptUpdateWithoutEvidenceSourcesInput, Prisma.SettlementReceiptUncheckedUpdateWithoutEvidenceSourcesInput>
+}
+
+export type SettlementReceiptUpdateWithoutEvidenceSourcesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  grossAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  method?: Prisma.StringFieldUpdateOperationsInput | string
+  reference?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  evidence?: Prisma.StringFieldUpdateOperationsInput | string
+  feeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feeEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorKey?: Prisma.StringFieldUpdateOperationsInput | string
+  commandId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creditEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reversedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutSettlementReceiptsNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutSettlementReceiptsNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutReceiptNestedInput
+  refunds?: Prisma.SettlementRefundUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUpdateManyWithoutReceiptNestedInput
+}
+
+export type SettlementReceiptUncheckedUpdateWithoutEvidenceSourcesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  grossAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  method?: Prisma.StringFieldUpdateOperationsInput | string
+  reference?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  evidence?: Prisma.StringFieldUpdateOperationsInput | string
+  feeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feeEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorKey?: Prisma.StringFieldUpdateOperationsInput | string
+  commandId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creditEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reversedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutReceiptNestedInput
+  refunds?: Prisma.SettlementRefundUncheckedUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedUpdateManyWithoutReceiptNestedInput
+}
+
+export type SettlementReceiptUpsertWithoutCreatedFromSourcesInput = {
+  update: Prisma.XOR<Prisma.SettlementReceiptUpdateWithoutCreatedFromSourcesInput, Prisma.SettlementReceiptUncheckedUpdateWithoutCreatedFromSourcesInput>
+  create: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutCreatedFromSourcesInput, Prisma.SettlementReceiptUncheckedCreateWithoutCreatedFromSourcesInput>
+  where?: Prisma.SettlementReceiptWhereInput
+}
+
+export type SettlementReceiptUpdateToOneWithWhereWithoutCreatedFromSourcesInput = {
+  where?: Prisma.SettlementReceiptWhereInput
+  data: Prisma.XOR<Prisma.SettlementReceiptUpdateWithoutCreatedFromSourcesInput, Prisma.SettlementReceiptUncheckedUpdateWithoutCreatedFromSourcesInput>
+}
+
+export type SettlementReceiptUpdateWithoutCreatedFromSourcesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  grossAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  method?: Prisma.StringFieldUpdateOperationsInput | string
+  reference?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  evidence?: Prisma.StringFieldUpdateOperationsInput | string
+  feeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feeEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorKey?: Prisma.StringFieldUpdateOperationsInput | string
+  commandId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creditEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reversedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutSettlementReceiptsNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutSettlementReceiptsNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutReceiptNestedInput
+  refunds?: Prisma.SettlementRefundUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUpdateManyWithoutReceiptNestedInput
+}
+
+export type SettlementReceiptUncheckedUpdateWithoutCreatedFromSourcesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  grossAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  method?: Prisma.StringFieldUpdateOperationsInput | string
+  reference?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  evidence?: Prisma.StringFieldUpdateOperationsInput | string
+  feeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feeEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorKey?: Prisma.StringFieldUpdateOperationsInput | string
+  commandId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creditEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reversedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutReceiptNestedInput
+  refunds?: Prisma.SettlementRefundUncheckedUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedUpdateManyWithoutReceiptNestedInput
+}
+
+export type SettlementReceiptCreateWithoutEvidenceDecisionsInput = {
+  id?: string
+  currency: string
+  grossAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt: Date | string
+  method: string
+  reference: string
+  reason: string
+  evidence: string
+  feeReason?: string | null
+  feeEvidence?: string | null
+  actorKey: string
+  commandId: string
+  creditReason?: string | null
+  creditEvidence?: string | null
+  reversedAt?: Date | string | null
+  createdAt?: Date | string
+  organization: Prisma.OrganizationCreateNestedOneWithoutSettlementReceiptsInput
+  contact: Prisma.ContactCreateNestedOneWithoutSettlementReceiptsInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutReceiptInput
+  refunds?: Prisma.SettlementRefundCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceCreateNestedManyWithoutCreatedReceiptInput
+}
+
+export type SettlementReceiptUncheckedCreateWithoutEvidenceDecisionsInput = {
+  id?: string
+  organizationId: string
+  contactId: string
+  currency: string
+  grossAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt: Date | string
+  method: string
+  reference: string
+  reason: string
+  evidence: string
+  feeReason?: string | null
+  feeEvidence?: string | null
+  actorKey: string
+  commandId: string
+  creditReason?: string | null
+  creditEvidence?: string | null
+  reversedAt?: Date | string | null
+  createdAt?: Date | string
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutReceiptInput
+  refunds?: Prisma.SettlementRefundUncheckedCreateNestedManyWithoutReceiptInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutReceiptInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedCreateNestedManyWithoutCreatedReceiptInput
+}
+
+export type SettlementReceiptCreateOrConnectWithoutEvidenceDecisionsInput = {
+  where: Prisma.SettlementReceiptWhereUniqueInput
+  create: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutEvidenceDecisionsInput, Prisma.SettlementReceiptUncheckedCreateWithoutEvidenceDecisionsInput>
+}
+
+export type SettlementReceiptUpsertWithoutEvidenceDecisionsInput = {
+  update: Prisma.XOR<Prisma.SettlementReceiptUpdateWithoutEvidenceDecisionsInput, Prisma.SettlementReceiptUncheckedUpdateWithoutEvidenceDecisionsInput>
+  create: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutEvidenceDecisionsInput, Prisma.SettlementReceiptUncheckedCreateWithoutEvidenceDecisionsInput>
+  where?: Prisma.SettlementReceiptWhereInput
+}
+
+export type SettlementReceiptUpdateToOneWithWhereWithoutEvidenceDecisionsInput = {
+  where?: Prisma.SettlementReceiptWhereInput
+  data: Prisma.XOR<Prisma.SettlementReceiptUpdateWithoutEvidenceDecisionsInput, Prisma.SettlementReceiptUncheckedUpdateWithoutEvidenceDecisionsInput>
+}
+
+export type SettlementReceiptUpdateWithoutEvidenceDecisionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  grossAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  method?: Prisma.StringFieldUpdateOperationsInput | string
+  reference?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  evidence?: Prisma.StringFieldUpdateOperationsInput | string
+  feeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feeEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorKey?: Prisma.StringFieldUpdateOperationsInput | string
+  commandId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creditEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reversedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  organization?: Prisma.OrganizationUpdateOneRequiredWithoutSettlementReceiptsNestedInput
+  contact?: Prisma.ContactUpdateOneRequiredWithoutSettlementReceiptsNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutReceiptNestedInput
+  refunds?: Prisma.SettlementRefundUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutCreatedReceiptNestedInput
+}
+
+export type SettlementReceiptUncheckedUpdateWithoutEvidenceDecisionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  contactId?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  grossAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  netAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  feeAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  paidAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  method?: Prisma.StringFieldUpdateOperationsInput | string
+  reference?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  evidence?: Prisma.StringFieldUpdateOperationsInput | string
+  feeReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  feeEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorKey?: Prisma.StringFieldUpdateOperationsInput | string
+  commandId?: Prisma.StringFieldUpdateOperationsInput | string
+  creditReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  creditEvidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reversedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutReceiptNestedInput
+  refunds?: Prisma.SettlementRefundUncheckedUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutCreatedReceiptNestedInput
 }
 
 export type SettlementReceiptCreateManyOrganizationInput = {
@@ -1291,6 +1766,9 @@ export type SettlementReceiptUpdateWithoutOrganizationInput = {
   contact?: Prisma.ContactUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutReceiptNestedInput
   refunds?: Prisma.SettlementRefundUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUpdateManyWithoutReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutOrganizationInput = {
@@ -1315,6 +1793,9 @@ export type SettlementReceiptUncheckedUpdateWithoutOrganizationInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutReceiptNestedInput
   refunds?: Prisma.SettlementRefundUncheckedUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedUpdateManyWithoutReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateManyWithoutOrganizationInput = {
@@ -1383,6 +1864,9 @@ export type SettlementReceiptUpdateWithoutContactInput = {
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutReceiptNestedInput
   refunds?: Prisma.SettlementRefundUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUpdateManyWithoutReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutContactInput = {
@@ -1407,6 +1891,9 @@ export type SettlementReceiptUncheckedUpdateWithoutContactInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutReceiptNestedInput
   refunds?: Prisma.SettlementRefundUncheckedUpdateManyWithoutReceiptNestedInput
+  evidenceSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutReceiptNestedInput
+  createdFromSources?: Prisma.SettlementEvidenceSourceUncheckedUpdateManyWithoutCreatedReceiptNestedInput
+  evidenceDecisions?: Prisma.SettlementEvidenceDecisionUncheckedUpdateManyWithoutReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateManyWithoutContactInput = {
@@ -1439,11 +1926,17 @@ export type SettlementReceiptUncheckedUpdateManyWithoutContactInput = {
 export type SettlementReceiptCountOutputType = {
   payments: number
   refunds: number
+  evidenceSources: number
+  createdFromSources: number
+  evidenceDecisions: number
 }
 
 export type SettlementReceiptCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   payments?: boolean | SettlementReceiptCountOutputTypeCountPaymentsArgs
   refunds?: boolean | SettlementReceiptCountOutputTypeCountRefundsArgs
+  evidenceSources?: boolean | SettlementReceiptCountOutputTypeCountEvidenceSourcesArgs
+  createdFromSources?: boolean | SettlementReceiptCountOutputTypeCountCreatedFromSourcesArgs
+  evidenceDecisions?: boolean | SettlementReceiptCountOutputTypeCountEvidenceDecisionsArgs
 }
 
 /**
@@ -1468,6 +1961,27 @@ export type SettlementReceiptCountOutputTypeCountPaymentsArgs<ExtArgs extends ru
  */
 export type SettlementReceiptCountOutputTypeCountRefundsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.SettlementRefundWhereInput
+}
+
+/**
+ * SettlementReceiptCountOutputType without action
+ */
+export type SettlementReceiptCountOutputTypeCountEvidenceSourcesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SettlementEvidenceSourceWhereInput
+}
+
+/**
+ * SettlementReceiptCountOutputType without action
+ */
+export type SettlementReceiptCountOutputTypeCountCreatedFromSourcesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SettlementEvidenceSourceWhereInput
+}
+
+/**
+ * SettlementReceiptCountOutputType without action
+ */
+export type SettlementReceiptCountOutputTypeCountEvidenceDecisionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SettlementEvidenceDecisionWhereInput
 }
 
 
@@ -1496,6 +2010,9 @@ export type SettlementReceiptSelect<ExtArgs extends runtime.Types.Extensions.Int
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   payments?: boolean | Prisma.SettlementReceipt$paymentsArgs<ExtArgs>
   refunds?: boolean | Prisma.SettlementReceipt$refundsArgs<ExtArgs>
+  evidenceSources?: boolean | Prisma.SettlementReceipt$evidenceSourcesArgs<ExtArgs>
+  createdFromSources?: boolean | Prisma.SettlementReceipt$createdFromSourcesArgs<ExtArgs>
+  evidenceDecisions?: boolean | Prisma.SettlementReceipt$evidenceDecisionsArgs<ExtArgs>
   _count?: boolean | Prisma.SettlementReceiptCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["settlementReceipt"]>
 
@@ -1578,6 +2095,9 @@ export type SettlementReceiptInclude<ExtArgs extends runtime.Types.Extensions.In
   contact?: boolean | Prisma.ContactDefaultArgs<ExtArgs>
   payments?: boolean | Prisma.SettlementReceipt$paymentsArgs<ExtArgs>
   refunds?: boolean | Prisma.SettlementReceipt$refundsArgs<ExtArgs>
+  evidenceSources?: boolean | Prisma.SettlementReceipt$evidenceSourcesArgs<ExtArgs>
+  createdFromSources?: boolean | Prisma.SettlementReceipt$createdFromSourcesArgs<ExtArgs>
+  evidenceDecisions?: boolean | Prisma.SettlementReceipt$evidenceDecisionsArgs<ExtArgs>
   _count?: boolean | Prisma.SettlementReceiptCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type SettlementReceiptIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1596,6 +2116,9 @@ export type $SettlementReceiptPayload<ExtArgs extends runtime.Types.Extensions.I
     contact: Prisma.$ContactPayload<ExtArgs>
     payments: Prisma.$PaymentPayload<ExtArgs>[]
     refunds: Prisma.$SettlementRefundPayload<ExtArgs>[]
+    evidenceSources: Prisma.$SettlementEvidenceSourcePayload<ExtArgs>[]
+    createdFromSources: Prisma.$SettlementEvidenceSourcePayload<ExtArgs>[]
+    evidenceDecisions: Prisma.$SettlementEvidenceDecisionPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2016,6 +2539,9 @@ export interface Prisma__SettlementReceiptClient<T, Null = never, ExtArgs extend
   contact<T extends Prisma.ContactDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ContactDefaultArgs<ExtArgs>>): Prisma.Prisma__ContactClient<runtime.Types.Result.GetResult<Prisma.$ContactPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   payments<T extends Prisma.SettlementReceipt$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SettlementReceipt$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   refunds<T extends Prisma.SettlementReceipt$refundsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SettlementReceipt$refundsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SettlementRefundPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  evidenceSources<T extends Prisma.SettlementReceipt$evidenceSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SettlementReceipt$evidenceSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SettlementEvidenceSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  createdFromSources<T extends Prisma.SettlementReceipt$createdFromSourcesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SettlementReceipt$createdFromSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SettlementEvidenceSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  evidenceDecisions<T extends Prisma.SettlementReceipt$evidenceDecisionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SettlementReceipt$evidenceDecisionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SettlementEvidenceDecisionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2506,6 +3032,78 @@ export type SettlementReceipt$refundsArgs<ExtArgs extends runtime.Types.Extensio
   take?: number
   skip?: number
   distinct?: Prisma.SettlementRefundScalarFieldEnum | Prisma.SettlementRefundScalarFieldEnum[]
+}
+
+/**
+ * SettlementReceipt.evidenceSources
+ */
+export type SettlementReceipt$evidenceSourcesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SettlementEvidenceSource
+   */
+  select?: Prisma.SettlementEvidenceSourceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SettlementEvidenceSource
+   */
+  omit?: Prisma.SettlementEvidenceSourceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SettlementEvidenceSourceInclude<ExtArgs> | null
+  where?: Prisma.SettlementEvidenceSourceWhereInput
+  orderBy?: Prisma.SettlementEvidenceSourceOrderByWithRelationInput | Prisma.SettlementEvidenceSourceOrderByWithRelationInput[]
+  cursor?: Prisma.SettlementEvidenceSourceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SettlementEvidenceSourceScalarFieldEnum | Prisma.SettlementEvidenceSourceScalarFieldEnum[]
+}
+
+/**
+ * SettlementReceipt.createdFromSources
+ */
+export type SettlementReceipt$createdFromSourcesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SettlementEvidenceSource
+   */
+  select?: Prisma.SettlementEvidenceSourceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SettlementEvidenceSource
+   */
+  omit?: Prisma.SettlementEvidenceSourceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SettlementEvidenceSourceInclude<ExtArgs> | null
+  where?: Prisma.SettlementEvidenceSourceWhereInput
+  orderBy?: Prisma.SettlementEvidenceSourceOrderByWithRelationInput | Prisma.SettlementEvidenceSourceOrderByWithRelationInput[]
+  cursor?: Prisma.SettlementEvidenceSourceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SettlementEvidenceSourceScalarFieldEnum | Prisma.SettlementEvidenceSourceScalarFieldEnum[]
+}
+
+/**
+ * SettlementReceipt.evidenceDecisions
+ */
+export type SettlementReceipt$evidenceDecisionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SettlementEvidenceDecision
+   */
+  select?: Prisma.SettlementEvidenceDecisionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SettlementEvidenceDecision
+   */
+  omit?: Prisma.SettlementEvidenceDecisionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SettlementEvidenceDecisionInclude<ExtArgs> | null
+  where?: Prisma.SettlementEvidenceDecisionWhereInput
+  orderBy?: Prisma.SettlementEvidenceDecisionOrderByWithRelationInput | Prisma.SettlementEvidenceDecisionOrderByWithRelationInput[]
+  cursor?: Prisma.SettlementEvidenceDecisionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SettlementEvidenceDecisionScalarFieldEnum | Prisma.SettlementEvidenceDecisionScalarFieldEnum[]
 }
 
 /**

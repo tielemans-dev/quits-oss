@@ -7,7 +7,7 @@ import { moneyEmitterState } from "./money-emitter-state"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
-  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "paid-moment", "settlements", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "billing-allocation", "payment-details"].map((name) => `commands/${name}.ts`),
+  ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "paid-moment", "settlements", "settlement-provenance", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "billing-allocation", "payment-details"].map((name) => `commands/${name}.ts`),
   "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "documents/numbering.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
 const root = new URL("../../", import.meta.url)
@@ -118,8 +118,15 @@ export function reconstruct(expression: { source: string; typeExpression: string
     })
 
   }
+  const executionScope = expression.source === "commands/settlement-provenance.ts" ? {
+    ...scope,
+    result: { sourceId: "source-1", evidenceId: "evidence-1" },
+    source: { id: "source-1" }, observation: { id: "evidence-1" }, recorded: { id: "decision-1" }, receiptId: "receipt-1",
+    input: { state: variant === "user" ? "reported" : variant === "in_progress" ? "processing" : variant === "decline" ? "returned" : "received", correctsEvidenceId: variant === "completed" ? "evidence-old" : undefined, reversesEvidenceId: variant === "decline" ? "evidence-original" : undefined },
+    action: variant === "user" ? "match" : variant === "decline" ? "return" : variant === "completed" ? "unmatch" : variant === "in_progress" ? "reject_match" : "confirm",
+  } : scope
   return {
-    type: runInNewContext(`(${expression.typeExpression})`, scope) as string,
-    payload: JSON.parse(JSON.stringify(runInNewContext(`(${expression.payloadExpression})`, scope))) as unknown,
+    type: runInNewContext(`(${expression.typeExpression})`, executionScope) as string,
+    payload: JSON.parse(JSON.stringify(runInNewContext(`(${expression.payloadExpression})`, executionScope))) as unknown,
   }
 }

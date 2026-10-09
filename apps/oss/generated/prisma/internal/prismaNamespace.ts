@@ -423,7 +423,10 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  SettlementEvidenceSource: 'SettlementEvidenceSource',
+  SettlementEvidence: 'SettlementEvidence',
+  SettlementEvidenceDecision: 'SettlementEvidenceDecision'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -439,7 +442,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "settlementReceipt" | "settlementRefund" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
+    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "settlementReceipt" | "settlementRefund" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate" | "settlementEvidenceSource" | "settlementEvidence" | "settlementEvidenceDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3403,6 +3406,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SettlementEvidenceSource: {
+      payload: Prisma.$SettlementEvidenceSourcePayload<ExtArgs>
+      fields: Prisma.SettlementEvidenceSourceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SettlementEvidenceSourceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SettlementEvidenceSourceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload>
+        }
+        findFirst: {
+          args: Prisma.SettlementEvidenceSourceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SettlementEvidenceSourceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload>
+        }
+        findMany: {
+          args: Prisma.SettlementEvidenceSourceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload>[]
+        }
+        create: {
+          args: Prisma.SettlementEvidenceSourceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload>
+        }
+        createMany: {
+          args: Prisma.SettlementEvidenceSourceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SettlementEvidenceSourceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload>[]
+        }
+        delete: {
+          args: Prisma.SettlementEvidenceSourceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload>
+        }
+        update: {
+          args: Prisma.SettlementEvidenceSourceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload>
+        }
+        deleteMany: {
+          args: Prisma.SettlementEvidenceSourceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SettlementEvidenceSourceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SettlementEvidenceSourceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload>[]
+        }
+        upsert: {
+          args: Prisma.SettlementEvidenceSourceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceSourcePayload>
+        }
+        aggregate: {
+          args: Prisma.SettlementEvidenceSourceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSettlementEvidenceSource>
+        }
+        groupBy: {
+          args: Prisma.SettlementEvidenceSourceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementEvidenceSourceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SettlementEvidenceSourceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementEvidenceSourceCountAggregateOutputType> | number
+        }
+      }
+    }
+    SettlementEvidence: {
+      payload: Prisma.$SettlementEvidencePayload<ExtArgs>
+      fields: Prisma.SettlementEvidenceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SettlementEvidenceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SettlementEvidenceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload>
+        }
+        findFirst: {
+          args: Prisma.SettlementEvidenceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SettlementEvidenceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload>
+        }
+        findMany: {
+          args: Prisma.SettlementEvidenceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload>[]
+        }
+        create: {
+          args: Prisma.SettlementEvidenceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload>
+        }
+        createMany: {
+          args: Prisma.SettlementEvidenceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SettlementEvidenceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload>[]
+        }
+        delete: {
+          args: Prisma.SettlementEvidenceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload>
+        }
+        update: {
+          args: Prisma.SettlementEvidenceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload>
+        }
+        deleteMany: {
+          args: Prisma.SettlementEvidenceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SettlementEvidenceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SettlementEvidenceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload>[]
+        }
+        upsert: {
+          args: Prisma.SettlementEvidenceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidencePayload>
+        }
+        aggregate: {
+          args: Prisma.SettlementEvidenceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSettlementEvidence>
+        }
+        groupBy: {
+          args: Prisma.SettlementEvidenceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementEvidenceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SettlementEvidenceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementEvidenceCountAggregateOutputType> | number
+        }
+      }
+    }
+    SettlementEvidenceDecision: {
+      payload: Prisma.$SettlementEvidenceDecisionPayload<ExtArgs>
+      fields: Prisma.SettlementEvidenceDecisionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SettlementEvidenceDecisionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SettlementEvidenceDecisionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload>
+        }
+        findFirst: {
+          args: Prisma.SettlementEvidenceDecisionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SettlementEvidenceDecisionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload>
+        }
+        findMany: {
+          args: Prisma.SettlementEvidenceDecisionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload>[]
+        }
+        create: {
+          args: Prisma.SettlementEvidenceDecisionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload>
+        }
+        createMany: {
+          args: Prisma.SettlementEvidenceDecisionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SettlementEvidenceDecisionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload>[]
+        }
+        delete: {
+          args: Prisma.SettlementEvidenceDecisionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload>
+        }
+        update: {
+          args: Prisma.SettlementEvidenceDecisionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload>
+        }
+        deleteMany: {
+          args: Prisma.SettlementEvidenceDecisionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SettlementEvidenceDecisionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SettlementEvidenceDecisionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload>[]
+        }
+        upsert: {
+          args: Prisma.SettlementEvidenceDecisionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementEvidenceDecisionPayload>
+        }
+        aggregate: {
+          args: Prisma.SettlementEvidenceDecisionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSettlementEvidenceDecision>
+        }
+        groupBy: {
+          args: Prisma.SettlementEvidenceDecisionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementEvidenceDecisionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SettlementEvidenceDecisionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementEvidenceDecisionCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -4370,6 +4595,64 @@ export const IssuanceCandidateScalarFieldEnum = {
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
 
 
+export const SettlementEvidenceSourceScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  contactId: 'contactId',
+  source: 'source',
+  accountReference: 'accountReference',
+  transactionReference: 'transactionReference',
+  receiptId: 'receiptId',
+  createdReceiptId: 'createdReceiptId',
+  revision: 'revision'
+} as const
+
+export type SettlementEvidenceSourceScalarFieldEnum = (typeof SettlementEvidenceSourceScalarFieldEnum)[keyof typeof SettlementEvidenceSourceScalarFieldEnum]
+
+
+export const SettlementEvidenceScalarFieldEnum = {
+  id: 'id',
+  sourceId: 'sourceId',
+  revision: 'revision',
+  eventReference: 'eventReference',
+  state: 'state',
+  occurredAt: 'occurredAt',
+  currency: 'currency',
+  netAmount: 'netAmount',
+  feeAmount: 'feeAmount',
+  feeReason: 'feeReason',
+  feeEvidence: 'feeEvidence',
+  reason: 'reason',
+  evidence: 'evidence',
+  correctsEvidenceId: 'correctsEvidenceId',
+  reversesEvidenceId: 'reversesEvidenceId',
+  payloadHash: 'payloadHash',
+  actorKey: 'actorKey',
+  commandId: 'commandId',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementEvidenceScalarFieldEnum = (typeof SettlementEvidenceScalarFieldEnum)[keyof typeof SettlementEvidenceScalarFieldEnum]
+
+
+export const SettlementEvidenceDecisionScalarFieldEnum = {
+  id: 'id',
+  sourceId: 'sourceId',
+  evidenceId: 'evidenceId',
+  receiptId: 'receiptId',
+  revision: 'revision',
+  action: 'action',
+  identity: 'identity',
+  reason: 'reason',
+  evidence: 'evidence',
+  actorKey: 'actorKey',
+  commandId: 'commandId',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementEvidenceDecisionScalarFieldEnum = (typeof SettlementEvidenceDecisionScalarFieldEnum)[keyof typeof SettlementEvidenceDecisionScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -4677,6 +4960,9 @@ export type GlobalOmitConfig = {
   eventConsumerDelivery?: Prisma.EventConsumerDeliveryOmit
   artifactStaging?: Prisma.ArtifactStagingOmit
   issuanceCandidate?: Prisma.IssuanceCandidateOmit
+  settlementEvidenceSource?: Prisma.SettlementEvidenceSourceOmit
+  settlementEvidence?: Prisma.SettlementEvidenceOmit
+  settlementEvidenceDecision?: Prisma.SettlementEvidenceDecisionOmit
 }
 
 /* Types for Logging */
