@@ -4,6 +4,7 @@ import {
   EinvoiceDeliveryTransitionError,
   einvoiceDeliveryStateSchema,
   einvoiceDeliveryEventSchema,
+  einvoiceParticipantSchema,
   einvoiceRecipientResolutionSchema,
   initialEinvoiceDeliveryState,
   nextEinvoiceDeliveryAction,
@@ -121,6 +122,79 @@ describe("e-invoice delivery lifecycle", () => {
 })
 
 describe("Denmark discovery review regressions", () => {
+  it.each(["invoice", "creditNote"] as const)("reconciles a timed-out safe retry for %s against its own reference", (documentKind) => {
+    const initial = initialEinvoiceDeliveryState("peppol_bis_billing_3", recipient, documentKind)
+    const failed = [validated, submitted, { type: "transport_failed", code: "not_delivered", retryable: true } as const]
+      .reduce(applyEinvoiceDeliveryEvent, initial)
+    const timeout = { type: "retry_outcome_unknown", previousProviderReference: "ref-1" } as const
+    expect(einvoiceDeliveryEventSchema.parse(timeout)).toEqual(timeout)
+    const unknown = applyEinvoiceDeliveryEvent(failed, timeout)
+    expect(unknown).toMatchObject({ transport: "unknown", providerReference: null, transportCode: null, transportRetryable: false })
+    expect(nextEinvoiceDeliveryAction(unknown)).toBe("reconcile")
+    expect(einvoiceDeliveryStateSchema.parse(unknown)).toEqual(unknown)
+    for (const providerReference of ["ref-1", "ref-2"]) {
+      const reconciled = applyEinvoiceDeliveryEvent(unknown, { type: "submission_reconciled", providerReference })
+      expect(reconciled).toMatchObject({ transport: "queued", providerReference })
+      expect(einvoiceDeliveryStateSchema.parse(reconciled)).toEqual(reconciled)
+      expect(() => applyEinvoiceDeliveryEvent(unknown, { type: "retry_submitted", providerReference })).toThrow(EinvoiceDeliveryTransitionError)
+    }
+    expect(() => applyEinvoiceDeliveryEvent(failed, { ...timeout, previousProviderReference: "another-attempt" }))
+      .toThrow(EinvoiceDeliveryTransitionError)
+    // An ordinary late timeout is about the original submission, not evidence of a new retry.
+    const originalUnknown = applyEinvoiceDeliveryEvent(failed, { type: "submission_outcome_unknown" })
+    expect(originalUnknown.providerReference).toBe("ref-1")
+    expect(() => applyEinvoiceDeliveryEvent(originalUnknown, { type: "submission_reconciled", providerReference: "ref-2" }))
+      .toThrow(EinvoiceDeliveryTransitionError)
+    for (const state of [initial, applyEinvoiceDeliveryEvent(initial, validated), run(validated, submitted), unknown,
+      run(validated, submitted, { type: "transport_failed", code: "permanent", retryable: false }),
+      run(validated, submitted, { type: "transport_no_route", code: "no_route" }),
+      run(validated, submitted, { type: "transport_delivered", at: at(1) })]) {
+      expect(() => applyEinvoiceDeliveryEvent(state, timeout)).toThrow(EinvoiceDeliveryTransitionError)
+    }
+  })
+
+  it("rejects malformed participant identifiers before route evidence is accepted", () => {
+    for (const participant of [{ scheme: "0184", id: "1234" }, { scheme: "0088", id: "5798009811638" },
+      { scheme: "0184", id: "2940 3473" }, { scheme: "0184", id: "x".repeat(81) }]) {
+      expect(einvoiceParticipantSchema.safeParse(participant).success).toBe(false)
+      expect(einvoiceRecipientResolutionSchema.safeParse({ status: "reachable", participant, checkedAt: at(0) }).success).toBe(false)
+    }
+    expect(einvoiceParticipantSchema.parse({ scheme: "0184", id: "29403473" })).toEqual({ scheme: "0184", id: "29403473" })
+    expect(einvoiceParticipantSchema.parse(recipient)).toEqual(recipient)
+  })
+
+  it("rejects contradictory parsed delivery state", () => {
+    const queued = run(validated, submitted)
+    for (const change of [
+      { validation: "not_run" }, { validation: "failed", validationErrors: [] }, { validationErrors: ["unexpected"] },
+      { providerReference: null }, { transportRetryable: true }, { deliveredAt: at(1) }, { transportCode: "stale" },
+      { receiverResponse: { kind: "invoice_response", code: "AB", at: at(1), note: null } },
+      { transport: "delivered", deliveredAt: null }, { transport: "no_route", transportCode: null },
+      { transport: "failed", transportCode: null }, { transport: "not_sent" },
+    ] satisfies Partial<EinvoiceDeliveryState>[]) {
+      expect(einvoiceDeliveryStateSchema.safeParse({ ...queued, ...change }).success).toBe(false)
+    }
+    for (const state of [initialEinvoiceDeliveryState("peppol_bis_billing_3", recipient, "invoice"),
+      run({ type: "validation_failed", rules: ["DK-R-002"] }), queued,
+      run(validated, { type: "submission_outcome_unknown" }),
+      run(validated, submitted, { type: "transport_failed", code: "permanent", retryable: false }),
+      run(validated, submitted, { type: "transport_no_route", code: "no_route" }),
+      run(validated, { type: "submission_outcome_unknown" }, { type: "transport_delivered", at: at(1) }),
+      run(validated, submitted, { type: "receiver_response", response: { kind: "invoice_response", code: "AB", at: at(1), note: null } })]) {
+      expect(einvoiceDeliveryStateSchema.parse(state)).toEqual(state)
+    }
+  })
+
+  it("refuses transport and receiver evidence before any submission", () => {
+    for (const state of [initialEinvoiceDeliveryState("peppol_bis_billing_3", recipient, "invoice"), run(validated)]) {
+      for (const event of [{ type: "transport_delivered", at: at(1) }, { type: "transport_no_route", code: "no_route" },
+        { type: "transport_failed", code: "failure", retryable: true },
+        { type: "receiver_response", response: { kind: "invoice_response", code: "AB", at: at(1), note: null } }] satisfies EinvoiceDeliveryEvent[]) {
+        expect(() => applyEinvoiceDeliveryEvent(state, event)).toThrow(EinvoiceDeliveryTransitionError)
+      }
+    }
+  })
+
   it.each(["invoice", "creditNote"] as const)("keeps terminal failures settled through late evidence for %s", (documentKind) => {
     const start = initialEinvoiceDeliveryState("peppol_bis_billing_3", recipient, documentKind)
     const queued = [validated, submitted].reduce(applyEinvoiceDeliveryEvent, start)

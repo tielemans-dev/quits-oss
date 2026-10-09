@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { einvoiceDocumentKindSchema, isPeppolEasCode, type EinvoiceDocumentKind } from "./exports"
+import { einvoiceDocumentKindSchema, isPeppolEasCode, isValidPeppolIdentifier, type EinvoiceDocumentKind } from "./exports"
 
 /**
  * Provider-neutral lifecycle of one electronic delivery of an issued invoice or credit note.
@@ -22,6 +22,10 @@ export const einvoiceDeliveryRouteSchema = z.enum(["peppol_bis_billing_3"])
 export const einvoiceParticipantSchema = z.strictObject({
   scheme: z.string().trim().refine(isPeppolEasCode, "Unknown Peppol EAS code"),
   id: z.string().trim().min(1),
+}).superRefine((participant, ctx) => {
+  if (!isValidPeppolIdentifier(participant.scheme, participant.id)) {
+    ctx.addIssue({ code: "custom", path: ["id"], message: "Identifier does not match the Peppol scheme" })
+  }
 })
 
 /**
@@ -103,6 +107,32 @@ export const einvoiceDeliveryStateSchema = z.strictObject({
   transportRetryable: z.boolean(),
   deliveredAt: z.iso.datetime().nullable(),
   receiverResponse: einvoiceReceiverResponseSchema.nullable(),
+}).superRefine((state, ctx) => {
+  const issue = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message })
+  if ((state.validation === "failed") !== (state.validationErrors.length > 0)) {
+    issue("validationErrors", "Only failed validation has errors and it must name at least one rule")
+  }
+  if (state.transport !== "not_sent" && state.validation !== "passed") {
+    issue("validation", "A submitted document must have passed validation")
+  }
+  if (state.transport === "not_sent" && state.providerReference !== null) {
+    issue("providerReference", "An unsent document cannot have a provider reference")
+  }
+  if (state.transport === "queued" && state.providerReference === null) {
+    issue("providerReference", "A queued submission must have a provider reference")
+  }
+  if ((state.transport === "failed" || state.transport === "no_route") !== (state.transportCode !== null)) {
+    issue("transportCode", "Only a failed or no-route outcome has a transport code and it must name one")
+  }
+  if (state.transportRetryable && state.transport !== "failed") {
+    issue("transportRetryable", "Only a confirmed failed submission can permit retry")
+  }
+  if ((state.transport === "delivered") !== (state.deliveredAt !== null)) {
+    issue("deliveredAt", "Only a delivered document has a delivery timestamp and it must have one")
+  }
+  if (state.receiverResponse !== null && state.transport !== "delivered") {
+    issue("receiverResponse", "A receiver response requires transport delivery")
+  }
 })
 
 export const einvoiceDeliveryEventSchema = z.discriminatedUnion("type", [
@@ -113,6 +143,8 @@ export const einvoiceDeliveryEventSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("submission_reconciled"), providerReference: z.string().trim().min(1) }),
   /** Acknowledges a permitted retry, correlated to that retry rather than an old callback. */
   z.strictObject({ type: z.literal("retry_submitted"), providerReference: z.string().trim().min(1) }),
+  /** A permitted retry timed out; its reference is unknown, independently of the failed attempt. */
+  z.strictObject({ type: z.literal("retry_outcome_unknown"), previousProviderReference: z.string().trim().min(1).nullable() }),
   z.strictObject({ type: z.literal("submission_outcome_unknown") }),
   z.strictObject({ type: z.literal("transport_delivered"), at: z.iso.datetime() }),
   z.strictObject({ type: z.literal("transport_no_route"), code: z.string().trim().min(1) }),
@@ -131,7 +163,7 @@ export type EinvoiceDeliveryEvent = z.infer<typeof einvoiceDeliveryEventSchema>
 
 /** An event that cannot follow the current state; the caller keeps the state and records why. */
 export class EinvoiceDeliveryTransitionError extends Error {
-  constructor(readonly code: "not_validated" | "already_submitted" | "transport_settled" | "response_settled" | "reference_mismatch", message: string) {
+  constructor(readonly code: "not_validated" | "not_submitted" | "already_submitted" | "transport_settled" | "response_settled" | "reference_mismatch", message: string) {
     super(message)
   }
 }
@@ -161,6 +193,11 @@ function transportFailedPermanently(state: EinvoiceDeliveryState) {
  * response before the transport receipt implies delivery.
  */
 export function applyEinvoiceDeliveryEvent(state: EinvoiceDeliveryState, event: EinvoiceDeliveryEvent): EinvoiceDeliveryState {
+  if (event.type === "transport_delivered" || event.type === "transport_no_route" || event.type === "transport_failed" || event.type === "receiver_response") {
+    if (state.validation !== "passed" || state.transport === "not_sent") {
+      throw new EinvoiceDeliveryTransitionError("not_submitted", "Transport evidence requires a validated submission")
+    }
+  }
   switch (event.type) {
     case "validation_passed":
     case "validation_failed": {
@@ -198,12 +235,21 @@ export function applyEinvoiceDeliveryEvent(state: EinvoiceDeliveryState, event: 
       }
       return { ...state, transport: "queued", providerReference: event.providerReference, transportCode: null, transportRetryable: false }
     }
+    case "retry_outcome_unknown": {
+      if (state.validation !== "passed" || state.transport !== "failed" || !state.transportRetryable) {
+        throw new EinvoiceDeliveryTransitionError("transport_settled", "Retry uncertainty requires a provider-confirmed safe retry")
+      }
+      if (event.previousProviderReference !== state.providerReference) {
+        throw new EinvoiceDeliveryTransitionError("reference_mismatch", "Retry must follow the current failed attempt")
+      }
+      return { ...state, transport: "unknown", providerReference: null, transportCode: null, transportRetryable: false }
+    }
     case "submission_outcome_unknown": {
       if (state.transport === "delivered" || transportFailedPermanently(state)) return state
       if (state.validation !== "passed") {
         throw new EinvoiceDeliveryTransitionError("not_validated", "Only a validated document can be submitted")
       }
-      return { ...state, transport: "unknown", transportRetryable: false }
+      return { ...state, transport: "unknown", transportCode: null, transportRetryable: false }
     }
     case "transport_delivered": {
       if (state.transport === "delivered") return state

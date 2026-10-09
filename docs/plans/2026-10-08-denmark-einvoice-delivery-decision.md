@@ -225,6 +225,7 @@ The proposed acknowledgment contract distinguishes new sends from existing submi
 | `submission_outcome_unknown` | A possibly submitted validated document with no terminal outcome | `unknown`, action `reconcile`; never a send permission. Ignored after delivery, no route or permanent failure. |
 | `submission_reconciled(ref)` | `unknown`, or duplicate evidence for the same `queued` submission | Attaches a discovered reference and sets `queued`; a known reference must match. This event means a trusted provider lookup confirms queued status. |
 | `retry_submitted(ref)` | `failed` with provider-confirmed safe retry, or an exact duplicate acknowledgment while `queued` | Clears the failure and sets `queued`, even when the provider reuses the reference. The caller must correlate it to the permitted retry, not an old callback. |
+| `retry_outcome_unknown(previousRef)` | `failed` with provider-confirmed safe retry and the matching previous provider reference | The explicitly correlated retry timed out. Clears the previous attempt's reference and failure code, sets `unknown`, and requires reconciliation of the retry. This event does not authorize another send. |
 
 `submitted` and `retry_submitted` are refused while `unknown`. A queued reconciliation cannot reopen
 `delivered`, `no_route` or a permanent failure. Delivery remains terminal; older receiver responses
@@ -234,6 +235,20 @@ No-route and permanent-failure outcomes also remain terminal through later uncer
 events. Exact duplicate failures are no-ops. Conflicting failures, delivery receipts and receiver
 responses are rejected for investigation; they cannot silently change a terminal failure into a
 retryable submission.
+
+A retry that times out uses `retry_outcome_unknown`, not an ordinary late timeout about the original
+submission. Trusted lookup of that retry can discover a reused or new reference. The adapter must
+retain the previous attempt's reference in immutable attempt history, authenticate the observation,
+and bind it to the current retry before applying this event. Reference equality alone is not attempt
+authentication. A duplicate retry-timeout observation must be deduplicated by its evidence and
+attempt IDs before reduction; it cannot restart uncertainty after reconciliation.
+
+The participant schema uses the existing Peppol identifier format and checksum rules. The delivery
+state schema rejects contradictory validation errors, transport codes, retry permission, provider
+references, delivery timestamps and receiver responses. A delivered outcome may still lack a
+provider reference when an authenticated receipt resolves an initial timeout with a lost reference.
+Transport and receiver evidence cannot precede a validated submission or recorded submission
+uncertainty. These checks do not replace tenant, document, recipient or attempt binding.
 
 `transportRetryable` must mean the provider established non-delivery and a safe retry procedure.
 A timeout, generic 5xx or failed lookup does not establish that. A proposed retry schedule of 1, 5
@@ -439,7 +454,9 @@ execution-journal work. The state reducer has no authorization checks, I/O, jobs
   cannot mark this Peppol attempt delivered.
 - Schema changes in this unpublished prototype require `documentKind` as the third argument to
   `initialEinvoiceDeliveryState`. Callers use `submission_reconciled` for queued reconciliation and
-  `retry_submitted` for a permitted retry acknowledgment. The removed `credit_and_reissue` action
+  `retry_submitted` for a permitted retry acknowledgment, or `retry_outcome_unknown` for its timeout.
+  The latter carries the failed attempt's `previousProviderReference`, nullable when it was lost.
+  The removed `credit_and_reissue` action
   becomes `review_correction`. No persisted runtime records exist to migrate.
 
 The contract regressions cover the acknowledgment/refusal rules and both document kinds. The fixture
