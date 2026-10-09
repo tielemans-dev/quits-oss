@@ -3,7 +3,7 @@ import { requireCurrencyExponent } from "@quits/shared/currency"
 import { randomUUID } from "node:crypto"
 import { getRequest } from "@tanstack/react-start/server"
 import { getRuntimePlatform } from "../runtime/platform"
-import { assertSignupDecision, resolveSignupAdmission, signupInput } from "../runtime/signup-admission"
+import { assertSignupDecision, authorizeSignup, resolveSignupAdmission, signupInput } from "../runtime/signup-admission"
 import { hashPassword } from "better-auth/crypto"
 import { prisma } from "../db"
 import { ensureInstallationState } from "../installation-state"
@@ -108,7 +108,7 @@ export async function applySetupInitialization(
   const details = admission.authorizeSignUp ? signupInput(input.admin.email, undefined, request)
     : { email: input.admin.email.toLowerCase() }
   if (admission.admitSignUpAttempt) assertSignupDecision(await admission.admitSignUpAttempt(details))
-  if (admission.authorizeSignUp) assertSignupDecision(await admission.authorizeSignUp(details))
+  if (admission.authorizeSignUp) await authorizeSignup(admission, details)
   const status = await getSetupStatus()
   if (status.isSetupComplete) {
     throw new SetupFlowError(
@@ -154,7 +154,7 @@ export async function applySetupInitialization(
     }
 
     if (admission.authorizeSignUp) {
-      const decision = assertSignupDecision(await admission.authorizeSignUp(details))
+      const decision = await authorizeSignup(admission, details)
       if (decision.consumeInvite) await decision.consumeInvite(tx)
     }
     const user = await tx.user.create({

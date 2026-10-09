@@ -11,6 +11,7 @@ also fail closed. The browser's mode never authorizes account creation.
 authorizeSignUp(input: {
   email: string
   inviteCode?: string
+  inviteCodeInvalid?: true
   request?: Request
 }): Promise<
   | { ok: true; consumeInvite?: (transaction: Prisma.TransactionClient) => Promise<void> }
@@ -24,7 +25,14 @@ Admission runs before the email endpoint looks up an account and at every auth a
 insert, including internal and OAuth creation. Emails are trimmed and lowercased; codes have
 whitespace removed and are uppercased. Better Auth 1.5.4 preserves the extra `inviteCode` body
 field. The UI supplies it through the client's typed fetch-options `body`. `x-quits-invite` is
-also supported when no string body code is present. No code validation happens during load;
+also supported when no string body code is present. Raw codes longer than 64 characters,
+including excessive whitespace, or nonempty whitespace-only codes become `inviteCodeInvalid: true`
+with no `inviteCode`. Parsing never throws before attempt accounting and does not normalize oversized
+strings. This optional marker is additive. Consumers must check allowlist membership first, then
+return `invite_invalid` for the marker without looking up or consuming an invite. Only explicit
+address authorization may return `{ ok: true }` without consumption for invalid input. OSS rejects
+any consuming success for this marker and maps `not_invited` to `invite_invalid`. An absent code
+has neither property. Default open behavior is unchanged. No code validation happens during load;
 links contain the code alone. The login signup link remains available.
 
 The authorization hook is read-only. It may be called twice, so it must not consume or count
@@ -48,7 +56,16 @@ starts a protected transaction. Consumption and insertion therefore roll back to
 or COMMIT failure. A custom database adapter must supply `createTransactionDatabaseAdapter`
 that binds all queries to the supplied transaction, including session reads. The default uses
 the ordinary Prisma adapter. Do not replace this with a no-argument consumption callback or a
-post-commit database hook. Better Auth 1.5.4 queues its create-after hooks after transactions.
+post-commit database hook.
+
+Nested Better Auth transactions reuse the owned adapter through per-auth-instance AsyncLocalStorage.
+A transaction belonging to another auth instance is rejected before its callback writes. No mutable
+process-global client is used. Nested create-after queues are retained by the owner and cleared from
+Better Auth's queues before it can dispatch them. They run only after the owning Prisma COMMIT and
+are discarded on rollback or COMMIT failure. Any failed nested transaction makes the owner rollback,
+even if its caller catches the error. This compensates for Better Auth 1.5.4 dispatching nested queues
+before outer completion and dispatching queues even after transaction failure. Regression tests use
+its actual internal adapter, database hooks and PostgreSQL.
 
 The installation administrator path also runs admission before lookup and consumes within its
 existing setup transaction when a policy is configured. Ordinary installation setup stays open;

@@ -9,7 +9,7 @@ import { readBooleanEnv, resolveUrlOrigin } from "@quits/shared/runtimeEnv"
 
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client"
 
-import { assertSignupDecision, signupAdmissionAdapter, signupInput, resolveSignupAdmission, type SignupAdmission } from "./signup-admission"
+import { assertSignupDecision, authorizeSignup, signupAdmissionAdapter, signupInput, resolveSignupAdmission, type SignupAdmission } from "./signup-admission"
 
 import { getConfiguredSocialProviders } from "../auth/providers"
 import { sendInvitationEmail } from "../email"
@@ -170,7 +170,7 @@ export function buildQuitsAuthOptions(input: {
         if (ctx.path === "/sign-up/email" && admission.authorizeSignUp && typeof ctx.body?.email === "string") {
           const details = signupInput(ctx.body.email, ctx.body, ctx.request)
           if (admission.admitSignUpAttempt) assertSignupDecision(await admission.admitSignUpAttempt(details))
-          assertSignupDecision(await admission.authorizeSignUp(details))
+          await authorizeSignup(admission, details)
           ctx.body.email = details.email
         }
         if (ctx.path !== "/request-password-reset" && ctx.path !== "/reset-password") return

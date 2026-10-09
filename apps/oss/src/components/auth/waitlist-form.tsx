@@ -69,11 +69,11 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
     </div>
     <div>
       <div className="grid grid-cols-[44px_1fr] items-start -ml-3">
-        <div className="flex size-11 items-center justify-center">
+        <label htmlFor="waitlist-consent" className="flex size-11 cursor-pointer items-center justify-center">
           <input id="waitlist-consent" ref={consentRef} type="checkbox" checked={consent} disabled={busy}
             aria-invalid={consentError || undefined} aria-describedby={consentError ? 'waitlist-consent-error' : undefined}
             onChange={(event) => { setConsent(event.target.checked); setConsentError(false) }} />
-        </div>
+        </label>
         <div className="pt-3 text-xs leading-relaxed text-muted-foreground">
           <label htmlFor="waitlist-consent">{t('auth.waitlist.consent')}</label>{' '}
           <a href={privacyPath} className="underline" target="_blank" rel="noopener">{t('auth.waitlist.privacyLink')}</a>

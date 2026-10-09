@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { betterAuth } from 'better-auth'
+import { betterAuth, type BetterAuthOptions, type DBAdapter } from 'better-auth'
 import { createAuthClient } from 'better-auth/client'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { PrismaPg } from '@prisma/adapter-pg'
@@ -25,9 +25,9 @@ afterAll(async () => {
   }
   await prisma.$disconnect()
 })
-function fixture(hooks: AuthHooks = {}, mode?: string) {
+function fixture(hooks: AuthHooks = {}, mode?: string, databaseHooks?: BetterAuthOptions['databaseHooks']) {
   const options = buildQuitsAuthOptions({ prisma, hooks, env: { getEnv: (key) => ({ BETTER_AUTH_URL: origin, BETTER_AUTH_SECRET: secret, SIGNUP_MODE: mode })[key] } })
-  const auth = betterAuth({ ...options, secret, logger: { disabled: true } })
+  const auth = betterAuth({ ...options, secret, databaseHooks, logger: { disabled: true } })
   const post = (target: string, inviteCode?: string, headers: Record<string, string> = {}) => auth.handler(new Request(`${origin}/api/auth/sign-up/email`, {
     method: 'POST', headers: { origin, 'content-type': 'application/json', ...headers },
     body: JSON.stringify({ name: 'Admission Test', email: target, password: 'local-password123', ...(inviteCode ? { inviteCode } : {}) }),
@@ -205,5 +205,179 @@ describe.skipIf(!local)('transactional signup admission', () => {
     const target = email(); const context = await fixture({ authorizeSignUp: async () => ({ ok: true }) }).auth.$context
     const result = await context.internalAdapter.createOAuthUser({ email: target, name: 'OAuth', emailVerified: true }, { providerId: 'google', accountId: randomUUID() })
     expect(result.user.email).toBe(target); expect(await prisma.account.count({ where: { userId: result.user.id } })).toBe(1)
+  })
+})
+
+import { runWithTransaction } from '@better-auth/core/context'
+import type { Prisma } from '../../../generated/prisma/client'
+describe('independent review probes', () => {
+ it('counts once per successful request with concurrent requests on the SAME auth instance and distinct codes', async () => {
+   const attempts = vi.fn(async () => ({ok: true as const}))
+   const f = fixture({authorizeSignUp: admission, admitSignUpAttempt: attempts})
+   const a = email(), b = email(); const ca = await grant(a), cb = await grant(b)
+   const results = await Promise.all([f.post(a, ca), f.post(b, cb)])
+   expect(results.map(r=>r.status)).toEqual([200,200]); expect(attempts).toHaveBeenCalledTimes(2)
+   expect(await consumed(ca)).toBe(true); expect(await consumed(cb)).toBe(true)
+ })
+ it('counts oversized-code attempts before rate denial', async () => {
+   const attempts = vi.fn(async () => ({ok:false as const, code:'rate_limited' as const}))
+   const f = fixture({authorizeSignUp: admission, admitSignUpAttempt: attempts})
+   const response = await f.post(email(), 'X'.repeat(65))
+   expect(response.status).toBe(429); expect((await response.json()).code).toBe('rate_limited')
+   expect(attempts).toHaveBeenCalledTimes(1)
+ })
+ it('measures exact transaction and connection identity for consumption and all native signup inserts', async () => {
+   const target = email(), code = await grant(target); const ids: string[] = []
+   const identify = async(tx: Prisma.TransactionClient) => { const rows=await tx.$queryRawUnsafe<{pid:number;xid:string}[]>('SELECT pg_backend_pid() pid, txid_current()::text xid'); ids.push(`${rows[0]!.pid}:${rows[0]!.xid}`) }
+   const f=fixture({authorizeSignUp: async(input) => {
+      const decision=await admission(input); if(!decision.ok) return decision;
+      return {ok:true,consumeInvite: async(tx)=>{await identify(tx); await decision.consumeInvite!(tx)}}
+   },createTransactionDatabaseAdapter:(tx)=>(options: BetterAuthOptions)=>{
+      const adapter=prismaAdapter(tx,{provider:'postgresql'})(options)
+      return {...adapter,create:async(data: Parameters<typeof adapter.create>[0])=>{await identify(tx); return adapter.create(data)}}
+   }})
+   expect((await f.post(target,code)).status).toBe(200)
+   expect(ids).toHaveLength(4); expect(new Set(ids).size).toBe(1)
+ })
+ it('rolls nested OAuth creation back with its enclosing transaction', async () => {
+   const target=email(); const code=await grant(target)
+   const f=fixture({authorizeSignUp: async({email: address})=>admission({email:address,inviteCode:code.toUpperCase()})})
+   const context=await f.auth.$context
+   await expect(runWithTransaction(context.adapter as DBAdapter,async()=>{
+      await context.internalAdapter.createOAuthUser({email:target,name:'Nested',emailVerified:true},{providerId:'google',accountId:randomUUID()})
+      throw new Error('outer rollback')
+   })).rejects.toThrow()
+   expect(await consumed(code)).toBe(false)
+   expect(await prisma.user.count({where:{email:target}})).toBe(0)
+ })
+ it('preserves implicit verified social linking to an existing credential account without admission', async()=>{
+   const target=email(); await fixture().post(target); const calls=vi.fn(admission)
+   const options=fixture({authorizeSignUp:calls}).options
+   const auth=betterAuth({...options,secret,logger:{disabled:true},socialProviders:{google:{clientId:'synthetic',clientSecret:'synthetic',verifyIdToken:async()=>true,getUserInfo:async()=>({user:{id:randomUUID(),email:target,name:'Link',emailVerified:true},data:{}})}}})
+   const response=await auth.handler(new Request(`${origin}/api/auth/sign-in/social`,{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({provider:'google',idToken:{token:'synthetic'}})}))
+   expect(response.status).toBe(200); expect(calls).not.toHaveBeenCalled()
+   const user=await prisma.user.findUniqueOrThrow({where:{email:target}})
+   expect(await prisma.account.count({where:{userId:user.id}})).toBe(2)
+ })
+})
+
+it('allows allowlisted emails with oversized codes', async()=>{
+ const allow=vi.fn(async()=>({ok:true as const})); const f=fixture({authorizeSignUp:allow}); const response=await f.post(email(),'X'.repeat(65));
+ expect(response.status).toBe(200); expect(allow).toHaveBeenCalledTimes(2);
+})
+
+
+describe.skipIf(!local)('invalid input handler ordering', () => {
+  it.each(['body', 'header'] as const)('counts and admits bounded invalid %s codes before lookup', async (transport) => {
+    for (const value of ['X'.repeat(65), 'X' + ' '.repeat(100) + 'VALID']) {
+      const target = email(); const code = await grant(target)
+      const send = (f: ReturnType<typeof fixture>) => f.post(target, transport === 'body' ? value : undefined, transport === 'header' ? { 'x-quits-invite': value } : {})
+      const lookup = vi.fn()
+      const adapterHook: AuthHooks['createDatabaseAdapter'] = (client) => (options: BetterAuthOptions) => {
+        const adapter = prismaAdapter(client, { provider: 'postgresql' })(options)
+        return { ...adapter, findOne: async (data: Parameters<typeof adapter.findOne>[0]) => { if (data.model === 'user') lookup(); return adapter.findOne(data) } }
+      }
+      const deniedAttempts = vi.fn(async () => ({ ok: false as const, code: 'rate_limited' as const }))
+      const authorize = vi.fn(admission)
+      const limited = await send(fixture({ authorizeSignUp: authorize, admitSignUpAttempt: deniedAttempts, createDatabaseAdapter: adapterHook }))
+      expect(limited.status).toBe(429); expect((await limited.json()).code).toBe('rate_limited')
+      expect(deniedAttempts).toHaveBeenCalledTimes(1); expect(authorize).not.toHaveBeenCalled(); expect(lookup).not.toHaveBeenCalled()
+      const attempts = vi.fn(async () => ({ ok: true as const }))
+      const invalid = await send(fixture({ authorizeSignUp: admission, admitSignUpAttempt: attempts, createDatabaseAdapter: adapterHook }))
+      expect(invalid.status).toBe(403); expect((await invalid.json()).code).toBe('invite_invalid')
+      expect(attempts).toHaveBeenCalledTimes(1); expect(lookup).not.toHaveBeenCalled(); expect(await consumed(code)).toBe(false)
+      const allowedAttempts = vi.fn(async () => ({ ok: true as const }))
+      const allow = vi.fn(async () => ({ ok: true as const }))
+      expect((await send(fixture({ authorizeSignUp: allow, admitSignUpAttempt: allowedAttempts }))).status).toBe(200)
+      expect(allowedAttempts).toHaveBeenCalledTimes(1); expect(allow).toHaveBeenCalledTimes(2)
+      expect(allowedAttempts.mock.calls[0]).toMatchObject([{ email: target, inviteCodeInvalid: true }])
+    }
+  })
+  it('never consumes a grant returned for invalid input', async () => {
+    const consumeInvite = vi.fn(async () => {})
+    const response = await fixture({ authorizeSignUp: async () => ({ ok: true, consumeInvite }) }).post(email(), 'X'.repeat(65))
+    expect(response.status).toBe(403); expect((await response.json()).code).toBe('invite_invalid'); expect(consumeInvite).not.toHaveBeenCalled()
+  })
+  it('treats whitespace-only body input as invalid and preserves open defaults', async () => {
+    expect((await fixture({ authorizeSignUp: admission }).post(email(), ' '.repeat(64))).status).toBe(403)
+    expect((await fixture().post(email(), 'X'.repeat(65))).status).toBe(200)
+  })
+})
+
+describe.skipIf(!local)('owned nested transaction lifecycle', () => {
+  it.each(['rollback', 'commit', 'commit-failure'] as const)('defers nested OAuth and internal after-hooks until outer %s', async (outcome) => {
+    const target = email(); const code = await grant(target); const direct = email()
+    const after = vi.fn(async (user: { email: string }) => {
+      expect(await prisma.user.count({ where: { email: user.email } })).toBe(1)
+    })
+    const context = await fixture({ authorizeSignUp: async ({ email: address }) => address === direct ? { ok: true } : admission({ email: address, inviteCode: code.toUpperCase() }).then(decision => {
+      if (!decision.ok || outcome !== 'commit-failure') return decision
+      return { ok: true, consumeInvite: async tx => {
+        await decision.consumeInvite!(tx)
+        await tx.$executeRawUnsafe('CREATE TEMP TABLE nested_parent (id TEXT PRIMARY KEY) ON COMMIT DROP')
+        await tx.$executeRawUnsafe('CREATE TEMP TABLE nested_failure (id TEXT REFERENCES nested_parent(id) DEFERRABLE INITIALLY DEFERRED) ON COMMIT DROP')
+        await tx.$executeRaw`INSERT INTO nested_failure VALUES (${randomUUID()})`
+      } }
+    }) }, undefined, { user: { create: { after } } }).auth.$context
+    const accountId = randomUUID()
+    const operation = runWithTransaction(context.adapter as DBAdapter, async () => {
+      await context.internalAdapter.createOAuthUser({ email: target, name: 'Nested', emailVerified: true }, { providerId: 'google', accountId })
+      await context.internalAdapter.createUser({ email: direct, name: 'Internal', emailVerified: false })
+      expect(after).not.toHaveBeenCalled()
+      if (outcome === 'rollback') throw new Error('outer rollback')
+
+    })
+    if (outcome === 'commit') { await operation; expect(after).toHaveBeenCalledTimes(2) }
+    else { await expect(operation).rejects.toThrow(); expect(after).not.toHaveBeenCalled() }
+    expect(await consumed(code)).toBe(outcome === 'commit')
+    expect(await prisma.user.count({ where: { email: { in: [target, direct] } } })).toBe(outcome === 'commit' ? 2 : 0)
+    expect(await prisma.account.count({ where: { accountId } })).toBe(outcome === 'commit' ? 1 : 0)
+  })
+  it('rejects another auth instance ambient transaction before writes', async () => {
+    const target = email(); const code = await grant(target)
+    const hooks: AuthHooks = { authorizeSignUp: async ({ email: address }) => admission({ email: address, inviteCode: code.toUpperCase() }) }
+    const first = await fixture(hooks).auth.$context; const second = await fixture(hooks).auth.$context
+    await expect(runWithTransaction(first.adapter as DBAdapter, () => second.internalAdapter.createOAuthUser({ email: target, name: 'Foreign', emailVerified: true }, { providerId: 'google', accountId: randomUUID() }))).rejects.toMatchObject({ body: { code: 'signup_failed' } })
+    expect(await consumed(code)).toBe(false); expect(await prisma.user.count({ where: { email: target } })).toBe(0)
+  })
+})
+
+
+describe.skipIf(!local)('nested transaction isolation', () => {
+  it.each(['same', 'separate'] as const)('isolates overlapping nested requests on %s auth instances', async (instances) => {
+    const targets = [email(), email()]; const codes = await Promise.all(targets.map(grant))
+    const attempts = vi.fn(async () => ({ ok: true as const }))
+    const after = vi.fn(async (user: { email: string }) => {
+      expect(user.email).toBe(targets[1]); expect(await prisma.user.count({ where: { email: user.email } })).toBe(1)
+    })
+    const hooks: AuthHooks = { admitSignUpAttempt: attempts, authorizeSignUp: ({ email: address }) => admission({ email: address, inviteCode: codes[targets.indexOf(address)]!.toUpperCase() }) }
+    const first = await fixture(hooks, undefined, { user: { create: { after } } }).auth.$context
+    const second = instances === 'same' ? first : await fixture(hooks, undefined, { user: { create: { after } } }).auth.$context
+    let arrive = 0; let release!: () => void
+    const barrier = new Promise<void>(resolve => { release = resolve })
+    const operations = [first, second].map((context, index) => runWithTransaction(context.adapter as DBAdapter, async () => {
+      await context.internalAdapter.createOAuthUser({ email: targets[index]!, name: 'Concurrent', emailVerified: true }, { providerId: 'google', accountId: randomUUID() })
+      expect(after).not.toHaveBeenCalled()
+      if (++arrive === 2) release()
+      await barrier
+      if (index === 0) throw new Error('one outer rollback')
+    }))
+    const results = await Promise.allSettled(operations)
+    expect(results.map(result => result.status)).toEqual(['rejected', 'fulfilled'])
+    expect(attempts).toHaveBeenCalledTimes(2); expect(after).toHaveBeenCalledTimes(1)
+    expect(await consumed(codes[0]!)).toBe(false); expect(await consumed(codes[1]!)).toBe(true)
+    expect(await prisma.user.count({ where: { email: targets[0] } })).toBe(0)
+    expect(await prisma.user.count({ where: { email: targets[1] } })).toBe(1)
+  })
+  it('rolls back when a caller catches a failed nested operation', async () => {
+    const target = email(); const code = await grant(target)
+    const context = await fixture({ authorizeSignUp: () => admission({ email: target, inviteCode: code.toUpperCase() }) }).auth.$context
+    await expect(runWithTransaction(context.adapter as DBAdapter, async () => {
+      await runWithTransaction(context.adapter as DBAdapter, async () => {
+        await context.internalAdapter.createOAuthUser({ email: target, name: 'Caught', emailVerified: true }, { providerId: 'google', accountId: randomUUID() })
+        throw new Error('nested failure')
+      }).catch(() => {})
+    })).rejects.toMatchObject({ body: { code: 'signup_failed' } })
+    expect(await consumed(code)).toBe(false); expect(await prisma.user.count({ where: { email: target } })).toBe(0)
   })
 })
