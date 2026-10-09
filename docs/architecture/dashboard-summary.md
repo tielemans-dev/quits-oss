@@ -254,7 +254,7 @@ The existing indexes were checked against PostgreSQL on port 55473:
 - `contact` primary key serves the contact joins; the organization id is checked on both sides.
 - `invoice_reminder(invoiceId, offsetDays)` is unique and serves the current reminder slot join.
 - `payment(organizationId, paidAt)` bounds the twelve-month legacy payment aggregation.
-- `settlement_receipt(organizationId, paidAt)` is added by `20261014020000_dashboard_receipt_months`
+- `settlement_receipt(organizationId, paidAt)` is added by `20261014040000_dashboard_receipt_months`
   to bound the receipt side of that same SQL aggregate. Both branches filter dates before summing.
 - `quote(organizationId, status)` bounds eligible quotes; expiry sorting is local to that result.
 - `domain_event(organizationId, sequence)` is unique and supports newest-first activity.
