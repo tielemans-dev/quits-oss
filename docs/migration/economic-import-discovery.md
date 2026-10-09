@@ -140,7 +140,7 @@ Before normalization, the validator checks source identities for customers, book
 
 An invoice and every debtor line must have the same currency before their amounts or residuals can be compared. A missing ledger currency code uses the agreement's base currency. A currency mismatch blocks with `debtor_line_currency_mismatch` and leaves the document's recomputed residual null.
 
-All customer-ledger entries in a match cluster must belong to the same customer. Cross-customer matches block with `cluster_customer_mixed`; this draft has no supported customer-transfer rule. Invalid pair endpoints or amounts make the entire cluster inconsistent, including invalid repeated or reversed pairs. These clusters emit no allocations and retain source-only residuals even when the source reports zero residuals and balanced customer controls.
+All customer-ledger entries in a match cluster must belong to the same customer. Cross-customer matches block with `cluster_customer_mixed`; this draft has no supported customer-transfer rule. Invalid pair endpoints or amounts make the entire cluster inconsistent, including invalid repeated or reversed pairs. This includes sub-minor precision such as 625.001 DKK even when rounding would equal the entry amount. These clusters emit no allocations and retain source-only residuals even when the source reports zero residuals and balanced customer controls.
 
 ## 6. Export fallback
 

@@ -155,9 +155,19 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
       if (!e) {
         issues.add("pair_references_unknown_entry", "blocking", `entry:${n}`, `Matched pair ${p.fromEntry}->${p.toEntry} points at an entry that is not a customer-ledger line in the extraction`)
         invalidPairEntries.add(n)
-      } else if (amountMinor(e) !== toMinor(amt, entryExp(e), issues, `entry:${n}`)) {
-        issues.add("pair_references_unknown_entry", "blocking", `entry:${n}`, `Pair amount ${amt} differs from the entry amount ${e.amount}`)
-        invalidPairEntries.add(n)
+      } else {
+        const pairIssues = new Collector()
+        const exp = entryExp(e)
+        const entryAmount = toMinor(e.amount, exp, pairIssues, `entry:${n}`)
+        const pairAmount = toMinor(amt, exp, pairIssues, `entry:${n}`)
+        // Rounded equality cannot validate amounts with unsupported precision. A local collector
+        // keeps this decision independent of exception deduplication across repeated evidence.
+        if (pairIssues.list.some((issue) => issue.severity === "blocking")) invalidPairEntries.add(n)
+        for (const issue of pairIssues.list) issues.add(issue.code, issue.severity, issue.subject, issue.detail)
+        if (entryAmount !== pairAmount) {
+          issues.add("pair_references_unknown_entry", "blocking", `entry:${n}`, `Pair amount ${amt} differs from the entry amount ${e.amount}`)
+          invalidPairEntries.add(n)
+        }
       }
     }
     // Validate every occurrence before deduplication; one invalid pair taints its entire cluster.

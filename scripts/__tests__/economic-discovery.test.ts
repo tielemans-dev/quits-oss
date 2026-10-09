@@ -213,29 +213,31 @@ describe("allocation proof, not a paid flag", () => {
   })
 
   for (const endpoint of ["fromEntryAmount", "toEntryAmount"] as const) {
-    for (const traversal of ["original", "repeated", "reversed"] as const) {
-      it(`keeps residuals source-only for an invalid ${endpoint} in the ${traversal} pair`, () => {
-        const s = clone(byName("fully_paid").source)
-        const pair = s.matchedPairs[0]!
-        const invalid = traversal === "reversed" ? {
-          fromEntry: pair.toEntry, fromEntryDate: pair.toEntryDate, fromEntryAmount: pair.toEntryAmount, fromEntryAmountDKK: pair.toEntryAmountDKK,
-          toEntry: pair.fromEntry, toEntryDate: pair.fromEntryDate, toEntryAmount: pair.fromEntryAmount, toEntryAmountDKK: pair.fromEntryAmountDKK,
-        } : clone(pair)
-        invalid[endpoint] += 1
-        if (traversal === "original") s.matchedPairs = [invalid]
-        else s.matchedPairs.push(invalid)
-        const out = normalizeEconomic(s)
-        expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "pair_references_unknown_entry", severity: "blocking" }))
-        expect(out.clusters).toEqual([expect.objectContaining({ entries: [3, 4], status: "inconsistent" })])
-        expect(out.allocations).toEqual([])
-        expect(out.documents[0]).toMatchObject({ sourceResidual: 0, recomputedResidual: null, residualBasis: "source_remainder_only" })
-        expect(out.ledgerItems[0]!.sourceResidual).toBe(0)
-        expect(out.reconciliation.rows).toEqual([
-          expect.objectContaining({ documentKey: "invoice:1002", sourceResidual: 0, recomputedResidual: null, match: null }),
-          expect.objectContaining({ documentKey: null, sourceResidual: 0, recomputedResidual: null, match: null }),
-        ])
-        expect(out.reconciliation.allRowsMatch).toBe(false)
-      })
+    for (const [delta, code] of [[1, "pair_references_unknown_entry"], [0.001, "sub_minor_precision"]] as const) {
+      for (const traversal of ["original", "repeated", "reversed"] as const) {
+        it(`keeps residuals source-only for an invalid ${endpoint} (${code}) in the ${traversal} pair`, () => {
+          const s = clone(byName("fully_paid").source)
+          const pair = s.matchedPairs[0]!
+          const invalid = traversal === "reversed" ? {
+            fromEntry: pair.toEntry, fromEntryDate: pair.toEntryDate, fromEntryAmount: pair.toEntryAmount, fromEntryAmountDKK: pair.toEntryAmountDKK,
+            toEntry: pair.fromEntry, toEntryDate: pair.fromEntryDate, toEntryAmount: pair.fromEntryAmount, toEntryAmountDKK: pair.fromEntryAmountDKK,
+          } : clone(pair)
+          invalid[endpoint] += delta
+          if (traversal === "original") s.matchedPairs = [invalid]
+          else s.matchedPairs.push(invalid)
+          const out = normalizeEconomic(s)
+          expect(out.exceptions).toContainEqual(expect.objectContaining({ code, severity: "blocking" }))
+          expect(out.clusters).toEqual([expect.objectContaining({ entries: [3, 4], status: "inconsistent" })])
+          expect(out.allocations).toEqual([])
+          expect(out.documents[0]).toMatchObject({ sourceResidual: 0, recomputedResidual: null, residualBasis: "source_remainder_only" })
+          expect(out.ledgerItems[0]!.sourceResidual).toBe(0)
+          expect(out.reconciliation.rows).toEqual([
+            expect.objectContaining({ documentKey: "invoice:1002", sourceResidual: 0, recomputedResidual: null, match: null }),
+            expect.objectContaining({ documentKey: null, sourceResidual: 0, recomputedResidual: null, match: null }),
+          ])
+          expect(out.reconciliation.allRowsMatch).toBe(false)
+        })
+      }
     }
   }
 
