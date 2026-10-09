@@ -227,8 +227,8 @@ export async function executeCommand<Input, Result>(
     await authorizeOperation("prepare")
   } catch (error) {
     if (!(error instanceof OperationDenied)) throw error
-    // Leave no failed idempotency receipt: the same request may succeed after policy recovery.
-    return failure(provisionalId, new InvalidState({ code: error.code, message: error.message }))
+    // Fresh refusals leave no receipt. An existing approved receipt must be finalized.
+    return rejectEarly(new InvalidState({ code: error.code, message: error.message }))
   }
 
   let needsApproval =

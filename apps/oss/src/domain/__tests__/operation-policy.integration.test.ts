@@ -4,6 +4,10 @@ import { authorizedProcedure, router } from "../../trpc/init"
 import { prisma } from "../../lib/db"
 import { setRuntimeServices, resetRuntimeServices } from "../../lib/runtime/services"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
+import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
+import { decideApproval, recoverInterruptedApprovals } from "../approvals"
+import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
+import { executeIssuanceCommand } from "../../application/issuance"
 import { createContact } from "../commands/contacts"
 import { executeCommand } from "../execute"
 import { registerJobHandler, runJobsNow } from "../jobs"
@@ -52,6 +56,34 @@ describe.skipIf(!hasTestDatabase)("runtime operation policy at execution", () =>
     expect(await prisma.contact.count({ where: { organizationId: org.organizationId } })).toBe(0)
     expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId } })).toBe(0)
     expect(await prisma.commandReceipt.count({ where: { organizationId: org.organizationId } })).toBe(0)
+  })
+
+  it.each(["prepare", "execute"] as const)("finalizes an approved receipt refused at %s and never recovers it after access returns", async deniedPhase => {
+    const org = await setup()
+    const contact = await executeCommand(createContact, { name: "Synthetic" }, { actor: org.actors.admin })
+    if (contact.status !== "completed") throw new Error("contact failed")
+    const draft = await executeIssuanceCommand(createInvoiceDraft, { contactId: contact.result.id, dueDate: "2099-12-01",
+      taxRate: 0, items: [{ description: "Synthetic", quantity: 1, unitPrice: 100 }] }, { actor: org.actors.admin })
+    if (draft.status !== "completed") throw new Error("draft failed")
+    const { secret } = await createAgentKey(org.actors.admin, { name: "Synthetic approval", mode: "approval_required", scopes: ["invoice:send", "invoice:read"] })
+    const agent = await authenticateAgentSecret(secret)
+    setRuntimeServices({ operationPolicy: { authorize: async () => ({ allowed: true }) } })
+    const queued = await executeIssuanceCommand(sendInvoice, { id: draft.result.id, allowSendWithoutEmail: true },
+      { actor: agent, clientRequestId: "policy-approval" })
+    if (queued.status !== "awaiting_approval") throw new Error("approval not queued")
+    setRuntimeServices({ operationPolicy: { authorize: async op => op.phase === deniedPhase
+      ? { allowed: false, message: "Synthetic expired authorization" } : { allowed: true } } })
+    const outcome = await decideApproval({ approvalRequestId: queued.approvalRequestId, decider: org.actors.admin, decision: "approve" })
+    expect(outcome).toMatchObject({ status: "failed", error: { code: "operation_not_allowed" } })
+    expect(await prisma.commandReceipt.findUniqueOrThrow({ where: { id: queued.commandId } })).toMatchObject({ status: "failed", error: { code: "operation_not_allowed" } })
+    expect(await prisma.approvalRequest.findUniqueOrThrow({ where: { id: queued.approvalRequestId } })).toMatchObject({ status: "approved" })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).toMatchObject({ status: "draft" })
+    resetRuntimeServices()
+    const recovered = await recoverInterruptedApprovals({ organizationIds: [org.organizationId], now: new Date(Date.now() + 10 * 60_000) })
+    expect(recovered).toEqual({ recovered: 0, failed: 0 })
+    expect(await decideApproval({ approvalRequestId: queued.approvalRequestId, decider: org.actors.admin, decision: "approve" })).toEqual(outcome)
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).toMatchObject({ status: "draft" })
+    expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, type: "approval.approved" } })).toBe(1)
   })
 
   it("checks queued jobs at actual execution, deferring new work but preserving reminder handlers and retry budget", async () => {
