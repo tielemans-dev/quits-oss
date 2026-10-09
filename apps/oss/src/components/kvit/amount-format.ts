@@ -60,13 +60,22 @@ export function decimalFromNumber(value: number, currency: string): string | nul
   return /^-0(\.0+)?$/.test(fixed) ? fixed.slice(1) : fixed
 }
 
-function toDecimalString(value: AmountValue, currency: string): string {
+/**
+ * The precision a source states for an amount. `exponent` is how many decimals it has; the formatter
+ * writes exactly that many, whatever Intl believes the currency uses. `source: "storage"` marks an
+ * unknown currency whose two decimals are the database's scale, not an ISO exponent: it is written
+ * with two decimals and the ISO code, never a symbol and never rounded to the currency's usual unit
+ * (an unknown "CLP" amount of 75.50 is "75,50 CLP", not "76 CLP").
+ */
+export type AmountPrecision = { exponent: number; source?: "storage" }
+
+function toDecimalString(value: AmountValue, currency: string, precision?: AmountPrecision): string {
   if (typeof value === "string") {
     const trimmed = value.trim()
     if (!DECIMAL_PATTERN.test(trimmed)) throw new RangeError(`Not a decimal amount: ${value}`)
     return trimmed
   }
-  return minorToDecimal(value.minor, exponentFor(currency))
+  return minorToDecimal(value.minor, precision?.exponent ?? exponentFor(currency))
 }
 
 type DecimalFormatter = { formatToParts: (value: string) => Intl.NumberFormatPart[] }
@@ -79,15 +88,23 @@ type DecimalFormatter = { formatToParts: (value: string) => Intl.NumberFormatPar
 export function formatAmountParts(
   value: AmountValue,
   currency: string | null | undefined,
-  locale: string | null | undefined
+  locale: string | null | undefined,
+  precision?: AmountPrecision
 ): AmountPart[] {
   const code = normalizeCurrency(currency)
   const formatter = new Intl.NumberFormat(normalizeLocale(locale), {
     style: "currency",
     currency: code,
+    ...(precision
+      ? {
+          minimumFractionDigits: precision.exponent,
+          maximumFractionDigits: precision.exponent,
+          ...(precision.source === "storage" ? { currencyDisplay: "code" as const } : {}),
+        }
+      : {}),
   }) as unknown as DecimalFormatter
 
-  return formatter.formatToParts(toDecimalString(value, code)).map((part) => {
+  return formatter.formatToParts(toDecimalString(value, code, precision)).map((part) => {
     if (part.type === "integer" || part.type === "fraction" || part.type === "decimal") {
       return { type: part.type, value: part.value }
     }
@@ -99,10 +116,11 @@ export function formatAmountParts(
 export function formatAmountText(
   value: AmountValue | null,
   currency: string | null | undefined,
-  locale: string | null | undefined
+  locale: string | null | undefined,
+  precision?: AmountPrecision
 ): string {
   if (value === null) return AMOUNT_UNAVAILABLE
-  return formatAmountParts(value, currency, locale)
+  return formatAmountParts(value, currency, locale, precision)
     .map((part) => part.value)
     .join("")
 }

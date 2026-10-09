@@ -22,7 +22,7 @@ export function ReceivedChart({ chart, streak }: { chart: ChartModel; streak: nu
   const current = chart.months.length - 1
   const shown = chart.months[active ?? current]!
   const max = Math.max(...chart.months.map((month) => month.value), 0)
-  const amountText = (amount: string) => formatAmountText(amount, chart.currency, locale)
+  const amountText = (amount: string) => formatAmountText(amount, chart.currency, locale, chart.precision)
   const monthText = (month: string) => formatChartMonth(month, "long", locale)
 
   return (

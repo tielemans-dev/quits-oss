@@ -105,16 +105,60 @@ describe("presentHero money", () => {
     expect(hero.segments).toEqual(presentHero(activeSummary()).segments)
   })
 
-  it("makes an unvalued-only currency the figure when it is all that is owed", () => {
+  it("never makes a sole unvalued currency the headline: the base currency stays, empty, with the line beneath", () => {
     const summary = activeSummary({
       outstanding: unvaluedOnly(bucket("BHD", "12345.678")),
-      overdue: { ...emptyTotal(), oldestDaysOverdue: 0 },
+      overdue: { ...unvaluedOnly(bucket("BHD", "100.000", 1, 4)), oldestDaysOverdue: 4 },
       paidThisMonth: emptyTotal(),
     })
     const hero = presentHero(summary)
-    expect(hero.currency).toBe("BHD")
-    expect(hero.outstanding).toMatchObject({ amount: "12345.678", exponent: 3 })
-    expect(hero.others).toEqual([])
+    expect(hero.currency).toBe("DKK")
+    expect(hero.outstanding).toBeNull()
+    expect(hero.overdue).toBeNull()
+    expect(hero.paid).toBeNull()
+    expect(hero.segments).toBeNull()
+    expect(hero.noneOverdue).toBe(false)
+    expect(hero.others.map((other) => [other.currency, other.outstanding.amount, other.overdue?.amount])).toEqual([
+      ["BHD", "12345.678", "100.000"],
+    ])
+  })
+
+  it("does not let unvalued receipts feed the split or the chart, even in the base currency", () => {
+    const summary = activeSummary({
+      outstanding: total(bucket("DKK", "1000.00", 1)),
+      overdue: { ...emptyTotal(), oldestDaysOverdue: 0 },
+      paidThisMonth: unvaluedOnly(bucket("DKK", "500.00", 2)),
+      receivedByMonth: MONTHS.map((month, index) => ({
+        month,
+        ...(index === 11 ? unvaluedOnly(bucket("DKK", "500.00", 2)) : emptyTotal()),
+      })),
+    })
+    const hero = presentHero(summary)
+    expect(hero.paid).toBeNull()
+    expect(hero.segments).toEqual({ paid: 0, pending: 1, overdue: 0 })
+    const chart = presentChart(summary)
+    expect(chart.hasData).toBe(false)
+    expect(chart.total).toBe("0.00")
+    expect(chart.months[11]).toMatchObject({ amount: null, value: 0 })
+  })
+
+  it("uses the valued bucket when the same currency is in unvalued as well", () => {
+    const summary = activeSummary()
+    summary.paidThisMonth.unvalued = [bucket("DKK", "10000.00", 2)]
+    summary.receivedByMonth[11]!.unvalued = [bucket("DKK", "10000.00", 2)]
+    const hero = presentHero(summary)
+    expect(hero.paid?.amount).toBe("10000.00")
+    expect(hero.others.map((other) => other.currency)).toEqual(["EUR"])
+    expect(presentChart(summary).total).toBe("10000.00")
+  })
+
+  it("states the precision of what it shows", () => {
+    expect(presentHero(activeSummary()).precision).toEqual({ exponent: 2 })
+    const storage = presentHero(activeSummary({ outstanding: total(storageBucket("ZZZ", "75.50")), overdue: { ...emptyTotal(), oldestDaysOverdue: 0 } }))
+    expect(storage.currency).toBe("ZZZ")
+    expect(storage.precision).toEqual({ exponent: 2, source: "storage" })
+    // Nothing valued: the base currency's own table exponent.
+    expect(presentHero(emptySummary({ baseCurrency: "JPY" })).precision).toEqual({ exponent: 0 })
   })
 
   it("reads three decimals exactly", () => {

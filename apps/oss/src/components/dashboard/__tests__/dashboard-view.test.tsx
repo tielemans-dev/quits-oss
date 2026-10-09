@@ -586,7 +586,29 @@ describe("unvalued-only and three-decimal currencies", () => {
     expect(container.textContent).not.toContain("20.075")
   })
 
-  it("draws an exponent-3 figure with three decimals when it is all that is owed", () => {
+  it("keeps the base currency as the figure when a three-decimal currency is all that is owed", () => {
+    const summary = activeSummary({
+      outstanding: unvaluedOnly(bucket("BHD", "12345.678")),
+      overdue: { ...unvaluedOnly(bucket("BHD", "100.000", 1, 4)), oldestDaysOverdue: 4 },
+      paidThisMonth: emptyTotal(),
+      attention: [],
+      incoming: [],
+    })
+    const { container } = renderView(summary)
+    const hero = container.querySelector("[data-slot=dashboard-hero]")!
+    const figure = hero.querySelector("[data-slot=amount]")!
+    expect(figure.textContent).toBe("0,00\u00a0kr.")
+    // Nothing valued is owed, so no rule: the figure asks for nothing.
+    expect(figure.getAttribute("data-rule")).toBe("none")
+    expect(hero.querySelector("[role=img]")).toBeNull()
+    const lines = Array.from(hero.querySelectorAll("ul")).pop()!.textContent!
+    expect(lines).toContain("12.345,678\u00a0BHD udestående")
+    expect(lines).toContain("heraf 100,000\u00a0BHD forfaldent")
+    // Something is overdue (in BHD), so "nothing is overdue" must not be said.
+    expect(hero.textContent).not.toContain("Intet er forfaldent")
+  })
+
+  it("says nothing is overdue only when no invoice at all is", () => {
     const summary = activeSummary({
       outstanding: unvaluedOnly(bucket("BHD", "12345.678")),
       overdue: { ...emptyTotal(), oldestDaysOverdue: 0 },
@@ -595,9 +617,30 @@ describe("unvalued-only and three-decimal currencies", () => {
       incoming: [],
     })
     const { container } = renderView(summary)
-    const figure = container.querySelector("[data-slot=dashboard-hero] [data-slot=amount]")!
-    expect(figure.textContent).toBe("12.345,678\u00a0BHD")
-    expect(figure.querySelectorAll(".tabular-nums.relative")[0]!.textContent).toBe("678")
+    expect(container.querySelector("[data-slot=dashboard-hero]")!.textContent).toContain("Intet er forfaldent")
+  })
+
+  it("writes a storage-precision amount with two decimals and the code in the hero lines", () => {
+    const summary = activeSummary()
+    summary.outstanding = { count: 4, buckets: summary.outstanding.buckets, unvalued: [storageBucket("CLP", "75.50")] }
+    const { container } = renderView(summary)
+    const lines = Array.from(container.querySelectorAll("[data-slot=dashboard-hero] ul")).pop()!.textContent!
+    expect(lines).toContain("75,50\u00a0CLP udestående")
+    expect(lines).not.toContain("76")
+  })
+
+  it("keeps a row's stated precision in the incoming and attention lists and their labels", () => {
+    const summary = activeSummary()
+    summary.incoming[1] = { ...summary.incoming[1]!, amount: { ...storageBucket("CLP", "75.50") }, total: { ...storageBucket("CLP", "75.50") } }
+    summary.attention[0] = { ...summary.attention[0]!, amount: { ...storageBucket("JPY", "1500.25") } }
+    summary.incoming[2] = { ...summary.incoming[0]!, documentId: "inv-bhd", amount: bucket("BHD", "1250.500"), total: bucket("BHD", "1250.500"), isOverdue: false, daysOverdue: 0 }
+    const { container } = renderView(summary)
+    const incoming = container.querySelector("[data-slot=dashboard-incoming]") as HTMLElement
+    const texts = Array.from(incoming.querySelectorAll("[data-slot=amount]")).map((el) => el.textContent)
+    expect(texts).toContain("75,50\u00a0CLP")
+    expect(texts).toContain("1.250,500\u00a0BHD")
+    const attention = container.querySelector("[data-slot=dashboard-attention]") as HTMLElement
+    expect(Array.from(attention.querySelectorAll("[data-slot=amount]")).map((el) => el.textContent)).toContain("1.500,25\u00a0JPY")
   })
 })
 

@@ -6,7 +6,7 @@ import { Amount } from "../kvit/amount"
 import { formatAmountText, minorToDecimal } from "../kvit/amount-format"
 import { MonoLabel } from "../kvit/mono-label"
 import { tCount } from "./i18n"
-import { toMinor, type HeroModel } from "./summary-model"
+import { precisionOf, toMinor, type HeroModel } from "./summary-model"
 import { useCountUp } from "./use-count-up"
 
 /**
@@ -34,10 +34,11 @@ export function HeroCard({
   className?: string
 }) {
   const { t, locale } = useI18n()
-  const exponent = hero.outstanding?.exponent ?? hero.paid?.exponent ?? 2
+  const { precision } = hero
+  const exponent = precision.exponent
   const owedMinor = hero.outstanding ? toMinor(hero.outstanding) : 0n
   const shown = useCountUp(owedMinor)
-  const text = (amount: string) => formatAmountText(amount, hero.currency, locale)
+  const text = (amount: string) => formatAmountText(amount, hero.currency, locale, precision)
 
   const split = useMemo(() => {
     if (!hero.segments) return null
@@ -84,7 +85,9 @@ export function HeroCard({
           currency={hero.currency}
           locale={locale}
           size="hero"
-          rule={kvit ? "double" : "single"}
+          precision={precision}
+          // A rule is money asked for or settled; when nothing valued is owed here it has no figure to sit under.
+          rule={kvit ? "double" : hero.outstanding ? "single" : "none"}
           ruleTone="current"
           className="text-[2.4rem] sm:text-6xl"
         />
@@ -113,9 +116,9 @@ export function HeroCard({
                   </span>
                 ) : null}
               </p>
-            ) : (
+            ) : hero.noneOverdue ? (
               <p>{t("dashboard.hero.noneOverdue")}</p>
-            )}
+            ) : null}
           </>
         )}
       </div>
@@ -153,11 +156,11 @@ export function HeroCard({
           {hero.others.map((other) => (
             <li key={other.currency}>
               {t("dashboard.hero.otherOutstanding", {
-                amount: formatAmountText(other.outstanding.amount, other.currency, locale),
+                amount: formatAmountText(other.outstanding.amount, other.currency, locale, precisionOf(other.outstanding)),
               })}
               {other.overdue
                 ? ` · ${t("dashboard.hero.otherOverdue", {
-                    amount: formatAmountText(other.overdue.amount, other.currency, locale),
+                    amount: formatAmountText(other.overdue.amount, other.currency, locale, precisionOf(other.overdue)),
                   })}`
                 : ""}
             </li>

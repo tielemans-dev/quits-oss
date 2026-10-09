@@ -93,3 +93,38 @@ describe("formatAmountParts", () => {
     expect(() => formatAmountParts("1e3", "DKK", "da-DK")).toThrow(RangeError)
   })
 })
+
+describe("stated precision", () => {
+  const text = (value: string, currency: string, precision?: { exponent: number; source?: "storage" }) =>
+    formatAmountText(value, currency, "da-DK", precision)
+
+  it("writes a storage-precision amount with two decimals and the ISO code, whatever Intl thinks", () => {
+    // Intl treats CLP and JPY as whole-unit currencies and would round 75.50 to 76.
+    expect(text("75.50", "CLP")).toBe("76" + nbsp + "CLP")
+    expect(text("75.50", "CLP", { exponent: 2, source: "storage" })).toBe("75,50" + nbsp + "CLP")
+    expect(text("1500.25", "JPY", { exponent: 2, source: "storage" })).toBe("1.500,25" + nbsp + "JPY")
+    expect(text("12.50", "ZZZ", { exponent: 2, source: "storage" })).toBe("12,50" + nbsp + "ZZZ")
+  })
+
+  it("uses the code, not a symbol, for a storage-precision currency Intl knows by symbol", () => {
+    expect(text("12.50", "USD", { exponent: 2, source: "storage" })).toBe("12,50" + nbsp + "USD")
+  })
+
+  it("writes exactly the stated number of decimals for a known exponent", () => {
+    expect(text("12345.678", "BHD", { exponent: 3 })).toBe("12.345,678" + nbsp + "BHD")
+    expect(text("1500", "JPY", { exponent: 0 })).toBe("1.500" + nbsp + "JP¥")
+  })
+
+  it("splits the fraction of a stated precision for the raised cents", () => {
+    const parts = formatAmountParts("75.50", "CLP", "da-DK", { exponent: 2, source: "storage" })
+    expect(parts.filter((part) => part.type === "fraction").map((part) => part.value)).toEqual(["50"])
+  })
+
+  it("leaves an amount without a stated precision as it was", () => {
+    expect(text("12.50", "DKK")).toBe("12,50" + nbsp + "kr.")
+  })
+
+  it("reads minor units at the stated exponent", () => {
+    expect(formatAmountText({ minor: 7550 }, "CLP", "da-DK", { exponent: 2, source: "storage" })).toBe("75,50" + nbsp + "CLP")
+  })
+})

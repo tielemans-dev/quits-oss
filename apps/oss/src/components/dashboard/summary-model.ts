@@ -1,7 +1,7 @@
 import type { DashboardSummary, DashboardTotal } from "@quits/contracts/dashboard"
 import { getCurrencyExponent } from "@quits/shared/currency"
 
-import { minorToDecimal } from "../kvit/amount-format"
+import { minorToDecimal, type AmountPrecision } from "../kvit/amount-format"
 
 /**
  * What the dashboard shows, worked out from `dashboard.summary()` and nothing else. Pure, so the
@@ -10,9 +10,10 @@ import { minorToDecimal } from "../kvit/amount-format"
  * - Money is per currency. Nothing here adds or converts across currencies; the hero is one
  *   currency and every other one is a secondary line of its own.
  * - `unvalued` overlaps `buckets` for supported currencies (money without a base valuation), so it
- *   is never added to anything. It is read for one purpose only: a currency that is in `unvalued`
- *   and in none of the valued `buckets` (an unknown or three-decimal currency) exists nowhere else,
- *   so it is shown once, on a line of its own. See `bucketFor` and `currenciesOf`.
+ *   is never added to anything, and headlines, the month split and the chart read valued data only.
+ *   A currency that is in `unvalued` and in no valued bucket (an unknown or three-decimal currency)
+ *   exists nowhere else, so it is shown once, on a quiet secondary line. See `bucketFor`,
+ *   `unvaluedOnlyCurrencies` and `secondaryBucket`.
  */
 
 export type Summary = DashboardSummary
@@ -42,23 +43,31 @@ export function classifyDashboard(summary: Summary): DashboardState {
   return hasSomething ? "getting-started" : "first-run"
 }
 
+/**
+ * The valued bucket of a currency, or null. Headline figures, the month split and the chart read
+ * only this: valued money is the only money that is complete, and `unvalued` overlaps it.
+ */
 export function bucketFor(total: DashboardTotal, currency: string): Bucket | null {
-  return (
-    total.buckets.find((bucket) => bucket.currency === currency) ??
-    // Only reached for a currency absent from every valued bucket, so it is never a second
-    // figure for money already counted.
-    total.unvalued.find((bucket) => bucket.currency === currency) ??
-    null
-  )
+  return total.buckets.find((bucket) => bucket.currency === currency) ?? null
 }
 
-/** The valued currencies of a total, then those that appear only in `unvalued`, each once. */
-export function currenciesOf(total: DashboardTotal): string[] {
-  const valued = total.buckets.map((bucket) => bucket.currency)
-  const unvaluedOnly = total.unvalued
-    .map((bucket) => bucket.currency)
-    .filter((currency) => !valued.includes(currency))
-  return [...valued, ...unvaluedOnly]
+/** The currencies that are in `unvalued` and in no valued bucket: money that exists nowhere else. */
+export function unvaluedOnlyCurrencies(total: DashboardTotal): string[] {
+  const valued = new Set(total.buckets.map((bucket) => bucket.currency))
+  return total.unvalued.map((bucket) => bucket.currency).filter((currency) => !valued.has(currency))
+}
+
+/**
+ * The bucket to show on a secondary line: the valued one, else the unvalued-only one. Only for
+ * display lists; it never feeds a headline, a split or a total.
+ */
+export function secondaryBucket(total: DashboardTotal, currency: string): Bucket | null {
+  return bucketFor(total, currency) ?? total.unvalued.find((bucket) => bucket.currency === currency) ?? null
+}
+
+/** The precision a bucket or money value states, for `Amount` and the text formatters. */
+export function precisionOf(money: { exponent: number; precisionSource?: "storage" }): AmountPrecision {
+  return money.precisionSource ? { exponent: money.exponent, source: money.precisionSource } : { exponent: money.exponent }
 }
 
 /** The digits of an exact decimal string as minor units. "12.50" is 1250n; "7" with exponent 0 is 7n. */
@@ -67,28 +76,34 @@ export function toMinor(money: { amount: string; exponent: number }): bigint {
   return BigInt(`${whole}${fraction.padEnd(money.exponent, "0").slice(0, money.exponent)}`)
 }
 
-function exponentOf(currency: string, buckets: Bucket[]): number {
-  return buckets[0]?.exponent ?? getCurrencyExponent(currency) ?? 2
-}
-
 export type HeroModel = {
-  /** The currency of the big figure: the base currency, unless money is only owed in another one. */
+  /**
+   * The currency of the big figure: the base currency, unless valued money is owed only in another
+   * currency. Chosen from valued data alone, so an unvalued-only currency is never the headline.
+   */
   currency: string
-  /** null when nothing is owed in `currency`. */
+  /** How the figure and every amount in `currency` is written. */
+  precision: AmountPrecision
+  /** The valued outstanding in `currency`; null when nothing valued is owed in it. */
   outstanding: Bucket | null
   /** `oldestDaysOverdue` is the oldest age within this currency; null when the bucket has none. */
   overdue: { bucket: Bucket; oldestDaysOverdue: number | null } | null
+  /** True when no invoice at all is overdue (valued or not), so "nothing is overdue" is honest. */
+  noneOverdue: boolean
   /** Received this month, in `currency`. */
   paid: Bucket | null
   /** Shares of paid, on its way and overdue, summing to 1; null when all three are zero. */
   segments: { paid: number; pending: number; overdue: number } | null
-  /** Every other currency that is owed, valued or only unvalued, each once on its own line. */
+  /**
+   * Every other currency that is owed, each once on its own quiet line: valued currencies, then
+   * those only in `unvalued` (unknown or three-decimal currencies, in any case including the base).
+   */
   others: Array<{ currency: string; outstanding: Bucket; overdue: Bucket | null }>
 }
 
 export function presentHero(summary: Summary): HeroModel {
   const { baseCurrency, outstanding, overdue, paidThisMonth } = summary
-  const owed = currenciesOf(outstanding)
+  const owed = outstanding.buckets.map((bucket) => bucket.currency)
   const currency = owed.length === 0 || owed.includes(baseCurrency) ? baseCurrency : owed[0]!
 
   const owedBucket = bucketFor(outstanding, currency)
@@ -101,12 +116,24 @@ export function presentHero(summary: Summary): HeroModel {
   const pendingMinor = owedMinor > overdueMinor ? owedMinor - overdueMinor : 0n
   const total = paidMinor + pendingMinor + overdueMinor
 
+  const stated = owedBucket ?? overdueBucket ?? paidBucket
+  const precision: AmountPrecision = stated
+    ? precisionOf(stated)
+    : { exponent: getCurrencyExponent(currency) ?? 2 }
+
+  const secondary = [
+    ...owed.filter((other) => other !== currency),
+    ...unvaluedOnlyCurrencies(outstanding),
+  ]
+
   return {
     currency,
+    precision,
     outstanding: owedBucket,
     overdue: overdueBucket
       ? { bucket: overdueBucket, oldestDaysOverdue: overdueBucket.oldestDaysOverdue ?? null }
       : null,
+    noneOverdue: overdue.count === 0,
     paid: paidBucket,
     segments:
       total === 0n
@@ -116,18 +143,18 @@ export function presentHero(summary: Summary): HeroModel {
             pending: Number(pendingMinor) / Number(total),
             overdue: Number(overdueMinor) / Number(total),
           },
-    others: owed
-      .filter((other) => other !== currency)
-      .map((other) => ({
-        currency: other,
-        outstanding: bucketFor(outstanding, other)!,
-        overdue: bucketFor(overdue, other),
-      })),
+    others: secondary.map((other) => ({
+      currency: other,
+      outstanding: secondaryBucket(outstanding, other)!,
+      overdue: secondaryBucket(overdue, other),
+    })),
   }
 }
 
 export type ChartModel = {
   currency: string
+  /** How the base currency's amounts are written. */
+  precision: AmountPrecision
   months: Array<{ month: string; amount: string | null; value: number; isCurrent: boolean }>
   /** The twelve months added up, in `currency`: one currency, so the sum is honest. */
   total: string
@@ -138,11 +165,11 @@ export type ChartModel = {
 
 export function presentChart(summary: Summary): ChartModel {
   const currency = summary.baseCurrency
-  const exponent = exponentOf(
-    currency,
-    summary.receivedByMonth.flatMap((month) => month.buckets.filter((b) => b.currency === currency))
-  )
+  const valued = summary.receivedByMonth.flatMap((month) => month.buckets.filter((b) => b.currency === currency))
+  const precision: AmountPrecision = valued[0] ? precisionOf(valued[0]) : { exponent: getCurrencyExponent(currency) ?? 2 }
   let sum = 0n
+  // Valued receipts only: unvalued ones overlap them, and a currency that is only unvalued has no
+  // honest place in a single-currency chart.
   const months = summary.receivedByMonth.map((entry, index, all) => {
     const bucket = bucketFor(entry, currency)
     if (bucket) sum += toMinor(bucket)
@@ -155,8 +182,9 @@ export function presentChart(summary: Summary): ChartModel {
   })
   return {
     currency,
+    precision,
     months,
-    total: minorToDecimal(sum, exponent),
+    total: minorToDecimal(sum, precision.exponent),
     hasData: months.some((month) => month.amount !== null),
     hasOtherCurrencies: summary.hasOtherCurrencies,
   }

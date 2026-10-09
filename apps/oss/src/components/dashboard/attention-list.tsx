@@ -10,7 +10,7 @@ import { DocLink } from "./doc-link"
 import { formatShortDate } from "./format-relative"
 import { tCount, type Translate } from "./i18n"
 import { ReminderFailureNote, RemindAction } from "./remind-action"
-import { attentionAction, isLate, type AttentionItem } from "./summary-model"
+import { attentionAction, isLate, precisionOf, type AttentionItem } from "./summary-model"
 import type { ReminderState } from "./use-reminders"
 
 const reasonStyle: Record<AttentionItem["reason"], { icon: LucideIcon; tone: string }> = {
@@ -125,6 +125,7 @@ export function AttentionList({
                       currency={item.amount.currency}
                       locale={locale}
                       size="sm"
+                      precision={precisionOf(item.amount)}
                       rule={attentionRule(item)}
                       className="-mt-0.5 -mb-1.5"
                     />

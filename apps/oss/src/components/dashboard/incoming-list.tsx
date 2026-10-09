@@ -10,7 +10,7 @@ import { Panel } from "../kvit/panel"
 import { DocLink } from "./doc-link"
 import { tCount, type Translate } from "./i18n"
 import { ReminderFailureNote, RemindAction } from "./remind-action"
-import { dueLabel, incomingRule, type DueLabel, type IncomingItem } from "./summary-model"
+import { dueLabel, incomingRule, precisionOf, type DueLabel, type IncomingItem } from "./summary-model"
 import type { ReminderState } from "./use-reminders"
 
 export function dueText(due: DueLabel, t: Translate): string {
@@ -129,6 +129,7 @@ export function IncomingList({
                   currency={item.amount.currency}
                   locale={locale}
                   size="sm"
+                  precision={precisionOf(item.amount)}
                   {...incomingRule(item)}
                   className="-mt-0.5"
                 />
