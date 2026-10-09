@@ -28,15 +28,24 @@ export const updateLinkedInvoice = (invoice: Invoice & { items: InvoiceItem[] },
     return yield* new InvalidState({ code: "linked_invoice_context_immutable", message: "A linked invoice keeps the agreement's contact, currency and frozen VAT context" })
   const kept = new Set<string>(), unlinked: DocumentLineInput[] = []
   if (input.items) {
+    const keys = new Set<string>()
     for (const item of input.items) {
       const linked = invoice.items.find(line => line.deliverableId && (line.id === item.id || line.deliverableId === item.deliverableId))
+      // Omitted keys inherit persisted keys; linked rows without one keep their stable row id.
+      const key = item.key ?? (linked ? linked.clientKey || linked.id : invoice.items.find(line => line.id === item.id)?.clientKey ?? undefined)
+      if (key !== undefined) {
+        if (keys.has(key)) return yield* new InvalidState({ code: "duplicate_line_key", message: "Line keys must be unique within the document" })
+        keys.add(key)
+      }
+
       if (linked) {
         if (kept.has(linked.id) || !unchanged(linked, item))
           return yield* new InvalidState({ code: "linked_item_immutable", message: "Linked invoice lines must keep their identity and commercial values" })
         kept.add(linked.id)
+        if (item.key !== undefined) yield* Effect.promise(() => db.invoiceItem.update({ where: { id: linked.id }, data: { clientKey: item.key } }))
       } else if (item.deliverableId || (item.id && !invoice.items.some(line => line.id === item.id))) {
         return yield* new InvalidState({ code: "invalid_linked_item", message: "Use invoice.addDeliverables to reserve a deliverable" })
-      } else unlinked.push(item)
+      } else unlinked.push({ ...item, key })
     }
   } else invoice.items.filter(line => line.deliverableId).forEach(line => kept.add(line.id))
   const removed = invoice.items.filter(line => line.deliverableId && !kept.has(line.id))
@@ -50,7 +59,7 @@ export const updateLinkedInvoice = (invoice: Invoice & { items: InvoiceItem[] },
     totals = frozenTotals([...invoice.items.filter(line => kept.has(line.id)), ...priced.itemRows])
   }
   const updated = yield* Effect.promise(() => db.invoice.update({ where: { id: invoice.id }, data: {
-    ...totals, ...(input.supplyDate ? { supplyDate: new Date(input.supplyDate) } : {}), ...(input.vatEvidence !== undefined ? { vatEvidence: toNullableJsonInput(input.vatEvidence) } : {}), ...(input.dueDate ? { dueDate: new Date(input.dueDate) } : {}), ...(input.notes !== undefined ? { notes: input.notes } : {}),
+    editRevision: { increment: 1 }, ...totals, ...(input.supplyDate ? { supplyDate: new Date(input.supplyDate) } : {}), ...(input.vatEvidence !== undefined ? { vatEvidence: toNullableJsonInput(input.vatEvidence) } : {}), ...(input.dueDate ? { dueDate: new Date(input.dueDate) } : {}), ...(input.notes !== undefined ? { notes: input.notes } : {}),
   }, include: { contact: true, items: { orderBy: { sortOrder: "asc" } } } }))
   command.emit({ aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.draft_updated", payload: { fields: Object.keys(input).filter(key => key !== "id") } })
   return updated

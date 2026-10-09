@@ -50,7 +50,7 @@ export const allocationIdentity = (line: Pick<Deliverable, "id" | "deliveryRevis
 /** Copy commercial values, including v2 original inputs and allocated VAT, without repricing. */
 export function frozenInvoiceLine(line: Deliverable, sortOrder: number, pricesIncludeTax: boolean) {
   return {
-    ...allocationIdentity(line), description: line.description || line.title,
+    clientKey: line.id, ...allocationIdentity(line), description: line.description || line.title,
     quantity: line.quantity, unitPriceNet: line.unitPriceNet, unitPriceGross: line.unitPriceGross,
     lineNet: line.lineNet, lineTax: line.lineTax, lineGross: line.lineGross, taxRate: line.taxRate,
     taxCategory: line.taxCategory, taxCode: line.taxCode, sortOrder,

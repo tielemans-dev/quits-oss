@@ -507,6 +507,10 @@ const generateRun = (
         code: "invalid_schedule_items",
       })
     }
+    const evidence = draftVatEvidenceSchema.safeParse(schedule.vatEvidence ?? {})
+    if (!evidence.success) return yield* new InvalidState({
+      code: "invalid_vat_evidence", message: "Replace the schedule's invalid VAT evidence before generating an invoice",
+    })
     const invoice = yield* buildInvoiceDraft(
       {
         contactId: schedule.contactId,
@@ -515,7 +519,7 @@ const generateRun = (
         notes: schedule.notes ?? undefined,
         taxRate: schedule.taxRate.toNumber(),
         items: items.data,
-        vatEvidence: draftVatEvidenceSchema.parse(schedule.vatEvidence ?? {}),
+        vatEvidence: evidence.data,
       },
       { recurringInvoiceId: schedule.id, recurringRunDate: runDate }
     )

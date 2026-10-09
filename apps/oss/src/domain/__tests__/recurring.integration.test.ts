@@ -402,6 +402,23 @@ describeIfDatabase("recurring invoices", () => {
     expect(resumed.result.nextRunAt.getTime()).toBeGreaterThanOrEqual(today().getTime())
   })
 
+  it("refuses corrupt template evidence without advancing the run, then generates after repair", async () => {
+    const { org, contactId } = await setup()
+    const actor = org.actors.admin
+    const schedule = await createSchedule(actor, contactId)
+    const corrupt = { viesCheck: { result: 123 } }
+    await prisma.recurringInvoice.update({ where: { id: schedule.id }, data: { vatEvidence: corrupt } })
+    const outcome = await executeCommand(runRecurringInvoiceNow, { id: schedule.id }, { actor })
+    expect(outcome).toMatchObject({ status: "failed", error: { tag: "InvalidState", code: "invalid_vat_evidence" } })
+    expect(await generatedInvoices(schedule.id)).toEqual([])
+    expect(await prisma.recurringInvoice.findUniqueOrThrow({ where: { id: schedule.id } })).toMatchObject({
+      vatEvidence: corrupt, nextRunAt: schedule.nextRunAt, lastRunAt: schedule.lastRunAt,
+    })
+    expect(await executeCommand(updateRecurringInvoice, { id: schedule.id, vatEvidence: {} }, { actor })).toMatchObject({ status: "completed" })
+    expect(await executeCommand(runRecurringInvoiceNow, { id: schedule.id }, { actor })).toMatchObject({ status: "completed" })
+    expect(await generatedInvoices(schedule.id)).toHaveLength(1)
+  })
+
   it("generates the next run immediately on request", async () => {
     const { org, contactId } = await setup()
     const start = addUtcDays(today(), 10)

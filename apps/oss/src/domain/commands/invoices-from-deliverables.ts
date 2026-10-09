@@ -75,6 +75,8 @@ export const addInvoiceDeliverables = defineCommand({
     const invoice = yield* Effect.promise(() => db.invoice.findFirst({ where: { id: input.id, organizationId: command.organizationId }, include }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.id })
     if (invoice.status !== "draft") return yield* new InvalidState({ code: "not_draft", message: "Only draft invoices can reserve deliverables" })
+    if (input.expectedRevision !== undefined && input.expectedRevision !== invoice.editRevision)
+      return yield* new InvalidState({ code: "stale_draft", message: "This draft changed since it was loaded. Reload it before saving." })
     yield* refuseWhileSending("invoice", invoice)
     if (invoice.agreementId !== agreement.id) return yield* new InvalidState({ code: "agreement_mismatch", message: "The draft must be linked to this agreement" })
     if (lines.some(line => (line.isDeposit && !input.scheduleAsSale ? "prepayment" : "sale") !== invoice.purpose))
@@ -85,7 +87,7 @@ export const addInvoiceDeliverables = defineCommand({
     const saleIds = lines.filter(line => line.isDeposit && input.scheduleAsSale).map(line => line.id)
     const previousChoice = invoice.scheduleSaleChoice as { deliverableIds?: string[] } | null
     const updated = yield* Effect.promise(() => db.invoice.update({ where: { id: invoice.id }, data: {
-      ...frozenTotals([...invoice.items, ...rows]), items: { create: rows },
+      editRevision: { increment: 1 }, ...frozenTotals([...invoice.items, ...rows]), items: { create: rows },
       ...(saleIds.length ? { scheduleSaleChoice: { deliverableIds: [...(previousChoice?.deliverableIds ?? []), ...saleIds], actor: actorKey(command.actor), commandId: command.commandId, at: command.now.toISOString() } } : {}),
     }, include }))
     yield* reserveLines(agreement.id, invoice.id, lines)
@@ -96,7 +98,7 @@ export const addInvoiceDeliverables = defineCommand({
 
 export const invoiceScheduleAsSale = defineCommand({
   type: "invoice.schedule_as_sale", permission: "invoice:update", outwardFacing: false,
-  input: z.strictObject({ id: z.string().min(1), confirmed: z.literal(true) }),
+  input: z.strictObject({ id: z.string().min(1), confirmed: z.literal(true), expectedRevision: z.number().int().nonnegative().optional() }),
   summarize: input => `Invoice the payment schedule on ${input.id} as a sale`,
   handle: input => Effect.gen(function* () {
     const db = yield* Db, command = yield* Command
@@ -105,9 +107,11 @@ export const invoiceScheduleAsSale = defineCommand({
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.id })
     if (invoice.status !== "draft" || invoice.purpose !== "prepayment" || !invoice.agreementId)
       return yield* new InvalidState({ code: "not_prepayment_draft", message: "Only a linked prepayment draft can be invoiced as a sale" })
+    if (input.expectedRevision !== undefined && input.expectedRevision !== invoice.editRevision)
+      return yield* new InvalidState({ code: "stale_draft", message: "This draft changed since it was loaded. Reload it before saving." })
     yield* refuseWhileSending("invoice", invoice)
     const updated = yield* Effect.promise(() => db.invoice.update({ where: { id: invoice.id }, data: {
-      purpose: "sale", scheduleSaleChoice: { deliverableIds: invoice.items.flatMap(line => line.deliverableId ? [line.deliverableId] : []), actor: actorKey(command.actor), commandId: command.commandId, at: command.now.toISOString() },
+      editRevision: { increment: 1 }, purpose: "sale", scheduleSaleChoice: { deliverableIds: invoice.items.flatMap(line => line.deliverableId ? [line.deliverableId] : []), actor: actorKey(command.actor), commandId: command.commandId, at: command.now.toISOString() },
     }, include }))
     command.emit({ aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.draft_updated", payload: { fields: ["purpose", "scheduleSaleChoice"] } })
     return updated

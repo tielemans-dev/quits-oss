@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { keyVersionSchema, nonEmptyStringSchema, quoteIdSchema } from "./baseSchemas"
-import { calendarDateInputSchema, documentLineInputSchema, documentLineV2InputSchema, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
+import { calendarDateInputSchema, documentLineInputSchema, documentLineV2InputSchema, refineDocumentLineKeys, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
 
 import { draftVatEvidenceSchema } from "./vat"
 
@@ -13,10 +13,11 @@ export const quoteCreateDraftInputSchema = z.object({
   notes: z.string().trim().max(5000).optional(),
   taxRate: documentTaxRateSchema.default(0),
   vatEvidence: draftVatEvidenceSchema.optional(),
-  items: z.array(documentLineInputSchema).min(1).max(100),
+  items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
 })
 
 export const quoteUpdateDraftInputSchema = z.object({
+  expectedRevision: z.number().int().nonnegative().optional(),
   id: z.string().min(1),
   contactId: z.string().trim().min(1).optional(),
   expiryDate: calendarDateInputSchema.optional(),
@@ -24,16 +25,16 @@ export const quoteUpdateDraftInputSchema = z.object({
   notes: z.string().trim().max(5000).optional(),
   taxRate: documentTaxRateSchema.optional(),
   vatEvidence: draftVatEvidenceSchema.optional(),
-  items: z.array(documentLineInputSchema).min(1).max(100).optional(),
+  items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys).optional(),
 })
 
 export const quoteCreateDraftV2InputSchema = quoteCreateDraftInputSchema.extend({
   taxRate: documentTaxRateV2Schema.default("0"),
-  items: z.array(documentLineV2InputSchema).min(1).max(100),
+  items: z.array(documentLineV2InputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
 })
 export const quoteUpdateDraftV2InputSchema = quoteUpdateDraftInputSchema.extend({
   taxRate: documentTaxRateV2Schema.optional(),
-  items: z.array(documentLineV2InputSchema).min(1).max(100).optional(),
+  items: z.array(documentLineV2InputSchema).min(1).max(100).superRefine(refineDocumentLineKeys).optional(),
 })
 
 export const quoteIdInputSchema = z.object({ id: z.string().min(1) })

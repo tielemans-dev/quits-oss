@@ -1,3 +1,4 @@
+import { loadDocumentView } from "../../domain/documents/view"
 import { executeIssuanceCommand } from "../../application/issuance"
 import { TRPCError } from "@trpc/server"
 import {
@@ -65,6 +66,12 @@ const listInclude = {
 } as const
 
 export const creditNotesRouter = router({
+  view: authorizedProcedure("creditNote:read").input(z.object({ id: z.string().min(1) })).query(async ({ ctx, input }) => {
+    const result = await loadDocumentView(ctx.actor, "creditNote", input.id)
+    if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" })
+    return result
+  }),
+
   list: authorizedProcedure("creditNote:read")
     .input(creditNoteListInputSchema)
     .query(async ({ ctx, input }) => {

@@ -51,6 +51,7 @@ export type QuoteItemSumAggregateOutputType = {
 export type QuoteItemMinAggregateOutputType = {
   id: string | null
   quoteId: string | null
+  clientKey: string | null
   description: string | null
   quantity: runtime.Decimal | null
   unitPriceNet: runtime.Decimal | null
@@ -74,6 +75,7 @@ export type QuoteItemMinAggregateOutputType = {
 export type QuoteItemMaxAggregateOutputType = {
   id: string | null
   quoteId: string | null
+  clientKey: string | null
   description: string | null
   quantity: runtime.Decimal | null
   unitPriceNet: runtime.Decimal | null
@@ -97,6 +99,7 @@ export type QuoteItemMaxAggregateOutputType = {
 export type QuoteItemCountAggregateOutputType = {
   id: number
   quoteId: number
+  clientKey: number
   description: number
   quantity: number
   unitPriceNet: number
@@ -144,6 +147,7 @@ export type QuoteItemSumAggregateInputType = {
 export type QuoteItemMinAggregateInputType = {
   id?: true
   quoteId?: true
+  clientKey?: true
   description?: true
   quantity?: true
   unitPriceNet?: true
@@ -167,6 +171,7 @@ export type QuoteItemMinAggregateInputType = {
 export type QuoteItemMaxAggregateInputType = {
   id?: true
   quoteId?: true
+  clientKey?: true
   description?: true
   quantity?: true
   unitPriceNet?: true
@@ -190,6 +195,7 @@ export type QuoteItemMaxAggregateInputType = {
 export type QuoteItemCountAggregateInputType = {
   id?: true
   quoteId?: true
+  clientKey?: true
   description?: true
   quantity?: true
   unitPriceNet?: true
@@ -300,6 +306,7 @@ export type QuoteItemGroupByArgs<ExtArgs extends runtime.Types.Extensions.Intern
 export type QuoteItemGroupByOutputType = {
   id: string
   quoteId: string
+  clientKey: string | null
   description: string
   quantity: runtime.Decimal
   unitPriceNet: runtime.Decimal
@@ -346,6 +353,7 @@ export type QuoteItemWhereInput = {
   NOT?: Prisma.QuoteItemWhereInput | Prisma.QuoteItemWhereInput[]
   id?: Prisma.StringFilter<"QuoteItem"> | string
   quoteId?: Prisma.StringFilter<"QuoteItem"> | string
+  clientKey?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
   description?: Prisma.StringFilter<"QuoteItem"> | string
   quantity?: Prisma.DecimalFilter<"QuoteItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFilter<"QuoteItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -370,6 +378,7 @@ export type QuoteItemWhereInput = {
 export type QuoteItemOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -397,6 +406,7 @@ export type QuoteItemWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.QuoteItemWhereInput[]
   NOT?: Prisma.QuoteItemWhereInput | Prisma.QuoteItemWhereInput[]
   quoteId?: Prisma.StringFilter<"QuoteItem"> | string
+  clientKey?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
   description?: Prisma.StringFilter<"QuoteItem"> | string
   quantity?: Prisma.DecimalFilter<"QuoteItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFilter<"QuoteItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -421,6 +431,7 @@ export type QuoteItemWhereUniqueInput = Prisma.AtLeast<{
 export type QuoteItemOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -452,6 +463,7 @@ export type QuoteItemScalarWhereWithAggregatesInput = {
   NOT?: Prisma.QuoteItemScalarWhereWithAggregatesInput | Prisma.QuoteItemScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"QuoteItem"> | string
   quoteId?: Prisma.StringWithAggregatesFilter<"QuoteItem"> | string
+  clientKey?: Prisma.StringNullableWithAggregatesFilter<"QuoteItem"> | string | null
   description?: Prisma.StringWithAggregatesFilter<"QuoteItem"> | string
   quantity?: Prisma.DecimalWithAggregatesFilter<"QuoteItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalWithAggregatesFilter<"QuoteItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -474,6 +486,7 @@ export type QuoteItemScalarWhereWithAggregatesInput = {
 
 export type QuoteItemCreateInput = {
   id?: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -498,6 +511,7 @@ export type QuoteItemCreateInput = {
 export type QuoteItemUncheckedCreateInput = {
   id?: string
   quoteId: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -520,6 +534,7 @@ export type QuoteItemUncheckedCreateInput = {
 
 export type QuoteItemUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -544,6 +559,7 @@ export type QuoteItemUpdateInput = {
 export type QuoteItemUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -567,6 +583,7 @@ export type QuoteItemUncheckedUpdateInput = {
 export type QuoteItemCreateManyInput = {
   id?: string
   quoteId: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -589,6 +606,7 @@ export type QuoteItemCreateManyInput = {
 
 export type QuoteItemUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -612,6 +630,7 @@ export type QuoteItemUpdateManyMutationInput = {
 export type QuoteItemUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quoteId?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -645,6 +664,7 @@ export type QuoteItemOrderByRelationAggregateInput = {
 export type QuoteItemCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -679,6 +699,7 @@ export type QuoteItemAvgOrderByAggregateInput = {
 export type QuoteItemMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -702,6 +723,7 @@ export type QuoteItemMaxOrderByAggregateInput = {
 export type QuoteItemMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   quoteId?: Prisma.SortOrder
+  clientKey?: Prisma.SortOrder
   description?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   unitPriceNet?: Prisma.SortOrder
@@ -777,6 +799,7 @@ export type QuoteItemUncheckedUpdateManyWithoutQuoteNestedInput = {
 
 export type QuoteItemCreateWithoutQuoteInput = {
   id?: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -799,6 +822,7 @@ export type QuoteItemCreateWithoutQuoteInput = {
 
 export type QuoteItemUncheckedCreateWithoutQuoteInput = {
   id?: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -851,6 +875,7 @@ export type QuoteItemScalarWhereInput = {
   NOT?: Prisma.QuoteItemScalarWhereInput | Prisma.QuoteItemScalarWhereInput[]
   id?: Prisma.StringFilter<"QuoteItem"> | string
   quoteId?: Prisma.StringFilter<"QuoteItem"> | string
+  clientKey?: Prisma.StringNullableFilter<"QuoteItem"> | string | null
   description?: Prisma.StringFilter<"QuoteItem"> | string
   quantity?: Prisma.DecimalFilter<"QuoteItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFilter<"QuoteItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -873,6 +898,7 @@ export type QuoteItemScalarWhereInput = {
 
 export type QuoteItemCreateManyQuoteInput = {
   id?: string
+  clientKey?: string | null
   description: string
   quantity: runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -895,6 +921,7 @@ export type QuoteItemCreateManyQuoteInput = {
 
 export type QuoteItemUpdateWithoutQuoteInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -917,6 +944,7 @@ export type QuoteItemUpdateWithoutQuoteInput = {
 
 export type QuoteItemUncheckedUpdateWithoutQuoteInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -939,6 +967,7 @@ export type QuoteItemUncheckedUpdateWithoutQuoteInput = {
 
 export type QuoteItemUncheckedUpdateManyWithoutQuoteInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  clientKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   unitPriceNet?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -964,6 +993,7 @@ export type QuoteItemUncheckedUpdateManyWithoutQuoteInput = {
 export type QuoteItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   quoteId?: boolean
+  clientKey?: boolean
   description?: boolean
   quantity?: boolean
   unitPriceNet?: boolean
@@ -988,6 +1018,7 @@ export type QuoteItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
 export type QuoteItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   quoteId?: boolean
+  clientKey?: boolean
   description?: boolean
   quantity?: boolean
   unitPriceNet?: boolean
@@ -1012,6 +1043,7 @@ export type QuoteItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
 export type QuoteItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   quoteId?: boolean
+  clientKey?: boolean
   description?: boolean
   quantity?: boolean
   unitPriceNet?: boolean
@@ -1036,6 +1068,7 @@ export type QuoteItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
 export type QuoteItemSelectScalar = {
   id?: boolean
   quoteId?: boolean
+  clientKey?: boolean
   description?: boolean
   quantity?: boolean
   unitPriceNet?: boolean
@@ -1056,7 +1089,7 @@ export type QuoteItemSelectScalar = {
   inputPrecision?: boolean
 }
 
-export type QuoteItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "quoteId" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatRateInput" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["quoteItem"]>
+export type QuoteItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "quoteId" | "clientKey" | "description" | "quantity" | "unitPriceNet" | "unitPriceGross" | "lineNet" | "lineTax" | "lineGross" | "taxRate" | "taxCategory" | "taxCode" | "sortOrder" | "vatRateInput" | "vatTreatment" | "vatCountry" | "vatReasonCode" | "quantityInput" | "unitPriceInput" | "inputPrecision", ExtArgs["result"]["quoteItem"]>
 export type QuoteItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   quote?: boolean | Prisma.QuoteDefaultArgs<ExtArgs>
 }
@@ -1075,6 +1108,7 @@ export type $QuoteItemPayload<ExtArgs extends runtime.Types.Extensions.InternalA
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     quoteId: string
+    clientKey: string | null
     description: string
     quantity: runtime.Decimal
     unitPriceNet: runtime.Decimal
@@ -1519,6 +1553,7 @@ export interface Prisma__QuoteItemClient<T, Null = never, ExtArgs extends runtim
 export interface QuoteItemFieldRefs {
   readonly id: Prisma.FieldRef<"QuoteItem", 'String'>
   readonly quoteId: Prisma.FieldRef<"QuoteItem", 'String'>
+  readonly clientKey: Prisma.FieldRef<"QuoteItem", 'String'>
   readonly description: Prisma.FieldRef<"QuoteItem", 'String'>
   readonly quantity: Prisma.FieldRef<"QuoteItem", 'Decimal'>
   readonly unitPriceNet: Prisma.FieldRef<"QuoteItem", 'Decimal'>

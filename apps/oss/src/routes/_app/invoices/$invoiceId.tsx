@@ -292,7 +292,8 @@ function InvoiceDetailPage() {
     setEditDueDate(new Date(invoice.dueDate).toISOString().split("T")[0])
     setEditNotes(invoice.notes ?? "")
     setEditTaxRate(invoice.agreementTaxRate ?? String(invoice.items.find((item) => Number(item.taxRate) > 0)?.taxRate ?? 0))
-    setEditVatEvidence(draftVatEvidenceSchema.parse(invoice.vatEvidence ?? {}))
+    const evidence = draftVatEvidenceSchema.safeParse(invoice.vatEvidence ?? {})
+    setEditVatEvidence(evidence.success ? evidence.data : {})
     setEditItems(
       invoice.items.map((item) => ({
         id: item.id, deliverableId: item.deliverableId ?? undefined,

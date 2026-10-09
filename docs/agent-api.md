@@ -166,13 +166,13 @@ command tools. Money is returned as numbers in the document currency; dates are 
 | `invoices_list` | query | `invoice:read` | `status`, `paymentStatus`, `contactId`, `limit`, `cursor`; includes `amountPaid`, `amountCredited`, `balanceDue` |
 | `invoice_get` | query | `invoice:read` | `id`; includes line items and public payment link |
 | `invoice_create_draft` | command | `invoice:create` | `contactId`, `dueDate`, `items`, `taxRate`, `currency?`, `notes?`; the draft's `number` is `null` until it is sent |
-| `invoice_update_draft` | command | `invoice:update` | `id` + changed fields; `items` replaces all lines |
+| `invoice_update_draft` | command | `invoice:update` | `id`, `expectedRevision?` + changed fields; `items` replaces all lines and each line accepts `key?` |
 | `invoice_send` | command, outward-facing | `invoice:send` | `id`, `allowSendWithoutEmail?`; assigns the invoice number |
 | `invoice_resend_email` | command, outward-facing | `invoice:send` | `id` |
 | `quotes_list` | query | `quote:read` | `status`, `contactId`, `limit`, `cursor` |
 | `quote_get` | query | `quote:read` | `id`; includes line items and linked invoices |
 | `quote_create_draft` | command | `quote:create` | `contactId`, `expiryDate`, `items`, `taxRate`, `currency?`, `notes?`; the draft's `number` is `null` until it is sent |
-| `quote_update_draft` | command | `quote:update` | `id` + changed fields; `items` replaces all lines |
+| `quote_update_draft` | command | `quote:update` | `id`, `expectedRevision?` + changed fields; `items` replaces all lines and each line accepts `key?` |
 | `quote_send` | command, outward-facing | `quote:send` | `id`, `allowSendWithoutEmail?`; assigns the quote number |
 | `quote_resend_email` | command, outward-facing | `quote:send` | `id` |
 | `quote_convert_to_invoice` | command | `invoice:create` | `id` of an accepted quote; creates a draft invoice |
@@ -262,3 +262,47 @@ record/void commands and their approval flows. See [mark paid and undo](architec
 
 `payment_record` accepts `method: "manual"` for a manually recorded payment, in addition to the
 existing payment methods. Its permissions and approval flow are unchanged.
+
+### Draft revisions and line keys
+
+Invoice and quote drafts carry `editRevision`, initially `0`. Every draft edit increments it,
+including notes-only edits, linked invoice edits, adding or releasing deliverables, and changing a draft payment
+schedule to a sale. Pass `expectedRevision` on updates to refuse an outdated save with
+`InvalidState` / `stale_draft`. Omitting it preserves the previous update behavior. A refused save
+changes neither the document nor its revision and emits no draft-update event.
+
+Invoice and quote create/update inputs, and recurring template create/update inputs, accept an
+optional `key` on each line, a trimmed, non-empty client-generated string of up to 200 characters.
+Keys must be unique within an `items` array, including keys inherited from linked invoice rows.
+Reuse each key on later saves to retain line identity when database item IDs change. Stored rows
+expose it as `clientKey`; notes-only edits preserve it. Linked rows still require their `id`
+or `deliverableId` to identify the reserved work. Extra rows keep their keys when the linked writer
+moves them after the reserved rows. Deliverable copies initially use the deliverable ID as their
+key. Accepted quote conversion copies existing keys to the invoice.
+
+The app's `invoices.view`, `quotes.view` and `creditNotes.view` queries return
+`{ view, revision, canEdit, locks: { agreementLinked, emailSending }, historical, notices }`.
+`revision` is the draft's `editRevision`; credit notes return `0`. `canEdit` requires a draft,
+update permission, and no email in progress. An agreement link locks individual reserved lines,
+not the whole draft. Unreadable stored VAT evidence becomes null in row-based views, with
+`"invalid_vat_evidence"` in `notices`. Reading a view does not change the stored evidence.
+Draft edits without explicit `vatEvidence` calculate with empty evidence when the stored evidence
+is corrupt, preserving the stored value and notice until it is replaced. VAT treatments still come
+from the lines and tax rate; issuance still validates evidence. Recurring generation instead returns
+`InvalidState` / `invalid_vat_evidence` until the template evidence is repaired.
+
+Issued invoices and credit notes read their money and parties from `issuanceSnapshot`, with
+branding from the published issuance candidate. Issued snapshot views return `notices: []`.
+If the snapshot is missing, incomplete or corrupt,
+`historical: true` tells the future UI to show a historical-document notice. The fallback preserves
+stored line amounts and document totals without repricing. Missing historical branding stays null.
+Credit-note correction dates come only from the corrected invoice's snapshot, or are null.
+
+`view.totals.payable` is the amount payable as issued, not the current outstanding balance.
+Receipt allocations and their reversals update the view's current `status`, while its issued money
+stays frozen. Read `balanceDue` from `invoices.get` or `payments.list`; both include receipt-linked
+payment allocations. Unallocated receipt funds do not reduce an invoice's balance.
+
+Quotes have no issued money snapshot. Once a quote is no longer a draft, its view has
+`state: "issued"` and all stored lines are locked. It retains the rows' amounts and the frozen
+seller and buyer snapshots, uses settings for phone and logo, and has `historical: false`.
