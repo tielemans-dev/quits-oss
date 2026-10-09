@@ -10,7 +10,7 @@ import {
   ProvenanceRefusal,
 } from "../../domain/commands/settlement-provenance"
 import {
-  receiptProvenance,
+  receiptProvenanceForReceipts,
   settlementProvenanceHistory,
 } from "../../domain/documents/settlement-provenance"
 import { z } from "zod"
@@ -175,6 +175,7 @@ export const paymentsRouter = router({
             orderBy: { number: "asc" },
           }),
         ])
+        const provenance = await receiptProvenanceForReceipts(db, ctx.organizationId, receipts)
         return {
           contactId: invoice.contactId,
           canCreate: actorCan(ctx.actor, "payment:create"),
@@ -185,65 +186,46 @@ export const paymentsRouter = router({
             currency: row.currency,
             balanceDue: computeSettlement(row).balanceDue.toFixed(2),
           })),
-          receipts: await Promise.all(
-            receipts.map(async (row) => {
-              const allocated = row.payments.reduce(
-                (sum, payment) => payment.voidedAt ? sum : sum.plus(payment.receiptAmount ?? 0),
-                new Prisma.Decimal(0),
-              )
-              const refunded = row.refunds.reduce(
-                (sum, refund) => refund.reversedAt ? sum : sum.plus(refund.amount),
-                new Prisma.Decimal(0),
-              )
-              const balance = receiptBalanceFromTotals(row, allocated, refunded)
-              return {
-                id: row.id,
-                reference: row.reference,
-                currency: row.currency,
-                gross: row.grossAmount.toFixed(2),
-                fee: row.feeAmount.toFixed(2),
-                net: row.netAmount.toFixed(2),
-                available: balance.available.toFixed(2),
-                allocated: balance.allocated.toFixed(2),
-                refunded: balance.refunded.toFixed(2),
-                reversed: Boolean(row.reversedAt),
-                customerCredit: Boolean(row.creditReason) && balance.available.greaterThan(0),
-                provenance: await receiptProvenance(db, row),
-                history: await db.domainEvent.findMany({
-                  where: {
-                    organizationId: ctx.organizationId,
-                    type: { startsWith: "settlement." },
-                    payload: { path: ["receiptId"], equals: row.id },
-                  },
-                  orderBy: { sequence: "asc" },
-                  select: {
-                    id: true,
-                    type: true,
-                    actorKind: true,
-                    actorId: true,
-                    occurredAt: true,
-                    commandId: true,
-                    payload: true,
-                  },
-                }),
-                reason: row.reason,
-                evidence: row.evidence,
-                allocations: row.payments.map((payment) => ({
-                  id: payment.id,
-                  invoiceId: payment.invoiceId,
-                  invoiceNumber: payment.invoice.number ?? payment.invoiceId,
-                  amount: payment.amount.toFixed(2),
-                  currency: payment.currency,
-                  reversed: Boolean(payment.voidedAt),
-                })),
-                refunds: row.refunds.map((refund) => ({
-                  id: refund.id,
-                  amount: refund.amount.toFixed(2),
-                  reversed: Boolean(refund.reversedAt),
-                })),
-              }
-            }),
-          ),
+          receipts: receipts.map((row) => {
+            const allocated = row.payments.reduce(
+              (sum, payment) => payment.voidedAt ? sum : sum.plus(payment.receiptAmount ?? 0),
+              new Prisma.Decimal(0),
+            )
+            const refunded = row.refunds.reduce(
+              (sum, refund) => refund.reversedAt ? sum : sum.plus(refund.amount),
+              new Prisma.Decimal(0),
+            )
+            const balance = receiptBalanceFromTotals(row, allocated, refunded)
+            return {
+              id: row.id,
+              reference: row.reference,
+              currency: row.currency,
+              gross: row.grossAmount.toFixed(2),
+              fee: row.feeAmount.toFixed(2),
+              net: row.netAmount.toFixed(2),
+              available: balance.available.toFixed(2),
+              allocated: balance.allocated.toFixed(2),
+              refunded: balance.refunded.toFixed(2),
+              reversed: Boolean(row.reversedAt),
+              customerCredit: Boolean(row.creditReason) && balance.available.greaterThan(0),
+              ...provenance.get(row.id)!,
+              reason: row.reason,
+              evidence: row.evidence,
+              allocations: row.payments.map((payment) => ({
+                id: payment.id,
+                invoiceId: payment.invoiceId,
+                invoiceNumber: payment.invoice.number ?? payment.invoiceId,
+                amount: payment.amount.toFixed(2),
+                currency: payment.currency,
+                reversed: Boolean(payment.voidedAt),
+              })),
+              refunds: row.refunds.map((refund) => ({
+                id: refund.id,
+                amount: refund.amount.toFixed(2),
+                reversed: Boolean(refund.reversedAt),
+              })),
+            }
+          }),
         }
       }),
     ),

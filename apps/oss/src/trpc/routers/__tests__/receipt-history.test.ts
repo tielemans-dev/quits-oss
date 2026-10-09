@@ -12,6 +12,7 @@ const queries = vi.hoisted(() => ({
   orgSettings: vi.fn(),
   lock: vi.fn(),
   evidenceDecision: vi.fn(),
+  evidenceDecisions: vi.fn(),
   events: vi.fn(),
 }))
 
@@ -28,7 +29,7 @@ const db = {
   settlementRefund: { aggregate: queries.refundTotal },
   orgSettings: { upsert: queries.orgSettings },
   $queryRaw: queries.lock,
-  settlementEvidenceDecision: { findFirst: queries.evidenceDecision },
+  settlementEvidenceDecision: { findFirst: queries.evidenceDecision, findMany: queries.evidenceDecisions },
   domainEvent: { findMany: queries.events },
 }
 
@@ -73,11 +74,64 @@ describe("receipt history query budget", () => {
     queries.orgSettings.mockResolvedValue({})
     queries.lock.mockResolvedValue([])
     queries.evidenceDecision.mockResolvedValue(null)
+    queries.evidenceDecisions.mockResolvedValue([])
     queries.events.mockResolvedValue([])
     queries.invoice.mockResolvedValue({ contactId: "contact" })
     queries.invoices.mockResolvedValue([])
     queries.paymentTotal.mockResolvedValue({ _sum: { receiptAmount: decimal("27.35") } })
     queries.refundTotal.mockResolvedValue({ _sum: { amount: decimal("5.05") } })
+  })
+
+  it("keeps total receipt reads constant for one and 82 receipts", async () => {
+    const counts: number[] = []
+    for (const count of [1, 82]) {
+      vi.clearAllMocks()
+      const rows = Array.from({ length: count }, (_, index) => history(`receipt-${index}`, index === 1 || index === 2))
+      queries.receipts.mockResolvedValue(rows)
+      queries.evidenceDecisions.mockImplementation(async ({ where }) => where.action === "return"
+        ? (count > 2 ? [{ receiptId: "receipt-2" }] : [])
+        : [
+          { receiptId: "receipt-0", actorKey: "user:latest", createdAt: now, source: { receiptId: "receipt-0" } },
+          { receiptId: "receipt-0", actorKey: "user:older", createdAt: now, source: { receiptId: "receipt-0" } },
+          ...(count > 5 ? [
+            { receiptId: "receipt-1", actorKey: "user:verifier", createdAt: now, source: { receiptId: "receipt-1" } },
+            { receiptId: "receipt-4", actorKey: "user:old-match", createdAt: now, source: { receiptId: "receipt-5" } },
+            { receiptId: "receipt-5", actorKey: "user:rematch", createdAt: now, source: { receiptId: "receipt-5" } },
+          ] : []),
+        ])
+      const event = (id: string, receiptId: string) => ({ id, type: "settlement.changed", actorKind: "user",
+        actorId: "reader", occurredAt: now, commandId: id, payload: { receiptId, action: "record_receipt" } })
+      queries.events.mockResolvedValue(rows.flatMap(row => [event(`${row.id}-first`, row.id), event(`${row.id}-last`, row.id)]))
+      const caller = paymentsRouter.createCaller({
+        session: {
+          user: { id: "reader", name: "Reader", email: "reader@example.test" },
+          session: { activeOrganizationId: "org" },
+        },
+      } as never)
+      const result = await caller.receipts({ invoiceId: "invoice" })
+      const reads = [queries.invoice, queries.invoices, queries.receipts, queries.evidenceDecision,
+        queries.evidenceDecisions, queries.events, queries.paymentTotal, queries.refundTotal]
+        .reduce((sum, query) => sum + query.mock.calls.length, 0)
+      const totalReads = reads + queries.lock.mock.calls.length
+      counts.push(totalReads)
+      console.info(JSON.stringify({ receipts: count, dataReads: reads, lockReads: queries.lock.mock.calls.length, totalReads }))
+      expect(result.receipts).toHaveLength(count)
+      expect(result.receipts[0]).toMatchObject({ allocated: "27.35", refunded: "5.05", available: "67.60",
+        provenance: { state: "verified", verifiedBy: "user:latest", verifiedAt: now.toISOString() } })
+      for (const receipt of result.receipts) {
+        expect(receipt.history).toEqual([event(`${receipt.id}-first`, receipt.id), event(`${receipt.id}-last`, receipt.id)])
+      }
+      if (count === 82) {
+        expect(result.receipts.slice(0, 7).map(row => row.provenance.state))
+          .toEqual(["verified", "received", "returned", "received", "received", "verified", "received"])
+        expect(result.receipts[1]!.provenance.verifiedBy).toBeNull()
+        expect(result.receipts[5]!.provenance.verifiedBy).toBe("user:rematch")
+      }
+      expect(queries.transaction).toHaveBeenCalledTimes(1)
+      expect(queries.lock).toHaveBeenCalledTimes(1)
+    }
+    // Includes both evidence decisions and complete event history, not just balance aggregates.
+    expect(counts).toEqual([7, 7])
   })
 
   it.each([1, 80])("loads %i receipts without per-receipt balance queries", async (count) => {
@@ -125,15 +179,15 @@ describe("receipt history query budget", () => {
     expect(result.receipts[count + 1]).toMatchObject({
       allocated: "0.00", refunded: "0.00", available: "100.00", customerCredit: false,
     })
-    expect(queries.events).toHaveBeenCalledTimes(count + 2)
-    for (const receipt of result.receipts) {
-      expect(queries.events).toHaveBeenCalledWith(expect.objectContaining({
-        where: {
-          organizationId: "org", type: { startsWith: "settlement." },
-          payload: { path: ["receiptId"], equals: receipt.id },
-        },
-        orderBy: { sequence: "asc" },
-      }))
-    }
+    expect(queries.evidenceDecision).not.toHaveBeenCalled()
+    expect(queries.evidenceDecisions).toHaveBeenCalledTimes(2)
+    expect(queries.events).toHaveBeenCalledTimes(1)
+    expect(queries.events).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        organizationId: "org", type: { startsWith: "settlement." },
+        OR: result.receipts.map((receipt) => ({ payload: { path: ["receiptId"], equals: receipt.id } })),
+      },
+      orderBy: { sequence: "asc" },
+    }))
   })
 })
