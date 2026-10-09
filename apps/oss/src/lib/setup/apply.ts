@@ -1,6 +1,9 @@
 import { resolveCountryProfile } from "../compliance"
 import { requireCurrencyExponent } from "@quits/shared/currency"
 import { randomUUID } from "node:crypto"
+import { getRequest } from "@tanstack/react-start/server"
+import { getRuntimePlatform } from "../runtime/platform"
+import { assertSignupDecision, resolveSignupAdmission, signupInput } from "../runtime/signup-admission"
 import { hashPassword } from "better-auth/crypto"
 import { prisma } from "../db"
 import { ensureInstallationState } from "../installation-state"
@@ -98,6 +101,14 @@ export async function getSetupStatus(): Promise<SetupStatus> {
 export async function applySetupInitialization(
   input: SetupInitializeInput
 ): Promise<SetupInitializationResult> {
+  const platform = getRuntimePlatform()
+  const admission = resolveSignupAdmission(platform.getEnv("SIGNUP_MODE"), platform.getAuthHooks())
+  let request: Request | undefined
+  try { request = getRequest() } catch { /* Direct installation tooling has no HTTP request. */ }
+  const details = admission.authorizeSignUp ? signupInput(input.admin.email, undefined, request)
+    : { email: input.admin.email.toLowerCase() }
+  if (admission.admitSignUpAttempt) assertSignupDecision(await admission.admitSignUpAttempt(details))
+  if (admission.authorizeSignUp) assertSignupDecision(await admission.authorizeSignUp(details))
   const status = await getSetupStatus()
   if (status.isSetupComplete) {
     throw new SetupFlowError(
@@ -119,7 +130,7 @@ export async function applySetupInitialization(
   const taxRegime = profile.regime?.id ?? "custom"
 
   const now = new Date()
-  const adminEmail = input.admin.email.toLowerCase()
+  const adminEmail = details.email
   const passwordHash = await hashPassword(input.admin.password)
   const organizationMetadata = buildOrganizationMetadata(input)
   const companyName = input.email?.fromName?.trim() || input.organization.name
@@ -142,6 +153,10 @@ export async function applySetupInitialization(
       throw new SetupFlowError("ORG_SLUG_IN_USE", "Organization slug is already in use")
     }
 
+    if (admission.authorizeSignUp) {
+      const decision = assertSignupDecision(await admission.authorizeSignUp(details))
+      if (decision.consumeInvite) await decision.consumeInvite(tx)
+    }
     const user = await tx.user.create({
       data: {
         id: randomUUID(),
