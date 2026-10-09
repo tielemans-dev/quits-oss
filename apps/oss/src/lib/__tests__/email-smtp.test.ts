@@ -324,7 +324,8 @@ describe("real SMTP transport", () => {
       await options.plugins[0].options.sendInvitationEmail({ id: "invite-reader", email: "customer@example.com", inviter: { user: { name: "Ada" } }, organization: { id: "org-reader", name: "Acme" } } as never)
       expect(bodies).toHaveLength(1)
       expect(bodies[0]).toContain("From: Quits <reader@example.com>")
-      expect(bodies[0]).toContain("https://reader.example/accept-invitation/invite-reader")
+      // Quoted-printable may soft-wrap the link anywhere; unwrap it like the rendered-body check above.
+      expect(bodies[0]!.replace(/=\r?\n/g, "").replace(/=3D/g, "=")).toContain("https://reader.example/accept-invitation/invite-reader")
       expect(bodies[0]).not.toContain("process@example.com")
     })
   })

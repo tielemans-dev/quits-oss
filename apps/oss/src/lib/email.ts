@@ -1,3 +1,4 @@
+import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
 import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
@@ -148,20 +149,20 @@ export function itemsTable(
   const columns = lineColumnKeys(basis)
   const rows = items.map((item) => `
     <tr>
-      <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;">${escapeHtml(item.description)}</td>
-      <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;text-align:right;">${item.quantity}</td>
-      <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;text-align:right;">${formatCurrency(item.unitPrice, currency, locale)}</td>
-      <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;text-align:right;">${formatCurrency(item.total, currency, locale)}</td>
+      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};">${escapeHtml(item.description)}</td>
+      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${item.quantity}</td>
+      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.unitPrice, currency, locale)}</td>
+      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.total, currency, locale)}</td>
     </tr>`).join("")
 
   return `
     <table style="width:100%;border-collapse:collapse;margin:24px 0;">
       <thead>
-        <tr style="border-bottom:2px solid #e5e7eb;">
-          <th style="padding:8px 0;text-align:left;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.description", locale)}</th>
-          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t("pdf.qty", locale)}</th>
-          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t(columns.unitPrice, locale)}</th>
-          <th style="padding:8px 0;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;">${t(columns.amount, locale)}</th>
+        <tr style="border-bottom:2px solid ${C.hairline};">
+          <th style="padding:8px 0;text-align:left;color:${C.muted};font-size:12px;text-transform:uppercase;">${t("pdf.description", locale)}</th>
+          <th style="padding:8px 0;text-align:right;color:${C.muted};font-size:12px;text-transform:uppercase;">${t("pdf.qty", locale)}</th>
+          <th style="padding:8px 0;text-align:right;color:${C.muted};font-size:12px;text-transform:uppercase;">${t(columns.unitPrice, locale)}</th>
+          <th style="padding:8px 0;text-align:right;color:${C.muted};font-size:12px;text-transform:uppercase;">${t(columns.amount, locale)}</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -185,31 +186,41 @@ export function totalsBlock(
   const money = (amount: string) => formatCurrency(Number(amount), document.currency, locale)
   const row = (label: string, amount: string) => `
       <tr>
-        <td style="padding:4px 0;color:#6b7280;">${escapeHtml(label)}</td>
+        <td style="padding:4px 0;color:${C.muted};">${escapeHtml(label)}</td>
         <td style="padding:4px 0;text-align:right;">${money(amount)}</td>
       </tr>`
   return `
     <table style="width:100%;border-collapse:collapse;margin-top:8px;">${totals.lines.map((line) => row(line.label, line.amount)).join("")}
-      <tr style="border-top:2px solid #e5e7eb;">
+      <tr style="border-top:2px solid ${C.hairline};">
         <td style="padding:8px 0;font-weight:bold;">${escapeHtml(totals.total.label)}</td>
         <td style="padding:8px 0;text-align:right;font-weight:bold;font-size:18px;">${money(totals.total.amount)}</td>
       </tr>
     </table>`
 }
 
+/** The quits. wordmark as text: images are often blocked in mail clients. The stop is Settled green. */
+export function emailWordmark() {
+  return `<span style="font-size:22px;font-weight:600;letter-spacing:-0.03em;line-height:1;color:${C.ink};">quits<span style="color:${C.settled};">.</span></span>`
+}
+
+/** The button every email uses for its one action: ink, like the app's primary button. */
+export function emailButtonStyle() {
+  return `display:inline-block;background:${C.ink};color:${C.paper};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:500;`
+}
+
 export function layout(content: string, locale?: string | null) {
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;">
-  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-    <div style="background:#111827;padding:24px 32px;">
-      <span style="color:#fff;font-size:20px;font-weight:bold;">Quits</span>
+<body style="margin:0;padding:0;background:${C.paper};font-family:${EMAIL_FONT_STACK};color:${C.ink};">
+  <div style="max-width:600px;margin:40px auto;background:${C.panel};border:1px solid ${C.hairline};border-radius:10px;overflow:hidden;">
+    <div style="padding:24px 32px;border-bottom:1px solid ${C.hairline};">
+      ${emailWordmark()}
     </div>
     <div style="padding:32px;">
       ${content}
     </div>
-    <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;font-size:12px;color:#9ca3af;text-align:center;">
+    <div style="padding:16px 32px;background:${C.paper};border-top:1px solid ${C.hairline};font-size:12px;color:${C.muted};text-align:center;">
       ${t("email.footer.sentVia", locale)}
     </div>
   </div>
@@ -224,14 +235,14 @@ export function actionBlock(input: {
 }) {
   const safeHref = escapeAttribute(input.href)
   return `
-    <div style="margin-top:24px;padding-top:24px;border-top:1px solid #e5e7eb;">
+    <div style="margin-top:24px;padding-top:24px;border-top:1px solid ${C.hairline};">
       <a href="${safeHref}"
-         style="display:inline-block;background:#111827;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:500;">
+         style="${emailButtonStyle()}">
         ${escapeHtml(input.label)}
       </a>
-      <p style="margin:16px 0 0;color:#6b7280;font-size:14px;">${escapeHtml(input.fallbackLabel)}</p>
+      <p style="margin:16px 0 0;color:${C.muted};font-size:14px;">${escapeHtml(input.fallbackLabel)}</p>
       <p style="margin:8px 0 0;font-size:14px;word-break:break-all;">
-        <a href="${safeHref}" style="color:#111827;">${escapeHtml(input.href)}</a>
+        <a href="${safeHref}" style="color:${C.ink};">${escapeHtml(input.href)}</a>
       </p>
     </div>`
 }
@@ -286,16 +297,16 @@ export function buildInvoiceEmailContent({
   const locale = org.locale
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:22px;">${t("pdf.invoice", locale)} ${safeInvoiceNumber}</h2>
-    <p style="margin:0 0 24px;color:#6b7280;">${t("email.invoice.greeting", locale, { name: safeContactName })}</p>
+    <p style="margin:0 0 24px;color:${C.muted};">${t("email.invoice.greeting", locale, { name: safeContactName })}</p>
 
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <div>
-        <div style="font-size:12px;color:#6b7280;text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
+        <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
         <div style="font-weight:500;">${escapeHtml(safeFromName)}</div>
-        ${safeCompanyEmail ? `<div style="color:#6b7280;font-size:14px;">${safeCompanyEmail}</div>` : ""}
+        ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div style="text-align:right;">
-        <div style="font-size:12px;color:#6b7280;text-transform:uppercase;margin-bottom:2px;">${t("pdf.dueDate", locale)}</div>
+        <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.dueDate", locale)}</div>
         <div style="font-weight:500;">${formatDate(invoice.dueDate, locale, "UTC")}</div>
       </div>
     </div>
@@ -303,7 +314,7 @@ export function buildInvoiceEmailContent({
     ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis)}
     ${totalsBlock(invoice, locale)}
 
-    ${invoice.notes ? `<p style="margin-top:24px;color:#6b7280;font-size:14px;border-top:1px solid #e5e7eb;padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
+    ${invoice.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
     ${publicPaymentUrl
       ? actionBlock({
           href: publicPaymentUrl,
@@ -380,16 +391,16 @@ export function buildQuoteEmailContent({
   const locale = org.locale
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:22px;">${t("email.quote.title", locale)} ${safeQuoteNumber}</h2>
-    <p style="margin:0 0 24px;color:#6b7280;">${t("email.quote.greeting", locale, { name: safeContactName })}</p>
+    <p style="margin:0 0 24px;color:${C.muted};">${t("email.quote.greeting", locale, { name: safeContactName })}</p>
 
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <div>
-        <div style="font-size:12px;color:#6b7280;text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
+        <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
         <div style="font-weight:500;">${escapeHtml(safeFromName)}</div>
-        ${safeCompanyEmail ? `<div style="color:#6b7280;font-size:14px;">${safeCompanyEmail}</div>` : ""}
+        ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div style="text-align:right;">
-        <div style="font-size:12px;color:#6b7280;text-transform:uppercase;margin-bottom:2px;">${t("email.quote.validUntil", locale)}</div>
+        <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("email.quote.validUntil", locale)}</div>
         <div style="font-weight:500;">${formatDate(quote.expiryDate, locale, "UTC")}</div>
       </div>
     </div>
@@ -397,7 +408,7 @@ export function buildQuoteEmailContent({
     ${itemsTable(quote.items, quote.currency, locale, quote.priceBasis)}
     ${totalsBlock(quote, locale)}
 
-    ${quote.notes ? `<p style="margin-top:24px;color:#6b7280;font-size:14px;border-top:1px solid #e5e7eb;padding-top:16px;">${formatMultilineHtml(quote.notes)}</p>` : ""}
+    ${quote.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(quote.notes)}</p>` : ""}
     ${publicQuoteUrl
       ? actionBlock({
           href: publicQuoteUrl,
@@ -445,12 +456,12 @@ export function buildInvitationEmailContent({
   const safeInvitationUrl = escapeAttribute(invitationUrl)
   const html = layout(`
     <h2 style="margin:0 0 8px;font-size:22px;">${t("email.invitation.title", locale, { orgName: safeOrgName })}</h2>
-    <p style="color:#6b7280;margin-bottom:32px;">${t("email.invitation.body", locale, { inviterName: safeInviterName })}</p>
+    <p style="color:${C.muted};margin-bottom:32px;">${t("email.invitation.body", locale, { inviterName: safeInviterName })}</p>
     <a href="${safeInvitationUrl}"
-       style="display:inline-block;background:#111827;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:500;">
+       style="${emailButtonStyle()}">
       ${t("email.invitation.accept", locale)}
     </a>
-    <p style="margin-top:24px;font-size:12px;color:#9ca3af;">
+    <p style="margin-top:24px;font-size:12px;color:${C.muted};">
       ${t("email.invitation.expiry", locale)}
     </p>
   `, locale)

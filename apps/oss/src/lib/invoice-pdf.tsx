@@ -14,13 +14,14 @@ import type { TranslationKey } from "./i18n/messages"
 import { buildPaymentDetailsBlock } from "./payment-details-block"
 import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
 import { buildTotals } from "./documents/totals"
+import { documentColors as C } from "./brand/document-colors"
 
 const styles = StyleSheet.create({
   page: {
     padding: 40,
     fontSize: 10,
     fontFamily: "Helvetica",
-    color: "#1a1a1a",
+    color: C.ink,
   },
   header: {
     flexDirection: "row",
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   label: {
-    color: "#6b7280",
+    color: C.muted,
     fontSize: 9,
     marginBottom: 2,
   },
@@ -62,7 +63,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 9,
-    color: "#6b7280",
+    color: C.muted,
     marginBottom: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -74,21 +75,21 @@ const styles = StyleSheet.create({
   },
   contactLine: {
     fontSize: 10,
-    color: "#374151",
+    color: C.body,
     marginBottom: 1,
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: C.fill,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: C.hairline,
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: C.fill,
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontFamily: "Helvetica-Bold",
     fontSize: 9,
-    color: "#6b7280",
+    color: C.muted,
   },
   totalsContainer: {
     alignItems: "flex-end",
@@ -117,11 +118,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 6,
     borderTopWidth: 1,
-    borderTopColor: "#d1d5db",
+    borderTopColor: C.rule,
     marginTop: 4,
   },
   totalLabel: {
-    color: "#6b7280",
+    color: C.muted,
   },
   totalValue: {
     fontFamily: "Helvetica-Bold",
@@ -137,18 +138,18 @@ const styles = StyleSheet.create({
   notes: {
     marginTop: 24,
     padding: 12,
-    backgroundColor: "#f9fafb",
+    backgroundColor: C.paper,
     borderRadius: 4,
   },
   notesText: {
     fontSize: 9,
-    color: "#374151",
+    color: C.body,
     lineHeight: 1.5,
   },
   paymentBox: {
     marginTop: 24,
     padding: 12,
-    backgroundColor: "#f9fafb",
+    backgroundColor: C.paper,
     borderRadius: 4,
   },
   paymentRow: {
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
   },
   paymentLabel: {
     width: 90,
-    color: "#6b7280",
+    color: C.muted,
     fontSize: 9,
   },
   paymentValue: {
@@ -168,14 +169,14 @@ const styles = StyleSheet.create({
   paymentNote: {
     marginTop: 4,
     fontSize: 9,
-    color: "#374151",
+    color: C.body,
     lineHeight: 1.5,
   },
   paymentReference: {
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
+    borderTopColor: C.hairline,
     fontSize: 10,
   },
   paymentReferenceValue: {
@@ -248,13 +249,13 @@ export type InvoiceForPdf = {
 function getStatusStyle(status: string) {
   switch (status) {
     case "paid":
-      return { backgroundColor: "#dcfce7", color: "#166534" }
+      return { backgroundColor: C.settledSoft, color: C.tones.success.text }
     case "sent":
-      return { backgroundColor: "#dbeafe", color: "#1e40af" }
+      return { backgroundColor: C.tones.info.tint, color: C.tones.info.text }
     case "overdue":
-      return { backgroundColor: "#fee2e2", color: "#991b1b" }
+      return { backgroundColor: C.tones.danger.tint, color: C.tones.danger.text }
     default:
-      return { backgroundColor: "#f3f4f6", color: "#374151" }
+      return { backgroundColor: C.tones.neutral.tint, color: C.tones.neutral.text }
   }
 }
 

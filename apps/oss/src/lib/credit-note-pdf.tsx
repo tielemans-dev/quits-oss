@@ -5,37 +5,38 @@ import type { OrgSettingsForPdf } from "./invoice-pdf"
 import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
 import { buildTotals } from "./documents/totals"
 import { creditNotePdfParties, type CreditNotePdfContact } from "./credit-notes/pdf-parties"
+import { documentColors as C } from "./brand/document-colors"
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1a1a1a" },
+  page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: C.ink },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 30 },
   title: { fontSize: 24, fontFamily: "Helvetica-Bold" },
   logoContainer: { width: 140, height: 56, marginBottom: 8 },
   logo: { width: "100%", height: "100%", objectFit: "contain" },
   headerRight: { textAlign: "right" },
-  label: { color: "#6b7280", fontSize: 9, marginBottom: 2 },
+  label: { color: C.muted, fontSize: 9, marginBottom: 2 },
   section: { marginBottom: 20 },
   sectionTitle: {
     fontSize: 9,
-    color: "#6b7280",
+    color: C.muted,
     marginBottom: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   contactName: { fontSize: 12, fontFamily: "Helvetica-Bold", marginBottom: 2 },
-  contactLine: { fontSize: 10, color: "#374151", marginBottom: 1 },
+  contactLine: { fontSize: 10, color: C.body, marginBottom: 1 },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: C.fill,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: C.hairline,
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: C.fill,
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
@@ -43,7 +44,7 @@ const styles = StyleSheet.create({
   colQty: { width: 60, textAlign: "right" },
   colPrice: { width: 110, textAlign: "right" },
   colTotal: { width: 110, textAlign: "right" },
-  headerText: { fontFamily: "Helvetica-Bold", fontSize: 9, color: "#6b7280" },
+  headerText: { fontFamily: "Helvetica-Bold", fontSize: 9, color: C.muted },
   totalsContainer: { alignItems: "flex-end", marginTop: 16 },
   totalsRow: { flexDirection: "row", width: 270, justifyContent: "space-between", paddingVertical: 3 },
   totalsFinal: {
@@ -52,13 +53,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 6,
     borderTopWidth: 1,
-    borderTopColor: "#d1d5db",
+    borderTopColor: C.rule,
     marginTop: 4,
   },
-  totalLabel: { color: "#6b7280" },
+  totalLabel: { color: C.muted },
   totalFinal: { fontFamily: "Helvetica-Bold", fontSize: 12 },
-  reason: { marginTop: 24, padding: 12, backgroundColor: "#f9fafb", borderRadius: 4 },
-  reasonText: { fontSize: 9, color: "#374151", lineHeight: 1.5 },
+  reason: { marginTop: 24, padding: 12, backgroundColor: C.paper, borderRadius: 4 },
+  reasonText: { fontSize: 9, color: C.body, lineHeight: 1.5 },
 })
 
 export type CreditNoteForPdf = {
