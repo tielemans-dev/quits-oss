@@ -144,7 +144,7 @@ describe("themeInitScript", () => {
   })
 
   it("sets one theme-color meta from the resolved theme, not from the system", () => {
-    document.head.innerHTML = '<meta name="theme-color" content="#f5f4f0">'
+    document.head.innerHTML = '<meta name="theme-color" content="#fafaf9">'
 
     stubSystemTheme(false)
     window.localStorage.setItem(THEME_STORAGE_KEY, "dark")
@@ -218,7 +218,7 @@ describe("applyTheme", () => {
 
   it("keeps the theme-color meta in step with the resolved theme", () => {
     stubSystemTheme(false)
-    document.head.innerHTML = '<meta name="theme-color" content="#f5f4f0">'
+    document.head.innerHTML = '<meta name="theme-color" content="#fafaf9">'
 
     applyTheme("/invoices", "dark")
     expect(themeColors()).toEqual([THEME_COLORS.dark])

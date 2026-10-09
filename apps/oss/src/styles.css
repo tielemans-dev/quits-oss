@@ -4,19 +4,21 @@
 
 /*
  * Both families are bundled with the app (SIL OFL 1.1), so no font is fetched from a CDN.
- * Schibsted Grotesk (variable, 400-900) is the UI, display and figure face; Geist Mono (variable)
- * is for micro-labels, invoice numbers and CVR through the `mono-label` utility and `font-mono`.
+ * Geist (variable, 100-900) is the UI, display and figure face; Geist Mono (variable) is for
+ * micro-labels, invoice numbers and CVR through the `mono-label` utility and `font-mono`.
  */
-@import '@fontsource-variable/schibsted-grotesk';
+@import '@fontsource-variable/geist';
 @import '@fontsource-variable/geist-mono';
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Kvit. Ink on bone (light) or blue-black (dark), with one electric colour, Kvit-blå, kept for
- * brand moments: the primary action, the focus ring, links and the active item. It is a surface
- * at most twice per screen. The other colours carry meaning only (the status tones below) or
- * come from the user's own data (a customer's mark, a document's seller brand).
+ * Kvit, in the Full Stop brand. Ink on paper (light) or paper on ink (dark): the brand colour is
+ * ink, so the primary action, links and the active item are ink. One green, Settled (the full stop
+ * in the logo), means one thing: money that has arrived. It marks the paid rule under an amount,
+ * the paid chip, money received this month and the active page; never anything else. The other
+ * colours carry meaning only (the status tones below) or come from the user's own data (a
+ * customer's mark, a document's seller brand).
  *
  * The shadcn names (--background, --card, --primary, ...) stay and are mapped to Kvit values, so
  * every shadcn component restyles itself. The Kvit names (--canvas, --panel, --panel-raised,
@@ -25,7 +27,7 @@
 
 @theme {
   --font-sans:
-    'Schibsted Grotesk Variable', ui-sans-serif, system-ui, -apple-system,
+    'Geist Variable', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', sans-serif;
   --font-mono:
     'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, Consolas,
@@ -34,7 +36,7 @@
   /* One strong weight: headings and emphasised text share it. */
   --font-weight-heading: 700;
   --font-weight-bold: 700;
-  --tracking-heading: -0.02em;
+  --tracking-heading: -0.025em;
 
   /* A light panel gets a hairline and a 1px lift; dark panels get no shadow (see --shadow-ink). */
   --shadow-xs: var(--shadow-ink);
@@ -55,145 +57,160 @@ code {
 :root {
   color-scheme: light;
 
-  /* Surfaces: bone canvas, white panels. */
-  --canvas: #f5f4f0;
+  /* Surfaces: paper canvas, white panels. */
+  --canvas: #fafaf9;
   --panel: #ffffff;
   --panel-raised: #ffffff;
-  --hairline: rgb(16 18 27 / 8%);
+  --hairline: rgb(11 11 12 / 8%);
 
-  /* Brand: Kvit-blå. --brand-text is the brand colour as text on a surface. */
-  --brand: #3b3bf0;
-  --brand-foreground: #ffffff;
-  --brand-text: #3b3bf0;
-  --brand-soft: rgb(59 59 240 / 14%);
+  /* Brand: ink. --brand-text is the brand colour as text on a surface. */
+  --brand: #0b0b0c;
+  --brand-foreground: #fafaf9;
+  --brand-text: #0b0b0c;
+  --brand-soft: rgb(11 11 12 / 6%);
   --brand-glow: radial-gradient(
     ellipse 70% 60% at 0% 0%,
-    rgb(75 75 255 / 10%),
+    rgb(11 11 12 / 4%),
     transparent 70%
   );
 
-  --shadow-ink: 0 1px 2px 0 rgb(16 18 27 / 6%);
+  /*
+   * Settled: the green full stop, for money that has arrived and nothing else. --settled is a fill
+   * or a rule (never text on a light surface: 2.36:1 on white); --settled-text is the green as
+   * text (4.89:1 on white); --settled-soft is the paid chip, under --tone-success text (6.24:1).
+   */
+  --settled: #1fc16b;
+  --settled-text: #1e8149;
+  --settled-soft: #d1fbdc;
+
+  /* The Outstanding card on the dashboard: an ink surface in both themes. */
+  --hero: #0b0b0c;
+  --hero-foreground: #fafaf9;
+
+  --shadow-ink: 0 1px 2px 0 rgb(11 11 12 / 6%);
 
   --background: var(--canvas);
-  --foreground: #0f1117;
+  --foreground: #0b0b0c;
   --card: var(--panel);
-  --card-foreground: #0f1117;
+  --card-foreground: #0b0b0c;
   --popover: var(--panel-raised);
-  --popover-foreground: #0f1117;
+  --popover-foreground: #0b0b0c;
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
-  --secondary: #eceae4;
-  --secondary-foreground: #0f1117;
-  --muted: #eeede8;
-  /* Spec #6b7080, one step darker so it reads at 4.5:1 on the bone canvas. */
-  --muted-foreground: #686d7d;
-  --accent: #eceae4;
-  --accent-foreground: #0f1117;
-  --destructive: #c23a2e;
-  --destructive-foreground: #c23a2e;
+  --secondary: #eeeff2;
+  --secondary-foreground: #0b0b0c;
+  --muted: #eeeff2;
+  /* Graphite: 5.05:1 on white, 4.83:1 on the paper canvas. */
+  --muted-foreground: #6b6f76;
+  --accent: #eeeff2;
+  --accent-foreground: #0b0b0c;
+  --destructive: #b42029;
+  --destructive-foreground: #b42029;
   --border: var(--hairline);
-  --input: rgb(16 18 27 / 20%);
-  --ring: var(--brand);
+  --input: rgb(11 11 12 / 18%);
+  /* Green-600: 3.33:1 on white, enough for a focus ring. */
+  --ring: #21a15a;
   --radius: 0.625rem;
   --sidebar: var(--canvas);
-  --sidebar-foreground: #0f1117;
+  --sidebar-foreground: #0b0b0c;
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-foreground);
-  --sidebar-accent: rgb(16 18 27 / 5%);
-  --sidebar-accent-foreground: #0f1117;
+  --sidebar-accent: rgb(11 11 12 / 5%);
+  --sidebar-accent-foreground: #0b0b0c;
   --sidebar-border: var(--hairline);
-  --sidebar-ring: var(--brand);
+  --sidebar-ring: var(--ring);
 
   /*
    * Status tones: each is a text colour. A badge fills with the tone mixed into transparent at
    * 14% (see StatusBadge), with the label at full strength. Every tone reaches 4.5:1 over its own
    * tint on a white panel. Mapping to the design: success is settled, danger is overdue, info is
-   * sent, progress is viewed, neutral is draft.
+   * sent, progress is viewed, neutral is draft. Success sits on --settled-soft instead.
    */
-  --tone-neutral: #565b6b;
-  --tone-info: #3b3bf0;
+  --tone-neutral: #515458;
+  --tone-info: #3451c4;
   --tone-progress: #09677d;
-  --tone-success: #0a7048;
-  --tone-warning: #7c5200;
-  --tone-danger: #b02f25;
-  --tone-muted: #5e6372;
+  --tone-success: #1c653a;
+  --tone-warning: #8a5100;
+  --tone-danger: #b42029;
+  --tone-muted: #5e6168;
 
-  /* Charts use the tone hues so they match the rest of the interface; the first is the brand. */
-  --chart-1: #4b4bff;
-  --chart-2: #1fa56b;
-  --chart-3: #d98f1b;
-  --chart-4: #1a8fb0;
-  --chart-5: #d2463a;
+  /* Charts use the tone hues so they match the rest of the interface; the first is settled. */
+  --chart-1: #1fc16b;
+  --chart-2: #3d4044;
+  --chart-3: #f5a524;
+  --chart-4: #3e63dd;
+  --chart-5: #e5484d;
 }
 
 .dark {
   color-scheme: dark;
 
-  --canvas: #0b0c10;
-  --panel: #13151b;
-  --panel-raised: #1a1d25;
+  --canvas: #0b0b0c;
+  --panel: #131416;
+  --panel-raised: #1b1c1f;
   --hairline: rgb(255 255 255 / 7%);
 
-  --brand: #4b4bff;
-  --brand-foreground: #ffffff;
-  --brand-text: #8c8cff;
-  --brand-soft: rgb(75 75 255 / 14%);
+  --brand: #fafaf9;
+  --brand-foreground: #0b0b0c;
+  --brand-text: #fafaf9;
+  --brand-soft: rgb(250 250 249 / 8%);
   --brand-glow: radial-gradient(
     ellipse 70% 60% at 0% 0%,
-    rgb(75 75 255 / 22%),
+    rgb(250 250 249 / 5%),
     transparent 70%
   );
+
+  /* Green-400 as text on ink: 10.68:1. */
+  --settled-text: #46d881;
+  --settled-soft: rgb(31 193 107 / 14%);
+
+  --hero: #1b1c1f;
+  --hero-foreground: #fafaf9;
 
   /* No shadows in dark mode: depth is the surface step and the hairline. */
   --shadow-ink: 0 0 #0000;
 
-  --foreground: #f2f3f5;
-  --card-foreground: #f2f3f5;
-  --popover-foreground: #f2f3f5;
-  --secondary: #1a1d25;
-  --secondary-foreground: #f2f3f5;
-  --muted: #171a21;
-  --muted-foreground: #8a8f9c;
-  --accent: #1f222b;
-  --accent-foreground: #f2f3f5;
+  --foreground: #fafaf9;
+  --card-foreground: #fafaf9;
+  --popover-foreground: #fafaf9;
+  --secondary: #222428;
+  --secondary-foreground: #fafaf9;
+  --muted: #171a1d;
+  --muted-foreground: #a6a9ae;
+  --accent: #26282c;
+  --accent-foreground: #fafaf9;
   --destructive: #ff7a6b;
   --destructive-foreground: #ff7a6b;
   --input: rgb(255 255 255 / 13%);
-  --ring: #7b7bff;
-  --sidebar-foreground: #f2f3f5;
+  --ring: #46d881;
+  --sidebar-foreground: #fafaf9;
   --sidebar-accent: rgb(255 255 255 / 5%);
-  --sidebar-accent-foreground: #f2f3f5;
-  --sidebar-ring: #7b7bff;
+  --sidebar-accent-foreground: #fafaf9;
 
   --tone-neutral: #c9ccd6;
-  --tone-info: #8c8cff;
+  --tone-info: #8da4ef;
   --tone-progress: #5ccbe6;
-  --tone-success: #7ce0b0;
+  --tone-success: #46d881;
   --tone-warning: #f2b550;
   --tone-danger: #ff8a7c;
-  --tone-muted: #8a8f9c;
+  --tone-muted: #a6a9ae;
 
-  --chart-1: #6e6eff;
-  --chart-2: #7ce0b0;
+  --chart-1: #1fc16b;
+  --chart-2: #a6a9ae;
   --chart-3: #f2b550;
-  --chart-4: #5ccbe6;
+  --chart-4: #8da4ef;
   --chart-5: #ff8a7c;
 }
 
 /*
  * Public recipient pages (/pay, /q, /a) are a seller's document, not our interface: forced light,
- * and nothing of Kvit-blå on them. The head script and ThemeProvider put data-document on <html>
- * (see lib/theme.ts); this rewrites every token that carries the brand to bone and ink, and the
- * "sent" tone to a plain steel blue.
+ * and quiet. The head script and ThemeProvider put data-document on <html> (see lib/theme.ts);
+ * this drops the glow, keeps the focus ring ink and turns the "sent" tone to a plain steel blue.
  */
 html[data-document] {
-  --brand: #0f1117;
-  --brand-foreground: #f5f4f0;
-  --brand-text: #0f1117;
-  --brand-soft: rgb(15 17 23 / 8%);
   --brand-glow: none;
-  --ring: #0f1117;
-  --sidebar-ring: #0f1117;
+  --ring: #0b0b0c;
+  --sidebar-ring: #0b0b0c;
   --tone-info: #2a5a9c;
   --chart-1: #2a5a9c;
 }
@@ -226,6 +243,11 @@ html[data-document] {
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-text: var(--brand-text);
   --color-brand-soft: var(--brand-soft);
+  --color-settled: var(--settled);
+  --color-settled-text: var(--settled-text);
+  --color-settled-soft: var(--settled-soft);
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -277,19 +299,17 @@ html[data-document] {
 }
 
 /*
- * Money, quantities and totals. Schibsted Grotesk's tabular figures (`tnum`) also widen the
- * period, comma and colon to a full digit, so "89.625,00" turns into "89 . 625 , 00". Its default
- * figures are proportional but only the "1" is narrower, so a right-aligned column still lines up.
- * `num` therefore sets lining, proportional figures and leaves the separators alone. A column
- * that needs strict tabular digits should render its separators outside the `tabular-nums` span
- * (what the Amount component does); never put `tabular-nums` on a whole formatted amount.
+ * Money, quantities and totals. `num` sets lining, proportional figures and leaves the separators
+ * alone, so "89.625,00" keeps its tight period and comma. A column that needs strict tabular
+ * digits should render its separators outside the `tabular-nums` span (what the Amount component
+ * does); never put `tabular-nums` on a whole formatted amount.
  */
 @utility num {
   font-variant-numeric: lining-nums proportional-nums;
 }
 
 /*
- * A hero figure: Schibsted 800, tight. Set the size with a text-* class. Proportional for the
+ * A hero figure: Geist 800, tight. Set the size with a text-* class. Proportional for the
  * reason above; add `tabular-nums` only on a string that holds no separators.
  */
 @utility figure {
