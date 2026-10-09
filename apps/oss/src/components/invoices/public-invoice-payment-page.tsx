@@ -142,8 +142,8 @@ function PublicInvoiceDocument({
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center gap-6 px-4 py-12">
       <PublicSellerHeader seller={seller} />
-      <div className="grid w-full gap-6 lg:grid-cols-[1.35fr_0.9fr]">
-        <Card>
+      <div className="grid w-full min-w-0 gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)]">
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>{invoice.number}</CardTitle>
             <CardDescription>
@@ -152,7 +152,7 @@ function PublicInvoiceDocument({
                 : t("public.invoice.label")}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6">
+          <CardContent className="grid min-w-0 gap-6">
             <div className="grid gap-4 sm:grid-cols-3">
               <InfoBlock label={t("public.document.status")} value={statusLabel} />
               <InfoBlock label={t("public.invoice.issued")} value={format.date(invoice.issueDate)} />
@@ -189,7 +189,7 @@ function PublicInvoiceDocument({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>
               {credited
@@ -208,7 +208,7 @@ function PublicInvoiceDocument({
                     : t("public.invoice.pay.description")}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6">
+          <CardContent className="grid min-w-0 gap-6">
             {error ? (
               <p className="text-sm text-destructive" role="alert">
                 {error}
@@ -241,7 +241,7 @@ function PublicInvoiceDocument({
             </div>
 
             {paymentState === "unpaid" && balanceDue > 0 && paymentDetails ? (
-              <section className="grid gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>
+              <section className="grid min-w-0 gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>
                 <h2 className="text-sm font-medium">{paymentDetails.title}</h2>
                 {paymentDetails.rows.map((row) => (
                   <InfoBlock key={row.label} label={row.label} value={row.value} />
@@ -249,7 +249,7 @@ function PublicInvoiceDocument({
                 {paymentDetails.reference ? (
                   <InfoBlock label={paymentDetails.reference.label} value={paymentDetails.reference.value} />
                 ) : null}
-                {paymentDetails.note ? <p className="whitespace-pre-wrap break-words text-sm">{paymentDetails.note}</p> : null}
+                {paymentDetails.note ? <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">{paymentDetails.note}</p> : null}
               </section>
             ) : null}
 
@@ -277,11 +277,11 @@ function PublicInvoiceDocument({
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-1">
+    <div className="grid min-w-0 gap-1">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="break-words text-sm font-medium">{value}</p>
+      <p className="[overflow-wrap:anywhere] text-sm font-medium">{value}</p>
     </div>
   )
 }

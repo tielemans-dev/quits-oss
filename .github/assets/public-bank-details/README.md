@@ -8,3 +8,5 @@ Desktop is 1280 × 1100. Mobile is 390 × 844, scrolled to the payment details. 
 ![English desktop](en-desktop.png)
 ![Danish mobile](da-mobile.png)
 ![English mobile](en-mobile.png)
+
+Maximum-length stress fixtures and before/after correction evidence are in [fix1](fix1/README.md).
