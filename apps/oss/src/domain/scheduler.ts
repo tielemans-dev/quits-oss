@@ -143,13 +143,22 @@ const databaseNow = Prisma.sql`(clock_timestamp() AT TIME ZONE 'UTC')`
  * Organizations that became eligible are registered at most `maxRegistrations` per claim, lowest
  * id first; registered organizations are no longer missing, so every eligible organization is
  * registered within ceil(new / maxRegistrations) claims. Claims order by the last scan,
- * longest-waiting first (an organization waits from its last scan, or from when it became
- * eligible), so the rotation is durable across restarts and independent of the tick
- * cadence or clock. A claim stamps its rows with a token and an expiry; other claims skip rows with
+ * longest-waiting first. Registration and claiming advance the task's persisted queue time by
+ * at least one stored millisecond, even when the database clock repeats or moves backwards.
+ * This keeps finished work behind waiting work across restarts at any tick cadence. Concurrent
+ * statements can share a queue time; organization id breaks their tie. A claim stamps its rows
+ * with a token and an expiry; other claims skip rows with
  * a live claim and rows another transaction is claiming (`FOR UPDATE SKIP LOCKED`). Times come
  * from the database clock, never from the tick's `now`.
  */
 export function scannedOrganizationSource(task: string, eligible: Prisma.Sql): OrganizationSource {
+  // scannedAt is a durable queue order, not a lease clock. TIMESTAMP(3) can otherwise round
+  // registration and claiming to the same value, letting a finished lower id jump a waiter.
+  // The existing (task, scannedAt) index supplies the maximum without locking the whole queue.
+  const queueTime = Prisma.sql`GREATEST(
+    ${databaseNow}::timestamp(3),
+    (SELECT MAX("scannedAt") FROM "scheduler_scan" WHERE "task" = ${task}) + INTERVAL '1 millisecond'
+  )`
   const forClaim = (token: string, organizationIds: readonly string[]) => Prisma.sql`
     "task" = ${task}
     AND "claimToken" = ${token}
@@ -169,8 +178,9 @@ export function scannedOrganizationSource(task: string, eligible: Prisma.Sql): O
         // organizations at any budget. The anti-join makes this an index lookup per eligible
         // organization when none is missing.
         await prisma.$executeRaw`
+          WITH queue_clock AS MATERIALIZED (SELECT ${queueTime} AS "time")
           INSERT INTO "scheduler_scan" ("task", "organizationId", "scannedAt")
-          SELECT ${task}, m."organizationId", ${databaseNow} FROM (
+          SELECT ${task}, m."organizationId", q."time" FROM (
             SELECT DISTINCT e."organizationId" FROM (${eligible}) e
             WHERE NOT EXISTS (
               SELECT 1 FROM "scheduler_scan" s
@@ -178,13 +188,13 @@ export function scannedOrganizationSource(task: string, eligible: Prisma.Sql): O
             )
             ORDER BY e."organizationId" ASC
             LIMIT ${maxRegistrations}
-          ) m
+          ) m CROSS JOIN queue_clock q
           ON CONFLICT ("task", "organizationId") DO NOTHING
         `
       }
       const token = randomUUID()
       const rows = await prisma.$queryRaw<Array<{ organizationId: string; previousScannedAt: Date | null }>>`
-        WITH candidates AS (
+        WITH queue_clock AS MATERIALIZED (SELECT ${queueTime} AS "time"), candidates AS (
           SELECT s."organizationId", s."scannedAt"
           FROM "scheduler_scan" s
           WHERE s."task" = ${task}
@@ -195,10 +205,10 @@ export function scannedOrganizationSource(task: string, eligible: Prisma.Sql): O
           FOR UPDATE SKIP LOCKED
         )
         UPDATE "scheduler_scan" s
-        SET "scannedAt" = ${databaseNow},
+        SET "scannedAt" = q."time",
             "claimToken" = ${token},
             "claimedUntil" = ${databaseNow} + ${Math.max(0, Math.round(leaseMs))}::integer * INTERVAL '1 millisecond'
-        FROM candidates c
+        FROM candidates c CROSS JOIN queue_clock q
         WHERE s."task" = ${task} AND s."organizationId" = c."organizationId"
         RETURNING s."organizationId", c."scannedAt" AS "previousScannedAt"
       `

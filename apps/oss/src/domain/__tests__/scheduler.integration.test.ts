@@ -216,6 +216,83 @@ describeIfDatabase("scheduler against the database", () => {
     expect((await source.claim(1, LEASE)).organizationIds).toEqual([organizationIds[0]])
   })
 
+  // A database clock can repeat a millisecond or move backwards. A persisted frontier ahead
+  // of the current clock makes that ordering deterministic without replacing production SQL
+  // or its clock. Equal stamps retain the observed organization-ID tie-break.
+  async function seedQueueFrontier(task: string, organizationIds: readonly string[]) {
+    await prisma.$executeRaw`
+      INSERT INTO "scheduler_scan" ("task", "organizationId", "scannedAt")
+      SELECT ${task}, "id", (statement_timestamp() AT TIME ZONE 'UTC') + INTERVAL '1 day'
+      FROM "organization" WHERE "id" IN (${Prisma.join([...organizationIds])})
+    `
+    const [row] = await prisma.schedulerScan.findMany({ where: { task }, take: 1 })
+    return row!.scannedAt!
+  }
+
+  it("advances past a tied queue frontier and restores released organizations before finished ones", async () => {
+    const organizationIds = (await Promise.all(Array.from({ length: 2 }, () => organizationWithInvoices([])))).sort()
+    const { task, source, scans } = testSource(organizationIds)
+    const frontier = await seedQueueFrontier(task, organizationIds)
+    expect((await scans()).map((row) => row.scannedAt)).toEqual([frontier, frontier])
+
+    const claim = await source.claim(2, { ...LEASE, maxRegistrations: 0 })
+    expect(claim.organizationIds).toEqual(organizationIds)
+    const claimed = await scans()
+    // Advancing the queue must not move lease expiry a day into the future.
+    expect(claimed.every((row) => row.claimedUntil!.getTime() < frontier.getTime())).toBe(true)
+    expect((await source.claim(2, LEASE)).organizationIds).toEqual([])
+
+    await claim.finish([organizationIds[0]!])
+    await claim.release([organizationIds[1]!])
+    expect((await scans())[1]).toMatchObject({ scannedAt: frontier, claimToken: null, claimedUntil: null })
+    expect((await source.claim(1, LEASE)).organizationIds).toEqual([organizationIds[1]])
+    expect(claimed.every((row) => row.scannedAt!.getTime() > frontier.getTime())).toBe(true)
+  })
+
+  it("queues bounded registrations after the queue frontier and serves newcomers and old scans", async () => {
+    const organizationIds = (await Promise.all(Array.from({ length: 7 }, () => organizationWithInvoices([])))).sort()
+    const { task, source, scans } = testSource(organizationIds)
+    await seedQueueFrontier(task, organizationIds.slice(0, 2))
+    const visited: string[][] = []
+    for (let tick = 0; tick < 6; tick += 1) {
+      const reached: string[] = []
+      await forEachOrganizationWithinBudget(source, async (id) => void reached.push(id), {
+        maxOrganizations: 3, timeBudgetMs: 60_000, maxRegistrations: 2,
+      })
+      visited.push(reached)
+      expect((await scans()).length).toBe(Math.min(7, 2 + (tick + 1) * 2))
+    }
+    expect(visited[0]).toEqual(organizationIds.slice(0, 3))
+    expect(new Set(visited.flat())).toEqual(new Set(organizationIds))
+    expect(visited.flat().filter((id) => id === organizationIds[0]).length).toBeGreaterThan(1)
+    expect((await scans()).every((row) => row.claimToken === null && row.claimedUntil === null)).toBe(true)
+  })
+
+  it("keeps concurrent claims disjoint at a tied queue frontier and preserves unreached places", async () => {
+    const organizationIds = (await Promise.all(Array.from({ length: 6 }, () => organizationWithInvoices([])))).sort()
+    const { task, source, scans } = testSource(organizationIds)
+    const frontier = await seedQueueFrontier(task, organizationIds)
+    const options = { ...LEASE, maxRegistrations: 0 }
+    const claims = await Promise.all([source.claim(2, options), source.claim(2, options)])
+    expect(claims.map((claim) => claim.organizationIds.length)).toEqual([2, 2])
+    const claimedIds = claims.flatMap((claim) => claim.organizationIds)
+    expect(new Set(claimedIds).size).toBe(4)
+    expect(claimedIds.sort()).toEqual(organizationIds.slice(0, 4))
+    const concurrentScans = await scans()
+
+    const released = claims.map((claim) => claim.organizationIds[1]!)
+    await Promise.all(claims.map(async (claim) => {
+      await claim.finish([claim.organizationIds[0]!])
+      await claim.release([claim.organizationIds[1]!])
+    }))
+    const waiting = [...released, ...organizationIds.slice(4)].sort()
+    const next = await source.claim(4, options)
+    expect(next.organizationIds).toEqual(waiting)
+    expect(concurrentScans.filter((row) => row.claimToken).every((row) => row.scannedAt! > frontier)).toBe(true)
+    const stillHeld = await source.claim(6, options)
+    expect(stillHeld.organizationIds.sort()).toEqual(claims.map((claim) => claim.organizationIds[0]!).sort())
+  })
+
   it("lets a tick take over an expired claim, and the stale claim cannot undo it", async () => {
     const organizationId = await organizationWithInvoices([])
     const { source, scans } = testSource([organizationId])
