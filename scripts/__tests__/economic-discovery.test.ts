@@ -672,6 +672,81 @@ describe("historical pair evidence over a connected cluster", () => {
 })
 
 
+describe("ledger remainder proof", () => {
+  for (const entries of [[3], [4], [3, 4]]) {
+    it(`withholds allocation proof for fractional remainders on entries ${entries.join(",")}`, () => {
+      const s = clone(byName("fully_paid").source)
+      for (const id of entries) {
+        const entry = s.entries.find((e) => e.entryNumber === id)!
+        entry.remainder = Math.sign(entry.amount) * 0.001
+      }
+      const out = normalizeEconomic(s)
+      for (const id of entries) {
+        expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "sub_minor_precision", severity: "blocking", subject: `entry:${id}` }))
+      }
+      expect(out.clusters).toEqual([expect.objectContaining({ entries: [3, 4], status: "inconsistent" })])
+      expect(out.allocations).toEqual([])
+      expect(out.documents[0]).toMatchObject({ recomputedResidual: null, residualBasis: "source_remainder_only" })
+      expect(out.reconciliation.rows).toHaveLength(2)
+      expect(out.reconciliation.rows.every((row) => row.recomputedResidual === null && row.match === null)).toBe(true)
+      expect(out.reconciliation.allRowsMatch).toBe(false)
+    })
+  }
+
+  for (const invalidEntry of [3, 4, 99]) {
+    it(`invalidates the complete three-entry cluster for remainder on entry ${invalidEntry}`, () => {
+      const s = clone(byName("fully_paid").source)
+      const payment = s.entries.find((e) => e.type === 2)!
+      payment.amount = payment.amountInBaseCurrency = -300
+      s.entries.push({ ...payment, entryNumber: 99, amount: -325, amountInBaseCurrency: -325 })
+      const pair = s.matchedPairs[0]!
+      pair.toEntryAmount = pair.toEntryAmountDKK = -300
+      s.matchedPairs.push({ ...pair, toEntry: 99, toEntryAmount: -325, toEntryAmountDKK: -325 })
+      const entry = s.entries.find((e) => e.entryNumber === invalidEntry)!
+      entry.remainder = Math.sign(entry.amount) * 0.001
+      const out = normalizeEconomic(s)
+      expect(out.clusters).toEqual([expect.objectContaining({ entries: [3, 4, 99], status: "inconsistent" })])
+      expect(out.allocations).toEqual([])
+      expect(out.reconciliation.rows).toHaveLength(3)
+      expect(out.reconciliation.rows.every((row) => row.recomputedResidual === null && row.match === null)).toBe(true)
+      expect(out.reconciliation.allRowsMatch).toBe(false)
+    })
+  }
+
+  for (const remainder of [undefined, 1250.001, 9999, -1]) {
+    it(`does not recompute an unmatched debtor with invalid remainder ${remainder}`, () => {
+      const s = clone(byName("unpaid").source)
+      s.entries.find((e) => e.customerNumber != null)!.remainder = remainder
+      const out = normalizeEconomic(s)
+      expect(out.exceptions.some((e) => e.severity === "blocking")).toBe(true)
+      expect(out.documents[0]).toMatchObject({ recomputedResidual: null, residualBasis: "source_remainder_only" })
+      expect(out.reconciliation.rows[0]!.match).toBeNull()
+      expect(out.reconciliation.allRowsMatch).toBe(false)
+    })
+  }
+
+  it("retains valid unrelated allocation proof", () => {
+    const original = clone(byName("fully_paid").source)
+    const s = clone(original)
+    const originalInvoice = original.bookedInvoices[0]!
+    const invoiceNumber = originalInvoice.bookedInvoiceNumber + 1000
+    s.bookedInvoices.push({ ...originalInvoice, bookedInvoiceNumber: invoiceNumber })
+    s.entries.push(...original.entries.map((e) => ({
+      ...e, entryNumber: e.entryNumber + 1000,
+      customerInvoiceNumber: e.customerInvoiceNumber == null ? e.customerInvoiceNumber : e.customerInvoiceNumber + 1000,
+    })))
+    s.matchedPairs.push(...original.matchedPairs.map((pair) => ({ ...pair, fromEntry: pair.fromEntry + 1000, toEntry: pair.toEntry + 1000 })))
+    s.invoicePdfs[String(invoiceNumber)] = original.invoicePdfs[String(originalInvoice.bookedInvoiceNumber)]!
+    s.entries.find((e) => e.entryNumber === 3)!.remainder = 0.001
+    const out = normalizeEconomic(s)
+    expect(out.clusters.map((c) => c.status)).toEqual(["inconsistent", "resolved"])
+    expect(out.allocations).toEqual([expect.objectContaining({ debitEntry: 1003, creditEntry: 1004, amount: 62500 })])
+    expect(out.documents.find((d) => d.number === String(invoiceNumber))).toMatchObject({ recomputedResidual: 0, residualBasis: "recomputed_from_allocations" })
+    expect(out.documents.find((d) => d.number === String(originalInvoice.bookedInvoiceNumber))!.recomputedResidual).toBeNull()
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+  })
+})
+
 describe("historical base and year validation controls", () => {
   for (const target of ["invoice", "debtor"] as const) {
     it(`withholds proof for sub-minor ${target} base gross even when rounded equal`, () => {

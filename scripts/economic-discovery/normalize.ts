@@ -122,15 +122,26 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
   const entryCurrency = (e: SourceBookedEntry) => e.currencyCode ?? base
   const entryExp = (e: SourceBookedEntry) => exponentFor(entryCurrency(e), issues)
   const amountMinor = (e: SourceBookedEntry) => toMinor(e.amount, entryExp(e), issues, `entry:${e.entryNumber}`)
+  const invalidLedgerEntries = new Set<number>()
   const remainderMinor = (e: SourceBookedEntry): number | null => {
     if (e.remainder == null) {
       issues.add("remainder_missing", "blocking", `entry:${e.entryNumber}`, "Ledger entry has no remainder; open balance cannot be proven")
+      invalidLedgerEntries.add(e.entryNumber)
       return null
     }
-    const r = toMinor(e.remainder, entryExp(e), issues, `entry:${e.entryNumber}`)
-    const a = amountMinor(e)
+    const moneyIssues = new Collector()
+    const exp = exponentFor(entryCurrency(e), moneyIssues)
+    const r = toMinor(e.remainder, exp, moneyIssues, `entry:${e.entryNumber}`)
+    const a = toMinor(e.amount, exp, moneyIssues, `entry:${e.entryNumber}`)
     if (Math.abs(r) > Math.abs(a) || (r !== 0 && a !== 0 && Math.sign(r) !== Math.sign(a))) {
-      issues.add("remainder_out_of_range", "blocking", `entry:${e.entryNumber}`, `remainder ${e.remainder} is not between 0 and amount ${e.amount}`)
+      moneyIssues.add("remainder_out_of_range", "blocking", `entry:${e.entryNumber}`, `remainder ${e.remainder} is not between 0 and amount ${e.amount}`)
+    }
+    for (const issue of moneyIssues.list) issues.add(issue.code, issue.severity, issue.subject, issue.detail)
+    // Rounded values remain diagnostics in a rejected batch, never inputs to allocation proof.
+    // Keep validity per entry, independent of exception deduplication on subsequent reads.
+    if (moneyIssues.list.some((issue) => issue.severity === "blocking")) {
+      invalidLedgerEntries.add(e.entryNumber)
+      return null
     }
     return r
   }
@@ -492,7 +503,10 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
   // whose endpoints are represented in the import scope. Dropping just an out-of-scope edge would
   // misstate the remaining entries' applied totals. Clusters remain full-snapshot diagnostics.
   const represented = new Set([...documents.flatMap((d) => d.ledgerEntryNumbers), ...ledgerItems.map((i) => i.entryNumber)])
-  const invalidEntries = new Set(documents.filter((d) => invalidDocumentJoins.has(d.sourceKey)).flatMap((d) => d.ledgerEntryNumbers))
+  const invalidEntries = new Set([
+    ...invalidLedgerEntries,
+    ...documents.filter((d) => invalidDocumentJoins.has(d.sourceKey)).flatMap((d) => d.ledgerEntryNumbers),
+  ])
   const eligibleClusters = new Set(clusters.filter((c) => c.status === "resolved" && c.entries.every((n) => represented.has(n) && !invalidEntries.has(n) && day(ledger.get(n)!.date) <= cutover)).map((c) => c.id))
   const scopedAllocations = allocations.filter((a) => eligibleClusters.has(a.clusterId))
   const flowOnEntry = new Map<number, number>()

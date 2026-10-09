@@ -147,6 +147,8 @@ An invoice and every debtor line must have the same currency before their amount
 
 All customer-ledger entries in a match cluster must belong to the same customer. Cross-customer matches block with `cluster_customer_mixed`; this draft has no supported customer-transfer rule. Invalid pair endpoints or amounts make the entire cluster inconsistent, including invalid repeated or reversed pairs. This includes sub-minor precision such as 625.001 DKK even when rounding would equal the entry amount. These clusters emit no allocations and retain source-only residuals even when the source reports zero residuals and balanced customer controls.
 
+Ledger amounts and remainders must also have supported currency precision, and remainders must be present and within the signed entry amount. An invalid remainder cannot supply an applied amount to the solver, even when it would round to zero. Its entire connected cluster is inconsistent and emits no allocations; an unmatched invalid entry also gets no recomputed residual. Valid unrelated clusters remain eligible. Rounded diagnostic values in a blocked batch do not establish an exact source balance or import approval.
+
 ## 6. Export fallback
 
 When the API cannot be used (no grant, role refused, Basis account where the provider reports no access, a customer who will not grant access), the same contract can be filled from files. All **documented**; none was downloaded.
