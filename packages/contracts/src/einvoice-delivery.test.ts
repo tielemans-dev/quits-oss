@@ -121,6 +121,58 @@ describe("e-invoice delivery lifecycle", () => {
   })
 })
 
+describe("participant scheme validation regressions", () => {
+  const unknownSchemes = ["constructor", "__proto__", "toString", "valueOf", "hasOwnProperty", " constructor ", "9999", "DK:CVR"]
+
+  it.each(unknownSchemes)("rejects participant scheme %s with a validation issue", (scheme) => {
+    const result = einvoiceParticipantSchema.safeParse({ scheme, id: "x" })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toEqual([
+        expect.objectContaining({ code: "custom", path: ["scheme"], message: "Unknown Peppol EAS code" }),
+      ])
+    }
+  })
+
+  it.each(unknownSchemes)("rejects scheme %s in every recipient resolution", (scheme) => {
+    for (const status of ["reachable", "not_registered", "unsupported_document", "lookup_failed"] as const) {
+      const result = einvoiceRecipientResolutionSchema.safeParse({
+        status, participant: { scheme, id: "x" }, checkedAt: at(0),
+        ...(status === "unsupported_document" ? { advertised: [] } : {}),
+        ...(status === "lookup_failed" ? { retryable: true } : {}),
+      })
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues).toContainEqual(expect.objectContaining({ path: ["participant", "scheme"] }))
+      }
+    }
+  })
+
+  it.each(unknownSchemes)("rejects scheme %s in delivery state for both document kinds", (scheme) => {
+    for (const documentKind of ["invoice", "creditNote"] as const) {
+      const initial = initialEinvoiceDeliveryState("peppol_bis_billing_3", recipient, documentKind)
+      const result = einvoiceDeliveryStateSchema.safeParse({ ...initial, recipient: { scheme, id: "x" } })
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues).toContainEqual(expect.objectContaining({ path: ["recipient", "scheme"] }))
+      }
+    }
+  })
+
+  it.each([
+    { scheme: "0184", id: "29403473" },
+    recipient,
+    { scheme: "0130", id: "known-scheme-without-specific-format" },
+  ] as const)("accepts a valid participant with known scheme $scheme", (participant) => {
+    expect(einvoiceParticipantSchema.parse(participant)).toEqual(participant)
+    expect(einvoiceRecipientResolutionSchema.safeParse({ status: "reachable", participant, checkedAt: at(0) }).success).toBe(true)
+    for (const documentKind of ["invoice", "creditNote"] as const) {
+      const initial = initialEinvoiceDeliveryState("peppol_bis_billing_3", participant, documentKind)
+      expect(einvoiceDeliveryStateSchema.parse(initial)).toEqual(initial)
+    }
+  })
+})
+
 describe("Denmark discovery review regressions", () => {
   it.each(["invoice", "creditNote"] as const)("reconciles a timed-out safe retry for %s against its own reference", (documentKind) => {
     const initial = initialEinvoiceDeliveryState("peppol_bis_billing_3", recipient, documentKind)

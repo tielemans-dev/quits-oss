@@ -23,6 +23,8 @@ export const einvoiceParticipantSchema = z.strictObject({
   scheme: z.string().trim().refine(isPeppolEasCode, "Unknown Peppol EAS code"),
   id: z.string().trim().min(1),
 }).superRefine((participant, ctx) => {
+  // The scheme refinement already reports unknown codes; it does not stop this check.
+  if (!isPeppolEasCode(participant.scheme)) return
   if (!isValidPeppolIdentifier(participant.scheme, participant.id)) {
     ctx.addIssue({ code: "custom", path: ["id"], message: "Identifier does not match the Peppol scheme" })
   }
