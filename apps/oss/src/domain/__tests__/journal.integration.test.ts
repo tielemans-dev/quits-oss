@@ -1,3 +1,5 @@
+import { PrismaPg } from "@prisma/adapter-pg"
+import { Effect } from "effect"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { createRequestContext } from "../../trpc/init"
 import { journalRouter } from "../../trpc/routers/journal"
@@ -18,9 +20,10 @@ import {
   resetRuntimeServices,
   setRuntimeServices
 } from "../../lib/runtime/services"
-import { Prisma } from "../../../generated/prisma/client"
+import { Prisma, PrismaClient } from "../../../generated/prisma/client"
 import { defaultNodePlatform } from "../../lib/runtime/node-platform"
 import {
+  getRuntimePlatformOverride,
   resetRuntimePlatform,
   setRuntimePlatform
 } from "../../lib/runtime/platform"
@@ -46,6 +49,7 @@ import { deliveryPayloadSchema, EMAIL_DELIVERY_JOB } from "../delivery/outbox"
 import { executeCommand } from "../execute"
 import { runDueJobs, runJobsNow } from "../jobs"
 import { appRouter } from "../../trpc/router"
+import { Db } from "../services"
 
 const suite = hasTestDatabase ? describe : describe.skip
 suite("operation journal and bounded recovery", () => {
@@ -1212,23 +1216,70 @@ suite("operation journal and bounded recovery", () => {
       accountant.journal.recover({ ...scope, deliveryId: "private-job" })
     ).rejects.toMatchObject({ code: "FORBIDDEN" })
   })
-  async function holdLock(lock: (tx: Prisma.TransactionClient) => Promise<unknown>, work: () => Promise<void>) {
+  async function connectionBounds(db: Prisma.TransactionClient) {
+    const [bounds] = await db.$queryRaw<Array<{ lock: string; statement: string; idle: string }>>`SELECT
+      current_setting('lock_timeout') AS lock,
+      current_setting('statement_timeout') AS statement,
+      current_setting('idle_in_transaction_session_timeout') AS idle`
+    return bounds
+  }
+  async function withBoundedDatabase(work: (shared: PrismaClient) => Promise<void>) {
+    const platform = getRuntimePlatformOverride()
+    const shared = getPrisma()
+    const sharedBounds = await connectionBounds(shared)
+    // Every connection in this private pool has server-side bounds, including unkeyed and
+    // resumed commands. Fresh CI roles have lock_timeout=0; do not change the shared pool/role.
+    const bounded = new PrismaClient({ adapter: new PrismaPg({
+      connectionString: process.env.DATABASE_URL,
+      max: 1,
+      options: "-c lock_timeout=5s -c statement_timeout=30s -c idle_in_transaction_session_timeout=60s",
+    }) })
+    try {
+      setRuntimePlatform({ ...defaultNodePlatform, getPrisma: () => bounded })
+      await bounded.$transaction(async tx => {
+        expect(await connectionBounds(tx)).toEqual({ lock: "5s", statement: "30s", idle: "1min" })
+      })
+      await work(shared)
+    } finally {
+      // Reset even after a failed assertion, and disconnect even if the preservation check fails.
+      if (platform) setRuntimePlatform(platform)
+      else resetRuntimePlatform()
+      try {
+        expect(getPrisma()).toBe(shared)
+        expect(await connectionBounds(shared)).toEqual(sharedBounds)
+      } finally {
+        await bounded.$disconnect()
+      }
+    }
+  }
+  async function holdLock(shared: PrismaClient, lock: (tx: Prisma.TransactionClient) => Promise<unknown>, work: () => Promise<void>) {
     let release!: () => void
     let ready!: () => void
     const released = new Promise<void>(resolve => { release = resolve })
     const acquired = new Promise<void>(resolve => { ready = resolve })
-    const holder = prisma.$transaction(async tx => {
+    // The holder uses the ordinary pool, never the single-connection bounded executor pool.
+    const holder = shared.$transaction(async tx => {
       await lock(tx)
       ready()
       await released
     }, { timeout: 20_000 })
+    // Observe rejection immediately; preserve it without an unhandled promise rejection.
+    const settled = holder.then(() => ({ ok: true as const }), error => ({ ok: false as const, error }))
+    let workFailure: { error: unknown } | undefined
     try {
-      await Promise.race([acquired, holder.then(() => { throw new Error("Lock holder ended early") })])
+      await Promise.race([acquired, settled.then(result => {
+        if (!result.ok) throw result.error
+        throw new Error("Lock holder ended early")
+      })])
       await work()
+    } catch (error) {
+      workFailure = { error }
     } finally {
       release()
-      await holder
     }
+    const result = await settled
+    if (workFailure) throw workFailure.error
+    if (!result.ok) throw result.error
   }
   async function durableState(organizationId: string) {
     const where = { organizationId }
@@ -1251,14 +1302,14 @@ suite("operation journal and bounded recovery", () => {
     })
     return { status: response.status, text: await response.text() }
   }
-  it.each(["advisory", "contact"] as const)("rolls back a manual resend blocked on %s, then retries and replays once", async kind => {
+  it.each(["advisory", "contact"] as const)("rolls back a manual resend blocked on %s, then retries and replays once", async kind => withBoundedDatabase(async shared => {
     const { actor, scope, delivery } = await uncertain()
     const reviewed = (await documentJournal(actor, scope)).deliveries[0]
     const requestId = `timeout-${kind}`
     const input = { ...delivery, mode: "stored", reviewedTarget: reviewed.manualTarget, reason: "Recipient requested another copy", acknowledgeDuplicateRisk: true, clientRequestId: requestId }
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
     const before = await durableState(actor.organizationId)
-    await holdLock(tx => kind === "advisory"
+    await holdLock(shared, tx => kind === "advisory"
       ? tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${actor.organizationId}|${actorKey(actor)}|${requestId}`}, 0))`
       : tx.$queryRaw`SELECT id FROM contact WHERE id = ${invoice.contactId} FOR UPDATE`, async () => {
       const started = performance.now()
@@ -1276,8 +1327,8 @@ suite("operation journal and bounded recovery", () => {
     expect(await prisma.commandReceipt.count({ where: { organizationId: actor.organizationId, clientRequestId: requestId } })).toBe(1)
     expect(await prisma.job.count({ where: { organizationId: actor.organizationId, type: EMAIL_DELIVERY_JOB } })).toBe(2)
     expect(vi.mocked(deliver)).toHaveBeenCalledTimes(2)
-  })
-  it.each(["recover", "reconcile"] as const)("rolls back %s on an organization row timeout and retries only its step", async path => {
+  }))
+  it.each(["recover", "reconcile"] as const)("rolls back %s on an organization row timeout and retries only its step", async path => withBoundedDatabase(async shared => {
     const { actor, scope, delivery, job } = await uncertain()
     const issuedBefore = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
     expect(issuedBefore.status).toBe("sent")
@@ -1288,7 +1339,7 @@ suite("operation journal and bounded recovery", () => {
       setRuntimeServices({ emailDeliveryStatusProvider: { supports: () => true, lookup: async () => ({ evidenceId: "timeout-evidence", observedAt: new Date("2026-10-09T00:00:00Z"), outcome: "accepted", providerMessageId: "known-accepted" }) } })
     }
     const before = await durableState(actor.organizationId)
-    await holdLock(tx => tx.$queryRaw`SELECT id FROM org_settings WHERE "organizationId" = ${actor.organizationId} FOR UPDATE`, async () => {
+    await holdLock(shared, tx => tx.$queryRaw`SELECT id FROM org_settings WHERE "organizationId" = ${actor.organizationId} FOR UPDATE`, async () => {
       const response = await journalHttp(actor, path, delivery)
       expect(response.status).toBe(500)
       expect(response.text).toContain(path === "recover" ? "Could not recover delivery" : "Could not reconcile delivery")
@@ -1300,14 +1351,14 @@ suite("operation journal and bounded recovery", () => {
     expect(await prisma.invoice.count({ where: { organizationId: actor.organizationId } })).toBe(1)
     expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
     expect(await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })).toMatchObject({ number: issuedBefore.number, editRevision: issuedBefore.editRevision, purchaseOrderRef: issuedBefore.purchaseOrderRef })
-  })
-  it.each(["unkeyed", "resumed"] as const)("preserves %s executor atomicity and receipt semantics under the role row bound", async mode => {
+  }))
+  it.each(["unkeyed", "resumed"] as const)("preserves %s executor atomicity and receipt semantics under the configured row bound", async mode => withBoundedDatabase(async shared => {
     const { actor } = await setup()
     const resumeId = `resumed-${crypto.randomUUID()}`
     if (mode === "resumed") await prisma.commandReceipt.create({ data: { id: resumeId, organizationId: actor.organizationId, actorKey: actorKey(actor), clientRequestId: resumeId, commandType: "contact.create", status: "awaiting_approval" } })
     const options = { actor, ...(mode === "resumed" ? { resumeReceiptId: resumeId } : {}) }
     const before = await durableState(actor.organizationId)
-    await holdLock(tx => tx.$queryRaw`SELECT id FROM org_settings WHERE "organizationId" = ${actor.organizationId} FOR UPDATE`, async () => {
+    await holdLock(shared, tx => tx.$queryRaw`SELECT id FROM org_settings WHERE "organizationId" = ${actor.organizationId} FOR UPDATE`, async () => {
       await expect(executeCommand(createContact, { name: "Retry once" }, options)).rejects.toThrow()
       expect(await durableState(actor.organizationId)).toEqual(before)
       expect(await prisma.contact.count({ where: { organizationId: actor.organizationId, name: "Retry once" } })).toBe(0)
@@ -1316,5 +1367,23 @@ suite("operation journal and bounded recovery", () => {
     expect(outcome.status).toBe("completed")
     expect(await prisma.commandReceipt.findUnique({ where: { id: outcome.commandId } })).toMatchObject({ status: "completed" })
     expect(await prisma.contact.count({ where: { organizationId: actor.organizationId, name: "Retry once" } })).toBe(1)
-  })
+  }))
+  it("restores the configured row bound inside the keyed executor after advisory admission", async () => withBoundedDatabase(async () => {
+    const { actor } = await setup()
+    let observed = false
+    const probe = {
+      ...createContact,
+      handle: (input: Parameters<typeof createContact.handle>[0]) => Effect.gen(function* () {
+        const db = yield* Db
+        const bounds = yield* Effect.promise(() => connectionBounds(db))
+        expect(bounds).toEqual({ lock: "5s", statement: "30s", idle: "1min" })
+        observed = true
+        return yield* createContact.handle(input)
+      }),
+    }
+    const outcome = await executeCommand(probe, { name: "Bound probe" }, { actor, clientRequestId: crypto.randomUUID() })
+    expect(outcome.status).toBe("completed")
+    expect(observed).toBe(true)
+  }))
+
 })
