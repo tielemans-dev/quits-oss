@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { authClient } from '../lib/auth-client'
 import { loadPage } from '../lib/page-navigation'
+import { QuitsWordmark } from '../components/brand/quits-wordmark'
 import { Button } from '../components/ui/button'
 import {
   Card,
@@ -50,7 +51,8 @@ function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4">
+      <QuitsWordmark className="text-[26px]" />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">{t('auth.signup.title')}</CardTitle>
@@ -59,7 +61,7 @@ function SignupPage() {
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="flex flex-col gap-4">
+          <CardContent className="flex flex-col gap-4 pb-4">
             {error && (
               <p className="text-sm text-destructive" role="alert">
                 {error}

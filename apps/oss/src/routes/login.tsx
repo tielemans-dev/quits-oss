@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { authClient } from '../lib/auth-client'
 import { switchActiveOrganization } from '../lib/active-organization'
 import { loadPage } from '../lib/page-navigation'
+import { QuitsWordmark } from '../components/brand/quits-wordmark'
 import { Button } from '../components/ui/button'
 import {
   Card,
@@ -89,7 +90,8 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4">
+      <QuitsWordmark className="text-[26px]" />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">{t('auth.login.title')}</CardTitle>
