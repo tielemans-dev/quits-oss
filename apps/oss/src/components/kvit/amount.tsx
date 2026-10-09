@@ -133,7 +133,7 @@ export function Amount({
             y1={spec.second}
             y2={spec.second}
             pathLength={1}
-            stroke={ruleTone === "settled" ? "var(--settled)" : "currentColor"}
+            stroke={ruleTone === "settled" ? "var(--settled-rule)" : "currentColor"}
             strokeWidth={spec.stroke}
             strokeDasharray={`${drawn} 1`}
             strokeDashoffset={hidden ? drawn : 0}

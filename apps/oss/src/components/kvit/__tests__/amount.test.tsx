@@ -14,6 +14,18 @@ function lines(container: HTMLElement) {
 }
 
 describe("Amount", () => {
+  it.each([1, 0.4])("uses the contrast-safe rule token for paid fraction %s", (paidFraction) => {
+    const { container } = render(
+      <Amount value="100.00" currency="DKK" rule="double" paidFraction={paidFraction} />
+    )
+    expect(lines(container)[1].getAttribute("stroke")).toBe("var(--settled-rule)")
+  })
+
+  it("keeps the current-colour rule override", () => {
+    const { container } = render(<Amount value="100.00" currency="DKK" rule="double" ruleTone="current" />)
+    expect(lines(container)[1].getAttribute("stroke")).toBe("currentColor")
+  })
+
   it("reads as the plain amount in the locale, with no superscript element", () => {
     const { container } = render(<Amount value="5600.00" currency="DKK" locale="da-DK" />)
     expect(container.textContent).toBe(`5.600,00${nbsp}kr.`)

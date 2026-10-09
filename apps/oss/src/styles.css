@@ -76,10 +76,12 @@ code {
 
   /*
    * Settled: the green full stop, for money that has arrived and nothing else. --settled is a fill
-   * or a rule (never text on a light surface: 2.36:1 on white); --settled-text is the green as
+   * (never text on a light surface: 2.36:1 on white); --settled-rule is the paid amount rule
+   * (3.33:1 on white, 3.19:1 on paper); --settled-text is the green as
    * text (4.89:1 on white); --settled-soft is the paid chip, under --tone-success text (6.24:1).
    */
   --settled: #1fc16b;
+  --settled-rule: #21a15a;
   --settled-text: #1e8149;
   --settled-soft: #d1fbdc;
 
@@ -159,6 +161,9 @@ code {
     rgb(250 250 249 / 5%),
     transparent 70%
   );
+
+  /* Keep the paid rule bright on dark surfaces. */
+  --settled-rule: #1fc16b;
 
   /* Green-400 as text on ink: 10.68:1. */
   --settled-text: #46d881;

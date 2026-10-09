@@ -2,9 +2,20 @@
 
 Captured on 9 October 2026 from production builds with Chromium, bundled fonts, disposable PostgreSQL and synthetic E2E fixtures. No production data or external provider was used.
 
-Before is main `8d7740e`. After is the supplied four-commit patch plus browser regression checks. Desktop is 1440 × 1000; mobile is 390 × 844. All 72 captures returned HTTP 200 without horizontal document overflow.
+Before is main `8d7740e`. After is the supplied four-commit patch plus browser regression checks. Desktop is 1440 × 1000; mobile is 390 × 844. All 72 captures returned HTTP 200 with root document width equal to the viewport. That measurement does not prove descendants are unclipped. Mobile invoice-detail and invoice-new have clipped descendants in both baseline and rebrand captures; their layout fixes remain deferred.
 
 The `/pay`, `/q`, `/a` captures use valid synthetic links. Both light and dark preferences render those documents light with ink controls. The dark captures demonstrate that preference override. The automated `/a` regression checks the invalid-link page; valid `/a` is verified in this capture set.
+
+## Paid-rule contrast correction
+
+Review found that the second paid amount rule used the bright settled fill, below 3:1 on white and paper. The follow-up uses a dedicated `--settled-rule`: `#21a15a` in light mode, 3.328:1 on white and 3.186:1 on paper. Dark mode retains `#1fc16b`; logo and chart fills keep their original green. The double-rule signature, monetary formatting and reduced-motion behavior remain.
+
+These fresh captures show the actual paid $350 invoice row after the correction. The original matrix and comparison boards above remain the evidence for the initial rebrand.
+
+- [Light desktop](fix1-invoice-list-light-desktop.png)
+- [Light mobile](fix1-invoice-list-light-mobile.png)
+- [Dark desktop](fix1-invoice-list-dark-desktop.png)
+- [Dark mobile](fix1-invoice-list-dark-mobile.png)
 
 ## Light desktop
 
