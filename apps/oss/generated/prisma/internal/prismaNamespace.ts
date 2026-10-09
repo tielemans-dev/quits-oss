@@ -4030,6 +4030,7 @@ export const RecurringInvoiceScalarFieldEnum = {
   currency: 'currency',
   taxRate: 'taxRate',
   notes: 'notes',
+  purchaseOrderRef: 'purchaseOrderRef',
   items: 'items',
   vatEvidence: 'vatEvidence',
   lastRunAt: 'lastRunAt',

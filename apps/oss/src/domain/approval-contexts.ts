@@ -51,6 +51,7 @@ export function documentFingerprint(
     totalTax: { toString(): string }
     totalGross: { toString(): string }
     notes: string | null
+    purchaseOrderRef?: string | null
     contactId: string
     buyerSnapshot: unknown
     sellerSnapshot?: unknown
@@ -71,6 +72,7 @@ export function documentFingerprint(
     document.totalTax.toString(),
     document.totalGross.toString(),
     document.notes,
+    document.purchaseOrderRef ?? null,
     document.items.map((item) => [
       item.description,
       item.quantity.toString(),
@@ -338,6 +340,7 @@ export const recurringApproval = (
         schedule.remainingRuns,
         schedule.dueInDays,
         schedule.notes,
+        schedule.purchaseOrderRef,
         schedule.autoSend,
       ]),
       details: {
@@ -350,6 +353,7 @@ export const recurringApproval = (
         remainingRuns: schedule.remainingRuns,
         paymentTerms: `Due in ${schedule.dueInDays} day${schedule.dueInDays === 1 ? "" : "s"}`,
         notes: schedule.notes,
+        purchaseOrderRef: schedule.purchaseOrderRef,
         currency: schedule.currency,
       },
     }

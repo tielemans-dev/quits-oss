@@ -251,6 +251,7 @@ export const createRecurringInvoice = defineCommand({
             currency: input.currency ?? settings?.defaultCurrency ?? settings?.currency ?? "USD",
             taxRate: input.taxRate,
             notes: input.notes ?? null,
+            purchaseOrderRef: input.purchaseOrderRef ?? null,
             items: input.items.map((line) => ({ ...line, vat: documentVat(line, input.taxRate) })),
             vatEvidence: toNullableJsonInput(input.vatEvidence),
           },
@@ -349,6 +350,7 @@ export const updateRecurringInvoice = defineCommand({
             ...(input.taxRate !== undefined ? { taxRate: input.taxRate } : {}),
             ...(input.currency !== undefined ? { currency: input.currency } : {}),
             ...(input.notes !== undefined ? { notes: input.notes } : {}),
+            ...(input.purchaseOrderRef !== undefined ? { purchaseOrderRef: input.purchaseOrderRef } : {}),
             ...(input.dueInDays !== undefined ? { dueInDays: input.dueInDays } : {}),
             ...(cadenceChanged
               ? {
@@ -517,6 +519,7 @@ const generateRun = (
         dueDate: formatCalendarDate(addUtcDays(runDate, schedule.dueInDays)),
         currency: schedule.currency,
         notes: schedule.notes ?? undefined,
+        purchaseOrderRef: schedule.purchaseOrderRef,
         taxRate: schedule.taxRate.toNumber(),
         items: items.data,
         vatEvidence: evidence.data,

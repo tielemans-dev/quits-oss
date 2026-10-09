@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { calendarDateInputSchema, documentLineInputSchema, documentLineV2InputSchema, refineDocumentLineKeys, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
+import { calendarDateInputSchema, documentLineInputSchema, documentLineV2InputSchema, refineDocumentLineKeys, documentTaxRateSchema, documentTaxRateV2Schema, purchaseOrderRefInputSchema } from "./invoices"
 
 import { draftVatEvidenceSchema } from "./vat"
 
@@ -41,6 +41,7 @@ export const recurringCreateInputSchema = z.object({
   vatEvidence: draftVatEvidenceSchema.optional(),
   currency: scheduleFields.currency.optional(),
   notes: scheduleFields.notes.optional(),
+  purchaseOrderRef: purchaseOrderRefInputSchema.optional(),
   intervalCount: scheduleFields.intervalCount.default(1),
   intervalUnit: scheduleFields.intervalUnit.default("month"),
   startDate: scheduleFields.startDate,
@@ -59,6 +60,7 @@ export const recurringUpdateInputSchema = z.object({
   vatEvidence: draftVatEvidenceSchema.optional(),
   currency: scheduleFields.currency.optional(),
   notes: scheduleFields.notes.nullable().optional(),
+  purchaseOrderRef: purchaseOrderRefInputSchema.optional(),
   intervalCount: scheduleFields.intervalCount.optional(),
   intervalUnit: scheduleFields.intervalUnit.optional(),
   startDate: scheduleFields.startDate.optional(),

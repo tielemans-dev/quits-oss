@@ -221,6 +221,70 @@ describeIfDatabase("MCP endpoint", () => {
       })
     })
 
+    it("advertises and round-trips the buyer order reference through MCP", async () => {
+      const org = await setup()
+      const client = await connect((await keyFor(org, "full_access", drafting)).secret)
+      const listing = await client.listTools()
+      for (const name of ["invoice_create_draft", "invoice_update_draft"]) {
+        const tool = listing.tools.find(tool => tool.name === name)
+        expect(tool?.inputSchema.properties).toHaveProperty("purchaseOrderRef")
+        expect(tool?.inputSchema.required).not.toContain("purchaseOrderRef")
+      }
+      const contact = await call(client, "contact_create", { name: "Buyer", clientRequestId: "ref-contact" })
+      const draft = await call(client, "invoice_create_draft", {
+        contactId: contact.value.result.id, dueDate: "2026-12-01", supplyDate: "2026-12-01",
+        purchaseOrderRef: " PO-agent ", items: [{ description: "Work", quantity: "1", unitPrice: "100" }], clientRequestId: "ref-create",
+      })
+      expect(draft.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: "PO-agent" } })
+      const id = draft.value.result.id
+      const updated = await call(client, "invoice_update_draft", { id, expectedRevision: 0, purchaseOrderRef: " PO-update ", clientRequestId: "ref-update" })
+      expect(updated.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: "PO-update" } })
+      expect((await call(client, "invoice_get", { id })).value.purchaseOrderRef).toBe("PO-update")
+      for (const [index, purchaseOrderRef] of ["\u200b", "PO-42\n", "\ufeffPO-42", "PO-\u202e42"].entries()) {
+        const invalid = await call(client, "invoice_update_draft", { id, expectedRevision: 1, purchaseOrderRef, clientRequestId: `ref-invalid-${index}` })
+        expect(invalid.isError).toBe(true)
+      }
+      expect((await call(client, "invoice_get", { id })).value.purchaseOrderRef).toBe("PO-update")
+      const cleared = await call(client, "invoice_update_draft", { id, expectedRevision: 1, purchaseOrderRef: " ", clientRequestId: "ref-clear" })
+      expect(cleared.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: null } })
+      await client.close()
+    })
+
+    for (const kind of ["quote", "recurring"] as const) {
+      it(`advertises, validates and round-trips ${kind} order references through MCP`, async () => {
+        const org = await setup()
+        const scopes = kind === "quote" ? ["quote:create", "quote:update", "quote:read"] : ["recurring:create", "recurring:update", "recurring:read"]
+        const client = await connect((await keyFor(org, "full_access", [...drafting, ...scopes])).secret)
+        const create = kind === "quote" ? "quote_create_draft" : "recurring_create"
+        const update = kind === "quote" ? "quote_update_draft" : "recurring_update"
+        const listing = await client.listTools()
+        for (const name of [create, update]) {
+          const tool = listing.tools.find(tool => tool.name === name)
+          expect(tool?.inputSchema.properties).toHaveProperty("purchaseOrderRef")
+          expect(tool?.inputSchema.required).not.toContain("purchaseOrderRef")
+        }
+        const contact = await call(client, "contact_create", { name: "Buyer", clientRequestId: "ref-contact" })
+        const created = await call(client, create, {
+          contactId: contact.value.result.id, purchaseOrderRef: " PO-agent ",
+          items: [{ description: "Work", quantity: "1", unitPrice: "100" }],
+          ...(kind === "quote" ? { expiryDate: "2099-01-01" } : { name: "Monthly", startDate: "2099-01-01" }),
+          clientRequestId: "ref-create",
+        })
+        expect(created.value).toMatchObject({ status: "completed", result: { purchaseOrderRef: "PO-agent" } })
+        const id = created.value.result.id
+        expect((await call(client, update, { id, ...(kind === "quote" ? { expectedRevision: 0 } : {}), purchaseOrderRef: " PO-updated ", clientRequestId: "ref-update" })).value)
+          .toMatchObject({ status: "completed", result: { purchaseOrderRef: "PO-updated" } })
+        for (const [index, purchaseOrderRef] of ["A".repeat(201), "\u200b", "PO\n", "\ufeffPO"].entries()) {
+          expect((await call(client, update, { id, ...(kind === "quote" ? { expectedRevision: 1 } : {}), purchaseOrderRef, clientRequestId: `ref-invalid-${index}` })).isError).toBe(true)
+        }
+        const fetched = kind === "quote" ? (await call(client, "quote_get", { id })).value : (await call(client, "recurring_list")).value.items[0]
+        expect(fetched.purchaseOrderRef).toBe("PO-updated")
+        expect((await call(client, update, { id, ...(kind === "quote" ? { expectedRevision: 1 } : {}), purchaseOrderRef: " ", clientRequestId: "ref-clear" })).value)
+          .toMatchObject({ status: "completed", result: { purchaseOrderRef: null } })
+        await client.close()
+      })
+    }
+
     it("queues invoice_send for approval and reports completion after a person approves", async () => {
       const org = await setup()
       const client = await connect((await keyFor(org, "approval_required", drafting)).secret)

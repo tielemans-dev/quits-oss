@@ -142,6 +142,7 @@ export const buildInvoiceDraft = (
           complianceStatus: compliance.status,
           complianceErrors: compliance.issues,
           notes: input.notes,
+          purchaseOrderRef: input.purchaseOrderRef,
           ...(origin
             ? {
                 recurringInvoiceId: origin.recurringInvoiceId,
@@ -217,6 +218,7 @@ export const updateInvoiceDraft = defineCommand({
       if (input.supplyDate) data.supplyDate = new Date(input.supplyDate)
       if (input.currency) data.currency = input.currency
       if (input.notes !== undefined) data.notes = input.notes
+      if (input.purchaseOrderRef !== undefined) data.purchaseOrderRef = input.purchaseOrderRef
 
       // Every draft edit upgrades to the current calculator, including notes-only edits.
       const currency = input.currency ?? existing.currency
@@ -322,6 +324,7 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
         disputed: String(invoice.disputed),
         acknowledgeDisputed: String(acknowledgeDisputed),
         number: invoice.number,
+        purchaseOrderRef: invoice.purchaseOrderRef,
         customer: invoice.contact.name,
         recipient,
         total: invoice.totalGross.toFixed(2),

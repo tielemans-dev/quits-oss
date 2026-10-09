@@ -48,6 +48,7 @@ function serializeSchedule(schedule: ScheduleRow, pricesIncludeTax = false) {
     currency: schedule.currency,
     taxRate: schedule.taxRate.toNumber(),
     notes: schedule.notes,
+    purchaseOrderRef: schedule.purchaseOrderRef,
     items,
     vatEvidence: schedule.vatEvidence,
     lineTotals: preview.result?.lines.map((line) => Number(line.net)) ?? [],

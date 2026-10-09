@@ -109,6 +109,12 @@ Approval is bound to what the person reviewed. If the document changes after the
 `code: "changed_since_review"` instead of sending the changed document. Request approval again after
 editing.
 
+Upgrade note: adding `purchaseOrderRef` to `documentFingerprint` and `recurringApproval` changes
+approval fingerprints even when the reference is absent. All invoice and quote send/resend approvals,
+and recurring resume approvals, pending from before this upgrade fail once with `changed_since_review`
+when approved. Pending recurring run-now approvals are affected too. Request fresh approval with a new
+`clientRequestId`; retrying the old id returns its stored outcome.
+
 The agent follows the outcome with `command_wait` (blocks up to 30 seconds and returns
 `{ command, timedOut }`) or `command_status`. Agents can only see their own commands. Do not resend
 the command while it is awaiting approval; with the same `clientRequestId` a resend just returns the
@@ -117,6 +123,21 @@ same pending record.
 Tool failures are returned as MCP tool errors with `{ "error": { "tag", "message", "code?",
 "issues?" } }`. Tags: `Forbidden`, `NotFound`, `InvalidState`, `ValidationFailed`,
 `ExternalFailure`, `InternalError`. Stack traces are never returned.
+
+## Buyer order references
+
+Invoice and quote draft create/update inputs, and recurring schedule create/update inputs, accept
+`purchaseOrderRef?: string | null` through the shared schema, including their MCP tools. Values are
+trimmed and limited to 200 characters after trimming. This is Quits's own sanity cap, not a Peppol,
+OIOUBL or EN 16931 requirement. Unicode format characters (`Cf`), control characters (`Cc`), line and
+paragraph separators (`Zl` and `Zp`), and XML-invalid characters are rejected. Format, control and
+separator characters are checked before trimming can hide them. Blank strings or `null` clear the
+reference; omission preserves an existing value.
+
+Read invoice and quote references from `view.buyer.purchaseOrderRef`, which is `null` when absent.
+Issued invoices retain their frozen reference. Quotes lock the reference after sending and carry it
+onto the invoice on conversion. Recurring schedules copy the reference onto each future generated
+draft; changing the schedule never changes existing drafts or issued invoices.
 
 ## Document numbers
 
@@ -267,8 +288,8 @@ existing payment methods. Its permissions and approval flow are unchanged.
 
 Invoice and quote drafts carry `editRevision`, initially `0`. Every draft edit increments it,
 including notes-only edits, linked invoice edits, adding or releasing deliverables, and changing a draft payment
-schedule to a sale. Pass `expectedRevision` on updates to refuse an outdated save with
-`InvalidState` / `stale_draft`. Omitting it preserves the previous update behavior. A refused save
+schedule to a sale. Pass `expectedRevision` on updates, on `invoice_add_deliverables`, and on the
+`invoices.scheduleAsSale` mutation to refuse an outdated save with `InvalidState` / `stale_draft`. Omitting it preserves the previous update behavior. A refused save
 changes neither the document nor its revision and emits no draft-update event.
 
 Invoice and quote create/update inputs, and recurring template create/update inputs, accept an

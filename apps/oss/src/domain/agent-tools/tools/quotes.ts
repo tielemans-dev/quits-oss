@@ -72,7 +72,7 @@ export const quoteTools: AgentTool[] = [
     description:
       "Creates a draft quote (estimate) for a contact. Drafts are free: nothing is sent and no " +
       "approval is needed. A draft has no quote number (number is null): the number is assigned when " +
-      "the quote is sent. expiryDate is YYYY-MM-DD; taxRate is a percentage.",
+      "the quote is sent. expiryDate is YYYY-MM-DD; taxRate is a percentage. purchaseOrderRef sets the buyer's order reference; blank or null clears it.",
     command: createQuoteDraft,
     input: quoteCreateDraftV2InputSchema,
     present: presentQuote,
@@ -81,7 +81,7 @@ export const quoteTools: AgentTool[] = [
   defineCommandTool({
     name: "quote_update_draft",
     title: "Update draft quote",
-    description: "Edits a draft quote. Passing items replaces all line items. Only drafts can be edited.",
+    description: "Edits a draft quote. Passing items replaces all line items. Only drafts can be edited. purchaseOrderRef sets the buyer's order reference; blank or null clears it, omission preserves it. Pass expectedRevision to reject stale edits.",
     command: updateQuoteDraft,
     input: quoteUpdateDraftV2InputSchema,
     present: presentQuote,

@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { keyVersionSchema, nonEmptyStringSchema, quoteIdSchema } from "./baseSchemas"
-import { calendarDateInputSchema, documentLineInputSchema, documentLineV2InputSchema, refineDocumentLineKeys, documentTaxRateSchema, documentTaxRateV2Schema } from "./invoices"
+import { calendarDateInputSchema, documentLineInputSchema, documentLineV2InputSchema, refineDocumentLineKeys, documentTaxRateSchema, documentTaxRateV2Schema, purchaseOrderRefInputSchema } from "./invoices"
 
 import { draftVatEvidenceSchema } from "./vat"
 
@@ -11,6 +11,7 @@ export const quoteCreateDraftInputSchema = z.object({
   expiryDate: calendarDateInputSchema,
   currency: currencySchema.optional(),
   notes: z.string().trim().max(5000).optional(),
+  purchaseOrderRef: purchaseOrderRefInputSchema.optional(),
   taxRate: documentTaxRateSchema.default(0),
   vatEvidence: draftVatEvidenceSchema.optional(),
   items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
@@ -23,6 +24,7 @@ export const quoteUpdateDraftInputSchema = z.object({
   expiryDate: calendarDateInputSchema.optional(),
   currency: currencySchema.optional(),
   notes: z.string().trim().max(5000).optional(),
+  purchaseOrderRef: purchaseOrderRefInputSchema.optional(),
   taxRate: documentTaxRateSchema.optional(),
   vatEvidence: draftVatEvidenceSchema.optional(),
   items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys).optional(),

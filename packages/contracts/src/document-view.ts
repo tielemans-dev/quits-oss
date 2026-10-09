@@ -10,8 +10,8 @@ import {
  * public page all render from it. Every money value is a decimal string at the currency's exponent;
  * a value that cannot be calculated is `null`, never a guess.
  *
- * Every object is strict and every field is present (nullable rather than optional), so a view has
- * one shape wherever it came from and can be hashed.
+ * Every object is strict. Builders emit nullable fields consistently so views can be hashed.
+ * Additive optional fields let version 1 readers accept older persisted views.
  */
 export const documentKindSchema = z.enum(["invoice", "quote", "creditNote"])
 export const documentStateSchema = z.enum(["draft", "issued"])
@@ -47,6 +47,8 @@ export const documentViewSellerSchema = z.strictObject({
 })
 
 export const documentViewBuyerSchema = z.strictObject({
+  /** BT-13. Optional for older version 1 views; builders emit null when absent. */
+  purchaseOrderRef: nullableString.optional(),
   name: nullableString,
   email: nullableString,
   company: nullableString,

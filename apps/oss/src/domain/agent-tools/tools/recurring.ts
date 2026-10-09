@@ -49,7 +49,7 @@ export const recurringTools: AgentTool[] = [
     title: "Create recurring invoice",
     description:
       "Creates a schedule that generates an invoice every interval. With an approval_required key an " +
-      "auto-sending schedule is saved paused; turn it on with recurring_resume, which needs approval.",
+      "auto-sending schedule is saved paused; turn it on with recurring_resume, which needs approval. purchaseOrderRef is the buyer's order reference copied onto each generated invoice.",
     command: createRecurringInvoice,
     input: recurringCreateV2InputSchema,
   }),
@@ -59,7 +59,7 @@ export const recurringTools: AgentTool[] = [
     title: "Update recurring invoice",
     description:
       "Changes a schedule. With an approval_required key, editing an active auto-sending schedule " +
-      "pauses it until a person resumes it.",
+      "pauses it until a person resumes it. purchaseOrderRef applies only to future generated invoices; blank or null clears it, omission preserves it.",
     command: updateRecurringInvoice,
     input: recurringUpdateV2InputSchema,
   }),

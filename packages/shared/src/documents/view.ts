@@ -84,12 +84,12 @@ function sellerView(seller: SellerSnapshot | null | undefined, phone: string | n
   }
 }
 
-function buyerView(buyer: BuyerSnapshot | null | undefined, contactId: string | null | undefined): DocumentViewBuyer | null {
+function buyerView(buyer: BuyerSnapshot | null | undefined, contactId: string | null | undefined, purchaseOrderRef: string | null | undefined): DocumentViewBuyer | null {
   if (!buyer) return null
   return {
     name: buyer.name ?? null, email: buyer.email ?? null, company: buyer.company ?? null, address: buyer.address ?? null,
     city: buyer.city ?? null, state: buyer.state ?? null, zip: buyer.zip ?? null, country: buyer.country ?? null,
-    taxIds: taxIdsView(buyer.taxIds), contactId: contactId ?? null,
+    taxIds: taxIdsView(buyer.taxIds), contactId: contactId ?? null, purchaseOrderRef: purchaseOrderRef ?? null,
   }
 }
 
@@ -186,6 +186,7 @@ export type DraftViewInput = {
   buyer?: BuyerSnapshot | null
   contactId?: string | null
   notes?: string | null
+  purchaseOrderRef?: string | null
   paymentReference?: string | null
 }
 
@@ -259,7 +260,7 @@ export function buildDraftView(input: DraftViewInput): DocumentView {
     version: 1, kind: input.kind, state: "draft", status: input.status,
     number: { value, preview: value === null ? input.previewNumber ?? null : null },
     locale: input.locale, timezone: input.timezone, currency: input.currency, exponent, pricesIncludeTax: input.pricesIncludeTax,
-    seller: sellerView(input.seller, input.sellerPhone, input.logoUrl), buyer: buyerView(input.buyer, input.contactId),
+    seller: sellerView(input.seller, input.sellerPhone, input.logoUrl), buyer: buyerView(input.buyer, input.contactId, input.purchaseOrderRef),
     dates: {
       issueDate: calendarDate(input.dates?.issueDate), supplyDate: calendarDate(input.dates?.supplyDate),
       dueDate: calendarDate(input.dates?.dueDate), expiryDate: calendarDate(input.dates?.expiryDate),
@@ -411,6 +412,7 @@ export type IssuedViewExtras = {
   notes?: string | null
   /** Defaults to the evidence the VAT groups agree on; null when they do not agree. */
   vatEvidence?: VatEvidence | null
+  purchaseOrderRef?: string | null
   paymentReference?: string | null
   expiryDate?: string | null
   /** A credit note: when the invoice it corrects was issued. The snapshot does not record it. */
@@ -465,7 +467,7 @@ export function buildIssuedView(snapshot: IssuedMoneySnapshot, extras: IssuedVie
     version: 1, kind: extras.kind, state: "issued", status: extras.status,
     number: { value: snapshot.number, preview: null },
     locale: extras.locale, timezone: extras.timezone, currency: snapshot.currency, exponent: snapshot.exponent, pricesIncludeTax,
-    seller: sellerView(snapshot.seller, extras.sellerPhone, extras.logoUrl), buyer: buyerView(snapshot.buyer, extras.contactId),
+    seller: sellerView(snapshot.seller, extras.sellerPhone, extras.logoUrl), buyer: buyerView(snapshot.buyer, extras.contactId, extras.purchaseOrderRef),
     dates: {
       issueDate: calendarDate(snapshot.issueDate), supplyDate: calendarDate(snapshot.supplyDate),
       dueDate: calendarDate(snapshot.dueDate), expiryDate: calendarDate(extras.expiryDate),

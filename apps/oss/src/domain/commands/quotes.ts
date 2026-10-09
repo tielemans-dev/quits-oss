@@ -131,6 +131,7 @@ export const createQuoteDraft = defineCommand({
             complianceStatus: compliance.status,
             complianceErrors: compliance.issues,
             notes: input.notes,
+            purchaseOrderRef: input.purchaseOrderRef,
             items: { create: calculated.itemRows },
           },
           include: { items: { orderBy: { sortOrder: "asc" } } },
@@ -188,6 +189,7 @@ export const updateQuoteDraft = defineCommand({
       if (input.expiryDate) data.expiryDate = new Date(input.expiryDate)
       if (input.currency) data.currency = input.currency
       if (input.notes !== undefined) data.notes = input.notes
+      if (input.purchaseOrderRef !== undefined) data.purchaseOrderRef = input.purchaseOrderRef
 
       // Every draft edit upgrades to the current calculator, including notes-only edits.
       const currency = input.currency ?? existing.currency
@@ -287,6 +289,7 @@ const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
       version: documentFingerprint(quote, recipient, [quote.expiryDate]),
       details: {
         number: quote.number,
+        purchaseOrderRef: quote.purchaseOrderRef,
         customer: quote.contact.name,
         recipient,
         total: quote.totalGross.toFixed(2),
