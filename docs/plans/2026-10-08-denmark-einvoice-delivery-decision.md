@@ -222,7 +222,7 @@ The proposed acknowledgment contract distinguishes new sends from existing submi
 | Event | Permitted previous state | Result |
 | --- | --- | --- |
 | `submitted(ref)` | Validated, `not_sent` | `queued`. Repeated same-reference acknowledgments outside `unknown` are no-ops; they cannot acknowledge a retry. |
-| `submission_outcome_unknown` | A possibly submitted validated document | `unknown`, action `reconcile`; never a send permission. |
+| `submission_outcome_unknown` | A possibly submitted validated document with no terminal outcome | `unknown`, action `reconcile`; never a send permission. Ignored after delivery, no route or permanent failure. |
 | `submission_reconciled(ref)` | `unknown`, or duplicate evidence for the same `queued` submission | Attaches a discovered reference and sets `queued`; a known reference must match. This event means a trusted provider lookup confirms queued status. |
 | `retry_submitted(ref)` | `failed` with provider-confirmed safe retry, or an exact duplicate acknowledgment while `queued` | Clears the failure and sets `queued`, even when the provider reuses the reference. The caller must correlate it to the permitted retry, not an old callback. |
 
@@ -230,6 +230,10 @@ The proposed acknowledgment contract distinguishes new sends from existing submi
 `delivered`, `no_route` or a permanent failure. Delivery remains terminal; older receiver responses
 and exact duplicates are ignored, while conflicting terminal transitions throw and must be retained
 as rejected evidence. The caller serializes updates and deduplicates events before applying them.
+No-route and permanent-failure outcomes also remain terminal through later uncertainty or failure
+events. Exact duplicate failures are no-ops. Conflicting failures, delivery receipts and receiver
+responses are rejected for investigation; they cannot silently change a terminal failure into a
+retryable submission.
 
 `transportRetryable` must mean the provider established non-delivery and a safe retry procedure.
 A timeout, generic 5xx or failed lookup does not establish that. A proposed retry schedule of 1, 5

@@ -151,6 +151,10 @@ function responseIsFinal(response: EinvoiceReceiverResponse | null) {
   return response.kind === "message_rejected" || FINAL_INVOICE_RESPONSES.has(response.code)
 }
 
+function transportFailedPermanently(state: EinvoiceDeliveryState) {
+  return state.transport === "no_route" || (state.transport === "failed" && !state.transportRetryable)
+}
+
 /**
  * Applies one provider or validator event. Callbacks can arrive late, twice or out of order:
  * duplicates are no-ops, an older receiver response never replaces a newer one, and a receiver
@@ -195,7 +199,7 @@ export function applyEinvoiceDeliveryEvent(state: EinvoiceDeliveryState, event: 
       return { ...state, transport: "queued", providerReference: event.providerReference, transportCode: null, transportRetryable: false }
     }
     case "submission_outcome_unknown": {
-      if (state.transport === "delivered" || state.transport === "no_route") return state
+      if (state.transport === "delivered" || transportFailedPermanently(state)) return state
       if (state.validation !== "passed") {
         throw new EinvoiceDeliveryTransitionError("not_validated", "Only a validated document can be submitted")
       }
@@ -203,8 +207,8 @@ export function applyEinvoiceDeliveryEvent(state: EinvoiceDeliveryState, event: 
     }
     case "transport_delivered": {
       if (state.transport === "delivered") return state
-      if (state.transport === "no_route") {
-        throw new EinvoiceDeliveryTransitionError("transport_settled", "A document without a route cannot be delivered")
+      if (transportFailedPermanently(state)) {
+        throw new EinvoiceDeliveryTransitionError("transport_settled", "A document with no route or a permanent failure cannot be delivered")
       }
       return { ...state, transport: "delivered", deliveredAt: event.at, transportCode: null, transportRetryable: false }
     }
@@ -213,11 +217,21 @@ export function applyEinvoiceDeliveryEvent(state: EinvoiceDeliveryState, event: 
       if (state.transport === "delivered") {
         throw new EinvoiceDeliveryTransitionError("transport_settled", "A delivered document cannot fail transport")
       }
+      const duplicate = event.type === "transport_no_route"
+        ? state.transport === "no_route" && state.transportCode === event.code
+        : state.transport === "failed" && state.transportCode === event.code && state.transportRetryable === event.retryable
+      if (duplicate) return state
+      if (transportFailedPermanently(state)) {
+        throw new EinvoiceDeliveryTransitionError("transport_settled", "A terminal transport failure cannot be replaced")
+      }
       return event.type === "transport_no_route"
         ? { ...state, transport: "no_route", transportCode: event.code, transportRetryable: false }
         : { ...state, transport: "failed", transportCode: event.code, transportRetryable: event.retryable }
     }
     case "receiver_response": {
+      if (transportFailedPermanently(state)) {
+        throw new EinvoiceDeliveryTransitionError("transport_settled", "A receiver response conflicts with a terminal transport failure")
+      }
       const current = state.receiverResponse
       const delivered = state.transport === "delivered"
         ? state

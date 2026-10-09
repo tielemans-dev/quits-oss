@@ -121,6 +121,35 @@ describe("e-invoice delivery lifecycle", () => {
 })
 
 describe("Denmark discovery review regressions", () => {
+  it.each(["invoice", "creditNote"] as const)("keeps terminal failures settled through late evidence for %s", (documentKind) => {
+    const start = initialEinvoiceDeliveryState("peppol_bis_billing_3", recipient, documentKind)
+    const queued = [validated, submitted].reduce(applyEinvoiceDeliveryEvent, start)
+    const terminalEvents = [
+      { type: "transport_no_route", code: "no_action_taken" },
+      { type: "transport_failed", code: "failed", retryable: false },
+    ] as const
+    for (const event of terminalEvents) {
+      const settled = applyEinvoiceDeliveryEvent(queued, event)
+      const lateUnknown = applyEinvoiceDeliveryEvent(settled, { type: "submission_outcome_unknown" })
+      expect(lateUnknown).toBe(settled)
+      expect(() => applyEinvoiceDeliveryEvent(lateUnknown, { type: "submission_reconciled", providerReference: "ref-1" }))
+        .toThrow(EinvoiceDeliveryTransitionError)
+      for (const conflictingEvent of [
+        { type: "transport_failed", code: "temporary-upstream-error", retryable: true },
+        { type: "transport_failed", code: "different-permanent-failure", retryable: false },
+        { type: "transport_no_route", code: "different-route-failure" },
+        { type: "transport_delivered", at: at(3) },
+        { type: "receiver_response", response: { kind: "invoice_response", code: "AB", at: at(3), note: null } },
+      ] satisfies EinvoiceDeliveryEvent[]) {
+        expect(() => applyEinvoiceDeliveryEvent(settled, conflictingEvent)).toThrow(EinvoiceDeliveryTransitionError)
+      }
+      expect(applyEinvoiceDeliveryEvent(settled, event)).toBe(settled)
+      expect(() => applyEinvoiceDeliveryEvent(settled, { type: "retry_submitted", providerReference: "ref-2" }))
+        .toThrow(EinvoiceDeliveryTransitionError)
+      expect(nextEinvoiceDeliveryAction(settled)).toBe(event.type === "transport_no_route" ? "fix_recipient" : "investigate")
+    }
+  })
+
   it.each([false, true])("reconciles queued status without sending again, known reference: %s", (known) => {
     const state = run(validated, ...(known ? [submitted] : []), { type: "submission_outcome_unknown" })
     const event = einvoiceDeliveryEventSchema.parse({ type: "submission_reconciled", providerReference: "ref-1" })
