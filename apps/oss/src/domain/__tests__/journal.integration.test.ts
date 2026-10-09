@@ -1279,6 +1279,8 @@ suite("operation journal and bounded recovery", () => {
   })
   it.each(["recover", "reconcile"] as const)("rolls back %s on an organization row timeout and retries only its step", async path => {
     const { actor, scope, delivery, job } = await uncertain()
+    const issuedBefore = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
+    expect(issuedBefore.status).toBe("sent")
     if (path === "recover") {
       // Acceptance is durable but completion was interrupted: recovery must never send again.
       await prisma.job.update({ where: { id: job.id }, data: { payload: { ...(job.payload as Prisma.JsonObject), providerMessageId: "known-accepted" }, result: Prisma.DbNull } })
@@ -1297,6 +1299,7 @@ suite("operation journal and bounded recovery", () => {
     expect((await documentJournal(actor, scope)).deliveries[0].state).toBe("delivery_confirmed")
     expect(await prisma.invoice.count({ where: { organizationId: actor.organizationId } })).toBe(1)
     expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })).toMatchObject({ number: issuedBefore.number, editRevision: issuedBefore.editRevision, purchaseOrderRef: issuedBefore.purchaseOrderRef })
   })
   it.each(["unkeyed", "resumed"] as const)("preserves %s executor atomicity and receipt semantics under the role row bound", async mode => {
     const { actor } = await setup()
