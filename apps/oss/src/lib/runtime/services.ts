@@ -1,4 +1,6 @@
 import type { AiProvider } from "../ai/provider"
+import { setOperationPolicy, type OperationPolicy } from "./operation-policy"
+export type { OperationPolicy, RuntimeOperation, OperationDecision } from "./operation-policy"
 import type { RenderInput } from "../../domain/documents/render-input"
 export type { RenderInput } from "../../domain/documents/render-input"
 
@@ -61,6 +63,7 @@ export type DocumentArtifactStore = {
 }
 
 export type RuntimeServices = {
+  operationPolicy?: OperationPolicy
   documentRenderer?: DocumentRenderer
   documentArtifactStore?: DocumentArtifactStore
   billingProvider: BillingProvider
@@ -94,10 +97,12 @@ export function setRuntimeServices(overrides: Partial<RuntimeServices>) {
     ...runtimeServices,
     ...overrides,
   }
+  setOperationPolicy(runtimeServices.operationPolicy)
 }
 
 export function resetRuntimeServices() {
   runtimeServices = { ...defaultServices }
+  setOperationPolicy(undefined)
 }
 
 export function getBillingProvider(): BillingProvider {
