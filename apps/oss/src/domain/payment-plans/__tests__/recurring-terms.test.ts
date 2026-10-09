@@ -11,6 +11,28 @@ const amend = (before: RecurringInstruction, change: Partial<RecurringInstructio
   recurringAmendmentImpact(before, { ...before, version: before.version + 1, effectiveFrom: "2026-11-01", ...change }, { today: "2026-10-08", generatedRuns: [], previewCount })
 
 describe("recurring term consent", () => {
+  it.each([0, 1, 3, 12])("requires consent when month-end clamping hides a later advance, preview %i", (previewCount) => {
+    const before: RecurringInstruction = { ...current, anchorDate: "2026-01-31", effectiveFrom: "2026-01-31", end: { type: "none" } }
+    const next = { ...before, version: 2, anchorDate: "2026-01-30", effectiveFrom: "2026-11-01" }
+    const oldRuns = previewRuns(before, next.effectiveFrom, 2)
+    const newRuns = previewRuns(next, next.effectiveFrom, 2)
+    expect(oldRuns.map((run) => run.runDate)).toEqual(["2026-11-30", "2026-12-31"])
+    expect(newRuns.map((run) => run.runDate)).toEqual(["2026-11-30", "2026-12-30"])
+    expect(oldRuns[1]?.dueDate).toBe("2027-01-14")
+    expect(newRuns[1]?.dueDate).toBe("2027-01-13")
+    const impact = amend(before, { anchorDate: next.anchorDate }, previewCount)
+    expect(impact.refusals).toEqual([])
+    expect(impact.futureRuns).toHaveLength(previewCount)
+    expect(impact.consent.required).toBe(true)
+  })
+
+  it("requires consent for an unproven cadence change even when the first invoice is unchanged", () => {
+    const before: RecurringInstruction = { ...current, anchorDate: "2026-01-01", effectiveFrom: "2026-01-01", intervalUnit: "week", intervalCount: 4, end: { type: "none" } }
+    const next = { ...before, version: 2, intervalUnit: "month" as const, intervalCount: 1 }
+    expect(previewRuns(before, before.effectiveFrom, 1)[0]?.runDate).toBe(previewRuns(next, next.effectiveFrom, 1)[0]?.runDate)
+    expect(recurringAmendmentImpact(before, next, { today: "2026-01-01", generatedRuns: [], previewCount: 0 }).consent.required).toBe(true)
+  })
+
   it.each([0, 1, 3])("requires consent for end extensions independently of preview length %i", (previewCount) => {
     const impact = amend(current, { end: { type: "on_date", endsAt: "2027-12-01" } }, previewCount)
     expect(impact.refusals).toEqual([])

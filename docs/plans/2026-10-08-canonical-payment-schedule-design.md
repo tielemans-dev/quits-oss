@@ -306,6 +306,12 @@ An unchanged or shortened date limit, a reduced remaining count, or adding a fin
 open-ended instruction needs no term consent. Price, cadence and earlier-payment checks still
 apply separately.
 
+An anchor or cadence change also requires consent when the amended instruction has future runs.
+The prototype does not prove that every future payment stays on or after its old date for a
+changed calendar phase. For example, moving a monthly anchor from 31 January to 30 January leaves
+the first November run on 30 November, but advances the December run from the 31st to the 30th.
+This check is conservative and independent of how many runs the preview displays.
+
 `after_runs` counts from each version's `effectiveFrom`, including authorized periods whose
 invoices have not yet been generated. For October through December with a count of three, a
 November amendment must specify two remaining runs to retain the December end. Keeping three

@@ -125,12 +125,16 @@ export function recurringAmendmentImpact(current: RecurringInstruction, next: Re
     return { before: a, after: b, changed: !a || !b || a.runDate !== b.runDate || a.periodGrossMinor !== b.periodGrossMinor || a.dueDate !== b.dueDate }
   })
 
+  const firstBefore = previewRuns(current, next.effectiveFrom, 1)[0], firstAfter = previewRuns(next, next.effectiveFrom, 1)[0]
   const reasons: string[] = []
   if (BigInt(next.periodGrossMinor) > BigInt(current.periodGrossMinor))
     reasons.push(`Price rises from ${formatMinor(current.periodGrossMinor, current.currency)} to ${formatMinor(next.periodGrossMinor, next.currency)} ${next.currency} per period`)
+  // Equal first dates can hide later advances when month-end clamping wears off.
+  // A different anchor or cadence has no proven whole-term dominance here.
   if (intervalDays(next) < intervalDays(current)) reasons.push("Invoices come more often")
+  else if (firstAfter && (next.anchorDate !== current.anchorDate || next.intervalUnit !== current.intervalUnit || next.intervalCount !== current.intervalCount))
+    reasons.push("Changes the recurrence anchor or cadence; future payment dates need consent")
   if (next.dueInDays < current.dueInDays) reasons.push("Payment terms are shorter")
-  const firstBefore = previewRuns(current, next.effectiveFrom, 1)[0], firstAfter = previewRuns(next, next.effectiveFrom, 1)[0]
   if (firstBefore && firstAfter && firstAfter.runDate < firstBefore.runDate) reasons.push(`The next invoice comes earlier, on ${firstAfter.runDate}`)
   const termReason = termConsentReason(current, next)
   if (termReason) reasons.push(termReason)
