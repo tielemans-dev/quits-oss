@@ -1,3 +1,4 @@
+import { getRuntimeCapabilities } from "../runtime/extensions"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { z } from "zod"
@@ -45,6 +46,7 @@ export function serializePublicAgreementSession(
     seller,
     document: publicAgreementDto(agreement),
     readLink: null,
+    depositsEnabled: getRuntimeCapabilities().agreements.depositsEnabled,
   } as const
 }
 
@@ -70,9 +72,10 @@ export const submitPublicAgreementDecision = createServerFn({ method: "POST" })
         ip: headers.get("x-forwarded-for")?.split(",")[0]?.trim().slice(0, 200) ?? null,
         userAgent: headers.get("user-agent")?.slice(0, 1000) ?? null,
       })
-      return { kind: "ready", ...result } as const
+      return { kind: "ready", ...result, depositsEnabled: getRuntimeCapabilities().agreements.depositsEnabled } as const
     } catch (error) {
       const code = error && typeof error === "object" && "code" in error ? error.code : "invalid"
+      if (code === "deposits_disabled") return { kind: "deposits_disabled" } as const
       if (code === "retry_later") return { kind: "retry_later" } as const
       if (code === "already_decided") return { kind: "already_decided" } as const
       return { kind: "invalid" } as const

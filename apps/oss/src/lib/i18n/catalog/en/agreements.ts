@@ -41,6 +41,7 @@ export const enAgreementsMessages = {
   "agreements.send": "Send",
   "agreements.sendingLater": "Sending arrives in the next release",
   "agreements.currency": "Currency",
+  "agreements.depositAcceptanceDisabled": "This advance-payment offer cannot be accepted while deposits are disabled.",
   "agreements.error": "The agreement could not be loaded or saved.",
   "agreements.noLines": "No deliverables yet.",
   "agreements.draftOnly": "Review your scope and terms before issuing or sending the agreement.",

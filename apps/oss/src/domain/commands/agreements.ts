@@ -184,7 +184,8 @@ export const updateAgreementDraft = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const existing = yield* lockedDraft(input.id)
-      if (input.deliverables) yield* requireDepositsEnabled(input.deliverables)
+      if (input.deliverables !== undefined || input.taxRate !== undefined || input.currency !== undefined)
+        yield* requireDepositsEnabled(input.deliverables ?? existing.deliverables)
       yield* validateTemplate(input.templateId)
       const data: Parameters<typeof db.agreement.update>[0]["data"] = {}
       if (input.contactId !== undefined) {
@@ -299,9 +300,10 @@ export const updateDeliverable = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const { agreement, line: existing } = yield* lockedDeliverable(input)
-      yield* requireDepositsEnabled([{ isDeposit: input.isDeposit }])
       const { id, agreementId: _agreementId, status, expectedDate, ...changes } = input
       const snapshotChanged = Object.values(changes).some((value) => value !== undefined)
+      if (snapshotChanged)
+        yield* requireDepositsEnabled([{ isDeposit: input.isDeposit ?? existing.isDeposit }])
       if (snapshotChanged && agreement.status !== "draft")
         return yield* new InvalidState({
           code: "not_draft",

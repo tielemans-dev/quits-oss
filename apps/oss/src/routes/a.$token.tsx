@@ -65,7 +65,12 @@ function AgreementRouteContent() {
               : { decision: verb, reason },
         },
       })
-      if (next.kind === "retry_later") setError(t("agreements.retryLater"))
+      if (next.kind === "deposits_disabled") {
+        setError(t("agreements.depositAcceptanceDisabled"))
+        setState(current => current.kind === "ready" && current.scope !== "sign_off"
+          ? { ...current, depositsEnabled: false }
+          : current)
+      } else if (next.kind === "retry_later") setError(t("agreements.retryLater"))
       else if (next.kind === "already_decided") setError(t("agreements.alreadyDecided"))
       else setState(next)
     } catch {
@@ -89,6 +94,7 @@ function AgreementRouteContent() {
       seller={seller}
       document={state.document}
       scope={state.scope}
+      depositsEnabled={state.depositsEnabled}
       token={state.readLink?.token ?? token}
       name={name}
       onNameChange={setName}

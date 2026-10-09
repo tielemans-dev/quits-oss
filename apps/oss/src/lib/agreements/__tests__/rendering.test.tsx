@@ -87,6 +87,7 @@ describe("agreement page, PDF and email share the restricted terms", () => {
             declineReason: null,
           }}
           scope="decide"
+          depositsEnabled={true}
           token="synthetic"
           name=""
           onNameChange={() => {}}

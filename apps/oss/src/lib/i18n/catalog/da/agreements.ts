@@ -41,6 +41,7 @@ export const daAgreementsMessages = {
   "agreements.send": "Send",
   "agreements.sendingLater": "Afsendelse kommer i næste udgivelse",
   "agreements.currency": "Valuta",
+  "agreements.depositAcceptanceDisabled": "Dette tilbud med forudbetaling kan ikke accepteres, mens forudbetalinger er deaktiveret.",
   "agreements.error": "Aftalen kunne ikke indlæses eller gemmes.",
   "agreements.noLines": "Ingen leverancer endnu.",
   "agreements.draftOnly": "Gennemgå omfang og vilkår, før du udsteder eller sender aftalen.",
