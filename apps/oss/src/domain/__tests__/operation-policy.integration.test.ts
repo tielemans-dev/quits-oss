@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
+import { authorizedProcedure, router } from "../../trpc/init"
 import { prisma } from "../../lib/db"
 import { setRuntimeServices, resetRuntimeServices } from "../../lib/runtime/services"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
@@ -69,6 +71,30 @@ describe.skipIf(!hasTestDatabase)("runtime operation policy at execution", () =>
     resetRuntimeServices()
     await runJobsNow([job.id], new Date(now.getTime() + 60_000))
     expect(newWork).toHaveBeenCalledOnce()
+  })
+
+  it("restricts direct mutations after actor permissions while leaving reads available", async () => {
+    const org = await setup()
+    const handler = vi.fn(() => "written")
+    const api = router({
+      write: authorizedProcedure("contact:create").input(z.object({ name: z.string() })).mutation(handler),
+      read: authorizedProcedure("contact:read").query(() => "read"),
+    })
+    const caller = (userId: string) => api.createCaller({ session: {
+      user: { id: userId, email: "synthetic@test.quits.invalid", name: "Synthetic" },
+      session: { activeOrganizationId: org.organizationId },
+    } } as never)
+    const authorize = vi.fn(async () => ({ allowed: false as const, message: "Synthetic restriction" }))
+    setRuntimeServices({ operationPolicy: { authorize } })
+    await expect(caller("outsider").write({ name: "Denied" })).rejects.toMatchObject({ code: "FORBIDDEN" })
+    expect(authorize).not.toHaveBeenCalled()
+    await expect(caller(org.actors.admin.userId).read()).resolves.toBe("read")
+    expect(authorize).not.toHaveBeenCalled()
+    await expect(caller(org.actors.admin.userId).write({ name: "Denied" })).rejects.toMatchObject({ code: "FORBIDDEN" })
+    expect(handler).not.toHaveBeenCalled()
+    expect(authorize).toHaveBeenCalledWith(expect.objectContaining({ kind: "procedure", name: "write", input: { name: "Denied" } }))
+    resetRuntimeServices()
+    await expect(caller(org.actors.admin.userId).write({ name: "Recovered" })).resolves.toBe("written")
   })
 
   it("defers due recurring generation without advancing or pausing the schedule", async () => {
