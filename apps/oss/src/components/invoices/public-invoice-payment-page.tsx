@@ -157,7 +157,7 @@ function PublicInvoiceDocument({
                 {invoiceTaxIds(invoice.sellerSnapshot?.taxIds).map(id => <p key={id}>{id}</p>)}
               </div>
               <div><h2>{t("pdf.billTo")}</h2>
-                <p>{invoice.buyerSnapshot ? invoice.buyerSnapshot.name : invoice.contact.name}</p><p>{invoice.buyerSnapshot?.company}</p>
+                <p>{invoice.buyerSnapshot?.name}</p><p>{invoice.buyerSnapshot?.company}</p>
                 {buyerAddress(invoice.buyerSnapshot).map((line, index) => <p key={index}>{line}</p>)}
               </div>
             </div>
@@ -219,11 +219,11 @@ function PublicInvoiceDocument({
             ) : null}
 
             <div className="grid gap-4 rounded-lg border p-4">
-              <InfoBlock label={t("public.document.customer")} value={invoice.buyerSnapshot ? invoice.buyerSnapshot.name ?? "" : invoice.contact.name} />
+              <InfoBlock label={t("public.document.customer")} value={invoice.buyerSnapshot?.name ?? ""} />
               <InfoBlock
                 label={t("public.document.company")}
                 value={
-                  (invoice.buyerSnapshot ? invoice.buyerSnapshot.company : invoice.contact.company) ??
+                  invoice.buyerSnapshot?.company ??
                   t("public.document.notProvided")
                 }
               />

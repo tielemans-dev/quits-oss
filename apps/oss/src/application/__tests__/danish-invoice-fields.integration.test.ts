@@ -14,6 +14,7 @@ import { runOrganizationJobs } from "../../domain/scheduler"
 import { composeInvoiceEmail } from "../../domain/documents/invoice-email"
 import { serializePublicInvoiceSession } from "../../lib/payments/public-session"
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
+import { buildTotals } from "../../lib/documents/totals"
 import type { RenderInput } from "../../domain/documents/render-input"
 
 const cleanups: Array<() => Promise<void>> = []
@@ -35,6 +36,22 @@ async function setup() {
 const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.id) => issueDocument({ kind: "invoice", actor: context.org.actors.admin, commandInput: { id, supplyDate: "2026-10-08", allowSendWithoutEmail: true } })
 
 ;(hasTestDatabase ? describe : describe.skip)("Danish full invoice issuance", () => {
+  it.each([false, true])("preserves the applicable rate for an issued DKK 0.01 net sale in policy mode %s", async restricted => {
+    const context = await setup()
+    await prisma.orgSettings.update({ where: { organizationId: context.org.organizationId }, data: { pricesIncludeTax: false } })
+    if (restricted) enable()
+    const draft = await executeCommand(createInvoiceDraft, { ...context.input, items: [{ description: "Tiny ordinary service", quantity: 1, unitPrice: 0.01 }] }, { actor: context.org.actors.admin })
+    if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+    expect(await issue(context, draft.result.id)).toMatchObject({ status: "completed" })
+    const candidate = await prisma.issuanceCandidate.findFirstOrThrow({ where: { documentId: draft.result.id } })
+    const render = candidate.renderInput as unknown as Extract<RenderInput, { kind: "invoice" }>
+    expect(render.pdf.invoice).toMatchObject({ subtotal: 0.01, taxAmount: 0, total: 0.01 })
+    expect(render.pdf.invoice.vatRows).toEqual([{ ratePercent: "25", net: "0.01", tax: "0.00", gross: "0.01" }])
+    for (const locale of ["da-DK", "en-US"]) {
+      expect(buildTotals({ ...render.pdf.invoice, basis: "net", locale }).lines.filter(row => row.kind === "tax"))
+        .toEqual([{ kind: "tax", label: locale === "da-DK" ? "Moms (25 %)" : "Tax (25%)", amount: "0.00" }])
+    }
+  })
   it.each([false, true])("uses net PDF lines and freezes legal identity in policy mode %s", async restricted => {
     const context = await setup()
     if (restricted) enable()

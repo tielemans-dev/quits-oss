@@ -17,3 +17,5 @@ Before screenshots use main at `8d7740eb9abcbae07a5db8e8969c6c1edecd6ec8`. After
 | email | DA / mobile | [Before](before-email-da-mobile.png) | [After](after-email-da-mobile.png) |
 | email | EN / desktop | [Before](before-email-en-desktop.png) | [After](after-email-en-desktop.png) |
 | email | EN / mobile | [Before](before-email-en-mobile.png) | [After](after-email-en-mobile.png) |
+
+Correction round 1 adds [zero-rounded VAT and absent historical buyer evidence](fix1/README.md), including new actual-issued DA/EN PDFs and public/email desktop/mobile captures.

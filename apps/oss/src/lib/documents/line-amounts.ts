@@ -53,7 +53,7 @@ const isZero = (amount: string) => !/[1-9]/.test(amount)
  * see which part carried no VAT.
  */
 export function printableVatRows(rows: readonly VatRow[]): VatRow[] {
-  if (rows.length === 1 && isZero(rows[0]!.tax)) return []
+  if (rows.length === 1 && isZero(rows[0]!.ratePercent)) return []
   return [...rows]
 }
 
