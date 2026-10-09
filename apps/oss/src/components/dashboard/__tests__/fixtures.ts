@@ -1,11 +1,27 @@
 import type { Summary } from "../summary-model"
 
+export const exponentOf = (currency: string) => (currency === "JPY" ? 0 : ["BHD", "KWD"].includes(currency) ? 3 : 2)
+
 export const bucket = (currency: string, amount: string, count = 1, oldestDaysOverdue?: number) => ({
   currency,
   amount,
   count,
-  exponent: currency === "JPY" ? 0 : 2,
+  exponent: exponentOf(currency),
   ...(oldestDaysOverdue === undefined ? {} : { oldestDaysOverdue }),
+})
+
+/** An unknown currency: its two decimals are the database's scale, not an ISO exponent. */
+export const storageBucket = (currency: string, amount: string, count = 1) => ({
+  ...bucket(currency, amount, count),
+  exponent: 2,
+  precisionSource: "storage" as const,
+})
+
+/** As the server sends an unvalued-only currency: counted in the total, present only in `unvalued`. */
+export const unvaluedOnly = (...unvalued: ReturnType<typeof bucket>[]) => ({
+  count: unvalued.reduce((sum, item) => sum + item.count, 0),
+  buckets: [] as ReturnType<typeof bucket>[],
+  unvalued,
 })
 
 export const total = (...buckets: ReturnType<typeof bucket>[]) => ({

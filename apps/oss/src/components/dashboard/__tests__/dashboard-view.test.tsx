@@ -30,7 +30,7 @@ vi.mock("@tanstack/react-router", () => ({
 import { I18nProvider } from "../../../lib/i18n/react"
 import { DashboardView } from "../dashboard-view"
 import type { Summary } from "../summary-model"
-import { activeSummary, activityEvent, bucket, emptySummary, emptyTotal, money, MONTHS, quoteAttention, total } from "./fixtures"
+import { activeSummary, activityEvent, bucket, emptySummary, emptyTotal, money, MONTHS, quoteAttention, storageBucket, total, unvaluedOnly } from "./fixtures"
 
 afterEach(cleanup)
 
@@ -564,5 +564,83 @@ describe("the animated count-up", () => {
       </I18nProvider>
     )
     expect(heroText(view.container)).toBe("25.000,00\u00a0kr.")
+  })
+})
+
+describe("unvalued-only and three-decimal currencies", () => {
+  it("shows an unvalued-only currency once, quietly, with its own decimals, and not in the hero figure", () => {
+    const summary = activeSummary()
+    summary.outstanding = {
+      count: 6,
+      buckets: summary.outstanding.buckets,
+      unvalued: [bucket("DKK", "20000.00", 3), bucket("BHD", "12345.678"), storageBucket("ZZZ", "75.50")],
+    }
+    const { container } = renderView(summary)
+    const hero = container.querySelector("[data-slot=dashboard-hero]")!
+    expect(hero.querySelector("[data-slot=amount]")!.textContent).toBe("20.000,00\u00a0kr.")
+    const lines = Array.from(hero.querySelectorAll("ul")).pop()!.textContent!
+    expect(lines.match(/12\.345,678\sBHD udestående/g)).toHaveLength(1)
+    // An unknown currency: two decimals and the ISO code.
+    expect(lines.match(/75,50\sZZZ udestående/g)).toHaveLength(1)
+    expect(lines).toContain("1.800,00\u00a0€ udestående")
+    expect(container.textContent).not.toContain("20.075")
+  })
+
+  it("draws an exponent-3 figure with three decimals when it is all that is owed", () => {
+    const summary = activeSummary({
+      outstanding: unvaluedOnly(bucket("BHD", "12345.678")),
+      overdue: { ...emptyTotal(), oldestDaysOverdue: 0 },
+      paidThisMonth: emptyTotal(),
+      attention: [],
+      incoming: [],
+    })
+    const { container } = renderView(summary)
+    const figure = container.querySelector("[data-slot=dashboard-hero] [data-slot=amount]")!
+    expect(figure.textContent).toBe("12.345,678\u00a0BHD")
+    expect(figure.querySelectorAll(".tabular-nums.relative")[0]!.textContent).toBe("678")
+  })
+})
+
+describe("received, not paid", () => {
+  it("calls the hero segment Modtaget, never Betalt", () => {
+    const { container } = renderView(activeSummary())
+    const hero = container.querySelector("[data-slot=dashboard-hero]")!
+    expect(hero.textContent).toContain("Modtaget i oktober")
+    expect(hero.textContent).not.toMatch(/Betalt/)
+    expect(hero.querySelector("[role=img]")!.getAttribute("aria-label")).toBe(
+      "Fordeling af oktober: modtaget 10.000,00\u00a0kr., på vej 11.250,00\u00a0kr., forfaldent 8.750,00\u00a0kr."
+    )
+  })
+
+  it("says Received in English", () => {
+    const { container } = render(
+      <I18nProvider locale="en-US">
+        <DashboardView summary={activeSummary()} sendReminder={async () => ({ delivery: "sent" })} />
+      </I18nProvider>
+    )
+    const hero = container.querySelector("[data-slot=dashboard-hero]")!
+    expect(hero.textContent).toContain("Received in October")
+    expect(hero.textContent).not.toMatch(/Paid/)
+    expect(screen.getByText("Received")).toBeTruthy()
+  })
+})
+
+describe("calendar dates in the view", () => {
+  const original = process.env.TZ
+  afterEach(() => {
+    if (original === undefined) delete process.env.TZ
+    else process.env.TZ = original
+  })
+
+  it("prints a quote's expiry day as stored, in a western time zone", () => {
+    process.env.TZ = "America/New_York"
+    renderView(emptySummary({ outstanding: total(bucket("DKK", "100.00")), attention: [quoteAttention()] }))
+    expect(screen.getByText("Tilbud T-2026-014 udløber 12. okt.")).toBeTruthy()
+  })
+
+  it("counts days to a stored due date from the organization's today, in a western time zone", () => {
+    process.env.TZ = "America/New_York"
+    const { container } = renderView(activeSummary())
+    expect(within(container.querySelector("[data-slot=dashboard-incoming]") as HTMLElement).getByText("Forfalder om 3 dage")).toBeTruthy()
   })
 })

@@ -18,8 +18,8 @@ export const daDashboardMessages = {
   "dashboard.hero.otherOutstanding": "{amount} udestående",
   "dashboard.hero.otherOverdue": "heraf {amount} forfaldent",
   "dashboard.hero.splitLabel": "Fordeling af {month}",
-  "dashboard.hero.splitSummary": "Fordeling af {month}: betalt {paid}, på vej {pending}, forfaldent {overdue}",
-  "dashboard.hero.legendPaid": "Betalt i {month}",
+  "dashboard.hero.splitSummary": "Fordeling af {month}: modtaget {paid}, på vej {pending}, forfaldent {overdue}",
+  "dashboard.hero.legendPaid": "Modtaget i {month}",
   "dashboard.hero.legendPending": "På vej",
   "dashboard.hero.legendOverdue": "Forfaldent",
 

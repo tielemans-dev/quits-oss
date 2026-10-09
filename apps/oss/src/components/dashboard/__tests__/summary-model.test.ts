@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 
 import {
   attentionAction,
@@ -12,8 +12,9 @@ import {
   streakVisible,
   toMinor,
 } from "../summary-model"
+import { formatShortDate } from "../format-relative"
 import { reminderFailure } from "../use-reminders"
-import { activeSummary, bucket, emptySummary, emptyTotal, money, MONTHS, total } from "./fixtures"
+import { activeSummary, bucket, emptySummary, emptyTotal, money, MONTHS, storageBucket, total, unvaluedOnly } from "./fixtures"
 
 describe("classifyDashboard", () => {
   it("is first-run when nothing exists, so there is nothing to total", () => {
@@ -76,13 +77,49 @@ describe("presentHero money", () => {
     expect(presentHero(summary).overdue?.oldestDaysOverdue).toBe(14)
   })
 
-  it("never reads the unvalued subset: it is part of the buckets, not extra money", () => {
+  it("never adds the unvalued overlap: a currency in both buckets and unvalued counts once", () => {
     const summary = activeSummary()
-    summary.outstanding.unvalued = [bucket("DKK", "20000.00", 3)]
+    summary.outstanding.unvalued = [bucket("DKK", "20000.00", 3), bucket("EUR", "1800.00")]
     summary.overdue.unvalued = [bucket("DKK", "8750.00")]
     const hero = presentHero(summary)
     expect(hero.outstanding?.amount).toBe("20000.00")
+    expect(hero.others.map((other) => other.currency)).toEqual(["EUR"])
     expect(hero.segments).toEqual(presentHero(activeSummary()).segments)
+  })
+
+  it("shows a currency that is only in unvalued once, as a secondary line, and adds it to nothing", () => {
+    const summary = activeSummary()
+    summary.outstanding = {
+      count: 5,
+      buckets: summary.outstanding.buckets,
+      unvalued: [bucket("DKK", "20000.00", 3), storageBucket("ZZZ", "75.50")],
+    }
+    const hero = presentHero(summary)
+    expect(hero.currency).toBe("DKK")
+    expect(hero.outstanding?.amount).toBe("20000.00")
+    expect(hero.others.map((other) => [other.currency, other.outstanding.amount])).toEqual([
+      ["EUR", "1800.00"],
+      ["ZZZ", "75.50"],
+    ])
+    expect(JSON.stringify(hero)).not.toContain("20075.50")
+    expect(hero.segments).toEqual(presentHero(activeSummary()).segments)
+  })
+
+  it("makes an unvalued-only currency the figure when it is all that is owed", () => {
+    const summary = activeSummary({
+      outstanding: unvaluedOnly(bucket("BHD", "12345.678")),
+      overdue: { ...emptyTotal(), oldestDaysOverdue: 0 },
+      paidThisMonth: emptyTotal(),
+    })
+    const hero = presentHero(summary)
+    expect(hero.currency).toBe("BHD")
+    expect(hero.outstanding).toMatchObject({ amount: "12345.678", exponent: 3 })
+    expect(hero.others).toEqual([])
+  })
+
+  it("reads three decimals exactly", () => {
+    expect(toMinor({ amount: "12345.678", exponent: 3 })).toBe(12345678n)
+    expect(toMinor({ amount: "0.005", exponent: 3 })).toBe(5n)
   })
 
   it("falls back to the owed currency when nothing is owed in the base currency", () => {
@@ -242,4 +279,24 @@ describe("reminderFailure", () => {
     expect(reminderFailure(null)).toBe("unknown")
     expect(reminderFailure("boom")).toBe("unknown")
   })
+})
+
+describe("calendar dates", () => {
+  const original = process.env.TZ
+  afterEach(() => {
+    if (original === undefined) delete process.env.TZ
+    else process.env.TZ = original
+  })
+
+  it.each(["America/New_York", "Pacific/Auckland", "UTC"])(
+    "never shifts a stored calendar day in %s",
+    (zone) => {
+      process.env.TZ = zone
+      expect(formatShortDate("2026-10-12", "da-DK")).toBe("12. okt.")
+      expect(formatShortDate("2026-10-12", "en-GB")).toBe("12 Oct")
+      expect(formatShortDate("2026-01-01", "da-DK")).toBe("1. jan.")
+      expect(dueLabel({ dueDate: "2026-10-09", daysOverdue: 0, isOverdue: false }, "2026-10-08")).toEqual({ kind: "tomorrow" })
+      expect(dueLabel({ dueDate: "2026-10-18", daysOverdue: 0, isOverdue: false }, "2026-10-08")).toEqual({ kind: "later", days: 10 })
+    }
+  )
 })

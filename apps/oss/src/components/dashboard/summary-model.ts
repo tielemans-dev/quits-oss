@@ -9,8 +9,10 @@ import { minorToDecimal } from "../kvit/amount-format"
  *
  * - Money is per currency. Nothing here adds or converts across currencies; the hero is one
  *   currency and every other one is a secondary line of its own.
- * - `unvalued` is a subset of `buckets` (money without a base valuation). It is never read here,
- *   so it can never be shown as extra money.
+ * - `unvalued` overlaps `buckets` for supported currencies (money without a base valuation), so it
+ *   is never added to anything. It is read for one purpose only: a currency that is in `unvalued`
+ *   and in none of the valued `buckets` (an unknown or three-decimal currency) exists nowhere else,
+ *   so it is shown once, on a line of its own. See `bucketFor` and `currenciesOf`.
  */
 
 export type Summary = DashboardSummary
@@ -41,7 +43,22 @@ export function classifyDashboard(summary: Summary): DashboardState {
 }
 
 export function bucketFor(total: DashboardTotal, currency: string): Bucket | null {
-  return total.buckets.find((bucket) => bucket.currency === currency) ?? null
+  return (
+    total.buckets.find((bucket) => bucket.currency === currency) ??
+    // Only reached for a currency absent from every valued bucket, so it is never a second
+    // figure for money already counted.
+    total.unvalued.find((bucket) => bucket.currency === currency) ??
+    null
+  )
+}
+
+/** The valued currencies of a total, then those that appear only in `unvalued`, each once. */
+export function currenciesOf(total: DashboardTotal): string[] {
+  const valued = total.buckets.map((bucket) => bucket.currency)
+  const unvaluedOnly = total.unvalued
+    .map((bucket) => bucket.currency)
+    .filter((currency) => !valued.includes(currency))
+  return [...valued, ...unvaluedOnly]
 }
 
 /** The digits of an exact decimal string as minor units. "12.50" is 1250n; "7" with exponent 0 is 7n. */
@@ -65,17 +82,14 @@ export type HeroModel = {
   paid: Bucket | null
   /** Shares of paid, on its way and overdue, summing to 1; null when all three are zero. */
   segments: { paid: number; pending: number; overdue: number } | null
-  /** Every other currency that is owed, each on its own line. */
+  /** Every other currency that is owed, valued or only unvalued, each once on its own line. */
   others: Array<{ currency: string; outstanding: Bucket; overdue: Bucket | null }>
 }
 
 export function presentHero(summary: Summary): HeroModel {
   const { baseCurrency, outstanding, overdue, paidThisMonth } = summary
-  const owed = outstanding.buckets
-  const currency =
-    owed.length === 0 || owed.some((bucket) => bucket.currency === baseCurrency)
-      ? baseCurrency
-      : owed[0]!.currency
+  const owed = currenciesOf(outstanding)
+  const currency = owed.length === 0 || owed.includes(baseCurrency) ? baseCurrency : owed[0]!
 
   const owedBucket = bucketFor(outstanding, currency)
   const overdueBucket = bucketFor(overdue, currency)
@@ -103,11 +117,11 @@ export function presentHero(summary: Summary): HeroModel {
             overdue: Number(overdueMinor) / Number(total),
           },
     others: owed
-      .filter((bucket) => bucket.currency !== currency)
-      .map((bucket) => ({
-        currency: bucket.currency,
-        outstanding: bucket,
-        overdue: bucketFor(overdue, bucket.currency),
+      .filter((other) => other !== currency)
+      .map((other) => ({
+        currency: other,
+        outstanding: bucketFor(outstanding, other)!,
+        overdue: bucketFor(overdue, other),
       })),
   }
 }

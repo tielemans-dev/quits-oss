@@ -18,8 +18,8 @@ export const enDashboardMessages = {
   "dashboard.hero.otherOutstanding": "{amount} outstanding",
   "dashboard.hero.otherOverdue": "of which {amount} overdue",
   "dashboard.hero.splitLabel": "How {month} splits",
-  "dashboard.hero.splitSummary": "How {month} splits: paid {paid}, on its way {pending}, overdue {overdue}",
-  "dashboard.hero.legendPaid": "Paid in {month}",
+  "dashboard.hero.splitSummary": "How {month} splits: received {paid}, on its way {pending}, overdue {overdue}",
+  "dashboard.hero.legendPaid": "Received in {month}",
   "dashboard.hero.legendPending": "On its way",
   "dashboard.hero.legendOverdue": "Overdue",
 
