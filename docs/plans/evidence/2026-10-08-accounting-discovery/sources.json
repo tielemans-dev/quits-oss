@@ -1,0 +1,398 @@
+{
+  "notice": "Read-only public primary-source research. Excerpts are retrieval evidence, not advice or accountant approval. Raw response hashes identify received bytes; full remote documents are not redistributed. Statutory PDFs are cited editions, not a consolidated amendment audit. Stripe .md URLs are the documentation text representations of the linked HTML pages.",
+  "sources": [
+    {
+      "references": [
+        "A1",
+        "R5"
+      ],
+      "title": "Momsloven LBK 209/2024",
+      "url": "https://www.retsinformation.dk/eli/lta/2024/209/pdf",
+      "final_url": "https://www.retsinformation.dk/eli/lta/2024/209/pdf",
+      "accessed_at_utc": "2026-10-08T16:11:50.005825+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "2fd59ea14d2deb37a8649cfa9c8bff65fb4a1b73cdba49be50ff892c330616c3",
+      "sections_read": "Sections 23, 27, 52 a",
+      "excerpts": [
+        "§ 52 a. Enhver afgiftspligtig person skal for levering\n       hver art til investeringsguld, jf. § 73 a, eller                   af varer eller ydelser udstede en faktura til aftageren (kun-\n2) sædvanligvis leverer guld til industrielt form",
+        "§ 23. Afgiftspligten indtræder på det tidspunkt, hvor leve-\n                                                                         1, anses leveringen for at finde sted hver den sidste dag i\nringen af varen eller ydelsen finder sted (leve"
+      ]
+    },
+    {
+      "references": [
+        "A2",
+        "R1"
+      ],
+      "title": "Skattestyrelsen D.A.7.2.5, 2026-2",
+      "url": "https://info.skat.dk/data.aspx?oid=2060295&vid=221020",
+      "final_url": "https://info.skat.dk/data.aspx?oid=2060295&vid=221020",
+      "accessed_at_utc": "2026-10-08T16:08:11.308619+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "d7f02841b8afec2ae790cb0d3a6265f9887ed3a7fd42ad86ccca1f1e8f2f39c3",
+      "sections_read": "Regel; råderet; specificeret; mixed assortment; FIRIN",
+      "excerpts": [
+        "I tilfælde, hvor leverandøren modtager en hel eller delvis betaling for leverancen, inden leveringen finder sted eller faktura er udstedt, er betalingstidspunktet leveringstidspunktet.\nReglen har betydning for afgørelsen af beskatningstidsp",
+        "Det kræver også, at varerne eller ydelserne kun er underlagt en enkelt afgiftssats. Se sag C-520/10, Lebara Ltd.\nVed modtagelsen af forudbetaling er det på tidspunktet for modtagelsen af forudbetalingen ikke muligt at afgøre, om den senere ",
+        "så længe leverandøren ikke har tilbagebetalt forudbetalingen, kan den skyldige moms som følge af opkrævningen af forudbetalingen ikke nedsættes i henhold til bestemmelserne i momssystemdirektivets artikel 65 (ML § 23, stk. 3), sammenholdt m"
+      ]
+    },
+    {
+      "references": [
+        "A3"
+      ],
+      "title": "Skattestyrelsen D.A.8.1.1.13, 2026-2",
+      "url": "https://info.skat.dk/data.aspx?oid=1978058&vid=221020",
+      "final_url": "https://info.skat.dk/data.aspx?oid=1978058&vid=221020",
+      "accessed_at_utc": "2026-10-08T16:08:23.783540+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "87bc6e067221d3a89099f269ab5efbf4a901bb242f726b43bb464bf0140632c9",
+      "sections_read": "Lovgrundlag; Regel",
+      "excerpts": [
+        "Med en momssats på 25 pct. vil nettobeløbet, momsgrundlaget, altså udgøre 80 pct. af det fulde beløb, inkl. moms. Eksempel: 100 kr. udgør 80 pct. af 125 kr. (100 kr. + 25 kr. i moms).\nPrint aktuel side\nKolofon\nDokumentet gælder fra: Version"
+      ]
+    },
+    {
+      "references": [
+        "A4",
+        "R4"
+      ],
+      "title": "Skattestyrelsen A.B.3.3.1.2, 2026-2",
+      "url": "https://info.skat.dk/data.aspx?oid=2068787&vid=221020",
+      "final_url": "https://info.skat.dk/data.aspx?oid=2068787&vid=221020",
+      "accessed_at_utc": "2026-10-08T16:08:24.214015+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "5a51205a1712533a102f3a4c217a91cf1184488dd826cfbc20c54200af49518c",
+      "sections_read": "Pligten; Faktureringstidspunkt; Kreditnotaer",
+      "excerpts": [
+        "Hvis en del af en samlet leverance kræves betalt, inden leverancen er afsluttet, fx ved a conto eller ratebetaling, skal der udstedes særskilt faktura for denne del. Se ML § 52 a, stk. 1, og afsnit D.A.7.2.5.\nFakturering via en tredjeperson",
+        "Herudover skal der være henvisning til den oprindelige faktura ved angivelse af fakturadato og -nummer.\nSe også\nAfsnit D.A.8.1.1.4 om betingede rabatter og prisafslag.\nKøbekontrakter og slutsedler\nKøbekontrakter eller slutsedler anerkendes "
+      ]
+    },
+    {
+      "references": [
+        "A5",
+        "P14"
+      ],
+      "title": "Skattestyrelsen D.A.7.2.4, 2026-2",
+      "url": "https://info.skat.dk/data.aspx?oid=2060294&vid=221020",
+      "final_url": "https://info.skat.dk/data.aspx?oid=2060294&vid=221020",
+      "accessed_at_utc": "2026-10-08T16:07:46.403870+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "acc897ecf6f5162834e3c2bf6aac9cf7d9b9c45f803d7b4e5658a220de0a05fd",
+      "sections_read": "Regel; Forudfaktureringer",
+      "excerpts": [
+        "Hvis der i forbindelse med leverancen er udstedt en faktura, anses faktureringstidspunktet som leveringstidspunkt, forudsat at faktureringen sker inden eller snarest efter leverancens afslutning.\nFakturaer skal udstedes, når leverancen er a",
+        "Sådanne forudfaktureringer kan dog tilsidesættes, hvis disse ikke ses at være i overensstemmelse med den økonomiske og forretningsmæssige virkelighed. Se bl.a. SKM2026.277.SR.◄\nLøbende leverancer\nVirksomheder, som opkræver abonnementsafgift"
+      ]
+    },
+    {
+      "references": [
+        "A6"
+      ],
+      "title": "Skattestyrelsen A.B.3.3.1.4, 2026-2",
+      "url": "https://info.skat.dk/data.aspx?oid=2068789&vid=221020",
+      "final_url": "https://info.skat.dk/data.aspx?oid=2068789&vid=221020",
+      "accessed_at_utc": "2026-10-08T16:08:58.481006+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "af06f0db68a96ef45cd736730650f60c2b97a2f7ed329891614dce5ee2237d6d",
+      "sections_read": "Kravene; Fakturering i euro; anden fremmed mønt",
+      "excerpts": [
+        "En fuld faktura skal indeholde\nudstedelsesdato (fakturadato)\nfortløbende nummer, der bygger på én eller flere serier, og som identificerer fakturaen\nsælgers momsregistreringsnummer (cvr-nr. eller SE-nr.)\nsælgers navn og adresse\nkøbers navn ",
+        "Hvis der faktureres i fremmed mønt - bortset fra euro - kræves det, at enten momsbeløbet i danske kroner eller omregningskursen til danske kroner fremgår af fakturaen. Så både sælger og køber skal anvende samme momsbeløb i danske kroner.\nOm"
+      ]
+    },
+    {
+      "references": [
+        "A7"
+      ],
+      "title": "Momsbekendtgørelsen BEK 1435/2023",
+      "url": "https://www.retsinformation.dk/eli/lta/2023/1435/pdf",
+      "final_url": "https://www.retsinformation.dk/eli/lta/2023/1435/pdf",
+      "accessed_at_utc": "2026-10-08T16:11:50.368255+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "c3869ad6ff38fee7b8fe0502121ebd71c3a8228d1404e2fd1dbff9ecc50ce031",
+      "sections_read": "Sections 58 and 97",
+      "excerpts": [
+        "§ 97. Virksomhederne kan føre regnskabet, jf. § 74 i\n                                                                       1) Den registrerede virksomheds registreringsnummer\ndenne bekendtgørelse, i danske kroner eller i euro. Virksom-\n   ",
+        "Virksomheden skal anvende den senest offentlig-             2) ydelser uden afgift, når køberen er betalingspligtig for\ngjorte valutakurs på tidspunktet for afgiftspligtens indtræden              afgiften af ydelserne, idet leveringsstedet "
+      ]
+    },
+    {
+      "references": [
+        "A8",
+        "R3"
+      ],
+      "title": "Skattestyrelsen D.A.8.1.1.1.4, 2026-2",
+      "url": "https://info.skat.dk/data.aspx?oid=1978062&vid=221020",
+      "final_url": "https://info.skat.dk/data.aspx?oid=1978062&vid=221020",
+      "accessed_at_utc": "2026-10-08T16:08:58.938163+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "a27c3fe0718974db0e1a64e671c36e396a5d86da460986324019077ff9438915",
+      "sections_read": "Contract changes; cancellation before supply; C-622/23; C-277/05",
+      "excerpts": [
+        "EU-Domstolen har i sag C-622/23 fundet, at det beløb, der kontraktligt er fastsat i tilfælde af, at modtageren af tjenesteydelser ophæver en gyldigt indgået kontrakt om levering af tjenesteydelser, som er momspligtig, der er påbegyndt lever",
+        "Der skal derimod ikke betales moms af erstatningsbeløb, som betales for annullering af afgivne tilbud. Grunden er, at der ikke finder en levering sted, og at erstatningen derfor ikke er betaling for en momspligtig leverance. Beløb, der beta"
+      ]
+    },
+    {
+      "references": [
+        "A9"
+      ],
+      "title": "Skattestyrelsen D.A.8.1.1.8, 2026-2",
+      "url": "https://info.skat.dk/data.aspx?oid=1978053&vid=221020",
+      "final_url": "https://info.skat.dk/data.aspx?oid=1978053&vid=221020",
+      "accessed_at_utc": "2026-10-08T16:08:25.289921+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "a768faccf8ec4b05603435969da740128647e95bc4602c970fca9def54e27ecc",
+      "sections_read": "Market-price method; cost-method exception",
+      "excerpts": [
+        "Fordelingen af vederlaget mellem momspligtige og momsfri ydelser skal som udgangspunkt foretages efter den såkaldte markedsprismetode. Se sag C-291/03, MyTravel plc., præmis 35.\nVed markedsprismetoden fordeles vederlaget på leverancerne eft"
+      ]
+    },
+    {
+      "references": [
+        "A10",
+        "R2"
+      ],
+      "title": "Skattestyrelsen D.A.7.2.7, 2026-2",
+      "url": "https://info.skat.dk/data.aspx?oid=2060297&vid=221020",
+      "final_url": "https://info.skat.dk/data.aspx?oid=2060297&vid=221020",
+      "accessed_at_utc": "2026-10-08T16:08:12.694881+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "df37803ac4977d193c3ef045a170c18b2b5919a5d43468f85f91a2bb90477a89",
+      "sections_read": "Regel; C-463/14; C-324/20",
+      "excerpts": [
+        "hvor tjenesteyderen havde stillet sig til rådighed for kunden i aftalens løbetid.\nDerudover fastslog domstolen, at for så vidt angik abonnementsaftaler som de i hovedsagen omhandlede skulle momssystemdirektivets artikel 62, stk. 2, artikel ",
+        "omfatter ikke levering af engangsydelser mod ratebetalinger. Begrebet ikke-betaling af prisen i artikel 90, stk. 1, i momssystemdirektivet omfatter ikke det forhold, at hele vederlaget endnu ikke er betalt som følge af en aftale om ratebeta"
+      ]
+    },
+    {
+      "references": [
+        "A11"
+      ],
+      "title": "e-conomic REST documentation",
+      "url": "https://restdocs.e-conomic.com/?_escaped_fragment_=",
+      "final_url": "https://restdocs.e-conomic.com/?_escaped_fragment_=",
+      "accessed_at_utc": "2026-10-08T16:05:29.756161+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "7da630ad93f9a3ad9e7f0870c1d6fa9c575037ba58a4c454686364ebfa7e4c20",
+      "sections_read": "Idempotency tokens; POST /journals/:journalNumber/vouchers; GET/POST voucher attachment/file; Journals overview",
+      "excerpts": [
+        "Keep in mind that this is cached for only one hour window.\nWhen we return a response from the cache, we set a response header X-ResultFromCache to true.\nIt’s important to note that you will be responsible for generating and keeping track of",
+        "This endpoint enables creation of vouchers and thereby entries on the journal, regardless of the type. Bulk creation is supported.\nEndpoint returns a single object or an array of objects based on input parameter.\nSchema name\njournals.journa"
+      ]
+    },
+    {
+      "references": [
+        "A12",
+        "P7"
+      ],
+      "title": "Stripe SEPA Direct Debit",
+      "url": "https://docs.stripe.com/payments/sepa-debit.md",
+      "final_url": "https://docs.stripe.com/payments/sepa-debit.md",
+      "accessed_at_utc": "2026-10-08T16:06:00.868587+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "2a1a105a13d2f39832b7308c942ba92d2d3edf054157253065d68d0fcbe1cd8c",
+      "sections_read": "Properties; Debit notification emails; Mandates; failures; Disputes; Refunds",
+      "excerpts": [
+        "Customers can dispute a payment through their bank on a “no questions asked” basis up to eight weeks after their account is debited. Any disputes within this period are automatically honored.\nAfter eight weeks and up to 13 months, a custome",
+        "Refunds are free of charge but the processing fees for the original payment are non-refundable.\n### Refund timing and processing\n- Refunds typically take 3-4 business days to process, and funds arrive in the customer’s account within 5 busi",
+        "Stripe only learns about a canceled SEPA mandate when a payment attempt fails, after which Stripe sets the mandate as inactive and sends a `mandate.updated` *webhook* (A webhook is a real-time push notification sent to your application as a"
+      ]
+    },
+    {
+      "references": [
+        "P1"
+      ],
+      "title": "Stripe Setup Intents",
+      "url": "https://docs.stripe.com/payments/setup-intents.md",
+      "final_url": "https://docs.stripe.com/payments/setup-intents.md",
+      "accessed_at_utc": "2026-10-08T16:06:57.775923+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "3dc3d518464e636a0175ce8acca5ddc7780a690d9ad6be985ddb94ddb484fa6c",
+      "sections_read": "Get permission; Future off-session use; Specify usage",
+      "excerpts": [
+        "At a minimum, ensure that your terms cover the following:\n- The customer’s permission to your initiating a payment or a series of payments on their behalf\n- The anticipated frequency of payments (that is, one-time or recurring)\n- How the pa",
+        "Either case might still require later authentication, so [build a recovery process](https://docs.stripe.com/billing/revenue-recovery.md) in your app. When an off-session card payment requires authentication, bring your customer back online "
+      ]
+    },
+    {
+      "references": [
+        "P2"
+      ],
+      "title": "Stripe save and reuse, Setup Intents API",
+      "url": "https://docs.stripe.com/payments/save-and-reuse.md?payment-ui=elements",
+      "final_url": "https://docs.stripe.com/payments/save-and-reuse.md?payment-ui=elements",
+      "accessed_at_utc": "2026-10-08T16:06:00.045755+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "92bdbd312510c15a3e1b890803a3a4c60ecafc8ec75dd848211f1c3f4a3869ca",
+      "sections_read": "Collect payment details; Charge the saved payment method; recovery",
+      "excerpts": [
+        "## Charge the saved payment method later [Server-side]\nTo find a payment method to charge, list the payment methods associated with your customer. This example lists cards, but you can list any supported [type](https://docs.stripe.com/api/p",
+        "off_session',\npayment_method_remove: 'enabled',\n},\n},\n},\n})\n{\nclient_secret: intent.client_secret,\ncustomer_session_client_secret: customer_session.client_secret\n}.to_json\nend\n```\n#### Customers v1\n#### Ruby\n```ruby\n# Don't put any keys in "
+      ]
+    },
+    {
+      "references": [
+        "P3"
+      ],
+      "title": "Stripe PaymentIntent and SetupIntent lifecycle",
+      "url": "https://docs.stripe.com/payments/paymentintents/lifecycle.md",
+      "final_url": "https://docs.stripe.com/payments/paymentintents/lifecycle.md",
+      "accessed_at_utc": "2026-10-08T16:06:21.856099+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "d0bb786dcbb92824797bb8360a75a02d8594eb9cc4d09460cfd71bdfaadf0496",
+      "sections_read": "Authentication; Lifecycle",
+      "excerpts": [
+        "Setup Intents set up payment credentials but don’t process payments.\n## Authentication\nPayment Intents use *3D Secure* (3D Secure (3DS) provides an additional layer of authentication for credit card transactions that protects businesses fro",
+        "cancellation might fail due to a limited and varying cancellation time window. PaymentIntents might also automatically transition to `canceled` if they’re [confirmed](https://docs.stripe.com/api/payment_intents/confirm.md) too many times. |"
+      ]
+    },
+    {
+      "references": [
+        "P4"
+      ],
+      "title": "Stripe idempotent requests",
+      "url": "https://docs.stripe.com/api/idempotent_requests.md",
+      "final_url": "https://docs.stripe.com/api/idempotent_requests.md",
+      "accessed_at_utc": "2026-10-08T16:06:00.452894+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "b1e79713930735a6a4c31216b242227b37a5aa8b33bc8ed45c899fb92f48beb0",
+      "sections_read": "Saved responses; key retention; parameters",
+      "excerpts": [
+        "Subsequent requests with the same key return the same result, including `500` errors.\nA client generates an idempotency key, which is a unique key that the server uses to recognize subsequent retries of the same request. How you create uniq",
+        "We generate a new request if a key is reused after the original is pruned. The idempotency layer compares incoming parameters to those of the original request and errors if they’re not the same to prevent accidental misuse.\nWe save results "
+      ]
+    },
+    {
+      "references": [
+        "P5"
+      ],
+      "title": "Stripe webhooks",
+      "url": "https://docs.stripe.com/webhooks.md",
+      "final_url": "https://docs.stripe.com/webhooks.md",
+      "accessed_at_utc": "2026-10-08T16:06:22.477918+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "e195eb53765b3a7eed839639df96f788e7b07e27a16b050b8a39c750bd6fe518",
+      "sections_read": "Automatic retries; Event ordering; Handle duplicate events; signature verification",
+      "excerpts": [
+        "Stripe doesn’t guarantee the delivery of events in the order that they’re generated. For example, creating a subscription might generate the following events:\n- `customer.subscription.created`\n- `invoice.created`\n- `invoice.paid`\n- `charge.",
+        "Webhook endpoints might occasionally receive the same event more than once. You can guard against duplicated event receipts by logging the [event IDs](https://docs.stripe.com/api/events/object.md#event_object-id) you’ve processed, and then "
+      ]
+    },
+    {
+      "references": [
+        "P6"
+      ],
+      "title": "Stripe cancel PaymentIntent",
+      "url": "https://docs.stripe.com/api/payment_intents/cancel.md",
+      "final_url": "https://docs.stripe.com/api/payment_intents/cancel.md",
+      "accessed_at_utc": "2026-10-08T16:06:57.386433+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "d34a17bab423006ebfff422b88f7f2084f112395f513f0451e2062f8e9cc470a",
+      "sections_read": "Cancelable statuses; processing limitations",
+      "excerpts": [
+        "You can cancel a PaymentIntent object when it’s in one of these statuses: `requires_payment_method`, `requires_capture`, `requires_confirmation`, `requires_action` or, [in rare cases](https://docs.stripe.com/payments/intents.md), `processin"
+      ]
+    },
+    {
+      "references": [
+        "P8"
+      ],
+      "title": "Stripe MobilePay",
+      "url": "https://docs.stripe.com/payments/mobilepay.md",
+      "final_url": "https://docs.stripe.com/payments/mobilepay.md",
+      "accessed_at_utc": "2026-10-08T16:06:01.237776+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "87a2998b9e25541f79ccdccbe0ff45aebff4673b5d673961eaa5097d942787f7",
+      "sections_read": "Properties; Refunds; Disputes",
+      "excerpts": [
+        "- **Recurring payments**\nNo\n- **Payout timing**\n[Standard payout timing](https://docs.stripe.com/payouts.md#payout-speed) applies\n- **Connect support**\nYes\n- **Dispute support**\nYes\n- **Manual capture support**\nYes\n- **Refunds / Partial ref",
+        "MobilePay is a [single-use](https://docs.stripe.com/payments/payment-methods.md#usage) card wallet payment method used in Denmark and Finland. It allows your customer to [authenticate and approve](https://docs.stripe.com/payments/payment-me"
+      ]
+    },
+    {
+      "references": [
+        "P9"
+      ],
+      "title": "Vipps MobilePay Recurring API",
+      "url": "https://developer.vippsmobilepay.com/docs/APIs/recurring-api/recurring-api-guide/",
+      "final_url": "https://developer.vippsmobilepay.com/docs/APIs/recurring-api/recurring-api-guide/",
+      "accessed_at_utc": "2026-10-08T16:06:22.962012+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "9f3284b12ca2ed2200fd4a3e0454382877c2fda7eb331d679fe7a03f71cd1286",
+      "sections_read": "Manage/Pause/Revoke agreement; lifecycle; Retry days; Idempotency Key header",
+      "excerpts": [
+        "Already reserved charges are not cancelled. Merchants can either capture or cancel the reservation.\nAll due/pending charges are cancelled.\nIt is up to the merchant to nudge their users to add a new payment method to continue using their ser",
+        "Today, unfortunately, we do not have a pause/freeze status.\nIf there should be a pause in an agreement, like a temporary stop of a subscription:\nSimply do not create any charges during the pause.\nWe recommend using Agreement Description to ",
+        "The Idempotency-Key header must be set in any request that creates or modifies a resource (POST, PUT, PATCH or DELETE).\nThis way, if a request fails for any technical reason, or there is a networking issue, it can be retried with the same I"
+      ]
+    },
+    {
+      "references": [
+        "P10"
+      ],
+      "title": "Betalingsservice debtor rules, effective 2026-04-01",
+      "url": "https://www.betalingsservice.dk/media/jmlcppl4/bs_regler_db_generelleregler_dk.pdf",
+      "final_url": "https://www.betalingsservice.dk/media/jmlcppl4/bs_regler_db_generelleregler_dk.pdf",
+      "accessed_at_utc": "2026-10-08T16:11:04.722084+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "a53acee5dda8864a67c228d49315c348c2f6d6fd2b6e48d33d37ac285df0e4bb",
+      "sections_read": "Sections 4, 6–10; especially 8.1–8.3, 8.5 and 10.2",
+      "excerpts": [
+        "Du kan senest den 7. i betalingsmåneden afvise en kommende betaling eller anmode om\ntilbageførsel af en gennemført betaling i den pågældende måned.\n\n\n\n                                                                                         ",
+        "Din afmelding af en betalingsaftale får virkning hurtigst muligt. En afmelding får senest virkning\nfor betalinger, der skal finde sted tre bankdage efter, at Mastercard Payment Services har\nmodtaget din afmelding fra dit pengeinstitut eller",
+        "Hvis den dag, hvor fristen udløber, ikke er en bankdag, er fristen den første bankdag herefter."
+      ]
+    },
+    {
+      "references": [
+        "P11"
+      ],
+      "title": "Betalingsservice creditor rules, effective 2026-04-01",
+      "url": "https://www.betalingsservice.dk/media/r4bh0equ/bs_regler_kr_dk.pdf",
+      "final_url": "https://www.betalingsservice.dk/media/r4bh0equ/bs_regler_kr_dk.pdf",
+      "accessed_at_utc": "2026-10-08T16:11:05.121738+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "bbb4117cfa04b44e3576590c6ddc8220b642456fd52b1f840e7c4886ad70905c",
+      "sections_read": "Sections 1, 3, 6–12; especially 7 and 8",
+      "excerpts": [
+        "danske kroner mellem kreditors konto og debitors konto.\n\nBetalingsservice er beregnet til periodisk tilbagevendende betalinger fra debitorer, men kreditor\nkan også iværksætte engangsbetalinger. Betalingsservice kan desuden benyttes til udbe",
+        "Debitor bliver adviseret om alle betalinger i Betalingsservice måneden inden den måned, hvor\nbetalingerne finder sted.\n\n7.5 Adviseringen som faktura\nAdviseringen samt eventuelle bilag kan udgøre en faktura. Det er kreditors ansvar, at\noplys"
+      ]
+    },
+    {
+      "references": [
+        "P12"
+      ],
+      "title": "Betalingsservice document catalogue",
+      "url": "https://www.betalingsservice.dk/betalingsservice/hjaelp/vejledninger-dokumenter/?page=2",
+      "final_url": "https://www.betalingsservice.dk/betalingsservice/hjaelp/vejledninger-dokumenter/?page=2",
+      "accessed_at_utc": "2026-10-08T16:10:21.737384+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "c926486aea88b526d2e19a5d79ee4c7968873bb9c30bef837ce22a80f5b37bf2",
+      "sections_read": "Page 2, current scheme-rule links",
+      "excerpts": []
+    },
+    {
+      "references": [
+        "P13"
+      ],
+      "title": "Leverandørservice official product page",
+      "url": "https://www.xn--leverandrservice-sxb.dk/leverandoerservice/",
+      "final_url": "https://www.xn--leverandrservice-sxb.dk/leverandoerservice/",
+      "accessed_at_utc": "2026-10-08T16:07:46.898609+00:00",
+      "http_status": 200,
+      "raw_response_sha256": "008c6c0f1be5addd8a397769483a8a81229dd1fbc316efb48190d00710e3748d",
+      "sections_read": "Business-to-business collection proposition; operational rules not audited",
+      "excerpts": []
+    }
+  ],
+  "limitations": [
+    "No customer interview, accountant review, live credential use, account registration, provider write or sandbox transaction.",
+    "EUR-Lex direct HTML requests for PSD2 and the SCA delegated regulation returned HTTP 202 with empty bodies; these were not used as independently read legal evidence. The collection decision cites processor/scheme requirements and requires qualified legal review.",
+    "Search-engine results were not used as factual evidence. Tax guidance was found through Skattestyrelsen’s current legal-guide tree.",
+    "The plain e-conomic docs root initially returned 403; its public escaped-fragment representation returned 200 and was read.",
+    "Leverandørservice scheme-level consent, cancellation, returns and access rules remain unverified."
+  ]
+}
