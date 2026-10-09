@@ -309,6 +309,18 @@ describeIfDatabase("email outbox", () => {
       await admin.creditNotes.get({ id: credit.id }), await admin.agreements.get({ id: agreement.id })]
     for (const document of documents) expect(document.lastEmailAttemptMessage).toBe("The email provider refused the email. Check the email configuration.")
     expect(JSON.stringify([await admin.invoices.list(), await admin.quotes.list(), await admin.agreements.list()])).not.toContain("sk-test-sensitive")
+    for (const message of [
+      "The email could not be sent, and nothing was delivered. Send it again.",
+      "Email delivery is not configured, so nothing was sent. Send it again once it is.",
+      "Automatic sending failed: Contact has no email address",
+    ]) {
+      await prisma.invoice.update({ where: { id: invoiceId }, data: { lastEmailAttemptMessage: message } })
+      expect((await admin.invoices.get({ id: invoiceId })).lastEmailAttemptMessage).toBe(message)
+    }
+    await prisma.invoice.update({ where: { id: invoiceId }, data: { lastEmailAttemptMessage: "Automatic sending failed: provider secret sk-test-sensitive" } })
+    expect((await admin.invoices.get({ id: invoiceId })).lastEmailAttemptMessage)
+      .toBe("Automatic sending failed: The email provider refused the email. Check the email configuration.")
+
   })
 
   it("sanitizes a legacy provider refusal when the abandoned-delivery sweep settles it", async () => {
@@ -323,7 +335,10 @@ describeIfDatabase("email outbox", () => {
     expect(await settleAbandonedDeliveries({ organizationIds: [org.organizationId] })).toMatchObject({ settled: 1, failed: 0 })
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
     expect(invoice.lastEmailAttemptMessage).toBe("The email provider refused the email. Check the email configuration.")
-    expect((await deliveryJob(org.organizationId)).result).toMatchObject({ outcome: "rejected", code: "email_provider_refused", message: invoice.lastEmailAttemptMessage })
+    const settledJob = await deliveryJob(org.organizationId)
+    expect(settledJob.result).toMatchObject({ outcome: "rejected", code: "email_provider_refused", message: invoice.lastEmailAttemptMessage })
+    expect(settledJob.payload).toMatchObject({ decision: { reason: "rejected", code: "email_provider_refused", message: invoice.lastEmailAttemptMessage } })
+    expect(JSON.stringify(settledJob.payload)).not.toContain("sk-test-sensitive")
     expect(JSON.stringify(await readActivity({ organizationId: org.organizationId, aggregateId: invoiceId }))).not.toContain("sk-test-sensitive")
   })
 

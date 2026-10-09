@@ -79,12 +79,21 @@ Unknown currencies and known exponent-3 currencies appear **only in `unvalued`**
 invoice has a valuation. These legacy records cannot use the current settlement currency policy,
 but must remain visible. Known exponents are retained, e.g. `"12.340"` KWD. Unknown currencies use
 exponent 2 for the database's stored scale and carry `precisionSource: "storage"`; this is not a
-claim about their ISO precision. Rows in attention/incoming retain the same exact representation.
+claim about their ISO precision. The stored money columns are `Decimal(12,2)`, so exponent-3
+amounts such as KWD and BHD have a padded trailing zero; no third decimal digit is recovered or
+inferred. The contract is unchanged. Rows in attention/incoming retain the same exact representation.
 Total `count` includes every record once, including these unsupported currencies.
 
 K4b must display unvalued-only currencies as well as normal buckets. Match by currency to avoid
 double-counting the overlapping supported buckets; never add the two arrays. Treat storage
 precision as unknown currency precision and keep its original code instead of inventing an FX value.
+
+Currency codes are trimmed and uppercased on read; received amounts with equivalent normalized
+codes are grouped together. Codes still outside `[A-Z]{3}` are skipped in money totals, attention,
+incoming and the streak, with a `dashboard.invalid_currency_skipped` log containing organization,
+source and skipped row count. The raw malformed code is not logged and no fake currency combines
+unrelated amounts. Draft inventory still counts editable drafts regardless of currency. An invalid
+base-currency setting logs `dashboard.invalid_base_currency` and uses the existing USD fallback.
 
 An empty total is `{ count: 0, buckets: [], unvalued: [] }`. An empty organization has twelve empty
 monthly totals, zero streak and oldest days overdue, and empty attention, incoming and activity
@@ -210,7 +219,10 @@ The shared email-result adapter applies the same codes to other document email r
 rejected results, failed reminder history and document `lastEmailAttemptMessage` fields are also
 sanitized when read, including lists, details, recurring invoice rows and agent invoice reads.
 Sanitizing inside `settle()` covers abandoned deliveries with legacy pinned provider decisions;
-the job result, completion callback and newly emitted events all receive the safe message. No database migration
+the pinned `job.payload.decision`, job result, completion callback and newly emitted events all
+receive the safe message. Exact app-authored withdrawal messages remain unchanged on document
+reads. Automatic-send messages preserve the prefix and known app-authored details, while unknown
+suffixes are replaced with safe provider guidance. No database migration
 is required for the optional code in the outbox's JSON records.
 
 Uncertain delivery remains `pending` or `unconfirmed` in the successful response's `delivery`

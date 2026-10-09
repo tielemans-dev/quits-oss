@@ -11,7 +11,7 @@ import { registerJobHandler, StaleJobClaimError, TerminalJobError } from "../job
 import { registerTickTask, type TickOptions } from "../scheduler"
 import { lockArtifactOrganization } from "../documents/artifacts"
 import { Command, type PendingEvent } from "../services"
-import { emailProviderFailureCodeSchema, emailProviderFailureMessage, type EmailProviderFailureCode } from "./provider-failure"
+import { NEVER_SENT_MESSAGE, NOT_CONFIGURED_MESSAGE, emailProviderFailureCodeSchema, emailProviderFailureMessage, type EmailProviderFailureCode } from "./provider-failure"
 
 /**
  * The email outbox. A command that emails a customer renders the exact message, records that the
@@ -234,7 +234,7 @@ async function settle(
       : { outcome: outcome.failure.reason, message: outcome.failure.message, ...(outcome.failure.code ? { code: outcome.failure.code } : {}) }
     const recorded = await tx.job.updateMany({
       where: { ...fenced(job), result: { equals: Prisma.DbNull } },
-      data: { result },
+      data: { result, ...(payload.decision ? { payload: { ...payload, decision: safeFailure(payload.decision) } } : {}) },
     })
     if (recorded.count === 0) {
       throw new StaleJobClaimError(`Delivery job ${job.id} is no longer held by this run`)
@@ -254,8 +254,6 @@ async function settle(
   })
 }
 
-const NOT_CONFIGURED_MESSAGE = "Email delivery is not configured, so nothing was sent. Send it again once it is."
-const NEVER_SENT_MESSAGE = "The email could not be sent, and nothing was delivered. Send it again."
 const UNCONFIRMED_MESSAGE =
   "The email provider never confirmed delivery, so the customer may or may not have received it."
 

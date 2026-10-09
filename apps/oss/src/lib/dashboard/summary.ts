@@ -10,8 +10,26 @@ import { formatCalendarDate } from "../../domain/features/recurring-dates"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { formatIsoDate, startOfDayInTimeZone } from "../exports/format"
 
+import { appLogger } from "../observability"
+
 type Db = Prisma.TransactionClient
 const DAY_MS = 86_400_000
+const dashboardLogger = appLogger.child("dashboard")
+const normalizeCurrency = (currency: string) => {
+  const normalized = currency.trim().toUpperCase()
+  return /^[A-Z]{3}$/.test(normalized) ? normalized : null
+}
+
+/** Do not invent a shared currency for malformed legacy data or expose raw codes in logs. */
+function currencyRows<Row extends { currency: string }>(rows: Row[], organizationId: string, source: string): Row[] {
+  const valid = rows.flatMap(row => {
+    const currency = normalizeCurrency(row.currency)
+    return currency === null ? [] : [{ ...row, currency }]
+  })
+  if (valid.length !== rows.length) dashboardLogger.warn("dashboard.invalid_currency_skipped", { organizationId, source, skippedRows: rows.length - valid.length })
+  return valid
+}
+
 const money = (currency: string, amount: Prisma.Decimal): DashboardMoney => {
   const knownExponent = getCurrencyExponent(currency)
   // Legacy database money has scale 2. Unknown currency precision is explicitly storage-based.
@@ -109,9 +127,9 @@ async function openDrafts(db: Db, actor: Actor): Promise<DashboardSummary["draft
  */
 export async function moneyReceived(db: Db, organizationId: string, timezone: string, start: Date | null, now: Date) {
   const since = start === null ? Prisma.empty : Prisma.sql`AND "paidAt" >= ${utcTimestamp(start)}`
-  return db.$queryRaw<Array<{ month: string; currency: string; amount: Prisma.Decimal; count: number }>>`
+  const rows = await db.$queryRaw<Array<{ month: string; currency: string; amount: Prisma.Decimal; count: number }>>`
     SELECT to_char(("paidAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone}, 'YYYY-MM') AS month,
-      currency, sum(amount) AS amount, count(*)::int AS count
+      upper(btrim(currency)) AS currency, sum(amount) AS amount, count(*)::int AS count
     FROM (
       SELECT "paidAt", currency, amount FROM payment
       WHERE "organizationId" = ${organizationId} AND "voidedAt" IS NULL AND "receiptId" IS NULL
@@ -121,8 +139,9 @@ export async function moneyReceived(db: Db, organizationId: string, timezone: st
       WHERE "organizationId" = ${organizationId} AND "reversedAt" IS NULL
         ${since} AND "paidAt" <= ${utcTimestamp(now)}
     ) received
-    GROUP BY month, currency
+    GROUP BY month, upper(btrim(currency))
   `
+  return currencyRows(rows, organizationId, "received")
 }
 
 /**
@@ -210,14 +229,15 @@ export async function dashboardSummary(db: PrismaClient, actor: Actor, now = new
     const organizationId = actor.organizationId
     const settings = await tx.orgSettings.findUnique({ where: { organizationId } })
     const timezone = settings?.timezone ?? "UTC"
-    const baseCurrency = settings?.baseCurrency ?? "USD"
+    const baseCurrency = normalizeCurrency(settings?.baseCurrency ?? "USD") ?? "USD"
+    if (settings && !normalizeCurrency(settings.baseCurrency)) dashboardLogger.warn("dashboard.invalid_base_currency", { organizationId, fallback: "USD" })
     const today = formatIsoDate(now, timezone)
     const [year, month] = today.split("-").map(Number)
     const months = Array.from({ length: 12 }, (_, index) => new Date(Date.UTC(year!, month! - 12 + index, 1)).toISOString().slice(0, 7))
     const start = startOfDayInTimeZone(`${months[0]}-01`, timezone)
-    const invoiceRows = await readInvoices(tx, organizationId, baseCurrency, now)
+    const invoiceRows = currencyRows(await readInvoices(tx, organizationId, baseCurrency, now), organizationId, "invoices")
     const receipts = await moneyReceived(tx, organizationId, timezone, start, now)
-    const quotes = actorCan(actor, "quote:read") ? await tx.$queryRaw<Array<{ id: string; number: string | null; customerName: string; totalGross: Prisma.Decimal; currency: string; status: string; createdAt: Date; expiryDate: Date }>>`
+    const quoteRows = actorCan(actor, "quote:read") ? await tx.$queryRaw<Array<{ id: string; number: string | null; customerName: string; totalGross: Prisma.Decimal; currency: string; status: string; createdAt: Date; expiryDate: Date }>>`
       SELECT q.id, q.number, c.name AS "customerName", q."totalGross", q.currency, q.status, q."createdAt", q."expiryDate"
       FROM quote q JOIN contact c ON c.id = q."contactId" AND c."organizationId" = q."organizationId"
       WHERE q."organizationId" = ${organizationId} AND (
@@ -230,6 +250,7 @@ export async function dashboardSummary(db: PrismaClient, actor: Actor, now = new
         CASE WHEN q.status = 'draft' THEN q."createdAt" ELSE q."expiryDate" END, q.id LIMIT 5
     `
     : []
+    const quotes = currencyRows(quoteRows, organizationId, "quotes")
     const draftSummary = await openDrafts(tx, actor)
     const activity = await recentActivity(tx, actor)
     const outstanding = totals(), overdue = totals()

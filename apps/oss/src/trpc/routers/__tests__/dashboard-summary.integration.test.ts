@@ -244,6 +244,28 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect((await org.summary()).receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "40.00", count: 1 }])
   })
 
+  it("normalizes legacy currency codes and skips malformed rows without breaking the summary", async () => {
+    const org = await setup()
+    await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { baseCurrency: " dkk " } })
+    const lower = await org.seed({ currency: " dkk ", totalGross: "10" })
+    await org.seed({ currency: "DKK", totalGross: "20" })
+    await org.seed({ currency: "broken currency", totalGross: "999", dueDate: new Date("2026-10-01") })
+    await org.payment(lower.id, "2026-10-01", "1", " dkk ")
+    await org.payment(lower.id, "2026-10-01", "2", "DKK")
+    await org.payment(lower.id, "2026-10-01", "999", "???")
+    await prisma.quote.create({ data: { organizationId: org.organizationId, contactId: org.contact.id,
+      status: "sent", expiryDate: new Date("2026-10-10"), currency: "???", subtotalNet: "999", totalGross: "999" } })
+    const result = await org.summary()
+    expect(dashboardSummarySchema.safeParse(result).success).toBe(true)
+    expect(result.baseCurrency).toBe("DKK")
+    expect(result.outstanding.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "30.00", count: 2 }])
+    expect(result.paidThisMonth.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "3.00", count: 2 }])
+    expect(result.incoming).toHaveLength(2)
+    expect(result.incoming.every(row => row.amount.currency === "DKK")).toBe(true)
+    expect(result.attention).toEqual([])
+    expect(result.hasOtherCurrencies).toBe(false)
+  })
+
   it("retains unsupported currencies only in unvalued totals without rounding or breaking the response", async () => {
     const org = await setup()
     await org.seed({ currency: "KWD", totalGross: "12.34", amountPaid: "1.20" })
