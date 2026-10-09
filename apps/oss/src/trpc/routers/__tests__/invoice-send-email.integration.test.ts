@@ -14,6 +14,9 @@ vi.mock("../../../lib/email", async () => {
   }
 })
 
+import { loadPublicInvoiceByToken } from "../../../lib/payments/public-access"
+import { serializePublicInvoiceSession } from "../../../lib/payments/public-session"
+import { resolvePublicInvoiceCheckout } from "../../../lib/payments/public-checkout"
 import { prisma } from "../../../lib/db"
 import { deliver, EmailSendError } from "../../../lib/email"
 import { appRouter } from "../../router"
@@ -126,6 +129,51 @@ describeIfDatabase("invoice send email delivery", () => {
     vi.mocked(deliver).mockReset()
     vi.mocked(deliver).mockResolvedValue({ id: "email_123" })
   })
+
+  for (const emailEnabled of [false, true]) {
+    it(`issues a bank-only pay link and preserves the issued account, email: ${emailEnabled}`, async () => {
+      const previous = Object.fromEntries(["QUITS_APP_ORIGIN", "QUITS_PUBLIC_PAYMENT_SECRET", "RESEND_API_KEY", "FROM_EMAIL"].map(key => [key, process.env[key]]))
+      process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+      process.env.QUITS_PUBLIC_PAYMENT_SECRET = "synthetic-bank-payment-secret"
+      process.env.RESEND_API_KEY = emailEnabled ? "resend_test_key" : ""
+      process.env.FROM_EMAIL = "billing@example.com"
+      const { orgId, caller, invoice } = await createInvoiceFixture()
+      try {
+        // The draft has no account. Issuance must use the prepared candidate's account.
+        await caller.paymentDetails.update({ bankAccount: { regNumber: "0040", accountNumber: "0440116243", iban: "DK5000400440116243", bic: "DABADKKK" }, note: "Frozen bank note" })
+        await caller.invoices.send({ id: invoice.id, allowSendWithoutEmail: !emailEnabled })
+        const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
+        expect(issued.publicPaymentIssuedAt).toBeTruthy()
+        const { url } = await caller.invoices.createPaymentLink({ id: invoice.id })
+        const token = decodeURIComponent(url.split("/pay/")[1]!)
+        const session = await loadPublicInvoiceByToken(token, "synthetic-bank-payment-secret")
+        expect(session?.stripeEnabled).toBe(false)
+        expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "unavailable" })
+        const before = serializePublicInvoiceSession(session!, token)
+        expect(before.invoice.sellerSnapshot?.bankAccount?.regNumber).toBe("0040")
+        await caller.paymentDetails.update({ bankAccount: { regNumber: "1234", accountNumber: "9876543" }, note: "New note" })
+        const after = serializePublicInvoiceSession((await loadPublicInvoiceByToken(token, "synthetic-bank-payment-secret"))!, token)
+        expect(after.invoice.sellerSnapshot).toEqual(before.invoice.sellerSnapshot)
+        const unchanged = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
+        expect(unchanged.artifactPdfHash).toBe(issued.artifactPdfHash)
+        expect(unchanged.artifactPdfRef).toBe(issued.artifactPdfRef)
+        expect(unchanged.issuanceSnapshot).toEqual(issued.issuanceSnapshot)
+        if (emailEnabled) {
+          expect(vi.mocked(deliver).mock.calls[0]?.[0].html).toContain(url)
+          await caller.invoices.resendEmail({ id: invoice.id })
+          expect(vi.mocked(deliver).mock.calls.at(-1)?.[0].html).toContain(url)
+          await caller.reminders.sendNow({ invoiceId: invoice.id })
+          expect(vi.mocked(deliver).mock.calls.at(-1)?.[0].html).toContain(url)
+        }
+        // Token key-version grants remain enforced for transfer links.
+        await prisma.invoice.update({ where: { id: invoice.id }, data: { publicPaymentKeyVersion: { increment: 1 } } })
+        expect(await loadPublicInvoiceByToken(token, "synthetic-bank-payment-secret")).toBeNull()
+      } finally {
+        restoreEnv(previous)
+        await cleanupTestOrganizations({ where: { id: orgId } })
+      }
+    })
+  }
 
   it("includes a public payment link in invoice email when Stripe is configured and records a sent attempt", async () => {
     const previous = {

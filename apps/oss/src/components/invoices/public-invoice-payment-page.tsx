@@ -1,3 +1,6 @@
+import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
+import type { BankAccountSnapshot } from "@quits/contracts/payment-details"
+import { buildPaymentDetailsBlock } from "../../lib/payment-details-block"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { PublicSellerHeader } from "../documents/public-seller-header"
@@ -41,11 +44,14 @@ type PublicInvoice = {
   currency: string
   /** The timezone the document's dates are shown in, as its PDF does. */
   timezone: string
+  paymentReference?: string | null
   notes: string | null
   sellerSnapshot: {
     companyName?: string | null
     companyEmail?: string | null
     companyAddress?: string | null
+    bankAccount?: BankAccountSnapshot | null
+    paymentNote?: string | null
   } | null
   buyerSnapshot: {
     name?: string | null
@@ -108,8 +114,14 @@ function PublicInvoiceDocument({
   submitting: boolean
   error?: string | null
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { invoice, paymentState, seller } = state
+  const bankTransfer = hasInvoiceBankTransfer(invoice.sellerSnapshot)
+  const paymentDetails = buildPaymentDetailsBlock(
+    { bankAccount: invoice.sellerSnapshot?.bankAccount, note: invoice.sellerSnapshot?.paymentNote },
+    invoice.paymentReference?.trim() || invoice.number,
+    locale
+  )
   const format = useDocumentFormat(invoice.timezone)
   const money = (amount: number) => format.money(amount, invoice.currency)
   const total = toNumber(invoice.totalGross)
@@ -191,7 +203,9 @@ function PublicInvoiceDocument({
                 ? t("public.invoice.credited.description")
                 : paymentState === "paid"
                   ? t("public.invoice.paid.description")
-                  : t("public.invoice.pay.description")}
+                  : !state.stripeEnabled && bankTransfer
+                    ? t("public.invoice.pay.bankDescription")
+                    : t("public.invoice.pay.description")}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
@@ -226,16 +240,29 @@ function PublicInvoiceDocument({
               ) : null}
             </div>
 
+            {paymentState === "unpaid" && balanceDue > 0 && paymentDetails ? (
+              <section className="grid gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>
+                <h2 className="text-sm font-medium">{paymentDetails.title}</h2>
+                {paymentDetails.rows.map((row) => (
+                  <InfoBlock key={row.label} label={row.label} value={row.value} />
+                ))}
+                {paymentDetails.reference ? (
+                  <InfoBlock label={paymentDetails.reference.label} value={paymentDetails.reference.value} />
+                ) : null}
+                {paymentDetails.note ? <p className="whitespace-pre-wrap break-words text-sm">{paymentDetails.note}</p> : null}
+              </section>
+            ) : null}
+
             {paymentState === "unpaid" ? (
               state.stripeEnabled ? (
                 <Button type="button" disabled={submitting} onClick={onPay}>
                   {t("public.invoice.pay.action")}
                 </Button>
-              ) : (
+              ) : !bankTransfer ? (
                 <p className="text-sm text-muted-foreground">
                   {t("public.invoice.pay.unavailable")}
                 </p>
-              )
+              ) : null
             ) : null}
           </CardContent>
           <CardFooter className="justify-between text-sm text-muted-foreground">
@@ -254,7 +281,7 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="text-sm font-medium">{value}</p>
+      <p className="break-words text-sm font-medium">{value}</p>
     </div>
   )
 }

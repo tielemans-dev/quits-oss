@@ -1,3 +1,4 @@
+import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { Effect } from "effect"
 import { z } from "zod"
 import {
@@ -302,7 +303,7 @@ const queueReminderEmail = (input: {
     const emailContext = resolveInvoiceEmailContext(settings)
     const { invoice } = input
     const publicPaymentUrl =
-      emailContext.stripeConfigured && invoice.publicPaymentIssuedAt
+      (emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot)) && invoice.publicPaymentIssuedAt
         ? getPublicInvoicePaymentUrl(invoice)
         : null
     const { balanceDue } = computeSettlement(invoice)

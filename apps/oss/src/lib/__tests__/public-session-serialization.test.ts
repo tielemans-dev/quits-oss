@@ -155,7 +155,7 @@ describe("public session serialization", () => {
     expect(session.seller).toEqual({ name: null, logo: null })
   })
 
-  it("keeps the frozen bank account and payment note off the public payment page", () => {
+  it("preserves frozen payment details and tax IDs on the public payment page", () => {
     const session = serializePublicInvoiceSession({
       invoice: {
         id: "invoice-1",
@@ -194,15 +194,14 @@ describe("public session serialization", () => {
     }, "tok.en")
 
     // The rest of the seller identity is still there.
-    expect(session.invoice.sellerSnapshot).toEqual({
+    expect(session.invoice.sellerSnapshot).toMatchObject({
       companyName: "E2E Org",
       companyEmail: "billing@e2e.test",
       taxIds: [{ scheme: "vat", value: "DK12345678", countryCode: "DK" }],
     })
-    const json = JSON.stringify(session)
-    for (const secret of ["bankAccount", "paymentNote", "DK5000400440116243", "0440116243", "DABADKKK", "MobilePay"]) {
-      expect(json).not.toContain(secret)
-    }
+    expect(session.invoice.sellerSnapshot?.bankAccount?.iban).toBe("DK5000400440116243")
+    expect(session.invoice.sellerSnapshot?.paymentNote).toBe("MobilePay Box 12345")
+    expect(session.invoice.paymentReference).toBe("INV-0001")
   })
 
   it("serializes a missing or malformed seller snapshot as null", () => {

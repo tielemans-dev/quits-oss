@@ -1,3 +1,4 @@
+import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { loadDocumentView } from "../../domain/documents/view"
 import { sanitizeDocumentEmailAttempt } from "../../domain/delivery/provider-failure"
 import { recordBaseValuation } from "../../domain/commands/base-valuation"
@@ -278,7 +279,7 @@ export const invoicesRouter = router({
           stripePublishableKey: settings?.stripePublishableKey ?? null,
           stripeSecretKeyEnc: settings?.stripeSecretKeyEnc ?? null,
           stripeWebhookSecretEnc: settings?.stripeWebhookSecretEnc ?? null,
-        }).configured
+        }).configured && !hasInvoiceBankTransfer(invoice.sellerSnapshot)
       ) {
         invoiceLogger.warn("invoice.payment_link.rejected", {
           organizationId: ctx.organizationId,
@@ -287,7 +288,7 @@ export const invoicesRouter = router({
         })
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Stripe payment links are not configured for this organization",
+          message: "Configure card payments or issue an invoice with bank transfer details",
         })
       }
 
