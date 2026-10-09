@@ -29,6 +29,28 @@ export function registerProductScenarios(test, expect) {
     await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible()
   }
 
+  /**
+   * What a fresh organization sees on the dashboard: the page heading, the first-run explanation and
+   * its primary action. Roles and names only. The first-run text is the product's own copy, so this
+   * proves the authenticated dashboard rendered, not just that the page loaded.
+   */
+  async function expectFirstRunDashboard(page) {
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'This is where your money comes into view', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
+  }
+
+  /**
+   * The dashboard of an organization whose only document is one draft invoice: the getting-started
+   * card offers to continue that draft, and no longer offers to create the first invoice.
+   */
+  async function expectDraftDashboard(page, draftURL) {
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Your first invoice is close', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Continue the draft', exact: true })).toHaveAttribute('href', new URL(draftURL).pathname)
+    await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toHaveCount(0)
+  }
+
   /** Reads the line-item grid row `index`; the inputs have no labels, so scope by the description box. */
   const lineRow = (page, index) => page.getByPlaceholder('Description', { exact: true }).nth(index).locator('xpath=..')
 
@@ -130,25 +152,18 @@ export function registerProductScenarios(test, expect) {
       expect(Number.isFinite(seconds) && seconds >= 0 && seconds <= 15, 'Auth retry window must fit the test timeout').toBeTruthy()
       await new Promise(resolve => setTimeout(resolve, Math.ceil(seconds * 1000) + 100))
     }
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
-    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
+    await expectFirstRunDashboard(page)
     // Re-enter through the consumer's entry point after authenticating. This also
     // exercises gateways that redirect login to a separate origin.
     await page.goto(entryURL)
     await expect(page).toHaveURL(entryURL)
-    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
+    await expectFirstRunDashboard(page)
   })
 
   test('authenticated dashboard survives a reload', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
-    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
+    await expectFirstRunDashboard(page)
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
-    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
+    await expectFirstRunDashboard(page)
   })
 
   test('creates a contact through the UI and persists it', async ({ page, entryURL }) => {
@@ -161,8 +176,9 @@ export function registerProductScenarios(test, expect) {
     await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible()
     await page.reload()
     await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible()
+    // A customer alone is not something the dashboard shows: it still welcomes a first invoice.
     await page.goto(entryURL)
-    await expect(page.getByText('Client on file', { exact: true })).toBeVisible()
+    await expectFirstRunDashboard(page)
   })
 
   test('creates a draft invoice with a calculated total and persists it', async ({ page, entryURL }) => {
@@ -189,8 +205,7 @@ export function registerProductScenarios(test, expect) {
     await expect(row).toContainText(usd(created.total))
     await expect(row).toContainText('Draft')
     await page.goto(entryURL)
-    await expect(page.getByText('Total Customers', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toHaveCount(0)
+    await expectDraftDashboard(page, created.url)
   })
 
   test('edits a draft invoice and persists the recalculated total', async ({ page, entryURL }) => {
