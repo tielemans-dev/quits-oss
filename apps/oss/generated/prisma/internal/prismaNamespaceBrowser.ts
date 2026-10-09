@@ -90,7 +90,10 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  EconomicConnection: 'EconomicConnection',
+  EconomicReadOperation: 'EconomicReadOperation',
+  EconomicSourceEvidence: 'EconomicSourceEvidence'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1035,6 +1038,61 @@ export const IssuanceCandidateScalarFieldEnum = {
 } as const
 
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
+
+
+export const EconomicConnectionScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  accountId: 'accountId',
+  accountVerified: 'accountVerified',
+  generation: 'generation',
+  state: 'state',
+  encryptedCredentials: 'encryptedCredentials',
+  preflight: 'preflight',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type EconomicConnectionScalarFieldEnum = (typeof EconomicConnectionScalarFieldEnum)[keyof typeof EconomicConnectionScalarFieldEnum]
+
+
+export const EconomicReadOperationScalarFieldEnum = {
+  id: 'id',
+  connectionId: 'connectionId',
+  generation: 'generation',
+  requestKey: 'requestKey',
+  state: 'state',
+  failureCode: 'failureCode',
+  failureContext: 'failureContext',
+  manifest: 'manifest',
+  manifestHash: 'manifestHash',
+  createdAt: 'createdAt',
+  finishedAt: 'finishedAt'
+} as const
+
+export type EconomicReadOperationScalarFieldEnum = (typeof EconomicReadOperationScalarFieldEnum)[keyof typeof EconomicReadOperationScalarFieldEnum]
+
+
+export const EconomicSourceEvidenceScalarFieldEnum = {
+  id: 'id',
+  connectionId: 'connectionId',
+  organizationId: 'organizationId',
+  provider: 'provider',
+  accountId: 'accountId',
+  kind: 'kind',
+  sourceId: 'sourceId',
+  sourceHash: 'sourceHash',
+  origin: 'origin',
+  intent: 'intent',
+  apiVersions: 'apiVersions',
+  data: 'data',
+  artifactState: 'artifactState',
+  artifactHash: 'artifactHash',
+  artifactBytes: 'artifactBytes',
+  createdAt: 'createdAt'
+} as const
+
+export type EconomicSourceEvidenceScalarFieldEnum = (typeof EconomicSourceEvidenceScalarFieldEnum)[keyof typeof EconomicSourceEvidenceScalarFieldEnum]
 
 
 export const SortOrder = {

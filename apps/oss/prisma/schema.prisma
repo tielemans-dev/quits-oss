@@ -86,6 +86,7 @@ model AuthRecoveryRateLimit {
 // ── Organization Models ──
 
 model Organization {
+  economicConnections EconomicConnection[]
   agreementTemplatesSeeded Boolean @default(false)
   id                      String                  @id
   name                    String
@@ -1128,4 +1129,59 @@ model IssuanceCandidate {
   @@index([organizationId, documentKind, documentId])
   @@index([stagingId, status, createdAt])
   @@map("issuance_candidate")
+}
+
+// Read-only e-conomic staging. No relation to operational invoices or payments.
+model EconomicConnection {
+  id String @id @default(uuid())
+  organizationId String @unique
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  accountId String
+  accountVerified Boolean @default(false)
+  generation Int @default(1)
+  state String @default("connecting")
+  encryptedCredentials String?
+  preflight Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  operations EconomicReadOperation[]
+  evidence EconomicSourceEvidence[]
+  @@unique([id, organizationId, accountId])
+}
+
+model EconomicReadOperation {
+  id String @id @default(uuid())
+  connectionId String
+  connection EconomicConnection @relation(fields: [connectionId], references: [id], onDelete: Restrict)
+  generation Int
+  requestKey String
+  state String @default("pending")
+  failureCode String?
+  failureContext Json?
+  manifest Json?
+  manifestHash String?
+  createdAt DateTime @default(now())
+  finishedAt DateTime?
+  @@unique([connectionId, generation, requestKey])
+}
+
+model EconomicSourceEvidence {
+  id String @id @default(uuid())
+  connectionId String
+  connection EconomicConnection @relation(fields: [connectionId, organizationId, accountId], references: [id, organizationId, accountId], onDelete: Restrict)
+  organizationId String
+  provider String @default("economic")
+  accountId String
+  kind String
+  sourceId String
+  sourceHash String
+  origin String @default("historical_import")
+  intent String @default("dry_run_only")
+  apiVersions Json
+  data Json
+  artifactState String?
+  artifactHash String?
+  artifactBytes Bytes?
+  createdAt DateTime @default(now())
+  @@unique([organizationId, provider, accountId, kind, sourceId])
 }

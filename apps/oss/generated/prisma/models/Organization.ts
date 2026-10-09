@@ -230,6 +230,7 @@ export type OrganizationWhereInput = {
   stripeSubscriptionId?: Prisma.StringNullableFilter<"Organization"> | string | null
   stripePriceId?: Prisma.StringNullableFilter<"Organization"> | string | null
   subscriptionStatus?: Prisma.StringNullableFilter<"Organization"> | string | null
+  economicConnections?: Prisma.EconomicConnectionListRelationFilter
   members?: Prisma.MemberListRelationFilter
   invitations?: Prisma.InvitationListRelationFilter
   contacts?: Prisma.ContactListRelationFilter
@@ -266,6 +267,7 @@ export type OrganizationOrderByWithRelationInput = {
   stripeSubscriptionId?: Prisma.SortOrderInput | Prisma.SortOrder
   stripePriceId?: Prisma.SortOrderInput | Prisma.SortOrder
   subscriptionStatus?: Prisma.SortOrderInput | Prisma.SortOrder
+  economicConnections?: Prisma.EconomicConnectionOrderByRelationAggregateInput
   members?: Prisma.MemberOrderByRelationAggregateInput
   invitations?: Prisma.InvitationOrderByRelationAggregateInput
   contacts?: Prisma.ContactOrderByRelationAggregateInput
@@ -305,6 +307,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   stripeSubscriptionId?: Prisma.StringNullableFilter<"Organization"> | string | null
   stripePriceId?: Prisma.StringNullableFilter<"Organization"> | string | null
   subscriptionStatus?: Prisma.StringNullableFilter<"Organization"> | string | null
+  economicConnections?: Prisma.EconomicConnectionListRelationFilter
   members?: Prisma.MemberListRelationFilter
   invitations?: Prisma.InvitationListRelationFilter
   contacts?: Prisma.ContactListRelationFilter
@@ -375,6 +378,7 @@ export type OrganizationCreateInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -411,6 +415,7 @@ export type OrganizationUncheckedCreateInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -447,6 +452,7 @@ export type OrganizationUpdateInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -483,6 +489,7 @@ export type OrganizationUncheckedUpdateInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -904,6 +911,20 @@ export type OrganizationUpdateOneRequiredWithoutIssuanceCandidatesNestedInput = 
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutIssuanceCandidatesInput, Prisma.OrganizationUpdateWithoutIssuanceCandidatesInput>, Prisma.OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput>
 }
 
+export type OrganizationCreateNestedOneWithoutEconomicConnectionsInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutEconomicConnectionsInput, Prisma.OrganizationUncheckedCreateWithoutEconomicConnectionsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutEconomicConnectionsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+}
+
+export type OrganizationUpdateOneRequiredWithoutEconomicConnectionsNestedInput = {
+  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutEconomicConnectionsInput, Prisma.OrganizationUncheckedCreateWithoutEconomicConnectionsInput>
+  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutEconomicConnectionsInput
+  upsert?: Prisma.OrganizationUpsertWithoutEconomicConnectionsInput
+  connect?: Prisma.OrganizationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutEconomicConnectionsInput, Prisma.OrganizationUpdateWithoutEconomicConnectionsInput>, Prisma.OrganizationUncheckedUpdateWithoutEconomicConnectionsInput>
+}
+
 export type OrganizationCreateWithoutMembersInput = {
   agreementTemplatesSeeded?: boolean
   id: string
@@ -916,6 +937,7 @@ export type OrganizationCreateWithoutMembersInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
@@ -951,6 +973,7 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1002,6 +1025,7 @@ export type OrganizationUpdateWithoutMembersInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
@@ -1037,6 +1061,7 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1072,6 +1097,7 @@ export type OrganizationCreateWithoutInvitationsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
@@ -1107,6 +1133,7 @@ export type OrganizationUncheckedCreateWithoutInvitationsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1158,6 +1185,7 @@ export type OrganizationUpdateWithoutInvitationsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
@@ -1193,6 +1221,7 @@ export type OrganizationUncheckedUpdateWithoutInvitationsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1228,6 +1257,7 @@ export type OrganizationCreateWithoutSettingsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -1263,6 +1293,7 @@ export type OrganizationUncheckedCreateWithoutSettingsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1314,6 +1345,7 @@ export type OrganizationUpdateWithoutSettingsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -1349,6 +1381,7 @@ export type OrganizationUncheckedUpdateWithoutSettingsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1384,6 +1417,7 @@ export type OrganizationCreateWithoutContactsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
@@ -1419,6 +1453,7 @@ export type OrganizationUncheckedCreateWithoutContactsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1470,6 +1505,7 @@ export type OrganizationUpdateWithoutContactsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
@@ -1505,6 +1541,7 @@ export type OrganizationUncheckedUpdateWithoutContactsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1540,6 +1577,7 @@ export type OrganizationCreateWithoutCatalogItemsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -1575,6 +1613,7 @@ export type OrganizationUncheckedCreateWithoutCatalogItemsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1626,6 +1665,7 @@ export type OrganizationUpdateWithoutCatalogItemsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -1661,6 +1701,7 @@ export type OrganizationUncheckedUpdateWithoutCatalogItemsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1696,6 +1737,7 @@ export type OrganizationCreateWithoutTaxIdsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -1731,6 +1773,7 @@ export type OrganizationUncheckedCreateWithoutTaxIdsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1782,6 +1825,7 @@ export type OrganizationUpdateWithoutTaxIdsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -1817,6 +1861,7 @@ export type OrganizationUncheckedUpdateWithoutTaxIdsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1852,6 +1897,7 @@ export type OrganizationCreateWithoutInvoicesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -1887,6 +1933,7 @@ export type OrganizationUncheckedCreateWithoutInvoicesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1938,6 +1985,7 @@ export type OrganizationUpdateWithoutInvoicesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -1973,6 +2021,7 @@ export type OrganizationUncheckedUpdateWithoutInvoicesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2008,6 +2057,7 @@ export type OrganizationCreateWithoutQuotesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -2043,6 +2093,7 @@ export type OrganizationUncheckedCreateWithoutQuotesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2094,6 +2145,7 @@ export type OrganizationUpdateWithoutQuotesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -2129,6 +2181,7 @@ export type OrganizationUncheckedUpdateWithoutQuotesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2164,6 +2217,7 @@ export type OrganizationCreateWithoutCreditNotesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -2199,6 +2253,7 @@ export type OrganizationUncheckedCreateWithoutCreditNotesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2250,6 +2305,7 @@ export type OrganizationUpdateWithoutCreditNotesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -2285,6 +2341,7 @@ export type OrganizationUncheckedUpdateWithoutCreditNotesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2320,6 +2377,7 @@ export type OrganizationCreateWithoutSettlementReceiptsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -2355,6 +2413,7 @@ export type OrganizationUncheckedCreateWithoutSettlementReceiptsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2406,6 +2465,7 @@ export type OrganizationUpdateWithoutSettlementReceiptsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -2441,6 +2501,7 @@ export type OrganizationUncheckedUpdateWithoutSettlementReceiptsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2476,6 +2537,7 @@ export type OrganizationCreateWithoutPaymentsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -2511,6 +2573,7 @@ export type OrganizationUncheckedCreateWithoutPaymentsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2562,6 +2625,7 @@ export type OrganizationUpdateWithoutPaymentsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -2597,6 +2661,7 @@ export type OrganizationUncheckedUpdateWithoutPaymentsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2632,6 +2697,7 @@ export type OrganizationCreateWithoutRecurringInvoicesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -2667,6 +2733,7 @@ export type OrganizationUncheckedCreateWithoutRecurringInvoicesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2718,6 +2785,7 @@ export type OrganizationUpdateWithoutRecurringInvoicesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -2753,6 +2821,7 @@ export type OrganizationUncheckedUpdateWithoutRecurringInvoicesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2788,6 +2857,7 @@ export type OrganizationCreateWithoutDomainEventsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -2823,6 +2893,7 @@ export type OrganizationUncheckedCreateWithoutDomainEventsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2874,6 +2945,7 @@ export type OrganizationUpdateWithoutDomainEventsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -2909,6 +2981,7 @@ export type OrganizationUncheckedUpdateWithoutDomainEventsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2944,6 +3017,7 @@ export type OrganizationCreateWithoutApprovalRequestsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -2979,6 +3053,7 @@ export type OrganizationUncheckedCreateWithoutApprovalRequestsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3030,6 +3105,7 @@ export type OrganizationUpdateWithoutApprovalRequestsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -3065,6 +3141,7 @@ export type OrganizationUncheckedUpdateWithoutApprovalRequestsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3100,6 +3177,7 @@ export type OrganizationCreateWithoutAgentKeysInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -3135,6 +3213,7 @@ export type OrganizationUncheckedCreateWithoutAgentKeysInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3186,6 +3265,7 @@ export type OrganizationUpdateWithoutAgentKeysInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -3221,6 +3301,7 @@ export type OrganizationUncheckedUpdateWithoutAgentKeysInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3256,6 +3337,7 @@ export type OrganizationCreateWithoutSchedulerScansInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -3291,6 +3373,7 @@ export type OrganizationUncheckedCreateWithoutSchedulerScansInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3342,6 +3425,7 @@ export type OrganizationUpdateWithoutSchedulerScansInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -3377,6 +3461,7 @@ export type OrganizationUncheckedUpdateWithoutSchedulerScansInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3412,6 +3497,7 @@ export type OrganizationCreateWithoutAgreementsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -3447,6 +3533,7 @@ export type OrganizationUncheckedCreateWithoutAgreementsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3498,6 +3585,7 @@ export type OrganizationUpdateWithoutAgreementsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -3533,6 +3621,7 @@ export type OrganizationUncheckedUpdateWithoutAgreementsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3568,6 +3657,7 @@ export type OrganizationCreateWithoutAgreementTemplatesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -3603,6 +3693,7 @@ export type OrganizationUncheckedCreateWithoutAgreementTemplatesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3654,6 +3745,7 @@ export type OrganizationUpdateWithoutAgreementTemplatesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -3689,6 +3781,7 @@ export type OrganizationUncheckedUpdateWithoutAgreementTemplatesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3724,6 +3817,7 @@ export type OrganizationCreateWithoutEventConsumerCursorsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -3759,6 +3853,7 @@ export type OrganizationUncheckedCreateWithoutEventConsumerCursorsInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3810,6 +3905,7 @@ export type OrganizationUpdateWithoutEventConsumerCursorsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -3845,6 +3941,7 @@ export type OrganizationUncheckedUpdateWithoutEventConsumerCursorsInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3880,6 +3977,7 @@ export type OrganizationCreateWithoutEventConsumerDeliveriesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -3915,6 +4013,7 @@ export type OrganizationUncheckedCreateWithoutEventConsumerDeliveriesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3966,6 +4065,7 @@ export type OrganizationUpdateWithoutEventConsumerDeliveriesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -4001,6 +4101,7 @@ export type OrganizationUncheckedUpdateWithoutEventConsumerDeliveriesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -4036,6 +4137,7 @@ export type OrganizationCreateWithoutArtifactStagingInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -4071,6 +4173,7 @@ export type OrganizationUncheckedCreateWithoutArtifactStagingInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -4122,6 +4225,7 @@ export type OrganizationUpdateWithoutArtifactStagingInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -4157,6 +4261,7 @@ export type OrganizationUncheckedUpdateWithoutArtifactStagingInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -4192,6 +4297,7 @@ export type OrganizationCreateWithoutIssuanceCandidatesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
@@ -4227,6 +4333,7 @@ export type OrganizationUncheckedCreateWithoutIssuanceCandidatesInput = {
   stripeSubscriptionId?: string | null
   stripePriceId?: string | null
   subscriptionStatus?: string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedCreateNestedManyWithoutOrganizationInput
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
@@ -4278,6 +4385,7 @@ export type OrganizationUpdateWithoutIssuanceCandidatesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
@@ -4313,6 +4421,7 @@ export type OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput = {
   stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  economicConnections?: Prisma.EconomicConnectionUncheckedUpdateManyWithoutOrganizationNestedInput
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -4336,12 +4445,173 @@ export type OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput = {
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
+export type OrganizationCreateWithoutEconomicConnectionsInput = {
+  agreementTemplatesSeeded?: boolean
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorCreateNestedManyWithoutOrganizationInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationUncheckedCreateWithoutEconomicConnectionsInput = {
+  agreementTemplatesSeeded?: boolean
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
+  createdAt: Date | string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  subscriptionStatus?: string | null
+  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
+  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
+  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
+  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
+  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutOrganizationInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
+  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorUncheckedCreateNestedManyWithoutOrganizationInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedCreateNestedManyWithoutOrganizationInput
+  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
+  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
+}
+
+export type OrganizationCreateOrConnectWithoutEconomicConnectionsInput = {
+  where: Prisma.OrganizationWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutEconomicConnectionsInput, Prisma.OrganizationUncheckedCreateWithoutEconomicConnectionsInput>
+}
+
+export type OrganizationUpsertWithoutEconomicConnectionsInput = {
+  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutEconomicConnectionsInput, Prisma.OrganizationUncheckedUpdateWithoutEconomicConnectionsInput>
+  create: Prisma.XOR<Prisma.OrganizationCreateWithoutEconomicConnectionsInput, Prisma.OrganizationUncheckedCreateWithoutEconomicConnectionsInput>
+  where?: Prisma.OrganizationWhereInput
+}
+
+export type OrganizationUpdateToOneWithWhereWithoutEconomicConnectionsInput = {
+  where?: Prisma.OrganizationWhereInput
+  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutEconomicConnectionsInput, Prisma.OrganizationUncheckedUpdateWithoutEconomicConnectionsInput>
+}
+
+export type OrganizationUpdateWithoutEconomicConnectionsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorUpdateManyWithoutOrganizationNestedInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
+}
+
+export type OrganizationUncheckedUpdateWithoutEconomicConnectionsInput = {
+  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
+  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
+  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
+  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
+  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
+  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutOrganizationNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
+  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
+  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
+  eventConsumerCursors?: Prisma.EventConsumerCursorUncheckedUpdateManyWithoutOrganizationNestedInput
+  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedUpdateManyWithoutOrganizationNestedInput
+  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
+  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
+  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
+  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
+  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
+}
+
 
 /**
  * Count Type OrganizationCountOutputType
  */
 
 export type OrganizationCountOutputType = {
+  economicConnections: number
   members: number
   invitations: number
   contacts: number
@@ -4366,6 +4636,7 @@ export type OrganizationCountOutputType = {
 }
 
 export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  economicConnections?: boolean | OrganizationCountOutputTypeCountEconomicConnectionsArgs
   members?: boolean | OrganizationCountOutputTypeCountMembersArgs
   invitations?: boolean | OrganizationCountOutputTypeCountInvitationsArgs
   contacts?: boolean | OrganizationCountOutputTypeCountContactsArgs
@@ -4397,6 +4668,13 @@ export type OrganizationCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types
    * Select specific fields to fetch from the OrganizationCountOutputType
    */
   select?: Prisma.OrganizationCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * OrganizationCountOutputType without action
+ */
+export type OrganizationCountOutputTypeCountEconomicConnectionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.EconomicConnectionWhereInput
 }
 
 /**
@@ -4559,6 +4837,7 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   stripeSubscriptionId?: boolean
   stripePriceId?: boolean
   subscriptionStatus?: boolean
+  economicConnections?: boolean | Prisma.Organization$economicConnectionsArgs<ExtArgs>
   members?: boolean | Prisma.Organization$membersArgs<ExtArgs>
   invitations?: boolean | Prisma.Organization$invitationsArgs<ExtArgs>
   contacts?: boolean | Prisma.Organization$contactsArgs<ExtArgs>
@@ -4628,6 +4907,7 @@ export type OrganizationSelectScalar = {
 
 export type OrganizationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"agreementTemplatesSeeded" | "id" | "name" | "slug" | "logo" | "metadata" | "createdAt" | "stripeCustomerId" | "stripeSubscriptionId" | "stripePriceId" | "subscriptionStatus", ExtArgs["result"]["organization"]>
 export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  economicConnections?: boolean | Prisma.Organization$economicConnectionsArgs<ExtArgs>
   members?: boolean | Prisma.Organization$membersArgs<ExtArgs>
   invitations?: boolean | Prisma.Organization$invitationsArgs<ExtArgs>
   contacts?: boolean | Prisma.Organization$contactsArgs<ExtArgs>
@@ -4658,6 +4938,7 @@ export type OrganizationIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types
 export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Organization"
   objects: {
+    economicConnections: Prisma.$EconomicConnectionPayload<ExtArgs>[]
     members: Prisma.$MemberPayload<ExtArgs>[]
     invitations: Prisma.$InvitationPayload<ExtArgs>[]
     contacts: Prisma.$ContactPayload<ExtArgs>[]
@@ -5087,6 +5368,7 @@ readonly fields: OrganizationFieldRefs;
  */
 export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  economicConnections<T extends Prisma.Organization$economicConnectionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$economicConnectionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EconomicConnectionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   members<T extends Prisma.Organization$membersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$membersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   invitations<T extends Prisma.Organization$invitationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$invitationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvitationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   contacts<T extends Prisma.Organization$contactsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$contactsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ContactPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -5534,6 +5816,30 @@ export type OrganizationDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.
    * Limit how many Organizations to delete.
    */
   limit?: number
+}
+
+/**
+ * Organization.economicConnections
+ */
+export type Organization$economicConnectionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the EconomicConnection
+   */
+  select?: Prisma.EconomicConnectionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the EconomicConnection
+   */
+  omit?: Prisma.EconomicConnectionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.EconomicConnectionInclude<ExtArgs> | null
+  where?: Prisma.EconomicConnectionWhereInput
+  orderBy?: Prisma.EconomicConnectionOrderByWithRelationInput | Prisma.EconomicConnectionOrderByWithRelationInput[]
+  cursor?: Prisma.EconomicConnectionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.EconomicConnectionScalarFieldEnum | Prisma.EconomicConnectionScalarFieldEnum[]
 }
 
 /**

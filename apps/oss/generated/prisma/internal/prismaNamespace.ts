@@ -423,7 +423,10 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  EconomicConnection: 'EconomicConnection',
+  EconomicReadOperation: 'EconomicReadOperation',
+  EconomicSourceEvidence: 'EconomicSourceEvidence'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -439,7 +442,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "settlementReceipt" | "settlementRefund" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
+    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "settlementReceipt" | "settlementRefund" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate" | "economicConnection" | "economicReadOperation" | "economicSourceEvidence"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3403,6 +3406,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    EconomicConnection: {
+      payload: Prisma.$EconomicConnectionPayload<ExtArgs>
+      fields: Prisma.EconomicConnectionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EconomicConnectionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EconomicConnectionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload>
+        }
+        findFirst: {
+          args: Prisma.EconomicConnectionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EconomicConnectionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload>
+        }
+        findMany: {
+          args: Prisma.EconomicConnectionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload>[]
+        }
+        create: {
+          args: Prisma.EconomicConnectionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload>
+        }
+        createMany: {
+          args: Prisma.EconomicConnectionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EconomicConnectionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload>[]
+        }
+        delete: {
+          args: Prisma.EconomicConnectionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload>
+        }
+        update: {
+          args: Prisma.EconomicConnectionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload>
+        }
+        deleteMany: {
+          args: Prisma.EconomicConnectionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EconomicConnectionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EconomicConnectionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload>[]
+        }
+        upsert: {
+          args: Prisma.EconomicConnectionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicConnectionPayload>
+        }
+        aggregate: {
+          args: Prisma.EconomicConnectionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEconomicConnection>
+        }
+        groupBy: {
+          args: Prisma.EconomicConnectionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EconomicConnectionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EconomicConnectionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EconomicConnectionCountAggregateOutputType> | number
+        }
+      }
+    }
+    EconomicReadOperation: {
+      payload: Prisma.$EconomicReadOperationPayload<ExtArgs>
+      fields: Prisma.EconomicReadOperationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EconomicReadOperationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EconomicReadOperationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload>
+        }
+        findFirst: {
+          args: Prisma.EconomicReadOperationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EconomicReadOperationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload>
+        }
+        findMany: {
+          args: Prisma.EconomicReadOperationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload>[]
+        }
+        create: {
+          args: Prisma.EconomicReadOperationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload>
+        }
+        createMany: {
+          args: Prisma.EconomicReadOperationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EconomicReadOperationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload>[]
+        }
+        delete: {
+          args: Prisma.EconomicReadOperationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload>
+        }
+        update: {
+          args: Prisma.EconomicReadOperationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload>
+        }
+        deleteMany: {
+          args: Prisma.EconomicReadOperationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EconomicReadOperationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EconomicReadOperationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload>[]
+        }
+        upsert: {
+          args: Prisma.EconomicReadOperationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicReadOperationPayload>
+        }
+        aggregate: {
+          args: Prisma.EconomicReadOperationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEconomicReadOperation>
+        }
+        groupBy: {
+          args: Prisma.EconomicReadOperationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EconomicReadOperationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EconomicReadOperationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EconomicReadOperationCountAggregateOutputType> | number
+        }
+      }
+    }
+    EconomicSourceEvidence: {
+      payload: Prisma.$EconomicSourceEvidencePayload<ExtArgs>
+      fields: Prisma.EconomicSourceEvidenceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EconomicSourceEvidenceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EconomicSourceEvidenceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload>
+        }
+        findFirst: {
+          args: Prisma.EconomicSourceEvidenceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EconomicSourceEvidenceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload>
+        }
+        findMany: {
+          args: Prisma.EconomicSourceEvidenceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload>[]
+        }
+        create: {
+          args: Prisma.EconomicSourceEvidenceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload>
+        }
+        createMany: {
+          args: Prisma.EconomicSourceEvidenceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EconomicSourceEvidenceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload>[]
+        }
+        delete: {
+          args: Prisma.EconomicSourceEvidenceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload>
+        }
+        update: {
+          args: Prisma.EconomicSourceEvidenceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload>
+        }
+        deleteMany: {
+          args: Prisma.EconomicSourceEvidenceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EconomicSourceEvidenceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EconomicSourceEvidenceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload>[]
+        }
+        upsert: {
+          args: Prisma.EconomicSourceEvidenceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EconomicSourceEvidencePayload>
+        }
+        aggregate: {
+          args: Prisma.EconomicSourceEvidenceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEconomicSourceEvidence>
+        }
+        groupBy: {
+          args: Prisma.EconomicSourceEvidenceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EconomicSourceEvidenceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EconomicSourceEvidenceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EconomicSourceEvidenceCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -4370,6 +4595,61 @@ export const IssuanceCandidateScalarFieldEnum = {
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
 
 
+export const EconomicConnectionScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  accountId: 'accountId',
+  accountVerified: 'accountVerified',
+  generation: 'generation',
+  state: 'state',
+  encryptedCredentials: 'encryptedCredentials',
+  preflight: 'preflight',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type EconomicConnectionScalarFieldEnum = (typeof EconomicConnectionScalarFieldEnum)[keyof typeof EconomicConnectionScalarFieldEnum]
+
+
+export const EconomicReadOperationScalarFieldEnum = {
+  id: 'id',
+  connectionId: 'connectionId',
+  generation: 'generation',
+  requestKey: 'requestKey',
+  state: 'state',
+  failureCode: 'failureCode',
+  failureContext: 'failureContext',
+  manifest: 'manifest',
+  manifestHash: 'manifestHash',
+  createdAt: 'createdAt',
+  finishedAt: 'finishedAt'
+} as const
+
+export type EconomicReadOperationScalarFieldEnum = (typeof EconomicReadOperationScalarFieldEnum)[keyof typeof EconomicReadOperationScalarFieldEnum]
+
+
+export const EconomicSourceEvidenceScalarFieldEnum = {
+  id: 'id',
+  connectionId: 'connectionId',
+  organizationId: 'organizationId',
+  provider: 'provider',
+  accountId: 'accountId',
+  kind: 'kind',
+  sourceId: 'sourceId',
+  sourceHash: 'sourceHash',
+  origin: 'origin',
+  intent: 'intent',
+  apiVersions: 'apiVersions',
+  data: 'data',
+  artifactState: 'artifactState',
+  artifactHash: 'artifactHash',
+  artifactBytes: 'artifactBytes',
+  createdAt: 'createdAt'
+} as const
+
+export type EconomicSourceEvidenceScalarFieldEnum = (typeof EconomicSourceEvidenceScalarFieldEnum)[keyof typeof EconomicSourceEvidenceScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -4530,6 +4810,20 @@ export type ListEnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel> = Fie
 
 
 /**
+ * Reference to a field of type 'Bytes'
+ */
+export type BytesFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Bytes'>
+
+
+
+/**
+ * Reference to a field of type 'Bytes[]'
+ */
+export type ListBytesFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Bytes[]'>
+
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -4677,6 +4971,9 @@ export type GlobalOmitConfig = {
   eventConsumerDelivery?: Prisma.EventConsumerDeliveryOmit
   artifactStaging?: Prisma.ArtifactStagingOmit
   issuanceCandidate?: Prisma.IssuanceCandidateOmit
+  economicConnection?: Prisma.EconomicConnectionOmit
+  economicReadOperation?: Prisma.EconomicReadOperationOmit
+  economicSourceEvidence?: Prisma.EconomicSourceEvidenceOmit
 }
 
 /* Types for Logging */

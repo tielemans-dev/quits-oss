@@ -219,3 +219,18 @@ export type ArtifactStaging = Prisma.ArtifactStagingModel
  * 
  */
 export type IssuanceCandidate = Prisma.IssuanceCandidateModel
+/**
+ * Model EconomicConnection
+ *
+ */
+export type EconomicConnection = Prisma.EconomicConnectionModel
+/**
+ * Model EconomicReadOperation
+ *
+ */
+export type EconomicReadOperation = Prisma.EconomicReadOperationModel
+/**
+ * Model EconomicSourceEvidence
+ *
+ */
+export type EconomicSourceEvidence = Prisma.EconomicSourceEvidenceModel
