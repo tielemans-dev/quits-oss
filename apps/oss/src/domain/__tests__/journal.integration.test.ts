@@ -42,7 +42,7 @@ import {
   reconcileDelivery,
   recoverDelivery
 } from "../delivery/journal"
-import { EMAIL_DELIVERY_JOB } from "../delivery/outbox"
+import { deliveryPayloadSchema, EMAIL_DELIVERY_JOB } from "../delivery/outbox"
 import { executeCommand } from "../execute"
 import { runDueJobs, runJobsNow } from "../jobs"
 import { appRouter } from "../../trpc/router"
@@ -284,7 +284,7 @@ suite("operation journal and bounded recovery", () => {
     })
     resetRuntimePlatform()
     const job = await findJob(context.org.organizationId)
-    const payload = { ...(job.payload as Record<string, unknown>), requests }
+    const payload = { ...deliveryPayloadSchema.parse(job.payload), requests }
     delete payload.attempts
     delete payload.legacyJobRuns
     delete payload.provider
