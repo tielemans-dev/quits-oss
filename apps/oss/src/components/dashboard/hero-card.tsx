@@ -10,14 +10,14 @@ import { precisionOf, toMinor, type HeroModel } from "./summary-model"
 import { useCountUp } from "./use-count-up"
 
 /**
- * Overdue on the blue card: a coral for the dot and the bar segment only (3.6:1 on the dark blue,
- * 4.4:1 on the light, enough for a graphic). Text on the card is white at 90% or more, which holds
- * 4.8:1 on #4B4BFF and 5.8:1 on #3B3BF0; coral text did not (3.7:1 dark), nor did white below 85%.
+ * Overdue on the ink card: a coral for the dot and the bar segment only (12.5:1 on ink, kept as a
+ * graphic so the card has one alarm colour). Money received this month is the Settled green
+ * (8.3:1 on ink, 7.2:1 on the dark-theme card). Text on the card is paper at 90% or more.
  */
 const OVERDUE_TONE = "bg-[#ffbfb5]"
 
 /**
- * The Kvit-blå card: how much money is on its way to me. The figure sits on a single rule while
+ * The Outstanding card, on the ink hero surface: how much money is on its way to me. The figure sits on a single rule while
  * money is asked for, and on both once nothing is owed (the signature). Under it, quietly, what is
  * overdue, how this month splits, and any other currency on a line of its own.
  */
@@ -49,7 +49,7 @@ export function HeroCard({
     const pendingText = text(minorToDecimal(pendingMinor > 0n ? pendingMinor : 0n, exponent))
     return {
       parts: [
-        { key: "paid", share: paid, label: t("dashboard.hero.legendPaid", { month: monthName }), amount: paidText, className: "bg-white" },
+        { key: "paid", share: paid, label: t("dashboard.hero.legendPaid", { month: monthName }), amount: paidText, className: "bg-settled" },
         { key: "pending", share: pending, label: t("dashboard.hero.legendPending"), amount: pendingText, className: "bg-white/40" },
         { key: "overdue", share: overdue, label: t("dashboard.hero.legendOverdue"), amount: overdueText, className: OVERDUE_TONE },
       ].filter((part) => part.share > 0),
@@ -67,15 +67,15 @@ export function HeroCard({
     <section
       data-slot="dashboard-hero"
       className={cn(
-        "bg-brand text-brand-foreground relative isolate overflow-hidden rounded-xl p-5 shadow-[0_18px_44px_-24px_rgb(59_59_240/70%)] sm:p-6 dark:shadow-none",
+        "bg-hero text-hero-foreground relative isolate overflow-hidden rounded-xl p-5 shadow-[0_18px_44px_-24px_rgb(11_11_12/55%)] sm:p-6 dark:border dark:border-hairline dark:shadow-none",
         className
       )}
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute -top-28 -right-16 -z-10 size-80 rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/22%),transparent)]"
+        className="pointer-events-none absolute -top-28 -right-16 -z-10 size-80 rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/10%),transparent)]"
       />
-      <MonoLabel as="h2" className="text-brand-foreground/90">
+      <MonoLabel as="h2" className="text-hero-foreground/90">
         {t("dashboard.hero.label")}
       </MonoLabel>
 
@@ -88,12 +88,11 @@ export function HeroCard({
           precision={precision}
           // A rule is money asked for or settled; when nothing valued is owed here it has no figure to sit under.
           rule={kvit ? "double" : hero.outstanding ? "single" : "none"}
-          ruleTone="current"
           className="text-[2.4rem] sm:text-6xl"
         />
       </div>
 
-      <div className="text-brand-foreground/90 mt-1 space-y-0.5 text-sm">
+      <div className="text-hero-foreground/90 mt-1 space-y-0.5 text-sm">
         {kvit ? (
           <p>{t("dashboard.hero.kvit")}</p>
         ) : (
@@ -102,13 +101,13 @@ export function HeroCard({
               <p>{tCount(t, "dashboard.hero.count", hero.outstanding.count)}</p>
             ) : null}
             {hero.overdue ? (
-              <p className="text-brand-foreground">
+              <p className="text-hero-foreground">
                 <span aria-hidden="true" className={cn("mr-2 inline-block size-1.5 rounded-full align-middle", OVERDUE_TONE)} />
                 {tCount(t, "dashboard.hero.overdue", hero.overdue.bucket.count, {
                   amount: text(hero.overdue.bucket.amount),
                 })}
                 {hero.overdue.oldestDaysOverdue !== null && hero.overdue.oldestDaysOverdue > 0 ? (
-                  <span className="text-brand-foreground/90">
+                  <span className="text-hero-foreground/90">
                     {" · "}
                     {tCount(t, "dashboard.hero.oldest", hero.overdue.oldestDaysOverdue, {
                       days: hero.overdue.oldestDaysOverdue,
@@ -139,7 +138,7 @@ export function HeroCard({
               />
             ))}
           </div>
-          <ul className="text-brand-foreground/90 mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+          <ul className="text-hero-foreground/90 mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
             {split.parts.map((part) => (
               <li key={part.key} className="inline-flex items-center gap-1.5">
                 <span aria-hidden="true" className={cn("size-1.5 rounded-full", part.className)} />
@@ -152,7 +151,7 @@ export function HeroCard({
       ) : null}
 
       {hero.others.length > 0 ? (
-        <ul className="text-brand-foreground/90 mt-4 space-y-0.5 border-t border-white/15 pt-3 text-xs">
+        <ul className="text-hero-foreground/90 mt-4 space-y-0.5 border-t border-white/15 pt-3 text-xs">
           {hero.others.map((other) => (
             <li key={other.currency}>
               {t("dashboard.hero.otherOutstanding", {

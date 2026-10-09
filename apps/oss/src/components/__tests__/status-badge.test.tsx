@@ -36,11 +36,23 @@ describe("StatusBadge", () => {
   })
 
   it("draws a dot in the tone colour that assistive technology skips", () => {
-    render(<StatusBadge domain="quote" status="accepted" />)
+    render(<StatusBadge domain="invoice" status="sent" />)
 
-    const dot = screen.getByText("Accepted").querySelector("[aria-hidden]")
+    const dot = screen.getByText("Sent").querySelector("[aria-hidden]")
     expect(dot).not.toBeNull()
     expect(dot?.className).toContain("bg-current")
+  })
+
+  it("draws settled as the full stop: a square green dot on the Settled tint", () => {
+    render(<StatusBadge domain="quote" status="accepted" />)
+
+    const badge = screen.getByText("Accepted")
+    expect(badge.className).toContain("text-tone-success")
+    expect(badge.className).toContain("bg-settled-soft")
+    const dot = badge.querySelector("[aria-hidden]")
+    expect(dot?.className).toContain("bg-settled")
+    expect(dot?.className).toContain("rounded-[1px]")
+    expect(dot?.className).not.toContain("rounded-full")
   })
 
   it("draws muted as a ring and every other tone as a solid dot", () => {
