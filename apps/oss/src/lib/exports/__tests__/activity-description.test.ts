@@ -14,6 +14,16 @@ describe("activity descriptions", () => {
     expect(describeActivity(event, da)).toBe("Fakturakladde INV-0001 oprettet")
   })
 
+  it.each([
+    ["payment.voided", "Betaling annulleret", "Payment voided"],
+    ["payment.recorded", "Betaling registreret", "Payment recorded"],
+    ["invoice.paid", "Faktura betalt", "Invoice paid"],
+  ])("localizes %s in Danish and English", (type, danish, english) => {
+    const event = { type, aggregateType: "invoice", payload: {} }
+    expect(describeActivity(event, da)).toBe(danish)
+    expect(describeActivity(event, en)).toBe(english)
+  })
+
   it("picks payload variants for sent invoices", () => {
     const sent = (payload: Record<string, unknown>) =>
       describeActivity({ type: "invoice.sent", aggregateType: "invoice", payload }, en)

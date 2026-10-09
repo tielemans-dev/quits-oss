@@ -3,7 +3,7 @@ import { invoiceIdSchema, keyVersionSchema, nonEmptyStringSchema } from "./baseS
 
 export const invoicePaymentStateSchema = z.enum(["unpaid", "paid"])
 
-export const paymentMethodSchema = z.enum(["bank_transfer", "card", "cash", "stripe", "other"])
+export const paymentMethodSchema = z.enum(["bank_transfer", "card", "cash", "stripe", "other", "manual"])
 
 /** Where a payment record came from: a person, an agent, a Stripe webhook, or the data migration. */
 export const paymentSourceSchema = z.enum(["user", "agent", "stripe", "system", "migration"])

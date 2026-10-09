@@ -62,12 +62,12 @@ describeIfDatabase("payments router", () => {
     expect(stats.outstanding).toBe(179.5)
     expect(stats.totalRevenue).toBe(120.5)
 
-    const paid = await admin.invoices.markPaid({ id: invoice.id })
-    expect(paid).toMatchObject({ status: "paid", paymentStatus: "paid", balanceDue: 0, amountPaid: 300 })
+    const paid = await admin.invoices.markPaid({ invoiceId: invoice.id, requestId: crypto.randomUUID() })
+    expect(paid).toMatchObject({ invoiceStatus: "paid", balance: { amount: "0.00" }, total: { amount: "300.00" }, paidFraction: "1" })
 
     const adminView = await admin.payments.list({ invoiceId: invoice.id })
     expect(adminView).toMatchObject({ canVoid: true, canRecord: false, balanceDue: 0 })
-    const shortcut = adminView.payments.find((row) => row.method === "other")
+    const shortcut = adminView.payments.find((row) => row.method === "manual")
     expect(shortcut?.amount).toBe(179.5)
 
     await admin.payments.void({ paymentId: recorded.payment.id, reason: "Card chargeback" })

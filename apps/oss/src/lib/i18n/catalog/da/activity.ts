@@ -80,4 +80,8 @@ export const daActivityMessages = {
   "activity.event.settlement.changed.reverse_allocation": "Tilbageført fordeling på {invoiceAmount} {invoiceCurrency}",
   "activity.event.settlement.changed.reverse_refund": "Tilbageført refusion på {amount} {currency}",
   "activity.event.settlement.changed.reverse_receipt": "Tilbageført indbetaling på {amount} {currency}",
+  "activity.event.invoice.marked_paid": "Faktura markeret som betalt",
+  "activity.event.payment.voided": "Betaling annulleret",
+  "activity.event.payment.recorded": "Betaling registreret",
+  "activity.event.invoice.paid": "Faktura betalt",
 } as const

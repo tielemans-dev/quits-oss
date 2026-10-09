@@ -110,3 +110,31 @@ export const invoiceCreateFromDeliverablesInputSchema = z.strictObject({
   scheduleAsSale: z.boolean().optional(),
 })
 export const invoiceAddDeliverablesInputSchema = invoiceCreateFromDeliverablesInputSchema.omit({ issueDate: true, dueDate: true }).extend({ id: z.string().min(1) })
+
+/** One request ID per user intent; retain it when retrying an uncertain response. */
+export const invoiceMarkPaidInputSchema = z.object({
+  invoiceId: z.string().trim().min(1),
+  requestId: z.string().trim().min(1).max(100),
+}).strict()
+export const invoiceUndoMarkPaidInputSchema = invoiceMarkPaidInputSchema.extend({
+  paymentId: z.string().trim().min(1),
+}).strict()
+
+/** Exact major units, with the invoice currency. No floating-point money crosses this API. */
+export const invoicePaidMomentMoneySchema = z.object({
+  amount: z.string().regex(/^(0|[1-9]\d*)(\.\d{1,2})?$/),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+}).strict()
+export const invoicePaidMomentResultSchema = z.object({
+  paymentId: z.string().min(1),
+  invoiceStatus: invoiceStatusSchema,
+  balance: invoicePaidMomentMoneySchema,
+  total: invoicePaidMomentMoneySchema,
+  /** Decimal string: clamp((total - balance) / total, 0, 1), including credits. */
+  paidFraction: z.string().regex(/^(0(\.\d+)?|1(\.0+)?)$/),
+  /** Original deadline, also returned after undo. Undo does not renew the window. */
+  undoUntil: z.iso.datetime(),
+}).strict()
+export type InvoiceMarkPaidInput = z.infer<typeof invoiceMarkPaidInputSchema>
+export type InvoiceUndoMarkPaidInput = z.infer<typeof invoiceUndoMarkPaidInputSchema>
+export type InvoicePaidMomentResult = z.infer<typeof invoicePaidMomentResultSchema>
