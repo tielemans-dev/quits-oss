@@ -62,11 +62,16 @@ Nested Better Auth transactions reuse the owned adapter through per-auth-instanc
 A transaction belonging to another auth instance is rejected before its callback writes. A native
 user-create before hook also checks the originating instance before Better Auth resolves an ambient
 adapter, so direct internal creation cannot silently use another instance's policy. No mutable
-process-global client is used. Every adapter operation captures its native pending after-hook queue,
-including update/delete-only scopes. Each captured queue forwards subsequent enqueues to the owner's
-buffer, preserving enqueue order across nested scopes without native premature dispatch. Create,
-update and delete effects run once after the owning Prisma COMMIT and are discarded on rollback or
-COMMIT failure. Direct admission, consumption and adapter failures make the owner rollback-only,
+process-global client is used. Every adapter operation captures native pending after-hook queues
+entered within the owning transaction, including update/delete-only scopes. Each captured queue
+forwards subsequent enqueues to the owner's buffer, preserving enqueue order across awaited nested
+scopes without native premature dispatch. Interception ends when the transaction settles. A surrounding
+native `runWithAdapter` scope remains native-owned: standalone creation commits before Better Auth
+enqueues its create-after hook, and that scope dispatches its queue in native enqueue order. Hooks
+captured within the transaction run after successful Prisma COMMIT and are discarded on rollback or
+COMMIT failure. Consumers must await all transaction work. Hook errors occur after COMMIT and cannot
+roll back committed data; sequential dispatch may stop at a throwing hook, as in native Better Auth.
+This is not durable delivery or a retry guarantee. Direct admission, consumption and adapter failures make the owner rollback-only,
 including JavaScript failures from a custom transaction-bound adapter and non-user operations.
 Catching those failures in the outer callback does not permit COMMIT. Any failed nested transaction
 also makes the owner roll back, even if its caller catches the error. This compensates for Better

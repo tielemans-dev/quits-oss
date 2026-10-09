@@ -124,7 +124,8 @@ export function signupAdmissionAdapter(input: {
     const owned = new WeakSet<object>()
     const transactions = new AsyncLocalStorage<{
       adapter: DBAdapter
-      queues: Set<Array<() => Promise<void>>>
+      queues: Map<Array<() => Promise<void>>, PropertyDescriptor | undefined>
+      enclosingQueue?: Array<() => Promise<void>>
       after: Array<() => Promise<void>>
       failed: boolean
     }>()
@@ -132,9 +133,9 @@ export function signupAdmissionAdapter(input: {
       const current = transactions.getStore()
       if (current) {
         const store = (await getCurrentDBAdapterAsyncLocalStorage()).getStore()
-        if (store && !current.queues.has(store.pendingHooks)) {
+        if (store && store.pendingHooks !== current.enclosingQueue && !current.queues.has(store.pendingHooks)) {
           const queue = store.pendingHooks
-          current.queues.add(queue)
+          current.queues.set(queue, Object.getOwnPropertyDescriptor(queue, "push"))
           current.after.push(...queue.splice(0))
           // Native with-hooks enqueues after the adapter operation returns. Redirect this
           // transaction's queue immediately to retain enqueue order across child scopes.
@@ -154,7 +155,10 @@ export function signupAdmissionAdapter(input: {
             catch (error) { current.failed = true; throw error }
           }
           if (transaction) throw new APIError("INTERNAL_SERVER_ERROR", { code: "signup_failed", message: "Inactive auth transaction" })
-          const state = { adapter: protectedAdapter, queues: new Set<Array<() => Promise<void>>>(), after: [] as Array<() => Promise<void>>, failed: false }
+          // A surrounding runWithAdapter scope outlives a standalone create transaction.
+          // Its hooks are enqueued after create returns and must remain native-owned.
+          const enclosingQueue = (await getCurrentDBAdapterAsyncLocalStorage()).getStore()?.pendingHooks
+          const state = { adapter: protectedAdapter, enclosingQueue, queues: new Map<Array<() => Promise<void>>, PropertyDescriptor | undefined>(), after: [] as Array<() => Promise<void>>, failed: false }
           const result = await input.prisma.$transaction(async (tx) => {
             const txFactory = input.createTransactionDatabaseAdapter?.(tx) ?? prismaAdapter(tx, { provider: "postgresql" })
             state.adapter = protect((txFactory as (options: BetterAuthOptions) => DBAdapter)(options), tx)
@@ -163,7 +167,13 @@ export function signupAdmissionAdapter(input: {
               if (state.failed) throw new Error("Auth transaction is rollback-only")
               return result
             })
-          }, { maxWait: 10_000, timeout: 15_000 }).catch(signupFailure)
+          }, { maxWait: 10_000, timeout: 15_000 }).finally(() => {
+            // Interception lasts only for the owning transaction, on either outcome.
+            for (const [queue, descriptor] of state.queues) {
+              if (descriptor) Object.defineProperty(queue, "push", descriptor)
+              else Reflect.deleteProperty(queue, "push")
+            }
+          }).catch(signupFailure)
           // Better Auth 1.5.4 otherwise runs child hooks before outer commit, even on failure.
           // Only this owning transaction may dispatch the queues, after successful COMMIT.
           for (const hook of state.after) await hook()

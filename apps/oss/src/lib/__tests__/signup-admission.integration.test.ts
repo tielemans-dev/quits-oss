@@ -208,7 +208,7 @@ describe.skipIf(!local)('transactional signup admission', () => {
   })
 })
 
-import { runWithTransaction } from '@better-auth/core/context'
+import { runWithAdapter, runWithTransaction } from '@better-auth/core/context'
 import type { Prisma } from '../../../generated/prisma/client'
 describe('independent review probes', () => {
  it('counts once per successful request with concurrent requests on the SAME auth instance and distinct codes', async () => {
@@ -436,6 +436,65 @@ async function failAtCommit(tx: Prisma.TransactionClient) {
 }
 
 describe.skipIf(!local)('native after-hook queues', () => {
+  it.each(['direct', 'adapter-scope'] as const)('retains a %s create hook after its standalone COMMIT', async (scope) => {
+    const target = email(); const code = await grant(target)
+    const after = vi.fn(async () => {
+      expect(await prisma.user.count({ where: { email: target } })).toBe(1)
+      expect(await consumed(code)).toBe(true)
+    })
+    const context = await fixture({ authorizeSignUp: () => admission({ email: target, inviteCode: code.toUpperCase() }) }, undefined, { user: { create: { after } } }).auth.$context
+    // Ordinary Prisma factories, with no enclosing transaction to conceal queue lifetime.
+    const create = () => context.internalAdapter.createUser({ email: target, name: 'Standalone creation', emailVerified: false })
+    if (scope === 'adapter-scope') await runWithAdapter(context.adapter as DBAdapter, create)
+    else await create()
+    expect(await consumed(code)).toBe(true)
+    expect(await prisma.user.count({ where: { email: target } })).toBe(1)
+    expect(after).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['insertion', 'commit'] as const)('discards standalone adapter-scope effects on %s failure', async (stage) => {
+    const target = email(); const code = await grant(target); const after = vi.fn(async () => {})
+    let inserted = false
+    const context = await fixture({
+      authorizeSignUp: () => admission({ email: target, inviteCode: code.toUpperCase() }),
+      createTransactionDatabaseAdapter: tx => (options: BetterAuthOptions) => {
+        const adapter = prismaAdapter(tx, { provider: 'postgresql' })(options)
+        return { ...adapter, create: async <T extends Record<string, unknown>, R = T>(data: Parameters<typeof adapter.create<T, R>>[0]): Promise<R> => {
+          if (stage === 'insertion') throw new Error('synthetic standalone insertion failure')
+          const result = await adapter.create<T, R>(data)
+          inserted = true
+          await failAtCommit(tx)
+          return result
+        } }
+      },
+    }, undefined, { user: { create: { after } } }).auth.$context
+    await expect(runWithAdapter(context.adapter as DBAdapter, () => context.internalAdapter.createUser({ email: target, name: 'Failed standalone', emailVerified: false }))).rejects.toMatchObject({ body: { code: 'signup_failed' } })
+    expect(inserted).toBe(stage === 'commit')
+    expect(await consumed(code)).toBe(false)
+    expect(await prisma.user.count({ where: { email: target } })).toBe(0)
+    expect(after).not.toHaveBeenCalled()
+  })
+
+  it('preserves enclosing native enqueue order across standalone commits and a failed claim', async () => {
+    const first = email(); const second = email(); const denied = email()
+    const codes = new Map(await Promise.all([first, second].map(async target => [target, await grant(target)] as const)))
+    const events: string[] = []
+    const context = await fixture({ authorizeSignUp: ({ email: target }) => admission({ email: target, inviteCode: codes.get(target)?.toUpperCase() }) }, undefined, {
+      user: { create: { after: async user => { events.push(`create:${user.email}`); expect(await prisma.user.count({ where: { id: user.id } })).toBe(1) } },
+        update: { after: async user => { events.push(`update:${user.email}`) } } },
+    }).auth.$context
+    await runWithAdapter(context.adapter as DBAdapter, async () => {
+      const user = await context.internalAdapter.createUser({ email: first, name: 'First', emailVerified: false })
+      await context.internalAdapter.updateUser(user.id, { name: 'Updated' })
+      await expect(context.internalAdapter.createUser({ email: denied, name: 'Denied', emailVerified: false })).rejects.toThrow()
+      await context.internalAdapter.createUser({ email: second, name: 'Second', emailVerified: false })
+      expect(events).toEqual([])
+    })
+    expect(events).toEqual([`create:${first}`, `update:${first}`, `create:${second}`])
+    for (const code of codes.values()) expect(await consumed(code)).toBe(true)
+    expect(await prisma.user.count({ where: { email: denied } })).toBe(0)
+  })
+
   it('discards an update-only outer queue on rollback', async () => {
     const target = email(); await fixture().post(target)
     const user = await prisma.user.findUniqueOrThrow({ where: { email: target } })
