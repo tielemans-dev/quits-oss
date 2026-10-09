@@ -253,13 +253,14 @@ suite("operation journal and bounded recovery", () => {
         outcome === "accepted" ? "delivery_confirmed" : "failed_step"
       )
       expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
+      const revisionBeforeRecovery = (await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })).editRevision
       await recoverDelivery(actor, { ...scope, deliveryId: job.id })
       expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
       expect(
         await prisma.invoice.findUniqueOrThrow({
           where: { id: scope.documentId }
         })
-      ).toMatchObject({ status: outcome === "accepted" ? "sent" : "draft" })
+      ).toMatchObject({ status: outcome === "accepted" ? "sent" : "draft", editRevision: revisionBeforeRecovery })
       expect(
         await prisma.domainEvent.count({
           where: { organizationId: org.organizationId, type: "invoice.sent" }
@@ -549,6 +550,7 @@ suite("operation journal and bounded recovery", () => {
   })
   it("records one manual decision, sends the stored communication for the same invoice, and replays its receipt", async () => {
     const { actor, scope, job, delivery } = await uncertain()
+    const revisionBeforeManual = (await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })).editRevision
     vi.mocked(deliver).mockResolvedValue({ id: "manual_accepted" })
     const input = {
       ...delivery,
@@ -571,6 +573,7 @@ suite("operation journal and bounded recovery", () => {
       })
     ).toEqual(result)
     expect(vi.mocked(deliver)).toHaveBeenCalledTimes(2)
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })).editRevision).toBe(revisionBeforeManual)
     expect(vi.mocked(deliver).mock.calls[1]?.[0]).toEqual(
       (job.payload as { message: unknown }).message
     )
@@ -854,6 +857,8 @@ suite("operation journal and bounded recovery", () => {
     ).toMatchObject({
       number: before.number,
       issueDate: before.issueDate,
+      editRevision: before.editRevision,
+      purchaseOrderRef: before.purchaseOrderRef,
       status: before.status
     })
     expect(
@@ -1048,6 +1053,8 @@ suite("operation journal and bounded recovery", () => {
     ).toMatchObject({
       number: before.number,
       issueDate: before.issueDate,
+      editRevision: before.editRevision,
+      purchaseOrderRef: before.purchaseOrderRef,
       status: before.status
     })
     expect(
@@ -1071,6 +1078,70 @@ suite("operation journal and bounded recovery", () => {
       ).quoteNextNum
     ).toBe(2)
   })
+  it.each([
+    ["invoice", "stored"], ["invoice", "replacement"],
+    ["quote", "stored"], ["quote", "replacement"]
+  ] as const)("refuses %s %s recovery after the reviewed PO reference changes", async (documentType, mode) => {
+    const context = documentType === "invoice" ? await uncertain() : await setup()
+    let documentId = context.scope.documentId
+    if (documentType === "quote") {
+      const created = await executeCommand(createQuoteDraft, { ...context.input, expiryDate: "2099-12-01", purchaseOrderRef: "PO-before" }, { actor: context.actor })
+      if (created.status !== "completed") throw new Error("quote setup failed")
+      documentId = created.result.id
+      vi.stubEnv("EMAIL_PROVIDER", "smtp")
+      vi.stubEnv("SMTP_HOST", "relay.example.test")
+      vi.mocked(deliver).mockRejectedValueOnce(new Error("Quote SMTP answer lost"))
+      await executeIssuanceCommand(sendQuote, { id: documentId }, { actor: context.actor })
+    }
+    const scope = { documentType, documentId }
+    if (mode === "replacement") {
+      if (documentType === "invoice") await prisma.invoice.update({ where: { id: documentId }, data: { publicPaymentKeyVersion: 2 } })
+      else await prisma.quote.update({ where: { id: documentId }, data: { publicAccessKeyVersion: 2 } })
+    }
+    const before = documentType === "invoice"
+      ? await prisma.invoice.findUniqueOrThrow({ where: { id: documentId } })
+      : await prisma.quote.findUniqueOrThrow({ where: { id: documentId } })
+    const source = (await documentJournal(context.actor, scope)).deliveries[0]!
+    const reviewedTarget = mode === "replacement" ? source.replacementTarget! : source.manualTarget!
+    expect(reviewedTarget).toBeTruthy()
+    // Bind the PO itself, rather than relying on an unrelated updatedAt change.
+    const data = { purchaseOrderRef: "PO-after", updatedAt: before.updatedAt }
+    if (documentType === "invoice") await prisma.invoice.update({ where: { id: documentId }, data })
+    else await prisma.quote.update({ where: { id: documentId }, data })
+    const result = await executeCommand(manualResendCommand(documentType), {
+      ...scope, deliveryId: source.id, mode, reviewedTarget,
+      reason: "Recipient checked", acknowledgeDuplicateRisk: true,
+      clientRequestId: "po-changed-after-review"
+    }, { actor: context.actor })
+    expect(result).toMatchObject({ status: "failed", error: { code: "delivery_changed" } })
+    expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
+    expect(await prisma.job.count({ where: { organizationId: context.actor.organizationId, payload: { path: ["recoveryOf"], equals: source.id } } })).toBe(0)
+    expect(await prisma.domainEvent.count({ where: { organizationId: context.actor.organizationId, type: "delivery.manual_resend_requested" } })).toBe(0)
+    const after = documentType === "invoice"
+      ? await prisma.invoice.findUniqueOrThrow({ where: { id: documentId } })
+      : await prisma.quote.findUniqueOrThrow({ where: { id: documentId } })
+    expect(after).toMatchObject({ number: before.number, status: before.status, editRevision: before.editRevision, purchaseOrderRef: "PO-after" })
+  })
+  it("explicitly refuses credit-note replacement before dispatching a resend handler", async () => {
+    const { actor, scope } = await uncertain()
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
+    const credit = await prisma.creditNote.create({ data: {
+      organizationId: actor.organizationId, invoiceId: invoice.id, contactId: invoice.contactId,
+      number: "CN-refusal", reason: "Synthetic recovery fixture", subtotalNet: 10, totalGross: 10,
+      currency: invoice.currency, countryCode: invoice.countryCode, locale: invoice.locale,
+      timezone: invoice.timezone, taxRegime: invoice.taxRegime
+    } })
+    const result = await executeCommand(manualResendCommand("creditNote"), {
+      documentType: "creditNote", documentId: credit.id, deliveryId: "unused-replacement",
+      mode: "replacement", reviewedTarget: { revision: "fixture", recipient: "recipient@example.test", publicLinkKeyVersion: null },
+      reason: "Recipient checked", acknowledgeDuplicateRisk: true, clientRequestId: "credit-note-replacement"
+    }, { actor })
+    expect(result).toMatchObject({ status: "failed", error: { code: "manual_resend_unavailable", message: "Credit notes do not support replacement email recovery." } })
+    expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
+    expect(await prisma.domainEvent.count({ where: { organizationId: actor.organizationId, type: "delivery.manual_resend_requested" } })).toBe(0)
+    expect(await prisma.agreement.count({ where: { organizationId: actor.organizationId } })).toBe(0)
+  })
+
   it("leaves a failed provider lookup unresolved and prevents recovery of a claimed delivery", async () => {
     const { actor, scope, delivery, job } = await uncertain()
     setRuntimeServices({

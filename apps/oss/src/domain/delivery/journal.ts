@@ -104,12 +104,12 @@ export async function journalDocument(
     input.documentType === "invoice"
       ? await db.invoice.findFirst({
           where,
-          select: { ...select, publicPaymentKeyVersion: true }
+          select: { ...select, purchaseOrderRef: true, publicPaymentKeyVersion: true }
         })
       : input.documentType === "quote"
         ? await db.quote.findFirst({
             where,
-            select: { ...select, publicAccessKeyVersion: true }
+            select: { ...select, purchaseOrderRef: true, publicAccessKeyVersion: true }
           })
         : input.documentType === "creditNote"
           ? await db.creditNote.findFirst({ where, select })
@@ -755,6 +755,11 @@ export function manualResendCommand(
           strength: "no_key_update"
         })
         const current = yield* readJournalRecord(() => journalDocument(command.actor, input, true, db))
+        if (documentType === "creditNote" && input.mode === "replacement")
+          return yield* new InvalidState({
+            message: "Credit notes do not support replacement email recovery.",
+            code: "manual_resend_unavailable"
+          })
         const { job, payload } = yield* readJournalRecord(() => scopedJob(command.actor, input, db))
         const previous = yield* Effect.promise(() =>
           db.job.count({
