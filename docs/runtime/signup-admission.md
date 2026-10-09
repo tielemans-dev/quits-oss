@@ -59,12 +59,18 @@ the ordinary Prisma adapter. Do not replace this with a no-argument consumption 
 post-commit database hook.
 
 Nested Better Auth transactions reuse the owned adapter through per-auth-instance AsyncLocalStorage.
-A transaction belonging to another auth instance is rejected before its callback writes. No mutable
-process-global client is used. Nested create-after queues are retained by the owner and cleared from
-Better Auth's queues before it can dispatch them. They run only after the owning Prisma COMMIT and
-are discarded on rollback or COMMIT failure. Any failed nested transaction makes the owner rollback,
-even if its caller catches the error. This compensates for Better Auth 1.5.4 dispatching nested queues
-before outer completion and dispatching queues even after transaction failure. Regression tests use
+A transaction belonging to another auth instance is rejected before its callback writes. A native
+user-create before hook also checks the originating instance before Better Auth resolves an ambient
+adapter, so direct internal creation cannot silently use another instance's policy. No mutable
+process-global client is used. Every adapter operation captures its native pending after-hook queue,
+including update/delete-only scopes. Each captured queue forwards subsequent enqueues to the owner's
+buffer, preserving enqueue order across nested scopes without native premature dispatch. Create,
+update and delete effects run once after the owning Prisma COMMIT and are discarded on rollback or
+COMMIT failure. Direct admission, consumption and adapter failures make the owner rollback-only,
+including JavaScript failures from a custom transaction-bound adapter and non-user operations.
+Catching those failures in the outer callback does not permit COMMIT. Any failed nested transaction
+also makes the owner roll back, even if its caller catches the error. This compensates for Better
+Auth 1.5.4 dispatching nested queues before outer completion and dispatching queues even after transaction failure. Regression tests use
 its actual internal adapter, database hooks and PostgreSQL.
 
 The installation administrator path also runs admission before lookup and consumes within its

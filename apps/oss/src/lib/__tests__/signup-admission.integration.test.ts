@@ -381,3 +381,121 @@ describe.skipIf(!local)('nested transaction isolation', () => {
     expect(await consumed(code)).toBe(false); expect(await prisma.user.count({ where: { email: target } })).toBe(0)
   })
 })
+
+describe.skipIf(!local)('direct creation ownership and rollback-only lifecycle', () => {
+  it.each(['restricted', 'open'] as const)('rejects a foreign %s instance before direct internal creation', async (mode) => {
+    const target = email()
+    const denied = vi.fn(async () => ({ ok: false as const, code: 'not_invited' as const }))
+    const first = await fixture({ authorizeSignUp: async () => ({ ok: true }) }).auth.$context
+    const second = await fixture(mode === 'restricted' ? { authorizeSignUp: denied } : {}, mode === 'restricted' ? 'invite_only' : undefined).auth.$context
+    await expect(runWithTransaction(first.adapter as DBAdapter, () => second.internalAdapter.createUser({
+      email: target, name: 'Foreign direct', emailVerified: false,
+    }))).rejects.toMatchObject({ body: { code: 'signup_failed' } })
+    expect(await prisma.user.count({ where: { email: target } })).toBe(0)
+    expect(denied).not.toHaveBeenCalled()
+  })
+
+  it.each(['attempt', 'authorization', 'consumption', 'user', 'account'] as const)('rolls the owner back after a caught direct %s JavaScript failure', async (stage) => {
+    const target = email(); const code = await grant(target)
+    const after = vi.fn(async () => {})
+    const context = await fixture({
+      admitSignUpAttempt: stage === 'attempt' ? async () => { throw new Error('synthetic admission failure') } : undefined,
+      authorizeSignUp: async () => {
+        if (stage === 'authorization') throw new Error('synthetic authorization failure')
+        const decision = await admission({ email: target, inviteCode: code.toUpperCase() })
+        if (!decision.ok) return decision
+        return { ok: true, consumeInvite: async (tx) => {
+          await decision.consumeInvite!(tx)
+          if (stage === 'consumption') throw new Error('synthetic consumption failure after claim')
+        } }
+      },
+      createTransactionDatabaseAdapter: tx => (options: BetterAuthOptions) => {
+        const adapter = prismaAdapter(tx, { provider: 'postgresql' })(options)
+        return { ...adapter, create: async (data: Parameters<typeof adapter.create>[0]) => {
+          if (data.model === stage) throw new Error('synthetic insertion failure')
+          return adapter.create(data)
+        } }
+      },
+    }, undefined, { user: { create: { after } }, account: { create: { after } } }).auth.$context
+    await expect(runWithTransaction(context.adapter as DBAdapter, async () => {
+      await (async () => {
+        const user = await context.internalAdapter.createUser({ email: target, name: 'Caught direct', emailVerified: false })
+        if (stage === 'account') await context.internalAdapter.createAccount({ userId: user.id, providerId: 'credential', accountId: user.id })
+      })().catch(() => {})
+    })).rejects.toMatchObject({ body: { code: 'signup_failed' } })
+    expect(await consumed(code)).toBe(false)
+    expect(await prisma.user.count({ where: { email: target } })).toBe(0)
+    expect(after).not.toHaveBeenCalled()
+  })
+})
+
+async function failAtCommit(tx: Prisma.TransactionClient) {
+  await tx.$executeRawUnsafe('CREATE TEMP TABLE lifecycle_parent (id TEXT PRIMARY KEY) ON COMMIT DROP')
+  await tx.$executeRawUnsafe('CREATE TEMP TABLE lifecycle_failure (id TEXT REFERENCES lifecycle_parent(id) DEFERRABLE INITIALLY DEFERRED) ON COMMIT DROP')
+  await tx.$executeRaw`INSERT INTO lifecycle_failure VALUES (${randomUUID()})`
+}
+
+describe.skipIf(!local)('native after-hook queues', () => {
+  it('discards an update-only outer queue on rollback', async () => {
+    const target = email(); await fixture().post(target)
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: target } })
+    const after = vi.fn(async () => {})
+    const context = await fixture({ authorizeSignUp: async () => ({ ok: true }) }, undefined, { user: { update: { after } } }).auth.$context
+    await expect(runWithTransaction(context.adapter as DBAdapter, async () => {
+      await context.internalAdapter.updateUser(user.id, { name: 'Rolled back' })
+      throw new Error('outer rollback')
+    })).rejects.toThrow()
+    expect(after).not.toHaveBeenCalled()
+    expect((await prisma.user.findUniqueOrThrow({ where: { email: target } })).name).toBe(user.name)
+  })
+
+  it.each(['commit', 'rollback', 'commit-failure'] as const)('defers nested create/update/delete queues through outer %s in enqueue order exactly once', async (outcome) => {
+    const target = email(); const code = await grant(target); const accountId = randomUUID()
+    const deletedTarget = email(); await fixture().post(deletedTarget)
+    const deleted = await prisma.user.findUniqueOrThrow({ where: { email: deletedTarget } })
+    const events: string[] = []
+    const observe = (event: string) => async () => {
+      events.push(event)
+      // Independent connection observes the completed transaction, not its transient rows.
+      expect((await prisma.user.findUniqueOrThrow({ where: { email: target } })).name).toBe('Updated')
+      expect(await prisma.user.count({ where: { id: deleted.id } })).toBe(0)
+      expect(await prisma.account.count({ where: { accountId } })).toBe(1)
+    }
+    const context = await fixture({
+      authorizeSignUp: () => admission({ email: target, inviteCode: code.toUpperCase() }),
+      createTransactionDatabaseAdapter: tx => (options: BetterAuthOptions) => {
+        const adapter = prismaAdapter(tx, { provider: 'postgresql' })(options)
+        return { ...adapter, update: async (data: Parameters<typeof adapter.update>[0]) => {
+          if (outcome === 'commit-failure') await failAtCommit(tx)
+          return adapter.update(data)
+        } }
+      },
+    }, undefined, {
+      user: { create: { after: observe('user.create') }, update: { after: observe('user.update') }, delete: { after: observe('user.delete') } },
+      account: { create: { after: observe('account.create') } },
+    }).auth.$context
+    let completedCallback = false
+    const operation = runWithTransaction(context.adapter as DBAdapter, async () => {
+      const user = await context.internalAdapter.createUser({ email: target, name: 'Created', emailVerified: false })
+      await runWithTransaction(context.adapter as DBAdapter, () => context.internalAdapter.createAccount({ userId: user.id, providerId: 'google', accountId }))
+      await runWithTransaction(context.adapter as DBAdapter, () => context.internalAdapter.updateUser(user.id, { name: 'Updated' }))
+      await runWithTransaction(context.adapter as DBAdapter, () => context.internalAdapter.deleteUser(deleted.id))
+      expect(events).toEqual([])
+      completedCallback = true
+      if (outcome === 'rollback') throw new Error('outer rollback')
+    })
+    if (outcome === 'commit') {
+      await operation
+      expect(events).toEqual(['user.create', 'account.create', 'user.update', 'user.delete'])
+      expect(await consumed(code)).toBe(true)
+    } else {
+      await expect(operation).rejects.toMatchObject({ body: { code: 'signup_failed' } })
+      expect(completedCallback).toBe(true)
+      expect(events).toEqual([])
+      expect(await consumed(code)).toBe(false)
+      expect(await prisma.user.count({ where: { email: target } })).toBe(0)
+      expect(await prisma.user.count({ where: { id: deleted.id } })).toBe(1)
+      expect(await prisma.account.count({ where: { accountId } })).toBe(0)
+    }
+  })
+})

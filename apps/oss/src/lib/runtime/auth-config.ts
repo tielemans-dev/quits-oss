@@ -9,7 +9,7 @@ import { readBooleanEnv, resolveUrlOrigin } from "@quits/shared/runtimeEnv"
 
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client"
 
-import { assertSignupDecision, authorizeSignup, signupAdmissionAdapter, signupInput, resolveSignupAdmission, type SignupAdmission } from "./signup-admission"
+import { assertSignupDecision, authorizeSignup, signupAdmissionAdapter, signupOwnershipPlugin, signupInput, resolveSignupAdmission, type SignupAdmission } from "./signup-admission"
 
 import { getConfiguredSocialProviders } from "../auth/providers"
 import { sendInvitationEmail } from "../email"
@@ -130,6 +130,13 @@ export function buildQuitsAuthOptions(input: {
   })
   const cookiesPlugin = tanstackStartCookies()
 
+  const signupDatabase = admission.authorizeSignUp ? signupAdmissionAdapter({
+    prisma: input.prisma, admission,
+    createDatabaseAdapter: hooks.createDatabaseAdapter,
+    createTransactionDatabaseAdapter: hooks.createTransactionDatabaseAdapter,
+  }) : undefined
+  const ownershipPlugin = signupOwnershipPlugin(signupDatabase?.owns)
+
   return {
     ...(betterAuthUrl ? { baseURL: betterAuthUrl } : {}),
     // Every native verification reader, including GET reset callbacks, must use the same policy.
@@ -143,14 +150,8 @@ export function buildQuitsAuthOptions(input: {
         "/reset-password": false as const,
       },
     },
-    database: admission.authorizeSignUp ? signupAdmissionAdapter({
-      prisma: input.prisma, admission,
-      createDatabaseAdapter: hooks.createDatabaseAdapter,
-      createTransactionDatabaseAdapter: hooks.createTransactionDatabaseAdapter,
-    }) : hooks.createDatabaseAdapter?.(input.prisma) ??
-      prismaAdapter(input.prisma, {
-        provider: "postgresql",
-      }),
+    database: signupDatabase ?? hooks.createDatabaseAdapter?.(input.prisma) ??
+      prismaAdapter(input.prisma, { provider: "postgresql" }),
     ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
     advanced: {
       backgroundTasks: {
@@ -305,9 +306,10 @@ export function buildQuitsAuthOptions(input: {
     socialProviders: Object.keys(socialProviders).length
       ? socialProviders
       : undefined,
-    plugins: [organizationPlugin, cookiesPlugin] as [
+    plugins: [organizationPlugin, cookiesPlugin, ownershipPlugin] as [
       typeof organizationPlugin,
       typeof cookiesPlugin,
+      typeof ownershipPlugin,
     ],
   }
 }
