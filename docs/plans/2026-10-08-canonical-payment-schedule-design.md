@@ -197,8 +197,15 @@ amount. It does not infer a scope amendment from a credit note.
   on a superset of its deliverables at the same or later stage and term, and never precedes a
   fixed date. Moving money between a fixed date and a deliverable event therefore needs consent in
   either direction: the event may come earlier or later than the date. The check is conservative:
-  when the order of two due points cannot be known in advance, it assumes the new one may come
-  first.
+  when the order of due points cannot be known in advance, the customer must consent unless the
+  prototype proves dominance for all event combinations. It assigns every new minor unit to a
+  distinct old minor unit guaranteed due no later, using a capacity flow with residual reassignment.
+  One old payment cannot cover several independent new events separately. This polynomial check
+  never enumerates event subsets and does not depend on the size of the amounts. The assignment
+  proves that every realized set of new payments has at least as much old money already due.
+  It is sufficient rather than necessary: an unproven change waits for consent even if a more
+  precise event analysis might establish that it is favourable. Identical schedules, deferrals,
+  and redistributions covered by earlier money remain consent-free.
 - An amendment needing consent waits as the single **pending** version; the current version stays
   authoritative. Nothing else may amend the plan until the pending version is consented or
   withdrawn. Recording consent rechecks issued steps, receipts and payments, because they may have

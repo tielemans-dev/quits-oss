@@ -67,8 +67,64 @@ export function dueEntries(plan: PlanVersion, obligation: Obligation): DueEntry[
 }
 
 /**
+ * Prove dominance for every event combination by assigning each new minor unit to an old minor
+ * unit guaranteed due no later. Old capacity can only be used once. This is a sufficient proof:
+ * any set of new payments due in a realized history has at least as much distinct old money due.
+ * When no assignment exists we require consent, even if a more precise event proof might work.
+ * Breadth-first residual paths allow reassignment without enumerating event subsets. Edmonds-Karp
+ * takes O(V E²) time and O(V + E) space, independent of the numeric amounts.
+ */
+function coveredByEarlierMoney(before: DueEntry[], after: DueEntry[]) {
+  type Edge = { to: number; reverse: number; capacity: bigint }
+  const source = before.length + after.length, sink = source + 1
+  const graph: Edge[][] = Array.from({ length: sink + 1 }, () => [])
+  const connect = (from: number, to: number, capacity: bigint) => {
+    graph[from]!.push({ to, reverse: graph[to]!.length, capacity })
+    graph[to]!.push({ to: from, reverse: graph[from]!.length - 1, capacity: 0n })
+  }
+  const required = after.reduce((total, entry) => total + entry.amount, 0n)
+  before.forEach((entry, i) => {
+    connect(source, i, entry.amount)
+    after.forEach((next, j) => {
+      if (noLater(entry.key, next.key)) connect(i, before.length + j, required)
+    })
+  })
+  after.forEach((entry, j) => connect(before.length + j, sink, entry.amount))
+  let covered = 0n
+  while (covered < required) {
+    const parents: Array<{ from: number; edge: number } | undefined> = Array(graph.length)
+    const visited = new Set([source]), queue = [source]
+    for (let cursor = 0; cursor < queue.length && !visited.has(sink); cursor++) {
+      const from = queue[cursor]!
+      graph[from]!.forEach((edge, index) => {
+        if (edge.capacity > 0n && !visited.has(edge.to)) {
+          visited.add(edge.to)
+          parents[edge.to] = { from, edge: index }
+          queue.push(edge.to)
+        }
+      })
+    }
+    if (!visited.has(sink)) return false
+    let amount = required - covered
+    for (let node = sink; node !== source;) {
+      const parent = parents[node]!, edge = graph[parent.from]![parent.edge]!
+      if (edge.capacity < amount) amount = edge.capacity
+      node = parent.from
+    }
+    for (let node = sink; node !== source;) {
+      const parent = parents[node]!, edge = graph[parent.from]![parent.edge]!
+      edge.capacity -= amount
+      graph[node]![edge.reverse]!.capacity += amount
+      node = parent.from
+    }
+    covered += amount
+  }
+  return true
+}
+
+/**
  * Customer consent is needed unless, at every point in time, the new version asks for no more
- * money than the current one. Deferrals and reductions only need a notice.
+ * money than the current one. Proven deferrals and reductions only need a notice.
  */
 export function consentReasons(current: PlanVersion, next: PlanVersion, obligation: Obligation) {
   const before = dueEntries(current, obligation), after = dueEntries(next, obligation)
@@ -78,6 +134,8 @@ export function consentReasons(current: PlanVersion, next: PlanVersion, obligati
     const was = cumulative(before, key), now = cumulative(after, key)
     if (now > was) reasons.push(`Asks for ${formatMinor(now - was, obligation.currency)} ${obligation.currency} more by ${describeKey(key)}`)
   }
+  if (!reasons.length && !coveredByEarlierMoney(before, after))
+    reasons.push("Cannot prove that combined payments ask for no more money at every point in time")
   return [...new Set(reasons)]
 }
 
