@@ -120,6 +120,7 @@ export type ExceptionCode =
   | "pair_references_unknown_entry"
   | "cluster_not_conserved"
   | "cluster_currency_mixed"
+  | "cluster_customer_mixed"
   | "allocation_ambiguous"
   | "allocation_sign_inconsistent"
   | "applied_without_match_pair"

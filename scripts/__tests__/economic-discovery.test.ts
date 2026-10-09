@@ -94,6 +94,25 @@ describe("e-conomic synthetic fixtures", () => {
 })
 
 describe("allocation proof, not a paid flag", () => {
+  it("blocks a fully paid match across two known customers even when both controls balance", () => {
+    const s = clone(byName("fully_paid").source)
+    s.entries.find((e) => e.type === 2)!.customerNumber = 2
+    s.customers.push({ ...s.customers[0]!, customerNumber: 2, name: "Other customer", balance: 0 })
+    const out = normalizeEconomic(s)
+    expect(out.reconciliation.customerControls.map((c) => c.differenceBase)).toEqual([0, 0])
+    expect(out.exceptions.some((e) => e.code === "contact_unknown")).toBe(false)
+    expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "cluster_customer_mixed", severity: "blocking", subject: "cluster:1" }))
+    expect(out.clusters[0]!.status).toBe("inconsistent")
+    expect(out.allocations).toEqual([])
+    expect(out.documents[0]).toMatchObject({ contactSourceId: "customer:1", sourceResidual: 0, recomputedResidual: null, residualBasis: "source_remainder_only" })
+    expect(out.ledgerItems[0]).toMatchObject({ contactSourceId: "customer:2", sourceResidual: 0 })
+    expect(out.reconciliation.rows).toEqual([
+      expect.objectContaining({ contactSourceId: "customer:1", sourceResidual: 0, recomputedResidual: null, match: null }),
+      expect.objectContaining({ contactSourceId: "customer:2", sourceResidual: 0, recomputedResidual: null, match: null }),
+    ])
+    expect(out.reconciliation.allRowsMatch).toBe(false)
+  })
+
   it("blocks equal numeric invoice and ledger amounts in different currencies", () => {
     const s = clone(byName("unpaid").source)
     s.bookedInvoices[0]!.currency = "EUR"
@@ -193,11 +212,32 @@ describe("allocation proof, not a paid flag", () => {
     expect(out.allocations).toEqual([])
   })
 
-  it("blocks when a pair amount differs from the entry it names", () => {
-    const s = clone(byName("fully_paid").source)
-    s.matchedPairs[0]!.fromEntryAmount += 1
-    expect(normalizeEconomic(s).exceptions.some((e) => e.code === "pair_references_unknown_entry")).toBe(true)
-  })
+  for (const endpoint of ["fromEntryAmount", "toEntryAmount"] as const) {
+    for (const traversal of ["original", "repeated", "reversed"] as const) {
+      it(`keeps residuals source-only for an invalid ${endpoint} in the ${traversal} pair`, () => {
+        const s = clone(byName("fully_paid").source)
+        const pair = s.matchedPairs[0]!
+        const invalid = traversal === "reversed" ? {
+          fromEntry: pair.toEntry, fromEntryDate: pair.toEntryDate, fromEntryAmount: pair.toEntryAmount, fromEntryAmountDKK: pair.toEntryAmountDKK,
+          toEntry: pair.fromEntry, toEntryDate: pair.fromEntryDate, toEntryAmount: pair.fromEntryAmount, toEntryAmountDKK: pair.fromEntryAmountDKK,
+        } : clone(pair)
+        invalid[endpoint] += 1
+        if (traversal === "original") s.matchedPairs = [invalid]
+        else s.matchedPairs.push(invalid)
+        const out = normalizeEconomic(s)
+        expect(out.exceptions).toContainEqual(expect.objectContaining({ code: "pair_references_unknown_entry", severity: "blocking" }))
+        expect(out.clusters).toEqual([expect.objectContaining({ entries: [3, 4], status: "inconsistent" })])
+        expect(out.allocations).toEqual([])
+        expect(out.documents[0]).toMatchObject({ sourceResidual: 0, recomputedResidual: null, residualBasis: "source_remainder_only" })
+        expect(out.ledgerItems[0]!.sourceResidual).toBe(0)
+        expect(out.reconciliation.rows).toEqual([
+          expect.objectContaining({ documentKey: "invoice:1002", sourceResidual: 0, recomputedResidual: null, match: null }),
+          expect.objectContaining({ documentKey: null, sourceResidual: 0, recomputedResidual: null, match: null }),
+        ])
+        expect(out.reconciliation.allRowsMatch).toBe(false)
+      })
+    }
+  }
 
   it("flags a ledger line whose invoice was not extracted", () => {
     const s = clone(byName("unpaid").source)

@@ -148,15 +148,19 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
   }
   const edges: Edge[] = []
   const seen = new Set<string>()
+  const invalidPairEntries = new Set<number>()
   for (const p of src.matchedPairs) {
     for (const [n, amt] of [[p.fromEntry, p.fromEntryAmount], [p.toEntry, p.toEntryAmount]] as const) {
       const e = ledger.get(n)
       if (!e) {
         issues.add("pair_references_unknown_entry", "blocking", `entry:${n}`, `Matched pair ${p.fromEntry}->${p.toEntry} points at an entry that is not a customer-ledger line in the extraction`)
+        invalidPairEntries.add(n)
       } else if (amountMinor(e) !== toMinor(amt, entryExp(e), issues, `entry:${n}`)) {
         issues.add("pair_references_unknown_entry", "blocking", `entry:${n}`, `Pair amount ${amt} differs from the entry amount ${e.amount}`)
+        invalidPairEntries.add(n)
       }
     }
+    // Validate every occurrence before deduplication; one invalid pair taints its entire cluster.
     const key = edgeKey(p.fromEntry, p.toEntry)
     if (seen.has(key)) continue
     seen.add(key)
@@ -193,7 +197,13 @@ export function normalizeEconomic(src: SourceBundle): ImportBundle {
       status = s
     }
 
-    if (known.length !== nodes.length) fail("inconsistent")
+    if (known.length !== nodes.length || nodes.some((n) => invalidPairEntries.has(n))) fail("inconsistent")
+
+    const customers = new Set(known.map((n) => ledger.get(n)!.customerNumber))
+    if (customers.size > 1) {
+      issues.add("cluster_customer_mixed", "blocking", id, `Entries ${nodes.join(", ")} belong to customers ${[...customers].join(", ")}; cross-customer allocations require a supported transfer rule that this extraction does not provide`)
+      fail("inconsistent")
+    }
 
     const currencies = new Set(known.map((n) => entryCurrency(ledger.get(n)!)))
     if (status === "resolved" && currencies.size > 1) {

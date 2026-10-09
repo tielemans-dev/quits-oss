@@ -140,6 +140,8 @@ Before normalization, the validator checks source identities for customers, book
 
 An invoice and every debtor line must have the same currency before their amounts or residuals can be compared. A missing ledger currency code uses the agreement's base currency. A currency mismatch blocks with `debtor_line_currency_mismatch` and leaves the document's recomputed residual null.
 
+All customer-ledger entries in a match cluster must belong to the same customer. Cross-customer matches block with `cluster_customer_mixed`; this draft has no supported customer-transfer rule. Invalid pair endpoints or amounts make the entire cluster inconsistent, including invalid repeated or reversed pairs. These clusters emit no allocations and retain source-only residuals even when the source reports zero residuals and balanced customer controls.
+
 ## 6. Export fallback
 
 When the API cannot be used (no grant, role refused, Basis account where the provider reports no access, a customer who will not grant access), the same contract can be filled from files. All **documented**; none was downloaded.
@@ -191,7 +193,7 @@ What the fixtures do **not** prove: that a real account returns this shape, that
 | --- | --- | --- |
 | 0 completeness | REST booked-invoice count equals BookedEntries debtor lines with an invoice number; `/count` endpoints against pages read; every PDF fetched or listed missing; attachment count joined | exact |
 | 1 per document | debtor-line currency and customer match the invoice before comparing amounts; REST `remainder` equals the ledger-line `remainder`; invoice totals add up; the voucher's revenue, VAT and debtor lines net to zero | exact in the document currency; base totals within one minor unit |
-| 2 per allocation | each pair endpoint exists; pair amounts equal entry amounts; clusters conserve; solved flows fit both entries and agree with their signs; every emitted endpoint is represented in import scope | exact |
+| 2 per allocation | each pair endpoint exists; pair amounts equal entry amounts, including repeated/reversed evidence; cluster entries belong to one customer; clusters conserve; solved flows fit both entries and agree with their signs; every emitted endpoint is represented in import scope | exact |
 | 3 per customer and currency | per-document and ledger-item residual rows stay in their own currencies; compare the complete extraction's ledger residuals converted to base against `customer.balance`. Planned: compare unpaid booked-invoice residuals with the vendor unpaid-invoice total after verifying its scope and currency semantics | one base minor unit per partially applied foreign entry for the customer check; any other difference is reported with its amount. Unpaid-total tolerance requires verified endpoint semantics |
 | 4 after a Quits dry run | per customer, document and currency: Quits residual equals source residual; unapplied cash and open credits equal their source sums; allocations reproduce each entry's applied amount | exact, per currency; never netted across currencies |
 
