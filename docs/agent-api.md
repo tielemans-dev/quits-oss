@@ -288,8 +288,8 @@ existing payment methods. Its permissions and approval flow are unchanged.
 
 Invoice and quote drafts carry `editRevision`, initially `0`. Every draft edit increments it,
 including notes-only edits, linked invoice edits, adding or releasing deliverables, and changing a draft payment
-schedule to a sale. Pass `expectedRevision` on updates to refuse an outdated save with
-`InvalidState` / `stale_draft`. Omitting it preserves the previous update behavior. A refused save
+schedule to a sale. Pass `expectedRevision` on updates, on `invoice_add_deliverables`, and on the
+`invoices.scheduleAsSale` mutation to refuse an outdated save with `InvalidState` / `stale_draft`. Omitting it preserves the previous update behavior. A refused save
 changes neither the document nor its revision and emits no draft-update event.
 
 Invoice and quote create/update inputs, and recurring template create/update inputs, accept an
