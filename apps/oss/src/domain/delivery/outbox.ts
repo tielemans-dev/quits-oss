@@ -258,7 +258,8 @@ async function settle(
       : { outcome: outcome.failure.reason, message: outcome.failure.message, ...(outcome.failure.code ? { code: outcome.failure.code } : {}) }
     const recorded = await tx.job.updateMany({
       where: { ...fenced(job), result: { equals: Prisma.DbNull } },
-      data: { result, ...(payload.decision ? { payload: { ...payload, decision: safeFailure(payload.decision) } } : {}) },
+      // A sweep also settles abandoned jobs, without the runner clearing its old error.
+      data: { result, lastError: outcome.delivered ? null : `Email ${outcome.failure.reason}: ${outcome.failure.message}`, ...(payload.decision ? { payload: { ...payload, decision: safeFailure(payload.decision) } } : {}) },
     })
     if (recorded.count === 0) {
       throw new StaleJobClaimError(`Delivery job ${job.id} is no longer held by this run`)
@@ -415,10 +416,10 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
     requested.attempts!.at(-1)!.outcome = isDefiniteRejection(error) ? "rejected" : "uncertain"
     await recordOnJob(job, requested)
     if (isDefiniteRejection(error)) {
-      deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, providerCode: error.providerCode })
       // Only this SMTP classification proves the connection failed before submission.
       // Timeouts and lost responses remain uncertain, never a definite refusal.
       const code = error.providerCode === "smtp_unavailable" ? "email_provider_unreachable" : "email_provider_refused"
+      deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, code })
       // A refusal proves only that this request delivered nothing.
       return settleDecision(
         job,
@@ -430,11 +431,12 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
       )
     }
     if (provider === "smtp" || job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {
-      deliveryLogger.error("email.unconfirmed", { kind: payload.completion.kind, error })
+      deliveryLogger.error("email.unconfirmed", { kind: payload.completion.kind })
       return settleDecision(job, requested, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
     }
-    // Retried with backoff by the job runner, replaying the same message and key.
-    throw error
+    // The runner persists/logs this error. Retain uncertainty and the original-key retry,
+    // but never pass through a provider message, code or nested cause.
+    throw new Error(UNCONFIRMED_MESSAGE)
   }
 
   // Recorded first, so a settlement that fails is retried without sending again.

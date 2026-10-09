@@ -13,6 +13,7 @@ vi.mock("../../lib/email", async () => ({
 }))
 import { executeIssuanceCommand } from "../../application/issuance"
 import { getPrisma, prisma } from "../../lib/db"
+import { readEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { deliver, EmailSendError } from "../../lib/email"
 import { getPublicInvoicePaymentUrl } from "../../lib/payments/public"
 import { getPublicQuoteUrl } from "../../lib/quotes/public-url"
@@ -45,7 +46,7 @@ import {
   reconcileDelivery,
   recoverDelivery
 } from "../delivery/journal"
-import { deliveryPayloadSchema, EMAIL_DELIVERY_JOB } from "../delivery/outbox"
+import { deliveryPayloadSchema, EMAIL_DELIVERY_JOB, settleAbandonedDeliveries } from "../delivery/outbox"
 import { executeCommand } from "../execute"
 import { runDueJobs, runJobsNow } from "../jobs"
 import { appRouter } from "../../trpc/router"
@@ -300,6 +301,113 @@ suite("operation journal and bounded recovery", () => {
     expect(vi.mocked(deliver)).not.toHaveBeenCalled()
     return { ...context, job, payload, delivery: { ...context.scope, deliveryId: job.id } }
   }
+
+  const privateProviderText = "PRIVATE_PROVIDER smtp://user:password@relay.test sk-test-sensitive"
+  async function journalReadHttp(actor: UserActor, scope: { documentType: "invoice"; documentId: string }) {
+    const response = await fetchRequestHandler({
+      endpoint: "/api/trpc", router: journalRouter,
+      req: new Request(`http://localhost/api/trpc/forDocument?input=${encodeURIComponent(JSON.stringify({ json: scope }))}`),
+      createContext: () => createRequestContext({
+        user: { id: actor.userId, name: "Operator", email: "operator@example.test" },
+        session: { activeOrganizationId: actor.organizationId },
+      } as never, actor.organizationId),
+    })
+    return { status: response.status, text: await response.text() }
+  }
+  it.each([
+    { providerCode: "private-provider-code", provider: "resend", outcome: "rejected", code: "email_provider_refused" },
+    { providerCode: "smtp_unavailable", provider: "smtp", outcome: "rejected", code: "email_provider_unreachable" },
+    { providerCode: "application_error", provider: "resend", outcome: null, code: null },
+    { providerCode: "application_error", provider: "smtp", outcome: "unconfirmed", code: null },
+  ] as const)("keeps $provider/$providerCode failure text private without changing uncertainty", async ({ providerCode, provider, outcome, code }) => {
+    const { actor, scope, org } = await setup()
+    vi.stubEnv("EMAIL_PROVIDER", provider)
+    vi.stubEnv("SMTP_HOST", "relay.example.test")
+    const error = new EmailSendError(providerCode, privateProviderText)
+    Object.assign(error, { cause: new Error(privateProviderText) })
+    vi.mocked(deliver).mockRejectedValueOnce(error)
+    await executeIssuanceCommand(sendInvoice, { id: scope.documentId }, { actor, clientRequestId: "private-provider-send" })
+    const job = await findJob(org.organizationId)
+    expect(job.result).toEqual(outcome ? expect.objectContaining({ outcome, ...(code ? { code } : {}) }) : null)
+    expect(job.status).toBe(outcome ? "failed" : "pending")
+    expect(job.lastError).not.toMatch(/PRIVATE_PROVIDER|user:password|sk-test-sensitive|private-provider-code/)
+    expect(JSON.stringify(job.payload)).not.toMatch(/PRIVATE_PROVIDER|user:password|sk-test-sensitive|private-provider-code/)
+    const journal = await documentJournal(actor, scope)
+    expect(journal.deliveries[0]).toMatchObject({
+      state: outcome === "rejected" ? "failed_step" : "uncertain",
+      failure: outcome === "rejected" ? "rejected" : null,
+      canManualResend: outcome === "unconfirmed",
+      canRecover: outcome === null,
+    })
+    const response = await journalReadHttp(actor, scope)
+    expect(response.status).toBe(200)
+    expect(response.text).not.toMatch(/PRIVATE_PROVIDER|user:password|sk-test-sensitive|private-provider-code|application_error|smtp_unavailable/)
+    expect(JSON.stringify(await prisma.domainEvent.findMany({ where: { organizationId: org.organizationId } }))).not.toContain(privateProviderText)
+    // A retried lost Resend response uses the same message/key and never reissues the document.
+    if (!outcome) {
+      const originalRequest = vi.mocked(deliver).mock.calls[0]
+      await prisma.job.update({ where: { id: job.id }, data: { runAfter: new Date(0) } })
+      await runJobsNow([job.id])
+      expect(vi.mocked(deliver).mock.calls[1]).toEqual(originalRequest)
+      expect((await findJob(org.organizationId)).result).toMatchObject({ outcome: "delivered" })
+      expect(await prisma.invoice.count({ where: { organizationId: org.organizationId } })).toBe(1)
+    }
+  })
+  it("clears a private legacy job error when the abandoned sweep settles its pinned refusal", async () => {
+    const { org, job, payload } = await legacyQueuedDelivery(1, 5)
+    await prisma.job.update({ where: { id: job.id }, data: {
+      lastError: privateProviderText,
+      payload: { ...payload, decision: { reason: "rejected", message: privateProviderText } },
+    } })
+    expect(await settleAbandonedDeliveries({ organizationIds: [org.organizationId] })).toMatchObject({ settled: 1, failed: 0 })
+    const settled = await findJob(org.organizationId)
+    expect(settled.result).toMatchObject({ outcome: "rejected", code: "email_provider_refused" })
+    expect(settled.lastError).toBe("Email rejected: The email provider refused the email. Check the email configuration.")
+    expect(JSON.stringify([settled.payload, settled.result, settled.lastError])).not.toContain(privateProviderText)
+    expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+  })
+  it.each([undefined, "email_provider_unreachable"] as const)("sanitizes an old pinned refusal with classification %s during recovery and HTTP reads", async code => {
+    const { actor, scope, org, job, payload, delivery } = await legacyQueuedDelivery(1, 2)
+    const raw = { message: privateProviderText, providerCode: "private-provider-code", cause: { credentials: privateProviderText } }
+    const decision = { reason: "rejected", ...raw, ...(code ? { code } : {}) }
+    await prisma.job.update({ where: { id: job.id }, data: { status: "failed", lastError: privateProviderText, payload: {
+      ...payload, decision,
+      attempts: [{ startedAt: new Date().toISOString(), outcome: "rejected", ...raw }],
+      evidence: [{ evidenceId: "legacy-observation", observedAt: new Date().toISOString(), outcome: "unknown", ...raw }],
+    } } })
+    await prisma.commandReceipt.update({ where: { id: payload.commandId }, data: {
+      status: "failed", error: { code: "missing_recipient", ...raw }, result: raw,
+    } })
+    await prisma.invoice.update({ where: { id: scope.documentId }, data: {
+      lastEmailAttemptOutcome: "failed", lastEmailAttemptMessage: `Automatic sending failed: Contact has no email address ${privateProviderText}`,
+    } })
+    const before = await documentJournal(actor, scope)
+    expect(before.commands.find(command => command.id === payload.commandId)).toMatchObject({ blocker: "missing_recipient", state: "waiting_prerequisite" })
+    expect(before.deliveries[0]).toMatchObject({ state: "failed_step", canRecover: true, failure: null })
+    expect(before.deliveries[0]?.evidence).toEqual([{ evidenceId: "legacy-observation", observedAt: expect.any(String), outcome: "unknown" }])
+    const admin = appRouter.createCaller({ session: { user: { id: actor.userId }, session: { activeOrganizationId: org.organizationId } } } as never)
+    expect((await admin.invoices.get({ id: scope.documentId })).lastEmailAttemptMessage)
+      .toBe("Automatic sending failed: The email provider refused the email. Check the email configuration.")
+    expect((await journalReadHttp(actor, scope)).text).not.toMatch(/PRIVATE_PROVIDER|user:password|sk-test-sensitive|private-provider-code|credentials/)
+    const document = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
+    expect(readEmailDeliveryAttempt(document)?.lastEmailAttemptMessage)
+      .toBe("Automatic sending failed: The email provider refused the email. Check the email configuration.")
+    const applicationReason = "Automatic sending failed: Contact has no email address"
+    expect(readEmailDeliveryAttempt({ ...document, lastEmailAttemptMessage: applicationReason })?.lastEmailAttemptMessage).toBe(applicationReason)
+    await prisma.invoice.update({ where: { id: scope.documentId }, data: { lastEmailAttemptOutcome: "sending" } })
+    const recovered = await recoverDelivery(actor, delivery)
+    expect(recovered.deliveries[0]).toMatchObject({ state: "failed_step", failure: "rejected", canRecover: false, canManualResend: false })
+    const settled = await findJob(org.organizationId)
+    const safeMessage = code === "email_provider_unreachable"
+      ? "The email provider could not be reached. Check the email configuration."
+      : "The email provider refused the email. Check the email configuration."
+    expect(settled.result).toEqual({ outcome: "rejected", code: code ?? "email_provider_refused", message: safeMessage })
+    expect(settled.payload).toMatchObject({ decision: { reason: "rejected", code: code ?? "email_provider_refused", message: safeMessage } })
+    expect(settled.lastError).toBe(`Email rejected: ${safeMessage}`)
+    expect(JSON.stringify([settled.payload, settled.result, recovered])).not.toMatch(/PRIVATE_PROVIDER|user:password|sk-test-sensitive|private-provider-code|credentials/)
+    expect((await journalReadHttp(actor, scope)).text).not.toMatch(/PRIVATE_PROVIDER|user:password|sk-test-sensitive|private-provider-code|credentials/)
+    expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+  })
 
   it.each(["scheduler", "recovery"] as const)(
     "preserves untimestamped legacy job runs across repeated %s retries",
