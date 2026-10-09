@@ -1,4 +1,5 @@
 import { loadDocumentView } from "../../domain/documents/view"
+import { sanitizeDocumentEmailAttempt } from "../../domain/delivery/provider-failure"
 import { executeIssuanceCommand } from "../../application/issuance"
 import { TRPCError } from "@trpc/server"
 import {
@@ -116,7 +117,7 @@ export const creditNotesRouter = router({
 
       const { subtotalNet: _net, totalTax: _tax, totalGross: _gross, items, ...rest } = creditNote
       return {
-        ...rest,
+        ...sanitizeDocumentEmailAttempt(rest),
         ...serializeTotals(creditNote),
         ...documentDisplayForUi({ ...creditNote, items }),
         items: items.map((item) => serializeItem(creditNote, item)),

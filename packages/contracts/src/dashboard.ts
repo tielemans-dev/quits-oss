@@ -17,7 +17,9 @@ export type DashboardActivityEventType = typeof DASHBOARD_ACTIVITY_EVENT_TYPES[n
 
 const moneyFields = {
   currency: currencyCodeSchema,
-  exponent: z.number().int().min(0).max(2),
+  exponent: z.number().int().min(0).max(3),
+  /** Only unknown legacy currencies use stored decimal scale rather than a known ISO exponent. */
+  precisionSource: z.literal("storage").optional(),
   amount: z.string().regex(/^\d+(?:\.\d+)?$/),
 }
 
@@ -39,9 +41,10 @@ export const dashboardBucketSchema = z.strictObject({
 
 /**
  * Native currencies only, sorted by currency. Never add buckets across currencies.
- * `unvalued` is an informational SUBSET of `buckets`, not additional money. It identifies
- * documents without a known frozen valuation in the current base currency. Receipts currently
- * have no base valuation, so all received money also appears in `unvalued`.
+ * For supported currencies, `unvalued` overlaps `buckets`: it identifies records without a
+ * frozen base valuation. Unknown/exponent-3 currencies appear ONLY in `unvalued`; count includes
+ * them once. Never add the arrays together. Receipts have no base valuation.
+ * Unknown currencies carry precisionSource: "storage"; exponent 2 describes database scale.
  * Empty totals have count 0 and empty arrays; there is no ambiguous currency-free money zero.
  */
 export const dashboardTotalSchema = z.strictObject({
@@ -66,7 +69,7 @@ export const dashboardAttentionSchema = z.strictObject({
   daysOverdue: z.number().int().nonnegative().nullable(),
   /** True only for issued invoices with positive balance and dueDate < asOf. */
   isOverdue: z.boolean(),
-  /** Local expiry date for quote_expiring; null for every other reason. */
+  /** Stored calendar expiry date for quote_expiring; null for every other reason. */
   expiresOn: z.iso.date().nullable(),
   reason: z.enum(["invoice_overdue", "draft_older_than_7_days", "quote_expiring", "email_failed", "email_unconfirmed"]),
   /** Eligibility now, including permission, recipient, provider and today's reminder slot.

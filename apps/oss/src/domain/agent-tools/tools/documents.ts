@@ -1,3 +1,4 @@
+import { sanitizeDocumentEmailAttempt } from "../../delivery/provider-failure"
 import { percentageToFraction } from "@quits/shared/pricing"
 import { Prisma } from "../../../../generated/prisma/client"
 import { getPublicInvoicePaymentUrl } from "../../../lib/payments/public"
@@ -129,7 +130,7 @@ export function presentInvoice(invoice: InvoiceRow) {
     balanceDue: computeSettlement({ totalGross: invoice.totalGross, amountPaid, amountCredited }).balanceDue,
     remindersPaused: invoice.remindersPaused ?? false,
     lastEmailAttempt: invoice.lastEmailAttemptOutcome
-      ? { outcome: invoice.lastEmailAttemptOutcome, message: invoice.lastEmailAttemptMessage ?? null }
+      ? { outcome: invoice.lastEmailAttemptOutcome, message: sanitizeDocumentEmailAttempt(invoice).lastEmailAttemptMessage ?? null }
       : null,
     publicPaymentUrl: safely(() => getPublicInvoicePaymentUrl(invoice)),
     quoteId: invoice.quoteId ?? null,

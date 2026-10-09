@@ -1,3 +1,4 @@
+import { isInvoicePastDue } from "./overdue"
 import { Effect } from "effect"
 import type { InvoicePaymentProgress } from "@quits/contracts/invoices"
 import { Prisma } from "../../../generated/prisma/client"
@@ -56,7 +57,7 @@ export function settledInvoiceStatus(input: {
     return "paid"
   }
   if (input.currentStatus === "paid" || input.currentStatus === "credited") {
-    return input.dueDate < input.now ? "overdue" : "sent"
+    return isInvoicePastDue(input.dueDate, input.now) ? "overdue" : "sent"
   }
   return input.currentStatus
 }

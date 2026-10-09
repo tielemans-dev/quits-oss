@@ -7,11 +7,11 @@ contracts entrypoint.
 
 ## Response
 
-All fields are present except optional bucket `oldestDaysOverdue`. Dates and times are strings. Money never passes through a JavaScript
+All fields are present except optional money `precisionSource` and bucket `oldestDaysOverdue`. Dates and times are strings. Money never passes through a JavaScript
 number. The following TypeScript notation describes the exact JSON shape:
 
 ```ts
-type Money = { currency: string; exponent: number; amount: string }
+type Money = { currency: string; exponent: number; amount: string; precisionSource?: "storage" }
 type Bucket = Money & { count: number; oldestDaysOverdue?: number }
 type Total = { count: number; buckets: Bucket[]; unvalued: Bucket[] }
 type Document = {
@@ -33,7 +33,7 @@ type Summary = {
   }
   outstanding: Total
   overdue: Total & { oldestDaysOverdue: number }
-  paidThisMonth: Total
+  paidThisMonth: Total // received cash, net of fees; legacy field name
   receivedByMonth: Array<Total & { month: string }> // YYYY-MM, exactly 12
   streak: number
   attention: Array<Document & {
@@ -49,7 +49,7 @@ type Summary = {
   incoming: Array<Document & {
     total: Money // original gross, before payments and credits
     isOverdue: boolean
-    dueDate: string // YYYY-MM-DD in the organization's timezone
+    dueDate: string // stored YYYY-MM-DD calendar day, never shifted by timezone
     daysOverdue: number
     canRemind: boolean
   }> // at most 8
@@ -71,11 +71,20 @@ Buckets sort by currency code. For example, 100 DKK and 20 EUR are two buckets, 
 anything. Amounts include exactly the currency's exponent, such as `"100.00"` DKK or `"100"` JPY.
 No conversion uses a current exchange rate or an invoice's historical rate for cash received.
 
-`unvalued` is an informational subset of `buckets`, not an additional total. For invoices it
-contains balances whose invoice has no frozen base valuation, an unknown valuation, a null base
-amount, or a valuation in a different base currency than the current organization setting.
-Legacy payments and settlement receipts have no stored base valuation, so all received-money buckets also
-appear in `unvalued`. Every amount remains included in the primary native-currency buckets.
+For supported currencies, `unvalued` is an informational subset of `buckets`. It contains invoices
+without a known frozen valuation in the current base currency. Legacy payments and settlement
+receipts have no stored base valuation, so their supported-currency totals appear in both arrays.
+
+Unknown currencies and known exponent-3 currencies appear **only in `unvalued`**, even when an
+invoice has a valuation. These legacy records cannot use the current settlement currency policy,
+but must remain visible. Known exponents are retained, e.g. `"12.340"` KWD. Unknown currencies use
+exponent 2 for the database's stored scale and carry `precisionSource: "storage"`; this is not a
+claim about their ISO precision. Rows in attention/incoming retain the same exact representation.
+Total `count` includes every record once, including these unsupported currencies.
+
+K4b must display unvalued-only currencies as well as normal buckets. Match by currency to avoid
+double-counting the overlapping supported buckets; never add the two arrays. Treat storage
+precision as unknown currency precision and keep its original code instead of inventing an FX value.
 
 An empty total is `{ count: 0, buckets: [], unvalued: [] }`. An empty organization has twelve empty
 monthly totals, zero streak and oldest days overdue, and empty attention, incoming and activity
@@ -97,9 +106,13 @@ arrays, and `drafts: { count: 0, newestId: null, newestKind: null }`. The UI can
   credit notes, full credits, overpayments clamped to zero and voided-payment recomputation. Counts
   are invoices with positive balances, not all issued invoices.
 - Overdue uses the same `dueDate < asOf` predicate as `markOrganizationInvoicesOverdue`, independent
-  of the stored status badge. Calendar days overdue are the difference between the current and due
-  dates in the organization's timezone, not elapsed 24-hour periods. Just past the due timestamp on
-  the same calendar date is overdue with zero days. Use `isOverdue`, not `daysOverdue > 0`, on
+  of the stored status badge. Both call `domain/documents/overdue.ts:isInvoicePastDue`, including
+  the scheduler's organization scan and batch selection. Settlement-driven status changes also
+  use this helper. Calendar days overdue are the nonnegative
+  difference between the organization's local today and the stored UTC-midnight due calendar day.
+  Due/expiry dates use `formatCalendarDate`, never an instant-to-local-time conversion. Just past the due timestamp on
+  the same calendar date is overdue with zero days. Moving this to the end of the local due day
+  remains a separate scheduler/status/dashboard change. Use `isOverdue`, not `daysOverdue > 0`, on
   attention and incoming. It is true only for an issued invoice with positive balance and
   `dueDate < asOf`. Drafts and quotes have `isOverdue: false`; draft invoices retain their due date
   but have `daysOverdue: null`. Quotes have null due date and days. Each overdue bucket also has
@@ -107,7 +120,8 @@ arrays, and `drafts: { count: 0, newestId: null, newestKind: null }`. The UI can
   Other totals omit the optional bucket field. The top-level maximum stays unchanged.
   The dashboard never updates lifecycle statuses.
   A list's stored badge can lag the scheduler; its balance and the underlying overdue predicate agree.
-- Received money is non-voided legacy payments (`receiptId IS NULL`) plus active settlement
+- Label `paidThisMonth` and the series as **received**, net of fees. The API field name stays for
+  compatibility; this is neither invoice settlement nor revenue. Received money is non-voided legacy payments (`receiptId IS NULL`) plus active settlement
   receipts (`reversedAt IS NULL`), by `paidAt`, from the start of each local month through `asOf`.
   A receipt contributes its `netAmount` once, even if split across invoices or left unallocated.
   Its gross, processor fee and allocation rows are never added as more cash. Counts are legacy
@@ -124,27 +138,29 @@ arrays, and `drafts: { count: 0, newestId: null, newestKind: null }`. The UI can
   latest active payment's `paidAt`, then descending id. Payment includes receipt allocations in
   the invoice currency; their `paidAt` comes from the receipt, not the allocation date. Evidenced
   fees can make full debt settlement exceed net cash, without breaking an on-time streak. It stops
-  at the first late or credit-assisted
-  settlement. A qualifying invoice has payments covering its original gross and the last payment's
+  at the first late or credit-assisted settlement. A qualifying invoice has payments covering its original gross and the last payment's
   local calendar date on or before its due date. Unsettled, zero-value and entirely credit-closed
   invoices are excluded. Voids and backdated payments can change this current-state streak. The
   full definition is also the `onTimeStreak` doc comment.
 - Attention ranks overdue invoices by due timestamp, invoice/quote drafts older than seven elapsed days
-  by creation time, sent/viewed quotes expiring today through seven local calendar days ahead by
-  expiry time, then open invoices with a failed or uncertain latest email attempt by due timestamp.
+  by creation time, excluding drafts whose latest email attempt is `sending`. Quote attention
+  requires `quote:read`, including old drafts. Sent/viewed quotes expiring today through seven
+  calendar days ahead follow, ordered by expiry day. The window uses UTC-midnight bounds for
+  local today through today + 8 exclusive.
+  Then come open invoices with a failed or uncertain latest email attempt by due timestamp.
   Id breaks ties. An overdue delivery failure appears once, in the higher-priority overdue group.
   There is no persisted bounce state. `email_unconfirmed` means uncertain, not proven undelivered.
 - `canRemind` checks send permission, open settlement, a valid recipient, provider availability and
   the manual reminder's current offset slot. Pausing automatic reminders does not disable manual
   reminders. The command checks again under lock before sending. Nothing in this query sends email.
-- `hasOtherCurrencies` is true if any bucket in outstanding, overdue, paid this month or any of the
+- `hasOtherCurrencies` is true if any bucket in outstanding, overdue, received this month or any of the
   twelve monthly totals differs from `baseCurrency`. Unvalued subsets are checked too. Draft-only
   foreign currencies and receipts outside the window do not set the flag.
 - Incoming contains the earliest due outstanding invoices, with the balance still owed in `amount`
   and the original invoice gross in `total`. Both use the same native currency. The UI can calculate
   `1 - amount / total` with decimal arithmetic; credits count as settled, like payments. Incoming
   rows always have positive balance and positive total, so this denominator is nonzero. Drafts
-  appear in the draft inventory and, when old enough, attention. Activity projects the latest
+  appear in the draft inventory and, when old enough and editable, attention. Activity projects the latest
   document/payment events by organization sequence, using the existing `DomainEvent` source. Organization settings, agent events, audit
   payloads, actor details and command results are not exposed through invoice-read permission.
   Display fields come from current document/contact rows in the same organization and snapshot,
@@ -153,13 +169,16 @@ arrays, and `drafts: { count: 0, newestId: null, newestKind: null }`. The UI can
   contact reference resolves the customer name to null. Payment aggregates resolve through their
   scoped payment's invoice; current payment events already aggregate on the invoice.
 - Attention carries its own dates, independent of the eight incoming rows. `expiresOn` is the
-  organization's local quote expiry date only for `quote_expiring`, and null for other reasons.
+  stored quote expiry calendar day only for `quote_expiring`, and null for other reasons.
 
 ## Activity allowlist and reminder refusals
 
 `DASHBOARD_ACTIVITY_EVENT_TYPES` is the single exported allowlist in `@quits/contracts/dashboard`.
 `DashboardActivityEventType` is its string-literal union for UI label mappings. The server applies
-it before the cap of eight and orders by descending organization sequence. The event `type` field
+it before the cap of eight and orders by descending organization sequence. It also filters both
+event type and aggregate kind by `DOCUMENT_READ_PERMISSION`, shared with `activity.forDocument`:
+`quote:read`, `creditNote:read`, `agreement:read`, and `invoice:read` for invoices/payments. An
+unreadable event cannot consume a slot or expose its ID or display fields. The event `type` field
 keeps its existing string schema for additive compatibility.
 
 The UI's named types all exist in the real `eventRegistry`. Its `*.email_failed` and
@@ -188,19 +207,31 @@ Provider messages and arbitrary provider codes are never used as client error te
 fixed configuration guidance. Rejected delivery decisions and results store the safe classification
 and message, so retrying settlement preserves the reason and reminder/document history stays safe.
 The shared email-result adapter applies the same codes to other document email refusals. Legacy
-rejected results and failed reminder history are also sanitized when read. No database migration
+rejected results, failed reminder history and document `lastEmailAttemptMessage` fields are also
+sanitized when read, including lists, details, recurring invoice rows and agent invoice reads.
+Sanitizing inside `settle()` covers abandoned deliveries with legacy pinned provider decisions;
+the job result, completion callback and newly emitted events all receive the safe message. No database migration
 is required for the optional code in the outbox's JSON records.
 
 Uncertain delivery remains `pending` or `unconfirmed` in the successful response's `delivery`
 field. A lost response or an error after an earlier uncertain attempt is never relabeled as a
 proven refusal. The outbox retains its existing retry/idempotency behavior.
 
+Reminder timing is unchanged in `domain/commands/reminders.ts`: `planDueReminders` and
+`nextPolicyReminder` add `offsetDays * 86_400_000` to the stored due timestamp; manual sends use
+`floor((now - dueDate) / 86_400_000)` as their offset slot. `reminderStage` switches to overdue
+at `dueDate + 86_400_000`. Scheduled reminder SQL uses those same timestamp-offset windows.
+The dashboard's reminder-slot join uses that same elapsed-day offset. These are separate from
+calendar `daysOverdue` and need review in the later end-of-due-day policy change.
+
 ## Queries and indexes
 
-The helper executes six SELECTs in a repeatable-read transaction: settings, narrow invoice rows
+The helper executes at most six SELECTs in a repeatable-read transaction with an explicit 30-second
+timeout: settings, narrow invoice rows
 with contacts and the current reminder slot, SQL legacy-payment/receipt sums grouped by currency and local month,
 old draft/expiring quotes, one complete draft count/newest aggregate, and eight allowed events joined
-to scoped document/contact display fields. tRPC membership resolution adds its existing query.
+to scoped document/contact display fields. Without quote read permission the attention quote query
+is skipped. tRPC membership resolution adds its existing query.
 Transaction control statements are separate. There are no per-invoice round trips, line-item loads
 or document snapshot loads. The invoice pass remains O(number of organization invoices) to reuse
 settlement arithmetic and derive the streak; it is not a constant-memory aggregate of all history.
@@ -222,7 +253,9 @@ The database integration test asserts exactly six SELECTs with one invoice and w
 plus 500 receipts, seeds allocations and credit rows, reconciles with `invoices.list`, and uses a
 non-UTC PostgreSQL session to check timestamp handling. Command-driven fixtures also compare
 outstanding, overdue and incoming against `invoices.get` and `payments.list`, across legacy
-payments, full and split allocations, corrections, reversals, partial payments and credit notes.
+payments, full and split/cross-currency allocations, corrections, reversals, refunds, customer-credit
+classification, partial payments and credit notes. Calendar-date tests cover Copenhagen, New York,
+Pago Pago and Tokyo, including on-due-day settlement and the quote expiry window.
 
 ## Settlement and activity adapters
 
@@ -231,7 +264,8 @@ payments, full and split allocations, corrections, reversals, partial payments a
 `moneyReceived` follows the [receipt model](settlement-receipts.md) with one SQL `UNION ALL` of
 active legacy payments and active receipt net amounts, grouped once by native currency/month.
 The compatibility `dashboard.stats` endpoint uses this same helper without a lower date bound,
-adding its monthly subtotals for all-time cash revenue. Its response shape remains unchanged.
+adding its monthly subtotals for all-time received cash. Its legacy `totalRevenue` field name is
+retained but must not be used as the display label. Its response shape remains unchanged.
 `receiptBalanceFromTotals` measures available gross
 funding after allocations and refunds, so it is not the source of a cash-received figure.
 

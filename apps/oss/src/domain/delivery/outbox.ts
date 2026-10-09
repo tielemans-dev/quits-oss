@@ -208,6 +208,13 @@ function fenced(job: JobFence) {
   return job.claimToken ? { id: job.id, claimToken: job.claimToken } : { id: job.id, claimToken: null, status: "failed" }
 }
 
+/** Provider messages are untrusted, including pinned decisions from older outbox jobs. */
+function safeFailure(failure: DeliveryFailure): DeliveryFailure {
+  if (failure.reason !== "rejected") return failure
+  const code = failure.code ?? "email_provider_refused"
+  return { ...failure, code, message: emailProviderFailureMessage(code) }
+}
+
 /**
  * Settles the document and records the outcome on the job, in one transaction. The job is
  * claimed first, so a delivery settles at most once and only by whoever holds it.
@@ -218,6 +225,7 @@ async function settle(
   completion: DeliveryCompletion,
   outcome: { delivered: true } | { delivered: false; failure: DeliveryFailure }
 ) {
+  if (!outcome.delivered) outcome = { delivered: false, failure: safeFailure(outcome.failure) }
   const now = new Date()
   await prisma.$transaction(async (tx) => {
     await lockArtifactOrganization(tx, job.organizationId)
@@ -269,12 +277,7 @@ async function settleDecision(
   completion: DeliveryCompletion,
   failure: DeliveryFailure
 ) {
-  // Sanitize before persisting or calling completions, including legacy pinned decisions.
-  // These messages also reach document fields, reminder history and operation events.
-  if (failure.reason === "rejected") {
-    const code = failure.code ?? "email_provider_refused"
-    failure = { ...failure, code, message: emailProviderFailureMessage(code) }
-  }
+  failure = safeFailure(failure)
   if (!payload.decision) {
     await recordOnJob(job, { ...payload, decision: failure })
   }

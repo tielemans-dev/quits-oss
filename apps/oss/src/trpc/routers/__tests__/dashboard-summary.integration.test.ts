@@ -5,6 +5,8 @@ import { DASHBOARD_ACTIVITY_EVENT_TYPES, dashboardSummarySchema, type DashboardT
 import { type ReceiptRecordInput, type ReceiptAllocateInput, type ReceiptActionInput } from "@quits/contracts/payments"
 import { Prisma, PrismaClient } from "../../../../generated/prisma/client"
 import { prisma } from "../../../lib/db"
+import { executeCommand } from "../../../domain/execute"
+import { markOrganizationInvoicesOverdue } from "../../../domain/features/overdue"
 import { dashboardSummary } from "../../../lib/dashboard/summary"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import { appRouter } from "../../router"
@@ -159,6 +161,10 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     const replacement = await org.receipt("30", { paidAt: "2026-10-04" })
     await org.allocate(replacement.receiptId, [{ invoiceId: corrected.id, receiptAmount: "30", invoiceAmount: "30" }])
 
+    const residual = await org.receipt("10")
+    await org.change({ ...decision(), action: "refund", receiptId: residual.receiptId, amount: "4" })
+    await org.change({ ...decision(), action: "customer_credit", receiptId: residual.receiptId })
+
     const expected = new Map([[legacy.id, "0.00"], [fee.id, "0.00"], [splitA.id, "0.00"], [splitB.id, "80.00"], [corrected.id, "70.00"], [credited.id, "50.00"], [partial.id, "75.00"], [voided.id, "100.00"]])
     const result = await org.summary()
     const list = await org.admin.invoices.list()
@@ -175,11 +181,11 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect(detailTotal.toFixed(2)).toBe("375.00")
     expect(result.outstanding.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "375.00", count: 5 }])
     expect(result.overdue.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "375.00", count: 5, oldestDaysOverdue: 3 }])
-    expect(result.paidThisMonth.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "290.00", count: 5 }])
+    expect(result.paidThisMonth.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "300.00", count: 6 }])
     expect(result.receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "100.00", count: 1 }])
     // Fee-inclusive debt settlement qualifies, although cash received is only 95, not 100.
     expect(result.streak).toBe(3)
-    expect((await org.admin.dashboard.stats()).totalRevenue).toBe(390)
+    expect((await org.admin.dashboard.stats()).totalRevenue).toBe(400)
     await org.change({ ...decision(), action: "reverse_allocation", paymentId: split.paymentIds[0]! })
     const reopened = await org.summary()
     expect(amount(reopened.outstanding)).toBe("475.00")
@@ -218,6 +224,7 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect(result.hasOtherCurrencies).toBe(true)
     expect(amount(result.outstanding)).toBe("150.00")
     expect((await org.admin.invoices.get({ id: invoice.id })).balanceDue).toBe(150)
+    expect((await org.admin.invoices.list()).find(row => row.id === invoice.id)?.balanceDue).toBe(150)
   })
 
   it("keeps cash receipts through refunds and reclassification, removing reversed receipts from their original month", async () => {
@@ -235,6 +242,25 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect((await org.admin.dashboard.stats()).totalRevenue).toBe(0)
     await org.receipt("40", { paidAt: "2026-09-01" })
     expect((await org.summary()).receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "40.00", count: 1 }])
+  })
+
+  it("retains unsupported currencies only in unvalued totals without rounding or breaking the response", async () => {
+    const org = await setup()
+    await org.seed({ currency: "KWD", totalGross: "12.34", amountPaid: "1.20" })
+    await org.seed({ currency: "ZZZ", totalGross: "9.87" })
+    const invoice = await org.seed({ totalGross: "40" })
+    await org.payment(invoice.id, "2026-10-01", "1.23", "KWD")
+    const result = await org.summary()
+    expect(dashboardSummarySchema.safeParse(result).success).toBe(true)
+    expect(result.outstanding.count).toBe(3)
+    expect(result.outstanding.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "40.00", count: 1 }])
+    expect(result.outstanding.unvalued).toEqual([
+      { currency: "DKK", exponent: 2, amount: "40.00", count: 1 },
+      { currency: "KWD", exponent: 3, amount: "11.140", count: 1 },
+      { currency: "ZZZ", exponent: 2, amount: "9.87", precisionSource: "storage", count: 1 },
+    ])
+    expect(result.paidThisMonth).toEqual({ count: 1, buckets: [], unvalued: [{ currency: "KWD", exponent: 3, amount: "1.230", count: 1 }] })
+    expect(result.incoming.find(row => row.amount.currency === "ZZZ")?.amount).toMatchObject({ amount: "9.87", precisionSource: "storage" })
   })
 
   it("keeps currencies separate and missing, unknown and wrong-base valuations visible", async () => {
@@ -256,16 +282,50 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect(result.paidThisMonth.unvalued).toEqual(result.paidThisMonth.buckets)
   })
 
-  it("uses the existing due-timestamp boundary at Copenhagen midnight and calendar days across DST", async () => {
+  it.each([
+    ["America/New_York", "2026-11-10T18:00:00Z", "2026-11-07T18:00:00Z"],
+    ["Pacific/Pago_Pago", "2026-11-10T18:00:00Z", "2026-11-07T18:00:00Z"],
+    ["Asia/Tokyo", "2026-11-10T08:00:00Z", "2026-11-07T08:00:00Z"],
+  ])("preserves calendar due/expiry days and on-time settlement in %s", async (timezone, now, paidAt) => {
     const org = await setup()
-    const invoice = await org.seed({ dueDate: new Date("2026-10-24T22:00:00Z") })
-    for (const now of ["2026-10-24T21:59:59.999Z", "2026-10-24T22:00:00Z"]) {
+    await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { timezone } })
+    const invoice = await org.seed({ dueDate: new Date("2026-11-07") })
+    await org.seed({ dueDate: new Date("2026-11-07"), amountPaid: "100", paidAt: new Date(paidAt), status: "paid" })
+    const result = await org.summary(new Date(now))
+    expect(result.incoming[0]).toMatchObject({ documentId: invoice.id, dueDate: "2026-11-07", daysOverdue: 3, isOverdue: true })
+    expect(result.attention[0]).toMatchObject({ dueDate: "2026-11-07", daysOverdue: 3 })
+    expect(result.streak).toBe(1)
+    await prisma.invoice.delete({ where: { id: invoice.id } })
+    for (const day of [9, 10, 17, 18]) await prisma.quote.create({ data: {
+      organizationId: org.organizationId, contactId: org.contact.id, status: "sent", number: `Q-${day}`,
+      expiryDate: new Date(`2026-11-${day.toString().padStart(2, "0")}`), subtotalNet: "50", totalGross: "50",
+    } })
+    expect((await org.summary(new Date(now))).attention.map(row => [row.number, row.expiresOn]))
+      .toEqual([["Q-10", "2026-11-10"], ["Q-17", "2026-11-17"]])
+  })
+
+  it("keeps scheduler and dashboard on the same strict due-timestamp boundary", async () => {
+    const org = await setup()
+    const dueDate = new Date("2026-10-25T00:00:00Z")
+    const invoice = await org.seed({ dueDate })
+    for (const [now, marked] of [[dueDate, 0], [new Date(dueDate.getTime() + 1), 1]] as const) {
+      expect((await org.summary(now)).overdue.count).toBe(marked)
+      const outcome = await executeCommand(markOrganizationInvoicesOverdue, {}, { actor: org.actors.admin, now })
+      expect(outcome).toMatchObject({ status: "completed", result: { marked } })
+      expect((await org.admin.invoices.get({ id: invoice.id })).status).toBe(marked ? "overdue" : "sent")
+    }
+  })
+
+  it("keeps the UTC due-timestamp predicate while counting Copenhagen calendar days across DST", async () => {
+    const org = await setup()
+    const invoice = await org.seed({ dueDate: new Date("2026-10-25T00:00:00Z") })
+    for (const now of ["2026-10-24T23:59:59.999Z", "2026-10-25T00:00:00Z"]) {
       const before = await org.summary(new Date(now))
       expect(before.incoming[0]?.isOverdue).toBe(false)
       expect(before.attention).toEqual([])
       expect(before.overdue).toEqual({ ...zero, oldestDaysOverdue: 0 })
     }
-    const justPastDue = await org.summary(new Date("2026-10-24T22:00:00.001Z"))
+    const justPastDue = await org.summary(new Date("2026-10-25T00:00:00.001Z"))
     expect(justPastDue.incoming[0]).toMatchObject({ daysOverdue: 0, isOverdue: true })
     expect(justPastDue.attention[0]).toMatchObject({ dueDate: "2026-10-25", daysOverdue: 0, isOverdue: true, expiresOn: null })
     expect(justPastDue.overdue).toMatchObject({ count: 1, oldestDaysOverdue: 0 })
@@ -322,8 +382,8 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     const overdue = await org.seed({ dueDate: new Date("2026-10-01T00:00:00Z") })
     const draft = await org.seed({ status: "draft", number: null, createdAt: new Date(NOW.getTime() - 7 * 86400000 - 1) })
     await org.seed({ status: "draft", number: null, createdAt: new Date(NOW.getTime() - 7 * 86400000) })
-    const quote = await prisma.quote.create({ data: { organizationId: org.organizationId, contactId: org.contact.id, status: "sent", number: "Q1", expiryDate: new Date("2026-10-15T21:59:59Z"), subtotalNet: "50", totalGross: "50", currency: "DKK" } })
-    await prisma.quote.create({ data: { organizationId: org.organizationId, contactId: org.contact.id, status: "sent", number: "Q2", expiryDate: new Date("2026-10-15T22:00:00Z"), subtotalNet: "50", totalGross: "50", currency: "DKK" } })
+    const quote = await prisma.quote.create({ data: { organizationId: org.organizationId, contactId: org.contact.id, status: "sent", number: "Q1", expiryDate: new Date("2026-10-15T00:00:00Z"), subtotalNet: "50", totalGross: "50", currency: "DKK" } })
+    await prisma.quote.create({ data: { organizationId: org.organizationId, contactId: org.contact.id, status: "sent", number: "Q2", expiryDate: new Date("2026-10-16T00:00:00Z"), subtotalNet: "50", totalGross: "50", currency: "DKK" } })
     const failed = await org.seed({ dueDate: new Date("2026-10-16T00:00:00Z"), lastEmailAttemptOutcome: "failed" })
     const uncertain = await org.seed({ dueDate: new Date("2026-10-17T00:00:00Z"), lastEmailAttemptOutcome: "unconfirmed" })
     const result = await org.summary()
@@ -473,6 +533,44 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect(result[1]).toMatchObject({ documentKind: "invoice", documentNumber: null, customerName: org.contact.name })
     expect(result[2]).toMatchObject({ documentKind: null, documentNumber: null, customerName: null })
     expect(result[3]).toMatchObject({ documentKind: "invoice", documentNumber: invoice.number, customerName: org.contact.name })
+  })
+
+  it("filters unreadable document kinds and event types before the activity cap", async () => {
+    const org = await setup()
+    const invoice = await org.seed({ status: "draft", createdAt: new Date("2026-01-01") })
+    const quote = await prisma.quote.create({ data: { organizationId: org.organizationId, contactId: org.contact.id,
+      status: "draft", expiryDate: new Date("2026-10-10"), createdAt: new Date("2026-01-01"), subtotalNet: "50", totalGross: "50" } })
+    await prisma.quote.create({ data: { organizationId: org.organizationId, contactId: org.contact.id,
+      status: "sent", expiryDate: new Date("2026-10-10"), subtotalNet: "50", totalGross: "50" } })
+    const event = (sequence: number, type: string, aggregateType: string, aggregateId: string) => ({
+      organizationId: org.organizationId, sequence, type, aggregateType, aggregateId, payload: {}, actorKind: "user",
+    })
+    await prisma.domainEvent.createMany({ data: [
+      ...Array.from({ length: 8 }, (_, i) => event(i + 1, "invoice.draft_created", "invoice", invoice.id)),
+      ...Array.from({ length: 8 }, (_, i) => event(i + 9, "quote.sent", "quote", quote.id)),
+      event(17, "credit_note.issued", "credit_note", "hidden-credit"),
+      event(18, "agreement.accepted", "agreement", "hidden-agreement"),
+      // Legacy/malformed envelopes must pass both type and aggregate-kind permission checks.
+      event(19, "quote.sent", "invoice", invoice.id),
+      event(20, "invoice.sent", "quote", quote.id),
+    ] })
+    const actor = { kind: "agent" as const, organizationId: org.organizationId, agentKeyId: "invoice-reader",
+      mode: "read_only" as const, scopes: ["invoice:read" as const], ownerRoles: org.actors.admin.roles, label: "Invoice reader" }
+    const result = await dashboardSummary(prisma, actor, NOW)
+    expect(result.drafts).toEqual({ count: 1, newestId: invoice.id, newestKind: "invoice" })
+    expect(result.attention.map(row => row.documentId)).toEqual([invoice.id])
+    expect(result.activity.map(row => row.sequence)).toEqual([8, 7, 6, 5, 4, 3, 2, 1])
+    expect(result.activity.every(row => row.documentKind === "invoice")).toBe(true)
+  })
+
+  it("omits in-flight invoice and quote drafts from both attention and draft inventory", async () => {
+    const org = await setup()
+    await org.seed({ status: "draft", createdAt: new Date("2026-01-01"), lastEmailAttemptOutcome: "sending" })
+    await prisma.quote.create({ data: { organizationId: org.organizationId, contactId: org.contact.id,
+      status: "draft", createdAt: new Date("2026-01-01"), expiryDate: NOW, subtotalNet: "50", totalGross: "50", lastEmailAttemptOutcome: "sending" } })
+    const result = await org.summary()
+    expect(result.drafts.count).toBe(0)
+    expect(result.attention).toEqual([])
   })
 
   it("counts every editable draft independently of attention and activity caps", async () => {

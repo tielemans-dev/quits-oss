@@ -1,3 +1,4 @@
+import { sanitizeDocumentEmailAttempt } from "../delivery/provider-failure"
 import type { PrismaClient } from "../../../generated/prisma/client"
 import { describeAllocations, type AllocationVisibility } from "./allocations"
 import { deliverableProgress } from "./progress"
@@ -46,7 +47,7 @@ export function serializeAgreement<
   },
 >(agreement: Document) {
   return {
-    ...agreement,
+    ...sanitizeDocumentEmailAttempt(agreement),
     subtotal: agreement.subtotalNet.toNumber(),
     taxAmount: agreement.totalTax.toNumber(),
     total: agreement.totalGross.toNumber(),

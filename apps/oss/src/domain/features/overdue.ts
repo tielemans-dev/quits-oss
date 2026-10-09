@@ -2,8 +2,9 @@ import { Effect } from "effect"
 import { z } from "zod"
 import { Prisma } from "../../../generated/prisma/client"
 import { appLogger } from "../../lib/observability"
-import { schedulerActor, utcTimestamp } from "../commands/reminders"
+import { schedulerActor } from "../commands/reminders"
 import { defineCommand } from "../command"
+import { isInvoicePastDue } from "../documents/overdue"
 import { computeSettlement } from "../documents/settlement"
 import { executeCommand } from "../execute"
 import {
@@ -49,7 +50,7 @@ export const markOrganizationInvoicesOverdue = defineCommand({
           SELECT "id" FROM "invoice"
           WHERE "organizationId" = ${organizationId}
             AND "status" IN (${Prisma.join(PRE_OVERDUE_STATUSES)})
-            AND "dueDate" < ${utcTimestamp(now)}
+            AND ${isInvoicePastDue(Prisma.sql`"dueDate"`, now)}
             AND "totalGross" - "amountCredited" - "amountPaid" > 0
           ORDER BY "dueDate" ASC, "id" ASC
           LIMIT ${OVERDUE_BATCH_SIZE}
@@ -115,7 +116,7 @@ export function overdueOrganizations(now: Date, options?: TickOptions): Organiza
     Prisma.sql`
       SELECT "organizationId" FROM "invoice"
       WHERE "status" IN (${Prisma.join(PRE_OVERDUE_STATUSES)})
-        AND "dueDate" < ${utcTimestamp(now)}
+        AND ${isInvoicePastDue(Prisma.sql`"dueDate"`, now)}
         AND "totalGross" - "amountCredited" - "amountPaid" > 0
         ${organizationSqlFilter(Prisma.sql`"organizationId"`, options)}
     `

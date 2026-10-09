@@ -1,3 +1,4 @@
+import { sanitizeDocumentEmailAttempt } from "../domain/delivery/provider-failure"
 import type {
   EmailDeliveryAttemptRecord,
   EmailDeliveryAttemptSnapshot,
@@ -45,7 +46,7 @@ export function readEmailDeliveryAttempt<TOutcome extends string = EmailDelivery
     lastEmailAttemptAt: input.lastEmailAttemptAt,
     lastEmailAttemptOutcome: input.lastEmailAttemptOutcome,
     lastEmailAttemptCode: input.lastEmailAttemptCode,
-    lastEmailAttemptMessage: input.lastEmailAttemptMessage,
+    lastEmailAttemptMessage: sanitizeDocumentEmailAttempt(input).lastEmailAttemptMessage!,
   }
 }
 

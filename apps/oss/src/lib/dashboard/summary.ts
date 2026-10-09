@@ -1,25 +1,34 @@
 import { DASHBOARD_ACTIVITY_EVENT_TYPES, type DashboardMoney, type DashboardSummary, type DashboardTotal } from "@quits/contracts/dashboard"
-import { requireCurrencyExponent } from "@quits/shared/currency"
+import { getCurrencyExponent } from "@quits/shared/currency"
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client"
-import { actorCan, type UserActor } from "../../domain/actor"
+import { actorCan, type Actor } from "../../domain/actor"
 import { isValidRecipient, reminderBlocker, utcTimestamp } from "../../domain/commands/reminders"
 import { resolveInvoiceEmailContext } from "../../domain/documents/invoice-email"
+import { DOCUMENT_READ_PERMISSION } from "../../domain/documents/read-permission"
+import { isInvoicePastDue } from "../../domain/documents/overdue"
+import { formatCalendarDate } from "../../domain/features/recurring-dates"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { formatIsoDate, startOfDayInTimeZone } from "../exports/format"
 
 type Db = Prisma.TransactionClient
 const DAY_MS = 86_400_000
 const money = (currency: string, amount: Prisma.Decimal): DashboardMoney => {
-  const exponent = requireCurrencyExponent(currency)
-  return { currency, exponent, amount: amount.toFixed(exponent) }
+  const knownExponent = getCurrencyExponent(currency)
+  // Legacy database money has scale 2. Unknown currency precision is explicitly storage-based.
+  const exponent = knownExponent ?? 2
+  return { currency, exponent, amount: amount.toFixed(exponent), ...(knownExponent === undefined ? { precisionSource: "storage" as const } : {}) }
 }
 
 function totals() {
+  let recordCount = 0
   const buckets = new Map<string, { amount: Prisma.Decimal; count: number; oldestDaysOverdue?: number }>()
   const unvalued = new Map<string, { amount: Prisma.Decimal; count: number; oldestDaysOverdue?: number }>()
   return {
     add(currency: string, amount: Prisma.Decimal, count: number, hasValuation = false, oldestDaysOverdue?: number) {
-      for (const map of hasValuation ? [buckets] : [buckets, unvalued]) {
+      recordCount += count
+      const exponent = getCurrencyExponent(currency)
+      const supported = exponent !== undefined && exponent <= 2
+      for (const map of !supported ? [unvalued] : hasValuation ? [buckets] : [buckets, unvalued]) {
         const old = map.get(currency) ?? { amount: new Prisma.Decimal(0), count: 0 }
         map.set(currency, {
           amount: old.amount.plus(amount), count: old.count + count,
@@ -31,7 +40,7 @@ function totals() {
       const serialize = (map: typeof buckets) => [...map].sort(([a], [b]) => a.localeCompare(b))
         .map(([currency, value]) => ({ ...money(currency, value.amount), count: value.count, ...(value.oldestDaysOverdue === undefined ? {} : { oldestDaysOverdue: value.oldestDaysOverdue }) }))
       const values = serialize(buckets)
-      return { count: values.reduce((sum, value) => sum + value.count, 0), buckets: values, unvalued: serialize(unvalued) }
+      return { count: recordCount, buckets: values, unvalued: serialize(unvalued) }
     },
   }
 }
@@ -73,7 +82,7 @@ async function readInvoices(db: Db, organizationId: string, baseCurrency: string
 }
 
 /** Complete draft inventory, independent of the attention/event caps. In-flight sends are locked. */
-async function openDrafts(db: Db, actor: UserActor): Promise<DashboardSummary["drafts"]> {
+async function openDrafts(db: Db, actor: Actor): Promise<DashboardSummary["drafts"]> {
   const rows = await db.$queryRaw<DashboardSummary["drafts"][]>`
     SELECT count(*) OVER ()::int AS count, id AS "newestId", kind AS "newestKind"
     FROM (
@@ -117,11 +126,22 @@ export async function moneyReceived(db: Db, organizationId: string, timezone: st
 }
 
 /**
- * Document events are readable by all current invoice-reading member roles. Do not expose the
+ * Document events require the same document read permission as activity.forDocument. Do not expose the
  * organization audit log's settings/agent events or raw payloads through invoice:read.
  * #74 retains DomainEvent; replacing this projection with a bulk journal adapter is local here.
  */
-export async function recentActivity(db: Db, organizationId: string): Promise<DashboardSummary["activity"]> {
+export async function recentActivity(db: Db, actor: Actor): Promise<DashboardSummary["activity"]> {
+  const organizationId = actor.organizationId
+  const canRead = (kind: keyof typeof DOCUMENT_READ_PERMISSION) => actorCan(actor, DOCUMENT_READ_PERMISSION[kind])
+  const allowedTypes = DASHBOARD_ACTIVITY_EVENT_TYPES.filter(type =>
+    canRead(type.startsWith("quote.") ? "quote" : type.startsWith("credit_note.") ? "creditNote" : type.startsWith("agreement.") ? "agreement" : "invoice"))
+  const allowedKinds = [
+    ...(canRead("invoice") ? ["invoice", "payment"] : []),
+    ...(canRead("quote") ? ["quote"] : []),
+    ...(canRead("creditNote") ? ["creditNote", "credit_note"] : []),
+    ...(canRead("agreement") ? ["agreement"] : []),
+  ]
+  if (!allowedTypes.length || !allowedKinds.length) return []
   // Filter before LIMIT. Resolve at most eight rows in this same statement/snapshot, with
   // organization checks on every join. Payment events normally aggregate on invoices; older
   // payment aggregates are resolved through their scoped Payment row. Never read event payloads.
@@ -137,8 +157,8 @@ export async function recentActivity(db: Db, organizationId: string): Promise<Da
       SELECT id, sequence, type, "aggregateType", "aggregateId", "occurredAt", "organizationId"
       FROM domain_event
       WHERE "organizationId" = ${organizationId}
-        AND type IN (${Prisma.join(DASHBOARD_ACTIVITY_EVENT_TYPES)})
-        AND "aggregateType" IN ('invoice', 'payment', 'quote', 'creditNote', 'credit_note', 'agreement')
+        AND type IN (${Prisma.join(allowedTypes)})
+        AND "aggregateType" IN (${Prisma.join(allowedKinds)})
       ORDER BY sequence DESC LIMIT 8
     ) e
     LEFT JOIN payment p ON e."aggregateType" = 'payment' AND p.id = e."aggregateId"
@@ -178,14 +198,14 @@ export function onTimeStreak(invoices: InvoiceRow[], timezone: string) {
     .sort((a, b) => b.paidAt!.getTime() - a.paidAt!.getTime() || b.id.localeCompare(a.id))
   let streak = 0
   for (const invoice of settled) {
-    if (invoice.amountPaid.lt(invoice.totalGross) || formatIsoDate(invoice.paidAt!, timezone) > formatIsoDate(invoice.dueDate, timezone)) break
+    if (invoice.amountPaid.lt(invoice.totalGross) || formatIsoDate(invoice.paidAt!, timezone) > formatCalendarDate(invoice.dueDate)) break
     streak++
   }
   return streak
 }
 
-/** Six data statements in one repeatable-read snapshot, independent of invoice count. */
-export async function dashboardSummary(db: PrismaClient, actor: UserActor, now = new Date()): Promise<DashboardSummary> {
+/** At most six data statements in one repeatable-read snapshot, independent of invoice count. */
+export async function dashboardSummary(db: PrismaClient, actor: Actor, now = new Date()): Promise<DashboardSummary> {
   return db.$transaction(async tx => {
     const organizationId = actor.organizationId
     const settings = await tx.orgSettings.findUnique({ where: { organizationId } })
@@ -197,20 +217,21 @@ export async function dashboardSummary(db: PrismaClient, actor: UserActor, now =
     const start = startOfDayInTimeZone(`${months[0]}-01`, timezone)
     const invoiceRows = await readInvoices(tx, organizationId, baseCurrency, now)
     const receipts = await moneyReceived(tx, organizationId, timezone, start, now)
-    const quotes = await tx.$queryRaw<Array<{ id: string; number: string | null; customerName: string; totalGross: Prisma.Decimal; currency: string; status: string; createdAt: Date; expiryDate: Date }>>`
+    const quotes = actorCan(actor, "quote:read") ? await tx.$queryRaw<Array<{ id: string; number: string | null; customerName: string; totalGross: Prisma.Decimal; currency: string; status: string; createdAt: Date; expiryDate: Date }>>`
       SELECT q.id, q.number, c.name AS "customerName", q."totalGross", q.currency, q.status, q."createdAt", q."expiryDate"
       FROM quote q JOIN contact c ON c.id = q."contactId" AND c."organizationId" = q."organizationId"
       WHERE q."organizationId" = ${organizationId} AND (
-        (q.status = 'draft' AND q."createdAt" < ${utcTimestamp(new Date(now.getTime() - 7 * DAY_MS))})
+        (q.status = 'draft' AND q."lastEmailAttemptOutcome" IS DISTINCT FROM 'sending' AND q."createdAt" < ${utcTimestamp(new Date(now.getTime() - 7 * DAY_MS))})
         OR (q.status IN ('sent', 'viewed')
-          AND q."expiryDate" >= ${utcTimestamp(startOfDayInTimeZone(today, timezone))}
-          AND q."expiryDate" < ${utcTimestamp(startOfDayInTimeZone(new Date(Date.parse(today) + 8 * DAY_MS).toISOString().slice(0, 10), timezone))})
+          AND q."expiryDate" >= ${utcTimestamp(new Date(`${today}T00:00:00Z`))}
+          AND q."expiryDate" < ${utcTimestamp(new Date(Date.parse(today) + 8 * DAY_MS))})
       )
       ORDER BY CASE WHEN q.status = 'draft' THEN 0 ELSE 1 END,
         CASE WHEN q.status = 'draft' THEN q."createdAt" ELSE q."expiryDate" END, q.id LIMIT 5
     `
+    : []
     const draftSummary = await openDrafts(tx, actor)
-    const activity = await recentActivity(tx, organizationId)
+    const activity = await recentActivity(tx, actor)
     const outstanding = totals(), overdue = totals()
     const receivedByMonth = months.map(monthKey => {
       const total = totals()
@@ -219,11 +240,10 @@ export async function dashboardSummary(db: PrismaClient, actor: UserActor, now =
     })
     const canSend = actorCan(actor, "invoice:send") && !!settings && resolveInvoiceEmailContext(settings).emailDelivery.available
     const canRemind = (invoice: InvoiceRow) => canSend && !reminderBlocker(invoice) && isValidRecipient(invoice.email) && !invoice.reminderSlotTaken
-    const localDate = (date: Date) => formatIsoDate(date, timezone)
     // Same timestamp predicate as markOrganizationInvoicesOverdue; never depend on a stale
     // lifecycle badge or mutate invoices while reading the dashboard.
-    const isOverdue = (invoice: InvoiceRow) => invoice.dueDate < now
-    const daysOverdue = (invoice: InvoiceRow) => Math.max(0, Math.round((Date.parse(today) - Date.parse(localDate(invoice.dueDate))) / DAY_MS))
+    const isOverdue = (invoice: InvoiceRow) => isInvoicePastDue(invoice.dueDate, now)
+    const daysOverdue = (invoice: InvoiceRow) => Math.max(0, Math.round((Date.parse(today) - Date.parse(formatCalendarDate(invoice.dueDate))) / DAY_MS))
     const document = (invoice: Pick<InvoiceRow, "id" | "number" | "customerName" | "currency">, amount: Prisma.Decimal) => ({
       documentId: invoice.id, number: invoice.number, customerName: invoice.customerName, amount: money(invoice.currency, amount),
     })
@@ -240,7 +260,7 @@ export async function dashboardSummary(db: PrismaClient, actor: UserActor, now =
       }
     }
     const invoiceDates = (invoice: InvoiceRow) => ({
-      dueDate: localDate(invoice.dueDate),
+      dueDate: formatCalendarDate(invoice.dueDate),
       daysOverdue: invoice.status === "draft" ? null : daysOverdue(invoice),
       isOverdue: invoice.status !== "draft" && amountStillOwed(invoice).gt(0) && isOverdue(invoice),
       expiresOn: null,
@@ -249,12 +269,12 @@ export async function dashboardSummary(db: PrismaClient, actor: UserActor, now =
     const attention: DashboardSummary["attention"] = open.filter(isOverdue)
       .map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), ...invoiceDates(invoice), kind: "invoice", reason: "invoice_overdue", canRemind: canRemind(invoice) }))
     const drafts = [
-      ...invoiceRows.filter(invoice => invoice.status === "draft" && invoice.createdAt.getTime() < now.getTime() - 7 * DAY_MS)
+      ...invoiceRows.filter(invoice => invoice.status === "draft" && invoice.lastEmailAttemptOutcome !== "sending" && invoice.createdAt.getTime() < now.getTime() - 7 * DAY_MS)
         .map(invoice => ({ ...invoice, kind: "invoice" as const })),
       ...quotes.filter(quote => quote.status === "draft").map(quote => ({ ...quote, kind: "quote" as const })),
     ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))
     attention.push(...drafts.map(draft => ({ ...document(draft, draft.totalGross), ...(draft.kind === "invoice" ? invoiceDates(draft) : quoteDates), kind: draft.kind, reason: "draft_older_than_7_days" as const, canRemind: false })))
-    attention.push(...quotes.filter(quote => quote.status !== "draft").map(quote => ({ ...quoteDates, expiresOn: localDate(quote.expiryDate), documentId: quote.id, number: quote.number, customerName: quote.customerName, amount: money(quote.currency, quote.totalGross), kind: "quote" as const, reason: "quote_expiring" as const, canRemind: false })))
+    attention.push(...quotes.filter(quote => quote.status !== "draft").map(quote => ({ ...quoteDates, expiresOn: formatCalendarDate(quote.expiryDate), documentId: quote.id, number: quote.number, customerName: quote.customerName, amount: money(quote.currency, quote.totalGross), kind: "quote" as const, reason: "quote_expiring" as const, canRemind: false })))
     // An uncertain submission is never labelled a bounce. This baseline has no bounce state.
     attention.push(...open.filter(invoice => !isOverdue(invoice) && ["failed", "unconfirmed"].includes(invoice.lastEmailAttemptOutcome ?? ""))
       .map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), ...invoiceDates(invoice), kind: "invoice" as const, reason: invoice.lastEmailAttemptOutcome === "failed" ? "email_failed" as const : "email_unconfirmed" as const, canRemind: false })))
@@ -268,8 +288,8 @@ export async function dashboardSummary(db: PrismaClient, actor: UserActor, now =
       outstanding: outstandingTotal, overdue: { ...overdueTotal, oldestDaysOverdue },
       paidThisMonth: { count: current.count, buckets: current.buckets, unvalued: current.unvalued },
       receivedByMonth, streak: onTimeStreak(invoiceRows, timezone), attention: attention.slice(0, 5),
-      incoming: open.slice(0, 8).map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), total: money(invoice.currency, invoice.totalGross), isOverdue: isOverdue(invoice), dueDate: localDate(invoice.dueDate), daysOverdue: daysOverdue(invoice), canRemind: canRemind(invoice) })),
+      incoming: open.slice(0, 8).map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), total: money(invoice.currency, invoice.totalGross), isOverdue: isOverdue(invoice), dueDate: formatCalendarDate(invoice.dueDate), daysOverdue: daysOverdue(invoice), canRemind: canRemind(invoice) })),
       activity, drafts: draftSummary,
     }
-  }, { isolationLevel: "RepeatableRead" })
+  }, { isolationLevel: "RepeatableRead", timeout: 30_000 })
 }
