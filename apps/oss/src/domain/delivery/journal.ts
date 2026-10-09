@@ -208,6 +208,20 @@ const resultOutcome = (job: DeliveryRow) =>
 const requestsStarted = (job: DeliveryRow, payload: DeliveryPayload) =>
   payload.requests ?? (job.attempts > 0 ? 1 : 0)
 
+/** Normal lookup cannot reverse a decision that allowed the candidate to be retired. */
+function definiteNonDelivery(job: DeliveryRow, payload: DeliveryPayload) {
+  const outcome = resultOutcome(job)
+  return outcome === "rejected" || outcome === "withdrawn" ||
+    payload.decision?.reason === "rejected" || payload.decision?.reason === "withdrawn"
+}
+
+function refuseNegativeReconciliation(job: DeliveryRow, payload: DeliveryPayload) {
+  if (definiteNonDelivery(job, payload)) throw new InvalidState({
+    message: "A rejected or withdrawn delivery cannot be reconciled. Verify contradictory evidence with the provider.",
+    code: "reconciliation_unavailable",
+  })
+}
+
 /** Recovery only re-runs the original fenced completion or a safe original-key submission. */
 function canRecover(job: DeliveryRow, payload: DeliveryPayload) {
   if (job.result !== null || job.status === "running" || job.claimToken)
@@ -456,6 +470,7 @@ export async function documentJournal(
           job.status !== "running" &&
           requestsStarted(job, payload) > 0 &&
           resultOutcome(job) !== "delivered" &&
+          !definiteNonDelivery(job, payload) &&
           Boolean(provider?.supports(payload.provider ?? "resend")),
         canManualResend:
           canSend &&
@@ -557,6 +572,7 @@ export async function reconcileDelivery(
     })
   await journalDocument(actor, input, true)
   const original = await scopedJob(actor, input)
+  refuseNegativeReconciliation(original.job, original.payload)
   const provider = getEmailDeliveryStatusProvider()
   const pinned = original.payload.provider ?? "resend"
   if (!provider?.supports(pinned))
@@ -598,6 +614,7 @@ export async function reconcileDelivery(
     await lockArtifactOrganization(tx, actor.organizationId)
     await journalDocument(actor, input, true, tx)
     const { job, payload } = await scopedJob(actor, input, tx)
+    refuseNegativeReconciliation(job, payload)
     if (
       payload.evidence?.some(
         (item) => item.evidenceId === evidence.evidenceId

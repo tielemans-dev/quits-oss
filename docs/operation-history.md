@@ -43,7 +43,9 @@ requires a provider message ID. Adapters must verify the identity of the origina
 absence from a lookup must return `unknown`, never permission to resend.
 
 Repeated evidence IDs do not produce duplicate events. Once acceptance is confirmed, delayed
-unknown evidence cannot regress it. A lookup that fails or returns unknown leaves the original
+unknown evidence cannot regress it. Normal reconciliation refuses rejected or withdrawn outcomes,
+including pinned decisions whose settlement is incomplete; contradictory provider evidence requires
+verification with the provider and cannot publish a retired candidate or issue an edited draft. A lookup that fails or returns unknown leaves the original
 uncertainty in place. OSS does not add a provider lookup adapter or webhook here. Without one,
 verify with the recipient or the provider's own logs before deciding whether another copy is needed.
 

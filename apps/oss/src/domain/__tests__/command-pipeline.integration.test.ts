@@ -149,7 +149,8 @@ describeIfDatabase("command pipeline", () => {
         approvedByUserId: org.actors.admin.userId,
         resumeReceiptId: queued.commandId,
       })
-      expect(approved).toMatchObject({ status: "completed", commandId: queued.commandId })
+      expect(approved).toMatchObject({ status: "completed", commandId: queued.commandId, result: { delivered: true } })
+      expect((await prisma.commandReceipt.findUniqueOrThrow({ where: { id: queued.commandId } })).result).toMatchObject({ json: { delivered: true } })
 
       const retried = await executeCommand(pingCustomer, { message: "hi" }, { actor, clientRequestId: "p1" })
       expect(retried.status).toBe("completed")

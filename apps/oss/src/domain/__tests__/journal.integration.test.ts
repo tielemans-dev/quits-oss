@@ -37,7 +37,8 @@ import { createContact } from "../commands/contacts"
 import {
   createInvoiceDraft,
   resendInvoiceEmail,
-  sendInvoice
+  sendInvoice,
+  updateInvoiceDraft
 } from "../commands/invoices"
 import { createQuoteDraft, sendQuote } from "../commands/quotes"
 import {
@@ -46,7 +47,8 @@ import {
   reconcileDelivery,
   recoverDelivery
 } from "../delivery/journal"
-import { deliveryPayloadSchema, EMAIL_DELIVERY_JOB, settleAbandonedDeliveries } from "../delivery/outbox"
+import { deliveryPayloadSchema, EMAIL_DELIVERY_JOB, getDeliveryCompletion, registerDeliveryCompletion, settleAbandonedDeliveries } from "../delivery/outbox"
+import { lockArtifactOrganization } from "../documents/artifacts"
 import { executeCommand } from "../execute"
 import { runDueJobs, runJobsNow } from "../jobs"
 import { appRouter } from "../../trpc/router"
@@ -407,6 +409,244 @@ suite("operation journal and bounded recovery", () => {
     expect(JSON.stringify([settled.payload, settled.result, recovered])).not.toMatch(/PRIVATE_PROVIDER|user:password|sk-test-sensitive|private-provider-code|credentials/)
     expect((await journalReadHttp(actor, scope)).text).not.toMatch(/PRIVATE_PROVIDER|user:password|sk-test-sensitive|private-provider-code|credentials/)
     expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+  })
+
+  /** Pause after the real SELECT, retaining exactly the row an old sweep saw. */
+  function pauseAbandonedSelection(interruptSettlement = false) {
+    let captured!: () => void
+    let release!: () => void
+    const selected = new Promise<void>(resolve => { captured = resolve })
+    const resumed = new Promise<void>(resolve => { release = resolve })
+    let pause = true
+    const control = { interruptSettlement, selected, release }
+    const extended = getPrisma().$extends({ query: { job: {
+      async findMany({ args, query }) {
+        const rows = await query(args)
+        if (pause && args.where?.status === "failed" && args.where?.result) {
+          pause = false
+          captured()
+          await resumed
+        }
+        return rows
+      },
+      updateMany({ args, query }) {
+        if (control.interruptSettlement && args.data.result)
+          throw new Error("NEWER_SETTLEMENT_ERROR")
+        return query(args)
+      },
+    } } })
+    setRuntimePlatform({ ...defaultNodePlatform, getPrisma: () => extended })
+    return control
+  }
+  it.each([false, true])("M102-C1 fences a budget-reset acceptance from an old sweep, orphan=%s", async orphan => {
+    const { actor, org, scope, job, payload, delivery } = await legacyQueuedDelivery(0, 1)
+    beforeJobWrite(args => {
+      if ((args.data as { payload?: { requests?: number } }).payload?.requests === 1)
+        throw new Error("Interrupted before recording a provider request")
+    })
+    for (let run = 2; run <= 5; run++) {
+      await prisma.job.update({ where: { id: job.id }, data: { runAfter: new Date(0) } })
+      await runJobsNow([job.id])
+    }
+    resetRuntimePlatform()
+    expect(await findJob(org.organizationId)).toMatchObject({ attempts: 5, status: "failed", claimToken: null, result: null, payload: { requests: 0 } })
+    const candidateBefore = await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: payload.completion.target.candidateId! } })
+    const invoiceBefore = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId }, include: { items: true } })
+    const control = pauseAbandonedSelection(true)
+    const sweep = settleAbandonedDeliveries({ organizationIds: [org.organizationId] })
+    try {
+      await control.selected
+      await recoverDelivery(actor, delivery)
+      for (let run = 2; run <= 5; run++) {
+        await prisma.job.update({ where: { id: job.id }, data: { runAfter: new Date(0) } })
+        await runJobsNow([job.id])
+      }
+      const newer = await findJob(org.organizationId)
+      expect(newer).toMatchObject({ status: "failed", claimToken: null, attempts: 5, result: null, lastError: "NEWER_SETTLEMENT_ERROR" })
+      expect(newer.payload).toMatchObject({ providerMessageId: "accepted_1", requests: 1, legacyJobRuns: 5, attempts: [{ outcome: "accepted" }] })
+      expect(vi.mocked(deliver)).toHaveBeenCalledExactlyOnceWith(payload.message, { idempotencyKey: payload.idempotencyKey, provider: "resend" })
+      if (orphan) await prisma.invoice.update({ where: { id: scope.documentId }, data: { lastEmailAttemptAt: new Date("2099-01-01") } })
+      const documentAtResume = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
+      control.interruptSettlement = false
+      control.release()
+      await sweep
+      expect(await findJob(org.organizationId)).toEqual(newer)
+      expect(await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: candidateBefore.id } })).toEqual(candidateBefore)
+      expect(await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })).toEqual(documentAtResume)
+      expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, type: "invoice.email_failed" } })).toBe(0)
+      if (orphan) await prisma.invoice.update({ where: { id: scope.documentId }, data: { lastEmailAttemptAt: invoiceBefore.lastEmailAttemptAt } })
+      await settleAbandonedDeliveries({ organizationIds: [org.organizationId] })
+      const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId }, include: { items: true } })
+      expect(issued).toMatchObject({ status: "sent", number: invoiceBefore.number, editRevision: invoiceBefore.editRevision, items: invoiceBefore.items, currency: invoiceBefore.currency, subtotalNet: invoiceBefore.subtotalNet, totalTax: invoiceBefore.totalTax, totalGross: invoiceBefore.totalGross, amountPaid: invoiceBefore.amountPaid, amountCredited: invoiceBefore.amountCredited })
+      const candidateMoney = (candidateBefore.renderInput as { snapshot: { money: Prisma.JsonValue } }).snapshot.money
+      expect(issued.issuanceSnapshot).toEqual(candidateMoney)
+      const artifacts = candidateBefore.artifacts as { pdf: { ref: string; hash: string } }
+      expect(issued).toMatchObject({ artifactPdfRef: artifacts.pdf.ref, artifactPdfHash: artifacts.pdf.hash })
+      expect(await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: candidateBefore.id } })).toMatchObject({ status: "published", renderInputHash: candidateBefore.renderInputHash, artifacts: candidateBefore.artifacts })
+      expect((await findJob(org.organizationId)).result).toMatchObject({ outcome: "delivered" })
+      expect(await prisma.invoice.count({ where: { organizationId: org.organizationId } })).toBe(1)
+      expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, type: "invoice.sent" } })).toBe(1)
+      expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
+    } finally {
+      control.interruptSettlement = false
+      control.release()
+      await sweep
+      resetRuntimePlatform()
+    }
+  })
+  it.each([
+    { orphan: "changed-marker", accepted: false, code: undefined },
+    { orphan: "retired-candidate", accepted: false, code: "email_provider_unreachable" },
+    { orphan: "changed-marker", accepted: true, code: undefined },
+    { orphan: "retired-candidate", accepted: true, code: undefined },
+  ] as const)("M102-C2 sanitizes $orphan orphan accepted=$accepted in its settlement write", async ({ orphan, accepted, code }) => {
+    const { org, scope, job, payload } = await legacyQueuedDelivery(1, 5)
+    if (orphan === "retired-candidate") {
+      await prisma.$transaction(async tx => {
+        await lockArtifactOrganization(tx, org.organizationId)
+        await getDeliveryCompletion(payload.completion.kind)!.failed({ tx, organizationId: org.organizationId, target: payload.completion.target, now: new Date(), commandId: payload.commandId }, { reason: "rejected", message: "Fixture refusal" })
+      })
+      expect(await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: payload.completion.target.candidateId! } })).toMatchObject({ status: "retired" })
+    } else await prisma.invoice.update({ where: { id: scope.documentId }, data: { lastEmailAttemptAt: new Date("2099-01-01") } })
+    const raw = { message: privateProviderText, providerCode: "private-provider-code", cause: { credentials: privateProviderText } }
+    await prisma.job.update({ where: { id: job.id }, data: {
+      lastError: privateProviderText,
+      payload: { ...payload, ...(accepted ? { providerMessageId: "accepted-original" } : {}),
+        ...(!accepted ? { decision: { reason: "rejected", ...raw, ...(code ? { code } : {}) } } : {}),
+        attempts: [{ startedAt: new Date().toISOString(), outcome: accepted ? "accepted" : "rejected", ...raw }],
+        evidence: [{ evidenceId: "legacy-observation", observedAt: new Date().toISOString(), outcome: "unknown", ...raw }],
+      },
+    } })
+    const before = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
+    await settleAbandonedDeliveries({ organizationIds: [org.organizationId] })
+    const settled = await findJob(org.organizationId)
+    expect(settled.result).toEqual(accepted ? { outcome: "delivered", message: null } : { outcome: "unconfirmed", message: "The document no longer waited for this delivery" })
+    expect(settled.lastError).toBe(accepted ? null : "Email unconfirmed: The document no longer waited for this delivery")
+    expect(settled.payload).toMatchObject({ commandId: payload.commandId, idempotencyKey: payload.idempotencyKey, message: payload.message, completion: payload.completion,
+      ...(!accepted ? { decision: { reason: "rejected", code: code ?? "email_provider_refused", message: code ? "The email provider could not be reached. Check the email configuration." : "The email provider refused the email. Check the email configuration." } } : {}),
+      evidence: [{ evidenceId: "legacy-observation", outcome: "unknown" }],
+    })
+    expect(JSON.stringify([settled.payload, settled.result, settled.lastError])).not.toMatch(/PRIVATE_PROVIDER|user:password|sk-test-sensitive|private-provider-code|credentials/)
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })).toEqual(before)
+    expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+  })
+  it("M102-C2 leaves a newer orphan refusal and its error untouched", async () => {
+    const { org, scope, job, payload } = await legacyQueuedDelivery(1, 5)
+    await prisma.invoice.update({ where: { id: scope.documentId }, data: { lastEmailAttemptAt: new Date("2099-01-01") } })
+    await prisma.job.update({ where: { id: job.id }, data: { payload: { ...payload, decision: { reason: "rejected", message: privateProviderText } }, lastError: privateProviderText } })
+    const control = pauseAbandonedSelection()
+    const sweep = settleAbandonedDeliveries({ organizationIds: [org.organizationId] })
+    try {
+      await control.selected
+      const newer = await prisma.job.update({ where: { id: job.id }, data: {
+        payload: { ...payload, legacyJobRuns: 5, decision: { reason: "rejected", code: "email_provider_unreachable", message: "The email provider could not be reached. Check the email configuration." } },
+        lastError: "NEWER_REFUSAL_ERROR",
+      } })
+      control.release()
+      await sweep
+      expect(await findJob(org.organizationId)).toEqual(newer)
+    } finally { control.release(); await sweep; resetRuntimePlatform() }
+  })
+  async function negativeDelivery(reason: "rejected" | "withdrawn") {
+    const context = await setup()
+    if (reason === "rejected") vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "Fixture terminal refusal"))
+    else beforeJobWrite(args => {
+      if ((args.data as { payload?: { requests?: number } }).payload?.requests === 1)
+        throw new Error("Interrupted before recording a provider request")
+    })
+    await executeIssuanceCommand(sendInvoice, { id: context.scope.documentId }, { actor: context.actor, clientRequestId: "terminal-send" })
+    resetRuntimePlatform()
+    const job = await findJob(context.org.organizationId)
+    const payload = deliveryPayloadSchema.parse(job.payload)
+    if (reason === "withdrawn") {
+      // A legacy first run knows no earlier request, but the journal later falls back to runs.
+      delete payload.requests
+      await prisma.job.update({ where: { id: job.id }, data: { attempts: 0, runAfter: new Date(0), payload } })
+      const completion = getDeliveryCompletion(payload.completion.kind)!
+      registerDeliveryCompletion(payload.completion.kind, { ...completion, withdrawalReason: async () => "Fixture terminal withdrawal" })
+      try { await runJobsNow([job.id]) } finally { registerDeliveryCompletion(payload.completion.kind, completion) }
+    }
+    expect((await findJob(context.org.organizationId)).result).toMatchObject({ outcome: reason })
+    expect(await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: payload.completion.target.candidateId! } })).toMatchObject({ status: "retired" })
+    expect(await executeIssuanceCommand(updateInvoiceDraft, { id: context.scope.documentId, notes: "Edited after the candidate was retired", purchaseOrderRef: "new-draft-po" }, { actor: context.actor })).toMatchObject({ status: "completed" })
+    vi.mocked(deliver).mockClear()
+    return { ...context, job, payload, delivery: { ...context.scope, deliveryId: job.id } }
+  }
+  it.each([
+    { reason: "rejected", resultNull: false }, { reason: "withdrawn", resultNull: false },
+    { reason: "rejected", resultNull: true }, { reason: "withdrawn", resultNull: true },
+  ] as const)("M102-C3 refuses terminal $reason reconciliation, resultNull=$resultNull", async ({ reason, resultNull }) => {
+    const { actor, org, scope, job, delivery } = await negativeDelivery(reason)
+    if (resultNull) await prisma.job.update({ where: { id: job.id }, data: { result: Prisma.DbNull } })
+    const lookup = vi.fn().mockResolvedValue({ evidenceId: "contradictory-acceptance", observedAt: new Date(), outcome: "accepted", providerMessageId: "unsafe-late-acceptance" })
+    setRuntimeServices({ emailDeliveryStatusProvider: { supports: () => true, lookup } })
+    const before = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId }, include: { items: true } })
+    const jobsBefore = await prisma.job.findMany({ where: { organizationId: org.organizationId } })
+    const candidatesBefore = await prisma.issuanceCandidate.findMany({ where: { organizationId: org.organizationId } })
+    const eventsBefore = await prisma.domainEvent.findMany({ where: { organizationId: org.organizationId } })
+    expect((await documentJournal(actor, scope)).deliveries[0]).toMatchObject({ canReconcile: false, state: reason === "withdrawn" ? "waiting_prerequisite" : "failed_step" })
+    await expect(reconcileDelivery(actor, delivery)).rejects.toMatchObject({ _tag: "InvalidState", code: "reconciliation_unavailable", message: "A rejected or withdrawn delivery cannot be reconciled. Verify contradictory evidence with the provider." })
+    const http = await journalHttp(actor, "reconcile", delivery)
+    expect(http.status).toBe(412)
+    expect(http.text).toContain("reconciliation_unavailable")
+    expect(lookup).not.toHaveBeenCalled()
+    expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId }, include: { items: true } })).toEqual(before)
+    expect(await prisma.job.findMany({ where: { organizationId: org.organizationId } })).toEqual(jobsBefore)
+    expect(await prisma.issuanceCandidate.findMany({ where: { organizationId: org.organizationId } })).toEqual(candidatesBefore)
+    expect(await prisma.domainEvent.findMany({ where: { organizationId: org.organizationId } })).toEqual(eventsBefore)
+  })
+  it.each(["rejected", "withdrawn"] as const)("M102-C3 refuses an unsettled pinned %s before lookup", async reason => {
+    const { actor, org, job, payload, scope, delivery } = await legacyQueuedDelivery(1, 5)
+    await prisma.job.update({ where: { id: job.id }, data: { payload: { ...payload, decision: { reason, message: "Fixture pinned refusal" } } } })
+    const lookup = vi.fn().mockResolvedValue({ evidenceId: "contradiction", observedAt: new Date(), outcome: "accepted", providerMessageId: "unsafe-acceptance" })
+    setRuntimeServices({ emailDeliveryStatusProvider: { supports: () => true, lookup } })
+    const before = await findJob(org.organizationId)
+    const invoiceBefore = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
+    const candidateBefore = await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: payload.completion.target.candidateId! } })
+    expect(before.result).toBeNull()
+    expect(candidateBefore.status).toBe("bound")
+    await expect(reconcileDelivery(actor, delivery)).rejects.toMatchObject({ code: "reconciliation_unavailable" })
+    expect(lookup).not.toHaveBeenCalled()
+    expect(await findJob(org.organizationId)).toEqual(before)
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })).toEqual(invoiceBefore)
+    expect(await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: candidateBefore.id } })).toEqual(candidateBefore)
+    expect((await documentJournal(actor, scope)).deliveries[0]?.canReconcile).toBe(false)
+  })
+  it.each([
+    { reason: "rejected", pinnedOnly: false }, { reason: "withdrawn", pinnedOnly: false },
+    { reason: "rejected", pinnedOnly: true }, { reason: "withdrawn", pinnedOnly: true },
+  ] as const)("M102-C3 rechecks $reason refusal after the provider wait, pinnedOnly=$pinnedOnly", async ({ reason, pinnedOnly }) => {
+    const { actor, org, scope, job, payload, delivery } = await legacyQueuedDelivery(1, 5)
+    let started!: () => void
+    let answer!: (value: { evidenceId: string; observedAt: Date; outcome: "accepted"; providerMessageId: string }) => void
+    const waiting = new Promise<void>(resolve => { started = resolve })
+    const response = new Promise<{ evidenceId: string; observedAt: Date; outcome: "accepted"; providerMessageId: string }>(resolve => { answer = resolve })
+    const lookup = vi.fn(async () => { started(); return response })
+    setRuntimeServices({ emailDeliveryStatusProvider: { supports: () => true, lookup } })
+    const reconciliation = reconcileDelivery(actor, delivery).then(value => ({ value }), error => ({ error }))
+    try {
+      await waiting
+      await prisma.job.update({ where: { id: job.id }, data: { payload: { ...payload, decision: { reason, message: "Fixture terminal refusal" } } } })
+      if (!pinnedOnly) {
+        await recoverDelivery(actor, delivery)
+        expect(await executeIssuanceCommand(updateInvoiceDraft, { id: scope.documentId, notes: "Edited during lookup" }, { actor })).toMatchObject({ status: "completed" })
+      }
+      const before = await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })
+      const jobBefore = await findJob(org.organizationId)
+      const candidateBefore = await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: payload.completion.target.candidateId! } })
+      expect(candidateBefore.status).toBe(pinnedOnly ? "bound" : "retired")
+      answer({ evidenceId: "contradictory-after-wait", observedAt: new Date(), outcome: "accepted", providerMessageId: "unsafe-late-acceptance" })
+      expect(await reconciliation).toMatchObject({ error: { code: "reconciliation_unavailable" } })
+      expect(await findJob(org.organizationId)).toEqual(jobBefore)
+      expect(await prisma.invoice.findUniqueOrThrow({ where: { id: scope.documentId } })).toEqual(before)
+      expect(await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: candidateBefore.id } })).toEqual(candidateBefore)
+      expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, type: "delivery.provider_evidence" } })).toBe(0)
+      expect(vi.mocked(deliver)).not.toHaveBeenCalled()
+    } finally {
+      answer({ evidenceId: "cleanup", observedAt: new Date(), outcome: "accepted", providerMessageId: "cleanup" })
+      await reconciliation
+    }
   })
 
   it.each(["scheduler", "recovery"] as const)(

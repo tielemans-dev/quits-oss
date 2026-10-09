@@ -422,7 +422,8 @@ export async function executeCommand<Input, Result>(
         target: receiptTarget(definition.type, input),
         commandType: definition.type,
         status: "completed",
-        result: serializeResult(exit.value),
+        // Automatic history receipts need metadata, while keyed replay and approvals need results.
+        result: clientRequestId || options.resumeReceiptId ? serializeResult(exit.value) : Prisma.DbNull,
         error: Prisma.DbNull,
       }
 

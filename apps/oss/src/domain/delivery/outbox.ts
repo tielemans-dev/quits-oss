@@ -226,10 +226,17 @@ export const enqueueEmailDelivery = (input: {
  * on, which no run holds) the abandoned-delivery sweep. A run that stalled past its lease no longer
  * matches, so it can neither record progress nor settle the document.
  */
-type JobFence = { id: string; organizationId: string; claimToken: string | null }
+type JobFence = { id: string; organizationId: string } & (
+  | { claimToken: string }
+  | { claimToken: null; payload: Prisma.JsonValue; updatedAt: Date }
+)
 
 function fenced(job: JobFence) {
-  return job.claimToken ? { id: job.id, claimToken: job.claimToken } : { id: job.id, claimToken: null, status: "failed" }
+  // Recovery can reset the run budget and return to failed/unclaimed with no result.
+  // Only sweeps compare the selected generation; a claimed runner writes its own payload.
+  return job.claimToken !== null
+    ? { id: job.id, claimToken: job.claimToken }
+    : { id: job.id, claimToken: null, status: "failed", updatedAt: job.updatedAt, payload: { equals: job.payload as Prisma.InputJsonValue } }
 }
 
 /** Provider messages are untrusted, including pinned decisions from older outbox jobs. */
@@ -237,6 +244,15 @@ function safeFailure(failure: DeliveryFailure): DeliveryFailure {
   if (failure.reason !== "rejected") return failure
   const code = failure.code ?? "email_provider_refused"
   return { ...failure, code, message: emailProviderFailureMessage(code) }
+}
+
+/** The outcome, legacy decision and old error are normalized in the same fenced write. */
+function settlementData(payload: DeliveryPayload, result: DeliveryResult) {
+  return {
+    result,
+    lastError: result.outcome === "delivered" ? null : `Email ${result.outcome}: ${result.message}`,
+    ...(payload.decision ? { payload: { ...payload, decision: safeFailure(payload.decision) } } : {}),
+  }
 }
 
 /**
@@ -258,8 +274,7 @@ async function settle(
       : { outcome: outcome.failure.reason, message: outcome.failure.message, ...(outcome.failure.code ? { code: outcome.failure.code } : {}) }
     const recorded = await tx.job.updateMany({
       where: { ...fenced(job), result: { equals: Prisma.DbNull } },
-      // A sweep also settles abandoned jobs, without the runner clearing its old error.
-      data: { result, lastError: outcome.delivered ? null : `Email ${outcome.failure.reason}: ${outcome.failure.message}`, ...(payload.decision ? { payload: { ...payload, decision: safeFailure(payload.decision) } } : {}) },
+      data: settlementData(payload, result),
     })
     if (recorded.count === 0) {
       throw new StaleJobClaimError(`Delivery job ${job.id} is no longer held by this run`)
@@ -474,14 +489,19 @@ export async function settleAbandonedDeliveries(input: { organizationIds?: reado
       if (!completion) throw new Error(`No delivery completion registered for ${payload.completion.kind}`)
       if (!(await completion.pending(prisma, payload.completion.target))) {
         // Nothing left to settle; recorded so the sweep does not look at this job again.
-        await prisma.job.updateMany({
-          where: { ...fenced(job), result: { equals: Prisma.DbNull } },
-          data: { result: orphanedResult(payload, job.attempts) },
+        await prisma.$transaction(async tx => {
+          await lockArtifactOrganization(tx, job.organizationId)
+          const recorded = await tx.job.updateMany({
+            where: { ...fenced({ ...job, claimToken: null }), result: { equals: Prisma.DbNull } },
+            // Parsing also removes legacy provider extras from attempts and evidence.
+            data: { payload, ...settlementData(payload, orphanedResult(payload, job.attempts)) },
+          })
+          if (!recorded.count) throw new StaleJobClaimError(`Delivery job ${job.id} changed after selection`)
         })
         continue
       }
       await settle(
-        job,
+        { ...job, claimToken: null },
         payload,
         completion,
         payload.providerMessageId
