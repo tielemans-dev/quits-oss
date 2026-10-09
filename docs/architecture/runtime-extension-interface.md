@@ -20,6 +20,26 @@ Each extension provides a stable `id` and optional `resolveCapabilities(base)` p
 
 The OSS baseline exposes capabilities via `trpc.runtime.capabilities`.
 
+## Deposit capability
+
+`agreements.depositsEnabled` defaults to `true`. An operator can set
+`QUITS_DEPOSITS_ENABLED=false`, with `YAIP_DEPOSITS_ENABLED` as the legacy fallback,
+or register an extension patch `{ agreements: { depositsEnabled: false } }`.
+The extension patch takes precedence over the environment default.
+
+When disabled, agreement editors hide the deposit/payment-schedule checkbox,
+billable selections exclude deposit lines, and prepayment drafts hide sale conversion.
+The command layer refuses deposit draft creation or edits, new deposit offer issuance,
+selection of deposit lines for invoices, and converting or issuing existing deposit drafts.
+Choosing `scheduleAsSale` does not bypass the restriction. Services remain billable even
+when their agreement also has a deposit line.
+
+This capability does not filter stored records, rewrite frozen offers or PDF/UBL artifacts,
+or remove issued-document/payment access. Existing public offers retain their agreed
+schedule. Deployments requiring those historical schedules to disappear need a separate
+policy decision before changing their presentation. New offers cannot acquire a deposit
+schedule while the capability is disabled.
+
 ## AI Capability Model
 
 Current capability key:

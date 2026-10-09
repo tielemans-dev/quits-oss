@@ -25,6 +25,7 @@ function mergeCapabilities(
 
   return {
     documents: { ...base.documents, ...patch.documents },
+    agreements: { ...base.agreements, ...patch.agreements },
     aiInvoiceDraft: {
       ...base.aiInvoiceDraft,
       ...patch.aiInvoiceDraft,
@@ -72,6 +73,7 @@ function readDefaultCapabilities(
 
   return {
     documents: { artifactsRequired: true },
+    agreements: { depositsEnabled: readBooleanEnv(readProductEnv(env, "DEPOSITS_ENABLED"), true) },
     aiInvoiceDraft: {
       enabled: byok || managed || localAgent,
       byok,

@@ -1,3 +1,4 @@
+import { requireDepositsEnabled } from "../agreements/deposit-capability"
 import { toNullableJsonInput } from "../../lib/prisma-json"
 import { requireDraftCurrency } from "../documents/currency"
 import { deliverableCommands } from "./deliverables"
@@ -110,6 +111,7 @@ export const createAgreementDraft = defineCommand({
           }),
       })
       const { input, quote } = yield* resolveQuoteDraft(request)
+      yield* requireDepositsEnabled(input.deliverables)
       const contact = yield* findContact(input.contactId)
       const template = yield* validateTemplate(input.templateId)
       const { settings, sellerTaxIds } = yield* loadDocumentContext
@@ -182,6 +184,7 @@ export const updateAgreementDraft = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const existing = yield* lockedDraft(input.id)
+      if (input.deliverables) yield* requireDepositsEnabled(input.deliverables)
       yield* validateTemplate(input.templateId)
       const data: Parameters<typeof db.agreement.update>[0]["data"] = {}
       if (input.contactId !== undefined) {
@@ -296,6 +299,7 @@ export const updateDeliverable = defineCommand({
       const db = yield* Db
       const command = yield* Command
       const { agreement, line: existing } = yield* lockedDeliverable(input)
+      yield* requireDepositsEnabled([{ isDeposit: input.isDeposit }])
       const { id, agreementId: _agreementId, status, expectedDate, ...changes } = input
       const snapshotChanged = Object.values(changes).some((value) => value !== undefined)
       if (snapshotChanged && agreement.status !== "draft")

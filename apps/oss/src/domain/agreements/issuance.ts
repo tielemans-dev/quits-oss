@@ -1,3 +1,4 @@
+import { requireDepositsEnabled } from "./deposit-capability"
 import { Effect } from "effect"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
 import { lockDocument } from "../documents/locks"
@@ -62,6 +63,7 @@ export const prospectiveIssuance = (
         code: "no_deliverables",
         message: "At least one non-cancelled deliverable is required",
       })
+    yield* requireDepositsEnabled(draft.deliverables)
     const expiresAt = agreementExpiresAt(draft.validUntil, draft.timezone)
     if (now >= expiresAt)
       return yield* new InvalidState({

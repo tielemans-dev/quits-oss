@@ -216,7 +216,7 @@ function AgreementDetail() {
           {t("agreements.evidenceNote")}: {agreement.acceptanceEvidenceNote}
         </p>
       )}
-      {agreement.status === "accepted" && capabilities?.invoice && <InvoiceDeliverables key={agreement.id} agreement={agreement} onChanged={refresh} />}
+      {agreement.status === "accepted" && capabilities?.invoice && <InvoiceDeliverables depositsEnabled={capabilities.depositsEnabled} key={agreement.id} agreement={agreement} onChanged={refresh} />}
       <Card>
         <CardContent className="pt-6 grid gap-3">
           <p>

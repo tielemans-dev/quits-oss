@@ -1,3 +1,4 @@
+import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { formatIsoDate } from "../../lib/exports/format"
 import { invoiceDeliverableCommands } from "./invoices-from-deliverables"
 import { updateLinkedInvoice } from "../agreements/linked-invoice"
@@ -308,6 +309,7 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
   Effect.gen(function* () {
     yield* lockDocument("invoice", id)
     const found = yield* findInvoice(id)
+    if (action === "send") yield* requireDepositInvoiceEnabled(found)
     if (action === "send" && found.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
     // Lock the contact before reading the address, so the approved recipient cannot change.
     const invoice = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
@@ -367,6 +369,7 @@ export const sendInvoice = defineCommand({
       if (found.status !== "draft") {
         return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
       }
+      yield* requireDepositInvoiceEnabled(found)
       yield* refuseWhileSending("invoice", found)
       // The number is taken here, in the issuing transaction: if any later check fails, the
       // transaction rolls back and the number goes back with it.
