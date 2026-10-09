@@ -9,16 +9,14 @@ import { listRowLinkClass } from "../kvit/list"
 import { Panel } from "../kvit/panel"
 import { DocLink } from "./doc-link"
 import { tCount, type Translate } from "./i18n"
-import { RemindAction } from "./remind-action"
+import { ReminderFailureNote, RemindAction } from "./remind-action"
 import { dueLabel, incomingRule, type DueLabel, type IncomingItem } from "./summary-model"
 import type { ReminderState } from "./use-reminders"
 
 export function dueText(due: DueLabel, t: Translate): string {
   switch (due.kind) {
     case "overdue":
-      return due.days === 0
-        ? t("dashboard.incoming.overdueToday")
-        : tCount(t, "dashboard.incoming.overdue", due.days, { days: due.days })
+      return tCount(t, "dashboard.incoming.overdue", due.days, { days: due.days })
     case "today":
       return t("dashboard.incoming.today")
     case "tomorrow":
@@ -74,6 +72,9 @@ export function IncomingList({
             const covered = inAttention.has(item.documentId)
             const offerReminder = item.canRemind && !covered
             const reminderState = covered ? undefined : reminders[item.documentId]
+            // A refusal that the reload has since made final (canRemind is now false) is told, not
+            // offered again: a retry would send a reminder the server no longer allows.
+            const finalRefusal = reminderState?.status === "error" && !item.canRemind
             return (
               <li
                 key={item.documentId}
@@ -109,12 +110,16 @@ export function IncomingList({
                             "[@media(hover:hover)]:absolute [@media(hover:hover)]:inset-0 [@media(hover:hover)]:mt-0 [@media(hover:hover)]:flex [@media(hover:hover)]:items-center [@media(hover:hover)]:bg-[color-mix(in_srgb,var(--panel),var(--foreground)_3.5%)] [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-focus-within/row:pointer-events-auto [@media(hover:hover)]:group-hover/row:pointer-events-auto transition-opacity duration-150"
                         )}
                       >
-                        <RemindAction
-                          state={reminderState}
-                          onRemind={() => onRemind(item.documentId)}
-                          size="xs"
-                          variant="link"
-                        />
+                        {finalRefusal ? (
+                          <ReminderFailureNote failure={reminderState.failure} />
+                        ) : (
+                          <RemindAction
+                            state={reminderState}
+                            onRemind={() => onRemind(item.documentId)}
+                            size="xs"
+                            variant="link"
+                          />
+                        )}
                       </div>
                     ) : null}
                   </div>

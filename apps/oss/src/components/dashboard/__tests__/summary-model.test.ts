@@ -6,6 +6,7 @@ import {
   dueLabel,
   localToday,
   incomingRule,
+  isLate,
   presentChart,
   presentHero,
   streakVisible,
@@ -174,8 +175,18 @@ describe("due dates", () => {
     expect(at("2026-10-18", 0, false)).toEqual({ kind: "later", days: 10 })
   })
 
-  it("calls a same-day arrear overdue, from isOverdue and not from the day count", () => {
-    expect(dueLabel({ dueDate: "2026-10-08", daysOverdue: 0, isOverdue: true }, today)).toEqual({ kind: "overdue", days: 0 })
+  it("never says zero days overdue: a zero-day arrear is due today", () => {
+    expect(dueLabel({ dueDate: "2026-10-08", daysOverdue: 0, isOverdue: true }, today)).toEqual({ kind: "today" })
+    expect(dueLabel({ dueDate: "2026-10-08", daysOverdue: 1, isOverdue: true }, today)).toEqual({ kind: "overdue", days: 1 })
+  })
+
+  it("is late only for a real arrear", () => {
+    expect([
+      isLate({ isOverdue: true, daysOverdue: 3 }),
+      isLate({ isOverdue: true, daysOverdue: 0 }),
+      isLate({ isOverdue: true, daysOverdue: null }),
+      isLate({ isOverdue: false, daysOverdue: 5 }),
+    ]).toEqual([true, false, false, false])
   })
 })
 

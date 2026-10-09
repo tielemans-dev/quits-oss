@@ -113,36 +113,47 @@ export function FirstRun() {
 
 /**
  * In between: drafts or other first steps exist, but nothing has been sent, so no money is owed
- * and a "0,00 kr." would say nothing. It stands where the hero will be and points at the next step:
- * with one draft (an invoice or a quote), to carry on with it; with several, to the list of them
- * with their number; with none, to the invoices. The top bar already has "Ny", so this card does not offer it again.
+ * and a "0,00 kr." would say nothing. It stands where the hero will be and points at the next step,
+ * and every action lands where a draft is:
+ * - one draft: continue it, an invoice or a quote by its kind;
+ * - several: continue the newest, with a quiet link to the list of its kind. The summary has only
+ *   a total and the newest kind, so the text claims the total and the link never claims a count
+ *   (the drafts may be of both kinds);
+ * - none: the invoices.
+ * The top bar already has "Ny", so this card does not offer it again.
  */
 export function GettingStarted({ drafts, className }: { drafts: Summary["drafts"]; className?: string }) {
   const { t } = useI18n()
+  const newest = drafts.count > 0 && drafts.newestId && drafts.newestKind ? { id: drafts.newestId, kind: drafts.newestKind } : null
+  const listOfNewest = newest?.kind === "quote" ? "/quotes" : "/invoices"
   return (
     <Panel data-slot="dashboard-getting-started" className={cn("flex flex-col justify-center p-5 sm:p-6", className)}>
       <span className="bg-brand-soft text-brand-text mb-4 grid size-9 place-items-center rounded-full">
         <DoubleRule />
       </span>
       <h2 className="text-lg font-bold tracking-[-0.02em] sm:text-xl">{t("dashboard.start.title")}</h2>
-      <p className="text-muted-foreground mt-1.5 max-w-md text-sm">{t("dashboard.start.description")}</p>
+      <p className="text-muted-foreground mt-1.5 max-w-md text-sm">
+        {drafts.count > 1
+          ? t("dashboard.start.descriptionDrafts", { count: drafts.count })
+          : t("dashboard.start.description")}
+      </p>
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        {drafts.count === 1 && drafts.newestId && drafts.newestKind ? (
+        {newest ? (
           <>
             <Button asChild>
-              <DocLink kind={drafts.newestKind} id={drafts.newestId}>
-                {t("dashboard.start.action.continue")}
+              <DocLink kind={newest.kind} id={newest.id}>
+                {drafts.count > 1 ? t("dashboard.start.action.continueNewest") : t("dashboard.start.action.continue")}
               </DocLink>
             </Button>
             <Button asChild variant="outline">
-              <Link to="/invoices">{t("dashboard.start.action.invoices")}</Link>
+              <Link to={listOfNewest}>
+                {newest.kind === "quote" ? t("dashboard.start.action.quotes") : t("dashboard.start.action.invoices")}
+              </Link>
             </Button>
           </>
         ) : (
           <Button asChild>
-            <Link to="/invoices">
-              {drafts.count > 1 ? t("dashboard.start.action.drafts", { count: drafts.count }) : t("dashboard.start.action.invoices")}
-            </Link>
+            <Link to="/invoices">{t("dashboard.start.action.invoices")}</Link>
           </Button>
         )}
       </div>

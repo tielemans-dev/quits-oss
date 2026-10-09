@@ -178,15 +178,16 @@ export type DueLabel =
   | { kind: "later"; days: number }
 
 /**
- * When an incoming invoice is due. Overdue is the server's `isOverdue`, never `daysOverdue > 0`: an
- * invoice that went overdue earlier today has 0 days and is still overdue. Otherwise the days to
- * the due date are counted from the organization's today.
+ * When an incoming invoice is due. Overdue is the server's `isOverdue`, but never with zero days:
+ * the server also flags an invoice due today as overdue for now, and "0 days overdue" must not be
+ * shown. Zero days reads as due today, in the neutral tone. Otherwise the days to the due date are
+ * counted from the organization's today.
  */
 export function dueLabel(
   item: Pick<IncomingItem, "dueDate" | "daysOverdue" | "isOverdue">,
   today: string
 ): DueLabel {
-  if (item.isOverdue) return { kind: "overdue", days: item.daysOverdue }
+  if (item.isOverdue && item.daysOverdue > 0) return { kind: "overdue", days: item.daysOverdue }
   const days = daysBetween(today, item.dueDate)
   if (days <= 0) return { kind: "today" }
   if (days === 1) return { kind: "tomorrow" }
@@ -207,6 +208,11 @@ export function incomingRule(item: Pick<IncomingItem, "amount" | "total">): {
   if (total <= 0n || balance >= total) return { rule: "single" }
   if (balance <= 0n) return { rule: "double" }
   return { rule: "double", paidFraction: Number(total - balance) / Number(total) }
+}
+
+/** Red only for a real arrear: the server's `isOverdue` with at least one day, never "0 days". */
+export function isLate(item: { isOverdue: boolean; daysOverdue: number | null }): boolean {
+  return item.isOverdue && (item.daysOverdue ?? 0) > 0
 }
 
 /** Whether an attention row's one action is "send a reminder", the only one that is not a link. */

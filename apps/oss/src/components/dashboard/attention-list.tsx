@@ -10,7 +10,7 @@ import { DocLink } from "./doc-link"
 import { formatShortDate } from "./format-relative"
 import { tCount, type Translate } from "./i18n"
 import { ReminderFailureNote, RemindAction } from "./remind-action"
-import { attentionAction, type AttentionItem } from "./summary-model"
+import { attentionAction, isLate, type AttentionItem } from "./summary-model"
 import type { ReminderState } from "./use-reminders"
 
 const reasonStyle: Record<AttentionItem["reason"], { icon: LucideIcon; tone: string }> = {
@@ -37,9 +37,9 @@ export function attentionReason(item: AttentionItem, locale: string, t: Translat
   const number = item.number ?? ""
   switch (item.reason) {
     case "invoice_overdue":
-      return item.daysOverdue !== null && item.daysOverdue > 0
-        ? tCount(t, "dashboard.attention.overdue.days", item.daysOverdue, { number, days: item.daysOverdue })
-        : t("dashboard.attention.overdue.today", { number })
+      return isLate(item)
+        ? tCount(t, "dashboard.attention.overdue.days", item.daysOverdue!, { number, days: item.daysOverdue! })
+        : t("dashboard.attention.dueToday", { number })
     case "draft_older_than_7_days":
       return item.kind === "quote" ? t("dashboard.attention.draftQuote") : t("dashboard.attention.draftInvoice")
     case "quote_expiring":
@@ -91,8 +91,12 @@ export function AttentionList({
       ) : (
         <ul>
           {items.map((item) => {
-            // Red is the server's `isOverdue`, whatever the reason that put the row here.
-            const style = item.isOverdue ? reasonStyle.invoice_overdue : reasonStyle[item.reason]
+            // Red is a real arrear (`isOverdue` with days), whatever reason put the row here; due today is neutral.
+            const style = isLate(item)
+              ? reasonStyle.invoice_overdue
+              : item.reason === "invoice_overdue"
+                ? { icon: Clock, tone: "bg-tone-muted/14 text-tone-muted" }
+                : reasonStyle[item.reason]
             const Icon = style.icon
             const action = attentionAction(item)
             const refusal = reminders[item.documentId]

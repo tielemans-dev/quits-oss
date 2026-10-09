@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@tanstack/react-router", () => ({
@@ -170,7 +170,7 @@ describe("attention reasons and actions", () => {
   })
   const reasons: Array<[string, Partial<Summary["attention"][number]>, string, string]> = [
     ["overdue by days", { reason: "invoice_overdue", isOverdue: true, daysOverdue: 5, dueDate: "2026-10-03" }, "Faktura 2026-9 er 5 dage over tid", "Åbn faktura"],
-    ["overdue today", { reason: "invoice_overdue", isOverdue: true, daysOverdue: 0, dueDate: "2026-10-08" }, "Faktura 2026-9 forfaldt i dag", "Åbn faktura"],
+    ["due today (zero days)", { reason: "invoice_overdue", isOverdue: true, daysOverdue: 0, dueDate: "2026-10-08" }, "Faktura 2026-9 forfalder i dag", "Åbn faktura"],
     ["a draft", { reason: "draft_older_than_7_days" }, "Fakturakladde, der ikke er sendt", "Åbn kladde"],
     ["a quote with an expiry date", { reason: "quote_expiring", kind: "quote", expiresOn: "2026-10-12" }, "Tilbud 2026-9 udløber 12. okt.", "Følg op"],
     ["a quote without one", { reason: "quote_expiring", kind: "quote" }, "Tilbud 2026-9 udløber snart", "Følg op"],
@@ -185,18 +185,19 @@ describe("attention reasons and actions", () => {
     expect(link.getAttribute("href")).toBe(overrides.kind === "quote" ? "/quotes/doc-1" : "/invoices/doc-1")
   })
 
-  it("colours a row red by isOverdue, not by the reason or the day count", () => {
-    const icons = (attention: Summary["attention"]) => {
+  it("colours a row red for a real arrear only, never for zero days", () => {
+    const red = (attention: Summary["attention"]) => {
       const { container } = renderView(emptySummary({ outstanding: total(bucket("DKK", "100.00")), attention }))
-      return Array.from(container.querySelectorAll("[data-slot=dashboard-attention] li > span")).map((el) =>
+      const flags = Array.from(container.querySelectorAll("[data-slot=dashboard-attention] li > span")).map((el) =>
         el.className.includes("text-tone-danger")
       )
+      cleanup()
+      return flags
     }
-    // Overdue since this morning: zero days, still red.
-    expect(icons([item({ isOverdue: true, daysOverdue: 0 })])).toEqual([true])
-    cleanup()
-    // Not overdue, but a failed email: not red by overdue (it has its own tone).
-    expect(icons([item({ reason: "email_unconfirmed" })])).toEqual([false])
+    expect(red([item({ isOverdue: true, daysOverdue: 3 })])).toEqual([true])
+    // Due today but flagged overdue by the server for now: neutral.
+    expect(red([item({ isOverdue: true, daysOverdue: 0 })])).toEqual([false])
+    expect(red([item({ reason: "email_unconfirmed" })])).toEqual([false])
   })
 })
 
@@ -369,15 +370,27 @@ describe("getting started actions", () => {
     expect(screen.queryByRole("link", { name: "Ny faktura" })).toBeNull()
   })
 
-  it("opens a quote draft as a quote", () => {
+  it("opens a quote draft as a quote, and the quote list second", () => {
     renderView(drafted(1, "q1", "quote"))
     expect(screen.getByRole("link", { name: "Fortsæt kladden" }).getAttribute("href")).toBe("/quotes/q1")
+    expect(screen.getByRole("link", { name: "Se tilbud" }).getAttribute("href")).toBe("/quotes")
   })
 
-  it("sends several drafts to the list, with their number", () => {
-    renderView(drafted(3, "d1", "invoice"))
-    expect(screen.getByRole("link", { name: "Se kladder (3)" }).getAttribute("href")).toBe("/invoices")
-    expect(screen.queryByRole("link", { name: "Fortsæt kladden" })).toBeNull()
+  it("with several drafts continues the newest and links to the list of its kind, so every action lands on a draft", () => {
+    renderView(drafted(2, "q2", "quote"))
+    expect(screen.getByRole("link", { name: "Fortsæt nyeste kladde" }).getAttribute("href")).toBe("/quotes/q2")
+    expect(screen.getByRole("link", { name: "Se tilbud" }).getAttribute("href")).toBe("/quotes")
+    // The old "Se kladder (2)" led to /invoices, where quote drafts do not appear.
+    expect(screen.queryByRole("link", { name: /Se kladder/ })).toBeNull()
+    expect(screen.queryByRole("link", { name: "Se fakturaer" })).toBeNull()
+  })
+
+  it("claims only the total for mixed drafts, never a count per list", () => {
+    const { container } = renderView(drafted(3, "d9", "invoice"))
+    expect(container.textContent).toContain("Du har 3 kladder")
+    expect(screen.getByRole("link", { name: "Fortsæt nyeste kladde" }).getAttribute("href")).toBe("/invoices/d9")
+    expect(screen.getByRole("link", { name: "Se fakturaer" }).getAttribute("href")).toBe("/invoices")
+    expect(container.textContent).not.toMatch(/Fakturakladder \(|Tilbudskladder \(/)
   })
 
   it("points at the invoices when there is no draft but something else has happened", () => {
@@ -400,11 +413,14 @@ describe("incoming rules and days", () => {
     expect(second!.getAttribute("data-rule")).toBe("single")
   })
 
-  it("says overdue today for a zero-day arrear", () => {
+  it("says due today, neutral, and never zero days overdue, for a zero-day arrear", () => {
     const summary = activeSummary()
     summary.incoming[0] = { ...summary.incoming[0]!, daysOverdue: 0, isOverdue: true }
-    renderView(summary)
-    expect(screen.getByText("Forfaldt i dag")).toBeTruthy()
+    const { container } = renderView(summary)
+    const incoming = container.querySelector("[data-slot=dashboard-incoming]") as HTMLElement
+    const label = within(incoming).getByText("Forfalder i dag")
+    expect(label.className).not.toContain("text-tone-danger")
+    expect(container.textContent).not.toMatch(/\b0 dage?/)
   })
 })
 
@@ -439,5 +455,114 @@ describe("activity lines", () => {
     renderView(activeSummary())
     expect(screen.getByText("Faktura 2026-148 betalt").getAttribute("href")).toBe("/invoices/inv-paid")
     expect(screen.getByText("Nordlys Studio")).toBeTruthy()
+  })
+})
+
+describe("a refusal after the reminder is no longer allowed", () => {
+  const refuse = (reason: string) =>
+    Object.assign(new Error("English"), { data: { reason, code: "BAD_REQUEST" } })
+
+  it("shows the incoming list's refusal without a retry once canRemind turns false", async () => {
+    const send = vi.fn(async () => {
+      throw refuse("already_reminded")
+    })
+    // A summary where only the incoming row can be reminded (it is not in the attention list).
+    const first = activeSummary()
+    first.attention = []
+    first.incoming[0] = { ...first.incoming[0]!, canRemind: true }
+    const view = renderView(first, send)
+    fireEvent.click(screen.getAllByRole("button", { name: "Send påmindelse" })[0]!)
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Der er allerede sendt en påmindelse i dag"))
+    expect(screen.getAllByRole("button", { name: "Send påmindelse" }).length).toBe(1)
+
+    const reloaded = activeSummary()
+    reloaded.attention = []
+    reloaded.incoming[0] = { ...reloaded.incoming[0]!, canRemind: false }
+    view.rerender(
+      <I18nProvider locale="da-DK">
+        <DashboardView summary={reloaded} sendReminder={send} />
+      </I18nProvider>
+    )
+    expect(screen.getByRole("alert").textContent).toBe("Der er allerede sendt en påmindelse i dag")
+    expect(screen.queryByRole("button", { name: "Send påmindelse" })).toBeNull()
+    // Nothing can send a second mutation.
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the retry while the server still allows the reminder", async () => {
+    const send = vi.fn(async () => {
+      throw refuse("email_provider_unreachable")
+    })
+    const summary = activeSummary()
+    summary.attention = []
+    summary.incoming[0] = { ...summary.incoming[0]!, canRemind: true }
+    renderView(summary, send)
+    fireEvent.click(screen.getByRole("button", { name: "Send påmindelse" }))
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy())
+    expect(screen.getByRole("button", { name: "Send påmindelse" })).toBeTruthy()
+  })
+})
+
+describe("the animated count-up", () => {
+  const frames: Array<(now: number) => void> = []
+  let clock = 0
+
+  function motion(reduce: boolean) {
+    frames.length = 0
+    clock = 0
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: reduce && query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} }))
+    vi.stubGlobal("requestAnimationFrame", (callback: (now: number) => void) => frames.push(callback))
+    vi.stubGlobal("cancelAnimationFrame", () => {})
+    vi.spyOn(performance, "now").mockImplementation(() => clock)
+  }
+  const step = (to: number) =>
+    act(() => {
+      clock = to
+      const next = frames.splice(0)
+      next.forEach((frame) => frame(to))
+    })
+  const heroText = (container: HTMLElement) =>
+    container.querySelector("[data-slot=dashboard-hero] [data-slot=amount]")!.textContent
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it("starts at zero, passes through the middle, and lands exactly on the figure", () => {
+    motion(false)
+    const { container } = renderView(activeSummary())
+    expect(heroText(container)).toBe("0,00\u00a0kr.")
+    step(350)
+    const middle = heroText(container)
+    expect(middle).not.toBe("0,00\u00a0kr.")
+    expect(middle).not.toBe("20.000,00\u00a0kr.")
+    step(700)
+    expect(heroText(container)).toBe("20.000,00\u00a0kr.")
+    // It does not start again when the summary reloads with another figure.
+    step(2000)
+    expect(heroText(container)).toBe("20.000,00\u00a0kr.")
+  })
+
+  it("shows the figure at once under reduced motion", () => {
+    motion(true)
+    const { container } = renderView(activeSummary())
+    expect(heroText(container)).toBe("20.000,00\u00a0kr.")
+    // No frame ever changes it (other frames, such as the double rule's, do not touch the figure).
+    step(100)
+    expect(heroText(container)).toBe("20.000,00\u00a0kr.")
+  })
+
+  it("jumps to a new figure after the first load instead of counting again", () => {
+    motion(false)
+    const view = renderView(activeSummary())
+    step(700)
+    const changed = activeSummary({ outstanding: total(bucket("DKK", "25000.00", 4)) })
+    view.rerender(
+      <I18nProvider locale="da-DK">
+        <DashboardView summary={changed} sendReminder={async () => ({ delivery: "sent" })} />
+      </I18nProvider>
+    )
+    expect(heroText(view.container)).toBe("25.000,00\u00a0kr.")
   })
 })
