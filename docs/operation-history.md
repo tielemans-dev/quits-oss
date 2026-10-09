@@ -3,7 +3,11 @@
 The operation history on an invoice, quote, agreement or credit note joins its command receipts,
 completed document changes and email outbox. It shows the exact record, original recipient,
 queue time, request times and provider reference when available. Older emails may have only a
-job-run count because their individual request times were not recorded.
+job-run count because their individual request times were not recorded. Recovery and later
+retries preserve that older count beside any newly recorded attempts, including when
+never-submitted work receives a fresh run budget. The timestamp history may therefore be partial.
+A job run is not proof of a provider request. Recorded attempt numbers count only the requests
+with recorded timestamps; they do not imply a complete history.
 
 A completed business command does not prove email delivery. Creation and email delivery have
 separate outcomes. A provider acceptance means the provider accepted a submission, not that the
@@ -53,6 +57,10 @@ receipt record the decision, reason and original delivery ID. The original uncer
 remains visible. Revoked public links cannot be replayed. Only one manual recovery is permitted per source delivery, and repeating the
 same client request returns the same receipt.
 
+Changing a contact's email alone does not rewrite the stored message. While its link remains
+valid, the manual path still targets the shown original recipient. Verify that address before
+resending; correcting the contact does not redirect this stored email.
+
 When the earlier email's link has been revoked, the history offers **Review replacement with
 current link**. Verify the uncertain delivery first, review the displayed current recipient,
 record a reason and acknowledge the risk of another email. This renders the same issued
@@ -74,6 +82,12 @@ Command receipts add a nullable `target` JSON field containing only `documentTyp
 `documentId`. It links failed commands and approval waits that have no committed document
 event. Existing receipts are joined through their domain events and outbox command IDs.
 Successful UI commands now retain receipts even when callers did not supply a request ID.
+These references cover only known document IDs. A creation that fails before a new document has
+an ID cannot have a document journal yet. Direct receipt targets currently use the command name
+and an `id` field, with explicit handling for delivery and reminder inputs. Commands with other
+input shapes may have no direct target. For example, mark-paid and undo use `invoiceId`; their
+completed receipts appear through invoice events, but their failed receipts have no direct
+journal reference.
 
 The journal requires the document's read permission and a record in the active organization.
 Recovery additionally requires its send permission and a human actor. It does not expose stored

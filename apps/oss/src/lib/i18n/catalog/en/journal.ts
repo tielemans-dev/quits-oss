@@ -40,7 +40,7 @@ export const enJournalMessages = {
   "journal.deliveryTo": "Email to {recipient}",
   "journal.queuedAt": "Queued at",
   "journal.providerReference": "Provider reference",
-  "journal.attempt": "Attempt {count}",
+  "journal.attempt": "Recorded attempt {count}",
   "journal.attempt.started": "No answer recorded",
   "journal.attempt.accepted": "Accepted",
   "journal.attempt.rejected": "Refused",

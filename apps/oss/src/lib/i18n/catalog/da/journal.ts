@@ -40,7 +40,7 @@ export const daJournalMessages = {
   "journal.deliveryTo": "E-mail til {recipient}",
   "journal.queuedAt": "Sat i kø",
   "journal.providerReference": "Udbyderreference",
-  "journal.attempt": "Forsøg {count}",
+  "journal.attempt": "Registreret forsøg {count}",
   "journal.attempt.started": "Intet svar registreret",
   "journal.attempt.accepted": "Modtaget",
   "journal.attempt.rejected": "Afvist",

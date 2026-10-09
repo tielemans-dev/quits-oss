@@ -365,6 +365,32 @@ suite("operation journal and bounded recovery", () => {
     expect((await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).payload).toMatchObject({ requests: 1 })
   })
 
+  it("joins mark-paid and audited undo through invoice events without changing payment identities", async () => {
+    const { actor, scope, org } = await setup()
+    await executeIssuanceCommand(sendInvoice, { id: scope.documentId }, { actor })
+    const caller = appRouter.createCaller({ session: {
+      user: { id: actor.userId, name: actor.label, email: "operator@example.test" },
+      session: { activeOrganizationId: actor.organizationId }
+    } } as never)
+    const input = { invoiceId: scope.documentId, requestId: "journal-mark-paid" }
+    const marked = await caller.invoices.markPaid(input)
+    expect(await caller.invoices.markPaid(input)).toEqual(marked)
+    const undone = await caller.invoices.undoMarkPaid({ ...input, paymentId: marked.paymentId })
+    expect(undone.balance.amount).toBe("100.00")
+    expect(await caller.invoices.undoMarkPaid({ ...input, paymentId: marked.paymentId })).toEqual(undone)
+    const history = await documentJournal(actor, scope)
+    expect(history.commands).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "invoice.mark_paid", state: "effects_completed",
+        steps: expect.arrayContaining([expect.objectContaining({ type: "invoice.marked_paid" }), expect.objectContaining({ type: "payment.recorded" })]) }),
+      expect.objectContaining({ type: "invoice.undo_mark_paid", state: "effects_completed",
+        steps: expect.arrayContaining([expect.objectContaining({ type: "payment.voided" })]) })
+    ]))
+    expect(await prisma.payment.count({ where: { invoiceId: scope.documentId } })).toBe(1)
+    expect(await prisma.payment.findUniqueOrThrow({ where: { id: marked.paymentId } })).toMatchObject({
+      receiptId: null, voidedAt: expect.any(Date), voidReason: "Fortrudt"
+    })
+    expect(await prisma.domainEvent.count({ where: { organizationId: org.organizationId, type: "payment.voided" } })).toBe(1)
+  })
   it("distinguishes missing configuration from a delivery failure", async () => {
     const { actor, scope, org } = await setup()
     beforeJobWrite((args) => {

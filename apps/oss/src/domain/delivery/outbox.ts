@@ -111,6 +111,8 @@ export const deliveryPayloadSchema = z.object({
   recoveryOf: z.string().optional(),
   manualReason: z.string().optional(),
   manualReview: z.object({ mode: z.enum(["stored", "replacement"]), revision: z.string(), recipient: z.string(), publicLinkKeyVersion: z.string().nullable() }).optional(),
+  /** Untimestamped job runs archived before recording requests or resetting the run budget. */
+  legacyJobRuns: z.number().int().nonnegative().optional(),
   attempts: z.array(z.object({
     startedAt: z.string(),
     outcome: z.enum(["started", "accepted", "rejected", "uncertain"]),
@@ -126,6 +128,11 @@ export const deliveryPayloadSchema = z.object({
     .optional(),
 })
 export type DeliveryPayload = z.infer<typeof deliveryPayloadSchema>
+
+/** Job runs are not provider requests. Keep older runs without inventing request timestamps. */
+export function legacyDeliveryJobRuns(payload: DeliveryPayload, earlierRuns: number) {
+  return (payload.legacyJobRuns ?? 0) + (payload.attempts?.length ? 0 : earlierRuns)
+}
 
 export type DeliveryFailure = {
   reason: "rejected" | "unconfirmed" | "withdrawn"
@@ -390,6 +397,7 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
 
   // Counted before the request, so a request whose outcome is lost is never mistaken for none.
   const requested: DeliveryPayload = { ...payload, requests: requests + 1, provider,
+    legacyJobRuns: legacyDeliveryJobRuns(payload, job.attempts - 1),
     attempts: [...(payload.attempts ?? []), { startedAt: new Date().toISOString(), outcome: "started" }],
   }
   await recordOnJob(job, requested)

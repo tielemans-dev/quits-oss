@@ -29,6 +29,7 @@ import { Command, Db } from "../services"
 import { aggregateTypeAliases } from "../../lib/exports/activity"
 import {
   deliveryPayloadSchema,
+  legacyDeliveryJobRuns,
   EMAIL_DELIVERY_ATTEMPTS,
   EMAIL_DELIVERY_JOB,
   enqueueEmailDelivery,
@@ -443,7 +444,7 @@ export async function documentJournal(
         provider: payload.provider ?? null,
         providerReference: payload.providerMessageId ?? null,
         attempts: payload.attempts ?? [],
-        legacyAttempts: payload.attempts ? 0 : job.attempts,
+        legacyAttempts: legacyDeliveryJobRuns(payload, job.attempts),
         evidence: payload.evidence ?? [],
         recoveryOf: payload.recoveryOf ?? null,
         manualReason: payload.manualReason ?? null,
@@ -507,7 +508,12 @@ export async function recoverDelivery(
         status: "pending",
         runAfter: new Date(),
         // Only never-submitted work gets a fresh budget. External request counts never reset.
-        ...(requestsStarted(job, payload) === 0 ? { attempts: 0 } : {})
+        ...(requestsStarted(job, payload) === 0
+          ? {
+              attempts: 0,
+              payload: { ...payload, legacyJobRuns: legacyDeliveryJobRuns(payload, job.attempts) } as Prisma.InputJsonObject
+            }
+          : {})
       }
     })
     if (!recovered.count)

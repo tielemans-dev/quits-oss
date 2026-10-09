@@ -114,7 +114,8 @@ test("uncertain SMTP journal preserves one record and requires an explicit manua
           actor,
           commandId: sendCommandId,
           approvedByUserId: null,
-          requests: 1,
+          requests: 3,
+          legacyJobRuns: 2,
           provider: "smtp",
           completion: {
             kind: "invoice.send",
@@ -156,6 +157,8 @@ test("uncertain SMTP journal preserves one record and requires an explicit manua
   await expect(
     history.getByRole("button", { name: "Check provider status" })
   ).toHaveCount(0)
+  await expect(history.getByText("Recorded attempt 1", { exact: true })).toBeVisible()
+  await expect(history.getByText("2 older job runs. Individual request times were not recorded.", { exact: true })).toBeVisible()
   await history.getByRole("button", { name: "Review manual resend" }).click()
   const submit = history.getByRole("button", {
     name: "Record decision and resend"
