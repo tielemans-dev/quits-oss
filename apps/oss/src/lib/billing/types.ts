@@ -3,6 +3,13 @@ export type SubscriptionStatus = "free" | "active" | "canceled" | "past_due"
 export type BillingSubscription = {
   status: SubscriptionStatus
   priceId: string | null
+  /** Optional distribution presentation. Access decisions always remain server-side. */
+  access?: {
+    paidOnly: boolean
+    hasSubscription: boolean
+    checkoutAvailable: boolean
+    portalAvailable: boolean
+  }
 }
 
 export type BillingProvider = {

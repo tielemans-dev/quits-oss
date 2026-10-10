@@ -7,6 +7,7 @@ import { actorCan, type UserActor } from "../domain/actor"
 import type { Permission } from "../domain/permissions"
 import { resolveUserActor } from "../domain/user-actor"
 import { isCloudDistribution } from "../lib/distribution"
+import { authorizeRuntimeOperation, OperationDenied } from "../lib/runtime/operation-policy"
 import {
   MIXED_ORGANIZATIONS,
   ORGANIZATION_CHANGED_MESSAGE,
@@ -143,12 +144,21 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next, type }) =
 
 /** An organization procedure that requires one `resource:action` permission. */
 export function authorizedProcedure(permission: Permission) {
-  return orgProcedure.use(async ({ ctx, next }) => {
+  return orgProcedure.use(async ({ ctx, next, type, path, getRawInput }) => {
     if (!actorCan(ctx.actor, permission)) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: `Your role does not allow ${permission}`,
       })
+    }
+    if (type === "mutation") {
+      try {
+        await authorizeRuntimeOperation({ organizationId: ctx.organizationId, kind: "procedure", name: path,
+          input: await getRawInput(), actorKind: "user", phase: "execute" })
+      } catch (error) {
+        if (!(error instanceof OperationDenied)) throw error
+        throw new TRPCError({ code: "FORBIDDEN", message: error.message, cause: error })
+      }
     }
     return next()
   })

@@ -12,6 +12,7 @@ import {
 } from "../../components/ui/card"
 import { AlertTriangle, CreditCard } from "lucide-react"
 import { useI18n } from "../../lib/i18n/react"
+import type { BillingSubscription } from "../../lib/billing/types"
 
 export const Route = createFileRoute("/_app/billing")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -21,10 +22,7 @@ export const Route = createFileRoute("/_app/billing")({
   component: BillingPage,
 })
 
-type SubscriptionData = {
-  status: string
-  priceId: string | null
-}
+type SubscriptionData = BillingSubscription
 
 function BillingPage() {
   const { t } = useI18n()
@@ -150,7 +148,7 @@ function BillingPage() {
         <h1 className="text-2xl font-bold">{t("billing.title")}</h1>
       </div>
 
-      {search.success && (
+      {search.success && status === "active" && (
         <div className="mb-4 rounded-md border border-tone-success/30 bg-tone-success/10 p-3 text-sm text-foreground">
           {t("billing.flash.success")}
         </div>
@@ -178,13 +176,24 @@ function BillingPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">{t("billing.currentPlan")}</p>
-              <p className={`text-lg font-semibold ${statusInfo.className}`}>
+              {(!subscription?.access?.paidOnly || subscription.access.hasSubscription) && <p className={`text-lg font-semibold ${statusInfo.className}`}>
                 {statusInfo.label}
-              </p>
+              </p>}
             </div>
           </div>
 
-          {status === "free" && (
+          {subscription?.access?.paidOnly && (
+            <div className="grid gap-2">
+              {subscription.access.checkoutAvailable && <Button onClick={handleUpgrade} disabled={actionLoading}>
+                {actionLoading ? t("billing.action.redirecting") : t("billing.action.upgrade")}
+              </Button>}
+              {subscription.access.portalAvailable && <Button variant="outline" onClick={handleManage} disabled={actionLoading}>
+                {actionLoading ? t("billing.action.redirecting") : t("billing.action.manage")}
+              </Button>}
+            </div>
+          )}
+
+          {!subscription?.access?.paidOnly && status === "free" && (
             <div className="grid gap-2">
               <p className="text-sm text-muted-foreground">
                 {t("billing.free.description")}
@@ -197,7 +206,7 @@ function BillingPage() {
             </div>
           )}
 
-          {status === "active" && (
+          {!subscription?.access?.paidOnly && status === "active" && (
             <div className="grid gap-2">
               <p className="text-sm text-muted-foreground">
                 {t("billing.active.description")}
@@ -214,7 +223,7 @@ function BillingPage() {
             </div>
           )}
 
-          {status === "canceled" && (
+          {!subscription?.access?.paidOnly && status === "canceled" && (
             <div className="grid gap-2">
               <p className="text-sm text-muted-foreground">
                 {t("billing.canceled.description")}
@@ -227,7 +236,7 @@ function BillingPage() {
             </div>
           )}
 
-          {status === "past_due" && (
+          {!subscription?.access?.paidOnly && status === "past_due" && (
             <div className="grid gap-2">
               <p className="text-sm text-muted-foreground">
                 {t("billing.pastDue.description")}

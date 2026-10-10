@@ -5,6 +5,7 @@ import { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { acquireBoundedAdvisoryLock } from "../lib/transaction-timeouts"
 import { appLogger } from "../lib/observability"
+import { authorizeRuntimeOperation, OperationDenied } from "../lib/runtime/operation-policy"
 import { actorCan, actorId, actorKey, type Actor } from "./actor"
 import type { ApprovalContext, CommandDefinition } from "./command"
 import {
@@ -219,6 +220,17 @@ export async function executeCommand<Input, Result>(
   }
   const input = parsed.data
 
+  const authorizeOperation = (phase: "prepare" | "execute") => authorizeRuntimeOperation({
+    organizationId, kind: "command", name: definition.type, input, actorKind: actor.kind, phase,
+  })
+  try {
+    await authorizeOperation("prepare")
+  } catch (error) {
+    if (!(error instanceof OperationDenied)) throw error
+    // Fresh refusals leave no receipt. An existing approved receipt must be finalized.
+    return rejectEarly(new InvalidState({ code: error.code, message: error.message }))
+  }
+
   let needsApproval =
     actor.kind === "agent" &&
     actor.mode === "approval_required" &&
@@ -290,6 +302,12 @@ export async function executeCommand<Input, Result>(
       // quote, credit note or agreement issuance) then holds the lock that serializes the counters
       // before it locks the document, the same order as `queueForApproval` and `readInScope`.
       await lockArtifactOrganization(tx, organizationId)
+      try {
+        await authorizeOperation("execute")
+      } catch (error) {
+        if (!(error instanceof OperationDenied)) throw error
+        throw new HandlerFailed(new InvalidState({ code: error.code, message: error.message }))
+      }
       let issuance: import("./services").CommandScope["issuance"]
       if (issuanceStagingId) {
         const staged = await tx.artifactStaging.findUnique({ where: { id: issuanceStagingId } })
@@ -458,7 +476,8 @@ export async function executeCommand<Input, Result>(
       resumeReceiptId: options.resumeReceiptId,
       // A stale document number is not the caller's failure: leaving no receipt lets the same
       // request id prepare the document again with the current number.
-      transient: error.domainError._tag === "ExternalFailure" || staleNumber,
+      transient: error.domainError._tag === "ExternalFailure" || staleNumber ||
+        (error.domainError._tag === "InvalidState" && error.domainError.code === "operation_not_allowed"),
       staleNumber,
     })
     return winner ?? outcome

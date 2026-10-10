@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto"
 import type { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { appLogger } from "../lib/observability"
+import { authorizeRuntimeOperation, OperationDenied } from "../lib/runtime/operation-policy"
 
 /** A job that fails on its last attempt is failed for good; handlers can tell when no retry is left. */
 export const MAX_JOB_ATTEMPTS = 5
@@ -66,7 +67,7 @@ function backoffMs(attempts: number) {
  * What happened to one job run: not claimed (another runner has it), done, failed and queued for a
  * retry, failed after its last attempt, or failed permanently (`TerminalJobError`).
  */
-export type JobRunOutcome = "skipped" | "done" | "retrying" | "exhausted" | "terminal"
+export type JobRunOutcome = "skipped" | "done" | "retrying" | "exhausted" | "terminal" | "deferred"
 
 async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
   // Claim atomically so concurrent runners never execute the same job twice.
@@ -88,10 +89,19 @@ async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
     if (!handler) {
       throw new Error(`No handler registered for job type ${job.type}`)
     }
+    await authorizeRuntimeOperation({ organizationId: job.organizationId, kind: "job", name: job.type,
+      input: job.payload, actorKind: "system", phase: "execute" })
     await insideJob.run(true, () => handler(job))
     await prisma.job.updateMany({ where: owned, data: { status: "done", lastError: null, claimToken: null } })
     return "done"
   } catch (error) {
+    if (error instanceof OperationDenied) {
+      await prisma.job.updateMany({ where: owned, data: {
+        status: "pending", attempts: { decrement: 1 }, claimToken: null,
+        runAfter: new Date(now.getTime() + backoffMs(0)), lastError: error.message.slice(0, 1000),
+      } })
+      return "deferred"
+    }
     if (error instanceof StaleJobClaimError) {
       jobsLogger.warn("job.claim_lost", { jobId: id, type: job.type })
       return "skipped"
@@ -134,11 +144,12 @@ async function runJobBatch(ids: readonly string[], now: Date, deadline?: number)
   const result: JobBatchResult = { processed: 0, succeeded: 0, retrying: 0, failed: 0, deferred: 0 }
   for (const [index, id] of ids.entries()) {
     if (deadline !== undefined && index > 0 && Date.now() >= deadline) {
-      result.deferred = ids.length - index
+      result.deferred += ids.length - index
       break
     }
     const outcome = await runJob(id, now)
     if (outcome === "skipped") continue
+    if (outcome === "deferred") { result.deferred += 1; continue }
     result.processed += 1
     if (outcome === "done") result.succeeded += 1
     else if (outcome === "retrying") result.retrying += 1

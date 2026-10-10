@@ -57,7 +57,7 @@ async function processSchedule(id: string, organizationId: string, now: Date) {
       break
     }
     // Another tick handled this run, or a provider outage that the next tick retries.
-    if (outcome.error.code === "run_not_due" || outcome.error.tag === "ExternalFailure") {
+    if (outcome.error.code === "run_not_due" || outcome.error.code === "operation_not_allowed" || outcome.error.tag === "ExternalFailure") {
       break
     }
 
