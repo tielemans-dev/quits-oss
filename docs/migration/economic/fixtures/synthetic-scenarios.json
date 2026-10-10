@@ -1,0 +1,3881 @@
+{
+ "fixtureVersion": 1,
+ "synthetic": true,
+ "note": "Every value here is invented. Field names and nesting follow the vendor documentation snapshot in ../api-snapshot.json and the shapes seen on the public demo agreement. This is a test of Quits-side extraction and reconciliation logic. It is NOT a migration of a real account and does not show that any real account returns data in this shape.",
+ "scenarios": [
+  {
+   "name": "unpaid",
+   "description": "One issued invoice with no payment. Residual equals gross. One attached document joined by accounting year and voucher number.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 1250.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1001,
+      "date": "2026-08-01",
+      "dueDate": "2026-08-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 1000.0,
+      "vatAmount": 250.0,
+      "grossAmount": 1250.0,
+      "grossAmountInBaseCurrency": 1250.0,
+      "roundingAmount": 0.0,
+      "remainder": 1250.0,
+      "remainderInBaseCurrency": 1250.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1001/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -1000.0,
+      "amountInBaseCurrency": -1000.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1001",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1001,
+      "remainder": -1000.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -250.0,
+      "amountInBaseCurrency": -250.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1001",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1001,
+      "remainder": -250.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 1250.0,
+      "amountInBaseCurrency": 1250.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1001",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1001,
+      "remainder": 1250.0,
+      "entryNumber": 3
+     }
+    ],
+    "matchedPairs": [],
+    "attachedDocuments": [
+     {
+      "number": 910010,
+      "pageCount": 1,
+      "voucherNumber": 1,
+      "accountingYear": "2026"
+     }
+    ],
+    "invoicePdfs": {
+     "1001": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+      "bytes": 41001,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1001": {
+      "kind": "invoice",
+      "gross": 125000,
+      "currency": "DKK",
+      "residual": 125000,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 1
+     }
+    },
+    "ledgerItems": {},
+    "allocations": [],
+    "clusters": [],
+    "exceptions": [],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document"
+    ]
+   }
+  },
+  {
+   "name": "fully_paid",
+   "description": "Invoice settled by one matching payment. Paid state is proven by the pair and the payment line, not a flag.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 0.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1002,
+      "date": "2026-08-01",
+      "dueDate": "2026-08-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 500.0,
+      "vatAmount": 125.0,
+      "grossAmount": 625.0,
+      "grossAmountInBaseCurrency": 625.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1002/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -500.0,
+      "amountInBaseCurrency": -500.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1002",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1002,
+      "remainder": -500.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -125.0,
+      "amountInBaseCurrency": -125.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1002",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1002,
+      "remainder": -125.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 625.0,
+      "amountInBaseCurrency": 625.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1002",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1002,
+      "remainder": 0.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -625.0,
+      "amountInBaseCurrency": -625.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-15T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10001,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 4
+     }
+    ],
+    "matchedPairs": [
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-08-01T00:00:00",
+      "fromEntryAmount": 625.0,
+      "fromEntryAmountDKK": 625.0,
+      "toEntry": 4,
+      "toEntryDate": "2026-08-15T00:00:00",
+      "toEntryAmount": -625.0,
+      "toEntryAmountDKK": -625.0
+     }
+    ],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1002": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+      "bytes": 41002,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1002": {
+      "kind": "invoice",
+      "gross": 62500,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {
+     "entry:4": {
+      "kind": "payment",
+      "residual": 0
+     }
+    },
+    "allocations": [
+     {
+      "debitEntry": 3,
+      "creditEntry": 4,
+      "amount": 62500
+     }
+    ],
+    "clusters": [
+     {
+      "entries": [
+       3,
+       4
+      ],
+      "status": "resolved"
+     }
+    ],
+    "exceptions": [],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document"
+    ]
+   }
+  },
+  {
+   "name": "partially_paid",
+   "description": "Invoice 1000.00 with a 400.00 payment matched. The pair shows full entry amounts; the applied 400.00 comes from amount minus remainder.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 600.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1003,
+      "date": "2026-08-01",
+      "dueDate": "2026-08-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 800.0,
+      "vatAmount": 200.0,
+      "grossAmount": 1000.0,
+      "grossAmountInBaseCurrency": 1000.0,
+      "roundingAmount": 0.0,
+      "remainder": 600.0,
+      "remainderInBaseCurrency": 600.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1003/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -800.0,
+      "amountInBaseCurrency": -800.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1003",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1003,
+      "remainder": -800.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -200.0,
+      "amountInBaseCurrency": -200.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1003",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1003,
+      "remainder": -200.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 1000.0,
+      "amountInBaseCurrency": 1000.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1003",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1003,
+      "remainder": 600.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -400.0,
+      "amountInBaseCurrency": -400.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-20T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10001,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 4
+     }
+    ],
+    "matchedPairs": [
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-08-01T00:00:00",
+      "fromEntryAmount": 1000.0,
+      "fromEntryAmountDKK": 1000.0,
+      "toEntry": 4,
+      "toEntryDate": "2026-08-20T00:00:00",
+      "toEntryAmount": -400.0,
+      "toEntryAmountDKK": -400.0
+     }
+    ],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1003": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+      "bytes": 41003,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1003": {
+      "kind": "invoice",
+      "gross": 100000,
+      "currency": "DKK",
+      "residual": 60000,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {
+     "entry:4": {
+      "kind": "payment",
+      "residual": 0
+     }
+    },
+    "allocations": [
+     {
+      "debitEntry": 3,
+      "creditEntry": 4,
+      "amount": 40000
+     }
+    ],
+    "clusters": [
+     {
+      "entries": [
+       3,
+       4
+      ],
+      "status": "resolved"
+     }
+    ],
+    "exceptions": [],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document"
+    ]
+   }
+  },
+  {
+   "name": "credit_allocation",
+   "description": "Credit notes: fully offset, partially offset and still open. A credit note is a booked invoice with negative totals; only the pair links it to an invoice.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 600.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1004,
+      "date": "2026-07-01",
+      "dueDate": "2026-07-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 400.0,
+      "vatAmount": 100.0,
+      "grossAmount": 500.0,
+      "grossAmountInBaseCurrency": 500.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1004/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1005,
+      "date": "2026-07-10",
+      "dueDate": "2026-07-10",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": -400.0,
+      "vatAmount": -100.0,
+      "grossAmount": -500.0,
+      "grossAmountInBaseCurrency": -500.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1005/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1006,
+      "date": "2026-07-02",
+      "dueDate": "2026-07-02",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 800.0,
+      "vatAmount": 200.0,
+      "grossAmount": 1000.0,
+      "grossAmountInBaseCurrency": 1000.0,
+      "roundingAmount": 0.0,
+      "remainder": 700.0,
+      "remainderInBaseCurrency": 700.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1006/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1007,
+      "date": "2026-07-12",
+      "dueDate": "2026-07-12",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": -240.0,
+      "vatAmount": -60.0,
+      "grossAmount": -300.0,
+      "grossAmountInBaseCurrency": -300.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1007/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1008,
+      "date": "2026-07-20",
+      "dueDate": "2026-07-20",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": -80.0,
+      "vatAmount": -20.0,
+      "grossAmount": -100.0,
+      "grossAmountInBaseCurrency": -100.0,
+      "roundingAmount": 0.0,
+      "remainder": -100.0,
+      "remainderInBaseCurrency": -100.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1008/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -400.0,
+      "amountInBaseCurrency": -400.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1004",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1004,
+      "remainder": -400.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1004",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1004,
+      "remainder": -100.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 500.0,
+      "amountInBaseCurrency": 500.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1004",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1004,
+      "remainder": 0.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 1010,
+      "amount": 400.0,
+      "amountInBaseCurrency": 400.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-10T00:00:00",
+      "text": "Invoice 1005",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1005,
+      "remainder": 400.0,
+      "entryNumber": 4
+     },
+     {
+      "accountNumber": 6902,
+      "amount": 100.0,
+      "amountInBaseCurrency": 100.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-10T00:00:00",
+      "text": "Invoice 1005",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1005,
+      "remainder": 100.0,
+      "entryNumber": 5
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -500.0,
+      "amountInBaseCurrency": -500.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-10T00:00:00",
+      "text": "Invoice 1005",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1005,
+      "remainder": 0.0,
+      "entryNumber": 6
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -800.0,
+      "amountInBaseCurrency": -800.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1006",
+      "type": 1,
+      "voucherNumber": 3,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1006,
+      "remainder": -800.0,
+      "entryNumber": 7
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -200.0,
+      "amountInBaseCurrency": -200.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1006",
+      "type": 1,
+      "voucherNumber": 3,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1006,
+      "remainder": -200.0,
+      "entryNumber": 8
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 1000.0,
+      "amountInBaseCurrency": 1000.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1006",
+      "type": 1,
+      "voucherNumber": 3,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1006,
+      "remainder": 700.0,
+      "entryNumber": 9
+     },
+     {
+      "accountNumber": 1010,
+      "amount": 240.0,
+      "amountInBaseCurrency": 240.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-12T00:00:00",
+      "text": "Invoice 1007",
+      "type": 1,
+      "voucherNumber": 4,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1007,
+      "remainder": 240.0,
+      "entryNumber": 10
+     },
+     {
+      "accountNumber": 6902,
+      "amount": 60.0,
+      "amountInBaseCurrency": 60.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-12T00:00:00",
+      "text": "Invoice 1007",
+      "type": 1,
+      "voucherNumber": 4,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1007,
+      "remainder": 60.0,
+      "entryNumber": 11
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -300.0,
+      "amountInBaseCurrency": -300.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-12T00:00:00",
+      "text": "Invoice 1007",
+      "type": 1,
+      "voucherNumber": 4,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1007,
+      "remainder": 0.0,
+      "entryNumber": 12
+     },
+     {
+      "accountNumber": 1010,
+      "amount": 80.0,
+      "amountInBaseCurrency": 80.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-20T00:00:00",
+      "text": "Invoice 1008",
+      "type": 1,
+      "voucherNumber": 5,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1008,
+      "remainder": 80.0,
+      "entryNumber": 13
+     },
+     {
+      "accountNumber": 6902,
+      "amount": 20.0,
+      "amountInBaseCurrency": 20.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-20T00:00:00",
+      "text": "Invoice 1008",
+      "type": 1,
+      "voucherNumber": 5,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1008,
+      "remainder": 20.0,
+      "entryNumber": 14
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-20T00:00:00",
+      "text": "Invoice 1008",
+      "type": 1,
+      "voucherNumber": 5,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1008,
+      "remainder": -100.0,
+      "entryNumber": 15
+     }
+    ],
+    "matchedPairs": [
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-07-01T00:00:00",
+      "fromEntryAmount": 500.0,
+      "fromEntryAmountDKK": 500.0,
+      "toEntry": 6,
+      "toEntryDate": "2026-07-10T00:00:00",
+      "toEntryAmount": -500.0,
+      "toEntryAmountDKK": -500.0
+     },
+     {
+      "fromEntry": 9,
+      "fromEntryDate": "2026-07-02T00:00:00",
+      "fromEntryAmount": 1000.0,
+      "fromEntryAmountDKK": 1000.0,
+      "toEntry": 12,
+      "toEntryDate": "2026-07-12T00:00:00",
+      "toEntryAmount": -300.0,
+      "toEntryAmountDKK": -300.0
+     }
+    ],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1004": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000004",
+      "bytes": 41004,
+      "httpStatus": 200
+     },
+     "1005": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000005",
+      "bytes": 41005,
+      "httpStatus": 200
+     },
+     "1006": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000006",
+      "bytes": 41006,
+      "httpStatus": 200
+     },
+     "1007": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000007",
+      "bytes": 41007,
+      "httpStatus": 200
+     },
+     "1008": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000008",
+      "bytes": 41008,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1004": {
+      "kind": "invoice",
+      "gross": 50000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1005": {
+      "kind": "credit_note",
+      "gross": -50000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1006": {
+      "kind": "invoice",
+      "gross": 100000,
+      "currency": "DKK",
+      "residual": 70000,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1007": {
+      "kind": "credit_note",
+      "gross": -30000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1008": {
+      "kind": "credit_note",
+      "gross": -10000,
+      "currency": "DKK",
+      "residual": -10000,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {},
+    "allocations": [
+     {
+      "debitEntry": 3,
+      "creditEntry": 6,
+      "amount": 50000
+     },
+     {
+      "debitEntry": 9,
+      "creditEntry": 12,
+      "amount": 30000
+     }
+    ],
+    "clusters": [
+     {
+      "entries": [
+       3,
+       6
+      ],
+      "status": "resolved"
+     },
+     {
+      "entries": [
+       9,
+       12
+      ],
+      "status": "resolved"
+     }
+    ],
+    "exceptions": [],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document",
+     "document",
+     "document",
+     "document",
+     "open_credit"
+    ]
+   }
+  },
+  {
+   "name": "unapplied_cash",
+   "description": "Payment larger than the invoice it was matched to, plus a payment on account matched to nothing. The surplus exists only as the payment's remainder.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": -550.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1009,
+      "date": "2026-08-01",
+      "dueDate": "2026-08-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 600.0,
+      "vatAmount": 150.0,
+      "grossAmount": 750.0,
+      "grossAmountInBaseCurrency": 750.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1009/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -600.0,
+      "amountInBaseCurrency": -600.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1009",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1009,
+      "remainder": -600.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -150.0,
+      "amountInBaseCurrency": -150.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1009",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1009,
+      "remainder": -150.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 750.0,
+      "amountInBaseCurrency": 750.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1009",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1009,
+      "remainder": 0.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -1000.0,
+      "amountInBaseCurrency": -1000.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-10T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10001,
+      "customerNumber": 1,
+      "remainder": -250.0,
+      "entryNumber": 4
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -300.0,
+      "amountInBaseCurrency": -300.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-12T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10002,
+      "customerNumber": 1,
+      "remainder": -300.0,
+      "entryNumber": 5
+     }
+    ],
+    "matchedPairs": [
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-08-01T00:00:00",
+      "fromEntryAmount": 750.0,
+      "fromEntryAmountDKK": 750.0,
+      "toEntry": 4,
+      "toEntryDate": "2026-08-10T00:00:00",
+      "toEntryAmount": -1000.0,
+      "toEntryAmountDKK": -1000.0
+     }
+    ],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1009": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000009",
+      "bytes": 41009,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1009": {
+      "kind": "invoice",
+      "gross": 75000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {
+     "entry:4": {
+      "kind": "payment",
+      "residual": -25000
+     },
+     "entry:5": {
+      "kind": "payment",
+      "residual": -30000
+     }
+    },
+    "allocations": [
+     {
+      "debitEntry": 3,
+      "creditEntry": 4,
+      "amount": 75000
+     }
+    ],
+    "clusters": [
+     {
+      "entries": [
+       3,
+       4
+      ],
+      "status": "resolved"
+     }
+    ],
+    "exceptions": [],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document",
+     "unapplied_cash",
+     "unapplied_cash"
+    ]
+   }
+  },
+  {
+   "name": "rounding",
+   "description": "Per-line VAT rounding and a non-zero roundingAmount whose relation to gross the vendor does not document. The validator accepts gross = net + VAT or net + VAT + rounding, and says so.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 166.68
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1010,
+      "date": "2026-08-01",
+      "dueDate": "2026-08-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 33.33,
+      "vatAmount": 8.33,
+      "grossAmount": 41.66,
+      "grossAmountInBaseCurrency": 41.66,
+      "roundingAmount": 0.0,
+      "remainder": 41.66,
+      "remainderInBaseCurrency": 41.66,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1010/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1011,
+      "date": "2026-08-02",
+      "dueDate": "2026-08-02",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 100.0,
+      "vatAmount": 25.0,
+      "grossAmount": 125.02,
+      "grossAmountInBaseCurrency": 125.02,
+      "roundingAmount": 0.02,
+      "remainder": 125.02,
+      "remainderInBaseCurrency": 125.02,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1011/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -33.33,
+      "amountInBaseCurrency": -33.33,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1010",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1010,
+      "remainder": -33.33,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -8.33,
+      "amountInBaseCurrency": -8.33,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1010",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1010,
+      "remainder": -8.33,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 41.66,
+      "amountInBaseCurrency": 41.66,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1010",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1010,
+      "remainder": 41.66,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-02T00:00:00",
+      "text": "Invoice 1011",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1011,
+      "remainder": -100.0,
+      "entryNumber": 4
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -25.0,
+      "amountInBaseCurrency": -25.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-02T00:00:00",
+      "text": "Invoice 1011",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1011,
+      "remainder": -25.0,
+      "entryNumber": 5
+     },
+     {
+      "accountNumber": 7000,
+      "amount": -0.02,
+      "amountInBaseCurrency": -0.02,
+      "currencyCode": "DKK",
+      "date": "2026-08-02T00:00:00",
+      "text": "Invoice 1011",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1011,
+      "remainder": -0.02,
+      "entryNumber": 6
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 125.02,
+      "amountInBaseCurrency": 125.02,
+      "currencyCode": "DKK",
+      "date": "2026-08-02T00:00:00",
+      "text": "Invoice 1011",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1011,
+      "remainder": 125.02,
+      "entryNumber": 7
+     }
+    ],
+    "matchedPairs": [],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1010": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "bytes": 41010,
+      "httpStatus": 200
+     },
+     "1011": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+      "bytes": 41011,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1010": {
+      "kind": "invoice",
+      "gross": 4166,
+      "currency": "DKK",
+      "residual": 4166,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1011": {
+      "kind": "invoice",
+      "gross": 12502,
+      "currency": "DKK",
+      "residual": 12502,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {},
+    "allocations": [],
+    "clusters": [],
+    "exceptions": [
+     {
+      "code": "rounding_semantics_unverified",
+      "severity": "info",
+      "subject": "invoice:1011"
+     }
+    ],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document",
+     "document"
+    ]
+   }
+  },
+  {
+   "name": "foreign_currency",
+   "description": "EUR customer. Invoice fully paid at a different rate (exchange difference visible only in base amounts) and a partial EUR payment. exchangeRate is base units per 100 EUR.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 2,
+      "name": "Synthetic GmbH",
+      "currency": "EUR",
+      "country": "Germany",
+      "vatNumber": "DE000000000",
+      "address": "Teststrasse 2",
+      "zip": "10115",
+      "city": "Berlin",
+      "email": "two@example.invalid",
+      "balance": 2238.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1012,
+      "date": "2026-06-01",
+      "dueDate": "2026-06-01",
+      "currency": "EUR",
+      "exchangeRate": 746.0,
+      "customer": {
+       "customerNumber": 2
+      },
+      "netAmount": 800.0,
+      "vatAmount": 200.0,
+      "grossAmount": 1000.0,
+      "grossAmountInBaseCurrency": 7460.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1012/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1013,
+      "date": "2026-06-05",
+      "dueDate": "2026-06-05",
+      "currency": "EUR",
+      "exchangeRate": 746.0,
+      "customer": {
+       "customerNumber": 2
+      },
+      "netAmount": 400.0,
+      "vatAmount": 100.0,
+      "grossAmount": 500.0,
+      "grossAmountInBaseCurrency": 3730.0,
+      "roundingAmount": 0.0,
+      "remainder": 300.0,
+      "remainderInBaseCurrency": 2238.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1013/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -800.0,
+      "amountInBaseCurrency": -5968.0,
+      "currencyCode": "EUR",
+      "date": "2026-06-01T00:00:00",
+      "text": "Invoice 1012",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1012,
+      "remainder": -800.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -200.0,
+      "amountInBaseCurrency": -1492.0,
+      "currencyCode": "EUR",
+      "date": "2026-06-01T00:00:00",
+      "text": "Invoice 1012",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1012,
+      "remainder": -200.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 1000.0,
+      "amountInBaseCurrency": 7460.0,
+      "currencyCode": "EUR",
+      "date": "2026-06-01T00:00:00",
+      "text": "Invoice 1012",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 2,
+      "customerInvoiceNumber": 1012,
+      "remainder": 0.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -1000.0,
+      "amountInBaseCurrency": -7440.0,
+      "currencyCode": "EUR",
+      "date": "2026-06-20T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10001,
+      "customerNumber": 2,
+      "remainder": 0.0,
+      "entryNumber": 4
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -400.0,
+      "amountInBaseCurrency": -2984.0,
+      "currencyCode": "EUR",
+      "date": "2026-06-05T00:00:00",
+      "text": "Invoice 1013",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1013,
+      "remainder": -400.0,
+      "entryNumber": 5
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -100.0,
+      "amountInBaseCurrency": -746.0,
+      "currencyCode": "EUR",
+      "date": "2026-06-05T00:00:00",
+      "text": "Invoice 1013",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1013,
+      "remainder": -100.0,
+      "entryNumber": 6
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 500.0,
+      "amountInBaseCurrency": 3730.0,
+      "currencyCode": "EUR",
+      "date": "2026-06-05T00:00:00",
+      "text": "Invoice 1013",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": 2,
+      "customerInvoiceNumber": 1013,
+      "remainder": 300.0,
+      "entryNumber": 7
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -200.0,
+      "amountInBaseCurrency": -1488.0,
+      "currencyCode": "EUR",
+      "date": "2026-06-25T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10002,
+      "customerNumber": 2,
+      "remainder": 0.0,
+      "entryNumber": 8
+     }
+    ],
+    "matchedPairs": [
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-06-01T00:00:00",
+      "fromEntryAmount": 1000.0,
+      "fromEntryAmountDKK": 7460.0,
+      "toEntry": 4,
+      "toEntryDate": "2026-06-20T00:00:00",
+      "toEntryAmount": -1000.0,
+      "toEntryAmountDKK": -7440.0
+     },
+     {
+      "fromEntry": 7,
+      "fromEntryDate": "2026-06-05T00:00:00",
+      "fromEntryAmount": 500.0,
+      "fromEntryAmountDKK": 3730.0,
+      "toEntry": 8,
+      "toEntryDate": "2026-06-25T00:00:00",
+      "toEntryAmount": -200.0,
+      "toEntryAmountDKK": -1488.0
+     }
+    ],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1012": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+      "bytes": 41012,
+      "httpStatus": 200
+     },
+     "1013": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+      "bytes": 41013,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1012": {
+      "kind": "invoice",
+      "gross": 100000,
+      "currency": "EUR",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1013": {
+      "kind": "invoice",
+      "gross": 50000,
+      "currency": "EUR",
+      "residual": 30000,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {
+     "entry:4": {
+      "kind": "payment",
+      "residual": 0
+     },
+     "entry:8": {
+      "kind": "payment",
+      "residual": 0
+     }
+    },
+    "allocations": [
+     {
+      "debitEntry": 3,
+      "creditEntry": 4,
+      "amount": 100000
+     },
+     {
+      "debitEntry": 7,
+      "creditEntry": 8,
+      "amount": 20000
+     }
+    ],
+    "clusters": [
+     {
+      "entries": [
+       3,
+       4
+      ],
+      "status": "resolved"
+     },
+     {
+      "entries": [
+       7,
+       8
+      ],
+      "status": "resolved"
+     }
+    ],
+    "exceptions": [
+     {
+      "code": "fx_difference_unattributed",
+      "severity": "info",
+      "subject": "cluster:1"
+     }
+    ],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document",
+     "document"
+    ],
+    "controlBalanceBase": 223800
+   }
+  },
+  {
+   "name": "missing_documents",
+   "description": "Original PDF missing, PDF fetch failing, PDF never fetched, and a voucher dated outside the extracted accounting years.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 500.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1014,
+      "date": "2026-08-01",
+      "dueDate": "2026-08-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 100.0,
+      "vatAmount": 25.0,
+      "grossAmount": 125.0,
+      "grossAmountInBaseCurrency": 125.0,
+      "roundingAmount": 0.0,
+      "remainder": 125.0,
+      "remainderInBaseCurrency": 125.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1014/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1015,
+      "date": "2026-08-02",
+      "dueDate": "2026-08-02",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 100.0,
+      "vatAmount": 25.0,
+      "grossAmount": 125.0,
+      "grossAmountInBaseCurrency": 125.0,
+      "roundingAmount": 0.0,
+      "remainder": 125.0,
+      "remainderInBaseCurrency": 125.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1015/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1016,
+      "date": "2026-08-03",
+      "dueDate": "2026-08-03",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 100.0,
+      "vatAmount": 25.0,
+      "grossAmount": 125.0,
+      "grossAmountInBaseCurrency": 125.0,
+      "roundingAmount": 0.0,
+      "remainder": 125.0,
+      "remainderInBaseCurrency": 125.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1016/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1017,
+      "date": "2024-12-31",
+      "dueDate": "2024-12-31",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 100.0,
+      "vatAmount": 25.0,
+      "grossAmount": 125.0,
+      "grossAmountInBaseCurrency": 125.0,
+      "roundingAmount": 0.0,
+      "remainder": 125.0,
+      "remainderInBaseCurrency": 125.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1017/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1014",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1014,
+      "remainder": -100.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -25.0,
+      "amountInBaseCurrency": -25.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1014",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1014,
+      "remainder": -25.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 125.0,
+      "amountInBaseCurrency": 125.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1014",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1014,
+      "remainder": 125.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-02T00:00:00",
+      "text": "Invoice 1015",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1015,
+      "remainder": -100.0,
+      "entryNumber": 4
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -25.0,
+      "amountInBaseCurrency": -25.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-02T00:00:00",
+      "text": "Invoice 1015",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1015,
+      "remainder": -25.0,
+      "entryNumber": 5
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 125.0,
+      "amountInBaseCurrency": 125.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-02T00:00:00",
+      "text": "Invoice 1015",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1015,
+      "remainder": 125.0,
+      "entryNumber": 6
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-03T00:00:00",
+      "text": "Invoice 1016",
+      "type": 1,
+      "voucherNumber": 3,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1016,
+      "remainder": -100.0,
+      "entryNumber": 7
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -25.0,
+      "amountInBaseCurrency": -25.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-03T00:00:00",
+      "text": "Invoice 1016",
+      "type": 1,
+      "voucherNumber": 3,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1016,
+      "remainder": -25.0,
+      "entryNumber": 8
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 125.0,
+      "amountInBaseCurrency": 125.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-03T00:00:00",
+      "text": "Invoice 1016",
+      "type": 1,
+      "voucherNumber": 3,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1016,
+      "remainder": 125.0,
+      "entryNumber": 9
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2024-12-31T00:00:00",
+      "text": "Invoice 1017",
+      "type": 1,
+      "voucherNumber": 4,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1017,
+      "remainder": -100.0,
+      "entryNumber": 10
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -25.0,
+      "amountInBaseCurrency": -25.0,
+      "currencyCode": "DKK",
+      "date": "2024-12-31T00:00:00",
+      "text": "Invoice 1017",
+      "type": 1,
+      "voucherNumber": 4,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1017,
+      "remainder": -25.0,
+      "entryNumber": 11
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 125.0,
+      "amountInBaseCurrency": 125.0,
+      "currencyCode": "DKK",
+      "date": "2024-12-31T00:00:00",
+      "text": "Invoice 1017",
+      "type": 1,
+      "voucherNumber": 4,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1017,
+      "remainder": 125.0,
+      "entryNumber": 12
+     }
+    ],
+    "matchedPairs": [],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1014": {
+      "status": "missing",
+      "httpStatus": 404
+     },
+     "1015": {
+      "status": "error",
+      "httpStatus": 500
+     },
+     "1017": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000007",
+      "bytes": 41017,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1014": {
+      "kind": "invoice",
+      "gross": 12500,
+      "currency": "DKK",
+      "residual": 12500,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "missing",
+      "attachments": 0
+     },
+     "invoice:1015": {
+      "kind": "invoice",
+      "gross": 12500,
+      "currency": "DKK",
+      "residual": 12500,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "error",
+      "attachments": 0
+     },
+     "invoice:1016": {
+      "kind": "invoice",
+      "gross": 12500,
+      "currency": "DKK",
+      "residual": 12500,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "not_fetched",
+      "attachments": 0
+     },
+     "invoice:1017": {
+      "kind": "invoice",
+      "gross": 12500,
+      "currency": "DKK",
+      "residual": 12500,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {},
+    "allocations": [],
+    "clusters": [],
+    "exceptions": [
+     {
+      "code": "original_pdf_missing",
+      "severity": "degraded",
+      "subject": "invoice:1014"
+     },
+     {
+      "code": "original_pdf_fetch_failed",
+      "severity": "degraded",
+      "subject": "invoice:1015"
+     },
+     {
+      "code": "original_pdf_missing",
+      "severity": "degraded",
+      "subject": "invoice:1016"
+     },
+     {
+      "code": "voucher_year_unresolved",
+      "severity": "degraded",
+      "subject": "invoice:1017"
+     }
+    ],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document",
+     "document",
+     "document",
+     "document"
+    ]
+   }
+  },
+  {
+   "name": "many_to_one",
+   "description": "One payment settling two invoices, and one invoice settled by two payments. Each is several pairs that share an entry, and the tree can be solved exactly.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 0.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1018,
+      "date": "2026-07-01",
+      "dueDate": "2026-07-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 320.0,
+      "vatAmount": 80.0,
+      "grossAmount": 400.0,
+      "grossAmountInBaseCurrency": 400.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1018/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1019,
+      "date": "2026-07-02",
+      "dueDate": "2026-07-02",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 480.0,
+      "vatAmount": 120.0,
+      "grossAmount": 600.0,
+      "grossAmountInBaseCurrency": 600.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1019/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1020,
+      "date": "2026-07-03",
+      "dueDate": "2026-07-03",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 800.0,
+      "vatAmount": 200.0,
+      "grossAmount": 1000.0,
+      "grossAmountInBaseCurrency": 1000.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1020/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -320.0,
+      "amountInBaseCurrency": -320.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1018",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1018,
+      "remainder": -320.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -80.0,
+      "amountInBaseCurrency": -80.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1018",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1018,
+      "remainder": -80.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 400.0,
+      "amountInBaseCurrency": 400.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1018",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1018,
+      "remainder": 0.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -480.0,
+      "amountInBaseCurrency": -480.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1019",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1019,
+      "remainder": -480.0,
+      "entryNumber": 4
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -120.0,
+      "amountInBaseCurrency": -120.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1019",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1019,
+      "remainder": -120.0,
+      "entryNumber": 5
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 600.0,
+      "amountInBaseCurrency": 600.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1019",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1019,
+      "remainder": 0.0,
+      "entryNumber": 6
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -1000.0,
+      "amountInBaseCurrency": -1000.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-20T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10001,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 7
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -800.0,
+      "amountInBaseCurrency": -800.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-03T00:00:00",
+      "text": "Invoice 1020",
+      "type": 1,
+      "voucherNumber": 3,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1020,
+      "remainder": -800.0,
+      "entryNumber": 8
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -200.0,
+      "amountInBaseCurrency": -200.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-03T00:00:00",
+      "text": "Invoice 1020",
+      "type": 1,
+      "voucherNumber": 3,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1020,
+      "remainder": -200.0,
+      "entryNumber": 9
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 1000.0,
+      "amountInBaseCurrency": 1000.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-03T00:00:00",
+      "text": "Invoice 1020",
+      "type": 1,
+      "voucherNumber": 3,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1020,
+      "remainder": 0.0,
+      "entryNumber": 10
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -300.0,
+      "amountInBaseCurrency": -300.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-21T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10002,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 11
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -700.0,
+      "amountInBaseCurrency": -700.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-22T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10003,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 12
+     }
+    ],
+    "matchedPairs": [
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-07-01T00:00:00",
+      "fromEntryAmount": 400.0,
+      "fromEntryAmountDKK": 400.0,
+      "toEntry": 7,
+      "toEntryDate": "2026-07-20T00:00:00",
+      "toEntryAmount": -1000.0,
+      "toEntryAmountDKK": -1000.0
+     },
+     {
+      "fromEntry": 6,
+      "fromEntryDate": "2026-07-02T00:00:00",
+      "fromEntryAmount": 600.0,
+      "fromEntryAmountDKK": 600.0,
+      "toEntry": 7,
+      "toEntryDate": "2026-07-20T00:00:00",
+      "toEntryAmount": -1000.0,
+      "toEntryAmountDKK": -1000.0
+     },
+     {
+      "fromEntry": 10,
+      "fromEntryDate": "2026-07-03T00:00:00",
+      "fromEntryAmount": 1000.0,
+      "fromEntryAmountDKK": 1000.0,
+      "toEntry": 11,
+      "toEntryDate": "2026-07-21T00:00:00",
+      "toEntryAmount": -300.0,
+      "toEntryAmountDKK": -300.0
+     },
+     {
+      "fromEntry": 10,
+      "fromEntryDate": "2026-07-03T00:00:00",
+      "fromEntryAmount": 1000.0,
+      "fromEntryAmountDKK": 1000.0,
+      "toEntry": 12,
+      "toEntryDate": "2026-07-22T00:00:00",
+      "toEntryAmount": -700.0,
+      "toEntryAmountDKK": -700.0
+     }
+    ],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1018": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000008",
+      "bytes": 41018,
+      "httpStatus": 200
+     },
+     "1019": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000009",
+      "bytes": 41019,
+      "httpStatus": 200
+     },
+     "1020": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "bytes": 41020,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1018": {
+      "kind": "invoice",
+      "gross": 40000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1019": {
+      "kind": "invoice",
+      "gross": 60000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1020": {
+      "kind": "invoice",
+      "gross": 100000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {
+     "entry:7": {
+      "kind": "payment",
+      "residual": 0
+     },
+     "entry:11": {
+      "kind": "payment",
+      "residual": 0
+     },
+     "entry:12": {
+      "kind": "payment",
+      "residual": 0
+     }
+    },
+    "allocations": [
+     {
+      "debitEntry": 3,
+      "creditEntry": 7,
+      "amount": 40000
+     },
+     {
+      "debitEntry": 6,
+      "creditEntry": 7,
+      "amount": 60000
+     },
+     {
+      "debitEntry": 10,
+      "creditEntry": 11,
+      "amount": 30000
+     },
+     {
+      "debitEntry": 10,
+      "creditEntry": 12,
+      "amount": 70000
+     }
+    ],
+    "clusters": [
+     {
+      "entries": [
+       3,
+       6,
+       7
+      ],
+      "status": "resolved"
+     },
+     {
+      "entries": [
+       10,
+       11,
+       12
+      ],
+      "status": "resolved"
+     }
+    ],
+    "exceptions": [],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document",
+     "document",
+     "document"
+    ]
+   }
+  },
+  {
+   "name": "ambiguous_cycle",
+   "description": "Two 500.00 invoices and two 500.00 payments all cross-matched. Four pairs over four entries: the applied total per entry is exact, the pairwise allocation is not unique, and it is reported rather than invented.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 0.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1021,
+      "date": "2026-07-01",
+      "dueDate": "2026-07-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 400.0,
+      "vatAmount": 100.0,
+      "grossAmount": 500.0,
+      "grossAmountInBaseCurrency": 500.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1021/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1022,
+      "date": "2026-07-02",
+      "dueDate": "2026-07-02",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 400.0,
+      "vatAmount": 100.0,
+      "grossAmount": 500.0,
+      "grossAmountInBaseCurrency": 500.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1022/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -400.0,
+      "amountInBaseCurrency": -400.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1021",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1021,
+      "remainder": -400.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1021",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1021,
+      "remainder": -100.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 500.0,
+      "amountInBaseCurrency": 500.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1021",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1021,
+      "remainder": 0.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -400.0,
+      "amountInBaseCurrency": -400.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1022",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1022,
+      "remainder": -400.0,
+      "entryNumber": 4
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1022",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1022,
+      "remainder": -100.0,
+      "entryNumber": 5
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 500.0,
+      "amountInBaseCurrency": 500.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1022",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1022,
+      "remainder": 0.0,
+      "entryNumber": 6
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -500.0,
+      "amountInBaseCurrency": -500.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-20T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10001,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 7
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -500.0,
+      "amountInBaseCurrency": -500.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-21T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10002,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 8
+     }
+    ],
+    "matchedPairs": [
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-07-01T00:00:00",
+      "fromEntryAmount": 500.0,
+      "fromEntryAmountDKK": 500.0,
+      "toEntry": 7,
+      "toEntryDate": "2026-07-20T00:00:00",
+      "toEntryAmount": -500.0,
+      "toEntryAmountDKK": -500.0
+     },
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-07-01T00:00:00",
+      "fromEntryAmount": 500.0,
+      "fromEntryAmountDKK": 500.0,
+      "toEntry": 8,
+      "toEntryDate": "2026-07-21T00:00:00",
+      "toEntryAmount": -500.0,
+      "toEntryAmountDKK": -500.0
+     },
+     {
+      "fromEntry": 6,
+      "fromEntryDate": "2026-07-02T00:00:00",
+      "fromEntryAmount": 500.0,
+      "fromEntryAmountDKK": 500.0,
+      "toEntry": 7,
+      "toEntryDate": "2026-07-20T00:00:00",
+      "toEntryAmount": -500.0,
+      "toEntryAmountDKK": -500.0
+     },
+     {
+      "fromEntry": 6,
+      "fromEntryDate": "2026-07-02T00:00:00",
+      "fromEntryAmount": 500.0,
+      "fromEntryAmountDKK": 500.0,
+      "toEntry": 8,
+      "toEntryDate": "2026-07-21T00:00:00",
+      "toEntryAmount": -500.0,
+      "toEntryAmountDKK": -500.0
+     }
+    ],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1021": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+      "bytes": 41021,
+      "httpStatus": 200
+     },
+     "1022": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+      "bytes": 41022,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1021": {
+      "kind": "invoice",
+      "gross": 50000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "source_remainder_only",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1022": {
+      "kind": "invoice",
+      "gross": 50000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "source_remainder_only",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {
+     "entry:7": {
+      "kind": "payment",
+      "residual": 0
+     },
+     "entry:8": {
+      "kind": "payment",
+      "residual": 0
+     }
+    },
+    "allocations": [],
+    "clusters": [
+     {
+      "entries": [
+       3,
+       6,
+       7,
+       8
+      ],
+      "status": "ambiguous"
+     }
+    ],
+    "exceptions": [
+     {
+      "code": "allocation_ambiguous",
+      "severity": "degraded",
+      "subject": "cluster:1"
+     },
+     {
+      "code": "snapshot_residual_only",
+      "severity": "degraded",
+      "subject": "invoice:1021"
+     },
+     {
+      "code": "snapshot_residual_only",
+      "severity": "degraded",
+      "subject": "invoice:1022"
+     }
+    ],
+    "allRowsMatch": false,
+    "rowKinds": [
+     "document",
+     "document",
+     "ledger_item",
+     "ledger_item"
+    ]
+   }
+  },
+  {
+   "name": "unsupported_history",
+   "description": "An invoice and a payment that e-conomic shows as fully applied, with no matched pair in the extraction. Closed state is visible; who paid what is not.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 0.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1023,
+      "date": "2026-07-01",
+      "dueDate": "2026-07-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 240.0,
+      "vatAmount": 60.0,
+      "grossAmount": 300.0,
+      "grossAmountInBaseCurrency": 300.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1023/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -240.0,
+      "amountInBaseCurrency": -240.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1023",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1023,
+      "remainder": -240.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -60.0,
+      "amountInBaseCurrency": -60.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1023",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1023,
+      "remainder": -60.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 300.0,
+      "amountInBaseCurrency": 300.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1023",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1023,
+      "remainder": 0.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -300.0,
+      "amountInBaseCurrency": -300.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-15T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10001,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 4
+     }
+    ],
+    "matchedPairs": [],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1023": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+      "bytes": 41023,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1023": {
+      "kind": "invoice",
+      "gross": 30000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "source_remainder_only",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {
+     "entry:4": {
+      "kind": "payment",
+      "residual": 0
+     }
+    },
+    "allocations": [],
+    "clusters": [
+     {
+      "entries": [
+       3
+      ],
+      "status": "ambiguous"
+     },
+     {
+      "entries": [
+       4
+      ],
+      "status": "ambiguous"
+     }
+    ],
+    "exceptions": [
+     {
+      "code": "applied_without_match_pair",
+      "severity": "degraded",
+      "subject": "entry:3"
+     },
+     {
+      "code": "applied_without_match_pair",
+      "severity": "degraded",
+      "subject": "entry:4"
+     },
+     {
+      "code": "snapshot_residual_only",
+      "severity": "degraded",
+      "subject": "invoice:1023"
+     }
+    ],
+    "allRowsMatch": false,
+    "rowKinds": [
+     "document",
+     "ledger_item"
+    ]
+   }
+  },
+  {
+   "name": "inconsistent_match",
+   "description": "A pair whose entries do not conserve (300.00 applied to the invoice, 200.00 to the payment) and a REST remainder that disagrees with the ledger line. Both must block.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 300.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1024,
+      "date": "2026-07-01",
+      "dueDate": "2026-07-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 240.0,
+      "vatAmount": 60.0,
+      "grossAmount": 300.0,
+      "grossAmountInBaseCurrency": 300.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1024/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1025,
+      "date": "2026-07-02",
+      "dueDate": "2026-07-02",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 240.0,
+      "vatAmount": 60.0,
+      "grossAmount": 300.0,
+      "grossAmountInBaseCurrency": 300.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1025/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -240.0,
+      "amountInBaseCurrency": -240.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1024",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1024,
+      "remainder": -240.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -60.0,
+      "amountInBaseCurrency": -60.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1024",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1024,
+      "remainder": -60.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 300.0,
+      "amountInBaseCurrency": 300.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-01T00:00:00",
+      "text": "Invoice 1024",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1024,
+      "remainder": 0.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -200.0,
+      "amountInBaseCurrency": -200.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-15T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10001,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 4
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -240.0,
+      "amountInBaseCurrency": -240.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1025",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1025,
+      "remainder": -240.0,
+      "entryNumber": 5
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -60.0,
+      "amountInBaseCurrency": -60.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1025",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1025,
+      "remainder": -60.0,
+      "entryNumber": 6
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 300.0,
+      "amountInBaseCurrency": 300.0,
+      "currencyCode": "DKK",
+      "date": "2026-07-02T00:00:00",
+      "text": "Invoice 1025",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1025,
+      "remainder": 300.0,
+      "entryNumber": 7
+     }
+    ],
+    "matchedPairs": [
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-07-01T00:00:00",
+      "fromEntryAmount": 300.0,
+      "fromEntryAmountDKK": 300.0,
+      "toEntry": 4,
+      "toEntryDate": "2026-07-15T00:00:00",
+      "toEntryAmount": -200.0,
+      "toEntryAmountDKK": -200.0
+     }
+    ],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1024": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000004",
+      "bytes": 41024,
+      "httpStatus": 200
+     },
+     "1025": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000005",
+      "bytes": 41025,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1024": {
+      "kind": "invoice",
+      "gross": 30000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "source_remainder_only",
+      "pdf": "ok",
+      "attachments": 0
+     },
+     "invoice:1025": {
+      "kind": "invoice",
+      "gross": 30000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {
+     "entry:4": {
+      "kind": "payment",
+      "residual": 0
+     }
+    },
+    "allocations": [],
+    "clusters": [
+     {
+      "entries": [
+       3,
+       4
+      ],
+      "status": "inconsistent"
+     }
+    ],
+    "exceptions": [
+     {
+      "code": "cluster_not_conserved",
+      "severity": "blocking",
+      "subject": "cluster:1"
+     },
+     {
+      "code": "snapshot_residual_only",
+      "severity": "degraded",
+      "subject": "invoice:1024"
+     },
+     {
+      "code": "remainder_disagreement",
+      "severity": "blocking",
+      "subject": "invoice:1025"
+     }
+    ],
+    "allRowsMatch": false,
+    "rowKinds": [
+     "document",
+     "document",
+     "ledger_item"
+    ]
+   }
+  },
+  {
+   "name": "cutover_boundary",
+   "description": "Cutover 2026-09-30. An invoice after the boundary is excluded; an earlier invoice paid by a post-boundary payment keeps only its snapshot residual because the API exposes no match date.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 500.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1026,
+      "date": "2026-09-10",
+      "dueDate": "2026-09-10",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 400.0,
+      "vatAmount": 100.0,
+      "grossAmount": 500.0,
+      "grossAmountInBaseCurrency": 500.0,
+      "roundingAmount": 0.0,
+      "remainder": 0.0,
+      "remainderInBaseCurrency": 0.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1026/pdf"
+      }
+     },
+     {
+      "bookedInvoiceNumber": 1027,
+      "date": "2026-10-02",
+      "dueDate": "2026-10-02",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 400.0,
+      "vatAmount": 100.0,
+      "grossAmount": 500.0,
+      "grossAmountInBaseCurrency": 500.0,
+      "roundingAmount": 0.0,
+      "remainder": 500.0,
+      "remainderInBaseCurrency": 500.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1027/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -400.0,
+      "amountInBaseCurrency": -400.0,
+      "currencyCode": "DKK",
+      "date": "2026-09-10T00:00:00",
+      "text": "Invoice 1026",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1026,
+      "remainder": -400.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-09-10T00:00:00",
+      "text": "Invoice 1026",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1026,
+      "remainder": -100.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 500.0,
+      "amountInBaseCurrency": 500.0,
+      "currencyCode": "DKK",
+      "date": "2026-09-10T00:00:00",
+      "text": "Invoice 1026",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1026,
+      "remainder": 0.0,
+      "entryNumber": 3
+     },
+     {
+      "accountNumber": 5600,
+      "amount": -500.0,
+      "amountInBaseCurrency": -500.0,
+      "currencyCode": "DKK",
+      "date": "2026-10-03T00:00:00",
+      "text": "Payment",
+      "type": 2,
+      "voucherNumber": 10001,
+      "customerNumber": 1,
+      "remainder": 0.0,
+      "entryNumber": 4
+     },
+     {
+      "accountNumber": 1010,
+      "amount": -400.0,
+      "amountInBaseCurrency": -400.0,
+      "currencyCode": "DKK",
+      "date": "2026-10-02T00:00:00",
+      "text": "Invoice 1027",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1027,
+      "remainder": -400.0,
+      "entryNumber": 5
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-10-02T00:00:00",
+      "text": "Invoice 1027",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1027,
+      "remainder": -100.0,
+      "entryNumber": 6
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 500.0,
+      "amountInBaseCurrency": 500.0,
+      "currencyCode": "DKK",
+      "date": "2026-10-02T00:00:00",
+      "text": "Invoice 1027",
+      "type": 1,
+      "voucherNumber": 2,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1027,
+      "remainder": 500.0,
+      "entryNumber": 7
+     }
+    ],
+    "matchedPairs": [
+     {
+      "fromEntry": 3,
+      "fromEntryDate": "2026-09-10T00:00:00",
+      "fromEntryAmount": 500.0,
+      "fromEntryAmountDKK": 500.0,
+      "toEntry": 4,
+      "toEntryDate": "2026-10-03T00:00:00",
+      "toEntryAmount": -500.0,
+      "toEntryAmountDKK": -500.0
+     }
+    ],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1026": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000006",
+      "bytes": 41026,
+      "httpStatus": 200
+     },
+     "1027": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000007",
+      "bytes": 41027,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1026": {
+      "kind": "invoice",
+      "gross": 50000,
+      "currency": "DKK",
+      "residual": 0,
+      "residualBasis": "source_remainder_only",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {},
+    "allocations": [],
+    "clusters": [
+     {
+      "entries": [
+       3,
+       4
+      ],
+      "status": "resolved"
+     }
+    ],
+    "exceptions": [
+     {
+      "code": "document_after_cutover",
+      "severity": "info",
+      "subject": "invoice:1027"
+     },
+     {
+      "code": "snapshot_residual_only",
+      "severity": "degraded",
+      "subject": "invoice:1026"
+     }
+    ],
+    "allRowsMatch": false,
+    "rowKinds": [
+     "document"
+    ],
+    "excluded": [
+     "invoice:1027"
+    ]
+   }
+  },
+  {
+   "name": "manual_and_opening",
+   "description": "An opening balance, a journal-posted manual customer invoice (no booked-invoice resource, no PDF) and a reminder line. Only the first two are importable as open balances.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 2100.0
+     }
+    ],
+    "bookedInvoices": [],
+    "entries": [
+     {
+      "accountNumber": 5600,
+      "amount": 800.0,
+      "amountInBaseCurrency": 800.0,
+      "currencyCode": "DKK",
+      "date": "2026-01-01T00:00:00",
+      "text": "Opening",
+      "type": 7,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "remainder": 800.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 1200.0,
+      "amountInBaseCurrency": 1200.0,
+      "currencyCode": "DKK",
+      "date": "2026-03-01T00:00:00",
+      "text": "Manual",
+      "type": 10,
+      "voucherNumber": 2,
+      "customerNumber": 1,
+      "remainder": 1200.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 100.0,
+      "amountInBaseCurrency": 100.0,
+      "currencyCode": "DKK",
+      "date": "2026-04-01T00:00:00",
+      "text": "Reminder fee",
+      "type": 6,
+      "voucherNumber": 3,
+      "customerNumber": 1,
+      "remainder": 100.0,
+      "entryNumber": 3
+     }
+    ],
+    "matchedPairs": [],
+    "attachedDocuments": [],
+    "invoicePdfs": {}
+   },
+   "expect": {
+    "documents": {},
+    "ledgerItems": {
+     "entry:1": {
+      "kind": "opening_balance",
+      "residual": 80000
+     },
+     "entry:2": {
+      "kind": "manual_invoice",
+      "residual": 120000
+     }
+    },
+    "allocations": [],
+    "clusters": [],
+    "exceptions": [
+     {
+      "code": "manual_invoice_has_no_document",
+      "severity": "degraded",
+      "subject": "entry:2"
+     },
+     {
+      "code": "entry_type_unsupported",
+      "severity": "degraded",
+      "subject": "entry:3"
+     }
+    ],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "ledger_item",
+     "ledger_item"
+    ]
+   }
+  },
+  {
+   "name": "control_total_disagreement",
+   "description": "Ledger lines reconcile document by document but the vendor's customer balance is 500.00 away, as seen once on the public demo company. Reported, never averaged away.",
+   "source": {
+    "synthetic": true,
+    "extraction": {
+     "extractedAt": "2026-10-08T09:00:00Z",
+     "cutoverDate": "2026-09-30",
+     "baseCurrency": "DKK",
+     "apiVersions": {
+      "bookedEntries": "6.0.0",
+      "documents": "4.0.1",
+      "rest": "unversioned"
+     }
+    },
+    "accountingYears": [
+     {
+      "year": "2025",
+      "fromDate": "2025-01-01",
+      "toDate": "2025-12-31"
+     },
+     {
+      "year": "2026",
+      "fromDate": "2026-01-01",
+      "toDate": "2026-12-31"
+     }
+    ],
+    "customers": [
+     {
+      "customerNumber": 1,
+      "name": "Synthetic Customer One ApS",
+      "currency": "DKK",
+      "country": "Denmark",
+      "corporateIdentificationNumber": "00000001",
+      "address": "Testvej 1",
+      "zip": "1000",
+      "city": "Testby",
+      "email": "one@example.invalid",
+      "balance": 1000.0
+     }
+    ],
+    "bookedInvoices": [
+     {
+      "bookedInvoiceNumber": 1028,
+      "date": "2026-08-01",
+      "dueDate": "2026-08-01",
+      "currency": "DKK",
+      "exchangeRate": 100.0,
+      "customer": {
+       "customerNumber": 1
+      },
+      "netAmount": 400.0,
+      "vatAmount": 100.0,
+      "grossAmount": 500.0,
+      "grossAmountInBaseCurrency": 500.0,
+      "roundingAmount": 0.0,
+      "remainder": 500.0,
+      "remainderInBaseCurrency": 500.0,
+      "pdf": {
+       "download": "https://restapi.example.invalid/invoices/booked/1028/pdf"
+      }
+     }
+    ],
+    "entries": [
+     {
+      "accountNumber": 1010,
+      "amount": -400.0,
+      "amountInBaseCurrency": -400.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1028",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1028,
+      "remainder": -400.0,
+      "entryNumber": 1
+     },
+     {
+      "accountNumber": 6902,
+      "amount": -100.0,
+      "amountInBaseCurrency": -100.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1028",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": null,
+      "customerInvoiceNumber": 1028,
+      "remainder": -100.0,
+      "entryNumber": 2
+     },
+     {
+      "accountNumber": 5600,
+      "amount": 500.0,
+      "amountInBaseCurrency": 500.0,
+      "currencyCode": "DKK",
+      "date": "2026-08-01T00:00:00",
+      "text": "Invoice 1028",
+      "type": 1,
+      "voucherNumber": 1,
+      "customerNumber": 1,
+      "customerInvoiceNumber": 1028,
+      "remainder": 500.0,
+      "entryNumber": 3
+     }
+    ],
+    "matchedPairs": [],
+    "attachedDocuments": [],
+    "invoicePdfs": {
+     "1028": {
+      "status": "ok",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000008",
+      "bytes": 41028,
+      "httpStatus": 200
+     }
+    }
+   },
+   "expect": {
+    "documents": {
+     "invoice:1028": {
+      "kind": "invoice",
+      "gross": 50000,
+      "currency": "DKK",
+      "residual": 50000,
+      "residualBasis": "recomputed_from_allocations",
+      "pdf": "ok",
+      "attachments": 0
+     }
+    },
+    "ledgerItems": {},
+    "allocations": [],
+    "clusters": [],
+    "exceptions": [
+     {
+      "code": "customer_balance_disagreement",
+      "severity": "degraded",
+      "subject": "customer:1"
+     }
+    ],
+    "allRowsMatch": true,
+    "rowKinds": [
+     "document"
+    ],
+    "controlDiffBase": 50000
+   }
+  }
+ ]
+}

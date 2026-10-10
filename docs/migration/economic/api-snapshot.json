@@ -1,0 +1,904 @@
+{
+ "note": "Field and endpoint inventory extracted from the vendor's public documentation on 2026-10-08. It is evidence that a field is DOCUMENTED, not that it was fetched from a customer account. Regenerate by re-reading the sources; do not edit by hand.",
+ "checkedAt": "2026-10-08",
+ "sources": {
+  "restdocs": {
+   "url": "https://restdocs.e-conomic.com/",
+   "sha256": "2fe5767d6079212681d0d132430680920dc80e2546c6588c638518d028a0489e"
+  },
+  "bookedEntries": {
+   "url": "https://apis.e-conomic.com/bookedentriesapi/redoc.html",
+   "sha256": "3b49bafe380af685fc89dbf2d2f2095a11ec3be2f502e87527244f037cbac874"
+  },
+  "documents": {
+   "url": "https://apis.e-conomic.com/documentsapi/redoc.html",
+   "sha256": "1431186fda4831ccc3e8de78c7dfeaf8371dd59f2c96b2bb634b2fd69830bc25"
+  },
+  "connect": {
+   "url": "https://www.e-conomic.com/developer/connect",
+   "sha256": "78ee107ac0298dc4f466da7d5cf9c10376cddd9fa1aa85bf30883d59d405e546"
+  },
+  "permissions": {
+   "url": "https://www.e-conomic.com/developer/permissions",
+   "sha256": "67ab5dcd6062b9b438a68f22c87d942785f735768b81b2db587c762d75f3dffd"
+  },
+  "featureList": {
+   "url": "https://www.e-conomic.dk/funktioner/fuld-funktionsliste",
+   "sha256": "3158d18975e0aeb8c3c1e96fd79c94d4f540ec094016f9bb53bffc85600ad5ce"
+  },
+  "rawExport": {
+   "url": "https://www.e-conomic.dk/support/artikler/eksporter-data-fra-e-conomic",
+   "sha256": "45015da3d10c26e4b91f19a224c373fcbdff6952ee33e1049cd87d96c2b3f0a1"
+  },
+  "archiveExport": {
+   "url": "https://www.e-conomic.dk/support/artikler/eksporter-pdf-versioner-af-dine-salgsfaktura",
+   "sha256": "8345109ec6bf816386564c092cacefcf1086125dc318b2e963a567ef767cc8b5"
+  },
+  "voucherExport": {
+   "url": "https://www.e-conomic.dk/support/artikler/eksporter-bilag-fra-e-conomic",
+   "sha256": "8246cbbccaaff9eddbaf4864c568308a9589f16298fa88138f0675dad02165c1"
+  }
+ },
+ "openapi": {
+  "BookedEntries": {
+   "version": "6.0.0",
+   "baseUrl": "https://apis.e-conomic.com/bookedEntriesapi/v6.0.0/",
+   "requiredRoles": [
+    "Bookkeeping",
+    "SuperUser"
+   ],
+   "endpoints": [
+    {
+     "method": "GET",
+     "path": "/booked-entries",
+     "operationId": "GetAllBookedEntries"
+    },
+    {
+     "method": "GET",
+     "path": "/booked-entries/paged",
+     "operationId": "GetPageOfBookedEntries"
+    },
+    {
+     "method": "GET",
+     "path": "/booked-entries/count",
+     "operationId": "GetNumberOfBookedEntries"
+    },
+    {
+     "method": "POST",
+     "path": "/booked-entries/match",
+     "operationId": "MatchBookedEntries"
+    },
+    {
+     "method": "GET",
+     "path": "/booked-entries/matched-pairs",
+     "operationId": "GetMatchedBookedEntries"
+    }
+   ],
+   "schemas": {
+    "BookedEntry": [
+     "accountNumber",
+     "amount",
+     "amountInBaseCurrency",
+     "costTypeNumber",
+     "currencyCode",
+     "customerInvoiceNumber",
+     "customerNumber",
+     "date",
+     "dueDate",
+     "entryNumber",
+     "objectVersion",
+     "projectNumber",
+     "remainder",
+     "supplierInvoiceNumber",
+     "supplierNumber",
+     "supplierPayment",
+     "text",
+     "type",
+     "vatAccountNumber",
+     "voucherNumber"
+    ],
+    "MatchedBookedEntriesPair": [
+     "fromEntry",
+     "fromEntryAmount",
+     "fromEntryAmountDKK",
+     "fromEntryDate",
+     "toEntry",
+     "toEntryAmount",
+     "toEntryAmountDKK",
+     "toEntryDate"
+    ],
+    "MatchedBookedEntriesPairCursorResults": [
+     "cursor",
+     "items"
+    ],
+    "BookedEntryCursorResults": [
+     "cursor",
+     "items"
+    ]
+   }
+  },
+  "Documents": {
+   "version": "4.0.1",
+   "baseUrl": "https://apis.e-conomic.com/documentsapi/v4.0.1/",
+   "requiredRoles": [
+    "Bookkeeping",
+    "SuperUser"
+   ],
+   "endpoints": [
+    {
+     "method": "GET",
+     "path": "/AttachedDocuments",
+     "operationId": "GetAllAttachedDocuments"
+    },
+    {
+     "method": "POST",
+     "path": "/AttachedDocuments",
+     "operationId": "AttachPdfAsync"
+    },
+    {
+     "method": "GET",
+     "path": "/AttachedDocuments/paged",
+     "operationId": "GetPageOfAttachedDocuments"
+    },
+    {
+     "method": "GET",
+     "path": "/AttachedDocuments/count",
+     "operationId": "GetNumberOfAttachedDocuments"
+    },
+    {
+     "method": "GET",
+     "path": "/AttachedDocuments/{number}",
+     "operationId": "GetAttachedDocumentById"
+    },
+    {
+     "method": "DELETE",
+     "path": "/AttachedDocuments/{number}",
+     "operationId": "DeleteAttachedDocumentById"
+    },
+    {
+     "method": "GET",
+     "path": "/AttachedDocuments/{number}/pdf",
+     "operationId": "GetPdfForAttachedDocument"
+    },
+    {
+     "method": "DELETE",
+     "path": "/AttachedDocuments/deletebulk",
+     "operationId": "BulkDeleteAttachedDocumentsByIds"
+    }
+   ],
+   "schemas": {
+    "AttachedDocument": [
+     "accountingYear",
+     "note",
+     "number",
+     "pageCount",
+     "voucherNumber"
+    ],
+    "AttachedDocumentCursorResults": [
+     "cursor",
+     "items"
+    ]
+   }
+  }
+ },
+ "rest": {
+  "/customers": {
+   "method": "GET",
+   "fields": [
+    "address",
+    "attention",
+    "attention.customerContactNumber",
+    "attention.self",
+    "balance",
+    "barred",
+    "city",
+    "contacts",
+    "corporateIdentificationNumber",
+    "country",
+    "creditLimit",
+    "currency",
+    "customerContact",
+    "customerContact.customerContactNumber",
+    "customerContact.self",
+    "customerGroup",
+    "customerGroup.customerGroupNumber",
+    "customerGroup.self",
+    "customerNumber",
+    "defaultDeliveryLocation",
+    "defaultDeliveryLocation.deliveryLocationNumber",
+    "defaultDeliveryLocation.self",
+    "deliveryLocations",
+    "dueAmount",
+    "eInvoicingDisabledByDefault",
+    "ean",
+    "email",
+    "invoices",
+    "invoices.booked",
+    "invoices.drafts",
+    "invoices.self",
+    "lastUpdated",
+    "layout",
+    "layout.layoutNumber",
+    "layout.self",
+    "mobilePhone",
+    "name",
+    "pNumber",
+    "paymentTerms",
+    "paymentTerms.paymentTermsNumber",
+    "paymentTerms.self",
+    "publicEntryNumber",
+    "salesPerson",
+    "salesPerson.employeeNumber",
+    "salesPerson.self",
+    "self",
+    "telephoneAndFaxNumber",
+    "templates",
+    "templates.invoice",
+    "templates.invoiceLine",
+    "templates.self",
+    "totals",
+    "totals.booked",
+    "totals.drafts",
+    "totals.self",
+    "vatNumber",
+    "vatZone",
+    "vatZone.self",
+    "vatZone.vatZoneNumber",
+    "website",
+    "zip"
+   ]
+  },
+  "/customers/:customerNumber": {
+   "method": "GET",
+   "fields": [
+    "address",
+    "attention",
+    "attention.customerContactNumber",
+    "attention.self",
+    "balance",
+    "barred",
+    "city",
+    "contacts",
+    "corporateIdentificationNumber",
+    "country",
+    "creditLimit",
+    "currency",
+    "customerContact",
+    "customerContact.customerContactNumber",
+    "customerContact.self",
+    "customerGroup",
+    "customerGroup.customerGroupNumber",
+    "customerGroup.self",
+    "customerNumber",
+    "defaultDeliveryLocation",
+    "defaultDeliveryLocation.deliveryLocationNumber",
+    "defaultDeliveryLocation.self",
+    "deliveryLocations",
+    "dueAmount",
+    "eInvoicingDisabledByDefault",
+    "ean",
+    "email",
+    "invoices",
+    "invoices.booked",
+    "invoices.drafts",
+    "invoices.self",
+    "lastUpdated",
+    "layout",
+    "layout.layoutNumber",
+    "layout.self",
+    "mobilePhone",
+    "name",
+    "pNumber",
+    "paymentTerms",
+    "paymentTerms.paymentTermsNumber",
+    "paymentTerms.self",
+    "publicEntryNumber",
+    "salesPerson",
+    "salesPerson.employeeNumber",
+    "salesPerson.self",
+    "self",
+    "telephoneAndFaxNumber",
+    "templates",
+    "templates.invoice",
+    "templates.invoiceLine",
+    "templates.self",
+    "totals",
+    "totals.booked",
+    "totals.drafts",
+    "totals.self",
+    "vatNumber",
+    "vatZone",
+    "vatZone.self",
+    "vatZone.vatZoneNumber",
+    "website",
+    "zip"
+   ]
+  },
+  "/invoices/booked": {
+   "method": "GET",
+   "fields": [
+    "bookedInvoiceNumber",
+    "currency",
+    "customer",
+    "customer.customerNumber",
+    "customer.self",
+    "date",
+    "delivery",
+    "delivery.address",
+    "delivery.city",
+    "delivery.country",
+    "delivery.deliveryDate",
+    "delivery.deliveryTerms",
+    "delivery.zip",
+    "deliveryLocation",
+    "deliveryLocation.deliveryLocationNumber",
+    "deliveryLocation.self",
+    "dueDate",
+    "exchangeRate",
+    "grossAmount",
+    "grossAmountInBaseCurrency",
+    "layout",
+    "layout.layoutNumber",
+    "layout.self",
+    "netAmount",
+    "netAmountInBaseCurrency",
+    "notes",
+    "notes.heading",
+    "notes.textLine1",
+    "notes.textLine2",
+    "paymentTerms",
+    "paymentTerms.daysOfCredit",
+    "paymentTerms.name",
+    "paymentTerms.paymentTermsNumber",
+    "paymentTerms.paymentTermsType",
+    "paymentTerms.self",
+    "pdf",
+    "pdf.download",
+    "project",
+    "project.projectNumber",
+    "project.self",
+    "recipient",
+    "recipient.address",
+    "recipient.attention",
+    "recipient.attention.customerContactNumber",
+    "recipient.attention.self",
+    "recipient.city",
+    "recipient.country",
+    "recipient.cvr",
+    "recipient.ean",
+    "recipient.name",
+    "recipient.publicEntryNumber",
+    "recipient.vatZone",
+    "recipient.vatZone.self",
+    "recipient.vatZone.vatZoneNumber",
+    "recipient.zip",
+    "references",
+    "references.customerContact",
+    "references.customerContact.customer",
+    "references.customerContact.customer.customerNumber",
+    "references.customerContact.customer.self",
+    "references.customerContact.customerContactNumber",
+    "references.customerContact.self",
+    "references.other",
+    "references.salesPerson",
+    "references.salesPerson.employeeNumber",
+    "references.salesPerson.self",
+    "references.vendorReference",
+    "references.vendorReference.employeeNumber",
+    "references.vendorReference.self",
+    "remainder",
+    "remainderInBaseCurrency",
+    "roundingAmount",
+    "self",
+    "sent",
+    "vatAmount"
+   ]
+  },
+  "/invoices/booked/:bookedInvoiceNumber": {
+   "method": "GET",
+   "fields": [
+    "bookedInvoiceNumber",
+    "currency",
+    "customer",
+    "customer.customerNumber",
+    "customer.self",
+    "date",
+    "delivery",
+    "delivery.address",
+    "delivery.city",
+    "delivery.country",
+    "delivery.deliveryDate",
+    "delivery.deliveryTerms",
+    "delivery.zip",
+    "deliveryLocation",
+    "deliveryLocation.deliveryLocationNumber",
+    "deliveryLocation.self",
+    "dueDate",
+    "exchangeRate",
+    "grossAmount",
+    "grossAmountInBaseCurrency",
+    "layout",
+    "layout.layoutNumber",
+    "layout.self",
+    "lines",
+    "lines.deliveryDate",
+    "lines.departmentalDistribution",
+    "lines.departmentalDistribution.departmentalDistributionNumber",
+    "lines.departmentalDistribution.self",
+    "lines.description",
+    "lines.discountPercentage",
+    "lines.lineNumber",
+    "lines.product",
+    "lines.product.productNumber",
+    "lines.product.self",
+    "lines.quantity",
+    "lines.sortKey",
+    "lines.totalNetAmount",
+    "lines.unit",
+    "lines.unit.name",
+    "lines.unit.self",
+    "lines.unit.unitNumber",
+    "lines.unitCostPrice",
+    "lines.unitNetPrice",
+    "lines.vatAmount",
+    "lines.vatRate",
+    "netAmount",
+    "netAmountInBaseCurrency",
+    "notes",
+    "notes.heading",
+    "notes.textLine1",
+    "notes.textLine2",
+    "paymentTerms",
+    "paymentTerms.daysOfCredit",
+    "paymentTerms.name",
+    "paymentTerms.paymentTermsNumber",
+    "paymentTerms.paymentTermsType",
+    "paymentTerms.self",
+    "pdf",
+    "pdf.download",
+    "project",
+    "project.projectNumber",
+    "project.self",
+    "recipient",
+    "recipient.address",
+    "recipient.attention",
+    "recipient.attention.customerContactNumber",
+    "recipient.attention.self",
+    "recipient.city",
+    "recipient.country",
+    "recipient.cvr",
+    "recipient.ean",
+    "recipient.name",
+    "recipient.publicEntryNumber",
+    "recipient.vatZone",
+    "recipient.vatZone.self",
+    "recipient.vatZone.vatZoneNumber",
+    "recipient.zip",
+    "references",
+    "references.customerContact",
+    "references.customerContact.customerContactNumber",
+    "references.customerContact.self",
+    "references.other",
+    "references.salesPerson",
+    "references.salesPerson.employeeNumber",
+    "references.salesPerson.self",
+    "references.vendorReference",
+    "references.vendorReference.employeeNumber",
+    "references.vendorReference.self",
+    "remainder",
+    "remainderInBaseCurrency",
+    "roundingAmount",
+    "self",
+    "sent",
+    "vatAmount"
+   ]
+  },
+  "/accounting-years": {
+   "method": "GET",
+   "fields": [
+    "closed",
+    "entries",
+    "fromDate",
+    "periods",
+    "self",
+    "toDate",
+    "totals",
+    "vouchers",
+    "year"
+   ]
+  },
+  "/accounting-years/:accountingYear/entries": {
+   "method": "GET",
+   "fields": [
+    "account",
+    "account.accountNumber",
+    "account.self",
+    "amount",
+    "amountInBaseCurrency",
+    "bookedInvoice",
+    "bookedInvoice.bookedInvoiceNumber",
+    "bookedInvoice.self",
+    "costType",
+    "costType.costTypeNumber",
+    "costType.self",
+    "currency",
+    "customer",
+    "customer.customerNumber",
+    "customer.self",
+    "date",
+    "departmentalDistribution",
+    "departmentalDistribution.departmentalDistributionNumber",
+    "departmentalDistribution.self",
+    "dueDate",
+    "entryNumber",
+    "entryType",
+    "invoiceNumber",
+    "paymentDetails",
+    "paymentDetails.paymentType",
+    "paymentDetails.paymentType.paymentTypeNumber",
+    "paymentDetails.paymentType.self",
+    "project",
+    "project.projectNumber",
+    "project.self",
+    "quantity1",
+    "quantity2",
+    "remainder",
+    "remainderInBaseCurrency",
+    "self",
+    "supplier",
+    "supplier.self",
+    "supplier.supplierGroup",
+    "supplier.supplierGroup.self",
+    "supplier.supplierGroup.supplierGroupNumber",
+    "supplier.supplierNumber",
+    "supplierInvoiceNumber",
+    "text",
+    "unit1",
+    "unit1.self",
+    "unit1.unitNumber",
+    "unit2",
+    "unit2.self",
+    "unit2.unitNumber",
+    "vatAccount",
+    "vatAccount.self",
+    "vatAccount.vatCode",
+    "voucherNumber"
+   ]
+  },
+  "/invoices/totals/booked/unpaid": {
+   "method": "GET",
+   "fields": [
+    "accountingYears",
+    "customers",
+    "employees",
+    "grossRemainderInBaseCurrency",
+    "invoiceCount",
+    "maxDate",
+    "minDate",
+    "netAmountInBaseCurrency",
+    "notOverdue",
+    "overdue",
+    "periods",
+    "self"
+   ]
+  },
+  "/app-roles": {
+   "method": "GET",
+   "fields": [
+    "name",
+    "requiredModules",
+    "requiredModules.moduleNumber",
+    "requiredModules.self",
+    "roleNumber",
+    "self"
+   ]
+  },
+  "/customers/:customerNumber/contacts": {
+   "method": "GET",
+   "fields": [
+    "customer",
+    "customer.customerNumber",
+    "customer.self",
+    "customerContactNumber",
+    "deleted",
+    "eInvoiceId",
+    "email",
+    "emailNotifications",
+    "name",
+    "notes",
+    "phone",
+    "self",
+    "sortKey"
+   ]
+  },
+  "/invoices/paid": {
+   "method": "GET",
+   "fields": [
+    "bookedInvoiceNumber",
+    "currency",
+    "customer",
+    "customer.customerNumber",
+    "customer.self",
+    "date",
+    "delivery",
+    "delivery.address",
+    "delivery.city",
+    "delivery.country",
+    "delivery.deliveryDate",
+    "delivery.deliveryTerms",
+    "delivery.zip",
+    "deliveryLocation",
+    "deliveryLocation.deliveryLocationNumber",
+    "deliveryLocation.self",
+    "dueDate",
+    "grossAmount",
+    "layout",
+    "layout.layoutNumber",
+    "layout.self",
+    "netAmount",
+    "netAmountInBaseCurrency",
+    "notes",
+    "notes.heading",
+    "notes.textLine1",
+    "notes.textLine2",
+    "paymentTerms",
+    "paymentTerms.daysOfCredit",
+    "paymentTerms.name",
+    "paymentTerms.paymentTermsNumber",
+    "paymentTerms.paymentTermsType",
+    "paymentTerms.self",
+    "pdf",
+    "pdf.download",
+    "project",
+    "project.projectNumber",
+    "project.self",
+    "recipient",
+    "recipient.address",
+    "recipient.attention",
+    "recipient.attention.customerContactNumber",
+    "recipient.attention.self",
+    "recipient.city",
+    "recipient.country",
+    "recipient.cvr",
+    "recipient.ean",
+    "recipient.name",
+    "recipient.publicEntryNumber",
+    "recipient.vatZone",
+    "recipient.vatZone.self",
+    "recipient.vatZone.vatZoneNumber",
+    "recipient.zip",
+    "references",
+    "references.customerContact",
+    "references.customerContact.customer",
+    "references.customerContact.customer.customerNumber",
+    "references.customerContact.customer.self",
+    "references.customerContact.customerContactNumber",
+    "references.customerContact.self",
+    "references.other",
+    "references.salesPerson",
+    "references.salesPerson.employeeNumber",
+    "references.salesPerson.self",
+    "references.vendorReference",
+    "references.vendorReference.employeeNumber",
+    "references.vendorReference.self",
+    "remainder",
+    "remainderInBaseCurrency",
+    "roundingAmount",
+    "self",
+    "sent",
+    "vatAmount"
+   ]
+  },
+  "/invoices/booked/:bookedInvoiceNumber/pdf": {
+   "method": "GET",
+   "fields": [],
+   "returns": "application/pdf"
+  },
+  "/self": {
+   "method": "GET",
+   "fields": [
+    "agreementNumber",
+    "agreementType",
+    "agreementType.agreementTypeNumber",
+    "agreementType.name",
+    "application",
+    "application.appNumber",
+    "application.appPublicToken",
+    "application.created",
+    "application.name",
+    "application.requiredRoles",
+    "application.requiredRoles.name",
+    "application.requiredRoles.roleNumber",
+    "application.requiredRoles.self",
+    "application.self",
+    "bankInformation",
+    "bankInformation.bankAccountNumber",
+    "bankInformation.bankGiroNumber",
+    "bankInformation.bankName",
+    "bankInformation.bankSortCode",
+    "bankInformation.pbsCustomerGroupNumber",
+    "bankInformation.pbsFiSupplierNumber",
+    "canSendElectronicInvoice",
+    "company",
+    "company.addressLine1",
+    "company.addressLine2",
+    "company.attention",
+    "company.city",
+    "company.companyIdentificationNumber",
+    "company.country",
+    "company.email",
+    "company.name",
+    "company.phoneNumber",
+    "company.vatNumber",
+    "company.website",
+    "company.zip",
+    "companyAffiliation",
+    "modules",
+    "modules.moduleNumber",
+    "modules.name",
+    "modules.self",
+    "self",
+    "settings",
+    "settings.baseCurrency",
+    "settings.defaultPaymentTerm",
+    "settings.internationalLedger",
+    "signupDate",
+    "user",
+    "user.agreementNumber",
+    "user.email",
+    "user.language",
+    "user.language.culture",
+    "user.language.languageNumber",
+    "user.language.name",
+    "user.language.self",
+    "user.loginId",
+    "user.name",
+    "userName"
+   ]
+  }
+ },
+ "rolesByRestPath": {
+  "/customers": [
+   "SuperUser",
+   "Sales"
+  ],
+  "/invoices/booked": [
+   "SuperUser",
+   "Sales"
+  ],
+  "/invoices/booked/:bookedInvoiceNumber": [
+   "SuperUser",
+   "Sales"
+  ],
+  "/accounting-years": [
+   "SuperUser",
+   "Bookkeeping"
+  ],
+  "/accounting-years/:accountingYear/*": "listed three times: SuperUser+Bookkeeping, SuperUser+Sales, SuperUser+Bookkeeping; the page does not say which sub-paths each row covers",
+  "/currencies": [
+   "SuperUser",
+   "Bookkeeping",
+   "Sales"
+  ],
+  "/self": [
+   "SuperUser",
+   "Sales"
+  ],
+  "/invoices/booked/:bookedInvoiceNumber/pdf": "not listed on the permissions page"
+ },
+ "executedProbes": {
+  "note": "Read-only GET requests made on 2026-10-08 against the vendor's published public demo agreement (headers X-AppSecretToken: demo, X-AgreementGrantToken: demo, which the vendor documents as GET-only). This is a shared vendor demo company, not a customer account. No write method was sent. Only shapes and aggregate facts are recorded; no demo personal data is stored here.",
+  "agreement": "vendor demo company (base currency DKK); plan level reported by /self as internal; the demo token presents SuperUser-equivalent read access, so it says nothing about narrower roles or paid plan gating",
+  "probes": [
+   {
+    "id": "rest-self",
+    "path": "/self",
+    "status": 200
+   },
+   {
+    "id": "rest-app-roles",
+    "path": "/app-roles",
+    "status": 200,
+    "observed": "roles Sales(1), SuperUser(2), ProjectEmployee(3), Bookkeeping(4)"
+   },
+   {
+    "id": "rest-accounting-years",
+    "path": "/accounting-years",
+    "status": 200,
+    "observed": "year, fromDate, toDate, entries/vouchers/periods/totals links; no closed flag shown on the demo years"
+   },
+   {
+    "id": "rest-customers",
+    "path": "/customers?pagesize=3",
+    "status": 200,
+    "observed": "pagination object with maxPageSizeAllowed 1000 and first/next/last links; optional fields (vat number, CVR, EAN) are omitted when empty"
+   },
+   {
+    "id": "rest-booked-invoices",
+    "path": "/invoices/booked?pagesize=5",
+    "status": 200,
+    "observed": "6 booked invoices; every item carries pdf.download, remainder, remainderInBaseCurrency, roundingAmount; no field references an original invoice for credit notes"
+   },
+   {
+    "id": "rest-booked-invoice-pdf",
+    "path": "/invoices/booked/1/pdf",
+    "status": 200,
+    "observed": "content-type application/pdf, body starts with %PDF, response header x-callcost: 13"
+   },
+   {
+    "id": "rest-entries-by-year",
+    "path": "/accounting-years/2022/entries",
+    "status": 200,
+    "observed": "entries carry entryType as a string, voucherNumber, invoiceNumber and a bookedInvoice link"
+   },
+   {
+    "id": "be-count",
+    "path": "BookedEntries v6.0.0 /booked-entries/count",
+    "status": 200,
+    "observed": "138"
+   },
+   {
+    "id": "be-list",
+    "path": "BookedEntries v6.0.0 /booked-entries",
+    "status": 200,
+    "observed": "one page, no cursor returned; integer type codes; fields entryNumber, accountNumber, amount, amountInBaseCurrency, currencyCode, date, dueDate, text, type, voucherNumber, customerNumber, customerInvoiceNumber, remainder; a booked invoice appears as several lines (revenue, VAT and debtor), and only the debtor line carries customerNumber"
+   },
+   {
+    "id": "be-filter-null",
+    "path": "BookedEntries v6.0.0 /booked-entries/count?filter=remainder$ne:0$and:customerNumber$ne:$null:",
+    "status": 200,
+    "observed": "filter on remainder and the $null: escape accepted"
+   },
+   {
+    "id": "be-matched-pairs",
+    "path": "BookedEntries v6.0.0 /booked-entries/matched-pairs",
+    "status": 200,
+    "observed": "4 pairs. Fields are fromEntry/toEntry plus each entry's FULL amount, date and base amount. No allocated amount, no match date and no match id."
+   },
+   {
+    "id": "documents-count",
+    "path": "Documents v4.0.1 /AttachedDocuments/count",
+    "status": 200,
+    "observed": "3"
+   },
+   {
+    "id": "documents-list",
+    "path": "Documents v4.0.1 /AttachedDocuments",
+    "status": 200,
+    "observed": "items carry number, pageCount, voucherNumber and accountingYear (string)"
+   },
+   {
+    "id": "documents-pdf",
+    "path": "Documents v4.0.1 /AttachedDocuments/{number}/pdf",
+    "status": 200,
+    "observed": "content-type application/pdf"
+   }
+  ],
+  "findings": [
+   {
+    "id": "pair-amounts-are-entry-amounts",
+    "text": "Matched pairs report each entry's full amount, not the amount applied between them."
+   },
+   {
+    "id": "partial-match-leaves-remainder-on-payment",
+    "text": "A 1187.50 invoice matched to a -2000.00 payment: invoice remainder 0, payment remainder -812.50. The unapplied cash is visible only through the payment entry's remainder."
+   },
+   {
+    "id": "many-to-one-is-several-pairs",
+    "text": "One -7000.00 entry matched to a 2000.00 entry and a 5000.00 entry appears as two pairs sharing the same toEntry; each pair shows the full 7000.00."
+   },
+   {
+    "id": "cluster-conservation",
+    "text": "In all three observed match clusters, the sum of entry amounts equals the sum of entry remainders. This is an observation on three clusters, not a documented guarantee."
+   },
+   {
+    "id": "balance-control-total",
+    "text": "customer.balance equalled the sum of ledger-line remainders (foreign lines at base amount) for customers 1 and 4, and differed by 500.00 DKK for customer 2 with the cause unidentified. A control total is a check to report on, not a source of truth."
+   },
+   {
+    "id": "positive-payment-entries",
+    "text": "Payment-typed entries can carry positive amounts (a +5000.00 type 2 entry was matched against a -7000.00 type 2 entry). Do not assume payments are always negative."
+   }
+  ]
+ }
+}
