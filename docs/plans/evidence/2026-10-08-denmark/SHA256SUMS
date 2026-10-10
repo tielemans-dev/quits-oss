@@ -1,0 +1,7 @@
+466844e6984628fc710ea089beb08aa5eac25280835ad357c885e63ee65e6065  inputs.json
+e52691d47b5c11f4adface27a0c470cf926d1aab43e083c77bb593586fb4c2c2  xml/dk-b2b-credit-note.xml
+9c8a605396a1b5c03bf906288de38aebeafb49a7525dd121efcf74af8f98ba32  xml/dk-b2b-invoice.xml
+4df48de05ef723f75b00deb730246e5cad06dbbb781cb8b1bcc7a2bd8581fcbc  xml/dk-public-gln-invoice.xml
+1a4b29616ff333f9376889c2e40d1a00eb63ad4828682012555d5b0798f20118  xml/legacy-fixture-dk-to-de.xml
+a396fafcdfd1b0588f42e7910cddbb81c6400a55b3ce41c7283b409036fa58d5  xml/negative-control-2.xml
+c1177fcc663550342c6641d7851ea1f71eb18778d46fbfae1f166bd43dde7298  xml/negative-control.xml

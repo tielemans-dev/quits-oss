@@ -9,3 +9,5 @@
 7. Browser smoke coverage - add Playwright coverage for setup, auth, public quote, invoice payment, and document sending
 8. Structured observability - add JSONL logging for payment, onboarding, email, and public document flows
 9. `2026-10-06-invoicing-lifecycle-and-agent-api-design.md` - domain command core, credit notes, payments, reminders, recurring invoices, e-invoice and accounting exports, audit log, and the MCP agent API
+10. `2026-10-08-denmark-bookkeeping-boundary-decision.md` - Danish bookkeeping-system boundary, source-document retention and launch-claim blockers (#27)
+11. `2026-10-08-denmark-einvoice-delivery-decision.md` - first Danish e-invoice delivery route, field mapping, delivery lifecycle contract and provider comparison (#28)
