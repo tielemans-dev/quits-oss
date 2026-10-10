@@ -1,4 +1,4 @@
-import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
+import { requireDepositsEnabled, requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { requireInvoiceIssuancePolicy } from "./issuance-policy"
 import { frozenEinvoiceInput } from "./einvoice-input"
 import { vatRowsByRate } from "./frozen-vat-groups"
@@ -164,10 +164,12 @@ export const prospectiveRenderInput = (input: {
         timezone: invoice.timezone, taxRegime: invoice.taxRegime, pricesIncludeTax: invoice.pricesIncludeTax },
       pdf: { creditNote, org } }
   }
+  yield* lockDocument("agreement", input.documentId)
   const agreement = yield* Effect.promise(() => db.agreement.findFirst({
     where: { id: input.documentId, organizationId }, include: { contact: true, deliverables: { orderBy: { sortOrder: "asc" } } },
   }))
   if (!agreement) return yield* new NotFound({ message: "Agreement not found", entity: "agreement", id: input.documentId })
+  if (!input.preview) yield* requireDepositsEnabled(agreement.deliverables)
   const commandInput = input.commandInput as { recipient?: string }
   const recipient = input.method === "manual" ? commandInput.recipient ?? null : agreement.contact.email?.trim() || null
   const snapshot = buildOfferSnapshot({ ...agreement,

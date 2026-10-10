@@ -94,10 +94,13 @@ export const NUMBER_CHANGED = "number_changed"
  * transaction, its rendered document carries a specific number; if the document would now receive
  * a different one, the preparation is stale and nothing is consumed.
  */
-export const numberForIssuance = (kind: "invoice" | "quote", document: { number: string | null }) =>
+export const numberForIssuance = (kind: "invoice" | "quote" | "agreement", document: { number: string | null }) =>
   Effect.gen(function* () {
     const { issuance } = yield* Command
-    const number = document.number ?? (yield* allocateDocumentNumber(kind))
+    // Agreement reservations made before commit-time numbering already consumed this number.
+    // Keep it on enabled retries rather than allocating a second number.
+    const reserved = kind === "agreement" && issuance?.numberWasAllocated ? issuance.number : null
+    const number = document.number ?? reserved ?? (yield* allocateDocumentNumber(kind))
     if (issuance && issuance.number !== number) {
       return yield* new InvalidState({
         code: NUMBER_CHANGED,

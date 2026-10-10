@@ -45,6 +45,14 @@ schedule, PDF link and decline action, while acceptance controls are suppressed.
 Existing accepted evidence and read links remain available. New offers cannot acquire
 a deposit schedule while the capability is disabled.
 
+Agreement issuance checks current locked deposit flags before reservation reuse, rendering and
+artifact storage, and again during committed execution. Numberless agreement drafts are rendered
+with a provisional number; only successful issuance advances the counter. Legacy reservations
+that already allocated a number retain it on enabled retries. A refusal before preparation leaves
+no staging or artifact work. If policy changes after preparation starts, an unbound reservation or
+already-written bytes may remain for the artifact sweep, but no agreement, number, event or job is
+committed. Renderer/store calls remain outside database transactions.
+
 ## AI Capability Model
 
 Current capability key:

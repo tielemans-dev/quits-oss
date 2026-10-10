@@ -15,6 +15,9 @@ import { prospectiveRenderInput, hashBytes, hashRenderInput, type ArtifactDocume
 import { artifactsJson, lockArtifactOrganization, type StoredArtifacts } from "../domain/documents/artifacts"
 import { ExternalFailure, InvalidState, serializeDomainError } from "../domain/errors"
 import { appLogger } from "../lib/observability"
+import { requireDepositsEnabled } from "../domain/agreements/deposit-capability"
+import { readAgreementOfferSnapshot } from "@quits/contracts/agreements"
+import { offerHasDeposits } from "../lib/agreements/offer-deposits"
 import { Command, Db } from "../domain/services"
 
 export const RESERVATION_LEASE_MS = 15 * 60_000
@@ -54,14 +57,18 @@ export async function reserveDocument(input: {
       const doc = await tx.agreement.findFirst({ where: { id: documentId, organizationId }, select: { number: true } })
       number = doc?.number ?? null
     }
-    // An invoice is numbered by the issuing transaction, not here. A numberless one is rendered with
+    // Validate agreements even when the request already owns a prepared reservation. The render
+    // reader locks the current draft before inspecting deposit flags.
+    if (input.kind === "agreement") await runArtifactRead(prospectiveRenderInput({ ...input,
+      documentId, number: number ?? "preview", issuedAt: now }), tx, input.actor, now)
+    // An invoice or agreement is numbered by the issuing transaction, not here. A numberless one is rendered with
     // the number it would receive now, without taking it; the transaction refuses a reservation
     // whose number has moved on, so an issuance that fails here or later consumes nothing.
-    // Credit notes and agreements are still numbered by this reservation.
-    const provisionalNumber = input.kind === "invoice" && !number
-      ? await runArtifactRead(peekNextDocumentNumber("invoice"), tx, input.actor, now) : null
+    // Credit notes are still numbered by this reservation.
+    const provisionalNumber = (input.kind === "invoice" || input.kind === "agreement") && !number
+      ? await runArtifactRead(peekNextDocumentNumber(input.kind === "agreement" ? "agreement" : "invoice"), tx, input.actor, now) : null
     if (existing) {
-      const stale = provisionalNumber !== null && existing.documentKind === "invoice" &&
+      const stale = !existing.numberWasAllocated && provisionalNumber !== null && existing.documentKind === input.kind &&
         ["reserved", "stored", "missing"].includes(existing.status) && existing.reservedNumber !== provisionalNumber
       if (!stale) return existing
       // Free the request key so the retry can prepare the document again with the current number.
@@ -76,7 +83,7 @@ export async function reserveDocument(input: {
       status: { not: "abandoned" },
     }, orderBy: { createdAt: "desc" } })
     for (const row of prior) {
-      if (provisionalNumber !== null && row.reservedNumber !== number) continue
+      if (!row.numberWasAllocated && provisionalNumber !== null && row.reservedNumber !== number) continue
       const renderInput = row.renderInput as unknown as RenderInput
       const current = await runArtifactRead(prospectiveRenderInput({ ...input, documentId,
         number: row.reservedNumber!, issuedAt: new Date(renderInput.issuedAt) }), tx, input.actor, now)
@@ -84,8 +91,8 @@ export async function reserveDocument(input: {
         return tx.artifactStaging.update({ where: { id: row.id }, data: { requestKeys: { push: requestKey } } })
       }
     }
-    // True only for the kinds numbered here (credit notes, agreements); an invoice always has its own
-    // or the provisional number, so a lapsed invoice reservation never has a number to void.
+    // Only credit notes allocate here. Invoices and agreements have their own or a provisional
+    // number, so an unused reservation for either kind never has a number to void.
     const numberWasAllocated = !number
     // Read before allocation so invalid document/credit selection does not consume a number.
     await runArtifactRead(prospectiveRenderInput({ ...input, documentId, number: number ?? "preview", issuedAt: now }), tx, input.actor, now)
@@ -114,6 +121,22 @@ export async function prepareDocument(stagingId: string): Promise<ArtifactStagin
     const staging = await prisma.artifactStaging.findUniqueOrThrow({ where: { id: stagingId } })
     if (staging.status !== "reserved") return staging
     if (staging.leaseUntil <= new Date()) throw new InvalidState({ code: "reservation_expired", message: "Document reservation expired" })
+    // A policy can change after reservation or during rendering. Recheck before claiming and
+    // before each store write against the frozen input and current locked draft. No lock spans
+    // renderer or store calls; execution still rechecks under its own locks.
+    const checkPreparation = async () => {
+      if (staging.documentKind !== "agreement") return
+      const renderInput = staging.renderInput as unknown as RenderInput
+      const actor: Actor = { kind: "system", organizationId: staging.organizationId, reason: "scheduler", label: "Artifact preparation" }
+      await prisma.$transaction(async tx => {
+        await lockArtifactOrganization(tx, staging.organizationId)
+        await runArtifactRead(prospectiveRenderInput({ kind: "agreement", commandInput: { id: staging.documentId },
+          documentId: staging.documentId, number: staging.reservedNumber!, issuedAt: new Date(renderInput.issuedAt),
+          method: "manual" }), tx, actor, new Date())
+        await runArtifactRead(requireDepositsEnabled([{ isDeposit: offerHasDeposits(readAgreementOfferSnapshot(renderInput.snapshot)) }]), tx, actor, new Date())
+      }, { maxWait: 10_000, timeout: 30_000 })
+    }
+    await checkPreparation()
     const prepToken = randomUUID()
     const claimed = await prisma.artifactStaging.updateMany({ where: { id: stagingId, status: "reserved", prepToken: null }, data: { prepToken } })
     if (!claimed.count) { await new Promise(resolve => setTimeout(resolve, 25)); continue }
@@ -130,6 +153,7 @@ export async function prepareDocument(stagingId: string): Promise<ArtifactStagin
         })
         const renderInput = staging.renderInput as unknown as RenderInput
         const storeBytes = async (format: "pdf" | "ubl", bytes: Uint8Array) => {
+          await checkPreparation()
           const hash = hashBytes(bytes)
           const ref = await store.put(bytes, { organizationId: staging.organizationId,
             documentKind: renderInput.kind, documentId: staging.documentId, format,

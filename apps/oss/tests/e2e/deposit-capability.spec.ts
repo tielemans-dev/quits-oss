@@ -89,3 +89,45 @@ for (const locale of ["en-US", "da-DK"]) {
     }
   })
 }
+
+test("disabled issuance refuses a persisted deposit draft over authenticated HTTP without side effects", async ({ page }) => {
+  test.skip(process.env.QUITS_DEPOSITS_ENABLED !== "false", "Requires the disabled server mode")
+  await resetDatabase()
+  const setup = await seedCompletedSetup()
+  await loginAsAdmin(page)
+  const { prisma } = await import("../../src/lib/db")
+  const { resolveUserActor } = await import("../../src/domain/user-actor")
+  const { executeCommand } = await import("../../src/domain/execute")
+  const { createAgreementDraft } = await import("../../src/domain/commands/agreements")
+  const { setRuntimeExtensions } = await import("../../src/lib/runtime/extensions")
+  const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId } })
+  const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: member.userId, userName: "Synthetic admin" })
+  if (!actor) throw new Error("Fixture membership missing")
+  try {
+    setRuntimeExtensions([{ id: "draft-fixture", resolveCapabilities: () => ({ agreements: { depositsEnabled: true } }) }])
+    const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: "Synthetic customer", email: "customer@example.test" } })
+    const draft = await executeCommand(createAgreementDraft, { contactId: contact.id, title: "Synthetic deposit draft", validUntil: "2099-01-01",
+      deliverables: [{ title: "Advance", quantity: "1", unitPrice: "100", isDeposit: true }],
+    }, { actor })
+    if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+    const state = async () => {
+      const where = { organizationId: setup.organizationId }
+      return {
+        settings: await prisma.orgSettings.findUniqueOrThrow({ where }),
+        agreement: await prisma.agreement.findUniqueOrThrow({ where: { id: draft.result.id }, include: { deliverables: true } }),
+        staging: await prisma.artifactStaging.findMany({ where }),
+        candidates: await prisma.issuanceCandidate.findMany({ where }),
+        events: await prisma.domainEvent.findMany({ where }),
+        jobs: await prisma.job.findMany({ where }),
+      }
+    }
+    const before = await state()
+    for (const operation of ["issue", "send"]) {
+      const response = await page.request.post(`/api/trpc/agreements.${operation}`, { data: { json: { id: draft.result.id } } })
+      expect(response.status()).toBe(400)
+      const error = (await response.json()).error.json
+      expect(error.data.reason).toBe("deposits_disabled")
+      expect(await state()).toEqual(before)
+    }
+  } finally { setRuntimeExtensions([]) }
+})

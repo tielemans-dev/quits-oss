@@ -329,7 +329,7 @@ export async function executeCommand<Input, Result>(
             now, leaseNow: options.now ?? new Date(), organizationId,
             requestKey: `${organizationId}:${key}:${clientRequestId}` })
           issuance = { candidateId: candidate.id, documentId: staged.documentId,
-            number: staged.reservedNumber!, issuedAt: new Date(renderInput.issuedAt) }
+            number: staged.reservedNumber!, issuedAt: new Date(renderInput.issuedAt), numberWasAllocated: staged.numberWasAllocated }
         } catch (error) {
           if (error instanceof InvalidState) throw new HandlerFailed(error)
           throw error
