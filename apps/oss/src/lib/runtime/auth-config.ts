@@ -9,6 +9,8 @@ import { readBooleanEnv, resolveUrlOrigin } from "@quits/shared/runtimeEnv"
 
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client"
 
+import { assertSignupDecision, authorizeSignup, signupAdmissionAdapter, signupOwnershipPlugin, signupInput, resolveSignupAdmission, type SignupAdmission } from "./signup-admission"
+
 import { getConfiguredSocialProviders } from "../auth/providers"
 import { sendInvitationEmail } from "../email"
 import { sendPasswordResetEmail } from "../emails/password-reset-email"
@@ -18,7 +20,9 @@ import { cleanupExpiredVerifications } from "../auth/verification-cleanup"
 import { selectedEmailProvider, readSmtpConfiguration, requireSmtpFromEmail } from "../email-provider-config"
 import { ac, accountant, admin, member } from "../permissions"
 
-export type AuthHooks = {
+export type AuthHooks = SignupAdmission & {
+  /** Optional same-origin signup waitlist UI; no endpoint/storage is installed by OSS. */
+  signupWaitlist?: { privacyVersion: string; privacyPath?: string }
   /** Keep background delivery alive for the runtime's request lifetime (e.g. an execution context). */
   runInBackground?: (task: Promise<void>) => void
   /** Return a client key only from authenticated proxy metadata or the direct connection. Never use arbitrary forwarding headers. */
@@ -33,6 +37,9 @@ export type AuthHooks = {
     verify?: (input: { hash: string; password: string }) => Promise<boolean>
   }
 }
+
+export type { SignupInput, SignupDecision, SignupAdmission } from "./signup-admission"
+export { assertSignupDecision } from "./signup-admission"
 
 type AuthEnvReader = {
   getEnv: (name: string) => string | undefined
@@ -52,6 +59,7 @@ export function buildQuitsAuthOptions(input: {
   hooks?: AuthHooks
 }) {
   const hooks = input.hooks ?? {}
+  const admission = resolveSignupAdmission(input.env.getEnv("SIGNUP_MODE"), hooks)
   const runInBackground = (task: Promise<unknown>) => {
     const safeTask = task.then(() => {}).catch(() => {
       console.error("Auth background task failed")
@@ -122,6 +130,13 @@ export function buildQuitsAuthOptions(input: {
   })
   const cookiesPlugin = tanstackStartCookies()
 
+  const signupDatabase = admission.authorizeSignUp ? signupAdmissionAdapter({
+    prisma: input.prisma, admission,
+    createDatabaseAdapter: hooks.createDatabaseAdapter,
+    createTransactionDatabaseAdapter: hooks.createTransactionDatabaseAdapter,
+  }) : undefined
+  const ownershipPlugin = signupOwnershipPlugin(signupDatabase?.owns)
+
   return {
     ...(betterAuthUrl ? { baseURL: betterAuthUrl } : {}),
     // Every native verification reader, including GET reset callbacks, must use the same policy.
@@ -130,15 +145,13 @@ export function buildQuitsAuthOptions(input: {
       customRules: {
         // Recovery uses atomic database admission below. Do not also use post-response memory
         // counters keyed by client-controlled forwarding headers.
+        ...(admission.admitSignUpAttempt ? { "/sign-up/email": false as const } : {}),
         "/request-password-reset": false as const,
         "/reset-password": false as const,
       },
     },
-    database:
-      hooks.createDatabaseAdapter?.(input.prisma) ??
-      prismaAdapter(input.prisma, {
-        provider: "postgresql",
-      }),
+    database: signupDatabase ?? hooks.createDatabaseAdapter?.(input.prisma) ??
+      prismaAdapter(input.prisma, { provider: "postgresql" }),
     ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
     advanced: {
       backgroundTasks: {
@@ -155,6 +168,12 @@ export function buildQuitsAuthOptions(input: {
       before: createAuthMiddleware(async (ctx) => {
         // Auth traffic drains expired records in bounded batches, outside row-locked transactions.
         await cleanupExpiredVerifications(input.prisma)
+        if (ctx.path === "/sign-up/email" && admission.authorizeSignUp && typeof ctx.body?.email === "string") {
+          const details = signupInput(ctx.body.email, ctx.body, ctx.request)
+          if (admission.admitSignUpAttempt) assertSignupDecision(await admission.admitSignUpAttempt(details))
+          await authorizeSignup(admission, details)
+          ctx.body.email = details.email
+        }
         if (ctx.path !== "/request-password-reset" && ctx.path !== "/reset-password") return
         const clientKey = hooks.getRecoveryClientKey
           ? await hooks.getRecoveryClientKey(ctx.request)
@@ -287,9 +306,10 @@ export function buildQuitsAuthOptions(input: {
     socialProviders: Object.keys(socialProviders).length
       ? socialProviders
       : undefined,
-    plugins: [organizationPlugin, cookiesPlugin] as [
+    plugins: [organizationPlugin, cookiesPlugin, ownershipPlugin] as [
       typeof organizationPlugin,
       typeof cookiesPlugin,
+      typeof ownershipPlugin,
     ],
   }
 }
