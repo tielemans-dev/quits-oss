@@ -361,3 +361,31 @@ describe("PublicInvoicePaymentPage", () => {
     })
   })
 })
+
+
+describe("frozen public bank details", () => {
+  const bankAccount = { regNumber: "0040", accountNumber: "0440116243", iban: "DK5000400440116243", bic: "DABADKKK" }
+  for (const locale of ["da-DK", "en-US"]) {
+    for (const stripeEnabled of [false, true]) {
+      it(`shows transfer details in ${locale}, card enabled: ${stripeEnabled}`, () => {
+        const html = page(locale, <PublicInvoicePaymentPage token="test" state={{ kind: "ready", paymentState: "unpaid", stripeEnabled, seller, invoice: { ...baseInvoice, currency: "DKK", sellerSnapshot: { bankAccount, paymentNote: "Frozen note" }, paymentReference: "REF-42" } }} />)
+        for (const value of ["0040", "0440116243", "DK50 0040 0440 1162 43", "DABADKKK", "REF-42", "Frozen note"]) expect(html).toContain(value)
+        expect(html.includes(locale === "da-DK" ? "Betal nu" : "Pay now")).toBe(stripeEnabled)
+        expect(html).toContain(locale === "da-DK" ? "Betalingsreference" : "Payment reference")
+      })
+    }
+  }
+  it("omits unset IBAN/BIC and uses the invoice number as reference", () => {
+    const html = page("en-US", <PublicInvoicePaymentPage token="test" state={{ kind: "ready", paymentState: "unpaid", stripeEnabled: false, seller, invoice: { ...baseInvoice, sellerSnapshot: { bankAccount: { regNumber: "0040", accountNumber: "0440116243" } } } }} />)
+    expect(html).toContain("Payment reference")
+    expect(html).not.toContain("IBAN")
+    expect(html).not.toContain("BIC")
+  })
+  for (const paymentState of ["unpaid", "paid"] as const) {
+    it(`omits instructions for ${paymentState}`, () => {
+      const html = page("en-US", <PublicInvoicePaymentPage token="test" state={{ kind: "ready", paymentState, stripeEnabled: false, seller, invoice: { ...baseInvoice, sellerSnapshot: paymentState === "paid" ? { bankAccount } : null } }} />)
+      expect(html).not.toContain("Payment details")
+      expect(html).not.toContain("0440116243")
+    })
+  }
+})

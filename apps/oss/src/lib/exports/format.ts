@@ -1,8 +1,10 @@
-import { Prisma } from "../../../generated/prisma/client"
+// Formatting is also used by public-document serialization; Decimal needs no server client.
+import { Prisma } from "../../../generated/prisma/browser"
+import type { Prisma as PrismaTypes } from "../../../generated/prisma/client"
 
-export type DecimalLike = Prisma.Decimal | number | string
+export type DecimalLike = PrismaTypes.Decimal | number | string
 
-export function toDecimal(value: DecimalLike): Prisma.Decimal {
+export function toDecimal(value: DecimalLike): PrismaTypes.Decimal {
   return new Prisma.Decimal(value)
 }
 

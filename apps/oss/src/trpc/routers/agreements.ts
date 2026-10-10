@@ -1,3 +1,4 @@
+import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { createAgreementTemplate, updateAgreementTemplate, deleteAgreementTemplate } from "../../domain/commands/agreement-templates"
 import { agreementTemplateCreateInputSchema, agreementTemplateUpdateInputSchema } from "@quits/contracts/agreements"
 import { executeIssuanceCommand } from "../../application/issuance"
@@ -64,6 +65,7 @@ export const agreementsRouter = router({
   deleteTemplate: authorizedProcedure("agreement:manageTemplates").input(agreementIdInputSchema)
     .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(deleteAgreementTemplate, input, { actor: ctx.actor }))),
   capabilities: authorizedProcedure("agreement:read").query(({ ctx }) => ({
+    depositsEnabled: getRuntimeCapabilities().agreements.depositsEnabled,
     manageTemplates: actorCan(ctx.actor, "agreement:manageTemplates"),
     invoice: actorCan(ctx.actor, "invoice:create"),
     send: actorCan(ctx.actor, "agreement:send"),

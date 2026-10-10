@@ -1,3 +1,5 @@
+import type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
+export type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
 import type {
   RuntimeCapabilities,
   RuntimeCapabilityPatch,
@@ -7,6 +9,7 @@ import { getRuntimeEnv, getRuntimePlatform } from "./platform"
 
 export type RuntimeExtension = {
   id: string
+  resolveInvoiceIssuancePolicy?: (context: InvoiceIssuancePolicyContext) => InvoiceIssuancePolicy | undefined | Promise<InvoiceIssuancePolicy | undefined>
   resolveCapabilities?: (
     baseCapabilities: Readonly<RuntimeCapabilities>
   ) => RuntimeCapabilityPatch | void
@@ -25,6 +28,7 @@ function mergeCapabilities(
 
   return {
     documents: { ...base.documents, ...patch.documents },
+    agreements: { ...base.agreements, ...patch.agreements },
     aiInvoiceDraft: {
       ...base.aiInvoiceDraft,
       ...patch.aiInvoiceDraft,
@@ -72,6 +76,7 @@ function readDefaultCapabilities(
 
   return {
     documents: { artifactsRequired: true },
+    agreements: { depositsEnabled: readBooleanEnv(readProductEnv(env, "DEPOSITS_ENABLED"), true) },
     aiInvoiceDraft: {
       enabled: byok || managed || localAgent,
       byok,

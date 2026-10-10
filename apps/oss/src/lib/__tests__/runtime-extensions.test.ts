@@ -18,6 +18,20 @@ describe("runtime extension capabilities", () => {
     vi.resetModules()
   })
 
+  it("keeps deposits enabled by default and lets a runtime extension disable only deposits", async () => {
+    const mod = await import("../runtime/extensions")
+    const baseline = mod.getRuntimeCapabilities({})
+    expect(baseline.agreements.depositsEnabled).toBe(true)
+    expect(mod.getRuntimeCapabilities({ QUITS_DISTRIBUTION: "cloud" }).agreements.depositsEnabled).toBe(true)
+    expect(mod.getRuntimeCapabilities({ QUITS_DEPOSITS_ENABLED: "false" }).agreements.depositsEnabled).toBe(false)
+    expect(mod.getRuntimeCapabilities({ YAIP_DEPOSITS_ENABLED: "false" }).agreements.depositsEnabled).toBe(false)
+    expect(mod.getRuntimeCapabilities({ QUITS_DEPOSITS_ENABLED: "true", YAIP_DEPOSITS_ENABLED: "false" }).agreements.depositsEnabled).toBe(true)
+    mod.setRuntimeExtensions([{ id: "disable-deposits", resolveCapabilities: () => ({ agreements: { depositsEnabled: false } }) }])
+    expect(mod.getRuntimeCapabilities({})).toEqual({ ...baseline, agreements: { depositsEnabled: false } })
+    mod.setRuntimeExtensions([])
+    expect(mod.getRuntimeCapabilities({})).toEqual(baseline)
+  })
+
   it("defaults to BYOK AI enabled and managed disabled", async () => {
     const mod = await import("../runtime/extensions")
     const caps = mod.getRuntimeCapabilities()

@@ -3,22 +3,27 @@ import type { ComponentProps } from "react"
 import { cn } from "../../lib/utils"
 
 /**
- * The wordmark: `quits` in Schibsted Grotesk with the double rule under it. The rules are the
- * brand colour and draw to the width of the word. Sized by `font-size`, so give it a `text-*`
- * class; it reads as text for screen readers.
+ * The wordmark: `quits` in Geist 600, drawn as outlines from the brand kit, and the square full
+ * stop in Settled green. The letters take `currentColor`, so the mark follows the text colour in
+ * both themes. Sized by `font-size` (it is 1em tall), so give it a `text-*` class; screen readers
+ * read it as "quits". Keep it at 64px wide or more (22px font size).
  */
-export function QuitsWordmark({ className, ...props }: ComponentProps<"span">) {
+export function QuitsWordmark({ className, ...props }: ComponentProps<"svg">) {
   return (
-    <span
+    <svg
+      viewBox="0 -719 2414 869"
+      role="img"
+      aria-label="quits"
+      fill="currentColor"
+      className={cn("inline-block h-[1em] w-auto shrink-0 text-foreground", className)}
       {...props}
-      className={cn(
-        "relative inline-block pb-[0.3em] leading-none font-extrabold tracking-[-0.03em] text-foreground",
-        "before:absolute before:right-0 before:bottom-[0.16em] before:left-0 before:h-[0.085em] before:rounded-full before:bg-brand before:content-['']",
-        "after:absolute after:right-0 after:bottom-0 after:left-0 after:h-[0.085em] after:rounded-full after:bg-brand after:content-['']",
-        className
-      )}
     >
-      quits
-    </span>
+      <path d="M512 150H384V-113L396 -103Q386 -68 361.5 -42Q337 -16 302.5 -2Q268 12 228 12Q152 12 101.5 -26Q51 -64 25.5 -127Q0 -190 0 -267Q0 -344 25 -407Q50 -470 100.5 -508Q151 -546 227 -546Q288 -546 334 -515.5Q380 -485 399 -426L386 -420L389 -534H512ZM258 -92Q298 -92 326 -111.5Q354 -131 369 -170Q384 -209 384 -267Q384 -325 368.5 -364Q353 -403 325 -422.5Q297 -442 258 -442Q200 -442 166.5 -395.5Q133 -349 133 -267Q133 -185 166.5 -138.5Q200 -92 258 -92Z" />
+      <path d="M782 12Q701 12 653.5 -41.5Q606 -95 606 -190V-534H734V-222Q734 -155 756.5 -123.5Q779 -92 825 -92Q877 -92 905.5 -126.5Q934 -161 934 -227V-534H1062V0H945L942 -147L958 -142Q946 -66 901 -27Q856 12 782 12Z" />
+      <path d="M1160 0V-534H1288V0ZM1158 -605V-719H1291V-605Z" />
+      <path d="M1573 0Q1493 0 1455.5 -37Q1418 -74 1418 -153V-659H1546V-165Q1546 -128 1562 -113.5Q1578 -99 1612 -99H1687V0ZM1348 -435V-534H1687V-435Z" />
+      <path d="M1975 12Q1894 12 1840.5 -11Q1787 -34 1759 -75Q1731 -116 1727 -168L1858 -174Q1865 -132 1892 -109Q1919 -86 1976 -86Q2021 -86 2044.5 -100.5Q2068 -115 2068 -146Q2068 -164 2059.5 -176Q2051 -188 2026.5 -197Q2002 -206 1955 -215Q1874 -229 1828 -249.5Q1782 -270 1763.5 -301Q1745 -332 1745 -378Q1745 -453 1802.5 -499.5Q1860 -546 1971 -546Q2048 -546 2097.5 -521.5Q2147 -497 2172.5 -456.5Q2198 -416 2202 -366L2072 -360Q2071 -385 2060 -405Q2049 -425 2027 -436.5Q2005 -448 1969 -448Q1924 -448 1900.5 -430Q1877 -412 1877 -382Q1877 -361 1886.5 -347Q1896 -333 1919 -324.5Q1942 -316 1982 -309Q2064 -297 2112 -276Q2160 -255 2180.5 -223.5Q2201 -192 2201 -148Q2201 -71 2139.5 -29.5Q2078 12 1975 12Z" />
+      <path d="M2262 0V-152H2414V0Z" style={{ fill: "var(--settled)" }} />
+    </svg>
   )
 }

@@ -32,7 +32,13 @@ describe("runtime contracts", () => {
       },
     })
 
+    expect(parsed.agreements.depositsEnabled).toBe(true)
     expect(parsed.payments.provider).toBe("stripe")
+  })
+
+  it("accepts a deposit capability patch and rejects non-boolean values", () => {
+    expect(runtimeCapabilityPatchSchema.parse({ agreements: { depositsEnabled: false } })).toEqual({ agreements: { depositsEnabled: false } })
+    expect(runtimeCapabilityPatchSchema.safeParse({ agreements: { depositsEnabled: "false" } }).success).toBe(false)
   })
 
   it("rejects invalid payment providers in capability patches", () => {

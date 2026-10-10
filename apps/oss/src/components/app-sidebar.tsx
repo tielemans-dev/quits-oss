@@ -42,7 +42,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
         >
           <span
             aria-hidden="true"
-            className={cn('size-1.5 shrink-0 rounded-[2px] bg-current opacity-35', active && 'bg-brand opacity-100')}
+            className={cn('size-1.5 shrink-0 rounded-[2px] bg-current opacity-35', active && 'bg-settled opacity-100')}
           />
           <span className={cn('min-w-0', active && ACTIVE_RULE)}>{t(item.labelKey)}</span>
         </Link>
@@ -64,7 +64,7 @@ export function AppSidebar() {
   return (
     <>
       <SkipLink />
-      {/* The one light source: Kvit-blå bleeding from the top left behind the identity. It sits
+      {/* The one light source: a faint wash from the top left behind the identity. It sits
           behind the page canvas, so only bare canvas shows it. */}
       <div
         aria-hidden="true"

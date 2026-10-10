@@ -3,12 +3,15 @@ import type { ReactNode } from "react"
 import type { StatusTone } from "../../lib/status-tones"
 import { cn } from "../../lib/utils"
 
-/** A soft pill: the label (and dot) in the tone at full strength, on the tone at 14%; see styles.css. */
+/**
+ * A soft pill: the label (and dot) in the tone at full strength, on the tone at 14%; see styles.css.
+ * Success is settled, so it sits on the Settled tint with a square green dot: the full stop.
+ */
 const toneClassName: Record<StatusTone, string> = {
   neutral: "text-tone-neutral bg-tone-neutral/14",
   info: "text-tone-info bg-tone-info/14",
   progress: "text-tone-progress bg-tone-progress/14",
-  success: "text-tone-success bg-tone-success/14",
+  success: "text-tone-success bg-settled-soft",
   warning: "text-tone-warning bg-tone-warning/14",
   danger: "text-tone-danger bg-tone-danger/14",
   muted: "text-tone-muted bg-tone-muted/14",
@@ -47,7 +50,7 @@ export function StatusPill({
           aria-hidden
           className={cn(
             "size-1.5 shrink-0 rounded-full",
-            tone === "muted" ? "border-[1.5px] border-current" : "bg-current"
+            tone === "muted" ? "border-[1.5px] border-current" : tone === "success" ? "bg-settled rounded-[1px]" : "bg-current"
           )}
         />
       ) : null}

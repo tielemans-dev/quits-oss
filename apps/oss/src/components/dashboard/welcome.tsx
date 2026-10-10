@@ -31,13 +31,13 @@ function GhostDashboard() {
       aria-hidden="true"
       className="mx-auto w-full max-w-sm space-y-2.5 [mask-image:linear-gradient(to_bottom,black_55%,transparent)]"
     >
-      <div className="bg-brand/90 relative overflow-hidden rounded-xl p-4">
+      <div className="bg-hero relative overflow-hidden rounded-xl p-4">
         <span className="block h-2 w-16 rounded-full bg-white/35" />
         <span className="mt-4 block h-7 w-40 rounded-md bg-white/85" />
         <span className="mt-2 block h-1 w-40 rounded-full bg-white/50" />
         <span className="mt-0.5 block h-1 w-40 rounded-full bg-white/25" />
         <span className="mt-4 flex h-1.5 gap-0.5 rounded-full">
-          <span className="w-1/3 rounded-full bg-white" />
+          <span className="bg-settled w-1/3 rounded-full" />
           <span className="w-1/2 rounded-full bg-white/40" />
           <span className="w-1/6 rounded-full bg-[#ffbfb5]" />
         </span>
@@ -46,7 +46,7 @@ function GhostDashboard() {
         {[30, 55, 40, 70, 45, 85].map((height, index) => (
           <span
             key={index}
-            className={cn("flex-1 rounded-[3px]", index === 5 ? "bg-brand" : "bg-brand/25")}
+            className={cn("flex-1 rounded-[3px]", index === 5 ? "bg-settled" : "bg-brand/25")}
             style={{ height: `${height}%` }}
           />
         ))}

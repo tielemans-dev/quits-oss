@@ -1,3 +1,5 @@
+import { requireDepositsEnabled } from "../agreements/deposit-capability"
+import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
 import { Effect } from "effect"
 import { z } from "zod"
 import { Prisma } from "../../../generated/prisma/client"
@@ -310,6 +312,7 @@ export const recordAgreementAcceptance = defineCommand({
       const agreement = yield* lockedAgreement(input.id)
       yield* refuseWhileSending("agreement", agreement)
       yield* requireLiveOffer(agreement, command.now)
+      yield* requireDepositsEnabled([{ isDeposit: offerHasDeposits(readAgreementOfferSnapshot(agreement.offerSnapshot)) }])
       const accepted = yield* Effect.promise(() =>
         db.agreement.update({
           where: { id: agreement.id },
@@ -539,6 +542,8 @@ export const recordAgreementCustomerDecision = defineCommand({
       if (command.now >= new Date(payload.exp))
         return yield* new InvalidState({ code: "invalid", message: "This link is no longer valid" })
       const decision = input.decision
+      if (decision.decision === "accept")
+        yield* requireDepositsEnabled([{ isDeposit: offerHasDeposits(readAgreementOfferSnapshot(agreement.offerSnapshot)) }])
       const updated = yield* Effect.promise(() =>
         db.agreement.update({
           where: { id: agreement.id },

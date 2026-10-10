@@ -1,3 +1,5 @@
+import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
+import { requireInvoiceIssuancePolicy } from "./issuance-policy"
 import { frozenEinvoiceInput } from "./einvoice-input"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { documentVatSummary } from "./vat-summary"
@@ -78,16 +80,18 @@ export const prospectiveRenderInput = (input: {
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.documentId })
     // Checked before preparation and again under the commit locks. Empty drafts may still be previewed.
     if (!input.preview && !invoice.items.length) return yield* new InvalidState({ code: "empty_invoice", message: "Add at least one line before sending this invoice." })
+    if (!input.preview) yield* requireDepositInvoiceEnabled(invoice)
     if (!input.preview && invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
     // Payment details are always the ones valid now, also for agreement invoices, which keep the
     // agreed seller identity but are paid to the account in force when they are issued.
     const seller = withInvoicePaymentDetails(
-      invoice.agreementId ? { ...parseSellerSnapshot(invoice.sellerSnapshot), taxIds: sellerTaxIds } : buildSellerSnapshot(settings, sellerTaxIds),
+      (invoice.agreementId || invoice.quoteId) ? parseSellerSnapshot(invoice.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds),
       settings
     )
     const refreshedBuyer = buildBuyerSnapshot(invoice.contact)
-    const buyer = invoice.agreementId ? { ...parseBuyerSnapshot(invoice.buyerSnapshot), taxIds: refreshedBuyer.taxIds } : refreshedBuyer
+    const buyer = (invoice.agreementId || invoice.quoteId) ? parseBuyerSnapshot(invoice.buyerSnapshot) ?? {} : refreshedBuyer
     if (!input.preview && invoice.calculationVersion === "v2" && !invoice.supplyDate && !(input.commandInput as { supplyDate?: string }).supplyDate) return yield* new InvalidState({ code: "supply_date_required", message: "Confirm a supply date before issuing a v2 invoice" })
+    if (!input.preview) yield* requireInvoiceIssuancePolicy(organizationId, { ...invoice, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: (input.commandInput as { supplyDate?: string }).supplyDate ?? invoice.supplyDate })
     if (!input.preview) yield* requireVatIssuance({ ...invoice, sellerSnapshot: seller, buyerSnapshot: buyer })
     const money = input.preview ? undefined : yield* Effect.try({ try: () => invoiceMoneySnapshot(invoice, { ...(input.commandInput as { supplyDate?: string; exchangeRate?: string; rateDate?: string }), number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, seller: seller ?? buildSellerSnapshot(settings, sellerTaxIds), buyer }), catch: error => error instanceof InvalidState ? error : new InvalidState({ code: "money_snapshot_unavailable", message: "The document's currency or frozen money components cannot be valued" }) })
     // The reference a bank transfer is matched by: the invoice's own, else its number. A draft preview has no number yet.
@@ -104,13 +108,13 @@ export const prospectiveRenderInput = (input: {
       // Frozen with the rest of the payment details; absent without them, so the render input of an
       // organization without payment details is unchanged. A draft preview has no number yet.
       ...(seller.bankAccount || seller.paymentNote ? { paymentReference } : {}),
-      contact: { ...buyer, name: buyer?.name ?? invoice.contact.name },
-      // The lines state amounts on the document's own price basis, so prices excluding VAT add up to the subtotal.
-      pricesIncludeTax: invoice.pricesIncludeTax,
+      contact: { ...buyer, name: buyer?.name ?? "" },
+      // Full invoices state stored net unit prices regardless of the entry basis.
+      pricesIncludeTax: false,
       ...(supplyDate ? { supplyDate } : {}),
       ...(vatRows ? { vatRows } : {}),
       rounding,
-      items: invoice.items.map(line => { const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), line)
+      items: invoice.items.map(line => { const shown = lineAmounts("net", line)
         return { description: line.description, quantity: num(line.quantity), unitPrice: num(shown.unitPrice), total: num(shown.amount) } }),
     }
     return { ...base, kind: "invoice" as const, recipient: invoice.contact.email?.trim() || null,
@@ -120,7 +124,7 @@ export const prospectiveRenderInput = (input: {
         pricesIncludeTax: invoice.pricesIncludeTax, countryCode: invoice.countryCode,
         taxRegime: invoice.taxRegime, paymentReference: invoice.paymentReference,
         purchaseOrderRef: invoice.purchaseOrderRef },
-      pdf: { invoice: pdfInvoice, org: { ...org, ...(invoice.agreementId ? { companyName: seller?.companyName, companyEmail: seller?.companyEmail, companyAddress: seller?.companyAddress } : {}), locale: invoice.locale, timezone: invoice.timezone } } }
+      pdf: { invoice: pdfInvoice, org: { ...org, companyName: seller.companyName, companyEmail: seller.companyEmail, companyAddress: seller.companyAddress, taxIds: seller.taxIds, locale: invoice.locale, timezone: invoice.timezone } } }
   }
   if (input.kind === "creditNote") {
     const selection = creditNoteIssueInputSchema.parse(input.commandInput)

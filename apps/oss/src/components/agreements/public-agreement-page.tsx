@@ -1,3 +1,4 @@
+import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
 import type { z } from "zod"
 import { agreementStatusSchema } from "@quits/contracts/agreements"
 import { agreementOfferTotals } from "../../lib/agreements/offer-totals"
@@ -17,6 +18,7 @@ export function PublicAgreementPage({
   seller,
   document,
   scope,
+  depositsEnabled,
   token,
   name,
   onNameChange,
@@ -30,6 +32,7 @@ export function PublicAgreementPage({
 }: {
   seller: PublicSeller
   document: PublicAgreementDto
+  depositsEnabled: boolean
   scope: "read" | "decide"
   token: string
   name: string
@@ -44,6 +47,7 @@ export function PublicAgreementPage({
 }) {
   const { t, locale } = useI18n()
   const { snapshot } = document
+  const canAccept = depositsEnabled || !offerHasDeposits(snapshot)
   const v2 = "offerFormatVersion" in snapshot ? snapshot : null
   const totals = agreementOfferTotals(snapshot)
   // Money and dates follow the language the page is shown in, which is the offer's own locale.
@@ -147,28 +151,30 @@ export function PublicAgreementPage({
       </a>
       {scope === "decide" && document.status === "sent" && (
         <section className="grid gap-4 rounded-md border p-4">
-          <Label htmlFor="accepted-name">{t("agreements.signerName")}</Label>
-          <Input
-            id="accepted-name"
-            value={name}
-            onChange={(event) => onNameChange(event.target.value)}
-            maxLength={200}
-            required
-          />
-          <Label className="flex items-start gap-3">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(event) => onConfirmedChange(event.target.checked)}
+          {canAccept ? <>
+            <Label htmlFor="accepted-name">{t("agreements.signerName")}</Label>
+            <Input
+              id="accepted-name"
+              value={name}
+              onChange={(event) => onNameChange(event.target.value)}
+              maxLength={200}
+              required
             />
-            {t("agreements.confirmTerms")}
-          </Label>
-          <Button
-            disabled={busy || !name.trim() || !confirmed}
-            onClick={() => onDecision("accept")}
-          >
-            {t("agreements.accept")}
-          </Button>
+            <Label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(event) => onConfirmedChange(event.target.checked)}
+              />
+              {t("agreements.confirmTerms")}
+            </Label>
+            <Button
+              disabled={busy || !name.trim() || !confirmed}
+              onClick={() => onDecision("accept")}
+            >
+              {t("agreements.accept")}
+            </Button>
+          </> : <p>{t("agreements.depositAcceptanceDisabled")}</p>}
           <Label htmlFor="decline-reason">{t("agreements.declineReason")}</Label>
           <Textarea
             id="decline-reason"

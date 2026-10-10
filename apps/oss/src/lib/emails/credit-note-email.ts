@@ -1,3 +1,4 @@
+import { documentColors as C } from "../brand/document-colors"
 import {
   escapeHtml,
   formatMultilineHtml,
@@ -54,12 +55,12 @@ export function buildCreditNoteEmailContent({
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
   const timezone = org.timezone
-  const label = "font-size:12px;color:#6b7280;text-transform:uppercase;margin-bottom:2px;"
+  const label = `font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;`
 
   const html = layout(
     `
     <h2 style="margin:0 0 4px;font-size:22px;">${t("creditNotes.pdf.title", locale)} ${escapeHtml(creditNote.number)}</h2>
-    <p style="margin:0 0 24px;color:#6b7280;">${t("creditNotes.email.greeting", locale, {
+    <p style="margin:0 0 24px;color:${C.muted};">${t("creditNotes.email.greeting", locale, {
       name: escapeHtml(contactName),
       invoiceNumber: escapeHtml(invoice.number),
     })}</p>
@@ -68,21 +69,21 @@ export function buildCreditNoteEmailContent({
       <div>
         <div style="${label}">${t("pdf.from", locale)}</div>
         <div style="font-weight:500;">${escapeHtml(safeFromName)}</div>
-        ${safeCompanyEmail ? `<div style="color:#6b7280;font-size:14px;">${safeCompanyEmail}</div>` : ""}
+        ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div style="text-align:right;">
         <div style="${label}">${t("creditNotes.email.reference", locale)}</div>
         <div style="font-weight:500;">${escapeHtml(invoice.number)}</div>
-        <div style="color:#6b7280;font-size:14px;">${formatDate(invoice.issueDate, locale, timezone)}</div>
+        <div style="color:${C.muted};font-size:14px;">${formatDate(invoice.issueDate, locale, timezone)}</div>
       </div>
     </div>
 
     ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis)}
     ${totalsBlock(creditNote, locale)}
 
-    <div style="margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;">
+    <div style="margin-top:24px;border-top:1px solid ${C.hairline};padding-top:16px;">
       <div style="${label}">${t("creditNotes.email.reason", locale)}</div>
-      <p style="margin:0;color:#374151;font-size:14px;">${formatMultilineHtml(creditNote.reason)}</p>
+      <p style="margin:0;color:${C.body};font-size:14px;">${formatMultilineHtml(creditNote.reason)}</p>
     </div>
   `,
     locale

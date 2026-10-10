@@ -9,7 +9,7 @@
 /**
  * Hand-picked hues for OKLCH at the lightness `CustomerMark` sets. Chroma stays low so a long
  * list reads as a quiet range, not a rainbow, and the hues stay clear of the success green, the
- * danger red and the Kvit-blå violet, which carry meaning.
+ * danger red and the info blue, which carry meaning.
  */
 const palette = [
   { hue: 45, chroma: 0.085 }, // clay

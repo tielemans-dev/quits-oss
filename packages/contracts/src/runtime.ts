@@ -38,9 +38,12 @@ export const emailDeliveryCapabilitiesSchema = z
 
 export const documentsCapabilitiesSchema = z.object({ artifactsRequired: z.boolean() }).strict()
 
+export const agreementCapabilitiesSchema = z.object({ depositsEnabled: z.boolean() }).strict()
+
 export const runtimeCapabilitiesSchema = z
   .object({
     documents: documentsCapabilitiesSchema,
+    agreements: agreementCapabilitiesSchema.default({ depositsEnabled: true }),
     aiInvoiceDraft: aiInvoiceDraftCapabilitiesSchema,
     onboardingAi: onboardingAiCapabilitiesSchema,
     payments: paymentsCapabilitiesSchema,
@@ -51,6 +54,7 @@ export const runtimeCapabilitiesSchema = z
 export const runtimeCapabilityPatchSchema = z
   .object({
     documents: documentsCapabilitiesSchema.partial().optional(),
+    agreements: agreementCapabilitiesSchema.partial().optional(),
     aiInvoiceDraft: aiInvoiceDraftCapabilitiesSchema.partial().optional(),
     onboardingAi: onboardingAiCapabilitiesSchema.partial().optional(),
     payments: paymentsCapabilitiesSchema.partial().optional(),

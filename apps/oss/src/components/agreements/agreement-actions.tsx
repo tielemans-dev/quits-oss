@@ -1,3 +1,5 @@
+import { readAgreementOfferSnapshot } from "@quits/contracts/agreements"
+import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
 import { useState } from "react"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
@@ -69,6 +71,8 @@ export function AgreementActions({
   const [reason, setReason] = useState("")
   const [busy, setBusy] = useState(false)
   const disabled = busy || agreement.lastEmailAttemptOutcome === "sending"
+  const canAccept = capabilities.depositsEnabled ||
+    (agreement.offerSnapshot != null && !offerHasDeposits(readAgreementOfferSnapshot(agreement.offerSnapshot)))
   const id = agreement.id
   async function run(action: () => Promise<unknown>) {
     setBusy(true)
@@ -161,7 +165,7 @@ export function AgreementActions({
           </Button>
         </div>
       )}
-      {agreement.status === "sent" && capabilities.accept && (
+      {agreement.status === "sent" && capabilities.accept && canAccept && (
         <details className="grid gap-2">
           <summary className="cursor-pointer">{t("agreements.recordAcceptance")}</summary>
           <div className="grid gap-2 mt-3">

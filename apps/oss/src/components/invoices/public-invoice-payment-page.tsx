@@ -1,3 +1,9 @@
+import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
+import { buildPaymentDetailsBlock } from "../../lib/payment-details-block"
+import type { SellerSnapshot, BuyerSnapshot } from "@quits/contracts/documents"
+import type { VatRow } from "../../lib/documents/line-amounts"
+import { buildTotals } from "../../lib/documents/totals"
+import { buyerAddress, invoiceTaxIds } from "../../lib/documents/invoice-identity"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { PublicSellerHeader } from "../documents/public-seller-header"
@@ -17,6 +23,8 @@ type PublicInvoiceItem = {
   id: string
   description: string
   quantity: Decimalish
+  unitPriceNet?: Decimalish
+  lineNet?: Decimalish
   unitPriceGross: Decimalish
   lineGross: Decimalish
   sortOrder: number
@@ -28,6 +36,9 @@ type PublicInvoice = {
   status: string
   paymentStatus: string
   issueDate: Date | string
+  supplyDate?: string | null
+  vatRows?: VatRow[]
+  rounding?: string
   dueDate: Date | string
   totalGross: Decimalish
   /** Payments received so far. Defaults to nothing paid. */
@@ -41,17 +52,10 @@ type PublicInvoice = {
   currency: string
   /** The timezone the document's dates are shown in, as its PDF does. */
   timezone: string
+  paymentReference?: string | null
   notes: string | null
-  sellerSnapshot: {
-    companyName?: string | null
-    companyEmail?: string | null
-    companyAddress?: string | null
-  } | null
-  buyerSnapshot: {
-    name?: string | null
-    email?: string | null
-    company?: string | null
-  } | null
+  sellerSnapshot: SellerSnapshot | null
+  buyerSnapshot: BuyerSnapshot | null
   contact: PublicInvoiceContact
   items: PublicInvoiceItem[]
 }
@@ -108,11 +112,19 @@ function PublicInvoiceDocument({
   submitting: boolean
   error?: string | null
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { invoice, paymentState, seller } = state
+  const bankTransfer = hasInvoiceBankTransfer(invoice.sellerSnapshot)
+  const paymentDetails = buildPaymentDetailsBlock(
+    { bankAccount: invoice.sellerSnapshot?.bankAccount, note: invoice.sellerSnapshot?.paymentNote },
+    invoice.paymentReference?.trim() || invoice.number,
+    locale
+  )
   const format = useDocumentFormat(invoice.timezone)
   const money = (amount: number) => format.money(amount, invoice.currency)
   const total = toNumber(invoice.totalGross)
+  const totals = buildTotals({ basis: "net", subtotal: toNumber(invoice.subtotalNet), taxAmount: toNumber(invoice.totalTax), total,
+    vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale })
   const amountPaid = invoice.amountPaid ?? 0
   const amountCredited = invoice.amountCredited ?? 0
   const balanceDue = paymentState === "paid" ? 0 : (invoice.balanceDue ?? total)
@@ -130,8 +142,8 @@ function PublicInvoiceDocument({
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center gap-6 px-4 py-12">
       <PublicSellerHeader seller={seller} />
-      <div className="grid w-full gap-6 lg:grid-cols-[1.35fr_0.9fr]">
-        <Card>
+      <div className="grid w-full min-w-0 gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)]">
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>{invoice.number}</CardTitle>
             <CardDescription>
@@ -140,13 +152,24 @@ function PublicInvoiceDocument({
                 : t("public.invoice.label")}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6">
+          <CardContent className="grid min-w-0 gap-6">
             <div className="grid gap-4 sm:grid-cols-3">
               <InfoBlock label={t("public.document.status")} value={statusLabel} />
               <InfoBlock label={t("public.invoice.issued")} value={format.date(invoice.issueDate)} />
               <InfoBlock label={t("public.invoice.due")} value={format.calendarDate(invoice.dueDate)} />
+              {invoice.supplyDate ? <InfoBlock label={t("pdf.supplyDate")} value={format.calendarDate(invoice.supplyDate)} /> : null}
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><h2>{t("pdf.from")}</h2>
+                <p>{invoice.sellerSnapshot?.companyName}</p><p className="whitespace-pre-line">{invoice.sellerSnapshot?.companyAddress}</p>
+                {invoiceTaxIds(invoice.sellerSnapshot?.taxIds).map(id => <p key={id}>{id}</p>)}
+              </div>
+              <div><h2>{t("pdf.billTo")}</h2>
+                <p>{invoice.buyerSnapshot?.name}</p><p>{invoice.buyerSnapshot?.company}</p>
+                {buyerAddress(invoice.buyerSnapshot).map((line, index) => <p key={index}>{line}</p>)}
+              </div>
+            </div>
             <div className="grid gap-3">
               <h2 className="text-sm font-medium text-muted-foreground">
                 {t("public.invoice.summary")}
@@ -165,11 +188,14 @@ function PublicInvoiceDocument({
                         <p className="text-sm text-muted-foreground">
                           {t("public.document.lineQuantity", {
                             quantity: format.number(toNumber(item.quantity)),
-                            price: money(toNumber(item.unitPriceGross)),
+                            price: money(toNumber(item.unitPriceNet ?? item.unitPriceGross)),
                           })}
                         </p>
+                        {item.unitPriceNet !== undefined ? <p className="text-xs text-muted-foreground">{t("pdf.unitPriceNet")}</p> : null}
                       </div>
-                      <p className="font-medium">{money(toNumber(item.lineGross))}</p>
+                      <div className="text-right"><p className="font-medium">{money(toNumber(item.lineNet ?? item.lineGross))}</p>
+                        {item.lineNet !== undefined ? <p className="text-xs text-muted-foreground">{t("pdf.amountNet")}</p> : null}
+                      </div>
                     </div>
                   ))}
               </div>
@@ -177,7 +203,7 @@ function PublicInvoiceDocument({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>
               {credited
@@ -191,10 +217,12 @@ function PublicInvoiceDocument({
                 ? t("public.invoice.credited.description")
                 : paymentState === "paid"
                   ? t("public.invoice.paid.description")
-                  : t("public.invoice.pay.description")}
+                  : !state.stripeEnabled && bankTransfer
+                    ? t("public.invoice.pay.bankDescription")
+                    : t("public.invoice.pay.description")}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6">
+          <CardContent className="grid min-w-0 gap-6">
             {error ? (
               <p className="text-sm text-destructive" role="alert">
                 {error}
@@ -202,16 +230,16 @@ function PublicInvoiceDocument({
             ) : null}
 
             <div className="grid gap-4 rounded-lg border p-4">
-              <InfoBlock label={t("public.document.customer")} value={invoice.contact.name} />
+              <InfoBlock label={t("public.document.customer")} value={invoice.buyerSnapshot?.name ?? ""} />
               <InfoBlock
                 label={t("public.document.company")}
                 value={
-                  invoice.contact.company ??
                   invoice.buyerSnapshot?.company ??
                   t("public.document.notProvided")
                 }
               />
-              <InfoBlock label={t("public.document.total")} value={money(total)} />
+              {totals.lines.map((row, index) => <InfoBlock key={index} label={row.label} value={money(Number(row.amount))} />)}
+              <InfoBlock label={totals.total.label} value={money(total)} />
               {credited ? (
                 <InfoBlock label={t("public.invoice.credited")} value={money(amountCredited)} />
               ) : null}
@@ -226,16 +254,29 @@ function PublicInvoiceDocument({
               ) : null}
             </div>
 
+            {paymentState === "unpaid" && balanceDue > 0 && paymentDetails ? (
+              <section className="grid min-w-0 gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>
+                <h2 className="text-sm font-medium">{paymentDetails.title}</h2>
+                {paymentDetails.rows.map((row) => (
+                  <InfoBlock key={row.label} label={row.label} value={row.value} />
+                ))}
+                {paymentDetails.reference ? (
+                  <InfoBlock label={paymentDetails.reference.label} value={paymentDetails.reference.value} />
+                ) : null}
+                {paymentDetails.note ? <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">{paymentDetails.note}</p> : null}
+              </section>
+            ) : null}
+
             {paymentState === "unpaid" ? (
               state.stripeEnabled ? (
                 <Button type="button" disabled={submitting} onClick={onPay}>
                   {t("public.invoice.pay.action")}
                 </Button>
-              ) : (
+              ) : !bankTransfer ? (
                 <p className="text-sm text-muted-foreground">
                   {t("public.invoice.pay.unavailable")}
                 </p>
-              )
+              ) : null
             ) : null}
           </CardContent>
           <CardFooter className="justify-between text-sm text-muted-foreground">
@@ -250,11 +291,11 @@ function PublicInvoiceDocument({
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-1">
+    <div className="grid min-w-0 gap-1">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="text-sm font-medium">{value}</p>
+      <p className="[overflow-wrap:anywhere] text-sm font-medium">{value}</p>
     </div>
   )
 }

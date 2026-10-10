@@ -62,14 +62,14 @@ async function issued(options: { pricesIncludeTax: boolean; currency?: string; i
     expect(pdf.vatRows).toEqual([{ ratePercent: "25", net: "14500.00", tax: "3625.00", gross: "18125.00" }])
   })
 
-  it("freezes gross lines that add up to the total when prices include VAT", async () => {
+  it("freezes stored net lines that add up to the subtotal when entry prices include VAT", async () => {
     const { invoice, pdf } = await issued({ pricesIncludeTax: true, items: [
       { description: "A", quantity: "3", unitPrice: "33.33" },
       { description: "B", quantity: "1", unitPrice: "0.05" },
       { description: "C", quantity: "7", unitPrice: "12.49" },
     ] })
-    expect(pdf.pricesIncludeTax).toBe(true)
-    expect(sum(pdf.items.map((line) => line.total))).toBe(invoice.totalGross.toFixed(2))
+    expect(pdf.pricesIncludeTax).toBe(false)
+    expect(sum(pdf.items.map((line) => line.total))).toBe(invoice.subtotalNet.toFixed(2))
   })
 
   it("groups the VAT by rate and keeps the lines adding up", async () => {
@@ -171,9 +171,9 @@ async function issued(options: { pricesIncludeTax: boolean; currency?: string; i
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })
     const html = composeInvoiceEmail({ invoice: { ...full, number: full.number! }, settings, to: "customer@example.test", publicPaymentUrl: null }).message.html ?? ""
     const text = html.replace(/<[^>]+>/g, " ").replace(/[\u00a0\u202f]/g, " ").replace(/\s+/g, " ")
-    expect(text).toContain("Subtotal excl. tax")
+    expect(text).toContain("Subtotal DKK 8.10")
     expect(text).toContain("Rounding -DKK 0.01")
-    expect(text).toContain("Total incl. tax")
+    expect(text).toContain("Total DKK 10.12")
   })
 })
 

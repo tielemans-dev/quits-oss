@@ -1,3 +1,9 @@
+import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
+import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
+import { resolveCountryProfile } from "../../lib/compliance"
+import { requireInvoiceIssuancePolicy } from "../documents/issuance-policy"
+import { parseSellerSnapshot, parseBuyerSnapshot } from "@quits/contracts/documents"
+import type { RenderInput } from "../documents/render-input"
 import { formatIsoDate } from "../../lib/exports/format"
 import { invoiceDeliverableCommands } from "./invoices-from-deliverables"
 import { updateLinkedInvoice } from "../agreements/linked-invoice"
@@ -308,6 +314,7 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
   Effect.gen(function* () {
     yield* lockDocument("invoice", id)
     const found = yield* findInvoice(id)
+    if (action === "send") yield* requireDepositInvoiceEnabled(found)
     if (action === "send" && found.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
     // Lock the contact before reading the address, so the approved recipient cannot change.
     const invoice = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
@@ -367,10 +374,16 @@ export const sendInvoice = defineCommand({
       if (found.status !== "draft") {
         return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
       }
+      yield* requireDepositInvoiceEnabled(found)
       yield* refuseWhileSending("invoice", found)
-      // The number is taken here, in the issuing transaction: if any later check fails, the
-      // transaction rolls back and the number goes back with it.
-      const invoice = { ...found, number: yield* numberForIssuance("invoice", found) }
+      const { settings, sellerTaxIds } = yield* loadDocumentContext
+      const seller = (found.agreementId || found.quoteId) ? parseSellerSnapshot(found.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds)
+      const buyer = (found.agreementId || found.quoteId) ? parseBuyerSnapshot(found.buyerSnapshot) : buildBuyerSnapshot(found.contact)
+      const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate }
+      yield* requireInvoiceIssuancePolicy(organizationId, effective)
+      yield* requireVatIssuance(effective)
+      // Validate the effective identity before taking a number or queuing any side effects.
+      const invoice = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, number: yield* numberForIssuance("invoice", found) }
       if (invoice.disputed && !input.acknowledgeDisputed)
         return yield* new InvalidState({ code: "disputed_deliverables", message: "The customer requested changes. Explicitly acknowledge the disputed draft before sending." })
       if (invoice.disputed) command.emit({
@@ -379,17 +392,23 @@ export const sendInvoice = defineCommand({
       })
       if (invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet. You can explicitly invoice the schedule as a sale instead." })
       if (invoice.agreementId && !command.issuance) return yield* new InvalidState({ code: "issuance_required", message: "Linked invoices must issue through issueDocument" })
-      yield* requireVatIssuance({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact) })
-
-      const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       const emailContext = resolveInvoiceEmailContext(settings)
-      const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(invoice))
+      const compliance = assessCompliance(resolveCountryProfile(invoice.countryCode), (seller.taxIds ?? []).map(id => ({ scheme: id.scheme ?? "", value: id.value, countryCode: id.countryCode ?? null })), impliedTaxRate(invoice))
       if (compliance.blocking.length > 0) {
         return yield* new InvalidState({
           message: `Compliance check failed: ${compliance.blocking.map((issue) => issue.code).join(", ")}`,
           code: "compliance_failed",
         })
       }
+      // The candidate contains the account frozen for this issuance. The draft snapshot predates it.
+      const candidate = command.issuance
+        ? yield* Effect.promise(() => db.issuanceCandidate.findUniqueOrThrow({ where: { id: command.issuance!.candidateId } }))
+        : null
+      const frozenInput = candidate?.renderInput as unknown as RenderInput | undefined
+      const bankTransfer = frozenInput?.kind === "invoice"
+        ? hasInvoiceBankTransfer({ bankAccount: frozenInput.pdf.invoice.bankAccount })
+        : false
+      const paymentLinkAvailable = emailContext.stripeConfigured || bankTransfer
       const recipient = yield* requireRecipientEmail(invoice.contact)
 
       if (!emailContext.emailDelivery.available) {
@@ -408,7 +427,7 @@ export const sendInvoice = defineCommand({
               number: invoice.number,
               status: "sent",
               issueDate: command.issuance?.issuedAt ?? now,
-              publicPaymentIssuedAt: emailContext.stripeConfigured ? (invoice.publicPaymentIssuedAt ?? now) : null,
+              publicPaymentIssuedAt: paymentLinkAvailable ? (invoice.publicPaymentIssuedAt ?? now) : null,
               ...createEmailDeliveryAttempt({
                 at: now,
                 outcome: "skipped",
@@ -429,7 +448,7 @@ export const sendInvoice = defineCommand({
       }
 
       // The email carries the issue date and pay link the invoice will have once it is sent.
-      const publicPaymentIssuedAt = emailContext.stripeConfigured ? (invoice.publicPaymentIssuedAt ?? now) : null
+      const publicPaymentIssuedAt = paymentLinkAvailable ? (invoice.publicPaymentIssuedAt ?? now) : null
       const publicPaymentUrl = publicPaymentIssuedAt
         ? getPublicInvoicePaymentUrl({
             id: invoice.id,
@@ -439,8 +458,9 @@ export const sendInvoice = defineCommand({
             publicPaymentKeyVersion: invoice.publicPaymentKeyVersion,
           })
         : null
+      const money = frozenInput ? (frozenInput.snapshot as { money?: unknown }).money : null
       const email = composeInvoiceEmail({
-        invoice: { ...invoice, issueDate: command.issuance?.issuedAt ?? now },
+        invoice: { ...invoice, issuanceSnapshot: money, supplyDate: input.supplyDate ? new Date(input.supplyDate) : invoice.supplyDate, issueDate: command.issuance?.issuedAt ?? now },
         settings,
         to: recipient,
         publicPaymentUrl,
@@ -491,7 +511,7 @@ export const resendInvoiceEmail = defineCommand({
       const { settings } = yield* loadDocumentContext
       const emailContext = resolveInvoiceEmailContext(settings)
       const publicPaymentUrl =
-        emailContext.stripeConfigured && invoice.publicPaymentIssuedAt
+        (emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot)) && invoice.publicPaymentIssuedAt
           ? getPublicInvoicePaymentUrl(invoice)
           : null
       const recipient = yield* requireRecipientEmail(invoice.contact)
