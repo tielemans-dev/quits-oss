@@ -167,6 +167,7 @@ export const daAgreementsMessages = {
   "agreements.email.reviewOffer": "Gennemgå aftalen",
   "agreements.email.readAcceptedOffer": "Læs den accepterede aftale",
   "agreements.email.downloadPdf": "Download PDF",
+  "agreements.email.linkFallback": "Hvis knappen ikke virker, kan du åbne dette link:",
   "agreements.disputedSendRefused": "Bekræft kundens ønskede ændringer, før du sender denne omtvistede kladde.",
   "agreements.manageTemplates": "Administrer skabeloner",
   "agreements.newTemplate": "Ny skabelon",

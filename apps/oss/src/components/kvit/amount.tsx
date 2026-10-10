@@ -28,7 +28,7 @@ function clamp01(value: number) {
 }
 
 /**
- * Money in Schibsted Grotesk with the fraction raised and small (`48.250,⁰⁰ kr.`), optionally on
+ * Money in Geist with the fraction raised and small (`48.250,⁰⁰ kr.`), optionally on
  * the Quits signature: a rule under the figure. One rule asks for the money, a second one says it
  * has arrived. The second rule draws left to right when `rule` goes from single to double, and
  * only as far as `paidFraction` for a part payment; with reduced motion it just appears.
@@ -61,7 +61,7 @@ export function Amount({
   paidFraction?: number
   /** A translated status for screen readers ("Paid"), read after the amount. */
   statusLabel?: string
-  /** settled draws the second rule in the success tone; current keeps it the text colour (on brand). */
+  /** settled draws the second rule in Settled green; current keeps it the text colour. */
   ruleTone?: "settled" | "current"
   /** The source's own precision (a three-decimal currency, an unknown one); see `AmountPrecision`. */
   precision?: AmountPrecision
@@ -99,7 +99,7 @@ export function Amount({
             </span>
           )
         }
-        // Tabular digits only on digit runs: Schibsted's tnum would widen "." and "," to a digit.
+        // Tabular digits only on digit runs, so "." and "," keep their own width.
         if (part.type === "integer") {
           return (
             <span key={index} className="tabular-nums lining-nums">
@@ -133,7 +133,7 @@ export function Amount({
             y1={spec.second}
             y2={spec.second}
             pathLength={1}
-            stroke={ruleTone === "settled" ? "var(--tone-success)" : "currentColor"}
+            stroke={ruleTone === "settled" ? "var(--settled-rule)" : "currentColor"}
             strokeWidth={spec.stroke}
             strokeDasharray={`${drawn} 1`}
             strokeDashoffset={hidden ? drawn : 0}

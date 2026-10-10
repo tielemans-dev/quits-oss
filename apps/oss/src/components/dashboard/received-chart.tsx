@@ -11,7 +11,7 @@ import { streakVisible, type ChartModel } from "./summary-model"
 
 /**
  * Twelve months of received money in the base currency, as plain bars: no axis, no gridlines, the
- * current month in Kvit-blå and the rest in a tint of it. A bar is a button, so hovering or
+ * current month in Settled green (money that has arrived) and the rest in a tint of ink. A bar is a button, so hovering or
  * tabbing to one reads its month and amount in the line above the chart. The streak sits under it
  * as one quiet line, since it is the same story: money arriving on time.
  */
@@ -84,7 +84,7 @@ export function ReceivedChart({ chart, streak }: { chart: ChartModel; streak: nu
                       height === 0
                         ? "bg-foreground/10 h-0.5"
                         : month.isCurrent
-                          ? "bg-brand"
+                          ? "bg-settled"
                           : "bg-brand/25 group-hover:bg-brand/45 group-focus-visible:bg-brand/45"
                     )}
                     style={height === 0 ? undefined : { height: `${height}%` }}

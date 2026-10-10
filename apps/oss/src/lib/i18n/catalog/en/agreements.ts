@@ -169,6 +169,7 @@ export const enAgreementsMessages = {
   "agreements.email.reviewOffer": "Review agreement",
   "agreements.email.readAcceptedOffer": "Read accepted agreement",
   "agreements.email.downloadPdf": "Download PDF",
+  "agreements.email.linkFallback": "If the button does not work, open this link:",
   "agreements.disputedSendRefused": "Acknowledge the customer's requested changes before sending this disputed draft.",
   "agreements.manageTemplates": "Manage templates",
   "agreements.newTemplate": "New template",

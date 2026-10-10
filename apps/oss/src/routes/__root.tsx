@@ -10,7 +10,7 @@ import { shouldRedirectToSetup } from '../lib/setup-guard'
 import { themeInitScript } from '../lib/theme'
 
 import appCss from '../styles.css?url'
-import schibstedFontUrl from '@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2?url'
+import geistFontUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url'
 import geistMonoFontUrl from '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url'
 
 function NotFound() {
@@ -58,7 +58,7 @@ export const Route = createRootRoute({
     links: [
       // The latin subsets that the @font-face rules in styles.css load first, so text does not
       // swap fonts after first paint. Fonts need `crossOrigin` even when same-origin.
-      ...[schibstedFontUrl, geistMonoFontUrl].map((href) => ({
+      ...[geistFontUrl, geistMonoFontUrl].map((href) => ({
         rel: 'preload',
         as: 'font',
         type: 'font/woff2',
