@@ -86,6 +86,11 @@ describe("printableVatRows", () => {
     expect(printableVatRows([row("25", "3625.00")])).toEqual([row("25", "3625.00")])
   })
 
+  it("keeps a nonzero rate when its tax rounds to zero", () => {
+    const rows = [row("25", "0.00")]
+    expect(printableVatRows(rows)).toEqual(rows)
+  })
+
   it("keeps the zero-rated row when it is mixed with a taxed one", () => {
     const rows = [row("0", "0.00"), row("25", "10.00")]
     expect(printableVatRows(rows)).toEqual(rows)

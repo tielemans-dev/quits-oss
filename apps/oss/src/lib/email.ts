@@ -1,4 +1,6 @@
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
+import { buyerAddress, invoiceTaxIds } from "./documents/invoice-identity"
+import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
 import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
@@ -257,6 +259,8 @@ export type SendInvoiceEmailParams = {
   invoice: {
     number: string
     issueDate: Date | string
+    supplyDate?: string | null
+    buyer?: BuyerSnapshot | null
     dueDate: Date | string
     subtotal: number
     taxAmount: number
@@ -273,6 +277,8 @@ export type SendInvoiceEmailParams = {
   org: {
     companyName?: string | null
     companyEmail?: string | null
+    companyAddress?: string | null
+    taxIds?: DocumentTaxId[]
     locale?: string | null
     timezone?: string | null
   }
@@ -302,15 +308,20 @@ export function buildInvoiceEmailContent({
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <div>
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
-        <div style="font-weight:500;">${escapeHtml(safeFromName)}</div>
+        <div style="font-weight:500;">${escapeHtml(org.companyName ?? "")}</div>
+        ${org.companyAddress ? `<div>${formatMultilineHtml(org.companyAddress)}</div>` : ""}
+        ${invoiceTaxIds(org.taxIds).map(id => `<div>${escapeHtml(id)}</div>`).join("")}
         ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div style="text-align:right;">
+        <div>${t("pdf.issueDate", locale)}: ${formatDate(invoice.issueDate, locale, org.timezone)}</div>
+        ${invoice.supplyDate ? `<div>${t("pdf.supplyDate", locale)}: ${formatDate(invoice.supplyDate, locale, "UTC")}</div>` : ""}
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.dueDate", locale)}</div>
         <div style="font-weight:500;">${formatDate(invoice.dueDate, locale, "UTC")}</div>
       </div>
     </div>
 
+    ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[invoice.buyer.company, ...buyerAddress(invoice.buyer)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
     ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis)}
     ${totalsBlock(invoice, locale)}
 

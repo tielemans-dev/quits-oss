@@ -1,8 +1,10 @@
+import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
+import { vatRowsByRate } from "../../domain/documents/frozen-vat-groups"
+import { payableRoundingOf } from "../../domain/documents/vat-summary"
 import { createServerFn } from "@tanstack/react-start"
 import {
   parseBuyerSnapshot,
   parseSellerSnapshot,
-  type SellerSnapshot,
 } from "@quits/contracts/documents"
 import {
   publicInvoiceCheckoutResultSchema,
@@ -23,17 +25,6 @@ function toDateString(value: Date | string) {
   return value instanceof Date ? value.toISOString() : value
 }
 
-/**
- * The seller details a customer sees on the public payment page. The frozen bank account and
- * payment note are left out until that page shows them on purpose: the page is reachable by
- * anyone holding the link, so what it serialises must be decided, not inherited from the snapshot.
- */
-function publicSellerSnapshot(seller: SellerSnapshot | null): Omit<SellerSnapshot, "bankAccount" | "paymentNote"> | null {
-  if (!seller) return null
-  const { bankAccount: _bankAccount, paymentNote: _paymentNote, ...publicSeller } = seller
-  return publicSeller
-}
-
 /** `token` is the link the page was opened with: an uploaded logo is served from its logo route. */
 export function serializePublicInvoiceSession(session: {
   invoice: {
@@ -42,6 +33,8 @@ export function serializePublicInvoiceSession(session: {
     status: string
     paymentStatus: string
     issueDate: Date | string
+    supplyDate?: Date | string | null
+    issuanceSnapshot?: unknown
     dueDate: Date | string
     totalGross: Decimalish
     amountPaid: Decimalish
@@ -73,6 +66,8 @@ export function serializePublicInvoiceSession(session: {
       id: string
       description: string
       quantity: Decimalish
+      unitPriceNet?: Decimalish
+      lineNet?: Decimalish
       unitPriceGross: Decimalish
       lineGross: Decimalish
       sortOrder: number
@@ -90,7 +85,8 @@ export function serializePublicInvoiceSession(session: {
       ? 0
       : Math.max(Math.round((totalGross - amountCredited - amountPaid) * 100) / 100, 0)
 
-  const sellerSnapshot = parseSellerSnapshot(invoice.sellerSnapshot)
+  const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
+  const sellerSnapshot = frozen?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot)
   const presentation = resolvePublicPresentation({
     document: { locale: invoice.locale, timezone: invoice.timezone, sellerSnapshot },
     settings: invoice.organization?.settings,
@@ -100,7 +96,7 @@ export function serializePublicInvoiceSession(session: {
   return {
     /** The language the page is shown in. */
     locale: presentation.locale,
-    seller: presentation.seller,
+    seller: { ...presentation.seller, name: sellerSnapshot?.companyName ?? null },
     paymentState: session.paymentState,
     stripeEnabled: session.stripeEnabled,
     invoice: {
@@ -111,6 +107,9 @@ export function serializePublicInvoiceSession(session: {
       paymentStatus: invoice.paymentStatus,
       issueDate: toDateString(invoice.issueDate),
       dueDate: toDateString(invoice.dueDate),
+      supplyDate: frozen ? frozen.supplyDate : (invoice.supplyDate ? toDateString(invoice.supplyDate).slice(0, 10) : null),
+      vatRows: frozen ? vatRowsByRate(frozen.vatGroups, frozen.currency) : undefined,
+      rounding: payableRoundingOf({ currency: invoice.currency, subtotalNet: toNumber(invoice.subtotalNet), totalTax: toNumber(invoice.totalTax), totalGross }),
       totalGross,
       amountPaid,
       amountCredited,
@@ -120,13 +119,15 @@ export function serializePublicInvoiceSession(session: {
       currency: invoice.currency,
       timezone: presentation.timezone,
       notes: invoice.notes,
-      sellerSnapshot: publicSellerSnapshot(sellerSnapshot),
-      buyerSnapshot: parseBuyerSnapshot(invoice.buyerSnapshot),
+      sellerSnapshot,
+      buyerSnapshot: frozen?.buyer ?? parseBuyerSnapshot(invoice.buyerSnapshot),
       contact: invoice.contact,
       items: invoice.items.map((item) => ({
         id: item.id,
         description: item.description,
         quantity: toNumber(item.quantity),
+        ...(item.unitPriceNet !== undefined ? { unitPriceNet: toNumber(item.unitPriceNet) } : {}),
+        ...(item.lineNet !== undefined ? { lineNet: toNumber(item.lineNet) } : {}),
         unitPriceGross: toNumber(item.unitPriceGross),
         lineGross: toNumber(item.lineGross),
         sortOrder: item.sortOrder,

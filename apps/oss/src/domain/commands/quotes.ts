@@ -71,7 +71,7 @@ const findQuote = (id: string) =>
     const quote = yield* Effect.promise(() =>
       db.quote.findFirst({
         where: { id, organizationId },
-        include: { contact: true, items: { orderBy: { sortOrder: "asc" } } },
+        include: { contact: { include: { taxIds: true } }, items: { orderBy: { sortOrder: "asc" } } },
       })
     )
     if (!quote) {
@@ -220,7 +220,7 @@ export const updateQuoteDraft = defineCommand({
         db.quote.update({
           where: { id: existing.id },
           data,
-          include: { contact: true, items: { orderBy: { sortOrder: "asc" } } },
+          include: { contact: { include: { taxIds: true } }, items: { orderBy: { sortOrder: "asc" } } },
         })
       )
 
@@ -350,6 +350,9 @@ export const sendQuote = defineCommand({
         publicAccessIssuedAt,
         publicAccessKeyVersion: quote.publicAccessKeyVersion,
       })
+      // Accepted quotes later supply invoice identities. Freeze the identities actually sent,
+      // including tax IDs added after the draft was created.
+      const identities = { sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds), buyerSnapshot: buildBuyerSnapshot(quote.contact) }
       const emailContext = resolveQuoteEmailContext(settings)
       const recipient = yield* requireRecipientEmail(quote.contact)
 
@@ -366,6 +369,7 @@ export const sendQuote = defineCommand({
           db.quote.update({
             where: { id: quote.id },
             data: {
+              ...identities,
               number: quote.number,
               status: "sent",
               issueDate: now,
@@ -403,7 +407,7 @@ export const sendQuote = defineCommand({
         message: email.message,
         idempotencyKey: `quote-send:${quote.id}:${now.getTime()}`,
         publicLinkIssuedAt: publicAccessIssuedAt,
-        markSending: (data) => db.quote.update({ where: { id: quote.id }, data: { ...data, number: quote.number } }),
+        markSending: (data) => db.quote.update({ where: { id: quote.id }, data: { ...data, ...identities, number: quote.number } }),
       })
       quoteLogger.info("quote.email.queued", {
         organizationId,

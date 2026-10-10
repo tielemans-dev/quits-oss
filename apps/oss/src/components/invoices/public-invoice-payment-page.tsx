@@ -1,3 +1,7 @@
+import type { SellerSnapshot, BuyerSnapshot } from "@quits/contracts/documents"
+import type { VatRow } from "../../lib/documents/line-amounts"
+import { buildTotals } from "../../lib/documents/totals"
+import { buyerAddress, invoiceTaxIds } from "../../lib/documents/invoice-identity"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { PublicSellerHeader } from "../documents/public-seller-header"
@@ -17,6 +21,8 @@ type PublicInvoiceItem = {
   id: string
   description: string
   quantity: Decimalish
+  unitPriceNet?: Decimalish
+  lineNet?: Decimalish
   unitPriceGross: Decimalish
   lineGross: Decimalish
   sortOrder: number
@@ -28,6 +34,9 @@ type PublicInvoice = {
   status: string
   paymentStatus: string
   issueDate: Date | string
+  supplyDate?: string | null
+  vatRows?: VatRow[]
+  rounding?: string
   dueDate: Date | string
   totalGross: Decimalish
   /** Payments received so far. Defaults to nothing paid. */
@@ -42,16 +51,8 @@ type PublicInvoice = {
   /** The timezone the document's dates are shown in, as its PDF does. */
   timezone: string
   notes: string | null
-  sellerSnapshot: {
-    companyName?: string | null
-    companyEmail?: string | null
-    companyAddress?: string | null
-  } | null
-  buyerSnapshot: {
-    name?: string | null
-    email?: string | null
-    company?: string | null
-  } | null
+  sellerSnapshot: SellerSnapshot | null
+  buyerSnapshot: BuyerSnapshot | null
   contact: PublicInvoiceContact
   items: PublicInvoiceItem[]
 }
@@ -108,11 +109,13 @@ function PublicInvoiceDocument({
   submitting: boolean
   error?: string | null
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { invoice, paymentState, seller } = state
   const format = useDocumentFormat(invoice.timezone)
   const money = (amount: number) => format.money(amount, invoice.currency)
   const total = toNumber(invoice.totalGross)
+  const totals = buildTotals({ basis: "net", subtotal: toNumber(invoice.subtotalNet), taxAmount: toNumber(invoice.totalTax), total,
+    vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale })
   const amountPaid = invoice.amountPaid ?? 0
   const amountCredited = invoice.amountCredited ?? 0
   const balanceDue = paymentState === "paid" ? 0 : (invoice.balanceDue ?? total)
@@ -145,8 +148,19 @@ function PublicInvoiceDocument({
               <InfoBlock label={t("public.document.status")} value={statusLabel} />
               <InfoBlock label={t("public.invoice.issued")} value={format.date(invoice.issueDate)} />
               <InfoBlock label={t("public.invoice.due")} value={format.calendarDate(invoice.dueDate)} />
+              {invoice.supplyDate ? <InfoBlock label={t("pdf.supplyDate")} value={format.calendarDate(invoice.supplyDate)} /> : null}
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><h2>{t("pdf.from")}</h2>
+                <p>{invoice.sellerSnapshot?.companyName}</p><p className="whitespace-pre-line">{invoice.sellerSnapshot?.companyAddress}</p>
+                {invoiceTaxIds(invoice.sellerSnapshot?.taxIds).map(id => <p key={id}>{id}</p>)}
+              </div>
+              <div><h2>{t("pdf.billTo")}</h2>
+                <p>{invoice.buyerSnapshot?.name}</p><p>{invoice.buyerSnapshot?.company}</p>
+                {buyerAddress(invoice.buyerSnapshot).map((line, index) => <p key={index}>{line}</p>)}
+              </div>
+            </div>
             <div className="grid gap-3">
               <h2 className="text-sm font-medium text-muted-foreground">
                 {t("public.invoice.summary")}
@@ -165,11 +179,14 @@ function PublicInvoiceDocument({
                         <p className="text-sm text-muted-foreground">
                           {t("public.document.lineQuantity", {
                             quantity: format.number(toNumber(item.quantity)),
-                            price: money(toNumber(item.unitPriceGross)),
+                            price: money(toNumber(item.unitPriceNet ?? item.unitPriceGross)),
                           })}
                         </p>
+                        {item.unitPriceNet !== undefined ? <p className="text-xs text-muted-foreground">{t("pdf.unitPriceNet")}</p> : null}
                       </div>
-                      <p className="font-medium">{money(toNumber(item.lineGross))}</p>
+                      <div className="text-right"><p className="font-medium">{money(toNumber(item.lineNet ?? item.lineGross))}</p>
+                        {item.lineNet !== undefined ? <p className="text-xs text-muted-foreground">{t("pdf.amountNet")}</p> : null}
+                      </div>
                     </div>
                   ))}
               </div>
@@ -202,16 +219,16 @@ function PublicInvoiceDocument({
             ) : null}
 
             <div className="grid gap-4 rounded-lg border p-4">
-              <InfoBlock label={t("public.document.customer")} value={invoice.contact.name} />
+              <InfoBlock label={t("public.document.customer")} value={invoice.buyerSnapshot?.name ?? ""} />
               <InfoBlock
                 label={t("public.document.company")}
                 value={
-                  invoice.contact.company ??
                   invoice.buyerSnapshot?.company ??
                   t("public.document.notProvided")
                 }
               />
-              <InfoBlock label={t("public.document.total")} value={money(total)} />
+              {totals.lines.map((row, index) => <InfoBlock key={index} label={row.label} value={money(Number(row.amount))} />)}
+              <InfoBlock label={totals.total.label} value={money(total)} />
               {credited ? (
                 <InfoBlock label={t("public.invoice.credited")} value={money(amountCredited)} />
               ) : null}

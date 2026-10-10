@@ -1,3 +1,6 @@
+import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
+import { issuedInvoiceSnapshot } from "./issued-invoice"
+import { vatRowsByRate } from "./frozen-vat-groups"
 import { Effect } from "effect"
 import { z } from "zod"
 import {
@@ -10,7 +13,7 @@ import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { InvalidState } from "../errors"
-import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
+import { lineAmounts } from "../../lib/documents/line-amounts"
 import { documentVatSummary } from "./vat-summary"
 
 type Decimalish = { toNumber(): number }
@@ -31,6 +34,10 @@ export type InvoiceForEmail = {
   /** Copied from the organization when the draft was created. Required so no caller can drop them. */
   locale: string
   timezone: string
+  sellerSnapshot?: unknown
+  buyerSnapshot?: unknown
+  issuanceSnapshot?: unknown
+  supplyDate?: Date | null
   issueDate: Date
   dueDate: Date
   currency: string
@@ -115,20 +122,26 @@ export function composeInvoiceEmail(input: {
 }) {
   const { envelope } = resolveInvoiceEmailContext(input.settings)
   const { invoice } = input
-  const vatSummary = documentVatSummary(invoice)
+  const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
+  const seller = frozen?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot)
+  const buyer = frozen?.buyer ?? parseBuyerSnapshot(invoice.buyerSnapshot)
+  const vatSummary = documentVatSummary(invoice, frozen ? vatRowsByRate(frozen.vatGroups, frozen.currency) : undefined)
   const content = buildInvoiceEmailContent({
     fromName: envelope.fromName,
     fromEmail: envelope.fromEmail,
     replyTo: envelope.replyTo,
     invoice: {
       ...invoice,
-      subtotal: invoice.subtotalNet.toNumber(),
-      taxAmount: invoice.totalTax.toNumber(),
-      total: invoice.totalGross.toNumber(),
-      priceBasis: priceBasis(invoice.pricesIncludeTax),
+      subtotal: frozen ? Number(frozen.totals.net) : invoice.subtotalNet.toNumber(),
+      taxAmount: frozen ? Number(frozen.totals.tax) : invoice.totalTax.toNumber(),
+      total: frozen ? Number(frozen.totals.gross) : invoice.totalGross.toNumber(),
+      issueDate: frozen?.occurredAt ?? invoice.issueDate,
+      supplyDate: frozen ? frozen.supplyDate : invoice.supplyDate?.toISOString().slice(0, 10),
+      buyer,
+      priceBasis: "net",
       ...vatSummary,
       items: invoice.items.map((item) => {
-        const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), item)
+        const shown = lineAmounts("net", item)
         return {
           description: item.description,
           quantity: item.quantity.toNumber(),
@@ -137,8 +150,11 @@ export function composeInvoiceEmail(input: {
         }
       }),
     },
-    org: documentEmailOrg(invoice, input.settings),
-    contactName: invoice.contact.name,
+    org: { ...documentEmailOrg(invoice, input.settings),
+      // A historic seller snapshot is authoritative even when individual fields are missing.
+      ...(seller ? { companyName: seller.companyName, companyEmail: seller.companyEmail, companyAddress: seller.companyAddress, taxIds: seller.taxIds } : { companyName: null, companyEmail: null }),
+    },
+    contactName: buyer?.name ?? "",
     publicPaymentUrl: input.publicPaymentUrl,
   })
   return { message: composeMessage(input.to, content), usingBrandedDomain: envelope.usingBrandedDomain }

@@ -1,3 +1,5 @@
+import { invoiceTaxIds } from "./documents/invoice-identity"
+import type { DocumentTaxId } from "@quits/contracts/documents"
 import {
   Document,
   Page,
@@ -185,6 +187,7 @@ const styles = StyleSheet.create({
 })
 
 export type OrgSettingsForPdf = {
+  taxIds?: DocumentTaxId[]
   companyName?: string | null
   companyEmail?: string | null
   companyPhone?: string | null
@@ -283,7 +286,7 @@ export function InvoicePdfDocument({
 }) {
   const contact = invoice.contact
   const statusStyle = getStatusStyle(invoice.status)
-  const fromName = org.companyName ?? "Quits"
+  const fromName = org.companyName ?? ""
   const locale = org.locale
   const timezone = org.timezone
   const logo = canRenderLogo(org.companyLogo) ? org.companyLogo : null
@@ -348,6 +351,7 @@ export function InvoicePdfDocument({
           {org.companyEmail && <Text style={styles.contactLine}>{org.companyEmail}</Text>}
           {org.companyPhone && <Text style={styles.contactLine}>{org.companyPhone}</Text>}
           {org.companyAddress && <Text style={styles.contactLine}>{org.companyAddress}</Text>}
+          {invoiceTaxIds(org.taxIds).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
         </View>
 
         {/* Bill To */}
