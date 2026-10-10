@@ -10,6 +10,7 @@ const baseURL = 'http://127.0.0.1:4310'
 const harness = await createHarness({ cwd, logDir: path.join(cwd, 'test-results/shared-logs') })
 Object.assign(harness.env, {
   QUITS_E2E_MANAGED: '1', PLAYWRIGHT_BASE_URL: baseURL,
+  QUITS_MCP_OAUTH_PROTOTYPE: 'true',
   BETTER_AUTH_URL: baseURL, BETTER_AUTH_SECRET: 'shared-browser-only-secret-over-32-characters',
   QUITS_APP_ORIGIN: baseURL, QUITS_DISTRIBUTION: 'selfhost', VITE_QUITS_DISTRIBUTION: 'selfhost',
   HOST: '127.0.0.1', PORT: '4310',

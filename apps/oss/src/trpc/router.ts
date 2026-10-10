@@ -7,6 +7,7 @@ import { remindersRouter } from "./routers/reminders"
 import { recurringRouter } from "./routers/recurring"
 import { exportsRouter } from "./routers/exports"
 import { agentsRouter } from "./routers/agents"
+import { connectorsRouter } from "./routers/connectors"
 import { activityRouter } from "./routers/activity"
 import { aiRouter } from "./routers/ai"
 import { billingRouter } from "./routers/billing"
@@ -29,6 +30,7 @@ export const appRouter = router({
   recurring: recurringRouter,
   exports: exportsRouter,
   agents: agentsRouter,
+  connectors: connectorsRouter,
   activity: activityRouter,
   ai: aiRouter,
   billing: billingRouter,

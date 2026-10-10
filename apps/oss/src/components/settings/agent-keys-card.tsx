@@ -123,7 +123,12 @@ export function AgentKeysCard() {
                   return (
                     <TableRow key={key.id} className={status === "active" ? undefined : "opacity-60"}>
                       <TableCell>
-                        <div className="font-medium">{key.name}</div>
+                        <div className="flex flex-wrap items-center gap-2 font-medium">
+                          {key.name}
+                          {key.displayPrefix.startsWith("connector:") ? (
+                            <Badge variant="outline">{t("connectors.keys.badge")}</Badge>
+                          ) : null}
+                        </div>
                         {key.createdByName ? (
                           <div className="text-xs text-muted-foreground">
                             {t("agents.keys.createdBy", { name: key.createdByName })}

@@ -6,6 +6,7 @@ import { enRemindersMessages } from "./reminders"
 import { enRecurringMessages } from "./recurring"
 import { enExportsMessages } from "./exports"
 import { enAgentsMessages } from "./agents"
+import { enConnectorsMessages } from "./connectors"
 import { enActivityMessages } from "./activity"
 import { enAuthMessages } from "./auth"
 import { enBillingMessages } from "./billing"
@@ -36,6 +37,7 @@ export const enCatalog = {
   ...enRecurringMessages,
   ...enExportsMessages,
   ...enAgentsMessages,
+  ...enConnectorsMessages,
   ...enActivityMessages,
   ...enAuthMessages,
   ...enBillingMessages,

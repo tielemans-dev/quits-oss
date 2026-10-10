@@ -215,9 +215,21 @@ async function toAgentActor(
   }
 }
 
+/** Whether a bearer value is an agent key secret (as opposed to, say, an OAuth access token). */
+export function isAgentKeySecret(secret: string) {
+  return secret.startsWith(SECRET_PREFIX) || secret.startsWith(LEGACY_SECRET_PREFIX)
+}
+
+/** Used only after successful authentication; approvals and token issuance do not record use. */
+async function recordAgentKeyUsage(key: { id: string; lastUsedAt: Date | null }, now: Date) {
+  if (!key.lastUsedAt || now.getTime() - key.lastUsedAt.getTime() > LAST_USED_WRITE_INTERVAL_MS) {
+    await prisma.agentKey.update({ where: { id: key.id }, data: { lastUsedAt: now } })
+  }
+}
+
 /** Authenticates a bearer secret from the agent API. */
 export async function authenticateAgentSecret(secret: string, now = new Date()): Promise<AgentActor> {
-  if (!secret.startsWith(SECRET_PREFIX) && !secret.startsWith(LEGACY_SECRET_PREFIX)) {
+  if (!isAgentKeySecret(secret)) {
     throw new Forbidden({ message: "Invalid agent key" })
   }
 
@@ -228,20 +240,26 @@ export async function authenticateAgentSecret(secret: string, now = new Date()):
 
   const actor = await toAgentActor(key, { allowRevoked: false, now })
 
-  if (!key.lastUsedAt || now.getTime() - key.lastUsedAt.getTime() > LAST_USED_WRITE_INTERVAL_MS) {
-    await prisma.agentKey.update({ where: { id: key.id }, data: { lastUsedAt: now } })
-  }
+  await recordAgentKeyUsage(key, now)
 
   return actor
 }
 
 export async function resolveAgentActorById(
   agentKeyId: string,
-  options: { allowRevoked: boolean; now?: Date }
+  options: { now?: Date } & (
+    | { allowRevoked: false; recordUsage?: boolean }
+    | { allowRevoked: true; recordUsage?: false }
+  )
 ): Promise<AgentActor> {
   const key = await prisma.agentKey.findUnique({ where: { id: agentKeyId } })
   if (!key) {
     throw new NotFound({ message: "Agent key not found", entity: "agentKey", id: agentKeyId })
   }
-  return toAgentActor(key, { allowRevoked: options.allowRevoked, now: options.now ?? new Date() })
+  const now = options.now ?? new Date()
+  const actor = await toAgentActor(key, { allowRevoked: options.allowRevoked, now })
+  if (options.recordUsage) {
+    await recordAgentKeyUsage(key, now)
+  }
+  return actor
 }

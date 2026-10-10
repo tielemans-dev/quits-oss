@@ -18,6 +18,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as QTokenRouteImport } from './routes/q.$token'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
+import { Route as OauthConsentRouteImport } from './routes/oauth.consent'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as ATokenRouteImport } from './routes/a.$token'
@@ -27,6 +28,8 @@ import { Route as AppCatalogRouteImport } from './routes/_app/catalog'
 import { Route as AppBillingRouteImport } from './routes/_app/billing'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
+import { Route as DotwellKnownOauthProtectedResourceRouteImport } from './routes/[.]well-known.oauth-protected-resource'
+import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known.oauth-authorization-server'
 import { Route as AppRecurringIndexRouteImport } from './routes/_app/recurring/index'
 import { Route as AppQuotesIndexRouteImport } from './routes/_app/quotes/index'
 import { Route as AppInvoicesIndexRouteImport } from './routes/_app/invoices/index'
@@ -53,7 +56,9 @@ import { Route as AppContactsNewRouteImport } from './routes/_app/contacts/new'
 import { Route as AppContactsContactIdRouteImport } from './routes/_app/contacts/$contactId'
 import { Route as AppAgreementsNewRouteImport } from './routes/_app/agreements/new'
 import { Route as AppAgreementsAgreementIdRouteImport } from './routes/_app/agreements/$agreementId'
+import { Route as DotwellKnownOauthProtectedResourceSplatRouteImport } from './routes/[.]well-known.oauth-protected-resource.$'
 import { Route as AppApprovalsApprovalIdPreviewDotpdfRouteImport } from './routes/app.approvals.$approvalId.preview[.]pdf'
+import { Route as ApiMcpOauthSplatRouteImport } from './routes/api/mcp_.oauth.$'
 import { Route as ApiAgreementsAgreementIdPdfRouteImport } from './routes/api/agreements/$agreementId.pdf'
 import { Route as AppAgreementsAgreementIdEditRouteImport } from './routes/_app/agreements/$agreementId_.edit'
 import { Route as ApiDocumentsKindDocumentIdPdfRouteImport } from './routes/api/documents/$kind/$documentId.pdf'
@@ -102,6 +107,11 @@ const PayTokenRoute = PayTokenRouteImport.update({
   path: '/pay/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMcpRoute = ApiMcpRouteImport.update({
   id: '/api/mcp',
   path: '/api/mcp',
@@ -148,6 +158,18 @@ const AppActivityRoute = AppActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AppRoute,
 } as any)
+const DotwellKnownOauthProtectedResourceRoute =
+  DotwellKnownOauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotwellKnownOauthAuthorizationServerRoute =
+  DotwellKnownOauthAuthorizationServerRouteImport.update({
+    id: '/.well-known/oauth-authorization-server',
+    path: '/.well-known/oauth-authorization-server',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppRecurringIndexRoute = AppRecurringIndexRouteImport.update({
   id: '/recurring/',
   path: '/recurring/',
@@ -281,12 +303,23 @@ const AppAgreementsAgreementIdRoute =
     path: '/agreements/$agreementId',
     getParentRoute: () => AppRoute,
   } as any)
+const DotwellKnownOauthProtectedResourceSplatRoute =
+  DotwellKnownOauthProtectedResourceSplatRouteImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () => DotwellKnownOauthProtectedResourceRoute,
+  } as any)
 const AppApprovalsApprovalIdPreviewDotpdfRoute =
   AppApprovalsApprovalIdPreviewDotpdfRouteImport.update({
     id: '/app/approvals/$approvalId/preview.pdf',
     path: '/app/approvals/$approvalId/preview.pdf',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiMcpOauthSplatRoute = ApiMcpOauthSplatRouteImport.update({
+  id: '/api/mcp_/oauth/$',
+  path: '/api/mcp/oauth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgreementsAgreementIdPdfRoute =
   ApiAgreementsAgreementIdPdfRouteImport.update({
     id: '/api/agreements/$agreementId/pdf',
@@ -313,6 +346,8 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
+  '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceRouteWithChildren
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/billing': typeof AppBillingRoute
@@ -322,8 +357,10 @@ export interface FileRoutesByFullPath {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
+  '/.well-known/oauth-protected-resource/$': typeof DotwellKnownOauthProtectedResourceSplatRoute
   '/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
   '/agreements/new': typeof AppAgreementsNewRoute
   '/contacts/$contactId': typeof AppContactsContactIdRoute
@@ -352,6 +389,7 @@ export interface FileRoutesByFullPath {
   '/recurring/': typeof AppRecurringIndexRoute
   '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
+  '/api/mcp/oauth/$': typeof ApiMcpOauthSplatRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
   '/api/documents/$kind/$documentId/pdf': typeof ApiDocumentsKindDocumentIdPdfRoute
 }
@@ -361,6 +399,8 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
+  '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceRouteWithChildren
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/billing': typeof AppBillingRoute
@@ -370,9 +410,11 @@ export interface FileRoutesByTo {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/': typeof AppIndexRoute
+  '/.well-known/oauth-protected-resource/$': typeof DotwellKnownOauthProtectedResourceSplatRoute
   '/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
   '/agreements/new': typeof AppAgreementsNewRoute
   '/contacts/$contactId': typeof AppContactsContactIdRoute
@@ -401,6 +443,7 @@ export interface FileRoutesByTo {
   '/recurring': typeof AppRecurringIndexRoute
   '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
+  '/api/mcp/oauth/$': typeof ApiMcpOauthSplatRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
   '/api/documents/$kind/$documentId/pdf': typeof ApiDocumentsKindDocumentIdPdfRoute
 }
@@ -412,6 +455,8 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
+  '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceRouteWithChildren
   '/_app/activity': typeof AppActivityRoute
   '/_app/approvals': typeof AppApprovalsRoute
   '/_app/billing': typeof AppBillingRoute
@@ -421,9 +466,11 @@ export interface FileRoutesById {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
   '/_app/': typeof AppIndexRoute
+  '/.well-known/oauth-protected-resource/$': typeof DotwellKnownOauthProtectedResourceSplatRoute
   '/_app/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
   '/_app/agreements/new': typeof AppAgreementsNewRoute
   '/_app/contacts/$contactId': typeof AppContactsContactIdRoute
@@ -452,6 +499,7 @@ export interface FileRoutesById {
   '/_app/recurring/': typeof AppRecurringIndexRoute
   '/_app/agreements/$agreementId_/edit': typeof AppAgreementsAgreementIdEditRoute
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
+  '/api/mcp_/oauth/$': typeof ApiMcpOauthSplatRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
   '/api/documents/$kind/$documentId/pdf': typeof ApiDocumentsKindDocumentIdPdfRoute
 }
@@ -464,6 +512,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup'
     | '/signup'
+    | '/.well-known/oauth-authorization-server'
+    | '/.well-known/oauth-protected-resource'
     | '/activity'
     | '/approvals'
     | '/billing'
@@ -473,8 +523,10 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/oauth/consent'
     | '/pay/$token'
     | '/q/$token'
+    | '/.well-known/oauth-protected-resource/$'
     | '/agreements/$agreementId'
     | '/agreements/new'
     | '/contacts/$contactId'
@@ -503,6 +555,7 @@ export interface FileRouteTypes {
     | '/recurring/'
     | '/agreements/$agreementId/edit'
     | '/api/agreements/$agreementId/pdf'
+    | '/api/mcp/oauth/$'
     | '/app/approvals/$approvalId/preview.pdf'
     | '/api/documents/$kind/$documentId/pdf'
   fileRoutesByTo: FileRoutesByTo
@@ -512,6 +565,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup'
     | '/signup'
+    | '/.well-known/oauth-authorization-server'
+    | '/.well-known/oauth-protected-resource'
     | '/activity'
     | '/approvals'
     | '/billing'
@@ -521,9 +576,11 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/oauth/consent'
     | '/pay/$token'
     | '/q/$token'
     | '/'
+    | '/.well-known/oauth-protected-resource/$'
     | '/agreements/$agreementId'
     | '/agreements/new'
     | '/contacts/$contactId'
@@ -552,6 +609,7 @@ export interface FileRouteTypes {
     | '/recurring'
     | '/agreements/$agreementId/edit'
     | '/api/agreements/$agreementId/pdf'
+    | '/api/mcp/oauth/$'
     | '/app/approvals/$approvalId/preview.pdf'
     | '/api/documents/$kind/$documentId/pdf'
   id:
@@ -562,6 +620,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup'
     | '/signup'
+    | '/.well-known/oauth-authorization-server'
+    | '/.well-known/oauth-protected-resource'
     | '/_app/activity'
     | '/_app/approvals'
     | '/_app/billing'
@@ -571,9 +631,11 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/oauth/consent'
     | '/pay/$token'
     | '/q/$token'
     | '/_app/'
+    | '/.well-known/oauth-protected-resource/$'
     | '/_app/agreements/$agreementId'
     | '/_app/agreements/new'
     | '/_app/contacts/$contactId'
@@ -602,6 +664,7 @@ export interface FileRouteTypes {
     | '/_app/recurring/'
     | '/_app/agreements/$agreementId_/edit'
     | '/api/agreements/$agreementId/pdf'
+    | '/api/mcp_/oauth/$'
     | '/app/approvals/$approvalId/preview.pdf'
     | '/api/documents/$kind/$documentId/pdf'
   fileRoutesById: FileRoutesById
@@ -613,9 +676,12 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SetupRoute: typeof SetupRoute
   SignupRoute: typeof SignupRoute
+  DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRoute
+  DotwellKnownOauthProtectedResourceRoute: typeof DotwellKnownOauthProtectedResourceRouteWithChildren
   ATokenRoute: typeof ATokenRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiMcpRoute: typeof ApiMcpRoute
+  OauthConsentRoute: typeof OauthConsentRoute
   PayTokenRoute: typeof PayTokenRoute
   QTokenRoute: typeof QTokenRoute
   ATokenLogoRoute: typeof ATokenLogoRoute
@@ -629,6 +695,7 @@ export interface RootRouteChildren {
   PayTokenPdfRoute: typeof PayTokenPdfRoute
   QTokenLogoRoute: typeof QTokenLogoRoute
   ApiAgreementsAgreementIdPdfRoute: typeof ApiAgreementsAgreementIdPdfRoute
+  ApiMcpOauthSplatRoute: typeof ApiMcpOauthSplatRoute
   AppApprovalsApprovalIdPreviewDotpdfRoute: typeof AppApprovalsApprovalIdPreviewDotpdfRoute
   ApiDocumentsKindDocumentIdPdfRoute: typeof ApiDocumentsKindDocumentIdPdfRoute
 }
@@ -698,6 +765,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PayTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mcp': {
       id: '/api/mcp'
       path: '/api/mcp'
@@ -760,6 +834,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/activity'
       preLoaderRoute: typeof AppActivityRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-authorization-server': {
+      id: '/.well-known/oauth-authorization-server'
+      path: '/.well-known/oauth-authorization-server'
+      fullPath: '/.well-known/oauth-authorization-server'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/recurring/': {
       id: '/_app/recurring/'
@@ -943,11 +1031,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgreementsAgreementIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/.well-known/oauth-protected-resource/$': {
+      id: '/.well-known/oauth-protected-resource/$'
+      path: '/$'
+      fullPath: '/.well-known/oauth-protected-resource/$'
+      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceSplatRouteImport
+      parentRoute: typeof DotwellKnownOauthProtectedResourceRoute
+    }
     '/app/approvals/$approvalId/preview.pdf': {
       id: '/app/approvals/$approvalId/preview.pdf'
       path: '/app/approvals/$approvalId/preview.pdf'
       fullPath: '/app/approvals/$approvalId/preview.pdf'
       preLoaderRoute: typeof AppApprovalsApprovalIdPreviewDotpdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mcp_/oauth/$': {
+      id: '/api/mcp_/oauth/$'
+      path: '/api/mcp/oauth/$'
+      fullPath: '/api/mcp/oauth/$'
+      preLoaderRoute: typeof ApiMcpOauthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/agreements/$agreementId/pdf': {
@@ -1030,6 +1132,21 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface DotwellKnownOauthProtectedResourceRouteChildren {
+  DotwellKnownOauthProtectedResourceSplatRoute: typeof DotwellKnownOauthProtectedResourceSplatRoute
+}
+
+const DotwellKnownOauthProtectedResourceRouteChildren: DotwellKnownOauthProtectedResourceRouteChildren =
+  {
+    DotwellKnownOauthProtectedResourceSplatRoute:
+      DotwellKnownOauthProtectedResourceSplatRoute,
+  }
+
+const DotwellKnownOauthProtectedResourceRouteWithChildren =
+  DotwellKnownOauthProtectedResourceRoute._addFileChildren(
+    DotwellKnownOauthProtectedResourceRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
@@ -1037,9 +1154,14 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SetupRoute: SetupRoute,
   SignupRoute: SignupRoute,
+  DotwellKnownOauthAuthorizationServerRoute:
+    DotwellKnownOauthAuthorizationServerRoute,
+  DotwellKnownOauthProtectedResourceRoute:
+    DotwellKnownOauthProtectedResourceRouteWithChildren,
   ATokenRoute: ATokenRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiMcpRoute: ApiMcpRoute,
+  OauthConsentRoute: OauthConsentRoute,
   PayTokenRoute: PayTokenRoute,
   QTokenRoute: QTokenRoute,
   ATokenLogoRoute: ATokenLogoRoute,
@@ -1053,6 +1175,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayTokenPdfRoute: PayTokenPdfRoute,
   QTokenLogoRoute: QTokenLogoRoute,
   ApiAgreementsAgreementIdPdfRoute: ApiAgreementsAgreementIdPdfRoute,
+  ApiMcpOauthSplatRoute: ApiMcpOauthSplatRoute,
   AppApprovalsApprovalIdPreviewDotpdfRoute:
     AppApprovalsApprovalIdPreviewDotpdfRoute,
   ApiDocumentsKindDocumentIdPdfRoute: ApiDocumentsKindDocumentIdPdfRoute,

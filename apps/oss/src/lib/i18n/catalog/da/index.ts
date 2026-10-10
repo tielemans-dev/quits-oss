@@ -6,6 +6,7 @@ import { daRemindersMessages } from "./reminders"
 import { daRecurringMessages } from "./recurring"
 import { daExportsMessages } from "./exports"
 import { daAgentsMessages } from "./agents"
+import { daConnectorsMessages } from "./connectors"
 import { daActivityMessages } from "./activity"
 import { daAuthMessages } from "./auth"
 import { daBillingMessages } from "./billing"
@@ -36,6 +37,7 @@ export const daCatalog = {
   ...daRecurringMessages,
   ...daExportsMessages,
   ...daAgentsMessages,
+  ...daConnectorsMessages,
   ...daActivityMessages,
   ...daAuthMessages,
   ...daBillingMessages,
