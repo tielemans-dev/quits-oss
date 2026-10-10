@@ -11,9 +11,6 @@ export type StoredArtifact = { ref: string; hash: string; size: number }
 export type StoredArtifacts = { pdf: StoredArtifact; ubl?: StoredArtifact }
 export const artifactsJson = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 
-/** Free a live request key while retaining exact ownership evidence for overlapping attempts. */
-export const supersededRequestKey = (requestKey: string, stagingId: string) => `${requestKey}#superseded:${stagingId}`
-
 /** All artifact protocol transactions take this lock before document or job locks. */
 export async function lockArtifactOrganization(tx: Prisma.TransactionClient, organizationId: string) {
   await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId }, update: {} })
@@ -26,9 +23,8 @@ export async function bindIssuanceCandidate(tx: Prisma.TransactionClient, input:
   const { staging, renderInput, now } = input
   const superseded = staging.status === "abandoned" && !staging.numberWasAllocated &&
     ["invoice", "agreement"].includes(staging.documentKind) &&
-    staging.requestKey.endsWith(`#superseded:${staging.id}`)
-  const ownedSuperseded = superseded && (staging.requestKey === supersededRequestKey(input.requestKey, staging.id) ||
-    staging.requestKeys.includes(supersededRequestKey(input.requestKey, staging.id)))
+    staging.requestKey === null
+  const ownedSuperseded = superseded && staging.archivedRequestKeys.includes(input.requestKey)
   if (staging.organizationId !== input.organizationId ||
       !(staging.requestKey === input.requestKey || staging.requestKeys.includes(input.requestKey) || ownedSuperseded)) {
     throw new InvalidState({ code: "reservation_identity_mismatch", message: "Reservation belongs to another request" })

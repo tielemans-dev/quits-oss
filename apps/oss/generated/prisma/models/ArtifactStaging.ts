@@ -67,6 +67,7 @@ export type ArtifactStagingCountAggregateOutputType = {
   documentId: number
   requestKey: number
   requestKeys: number
+  archivedRequestKeys: number
   renderInputHash: number
   renderInput: number
   rendererVersion: number
@@ -127,6 +128,7 @@ export type ArtifactStagingCountAggregateInputType = {
   documentId?: true
   requestKey?: true
   requestKeys?: true
+  archivedRequestKeys?: true
   renderInputHash?: true
   renderInput?: true
   rendererVersion?: true
@@ -220,8 +222,9 @@ export type ArtifactStagingGroupByOutputType = {
   organizationId: string
   documentKind: string
   documentId: string
-  requestKey: string
+  requestKey: string | null
   requestKeys: string[]
+  archivedRequestKeys: string[]
   renderInputHash: string
   renderInput: runtime.JsonValue
   rendererVersion: string
@@ -263,8 +266,9 @@ export type ArtifactStagingWhereInput = {
   organizationId?: Prisma.StringFilter<"ArtifactStaging"> | string
   documentKind?: Prisma.StringFilter<"ArtifactStaging"> | string
   documentId?: Prisma.StringFilter<"ArtifactStaging"> | string
-  requestKey?: Prisma.StringFilter<"ArtifactStaging"> | string
+  requestKey?: Prisma.StringNullableFilter<"ArtifactStaging"> | string | null
   requestKeys?: Prisma.StringNullableListFilter<"ArtifactStaging">
+  archivedRequestKeys?: Prisma.StringNullableListFilter<"ArtifactStaging">
   renderInputHash?: Prisma.StringFilter<"ArtifactStaging"> | string
   renderInput?: Prisma.JsonFilter<"ArtifactStaging">
   rendererVersion?: Prisma.StringFilter<"ArtifactStaging"> | string
@@ -287,8 +291,9 @@ export type ArtifactStagingOrderByWithRelationInput = {
   organizationId?: Prisma.SortOrder
   documentKind?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
-  requestKey?: Prisma.SortOrder
+  requestKey?: Prisma.SortOrderInput | Prisma.SortOrder
   requestKeys?: Prisma.SortOrder
+  archivedRequestKeys?: Prisma.SortOrder
   renderInputHash?: Prisma.SortOrder
   renderInput?: Prisma.SortOrder
   rendererVersion?: Prisma.SortOrder
@@ -316,8 +321,9 @@ export type ArtifactStagingWhereUniqueInput = Prisma.AtLeast<{
   organizationId?: Prisma.StringFilter<"ArtifactStaging"> | string
   documentKind?: Prisma.StringFilter<"ArtifactStaging"> | string
   documentId?: Prisma.StringFilter<"ArtifactStaging"> | string
-  requestKey?: Prisma.StringFilter<"ArtifactStaging"> | string
+  requestKey?: Prisma.StringNullableFilter<"ArtifactStaging"> | string | null
   requestKeys?: Prisma.StringNullableListFilter<"ArtifactStaging">
+  archivedRequestKeys?: Prisma.StringNullableListFilter<"ArtifactStaging">
   renderInputHash?: Prisma.StringFilter<"ArtifactStaging"> | string
   renderInput?: Prisma.JsonFilter<"ArtifactStaging">
   rendererVersion?: Prisma.StringFilter<"ArtifactStaging"> | string
@@ -340,8 +346,9 @@ export type ArtifactStagingOrderByWithAggregationInput = {
   organizationId?: Prisma.SortOrder
   documentKind?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
-  requestKey?: Prisma.SortOrder
+  requestKey?: Prisma.SortOrderInput | Prisma.SortOrder
   requestKeys?: Prisma.SortOrder
+  archivedRequestKeys?: Prisma.SortOrder
   renderInputHash?: Prisma.SortOrder
   renderInput?: Prisma.SortOrder
   rendererVersion?: Prisma.SortOrder
@@ -368,8 +375,9 @@ export type ArtifactStagingScalarWhereWithAggregatesInput = {
   organizationId?: Prisma.StringWithAggregatesFilter<"ArtifactStaging"> | string
   documentKind?: Prisma.StringWithAggregatesFilter<"ArtifactStaging"> | string
   documentId?: Prisma.StringWithAggregatesFilter<"ArtifactStaging"> | string
-  requestKey?: Prisma.StringWithAggregatesFilter<"ArtifactStaging"> | string
+  requestKey?: Prisma.StringNullableWithAggregatesFilter<"ArtifactStaging"> | string | null
   requestKeys?: Prisma.StringNullableListFilter<"ArtifactStaging">
+  archivedRequestKeys?: Prisma.StringNullableListFilter<"ArtifactStaging">
   renderInputHash?: Prisma.StringWithAggregatesFilter<"ArtifactStaging"> | string
   renderInput?: Prisma.JsonWithAggregatesFilter<"ArtifactStaging">
   rendererVersion?: Prisma.StringWithAggregatesFilter<"ArtifactStaging"> | string
@@ -389,8 +397,9 @@ export type ArtifactStagingCreateInput = {
   id?: string
   documentKind: string
   documentId: string
-  requestKey: string
+  requestKey?: string | null
   requestKeys?: Prisma.ArtifactStagingCreaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingCreatearchivedRequestKeysInput | string[]
   renderInputHash: string
   renderInput: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion: string
@@ -413,8 +422,9 @@ export type ArtifactStagingUncheckedCreateInput = {
   organizationId: string
   documentKind: string
   documentId: string
-  requestKey: string
+  requestKey?: string | null
   requestKeys?: Prisma.ArtifactStagingCreaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingCreatearchivedRequestKeysInput | string[]
   renderInputHash: string
   renderInput: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion: string
@@ -435,8 +445,9 @@ export type ArtifactStagingUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   documentKind?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
-  requestKey?: Prisma.StringFieldUpdateOperationsInput | string
+  requestKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestKeys?: Prisma.ArtifactStagingUpdaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingUpdatearchivedRequestKeysInput | string[]
   renderInputHash?: Prisma.StringFieldUpdateOperationsInput | string
   renderInput?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -459,8 +470,9 @@ export type ArtifactStagingUncheckedUpdateInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   documentKind?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
-  requestKey?: Prisma.StringFieldUpdateOperationsInput | string
+  requestKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestKeys?: Prisma.ArtifactStagingUpdaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingUpdatearchivedRequestKeysInput | string[]
   renderInputHash?: Prisma.StringFieldUpdateOperationsInput | string
   renderInput?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -482,8 +494,9 @@ export type ArtifactStagingCreateManyInput = {
   organizationId: string
   documentKind: string
   documentId: string
-  requestKey: string
+  requestKey?: string | null
   requestKeys?: Prisma.ArtifactStagingCreaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingCreatearchivedRequestKeysInput | string[]
   renderInputHash: string
   renderInput: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion: string
@@ -503,8 +516,9 @@ export type ArtifactStagingUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   documentKind?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
-  requestKey?: Prisma.StringFieldUpdateOperationsInput | string
+  requestKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestKeys?: Prisma.ArtifactStagingUpdaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingUpdatearchivedRequestKeysInput | string[]
   renderInputHash?: Prisma.StringFieldUpdateOperationsInput | string
   renderInput?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -525,8 +539,9 @@ export type ArtifactStagingUncheckedUpdateManyInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   documentKind?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
-  requestKey?: Prisma.StringFieldUpdateOperationsInput | string
+  requestKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestKeys?: Prisma.ArtifactStagingUpdaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingUpdatearchivedRequestKeysInput | string[]
   renderInputHash?: Prisma.StringFieldUpdateOperationsInput | string
   renderInput?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -571,6 +586,7 @@ export type ArtifactStagingCountOrderByAggregateInput = {
   documentId?: Prisma.SortOrder
   requestKey?: Prisma.SortOrder
   requestKeys?: Prisma.SortOrder
+  archivedRequestKeys?: Prisma.SortOrder
   renderInputHash?: Prisma.SortOrder
   renderInput?: Prisma.SortOrder
   rendererVersion?: Prisma.SortOrder
@@ -673,11 +689,20 @@ export type ArtifactStagingCreaterequestKeysInput = {
   set: string[]
 }
 
+export type ArtifactStagingCreatearchivedRequestKeysInput = {
+  set: string[]
+}
+
 export type ArtifactStagingCreatecandidateRefsInput = {
   set: string[]
 }
 
 export type ArtifactStagingUpdaterequestKeysInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type ArtifactStagingUpdatearchivedRequestKeysInput = {
   set?: string[]
   push?: string | string[]
 }
@@ -705,8 +730,9 @@ export type ArtifactStagingCreateWithoutOrganizationInput = {
   id?: string
   documentKind: string
   documentId: string
-  requestKey: string
+  requestKey?: string | null
   requestKeys?: Prisma.ArtifactStagingCreaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingCreatearchivedRequestKeysInput | string[]
   renderInputHash: string
   renderInput: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion: string
@@ -727,8 +753,9 @@ export type ArtifactStagingUncheckedCreateWithoutOrganizationInput = {
   id?: string
   documentKind: string
   documentId: string
-  requestKey: string
+  requestKey?: string | null
   requestKeys?: Prisma.ArtifactStagingCreaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingCreatearchivedRequestKeysInput | string[]
   renderInputHash: string
   renderInput: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion: string
@@ -779,8 +806,9 @@ export type ArtifactStagingScalarWhereInput = {
   organizationId?: Prisma.StringFilter<"ArtifactStaging"> | string
   documentKind?: Prisma.StringFilter<"ArtifactStaging"> | string
   documentId?: Prisma.StringFilter<"ArtifactStaging"> | string
-  requestKey?: Prisma.StringFilter<"ArtifactStaging"> | string
+  requestKey?: Prisma.StringNullableFilter<"ArtifactStaging"> | string | null
   requestKeys?: Prisma.StringNullableListFilter<"ArtifactStaging">
+  archivedRequestKeys?: Prisma.StringNullableListFilter<"ArtifactStaging">
   renderInputHash?: Prisma.StringFilter<"ArtifactStaging"> | string
   renderInput?: Prisma.JsonFilter<"ArtifactStaging">
   rendererVersion?: Prisma.StringFilter<"ArtifactStaging"> | string
@@ -800,8 +828,9 @@ export type ArtifactStagingCreateWithoutCandidatesInput = {
   id?: string
   documentKind: string
   documentId: string
-  requestKey: string
+  requestKey?: string | null
   requestKeys?: Prisma.ArtifactStagingCreaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingCreatearchivedRequestKeysInput | string[]
   renderInputHash: string
   renderInput: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion: string
@@ -823,8 +852,9 @@ export type ArtifactStagingUncheckedCreateWithoutCandidatesInput = {
   organizationId: string
   documentKind: string
   documentId: string
-  requestKey: string
+  requestKey?: string | null
   requestKeys?: Prisma.ArtifactStagingCreaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingCreatearchivedRequestKeysInput | string[]
   renderInputHash: string
   renderInput: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion: string
@@ -860,8 +890,9 @@ export type ArtifactStagingUpdateWithoutCandidatesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   documentKind?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
-  requestKey?: Prisma.StringFieldUpdateOperationsInput | string
+  requestKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestKeys?: Prisma.ArtifactStagingUpdaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingUpdatearchivedRequestKeysInput | string[]
   renderInputHash?: Prisma.StringFieldUpdateOperationsInput | string
   renderInput?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -883,8 +914,9 @@ export type ArtifactStagingUncheckedUpdateWithoutCandidatesInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   documentKind?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
-  requestKey?: Prisma.StringFieldUpdateOperationsInput | string
+  requestKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestKeys?: Prisma.ArtifactStagingUpdaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingUpdatearchivedRequestKeysInput | string[]
   renderInputHash?: Prisma.StringFieldUpdateOperationsInput | string
   renderInput?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -904,8 +936,9 @@ export type ArtifactStagingCreateManyOrganizationInput = {
   id?: string
   documentKind: string
   documentId: string
-  requestKey: string
+  requestKey?: string | null
   requestKeys?: Prisma.ArtifactStagingCreaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingCreatearchivedRequestKeysInput | string[]
   renderInputHash: string
   renderInput: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion: string
@@ -925,8 +958,9 @@ export type ArtifactStagingUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   documentKind?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
-  requestKey?: Prisma.StringFieldUpdateOperationsInput | string
+  requestKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestKeys?: Prisma.ArtifactStagingUpdaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingUpdatearchivedRequestKeysInput | string[]
   renderInputHash?: Prisma.StringFieldUpdateOperationsInput | string
   renderInput?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -947,8 +981,9 @@ export type ArtifactStagingUncheckedUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   documentKind?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
-  requestKey?: Prisma.StringFieldUpdateOperationsInput | string
+  requestKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestKeys?: Prisma.ArtifactStagingUpdaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingUpdatearchivedRequestKeysInput | string[]
   renderInputHash?: Prisma.StringFieldUpdateOperationsInput | string
   renderInput?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -969,8 +1004,9 @@ export type ArtifactStagingUncheckedUpdateManyWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   documentKind?: Prisma.StringFieldUpdateOperationsInput | string
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
-  requestKey?: Prisma.StringFieldUpdateOperationsInput | string
+  requestKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requestKeys?: Prisma.ArtifactStagingUpdaterequestKeysInput | string[]
+  archivedRequestKeys?: Prisma.ArtifactStagingUpdatearchivedRequestKeysInput | string[]
   renderInputHash?: Prisma.StringFieldUpdateOperationsInput | string
   renderInput?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rendererVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1024,6 +1060,7 @@ export type ArtifactStagingSelect<ExtArgs extends runtime.Types.Extensions.Inter
   documentId?: boolean
   requestKey?: boolean
   requestKeys?: boolean
+  archivedRequestKeys?: boolean
   renderInputHash?: boolean
   renderInput?: boolean
   rendererVersion?: boolean
@@ -1049,6 +1086,7 @@ export type ArtifactStagingSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   documentId?: boolean
   requestKey?: boolean
   requestKeys?: boolean
+  archivedRequestKeys?: boolean
   renderInputHash?: boolean
   renderInput?: boolean
   rendererVersion?: boolean
@@ -1072,6 +1110,7 @@ export type ArtifactStagingSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   documentId?: boolean
   requestKey?: boolean
   requestKeys?: boolean
+  archivedRequestKeys?: boolean
   renderInputHash?: boolean
   renderInput?: boolean
   rendererVersion?: boolean
@@ -1095,6 +1134,7 @@ export type ArtifactStagingSelectScalar = {
   documentId?: boolean
   requestKey?: boolean
   requestKeys?: boolean
+  archivedRequestKeys?: boolean
   renderInputHash?: boolean
   renderInput?: boolean
   rendererVersion?: boolean
@@ -1110,7 +1150,7 @@ export type ArtifactStagingSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ArtifactStagingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "documentKind" | "documentId" | "requestKey" | "requestKeys" | "renderInputHash" | "renderInput" | "rendererVersion" | "status" | "prepToken" | "leaseUntil" | "artifacts" | "missingReason" | "reservedNumber" | "numberWasAllocated" | "candidateRefs" | "createdAt" | "updatedAt", ExtArgs["result"]["artifactStaging"]>
+export type ArtifactStagingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "documentKind" | "documentId" | "requestKey" | "requestKeys" | "archivedRequestKeys" | "renderInputHash" | "renderInput" | "rendererVersion" | "status" | "prepToken" | "leaseUntil" | "artifacts" | "missingReason" | "reservedNumber" | "numberWasAllocated" | "candidateRefs" | "createdAt" | "updatedAt", ExtArgs["result"]["artifactStaging"]>
 export type ArtifactStagingInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   candidates?: boolean | Prisma.ArtifactStaging$candidatesArgs<ExtArgs>
@@ -1134,8 +1174,9 @@ export type $ArtifactStagingPayload<ExtArgs extends runtime.Types.Extensions.Int
     organizationId: string
     documentKind: string
     documentId: string
-    requestKey: string
+    requestKey: string | null
     requestKeys: string[]
+    archivedRequestKeys: string[]
     renderInputHash: string
     renderInput: runtime.JsonValue
     rendererVersion: string
@@ -1580,6 +1621,7 @@ export interface ArtifactStagingFieldRefs {
   readonly documentId: Prisma.FieldRef<"ArtifactStaging", 'String'>
   readonly requestKey: Prisma.FieldRef<"ArtifactStaging", 'String'>
   readonly requestKeys: Prisma.FieldRef<"ArtifactStaging", 'String[]'>
+  readonly archivedRequestKeys: Prisma.FieldRef<"ArtifactStaging", 'String[]'>
   readonly renderInputHash: Prisma.FieldRef<"ArtifactStaging", 'String'>
   readonly renderInput: Prisma.FieldRef<"ArtifactStaging", 'Json'>
   readonly rendererVersion: Prisma.FieldRef<"ArtifactStaging", 'String'>

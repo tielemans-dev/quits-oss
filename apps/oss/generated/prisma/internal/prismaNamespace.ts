@@ -4334,6 +4334,7 @@ export const ArtifactStagingScalarFieldEnum = {
   documentId: 'documentId',
   requestKey: 'requestKey',
   requestKeys: 'requestKeys',
+  archivedRequestKeys: 'archivedRequestKeys',
   renderInputHash: 'renderInputHash',
   renderInput: 'renderInput',
   rendererVersion: 'rendererVersion',

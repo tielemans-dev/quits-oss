@@ -54,9 +54,22 @@ already-written bytes may remain for the artifact sweep, but no agreement, numbe
 committed. Renderer/store calls remain outside database transactions.
 
 When a provisional number changes, supersession archives the reservation's exact primary and
-alias request ownership. An unchanged, unexpired overlapping attempt owned by that request retries
+alias request ownership in `archivedRequestKeys`, clears live aliases and sets the live primary
+`requestKey` to NULL. PostgreSQL uniqueness still applies to every non-NULL live primary key;
+archived owners never participate in live lookup or uniqueness. Arbitrary request strings,
+including literal suffixes, keep exact ownership. An unchanged, unexpired overlapping attempt owned by that request retries
 through the bounded numbering loop without a permanent failed receipt. Foreign identities,
 changed inputs, ordinary abandoned reservations and expired leases still fail.
+
+Migration `20261014050000_artifact_request_archive` separates existing legacy suffix tombstones
+using the previous exact own-row marker predicate. Legacy marker-shaped abandoned rows keep
+their previous supersession interpretation. Other abandoned rows, live and allocated reservations,
+render inputs, leases, candidates and receipts remain intact. Historical ownership
+already removed by older versions cannot be reconstructed. Stop old writers before migration
+and deploy the matching generated client/application together. Older clients requiring a non-NULL
+primary cannot safely run against retained archives. The artifact sweep clears unprotected bytes;
+it retains staging rows and their archived ownership. Recovery still ends at the original lease.
+No new archive table or independent retention job is introduced.
 
 ## AI Capability Model
 

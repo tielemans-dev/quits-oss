@@ -12,7 +12,7 @@ import { issueCreditNote } from "../domain/commands/credit-notes"
 import { sendAgreement, issueAgreement } from "../domain/commands/agreement-lifecycle"
 import { allocateDocumentNumber, peekNextDocumentNumber, NUMBER_CHANGED } from "../domain/documents/numbering"
 import { prospectiveRenderInput, hashBytes, hashRenderInput, type ArtifactDocumentKind, type RenderInput } from "../domain/documents/render-input"
-import { artifactsJson, lockArtifactOrganization, supersededRequestKey, type StoredArtifacts } from "../domain/documents/artifacts"
+import { artifactsJson, lockArtifactOrganization, type StoredArtifacts } from "../domain/documents/artifacts"
 import { ExternalFailure, InvalidState, serializeDomainError } from "../domain/errors"
 import { appLogger } from "../lib/observability"
 import { requireDepositsEnabled } from "../domain/agreements/deposit-capability"
@@ -46,7 +46,7 @@ export async function reserveDocument(input: {
   const requestKey = reservationRequestKey(input.actor, input.clientRequestId)
   return prisma.$transaction(async tx => {
     await lockArtifactOrganization(tx, organizationId)
-    const existing = await tx.artifactStaging.findFirst({ where: { organizationId,
+    const existing = await tx.artifactStaging.findFirst({ where: { organizationId, requestKey: { not: null },
       OR: [{ requestKey }, { requestKeys: { has: requestKey } }] } })
     const documentId = (input.commandInput as { id?: string }).id ?? `doc_${randomUUID().replaceAll("-", "")}`
     let number: string | null = null
@@ -71,11 +71,11 @@ export async function reserveDocument(input: {
       const stale = !existing.numberWasAllocated && provisionalNumber !== null && existing.documentKind === input.kind &&
         ["reserved", "stored", "missing"].includes(existing.status) && existing.reservedNumber !== provisionalNumber
       if (!stale) return existing
-      // Free every live key on this stale row. Keep exact primary/alias ownership as tombstones
+      // Free every live key on this stale row. Keep exact primary/alias ownership in a separate archive
       // so an overlapping invocation can retry, rather than poisoning its request's receipt.
       await tx.artifactStaging.update({ where: { id: existing.id }, data: { status: "abandoned", prepToken: null,
-        requestKey: supersededRequestKey(existing.requestKey, existing.id),
-        requestKeys: existing.requestKeys.map(key => supersededRequestKey(key, existing.id)) } })
+        requestKey: null, requestKeys: [],
+        archivedRequestKeys: [existing.requestKey!, ...existing.requestKeys] } })
     }
     number ??= provisionalNumber
     // Try an unchanged retry with the old timestamp before allocating any new number.
