@@ -1086,8 +1086,9 @@ model ArtifactStaging {
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   documentKind       String
   documentId         String
-  requestKey         String
+  requestKey         String?
   requestKeys        String[] @default([])
+  archivedRequestKeys String[] @default([])
   renderInputHash    String
   renderInput        Json
   rendererVersion    String

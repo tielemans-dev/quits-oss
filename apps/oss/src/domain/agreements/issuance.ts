@@ -3,7 +3,7 @@ import { Effect } from "effect"
 import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
 import { lockDocument } from "../documents/locks"
 import { loadDocumentContext } from "../documents/context"
-import { allocateDocumentNumber } from "../documents/numbering"
+import { numberForIssuance } from "../documents/numbering"
 import { refuseWhileSending } from "../documents/document-delivery"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
@@ -124,7 +124,7 @@ export const issueAgreementOffer = (
         message: "The document changed after approval review",
       })
     const unchanged = draft.offerSnapshotHash === hash && draft.issuedToEmail === recipient
-    const number = command.issuance?.number ?? draft.number ?? (yield* allocateDocumentNumber("agreement"))
+    const number = yield* numberForIssuance("agreement", draft)
     const agreement = yield* Effect.promise(() =>
       db.agreement.update({
         where: { id: draft.id },

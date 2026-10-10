@@ -5,6 +5,7 @@ import { Prisma, type ArtifactStaging } from "../../../generated/prisma/client"
 import { InvalidState } from "../errors"
 import type { PendingEvent } from "../services"
 import { hashRenderInput, type RenderInput } from "./render-input"
+import { NUMBER_CHANGED } from "./numbering"
 
 export type StoredArtifact = { ref: string; hash: string; size: number }
 export type StoredArtifacts = { pdf: StoredArtifact; ubl?: StoredArtifact }
@@ -20,19 +21,27 @@ export async function bindIssuanceCandidate(tx: Prisma.TransactionClient, input:
   staging: ArtifactStaging; renderInput: RenderInput; now: Date; leaseNow?: Date; organizationId: string; requestKey: string
 }) {
   const { staging, renderInput, now } = input
+  const superseded = staging.status === "abandoned" && !staging.numberWasAllocated &&
+    ["invoice", "agreement"].includes(staging.documentKind) &&
+    staging.requestKey === null
+  const ownedSuperseded = superseded && staging.archivedRequestKeys.includes(input.requestKey)
   if (staging.organizationId !== input.organizationId ||
-      !(staging.requestKey === input.requestKey || staging.requestKeys.includes(input.requestKey))) {
+      !(staging.requestKey === input.requestKey || staging.requestKeys.includes(input.requestKey) || ownedSuperseded)) {
     throw new InvalidState({ code: "reservation_identity_mismatch", message: "Reservation belongs to another request" })
   }
-  if (staging.status === "abandoned" || staging.leaseUntil <= (input.leaseNow ?? now)) {
+  if ((!ownedSuperseded && staging.status === "abandoned") || staging.leaseUntil <= (input.leaseNow ?? now)) {
     throw new InvalidState({ code: "reservation_expired", message: "Document reservation expired" })
   }
-  if (!["stored", "missing", "candidate_bound", "published"].includes(staging.status)) {
+  if (!ownedSuperseded && !["stored", "missing", "candidate_bound", "published"].includes(staging.status)) {
     throw new InvalidState({ code: "preparation_incomplete", message: "Document preparation is incomplete" })
   }
   if (hashRenderInput(renderInput) !== staging.renderInputHash) {
     throw new InvalidState({ code: "document_changed", message: "Document changed during preparation" })
   }
+  // Only an unchanged, unexpired attempt belonging to this request can recover supersession.
+  // NUMBER_CHANGED already rolls back without a terminal receipt and has bounded application retries.
+  if (ownedSuperseded) throw new InvalidState({ code: NUMBER_CHANGED,
+    message: "Another document was issued first, so this preparation was superseded. Try again." })
   if (getRuntimeCapabilities().documents.artifactsRequired && !staging.artifacts) throw new InvalidState({ code: "renderer_unavailable", message: "Document renderer and artifact store required" })
   const candidate = await tx.issuanceCandidate.create({ data: {
     organizationId: input.organizationId, documentKind: staging.documentKind, documentId: staging.documentId,

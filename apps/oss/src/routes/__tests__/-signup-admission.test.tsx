@@ -79,11 +79,12 @@ describe('signup admission UI', () => {
     const fetcher = vi.fn().mockResolvedValue(Response.json({ ok: true })); vi.stubGlobal('fetch', fetcher); await blocked()
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: 'Join the waitlist' }))
-    await screen.findByText('You’re on the list')
+    const title = await screen.findByRole('heading', { level: 1, name: 'You’re on the list' })
     const [path, options] = fetcher.mock.calls[0]!
     expect(path).toBe('/api/waitlist'); expect(options.credentials).toBe('same-origin')
     expect(JSON.parse(options.body)).toEqual({ email: 'person@example.test', note: '', source: 'app-signup', consent: true, privacyVersion: '2026-10-09', locale: 'en', honeypot: '' })
-    expect(document.activeElement?.tagName).toBe('H1')
+    // The heading can be committed before the passive effect assigns focus.
+    await waitFor(() => expect(document.activeElement).toBe(title))
   })
   it.each([['rate_limited', 'Too many attempts']])('maps %s without leaking account details', async (code, message) => {
     signUp.mockResolvedValue({ error: { code, message: 'PRIVATE ACCOUNT DETAIL' } }); show(); submitSignup()

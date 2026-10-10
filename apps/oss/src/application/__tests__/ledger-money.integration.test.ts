@@ -116,7 +116,7 @@ async function issued(id: string) {
     const context = await setup()
     const staging = await reserveDocument({ kind: "invoice", actor: context.actor, clientRequestId: "pending-base", commandInput: { id: context.invoice.id, exchangeRate: "7.45", rateDate: "2026-10-07" } })
     const prepared = await prepareDocument(staging.id)
-    await prisma.$transaction(tx => bindIssuanceCandidate(tx, { staging: prepared, renderInput: prepared.renderInput as unknown as RenderInput, organizationId: context.org.organizationId, requestKey: prepared.requestKey, now: new Date() }))
+    await prisma.$transaction(tx => bindIssuanceCandidate(tx, { staging: prepared, renderInput: prepared.renderInput as unknown as RenderInput, organizationId: context.org.organizationId, requestKey: prepared.requestKey!, now: new Date() }))
     await expect(prisma.$transaction(tx => resolveBaseCurrency(tx, context.org.organizationId, { baseCurrency: "USD" }))).rejects.toMatchObject({ code: "base_currency_locked" })
     await prisma.issuanceCandidate.updateMany({ where: { documentId: context.invoice.id }, data: { status: "retired" } })
     expect(await issue(context)).toMatchObject({ status: "completed" })
