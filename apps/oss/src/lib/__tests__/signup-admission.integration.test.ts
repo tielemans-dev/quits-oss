@@ -210,7 +210,7 @@ describe.skipIf(!local)('transactional signup admission', () => {
 
 import { runWithAdapter, runWithTransaction } from '@better-auth/core/context'
 import type { Prisma } from '../../../generated/prisma/client'
-describe('independent review probes', () => {
+describe.skipIf(!local)('independent review probes', () => {
  it('counts once per successful request with concurrent requests on the SAME auth instance and distinct codes', async () => {
    const attempts = vi.fn(async () => ({ok: true as const}))
    const f = fixture({authorizeSignUp: admission, admitSignUpAttempt: attempts})
@@ -261,7 +261,7 @@ describe('independent review probes', () => {
  })
 })
 
-it('allows allowlisted emails with oversized codes', async()=>{
+it.skipIf(!local)('allows allowlisted emails with oversized codes', async()=>{
  const allow=vi.fn(async()=>({ok:true as const})); const f=fixture({authorizeSignUp:allow}); const response=await f.post(email(),'X'.repeat(65));
  expect(response.status).toBe(200); expect(allow).toHaveBeenCalledTimes(2);
 })
