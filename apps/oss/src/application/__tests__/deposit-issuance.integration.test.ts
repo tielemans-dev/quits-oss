@@ -206,4 +206,31 @@ async function business(organizationId: string) {
     expect(put).toHaveBeenCalledTimes(1)
   })
 
+  it("does not start the secondary renderer after the PDF store disables deposits", async () => {
+    const ctx = await fixture()
+    const before = await business(ctx.org.organizationId)
+    const renderUbl = vi.fn(async () => new TextEncoder().encode("synthetic secondary artifact"))
+    setRuntimeServices({ documentRenderer: { version: "issuance-test-v1", renderPdf: render, renderUbl } })
+    put.mockImplementationOnce(async () => { disabled(); return "already-written-artifact" })
+    expect(await executeIssuanceCommand(issueAgreement, ctx.args.commandInput, { actor: ctx.actor })).toMatchObject({ status: "failed", error: { code: "deposits_disabled" } })
+    const after = await business(ctx.org.organizationId)
+    expect(after.staging).toHaveLength(1)
+    expect(after.staging[0]).toMatchObject({ status: "reserved", prepToken: null, numberWasAllocated: false, candidateRefs: [] })
+    expect({ ...after, staging: [] }).toEqual(before)
+    expect(render).toHaveBeenCalledTimes(1)
+    expect(put).toHaveBeenCalledTimes(1)
+    expect(renderUbl).not.toHaveBeenCalled()
+  })
+
+  it.each([true, false])("retains secondary rendering for enabled deposits and disabled services, deposit=%s", async deposit => {
+    const ctx = await fixture(deposit)
+    if (!deposit) disabled()
+    const renderUbl = vi.fn(async () => new TextEncoder().encode("synthetic secondary artifact"))
+    setRuntimeServices({ documentRenderer: { version: "issuance-test-v1", renderPdf: render, renderUbl } })
+    expect(completed(await executeIssuanceCommand(issueAgreement, ctx.args.commandInput, { actor: ctx.actor })).number).toBe("AGR-0001")
+    expect(renderUbl).toHaveBeenCalledTimes(1)
+    expect(put).toHaveBeenCalledTimes(2)
+    expect(await prisma.issuanceCandidate.findFirstOrThrow({ where: { documentId: ctx.draft.id } })).toMatchObject({ status: "published", artifacts: { pdf: { ref: "synthetic-artifact" }, ubl: { ref: "synthetic-artifact" } } })
+  })
+
 })

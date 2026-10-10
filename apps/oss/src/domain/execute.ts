@@ -313,6 +313,13 @@ export async function executeCommand<Input, Result>(
         const staged = await tx.artifactStaging.findUnique({ where: { id: issuanceStagingId } })
         if (!staged) throw new HandlerFailed(new InvalidState({ code: "reservation_missing", message: "Document reservation missing" }))
         const kind = staged.documentKind as ArtifactDocumentKind
+        const expectedKind = definition.type === "invoice.send" ? "invoice" : definition.type === "credit_note.issue" ? "creditNote"
+          : ["agreement.send", "agreement.issue"].includes(definition.type) ? "agreement" : null
+        const stagedInput = staged.renderInput as unknown as RenderInput
+        if (staged.organizationId !== organizationId || kind !== expectedKind || stagedInput.kind !== kind ||
+            (kind !== "creditNote" && staged.documentId !== (input as { id: string }).id)) {
+          throw new HandlerFailed(new InvalidState({ code: "reservation_identity_mismatch", message: "Reservation belongs to another command or document" }))
+        }
         const documentId = kind === "creditNote" ? (input as { invoiceId: string }).invoiceId : (input as { id: string }).id
         await runRead(tx, lockDocument(kind === "creditNote" ? "invoice" : kind, documentId), { actor, organizationId, commandId: provisionalId, now })
         const contactDocument = kind === "agreement" ? await tx.agreement.findFirst({ where: { id: documentId, organizationId }, select: { contactId: true } })

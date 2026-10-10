@@ -12,7 +12,7 @@ import { issueCreditNote } from "../domain/commands/credit-notes"
 import { sendAgreement, issueAgreement } from "../domain/commands/agreement-lifecycle"
 import { allocateDocumentNumber, peekNextDocumentNumber, NUMBER_CHANGED } from "../domain/documents/numbering"
 import { prospectiveRenderInput, hashBytes, hashRenderInput, type ArtifactDocumentKind, type RenderInput } from "../domain/documents/render-input"
-import { artifactsJson, lockArtifactOrganization, type StoredArtifacts } from "../domain/documents/artifacts"
+import { artifactsJson, lockArtifactOrganization, supersededRequestKey, type StoredArtifacts } from "../domain/documents/artifacts"
 import { ExternalFailure, InvalidState, serializeDomainError } from "../domain/errors"
 import { appLogger } from "../lib/observability"
 import { requireDepositsEnabled } from "../domain/agreements/deposit-capability"
@@ -71,10 +71,11 @@ export async function reserveDocument(input: {
       const stale = !existing.numberWasAllocated && provisionalNumber !== null && existing.documentKind === input.kind &&
         ["reserved", "stored", "missing"].includes(existing.status) && existing.reservedNumber !== provisionalNumber
       if (!stale) return existing
-      // Free the request key so the retry can prepare the document again with the current number.
+      // Free every live key on this stale row. Keep exact primary/alias ownership as tombstones
+      // so an overlapping invocation can retry, rather than poisoning its request's receipt.
       await tx.artifactStaging.update({ where: { id: existing.id }, data: { status: "abandoned", prepToken: null,
-        requestKey: existing.requestKey === requestKey ? `${existing.requestKey}#superseded:${existing.id}` : existing.requestKey,
-        requestKeys: existing.requestKeys.filter(key => key !== requestKey) } })
+        requestKey: supersededRequestKey(existing.requestKey, existing.id),
+        requestKeys: existing.requestKeys.map(key => supersededRequestKey(key, existing.id)) } })
     }
     number ??= provisionalNumber
     // Try an unchanged retry with the old timestamp before allocating any new number.
@@ -122,7 +123,7 @@ export async function prepareDocument(stagingId: string): Promise<ArtifactStagin
     if (staging.status !== "reserved") return staging
     if (staging.leaseUntil <= new Date()) throw new InvalidState({ code: "reservation_expired", message: "Document reservation expired" })
     // A policy can change after reservation or during rendering. Recheck before claiming and
-    // before each store write against the frozen input and current locked draft. No lock spans
+    // before each renderer and store write against the frozen input and current locked draft. No lock spans
     // renderer or store calls; execution still rechecks under its own locks.
     const checkPreparation = async () => {
       if (staging.documentKind !== "agreement") return
@@ -160,8 +161,10 @@ export async function prepareDocument(stagingId: string): Promise<ArtifactStagin
             hash, size: bytes.byteLength, rendererVersion: staging.rendererVersion })
           return { ref, hash, size: bytes.byteLength }
         }
+        await checkPreparation()
         const artifacts: StoredArtifacts = { pdf: await storeBytes("pdf", await renderer.renderPdf(renderInput)) }
         if (renderer.renderUbl) {
+          await checkPreparation()
           const ubl = await renderer.renderUbl(renderInput)
           if (ubl) artifacts.ubl = await storeBytes("ubl", ubl)
         }
