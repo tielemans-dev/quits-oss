@@ -1,3 +1,25 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/quits-wordmark-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/quits-wordmark-light.svg">
+    <img src=".github/assets/quits-wordmark-light.svg" alt="quits." width="200">
+  </picture>
+</p>
+
+<!-- PNG fallback (2× retina, 400px wide → display at 200px):
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/quits-wordmark-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/quits-wordmark-light.png">
+    <img src=".github/assets/quits-wordmark-light.png" alt="quits." width="200">
+  </picture>
+</p>
+-->
+
+> [!NOTE]
+> Quits is pre-1.0 and under active development, so breaking changes to data, config and APIs may happen until 1.0.
+> The hosted version at [quits.dev](https://quits.dev) is not open yet; you can join the waitlist there.
+
 # Quits
 
 Source-available invoicing for freelancers and small businesses.
