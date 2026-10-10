@@ -11,7 +11,7 @@ const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 
 describeIfDatabase("invoice payment links", () => {
-  it("creates public invoice payment links only when Stripe BYOK is configured", async () => {
+  it("does not backfill historical bank details and still supports card payment links", async () => {
     const orgId = randomUUID()
     const slug = `invoice-link-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
     const previousOrigin = process.env.QUITS_APP_ORIGIN
@@ -91,8 +91,15 @@ describeIfDatabase("invoice payment links", () => {
       await caller.invoices.send({ id: invoice.id, allowSendWithoutEmail: true })
 
       await expect(caller.invoices.createPaymentLink({ id: invoice.id })).rejects.toThrow(
-        "Stripe payment links are not configured for this organization"
+        "Configure card payments or issue an invoice with bank transfer details"
       )
+
+      // Adding an account today cannot make an older invoice payable to that account.
+      await caller.paymentDetails.update({ bankAccount: { regNumber: "0040", accountNumber: "0440116243" } })
+      await expect(caller.invoices.createPaymentLink({ id: invoice.id })).rejects.toThrow(
+        "Configure card payments or issue an invoice with bank transfer details"
+      )
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).publicPaymentIssuedAt).toBeNull()
 
       await caller.settings.update({
         stripePublishableKey: "pk_test_123456789",

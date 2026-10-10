@@ -46,6 +46,7 @@ export function serializePublicInvoiceSession(session: {
     locale?: string | null
     timezone?: string | null
     notes: string | null
+    paymentReference?: string | null
     sellerSnapshot: unknown
     buyerSnapshot: unknown
     /** Only the presentation fields are read; the settings row also carries secrets. */
@@ -119,6 +120,7 @@ export function serializePublicInvoiceSession(session: {
       currency: invoice.currency,
       timezone: presentation.timezone,
       notes: invoice.notes,
+      paymentReference: invoice.paymentReference?.trim() || issuedNumber(invoice),
       sellerSnapshot,
       buyerSnapshot: frozen?.buyer ?? parseBuyerSnapshot(invoice.buyerSnapshot),
       contact: invoice.contact,

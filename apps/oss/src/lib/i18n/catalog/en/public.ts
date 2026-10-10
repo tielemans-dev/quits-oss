@@ -22,6 +22,7 @@ export const enPublicMessages = {
   "public.invoice.credited": "Credited",
   "public.invoice.balanceDue": "Balance due",
   "public.invoice.pay.title": "Pay this invoice",
+  "public.invoice.pay.bankDescription": "Pay by bank transfer using the details and reference below.",
   "public.invoice.pay.description": "Review the balance due and continue to secure checkout.",
   "public.invoice.pay.action": "Pay now",
   "public.invoice.pay.unavailable": "Online payment is not available for this invoice.",

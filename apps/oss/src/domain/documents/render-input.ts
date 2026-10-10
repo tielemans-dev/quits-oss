@@ -1,5 +1,5 @@
-import { requireInvoiceIssuancePolicy } from "./issuance-policy"
 import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
+import { requireInvoiceIssuancePolicy } from "./issuance-policy"
 import { frozenEinvoiceInput } from "./einvoice-input"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { documentVatSummary } from "./vat-summary"

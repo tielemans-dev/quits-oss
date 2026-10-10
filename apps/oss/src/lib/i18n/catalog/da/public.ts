@@ -22,6 +22,7 @@ export const daPublicMessages = {
   "public.invoice.credited": "Krediteret",
   "public.invoice.balanceDue": "Til betaling",
   "public.invoice.pay.title": "Betal denne faktura",
+  "public.invoice.pay.bankDescription": "Betal med bankoverførsel med oplysningerne og referencen nedenfor.",
   "public.invoice.pay.description": "Kontrollér beløbet, og fortsæt til sikker betaling.",
   "public.invoice.pay.action": "Betal nu",
   "public.invoice.pay.unavailable": "Onlinebetaling er ikke tilgængelig for denne faktura.",

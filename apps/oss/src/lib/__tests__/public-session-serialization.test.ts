@@ -196,6 +196,7 @@ describe("public session serialization", () => {
     expect(session.invoice.sellerSnapshot?.taxIds).toEqual([{ scheme: "vat", value: "DK12345678", countryCode: "DK" }])
     expect(session.invoice.sellerSnapshot?.bankAccount?.iban).toBe("DK5000400440116243")
     expect(session.invoice.sellerSnapshot?.paymentNote).toBe("MobilePay Box 12345")
+    expect(session.invoice.paymentReference).toBe("INV-0001")
   })
 
   it("serializes a missing or malformed seller snapshot as null", () => {
