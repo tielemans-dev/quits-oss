@@ -17,5 +17,6 @@ WHERE status = 'abandoned' AND NOT "numberWasAllocated" AND "documentKind" IN ('
 
 -- This changes storage used by issuance. Stop old application writers before migrating,
 -- then generate/deploy the matching client and application. Do not roll back to a client
--- that requires a non-NULL primary key while retained archives exist. Retention removes
--- archived owners with their staging rows; this migration never rewrites command receipts.
+-- that requires a non-NULL primary key while retained archives exist. The artifact sweep
+-- retains staging rows and archived ownership; recovery ends at the original lease.
+-- This migration never rewrites command receipts.
