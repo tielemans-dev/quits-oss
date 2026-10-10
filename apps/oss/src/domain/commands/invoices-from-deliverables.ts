@@ -1,3 +1,4 @@
+import { requireDepositsEnabled } from "../agreements/deposit-capability"
 import { addUtcDays } from "../features/recurring-dates"
 import { formatIsoDate } from "../../lib/exports/format"
 import { Effect } from "effect"
@@ -29,6 +30,7 @@ export const createInvoiceFromDeliverables = defineCommand({
   handle: input => Effect.gen(function* () {
     const db = yield* Db, command = yield* Command
     const { agreement, lines } = yield* billableSelection(input.agreementId, input.deliverableIds)
+    yield* requireDepositsEnabled(lines)
     const result: { saleInvoiceId?: string; prepaymentInvoiceId?: string } = {}
     const issueDate = input.issueDate ? new Date(input.issueDate) : command.now
     const supplyDate = new Date(formatIsoDate(issueDate, agreement.timezone))
@@ -72,6 +74,7 @@ export const addInvoiceDeliverables = defineCommand({
     if (!parent) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.id })
     if (parent.agreementId !== input.agreementId) return yield* new InvalidState({ code: "agreement_mismatch", message: "The draft must be linked to this agreement" })
     const { agreement, lines } = yield* billableSelection(input.agreementId, input.deliverableIds)
+    yield* requireDepositsEnabled(lines)
     yield* lockDocument("invoice", input.id)
     const invoice = yield* Effect.promise(() => db.invoice.findFirst({ where: { id: input.id, organizationId: command.organizationId }, include }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.id })
@@ -102,6 +105,7 @@ export const invoiceScheduleAsSale = defineCommand({
   input: z.strictObject({ id: z.string().min(1), confirmed: z.literal(true), expectedRevision: z.number().int().nonnegative().optional() }),
   summarize: input => `Invoice the payment schedule on ${input.id} as a sale`,
   handle: input => Effect.gen(function* () {
+    yield* requireDepositsEnabled([{ isDeposit: true }])
     const db = yield* Db, command = yield* Command
     yield* lockDocument("invoice", input.id)
     const invoice = yield* Effect.promise(() => db.invoice.findFirst({ where: { id: input.id, organizationId: command.organizationId }, include }))

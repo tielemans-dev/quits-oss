@@ -8,7 +8,7 @@ import { Button } from "../ui/button"
 import { Label } from "../ui/label"
 
 type Agreement = Awaited<ReturnType<typeof trpc.agreements.get.query>>
-export function InvoiceDeliverables({ agreement, onChanged }: { agreement: Agreement; onChanged: () => Promise<void> }) {
+export function InvoiceDeliverables({ agreement, depositsEnabled, onChanged }: { agreement: Agreement; depositsEnabled: boolean; onChanged: () => Promise<void> }) {
   const { t, locale } = useI18n()
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
@@ -16,7 +16,7 @@ export function InvoiceDeliverables({ agreement, onChanged }: { agreement: Agree
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<{ saleInvoiceId?: string; prepaymentInvoiceId?: string } | null>(null)
-  const billable = agreement.deliverables.filter(line => isBillable(agreement, line))
+  const billable = agreement.deliverables.filter(line => isBillable(agreement, line) && (depositsEnabled || !line.isDeposit))
   const held = agreement.deliverables.filter(line => line.allocation.state !== "unbilled" && line.status !== "cancelled")
   async function create() {
     setBusy(true); setError(null)

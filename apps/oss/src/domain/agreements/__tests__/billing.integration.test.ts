@@ -1,3 +1,8 @@
+import { mintAgreementLink } from "../../../lib/agreements/tokens"
+import { loadPublicAgreementByToken } from "../../../lib/agreements/public-access"
+import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
+import { updateAgreementDraft } from "../../commands/agreements"
+import { appRouter } from "../../../trpc/router"
 import { executeIssuanceCommand } from "../../../application/issuance"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("../../../lib/email", async () => ({ ...await vi.importActual<typeof import("../../../lib/email")>("../../../lib/email"), deliver: vi.fn() }))
@@ -34,7 +39,7 @@ beforeEach(() => {
   vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-agreements-phase2-secret-over-32-characters")
   vi.mocked(deliver).mockReset().mockResolvedValue({ id: "synthetic" })
 })
-afterEach(async () => { vi.restoreAllMocks(); while (cleanups.length) await cleanups.pop()?.(); vi.unstubAllEnvs() })
+afterEach(async () => { setRuntimeExtensions([]); vi.restoreAllMocks(); while (cleanups.length) await cleanups.pop()?.(); vi.unstubAllEnvs() })
 async function setup(trigger = "on_acceptance", deposit = false, taxRate = "25") {
   const org = await createTestOrganization(); cleanups.push(org.cleanup)
   const actor = org.actors.admin
@@ -62,6 +67,73 @@ const invoice = (id: string) => prisma.invoice.findUniqueOrThrow({ where: { id }
 const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) => ({ id: line.id, deliverableId: line.deliverableId ?? undefined, description: line.description, quantity: line.quantityInput!, unitPrice: line.unitPriceInput! })
 
 ;(hasTestDatabase ? describe : describe.skip)("invoicing from deliverables", () => {
+  function disableDeposits() {
+    setRuntimeExtensions([{ id: "test-disable-deposits", resolveCapabilities: () => ({ agreements: { depositsEnabled: false } }) }])
+  }
+  it("rejects deposit draft API inputs while ordinary drafts remain available", async () => {
+    const ctx = await setup()
+    const caller = appRouter.createCaller({ session: { user: { id: ctx.actor.userId, email: "admin@example.test", name: "Admin" }, session: { activeOrganizationId: ctx.org.organizationId } } } as never)
+    const input = { contactId: ctx.contact.id, title: "Deposit", validUntil: "2099-01-01", deliverables: [{ title: "Deposit", quantity: "1", unitPrice: "20", isDeposit: true }] }
+    disableDeposits()
+    expect(await caller.agreements.capabilities()).toMatchObject({ depositsEnabled: false, invoice: true })
+    expect(await caller.runtime.capabilities()).toMatchObject({ agreements: { depositsEnabled: false } })
+    await expect(caller.agreements.createDraft(input)).rejects.toThrow("disabled")
+    await expect(caller.agreements.createDraftDecimal(input)).rejects.toThrow("disabled")
+    const draft = await caller.agreements.createDraftDecimal({ ...input, deliverables: [{ ...input.deliverables[0]!, isDeposit: false }] })
+    await expect(caller.agreements.updateDraft({ id: draft.id, deliverables: input.deliverables })).rejects.toThrow("disabled")
+    await expect(caller.agreements.updateDraftDecimal({ id: draft.id, deliverables: input.deliverables })).rejects.toThrow("disabled")
+    await expect(caller.agreements.updateDeliverable({ agreementId: draft.id, id: draft.deliverables[0]!.id, isDeposit: true })).rejects.toThrow("disabled")
+    expect(await prisma.deliverable.count({ where: { agreementId: draft.id, isDeposit: true } })).toBe(0)
+  })
+  it("refuses issuing pre-existing deposit offers without mutating their drafts", async () => {
+    const ctx = await setup()
+    const draft = completed(await executeIssuanceCommand(createAgreementDraft, {
+      contactId: ctx.contact.id, title: "Deposit", validUntil: "2099-01-01", deliverables: [{ title: "Deposit", quantity: "1", unitPrice: "20", isDeposit: true }],
+    }, { actor: ctx.actor }))
+    disableDeposits()
+    refused(await executeIssuanceCommand(issueAgreement, { id: draft.id }, { actor: ctx.actor }), "deposits_disabled")
+    refused(await executeIssuanceCommand(updateAgreementDraft, { id: draft.id, deliverables: [{ title: "Deposit", quantity: "1", unitPrice: "50", isDeposit: true }] }, { actor: ctx.actor }), "deposits_disabled")
+    expect(await prisma.agreement.findUniqueOrThrow({ where: { id: draft.id } })).toMatchObject({ status: "draft", number: null, offerSnapshot: null })
+    expect(await prisma.deliverable.count({ where: { agreementId: draft.id, isDeposit: true } })).toBe(1)
+  })
+  it("refuses mixed selections and sale bypasses atomically, preserves frozen offers, and still invoices services", async () => {
+    const ctx = await setup("on_delivery", true); await ctx.ready(0, false)
+    const original = await prisma.agreement.findUniqueOrThrow({ where: { id: ctx.agreement.id } })
+    const link = mintAgreementLink(original, "read", new Date())
+    const publicBefore = await loadPublicAgreementByToken(link.token)
+    disableDeposits()
+    expect(await loadPublicAgreementByToken(link.token)).toEqual(publicBefore)
+    expect(publicBefore).not.toBeNull()
+    for (const scheduleAsSale of [false, true]) {
+      refused(await executeIssuanceCommand(createInvoiceFromDeliverables, ctx.selection([ctx.item().id, ctx.item(2).id], { scheduleAsSale }), { actor: ctx.actor }), "deposits_disabled")
+    }
+    expect(await prisma.invoice.count({ where: { agreementId: ctx.agreement.id } })).toBe(0)
+    expect((await ctx.line()).billingStatus).toBe("unbilled")
+    expect((await ctx.line(2)).billingStatus).toBe("unbilled")
+    const { saleInvoiceId: id } = await ctx.reserve()
+    refused(await executeIssuanceCommand(addInvoiceDeliverables, { id, ...ctx.selection([ctx.item(2).id]), scheduleAsSale: true }, { actor: ctx.actor }), "deposits_disabled")
+    expect((await invoice(id!)).items).toHaveLength(1)
+    const stored = await prisma.agreement.findUniqueOrThrow({ where: { id: ctx.agreement.id } })
+    expect(stored.offerSnapshot).toEqual(original.offerSnapshot)
+    expect(stored.offerSnapshotHash).toBe(original.offerSnapshotHash)
+    expect(stored.status).toBe("accepted")
+    completed(await issueDocument({ kind: "invoice", actor: ctx.actor, commandInput: { id } }))
+    expect(await invoice(id!)).toMatchObject({ status: "sent", purpose: "sale" })
+  })
+  it("refuses converting or issuing deposit drafts prepared before disabling the capability", async () => {
+    const ctx = await setup("on_delivery", true)
+    const { prepaymentInvoiceId: id } = await ctx.reserve([ctx.item(2).id])
+    const original = await invoice(id!)
+    disableDeposits()
+    refused(await executeIssuanceCommand(invoiceScheduleAsSale, { id, confirmed: true }, { actor: ctx.actor }), "deposits_disabled")
+    refused(await issueDocument({ kind: "invoice", actor: ctx.actor, commandInput: { id } }), "deposits_disabled")
+    expect(await invoice(id!)).toEqual(original)
+    setRuntimeExtensions([])
+    completed(await executeIssuanceCommand(invoiceScheduleAsSale, { id, confirmed: true }, { actor: ctx.actor }))
+    disableDeposits()
+    refused(await issueDocument({ kind: "invoice", actor: ctx.actor, commandInput: { id } }), "deposits_disabled")
+    expect(await invoice(id!)).toMatchObject({ purpose: "sale", status: "draft", number: null })
+  })
   it("checks billability, duplicate ids, foreign ids and cancelled deposits", async () => {
     const ctx = await setup("on_acceptance", true)
     expect(isBillable({ ...ctx.agreement, status: "accepted" }, await ctx.line())).toBe(false)

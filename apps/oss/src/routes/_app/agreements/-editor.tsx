@@ -71,19 +71,22 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
   const [sellerName, setSellerName] = useState("")
   const [offerFormatVersion, setOfferFormatVersion] = useState<number | null>(2)
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
+  const [depositsEnabled, setDepositsEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
     Promise.all([
+      trpc.agreements.capabilities.query(),
       trpc.contacts.list.query(),
       trpc.agreements.listTemplates.query(),
       trpc.settings.get.query(),
       agreementId ? trpc.agreements.get.query({ id: agreementId }) : Promise.resolve(null),
     ])
-      .then(([buyers, available, settings, agreement]) => {
+      .then(([capabilities, buyers, available, settings, agreement]) => {
         if (cancelled) return
+        setDepositsEnabled(capabilities.depositsEnabled)
         setContacts(buyers)
         setTemplates(available)
         const seller = agreement?.sellerSnapshot as { companyName?: string | null } | null
@@ -340,14 +343,14 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
                     />
                   </div>
                 </div>
-                <Label className="flex gap-2">
+                {depositsEnabled && <Label className="flex gap-2">
                   <input
                     type="checkbox"
                     checked={line.isDeposit ?? false}
                     onChange={(e) => changeLine(index, { isDeposit: e.target.checked })}
                   />
                   {t(offerFormatVersion === 2 ? "agreements.scheduleLine" : "agreements.deposit")}
-                </Label>
+                </Label>}
               </div>
             ))}
             <Button

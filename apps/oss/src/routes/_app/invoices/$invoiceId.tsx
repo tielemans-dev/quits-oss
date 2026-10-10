@@ -191,6 +191,7 @@ function InvoiceDetailPage() {
   const { emailWarning, sendError } = Route.useSearch()
   const navigate = useNavigate()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [depositsEnabled, setDepositsEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [emailDelivery, setEmailDelivery] = useState<EmailDeliveryRuntimeStatus | null>(null)
   const [error, setError] = useState<string | null>(
@@ -219,6 +220,16 @@ function InvoiceDetailPage() {
     stripeByokConfigured?: boolean
   }>({})
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setDepositsEnabled(false)
+    if (invoice?.purpose !== "prepayment") return
+    Promise.resolve().then(() => trpc.runtime.capabilities.query())
+      .then(capabilities => { if (!cancelled) setDepositsEnabled(capabilities.agreements.depositsEnabled) })
+      .catch(() => { /* Keep deposit controls hidden without server capabilities. */ })
+    return () => { cancelled = true }
+  }, [invoice?.purpose])
 
   // Edit state
   const [contacts, setContacts] = useState<{ id: string; name: string }[]>([])
@@ -790,7 +801,7 @@ function InvoiceDetailPage() {
 
   return (
     <div className="p-6 max-w-3xl">
-      {invoice.purpose === "prepayment" && invoice.status === "draft" && <section className="rounded-md border p-4 grid gap-3">
+      {depositsEnabled && invoice.purpose === "prepayment" && invoice.status === "draft" && <section className="rounded-md border p-4 grid gap-3">
         <p>{t("agreements.prepaymentNotice")}</p>
         <AlertDialog><AlertDialogTrigger asChild><Button disabled={acting}>{t("agreements.convertSchedule")}</Button></AlertDialogTrigger>
           <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t("agreements.convertSchedule")}</AlertDialogTitle><AlertDialogDescription>{t("agreements.convertScheduleConfirm")}</AlertDialogDescription></AlertDialogHeader>

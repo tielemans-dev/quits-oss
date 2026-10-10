@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server"
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
 import { LocalizedDocument } from "../../documents/localized-document"
 import type { PublicAgreementDto, PublicDeliverableDto } from "../../../lib/agreements/public"
+import type { ComponentProps } from "react"
+import { AgreementActions } from "../agreement-actions"
 import { PublicAgreementPage } from "../public-agreement-page"
 import { PublicDeliverablePage } from "../public-deliverable-page"
 
@@ -61,13 +63,14 @@ const document: PublicAgreementDto = {
 
 const seller = { name: "Acme ApS", logo: "/a/fixture/logo" }
 
-function agreementPage(locale: string, doc: PublicAgreementDto = document) {
+function agreementPage(locale: string, doc: PublicAgreementDto = document, depositsEnabled = true, scope: "read" | "decide" = "read") {
   return renderToStaticMarkup(
     <LocalizedDocument locale={locale}>
       <PublicAgreementPage
         seller={seller}
         document={doc}
-        scope="read"
+        scope={scope}
+        depositsEnabled={depositsEnabled}
         token="fixture"
         name=""
         onNameChange={() => {}}
@@ -84,6 +87,18 @@ function agreementPage(locale: string, doc: PublicAgreementDto = document) {
 }
 
 describe("public agreement page in Danish", () => {
+  it.each(["da-DK", "en-US"])("suppresses disabled advance acceptance in %s while keeping terms, decline and PDF", locale => {
+    const doc = { ...document, snapshot: { ...snapshot, deliverables: snapshot.deliverables.map(line => ({ ...line, isDeposit: true })) } }
+    const disabled = agreementPage(locale, doc, false, "decide")
+    expect(disabled).not.toContain('id="accepted-name"')
+    expect(disabled).toContain('id="decline-reason"')
+    expect(disabled).toContain("/a/fixture/pdf")
+    expect(disabled).toContain("Vilkår")
+    expect(disabled).toContain("Design")
+    expect(agreementPage(locale, doc, true, "decide")).toContain('id="accepted-name"')
+    expect(agreementPage(locale, document, false, "decide")).toContain('id="accepted-name"')
+  })
+
   it("writes dates, quantities and money the Danish way, not as raw stored values", () => {
     const html = agreementPage("da-DK")
 
@@ -121,6 +136,20 @@ describe("public agreement page in Danish", () => {
 
     expect(html).toContain("Valid until: March 28, 2027")
     expect(html).toContain("1.5\u00a0×\u00a0$500.00 = $750.00")
+  })
+})
+
+describe("internal acceptance control", () => {
+  it("checks frozen offer terms while retaining the PDF action", () => {
+    function actions(deposit: boolean, enabled: boolean) {
+      const agreement = { id: "fixture", status: "sent", acceptedAt: null, offerSnapshot: { ...snapshot, deliverables: snapshot.deliverables.map(line => ({ ...line, isDeposit: deposit })) } } as unknown as ComponentProps<typeof AgreementActions>["agreement"]
+      const capabilities = { accept: true, depositsEnabled: enabled } as ComponentProps<typeof AgreementActions>["capabilities"]
+      return renderToStaticMarkup(<LocalizedDocument locale="en-US"><AgreementActions agreement={agreement} capabilities={capabilities} onChanged={async () => {}} onError={() => {}} /></LocalizedDocument>)
+    }
+    expect(actions(true, false)).not.toContain('id="internal-name"')
+    expect(actions(true, false)).toContain("/api/agreements/fixture/pdf")
+    expect(actions(true, true)).toContain('id="internal-name"')
+    expect(actions(false, false)).toContain('id="internal-name"')
   })
 })
 

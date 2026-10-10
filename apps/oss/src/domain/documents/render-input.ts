@@ -1,4 +1,5 @@
 import { requireInvoiceIssuancePolicy } from "./issuance-policy"
+import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { frozenEinvoiceInput } from "./einvoice-input"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { documentVatSummary } from "./vat-summary"
@@ -79,6 +80,7 @@ export const prospectiveRenderInput = (input: {
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.documentId })
     // Checked before preparation and again under the commit locks. Empty drafts may still be previewed.
     if (!input.preview && !invoice.items.length) return yield* new InvalidState({ code: "empty_invoice", message: "Add at least one line before sending this invoice." })
+    if (!input.preview) yield* requireDepositInvoiceEnabled(invoice)
     if (!input.preview && invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
     // Payment details are always the ones valid now, also for agreement invoices, which keep the
     // agreed seller identity but are paid to the account in force when they are issued.
