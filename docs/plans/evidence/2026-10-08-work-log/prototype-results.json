@@ -1,0 +1,113 @@
+{
+  "kind": "synthetic-offline-proposal",
+  "checks": [
+    "multiline preserves four items and explicit decimal quantity",
+    "typed submission replay returns same identities",
+    "same identity with changed content requires review",
+    "duplicate text under new identity is quarantined",
+    "duplicate forwarded email replay and text cross-channel duplicate",
+    "organization boundary rejects foreign source",
+    "unreviewed entry cannot become draft line",
+    "missing tax blocks review despite known customer and price",
+    "missing price record cannot inherit another customer rate",
+    "source span cannot change during human correction",
+    "unknown customer cannot be supplied by model",
+    "correction retains original and requires fresh confirmation",
+    "confirmed line retains source, revision and null draft number",
+    "second reservation loses and correction cannot rewrite reserved line",
+    "release checks reviewed holder and does not permit stale reuse",
+    "issued state refuses release, using synthetic state only",
+    "same holder reuse has fresh allocation identity without advancing rebill generation",
+    "distinct holder and new draft refuse previous release identity",
+    "one holder cannot own two work entries and foreign allocation cannot release either",
+    "price mutation after review refuses reservation until new explicit review",
+    "removed tax or rate after review refuses reservation and renewed review",
+    "review binds currency price basis tax customer and unit as well as price",
+    "reviewed facts and reserved line do not share mutable rate or returned line references",
+    "correction after review invalidates confirmation and preserves source evidence",
+    "changed work or source facts after review refuse reservation",
+    "failed replacement review cannot retain prior commercial confirmation",
+    "release invalidation and source replay do not restore confirmation or create duplicates",
+    "handwritten structured AI fixture shares review-only path",
+    "injected command or guessed financial fields are rejected",
+    "embedded instructions remain inert source text",
+    "invalid spans, impossible dates, negative and ambiguous numbers fail closed",
+    "bounded parser does not truncate silently"
+  ],
+  "count": 32,
+  "expectedCandidates": [
+    {
+      "customerHint": "Alpha",
+      "date": "2026-10-08",
+      "quantity": "2",
+      "unit": "h",
+      "description": "Design",
+      "span": [
+        0,
+        33
+      ]
+    },
+    {
+      "customerHint": "Beta",
+      "date": "2026-10-08",
+      "quantity": "1.5",
+      "unit": "h",
+      "description": "Testing",
+      "span": [
+        34,
+        69
+      ]
+    },
+    {
+      "customerHint": "Unknown",
+      "date": "2026-10-08",
+      "quantity": "1",
+      "unit": "h",
+      "description": "Advice",
+      "span": [
+        70,
+        105
+      ]
+    },
+    {
+      "customerHint": "Nord",
+      "date": "2026-10-08",
+      "quantity": "1",
+      "unit": "h",
+      "description": "Meeting",
+      "span": [
+        106,
+        139
+      ]
+    }
+  ],
+  "reviewedDraftExample": {
+    "draftId": "d1",
+    "lineId": "l1",
+    "allocationId": "allocation-1",
+    "number": null,
+    "status": "draft",
+    "customerId": "c-a",
+    "sourceKind": "proposed_work_entry",
+    "sourceId": "entry-2",
+    "captureSourceId": "source-1",
+    "sourceRevision": 2,
+    "generation": 0,
+    "description": "Design",
+    "quantity": "3",
+    "unit": "h",
+    "id": "approved-rate-a",
+    "unitPrice": "800.00",
+    "taxTreatment": "synthetic-reviewed-25-percent",
+    "currency": "DKK",
+    "pricesIncludeTax": false
+  },
+  "limitations": [
+    "No live K5 execution",
+    "No live model/STT evaluation",
+    "No SQL race proof",
+    "No financial totals or issuance",
+    "No durable allocation identity or protected persistence",
+    "Duplicate resolution UI and persistence not implemented"
+  ]
+}
