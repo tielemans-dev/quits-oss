@@ -1,30 +1,12 @@
 {
-  "short_name": "Quits",
-  "name": "Quits",
+  "name": "quits",
+  "short_name": "quits",
   "icons": [
-    {
-      "src": "favicon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any"
-    },
-    {
-      "src": "favicon.ico",
-      "sizes": "48x48 32x32 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    }
+    { "src": "/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#0b0b0c",
-  "background_color": "#fafaf9"
+  "theme_color": "#FAFAF9",
+  "background_color": "#FAFAF9",
+  "display": "standalone"
 }
