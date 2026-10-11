@@ -124,7 +124,7 @@ async function withRelay(mode: "accept" | "reject" | "partial" | "disconnect" | 
             // A bounded hostile whitespace run plus an invalid lookalike mechanism.
             // Patched Nodemailer must parse whole tokens and select only LOGIN.
             socket.write(`250-local.test\r\n250-AUTH ${" ".repeat(16_384)}X-PLAIN-SUFFIX\r\n250 AUTH=LOGIN\r\n`)
-          } else if (/^EHLO/i.test(line)) socket.write("250-local.test\r\n250 8BITMIME\r\n")
+          } else if (/^EHLO/i.test(line)) socket.write("250-local.test\r\n250-SMTPUTF8\r\n250 8BITMIME\r\n")
           else if (/^AUTH/i.test(line) && mode === "malformed-auth") socket.write("535 credentials refused\r\n")
           else if (/^STARTTLS/i.test(line)) socket.write("454 TLS unavailable\r\n")
           else if (/^RCPT/i.test(line) && (mode === "reject" || (mode === "partial" && line.includes("customer@example.com")))) socket.write("550 recipient refused\r\n")
@@ -216,6 +216,14 @@ describe("real SMTP transport", () => {
       })
     }
   )
+
+  it("submits an internationalized sender to an SMTPUTF8 relay", async () => {
+    await withRelay("accept", async (_bodies, commands) => {
+      await deliver({ ...message, from: formatSenderAddress("quits", "Faktúra@example.com") })
+      expect(commands.find(command => command.startsWith("MAIL FROM:")))
+        .toBe("MAIL FROM:<Faktúra@example.com> SMTPUTF8")
+    })
+  })
 
   it("recovers through the supplied SMTP environment while delivery is pending and global Resend has no key", async () => {
     await withRelay("hold", async (bodies, _commands, release) => {

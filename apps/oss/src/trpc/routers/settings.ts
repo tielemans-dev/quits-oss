@@ -15,6 +15,7 @@ import {
   validateDocumentSendingDomain,
 } from "../../lib/document-email-sending"
 import { getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
+import { tryParseSenderAddress } from "../../lib/email-sender"
 import {
   AI_PROVIDER_KINDS,
   isAiEndpointHostAllowed,
@@ -595,18 +596,19 @@ function buildDocumentSendingState(input: {
   supportsCustomDomain: boolean
 }) {
   const environment = getRuntimeEnv()
-  const sharedSender = resolveDocumentEmailEnvelope({
+  const sharedFromEmail = tryParseSenderAddress(environment.FROM_EMAIL ?? "")
+  const sharedSender = sharedFromEmail === null ? null : resolveDocumentEmailEnvelope({
     orgName: input.settings.companyName,
     orgBillingEmail: input.settings.companyEmail,
-    sharedFromEmail: environment.FROM_EMAIL ?? "noreply@yaip.app",
+    sharedFromEmail,
   })
   const brandedState = input.supportsCustomDomain
     ? readDocumentSendingDomainState(input.settings)
     : readDocumentSendingDomainState({})
-  const effectiveSender = resolveDocumentEmailEnvelope({
+  const effectiveSender = sharedFromEmail === null ? null : resolveDocumentEmailEnvelope({
     orgName: input.settings.companyName,
     orgBillingEmail: input.settings.companyEmail,
-    sharedFromEmail: environment.FROM_EMAIL ?? "noreply@yaip.app",
+    sharedFromEmail,
     branded: brandedState,
   })
   const syncState = readDocumentSendingSyncState(input.settings)
