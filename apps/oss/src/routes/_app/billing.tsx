@@ -293,13 +293,13 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
     {success && isPaid && <p className="mb-4 rounded-[7px] bg-[#E9F8EF] p-3 text-sm text-[#0E7A41]">{t("billing.flash.success")}</p>}
     {canceled && <p className="mb-4 rounded-[7px] bg-[#FEF6E7] p-3 text-sm">{t("billing.flash.canceled")}</p>}
     {error && <p role="alert" className="mb-4 rounded-[7px] bg-[#FDECEC] p-3 text-sm text-[#B42318]">{error}</p>}
-    <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <div className={`grid gap-5 ${isComped ? "" : "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"}`}>
       <section className="rounded-[10px] border border-[#E7E7E4] bg-white p-6">
         <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.13em] text-[#6B6B70]">{t("billing.currentPlan")}</p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <h2 className="text-2xl font-semibold">{isTrial ? t("trial.billing.trial") : plan?.name ?? "quits"}</h2>
           <span className="rounded-full bg-[#E9F8EF] px-2.5 py-1 text-xs font-semibold text-[#0E7A41]">
-            {isPaid ? t("trial.billing.paid") : isTrial || isComped ? t("trial.status.active") : t("trial.paywall.pill")}
+            {isComped ? t("trial.billing.comped") : isPaid ? t("trial.billing.paid") : isTrial ? t("trial.status.active") : t("trial.paywall.pill")}
           </span>
         </div>
         {isTrial && trialEnd && <>
@@ -309,7 +309,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
           </div>
           <p className="mt-5 text-sm text-[#6B6B70]">{t("trial.billing.data")}</p>
         </>}
-        {!isTrial && !isPaid && <p className="mt-4 text-sm text-[#6B6B70]">{t("trial.banner.endedMeta")}</p>}
+        {!isTrial && !isPaid && !isComped && <p className="mt-4 text-sm text-[#6B6B70]">{t("trial.banner.endedMeta")}</p>}
         {isPaid && <>
           {subscription.renewalDate && <p className="mt-3 text-sm text-[#6B6B70]">{t("trial.billing.renews", { date: formatTrialDate(subscription.renewalDate, locale) })}</p>}
           {subscription.paymentMethod && <p className="mt-2 text-sm text-[#6B6B70]">{t("trial.billing.card", {
@@ -321,7 +321,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
           </div>
         </>}
       </section>
-      <section className="rounded-[10px] border border-[#E7E7E4] bg-white p-6">
+      {!isComped && <section className="rounded-[10px] border border-[#E7E7E4] bg-white p-6">
         <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.13em] text-[#6B6B70]">{t("billing.subscription.title")}</p>
         <h2 className="mt-5 text-2xl font-semibold">{plan?.name ?? "quits"}</h2>
         {price && <><p className="mt-3 text-3xl font-semibold tracking-tight">{price}</p>
@@ -336,7 +336,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
           </Button>
           <p className="mt-3 text-center text-xs leading-5 text-[#6B6B70]">{t("trial.billing.note")}</p>
         </>}
-      </section>
+      </section>}
     </div>
     {isPaid && <section className="mt-5 rounded-[10px] border border-[#E7E7E4] bg-white p-6">
       <h2 className="text-lg font-semibold">{t("trial.billing.invoices")}</h2>
