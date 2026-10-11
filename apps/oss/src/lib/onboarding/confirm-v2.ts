@@ -31,6 +31,9 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     const result = { status: "complete" as const, version: 2 as const, completedAt: completedAt.toISOString(), bankMissing: !input.bank }
     const settings = {
       ...buildDkPresets(input, signupEmail),
+      ...input.settings,
+      ...(input.settings ? { currency: input.settings.defaultCurrency, baseCurrency: input.settings.defaultCurrency } : {}),
+      taxRate: input.momsRegistered ? input.settings?.taxRate ?? 25 : 0,
       bankAccountHolder: input.bank ? input.companyName : null,
       bankName: null,
       bankRegNumber: input.bank?.regNumber ?? null,
@@ -50,7 +53,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     await tx.organizationTaxId.updateMany({ where: { organizationId, isPrimary: true }, data: { isPrimary: false } })
     await tx.organizationTaxId.deleteMany({ where: { organizationId, scheme: { in: ["cvr", "vat", "dk_cvr", "DK_CVR"] } } })
     await tx.organizationTaxId.createMany({ data: [
-      { organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true },
+      ...(input.cvr ? [{ organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true }] : []),
       ...(input.vatId ? [{ organizationId, scheme: "vat", value: input.vatId, countryCode: "DK", isPrimary: false }] : []),
     ] })
     if (input.catalogSuggestions.length) {

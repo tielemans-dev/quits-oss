@@ -1,3 +1,4 @@
+import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -51,6 +52,7 @@ type LineItem = {
 
 function NewInvoicePage() {
   const { t, locale } = useI18n()
+  const bankNudge = useFirstInvoiceBankNudge()
   const currency = useOrgCurrency()
   const [issuance, setIssuance] = useState(initialIssuanceValues)
   const [baseCurrency, setBaseCurrency] = useState<string>()
@@ -246,6 +248,7 @@ function NewInvoicePage() {
 
     setSaving(true)
     try {
+      if (sendImmediately && !await bankNudge.beforeSend()) { setSaving(false); return }
       // The draft exists once created: whatever happens to the send, show it rather than keep
       // the form, where submitting again would create a second invoice.
       const target = await createThenSend({
@@ -286,6 +289,7 @@ function NewInvoicePage() {
 
   return (
     <div className="p-6 max-w-3xl">
+      {bankNudge.dialog}
       <Card>
         <CardHeader>
           <CardTitle>{t("invoices.new.title")}</CardTitle>

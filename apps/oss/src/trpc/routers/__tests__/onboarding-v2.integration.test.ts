@@ -110,6 +110,32 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(settings.taxRate?.toString()).toBe("0")
     expect(await api.onboarding.getStatus()).toMatchObject({ isComplete: true, missing: [], bankMissing: true })
   })
+  it("saves edited summary defaults in the confirmation transaction", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    const result = await api.onboarding.confirmV2({ ...summary(), settings: {
+      countryCode: "DK", defaultCurrency: "EUR", locale: "en-GB", timezone: "Europe/London", taxRate: 20,
+      pricesIncludeTax: true, invoicePrefix: "TEST", paymentTermsDays: 30,
+    } })
+    expect(result.status).toBe("complete")
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
+    expect(settings).toMatchObject({ currency: "EUR", baseCurrency: "EUR", defaultCurrency: "EUR", locale: "en-GB", timezone: "Europe/London", pricesIncludeTax: true, invoicePrefix: "TEST", paymentTermsDays: 30 })
+    expect(settings.taxRate?.toString()).toBe("20")
+    expect(await api.paymentDetails.firstSendReadiness()).toEqual({ bankMissing: true })
+  })
+  it("manual fallback can complete without registry facts, including a CVR number", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    expect(await api.onboarding.confirmV2({ ...summary(), source: "manual", cvr: "", vatId: undefined })).toMatchObject({ status: "complete" })
+    expect(await prisma.organizationTaxId.count({ where: { organizationId: id } })).toBe(0)
+    expect(await api.onboarding.getStatus()).toMatchObject({ isComplete: true, missing: [] })
+  })
+  it("does not nudge when the optional bank account is present", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.confirmV2({ ...summary(), bank: { regNumber: "1234", accountNumber: "1" } })
+    expect(await api.paymentDetails.firstSendReadiness()).toEqual({ bankMissing: false })
+  })
   it("rejects invalid payloads before any persistence", async () => {
     const id = await organization()
     const api = await caller(id)
@@ -135,6 +161,23 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await prisma.organizationTaxId.count({ where: { organizationId: id } })).toBe(0)
     expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
     expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(1)
+  })
+  it("injects a read-only CVR provider and hides it without a provider", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    const services = await import("../../../lib/runtime/services")
+    expect(await api.cvr.available()).toEqual({ enabled: false, suggestions: false })
+    const company = { cvr: "24256790", name: "Test ApS", address: "Testvej 1\n1000 København", companyForm: "ApS", momsRegistered: true, status: "active" as const, statusClass: "active" as const }
+    const search = vi.fn(async () => [company])
+    services.setRuntimeServices({ cvrLookupProvider: { search, get: async () => company } })
+    try {
+      expect(await api.cvr.available()).toEqual({ enabled: true, suggestions: false })
+      expect(await api.cvr.search({ q: "Test" })).toEqual([company])
+      expect(await api.cvr.get({ cvr: "24256790" })).toEqual(company)
+      expect(search.mock.calls[0]).toMatchObject(["Test", { userId: `qui56-${id}`, organizationId: id }])
+      expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
+      expect(await prisma.organizationTaxId.count({ where: { organizationId: id } })).toBe(0)
+    } finally { services.resetRuntimeServices() }
   })
   it("requires both cloud distribution and an explicit extension flag", async () => {
     const id = await organization()

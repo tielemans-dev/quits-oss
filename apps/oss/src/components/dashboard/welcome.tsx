@@ -71,7 +71,7 @@ function GhostDashboard() {
  * what will appear here, and one clear action. A customer can be added first, as a quieter second
  * choice.
  */
-export function FirstRun() {
+export function FirstRun({ readyCompany }: { readyCompany?: string } = {}) {
   const { t } = useI18n()
   const points = [
     t("dashboard.welcome.point.incoming"),
@@ -86,26 +86,26 @@ export function FirstRun() {
     >
       <div className="mx-auto grid max-w-4xl items-center gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] md:gap-14">
         <div>
-          <h2 className="text-xl font-bold tracking-[-0.02em] sm:text-2xl">{t("dashboard.welcome.title")}</h2>
+          <h2 className="text-xl font-bold tracking-[-0.02em] sm:text-2xl">{readyCompany ? t("onboardingV2.ready.heading", { company: readyCompany }) : t("dashboard.welcome.title")}</h2>
           <p className="text-muted-foreground mt-2 max-w-md text-sm sm:text-base">
-            {t("dashboard.welcome.description")}
+            {readyCompany ? t("onboardingV2.ready.sub") : t("dashboard.welcome.description")}
           </p>
-          <ul className="mt-5 space-y-2 text-sm">
+          {readyCompany ? <div className="mt-5 space-y-2 text-sm"><span className="font-mono text-xs">{t("onboardingV2.ready.tag")}</span><h3 className="font-semibold">{t("onboardingV2.ready.first")}</h3><p>{t("onboardingV2.ready.firstBody")}</p></div> : <ul className="mt-5 space-y-2 text-sm">
             {points.map((point) => (
               <li key={point} className="flex items-center gap-3">
                 <DoubleRule className="text-foreground" />
                 {point}
               </li>
             ))}
-          </ul>
+          </ul>}
           <div className="mt-7 flex flex-wrap items-center gap-2">
-            <NewInvoiceButton label={t("dashboard.welcome.action.invoice")} />
+            <NewInvoiceButton label={readyCompany ? t("onboardingV2.ready.create") : t("dashboard.welcome.action.invoice")} />
             <Button asChild variant="outline">
               <Link to="/contacts/new">{t("dashboard.welcome.action.contact")}</Link>
             </Button>
           </div>
         </div>
-        <GhostDashboard />
+        {readyCompany ? <div className="space-y-6 text-sm"><p><Link to="/contacts/new" className="underline underline-offset-4">{t("onboardingV2.ready.customers")}</Link></p><p><Link to="/settings" className="underline underline-offset-4">{t("onboardingV2.ready.settings")}</Link></p></div> : <GhostDashboard />}
       </div>
     </section>
   )

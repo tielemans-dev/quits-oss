@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react"
+import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { DashboardView, DashboardHeader } from "../../components/dashboard/dashboard-view"
@@ -15,6 +17,16 @@ async function sendReminder(invoiceId: string) {
 }
 
 function DashboardPage() {
+  const { isCloud } = useRuntimeDistribution()
+  const [readyCompany, setReadyCompany] = useState<string>()
+  useEffect(() => {
+    if (!isCloud) return
+    let cancelled = false
+    trpc.onboarding.getStatus.query().then(status => {
+      if (!cancelled && status.isComplete && status.version === 2) setReadyCompany(status.values.companyName ?? undefined)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [isCloud])
   const { load, refresh, retry } = useDashboardSummary()
 
   if (load.status === "loading") {
@@ -37,5 +49,5 @@ function DashboardPage() {
     )
   }
 
-  return <DashboardView summary={load.summary} sendReminder={sendReminder} onRemindersSettled={refresh} />
+  return <DashboardView readyCompany={readyCompany} summary={load.summary} sendReminder={sendReminder} onRemindersSettled={refresh} />
 }
