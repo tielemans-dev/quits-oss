@@ -8,6 +8,7 @@ import { buildQuitsAuthOptions } from "../runtime/auth-config"
 import { readFileSync } from "node:fs"
 import { parse as parseDotenv } from "dotenv"
 import { isSmtpPreSubmissionFailure } from "../email-smtp-node"
+import { formatSenderAddress } from "../email-sender"
 import { betterAuth } from "better-auth"
 import { memoryAdapter } from "better-auth/adapters/memory"
 import { withSmtpDisconnect, withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
@@ -179,6 +180,43 @@ function recoveryAuth(environment: Record<string, string | undefined>) {
 }
 
 describe("real SMTP transport", () => {
+  it.each(['Æble "Øl" Århus via quits', `${"ÆØÅ".repeat(30)} via quits`])(
+    "encodes the Unicode sender name on the SMTP wire: %s", async name => {
+      await withRelay("accept", async bodies => {
+        await deliver({ ...message, from: formatSenderAddress(name, "Quits <billing@example.com>") })
+        const header = bodies[0]!.match(/^From:([^\r\n]*(?:\r\n[ \t][^\r\n]*)*)/m)![1]!
+          .replace(/\r\n[ \t]+/g, " ").trim()
+        expect(header).toMatch(/^=\?UTF-8\?[BQ]\?/i)
+        expect(header).toContain("<billing@example.com>")
+        const words = [...header.matchAll(/=\?UTF-8\?([BQ])\?([^?]*)\?=/gi)]
+        const decoded = words.map(([word, encoding, payload]) => {
+          expect(word.length).toBeLessThanOrEqual(75)
+          const bytes = encoding!.toUpperCase() === "B"
+            ? Buffer.from(payload!, "base64")
+            : Buffer.from(payload!.replaceAll("_", " ").replace(/=([0-9A-F]{2})/gi,
+              (_, hex: string) => String.fromCharCode(parseInt(hex, 16))), "latin1")
+          return bytes.toString("utf8")
+        }).join("")
+        expect(decoded).toBe(name)
+      })
+    }
+  )
+
+  it.each([
+    ["Sales@example.com", "Sales@example.com"],
+    ["quits@[127.0.0.1]", "quits@[127.0.0.1]"],
+    ["quits@[IPv6:::1]", "quits@[ipv6:::1]"],
+  ])(
+    "preserves the sender address in the SMTP envelope: %s", async (address, wireAddress) => {
+      await withRelay("accept", async (bodies, commands) => {
+        await deliver({ ...message, from: formatSenderAddress("quits", address) })
+        // Nodemailer normalizes the case-insensitive domain, including the IPv6 tag.
+        expect(commands.find(command => command.startsWith("MAIL FROM:"))).toBe(`MAIL FROM:<${wireAddress}>`)
+        expect(bodies[0]).toContain(`From: quits <${wireAddress}>`)
+      })
+    }
+  )
+
   it("recovers through the supplied SMTP environment while delivery is pending and global Resend has no key", async () => {
     await withRelay("hold", async (bodies, _commands, release) => {
       const environment = {

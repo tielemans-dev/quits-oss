@@ -24,7 +24,7 @@ describe("credit note email", () => {
     expect(content.subject).toContain("Credit note CN-0001 for invoice INV-0001")
     expect(content.html).toContain("Credits invoice")
     expect(content.html).toContain("Damaged &lt;goods&gt;")
-    expect(content.fromAddress).toBe("Acme ApS <billing@acme.test>")
+    expect(content.fromAddress).toBe('"Acme ApS" <billing@acme.test>')
   })
 
   it("renders a Danish email for Danish documents", () => {

@@ -11,6 +11,28 @@ vi.mock("resend", () => ({
 describe("email sending", () => {
   beforeEach(() => {
     vi.stubEnv("RESEND_API_KEY", "re_test")
+    vi.stubEnv("EMAIL_PROVIDER", undefined)
+  })
+
+  it.each([undefined, "resend"])("sends Unicode document names to Resend with provider %s", async provider => {
+    vi.stubEnv("EMAIL_PROVIDER", provider)
+    send.mockResolvedValue({ data: { id: "email_123" }, error: null, headers: null })
+    const { deliver, buildInvoiceEmailContent } = await import("../email")
+    const { resolveDocumentEmailEnvelope } = await import("../document-email-sending")
+    const content = buildInvoiceEmailContent({
+      ...resolveDocumentEmailEnvelope({
+        orgName: 'Æble "Øl" Århus', sharedFromEmail: "Quits <Sales@EXAMPLE.COM>",
+      }),
+      invoice: {
+        number: "INV-1", issueDate: "2026-10-01", dueDate: "2026-10-31",
+        subtotal: 100, taxAmount: 0, total: 100, currency: "DKK", items: [],
+      },
+      org: { companyName: 'Æble "Øl" Århus' }, contactName: "Buyer",
+    })
+    await deliver({ from: content.fromAddress, to: "buyer@example.com", subject: content.subject, html: content.html })
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      from: '"Æble \\"Øl\\" Århus via quits" <Sales@example.com>',
+    }), undefined)
   })
 
   afterEach(() => {
