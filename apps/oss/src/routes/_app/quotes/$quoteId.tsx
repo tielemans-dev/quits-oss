@@ -7,6 +7,7 @@ import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
 import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
+import { isReadOnly, PaywallBlock, useTrialAccess } from "../../../components/billing/trial-access"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import {
   readEmailDeliveryAttempt,
@@ -163,6 +164,8 @@ function toDateString(value: string | Date) {
 
 function QuoteDetailPage() {
   const { t, locale } = useI18n()
+  const trial = useTrialAccess()
+  const readOnly = isReadOnly(trial?.subscription ?? null)
   const { quoteId } = Route.useParams()
   const { emailWarning, sendError } = Route.useSearch()
   const navigate = useNavigate()
@@ -232,6 +235,7 @@ function QuoteDetailPage() {
 
   function startEditing() {
     if (!quote) return
+    if (readOnly) { setEditing(true); return }
     setEditContactId(quote.contact.id)
     setEditExpiryDate(new Date(quote.expiryDate).toISOString().split("T")[0])
     setEditNotes(quote.notes ?? "")
@@ -454,6 +458,7 @@ function QuoteDetailPage() {
   }
 
   // Edit mode
+  if (editing && readOnly) return <PaywallBlock resource="quotes" endDate={trial?.subscription?.trialEnd} />
   if (editing) {
     const preview = previewDraft({ items: editItems, taxRate: editTaxRate || "0", pricesIncludeTax: quote.pricesIncludeTax ?? false, currency: quote.currency })
     const editSubtotal = Number(preview.result?.net ?? "0")

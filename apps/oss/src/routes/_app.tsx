@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
+import { createFileRoute, redirect, Outlet, useLocation } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect } from 'react'
 import { getAppLayoutSession } from '../lib/auth-session'
 import {
@@ -18,6 +18,7 @@ import { AppSidebar } from '../components/app-sidebar'
 import { AppMain } from '../components/shell/app-main'
 import { useI18n } from '../lib/i18n/react'
 import { loadOrganizationSettings } from '../lib/organization-settings-query'
+import { TrialAccessProvider, TrialBanner, TrialRouteGate } from '../components/billing/trial-access'
 
 export const Route = createFileRoute('/_app')({
   beforeLoad: async ({ location }) => {
@@ -57,6 +58,7 @@ export const Route = createFileRoute('/_app')({
 })
 
 function AppLayout() {
+  const pathname = useLocation({ select: location => location.pathname })
   const { setLocale } = useI18n()
   const { data: session, isPending } = useSession()
   const layoutContext = Route.useRouteContext()
@@ -107,9 +109,11 @@ function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <AppMain banner={<OrganizationChangedBanner />}>
-        {organizationReady ? <Outlet /> : <div aria-busy="true" className="p-6" />}
-      </AppMain>
+      <TrialAccessProvider>
+        <AppMain banner={<><OrganizationChangedBanner /><TrialBanner /></>}>
+          {organizationReady ? <TrialRouteGate pathname={pathname}><Outlet /></TrialRouteGate> : <div aria-busy="true" className="p-6" />}
+        </AppMain>
+      </TrialAccessProvider>
     </SidebarProvider>
   )
 }

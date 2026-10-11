@@ -19,13 +19,14 @@ type Props = {
   can: (action: PaletteCapability) => boolean
   /** False while the member's role is still loading. */
   ready: boolean
+  readOnly?: boolean
 }
 
 /**
  * The global "+ Ny" button: the one place to start a new document from, on every page. Offers
  * only what the member may create, and is opened by the `N` key (see `useShellHotkeys`).
  */
-export function NewMenu({ open, onOpenChange, can, ready }: Props) {
+export function NewMenu({ open, onOpenChange, can, ready, readOnly = false }: Props) {
   const { t } = useI18n()
   const actions = createActions.filter((action) => can(action.capability))
 
@@ -33,9 +34,9 @@ export function NewMenu({ open, onOpenChange, can, ready }: Props) {
   if (ready && actions.length === 0) return null
 
   return (
-    <DropdownMenu open={open && ready} onOpenChange={onOpenChange}>
+    <DropdownMenu open={open && ready && !readOnly} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
-        disabled={!ready}
+        disabled={!ready || readOnly}
         aria-label={t('shell.new.menuLabel')}
         className={cn(
           // A secondary button: the page's own call to action stays the only filled primary.
@@ -46,6 +47,7 @@ export function NewMenu({ open, onOpenChange, can, ready }: Props) {
       >
         <Plus className="size-4" aria-hidden="true" />
         <span className="max-sm:sr-only">{t('shell.new')}</span>
+        {readOnly && <span className="font-mono text-[10px] tracking-wide">{t('trial.lock')}</span>}
         <kbd className="rounded-[5px] border border-hairline px-1 font-mono text-[10px] font-medium text-muted-foreground max-md:hidden" aria-hidden="true">
           N
         </kbd>

@@ -8,6 +8,7 @@ import { createActions } from './palette/builtin-providers'
 import { SearchField } from './search-field'
 import { useShellHotkeys } from './use-shell-hotkeys'
 import { useShellPermissions } from './use-shell-permissions'
+import { isReadOnly, useTrialAccess } from '../billing/trial-access'
 
 /**
  * Everything to the right of the sidebar: the top bar (menu, search, "+ Ny"), the command
@@ -16,6 +17,8 @@ import { useShellPermissions } from './use-shell-permissions'
  */
 export function AppMain({ banner, children }: { banner?: ReactNode; children: ReactNode }) {
   const { billingEnabled } = useRuntimeDistribution()
+  const trial = useTrialAccess()
+  const readOnly = isReadOnly(trial?.subscription ?? null)
   const { can, ready } = useShellPermissions()
   const { setOpenMobile } = useSidebar()
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -31,7 +34,7 @@ export function AppMain({ banner, children }: { banner?: ReactNode; children: Re
   }, [])
   // The menu exists once the role is known and lets the member create something. Until then an
   // `N` must not be remembered: the menu would open by itself the moment it becomes available.
-  const newMenuAvailable = ready && createActions.some((action) => can(action.capability))
+  const newMenuAvailable = ready && !readOnly && createActions.some((action) => can(action.capability))
   const openNewMenu = useCallback(() => {
     if (newMenuAvailable) setNewMenuOpen(true)
   }, [newMenuAvailable])
@@ -47,7 +50,7 @@ export function AppMain({ banner, children }: { banner?: ReactNode; children: Re
           <SidebarTrigger className="-ml-1 size-9 shrink-0" />
           <SearchField onOpen={openPalette} className="max-w-[560px]" />
           <div className="flex-1 max-md:hidden" />
-          <NewMenu open={newMenuOpen} onOpenChange={setNewMenuOpen} can={can} ready={ready} />
+          <NewMenu open={newMenuOpen} onOpenChange={setNewMenuOpen} can={can} ready={ready} readOnly={readOnly} />
         </div>
       </header>
       {banner}
