@@ -24,6 +24,7 @@ describe("sender mailboxes", () => {
 
   it.each([
     ["Sales@EXAMPLE.COM", "Sales@example.com"],
+    ["Faktúra@EXAMPLE.COM", "Faktúra@example.com"],
     ['Quits <"Billing@Team"@EXAMPLE.COM>', '"Billing@Team"@example.com'],
     ["Quits <NOREPLY@TIELEMANS.DEV>", "NOREPLY@tielemans.dev"],
     ["quits@[127.0.0.1]", "quits@[127.0.0.1]"],
@@ -50,6 +51,7 @@ describe("sender mailboxes", () => {
     "quits@[999.0.0.1]",
     "quits@[IPv6:bad]",
     "quits@[IPv6:fe80::1%lo0]",
+    "broken\ud800@example.com",
     "noreply@example.com\x00",
     "Quits <noreply@example.com>\r\nBcc: other@example.com",
   ])("rejects malformed or multiple mailboxes: %s", value => {
