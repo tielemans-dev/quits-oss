@@ -1,0 +1,34 @@
+import { describe, expect, it } from "vitest"
+import { renderToStaticMarkup } from "react-dom/server"
+import { I18nProvider } from "../../../lib/i18n/react"
+import { InvoiceSellerDetails, InvoicePaymentInstructions } from "../invoice-payment-instructions"
+
+const sellerSnapshot = {
+  companyName: "Synthetic Seller ApS", companyAddress: "Testvej 1\n1000 København",
+  taxIds: [{ scheme: "cvr", countryCode: "DK", value: "12345678" }],
+  bankAccount: { regNumber: "0040", accountNumber: "0440116243" }, paymentNote: "Frozen note",
+}
+
+describe("invoice detail seller and payment blocks", () => {
+  it.each(["da-DK", "en-US"])("renders the invoice's frozen seller and payment data in %s", locale => {
+    const html = renderToStaticMarkup(<I18nProvider locale={locale}>
+      <InvoiceSellerDetails sellerSnapshot={sellerSnapshot} />
+      <InvoicePaymentInstructions sellerSnapshot={sellerSnapshot} number="INV-0042" />
+    </I18nProvider>)
+    for (const value of ["Synthetic Seller ApS", "Testvej 1", "1000 København", "CVR: 12345678", "0040", "0440116243", "Frozen note"]) expect(html).toContain(value)
+    expect(html).toContain(locale === "da-DK" ? 'aria-label="Fra"' : 'aria-label="From"')
+    expect(html).toContain(locale === "da-DK" ? "Skriv fakturanummer INV-0042 i beskeden til modtager." : "Put invoice number INV-0042 in the payment message.")
+    expect(html).not.toMatch(/Payment reference|Betalingsreference|\+71/)
+  })
+
+  it.each([null, {}, { companyName: 42 }])("hides absent or invalid bank data: %s", snapshot => {
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions sellerSnapshot={snapshot} number="INV-0042" /></I18nProvider>)
+    expect(html).toBe("")
+  })
+
+  it("shows a payment note without bank rows and never assigns a draft number", () => {
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions sellerSnapshot={{ paymentNote: "Pay on delivery" }} number={null} /></I18nProvider>)
+    expect(html).toContain("Pay on delivery")
+    expect(html).not.toMatch(/Reg. no.|Account number|Put invoice number/)
+  })
+})

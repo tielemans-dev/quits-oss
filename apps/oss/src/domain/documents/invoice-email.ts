@@ -138,6 +138,8 @@ export function composeInvoiceEmail(input: {
       issueDate: frozen?.occurredAt ?? invoice.issueDate,
       supplyDate: frozen ? frozen.supplyDate : invoice.supplyDate?.toISOString().slice(0, 10),
       buyer,
+      bankAccount: seller?.bankAccount,
+      paymentNote: seller?.paymentNote,
       priceBasis: "net",
       ...vatSummary,
       items: invoice.items.map((item) => {

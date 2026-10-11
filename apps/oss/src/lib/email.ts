@@ -1,5 +1,6 @@
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
 import { buyerAddress, invoiceTaxIds } from "./documents/invoice-identity"
+import type { BankAccountSnapshot } from "@quits/contracts/payment-details"
 import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
 import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
@@ -268,6 +269,9 @@ export type SendInvoiceEmailParams = {
     total: number
     currency: string
     notes?: string | null
+    /** Issue-time seller payment details. Never substitute current organization settings. */
+    bankAccount?: BankAccountSnapshot | null
+    paymentNote?: string | null
     /** The basis `items` state their amounts on. Absent, the headers stay plain. */
     priceBasis?: PriceBasis
     /** VAT by rate and the rounding between net plus tax and the total; absent, the single tax amount is printed. */
@@ -326,14 +330,19 @@ export function buildInvoiceEmailContent({
     ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis)}
     ${totalsBlock(invoice, locale)}
 
-    ${invoice.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
+    <h3 style="margin:24px 0 12px;font-size:16px;">${t("email.pay.heading", locale)}</h3>
+    ${invoice.bankAccount?.regNumber?.trim() ? `<p style="margin:4px 0;">${t("email.pay.reg", locale)}: ${escapeHtml(invoice.bankAccount.regNumber)}</p>` : ""}
+    ${invoice.bankAccount?.accountNumber?.trim() ? `<p style="margin:4px 0;">${t("email.pay.account", locale)}: ${escapeHtml(invoice.bankAccount.accountNumber)}</p>` : ""}
+    <p style="margin:12px 0;">${t("email.pay.reference", locale, { number: safeInvoiceNumber })}</p>
+    ${invoice.paymentNote?.trim() ? `<p style="margin:12px 0;font-size:14px;">${formatMultilineHtml(invoice.paymentNote)}</p>` : ""}
     ${publicPaymentUrl
       ? actionBlock({
           href: publicPaymentUrl,
-          label: t("email.invoice.payCta", locale),
+          label: t("email.pay.button", locale),
           fallbackLabel: t("email.invoice.payFallback", locale),
         })
       : ""}
+    ${invoice.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
   `, locale)
 
   const subject = sanitizeHeader(

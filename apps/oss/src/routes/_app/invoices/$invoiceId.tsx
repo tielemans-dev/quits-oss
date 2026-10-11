@@ -1,3 +1,4 @@
+import { InvoiceSellerDetails, InvoicePaymentInstructions } from "../../../components/invoices/invoice-payment-instructions"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -113,6 +114,7 @@ type InvoiceItem = {
 }
 
 type Invoice = {
+  sellerSnapshot?: unknown
   disputed?: boolean
   disputedRevision?: number
   purpose?: "sale" | "prepayment"
@@ -1042,23 +1044,26 @@ function InvoiceDetailPage() {
               </div>
             </div>
 
-            {/* Bill To */}
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                {t("pdf.billTo")}
-              </h3>
-              <p className="font-semibold">{contact.name}</p>
-              {contact.company && <p className="text-sm">{contact.company}</p>}
-              {contact.email && (
-                <p className="text-sm text-muted-foreground">{contact.email}</p>
-              )}
-              {contact.address && <p className="text-sm">{contact.address}</p>}
-              {(contact.city || contact.state || contact.zip) && (
-                <p className="text-sm">
-                  {[contact.city, contact.state, contact.zip].filter(Boolean).join(", ")}
-                </p>
-              )}
-              {contact.country && <p className="text-sm">{contact.country}</p>}
+            {/* Seller and buyer */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <InvoiceSellerDetails sellerSnapshot={invoice.sellerSnapshot} />
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                  {t("pdf.billTo")}
+                </h3>
+                <p className="font-semibold">{contact.name}</p>
+                {contact.company && <p className="text-sm">{contact.company}</p>}
+                {contact.email && (
+                  <p className="text-sm text-muted-foreground">{contact.email}</p>
+                )}
+                {contact.address && <p className="text-sm">{contact.address}</p>}
+                {(contact.city || contact.state || contact.zip) && (
+                  <p className="text-sm">
+                    {[contact.city, contact.state, contact.zip].filter(Boolean).join(", ")}
+                  </p>
+                )}
+                {contact.country && <p className="text-sm">{contact.country}</p>}
+              </div>
             </div>
 
             {/* Items Table */}
@@ -1115,6 +1120,8 @@ function InvoiceDetailPage() {
                 )}
               </div>
             </div>
+
+            <InvoicePaymentInstructions sellerSnapshot={invoice.sellerSnapshot} number={invoice.number} />
 
             {/* Notes */}
             {invoice.notes && (
