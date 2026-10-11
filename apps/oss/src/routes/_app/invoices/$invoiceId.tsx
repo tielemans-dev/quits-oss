@@ -994,7 +994,7 @@ function InvoiceDetailPage() {
         />
 
         <Card>
-          <CardContent className="p-6 grid gap-6">
+          <CardContent className="p-6 grid grid-cols-1 gap-6">
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>

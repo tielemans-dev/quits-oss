@@ -59,6 +59,13 @@ for (const locale of ['da-DK', 'en-US']) {
       } else await expect(payment).toHaveCount(0)
       await expect(page.getByText('Changed current payment note')).toHaveCount(0)
       await testInfo.attach('invoice-detail', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+      if (withBank) {
+        await page.setViewportSize({ width: 390, height: 844 })
+        expect(await payment.evaluate(section => {
+          const bounds = section.getBoundingClientRect()
+          return bounds.left >= 0 && bounds.right <= window.innerWidth && section.scrollWidth <= section.clientWidth
+        })).toBe(true)
+      }
       await page.reload()
       await expect(seller).toContainText('Synthetic Seller ApS')
       if (withBank) await expect(payment).toContainText('0440116243')
