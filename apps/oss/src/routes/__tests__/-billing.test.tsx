@@ -22,6 +22,27 @@ const BillingPage = Route.options.component!
 afterEach(() => { cleanup(); vi.clearAllMocks(); state.billingEnabled = true })
 
 describe("billing presentation follows server state", () => {
+  it.each([
+    ["da-DK", "Aktiv · gratis adgang", "Nuværende plan"],
+    ["en-US", "Active · complimentary access", "Current Plan"],
+  ])("shows complimentary access without payment or trial details in %s", async (locale, status, currentPlan) => {
+    state.subscription = {
+      status: "active", priceId: null,
+      trialStart: Date.UTC(2026, 9, 1) / 1000, trialEnd: Date.UTC(2026, 9, 25) / 1000,
+      renewalDate: Date.UTC(2026, 10, 25) / 1000,
+      paymentMethod: { brand: "visa", last4: "4242" },
+      plan: { name: "quits", unitAmount: 9900, currency: "dkk", interval: "month", taxBehavior: "exclusive" },
+      access: { paidOnly: true, hasSubscription: false, checkoutAvailable: false, portalAvailable: false },
+    }
+    render(<I18nProvider locale={locale}><BillingPage /></I18nProvider>)
+    expect(await screen.findByText(status)).toBeTruthy()
+    expect(screen.getByText(currentPlan)).toBeTruthy()
+    expect(screen.getAllByRole("heading", { name: "quits" })).toHaveLength(1)
+    expect(screen.queryByRole("progressbar")).toBeNull()
+    expect(screen.queryByRole("button")).toBeNull()
+    expect(screen.queryByText(/trial|prøveperiode|renews|fornyes|4242|Betalt|Paid|99/i)).toBeNull()
+  })
+
   it.each(["en-US", "da-DK"])("has no free offer or URL-based activation for unpaid paid-only access in %s", async locale => {
     state.subscription = { status: "canceled", priceId: null, access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } }
     render(<I18nProvider locale={locale}><BillingPage /></I18nProvider>)

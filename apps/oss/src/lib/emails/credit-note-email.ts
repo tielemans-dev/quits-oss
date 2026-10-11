@@ -1,4 +1,5 @@
 import { documentColors as C } from "../brand/document-colors"
+import { formatSenderAddress } from "../email-sender"
 import {
   escapeHtml,
   formatMultilineHtml,
@@ -100,7 +101,7 @@ export function buildCreditNoteEmailContent({
   return {
     subject,
     html,
-    fromAddress: `${safeFromName} <${safeFromEmail}>`,
+    fromAddress: formatSenderAddress(safeFromName, safeFromEmail),
     replyTo: replyTo?.trim() || null,
   }
 }

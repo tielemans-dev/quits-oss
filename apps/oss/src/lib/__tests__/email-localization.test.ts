@@ -3,9 +3,19 @@ import {
   buildInvitationEmailContent,
   buildInvoiceEmailContent,
   buildQuoteEmailContent,
+  layout,
 } from "../email"
 
 describe("email localization", () => {
+  it.each([
+    ["en-US", "Sent via quits"],
+    ["da-DK", "Sendt via quits"],
+  ])("uses lowercase branding in the shared %s footer", (locale, footer) => {
+    const html = layout("<p>Message</p>", locale)
+    expect(html).toContain(footer)
+    expect(html).not.toContain("via Quits")
+  })
+
   it("renders danish quote subject and content", () => {
     const result = buildQuoteEmailContent({
       quote: {
@@ -39,6 +49,7 @@ describe("email localization", () => {
     expect(result.subject).toContain("gyldigt til")
     expect(result.html).toContain("Hej Martin, her er dit tilbud.")
     expect(result.html).toContain("Gyldig til")
+    expect(result.html).toContain("Sendt via quits")
   })
 
   it("renders danish invitation content", () => {
@@ -54,6 +65,7 @@ describe("email localization", () => {
     expect(result.html).toContain("Du er inviteret til at blive en del af Nordic Services")
     expect(result.html).toContain("Accepter invitation")
     expect(result.html).toContain("Denne invitation udløber om 48 timer.")
+    expect(result.html).toContain("Sendt via quits")
   })
 })
 

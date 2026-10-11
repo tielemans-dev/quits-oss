@@ -40,6 +40,29 @@ vi.mock("../../../lib/i18n/react", () => ({
 import { DocumentEmailSendingCard } from "../document-email-sending-card"
 
 describe("DocumentEmailSendingCard", () => {
+  it("keeps domain settings usable without a valid sender preview", () => {
+    const html = renderToStaticMarkup(
+      <DocumentEmailSendingCard
+        documentSending={{
+          managed: true, supportsCustomDomain: true, status: "not_configured",
+          requestedDomain: null, records: [], failureReason: null, verifiedAt: null,
+          lastSyncedAt: null, lastSyncSource: null, sharedSender: null, effectiveSender: null,
+        }}
+        requestedDomain="billing.acme.com"
+        busy={false}
+        error={null}
+        success={null}
+        onRequestedDomainChange={() => {}}
+        onConfigure={() => {}}
+        onRefresh={() => {}}
+        onDisable={() => {}}
+      />
+    )
+    expect(html).toContain("Connect domain")
+    expect(html).not.toContain("Effective sender")
+    expect(html).not.toContain("Shared fallback sender")
+  })
+
   it("renders the empty managed state with a domain input", () => {
     const html = renderToStaticMarkup(
       <DocumentEmailSendingCard
@@ -54,13 +77,13 @@ describe("DocumentEmailSendingCard", () => {
           lastSyncedAt: null,
           lastSyncSource: null,
           sharedSender: {
-            fromName: "Acme via Quits",
+            fromName: "Acme via quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,
           },
           effectiveSender: {
-            fromName: "Acme via Quits",
+            fromName: "Acme via quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,
@@ -105,13 +128,13 @@ describe("DocumentEmailSendingCard", () => {
           lastSyncedAt: new Date("2026-03-06T18:05:00.000Z"),
           lastSyncSource: "manual",
           sharedSender: {
-            fromName: "Acme via Quits",
+            fromName: "Acme via quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,
           },
           effectiveSender: {
-            fromName: "Acme via Quits",
+            fromName: "Acme via quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,
@@ -150,7 +173,7 @@ describe("DocumentEmailSendingCard", () => {
           lastSyncedAt: new Date("2026-03-06T18:01:00.000Z"),
           lastSyncSource: "webhook",
           sharedSender: {
-            fromName: "Acme via Quits",
+            fromName: "Acme via quits",
             fromEmail: "billing@yaip.app",
             replyTo: "billing@acme.com",
             usingBrandedDomain: false,

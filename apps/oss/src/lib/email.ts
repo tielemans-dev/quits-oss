@@ -9,6 +9,7 @@ import { lineColumnKeys, type PriceBasis, type VatRow } from "./documents/line-a
 import { buildTotals } from "./documents/totals"
 import { selectedEmailProvider, readSmtpConfiguration, type EmailProvider, type EmailEnvironment } from "./email-provider-config"
 import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
+import { formatSenderAddress } from "./email-sender"
 
 let _resend: Resend | null = null
 
@@ -342,7 +343,7 @@ export function buildInvoiceEmailContent({
       dueDate: formatDate(invoice.dueDate, locale, "UTC"),
     })
   )
-  const fromAddressValue = `${safeFromName} <${safeFromEmail}>`
+  const fromAddressValue = formatSenderAddress(safeFromName, safeFromEmail)
 
   return {
     subject,
@@ -436,7 +437,7 @@ export function buildQuoteEmailContent({
       expiryDate: formatDate(quote.expiryDate, locale, "UTC"),
     })
   )
-  const fromAddressValue = `${safeFromName} <${safeFromEmail}>`
+  const fromAddressValue = formatSenderAddress(safeFromName, safeFromEmail)
 
   return {
     subject,
