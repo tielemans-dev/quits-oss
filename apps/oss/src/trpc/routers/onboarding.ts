@@ -1,3 +1,7 @@
+import { actorCan } from "../../domain/actor"
+import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import { confirmOnboardingV2 } from "../../lib/onboarding/confirm-v2"
+import { DANISH_ONBOARDING_V2_DEFAULTS, confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
 import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
@@ -70,11 +74,7 @@ const completeManualInputSchema = z.object({
 type OnboardingSnapshot = Awaited<ReturnType<typeof loadOnboardingSnapshot>>
 
 async function loadOnboardingSnapshot(organizationId: string) {
-  const settings = await prisma.orgSettings.upsert({
-    where: { organizationId },
-    update: {},
-    create: { organizationId },
-    select: {
+  const select = {
       organizationId: true,
       onboardingStatus: true,
       onboardingMethod: true,
@@ -95,8 +95,28 @@ async function loadOnboardingSnapshot(organizationId: string) {
       invoiceNextNum: true,
       quotePrefix: true,
       quoteNextNum: true,
-    },
-  })
+      bankRegNumber: true,
+      bankAccountNumber: true,
+      bankIban: true,
+    } as const
+  const settings = getRuntimeCapabilities().onboardingV2?.enabled
+    ? await prisma.orgSettings.findUnique({ where: { organizationId }, select }) ?? {
+      ...DANISH_ONBOARDING_V2_DEFAULTS,
+      organizationId,
+      onboardingStatus: "not_started",
+      onboardingMethod: null,
+      onboardingProfile: null,
+      onboardingInvoicingIdentity: null,
+      onboardingVersion: null,
+      onboardingCompletedAt: null,
+      companyName: null,
+      companyAddress: null,
+      companyEmail: null,
+      bankRegNumber: null,
+      bankAccountNumber: null,
+      bankIban: null,
+    }
+    : await prisma.orgSettings.upsert({ where: { organizationId }, update: {}, create: { organizationId }, select })
 
   const primaryTaxId = await prisma.organizationTaxId.findFirst({
     where: { organizationId },
@@ -105,6 +125,7 @@ async function loadOnboardingSnapshot(organizationId: string) {
   })
 
   const readiness = evaluateOnboardingReadiness({
+    onboardingVersion: settings.onboardingVersion,
     countryCode: settings.countryCode,
     invoicingIdentity: settings.onboardingInvoicingIdentity,
     locale: settings.locale,
@@ -148,6 +169,7 @@ async function loadOnboardingSnapshot(organizationId: string) {
   return {
     cloudState,
     readiness,
+    bankMissing: !(settings.bankIban || (settings.bankRegNumber && settings.bankAccountNumber)),
     values: {
       companyName: settings.companyName,
       companyAddress: settings.companyAddress,
@@ -175,6 +197,7 @@ function toOnboardingResponse(snapshot: OnboardingSnapshot) {
     status: snapshot.cloudState.status,
     isComplete: snapshot.cloudState.isComplete,
     missing: snapshot.readiness.missing,
+    bankMissing: snapshot.bankMissing,
     values: snapshot.values,
     profile: snapshot.cloudState.profile,
     version: snapshot.cloudState.version,
@@ -182,7 +205,28 @@ function toOnboardingResponse(snapshot: OnboardingSnapshot) {
   }
 }
 
+function assertOnboardingV2Enabled() {
+  if (!isCloudDistribution || !getRuntimeCapabilities().onboardingV2?.enabled) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Onboarding v2 is disabled" })
+  }
+}
+
 export const onboardingRouter = router({
+  // Reading v2 defaults never creates settings or saves a draft.
+  getDefaultsV2: authorizedProcedure("settings:read").query(() => {
+    assertOnboardingV2Enabled()
+    return DANISH_ONBOARDING_V2_DEFAULTS
+  }),
+  confirmV2: authorizedProcedure("settings:update")
+    .input(confirmOnboardingV2Schema)
+    .mutation(({ ctx, input }) => {
+      assertOnboardingV2Enabled()
+      if (input.catalogSuggestions.length && !actorCan(ctx.actor, "catalog:create")) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Your role does not allow catalog:create" })
+      }
+      return confirmOnboardingV2(ctx.organizationId, input, ctx.user.email)
+    }),
+
   getStatus: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     if (!isCloudDistribution) {
       throw new TRPCError({
