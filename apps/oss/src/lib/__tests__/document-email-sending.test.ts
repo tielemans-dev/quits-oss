@@ -57,9 +57,7 @@ describe("document email sending", () => {
         buildReminderEmailContent({ ...common, stage: "overdue", invoice: { ...document, balanceDue: 100 } }),
       ]
       const name = orgName.trim() ? `${orgName} via quits` : "quits"
-      const expectedName = orgName === "Æble Øl Århus"
-        ? `=?UTF-8?B?${Buffer.from(name).toString("base64")}?=`
-        : `"${name.replaceAll('"', '\\"')}"`
+      const expectedName = `"${name.replaceAll('"', '\\"')}"`
       for (const content of contents) {
         expect(content.fromAddress).toBe(`${expectedName} <noreply@tielemans.dev>`)
         expect(content.replyTo).toBe("reply@example.com")

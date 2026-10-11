@@ -8,7 +8,6 @@ describe("sender mailboxes", () => {
     '"Quits" <noreply@tielemans.dev>',
     '"Quits <billing>, \\"team\\"" <noreply@tielemans.dev>',
     " <noreply@tielemans.dev> ",
-    "  Quits < NOREPLY@TIELEMANS.DEV >  ",
     "Æble & Øl <noreply@tielemans.dev>",
   ])("extracts one address from %s", value => {
     expect(parseSenderAddress(value)).toBe("noreply@tielemans.dev")
@@ -21,6 +20,18 @@ describe("sender mailboxes", () => {
       .toBe("billing+invoices@example.com")
     expect(parseSenderAddress('Quits <"billing@team"@example.com>'))
       .toBe('"billing@team"@example.com')
+  })
+
+  it.each([
+    ["Sales@EXAMPLE.COM", "Sales@example.com"],
+    ['Quits <"Billing@Team"@EXAMPLE.COM>', '"Billing@Team"@example.com'],
+    ["Quits <NOREPLY@TIELEMANS.DEV>", "NOREPLY@tielemans.dev"],
+    ["quits@[127.0.0.1]", "quits@[127.0.0.1]"],
+    ["quits@[IPv6:::1]", "quits@[IPv6:::1]"],
+    ["quits@[IPv6:2001:DB8::1]", "quits@[IPv6:2001:DB8::1]"],
+  ])("preserves mailbox identity for %s", (value, expected) => {
+    expect(parseSenderAddress(value)).toBe(expected)
+    expect(formatSenderAddress("quits", value)).toBe(`"quits" <${expected}>`)
   })
 
   it.each(["", "  "])("uses the existing default for an empty FROM_EMAIL", value => {
@@ -36,6 +47,9 @@ describe("sender mailboxes", () => {
     "not an address",
     "noreply@example..com",
     "noreply@-example.com",
+    "quits@[999.0.0.1]",
+    "quits@[IPv6:bad]",
+    "quits@[IPv6:fe80::1%lo0]",
     "noreply@example.com\x00",
     "Quits <noreply@example.com>\r\nBcc: other@example.com",
   ])("rejects malformed or multiple mailboxes: %s", value => {
@@ -51,23 +65,16 @@ describe("sender display names", () => {
       .toBe('"Acme <ApS> (billing) via quits" <noreply@example.com>')
   })
 
-  it("encodes Danish characters and quotes as RFC 2047 UTF-8 encoded-words", () => {
+  it("keeps Danish characters and escapes quotes for the transport", () => {
     const name = 'Æble "Øl" Århus via quits'
     expect(formatSenderAddress(name, "noreply@example.com"))
-      .toBe(`=?UTF-8?B?${Buffer.from(name).toString("base64")}?= <noreply@example.com>`)
+      .toBe('"Æble \\"Øl\\" Århus via quits" <noreply@example.com>')
   })
 
-  it("splits long UTF-8 names into bounded encoded-words without breaking characters", () => {
+  it("preserves long Unicode names for transport serialization", () => {
     const name = `${"ÆØÅ🍎".repeat(30)} via quits`
     const header = formatSenderAddress(name, "noreply@example.com")
-    const words = header.slice(0, header.indexOf(" <")).split(" ")
-    expect(words.length).toBeGreaterThan(1)
-    const decoded = words.map(word => {
-      expect(word.length).toBeLessThanOrEqual(75)
-      expect(word).toMatch(/^=\?UTF-8\?B\?[A-Za-z0-9+/=]+\?=$/)
-      return new TextDecoder("utf-8", { fatal: true }).decode(Buffer.from(word.slice(10, -2), "base64"))
-    }).join("")
-    expect(decoded).toBe(name)
+    expect(header).toBe(`"${name}" <noreply@example.com>`)
   })
 
   it.each([null, undefined, "", "  "])("falls back to quits for an empty name", name => {

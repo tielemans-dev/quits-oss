@@ -181,7 +181,7 @@ function recoveryAuth(environment: Record<string, string | undefined>) {
 
 describe("real SMTP transport", () => {
   it.each(['Æble "Øl" Århus via quits', `${"ÆØÅ".repeat(30)} via quits`])(
-    "preserves the encoded sender name on the SMTP wire: %s", async name => {
+    "encodes the Unicode sender name on the SMTP wire: %s", async name => {
       await withRelay("accept", async bodies => {
         await deliver({ ...message, from: formatSenderAddress(name, "Quits <billing@example.com>") })
         const header = bodies[0]!.match(/^From:([^\r\n]*(?:\r\n[ \t][^\r\n]*)*)/m)![1]!
@@ -189,7 +189,8 @@ describe("real SMTP transport", () => {
         expect(header).toMatch(/^=\?UTF-8\?[BQ]\?/i)
         expect(header).toContain("<billing@example.com>")
         const words = [...header.matchAll(/=\?UTF-8\?([BQ])\?([^?]*)\?=/gi)]
-        const decoded = words.map(([, encoding, payload]) => {
+        const decoded = words.map(([word, encoding, payload]) => {
+          expect(word.length).toBeLessThanOrEqual(75)
           const bytes = encoding!.toUpperCase() === "B"
             ? Buffer.from(payload!, "base64")
             : Buffer.from(payload!.replaceAll("_", " ").replace(/=([0-9A-F]{2})/gi,
@@ -197,6 +198,21 @@ describe("real SMTP transport", () => {
           return bytes.toString("utf8")
         }).join("")
         expect(decoded).toBe(name)
+      })
+    }
+  )
+
+  it.each([
+    ["Sales@example.com", "Sales@example.com"],
+    ["quits@[127.0.0.1]", "quits@[127.0.0.1]"],
+    ["quits@[IPv6:::1]", "quits@[ipv6:::1]"],
+  ])(
+    "preserves the sender address in the SMTP envelope: %s", async (address, wireAddress) => {
+      await withRelay("accept", async (bodies, commands) => {
+        await deliver({ ...message, from: formatSenderAddress("quits", address) })
+        // Nodemailer normalizes the case-insensitive domain, including the IPv6 tag.
+        expect(commands.find(command => command.startsWith("MAIL FROM:"))).toBe(`MAIL FROM:<${wireAddress}>`)
+        expect(bodies[0]).toContain(`From: quits <${wireAddress}>`)
       })
     }
   )

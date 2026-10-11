@@ -2,20 +2,6 @@ import type { SendMailOptions } from "nodemailer"
 import { EmailSendError, type EmailMessage } from "./email"
 import { readSmtpConfiguration, type EmailEnvironment } from "./email-provider-config"
 import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
-import { parseSenderAddress } from "./email-sender"
-
-function smtpSender(from: string): SendMailOptions["from"] {
-  const mailbox = /^(.+) <([^<>]+)>$/.exec(from)
-  if (!mailbox) return from
-  const words = mailbox[1]!.split(" ")
-  if (!words.every(word => /^=\?UTF-8\?B\?[A-Za-z0-9+/]+={0,2}\?=$/.test(word))) return from
-  // Nodemailer treats pre-encoded words as literal text and quotes them. Give it
-  // the decoded display name so its MIME serializer emits valid encoded-words.
-  return {
-    name: words.map(word => Buffer.from(word.slice(10, -2), "base64").toString("utf8")).join(""),
-    address: parseSenderAddress(mailbox[2]!),
-  }
-}
 
 /** Nodemailer also labels post-DATA socket errors CONN, so the command alone is not proof. */
 export function isSmtpPreSubmissionFailure(error: unknown, phase?: "connection" | "envelope" | "data"): boolean {
@@ -65,7 +51,7 @@ export async function deliverSmtp(message: EmailMessage, environment: EmailEnvir
       throw new EmailSendError("smtp_unsupported_content", "SMTP email requires rendered HTML or text")
     }
     const options: SendMailOptions = {
-      from: smtpSender(message.from),
+      from: message.from,
       to: message.to,
       cc: message.cc,
       bcc: message.bcc,
