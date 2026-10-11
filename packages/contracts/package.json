@@ -13,6 +13,7 @@
     "src/document-view.ts",
     "src/email.ts",
     "src/onboarding.ts",
+    "src/onboarding-v2.ts",
     "src/payments.ts",
     "src/payment-details.ts",
     "src/agreements.ts",

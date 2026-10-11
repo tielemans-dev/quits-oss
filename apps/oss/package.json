@@ -25,6 +25,7 @@
     "./build": "./build/index.mjs",
     "./document-email-sending": "./src/lib/document-email-sending.ts",
     "./email": "./src/lib/email.ts",
+    "./onboarding/dk-presets": "./src/lib/onboarding/dk-presets.ts",
     "./onboarding/ai-contract": "./src/lib/onboarding/ai-contract.ts",
     "./onboarding/ai-fallback": "./src/lib/onboarding/ai-fallback.ts",
     "./permissions": "./src/lib/permissions.ts",

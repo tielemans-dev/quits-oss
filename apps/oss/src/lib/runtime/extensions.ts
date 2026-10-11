@@ -37,6 +37,7 @@ function mergeCapabilities(
       ...base.onboardingAi,
       ...patch.onboardingAi,
     },
+    onboardingV2: { enabled: base.onboardingV2?.enabled ?? false, ...patch.onboardingV2 },
     payments: {
       ...base.payments,
       ...patch.payments,
@@ -75,6 +76,7 @@ function readDefaultCapabilities(
   )
 
   return {
+    onboardingV2: { enabled: false },
     documents: { artifactsRequired: true },
     agreements: { depositsEnabled: readBooleanEnv(readProductEnv(env, "DEPOSITS_ENABLED"), true) },
     aiInvoiceDraft: {
@@ -145,6 +147,8 @@ export function getRuntimeCapabilities(
   const ai = capabilities.aiInvoiceDraft
   ai.enabled = enabledByExtension !== false && (ai.byok || ai.managed || ai.localAgent)
 
+  // V2 is opt-in for hosted deployments; self-hosted installations stay on manual setup.
+  capabilities.onboardingV2 = { enabled: readProductEnv(env, "DISTRIBUTION")?.trim().toLowerCase() === "cloud" && capabilities.onboardingV2?.enabled === true }
   // Issuance artifacts are a release invariant; runtime extensions cannot opt out.
   capabilities.documents.artifactsRequired = true
   return capabilities
