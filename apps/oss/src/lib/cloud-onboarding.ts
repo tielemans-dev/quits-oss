@@ -116,6 +116,7 @@ export function getCloudOnboardingState(
       "companyEmail" in settings)
   const readiness = hasReadinessFields
       ? evaluateOnboardingReadiness({
+        onboardingVersion: settings.onboardingVersion,
         countryCode: settings.countryCode ?? null,
         invoicingIdentity: settings.onboardingInvoicingIdentity ?? null,
         locale: settings.locale ?? null,

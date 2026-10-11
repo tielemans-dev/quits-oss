@@ -108,3 +108,11 @@ export type OnboardingAiSuggestion = z.infer<
 export type OnboardingApplySource = z.infer<
   typeof onboardingApplySourceSchema
 >
+
+export {
+  DANISH_ONBOARDING_V2_DEFAULTS,
+  confirmOnboardingV2Schema,
+  onboardingV2ConfirmationResultSchema,
+  isValidDanishCvr,
+} from "./onboarding-v2"
+export type { ConfirmOnboardingV2Input, ConfirmOnboardingV2 } from "./onboarding-v2"
