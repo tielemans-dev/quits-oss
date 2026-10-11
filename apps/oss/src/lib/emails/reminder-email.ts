@@ -1,4 +1,5 @@
 import { documentColors as C } from "../brand/document-colors"
+import { formatSenderAddress } from "../email-sender"
 import { actionBlock, escapeHtml, fromAddress, layout, sanitizeHeader, t } from "../email"
 import { formatCurrency, formatDate } from "../i18n/format"
 
@@ -98,7 +99,7 @@ export function buildReminderEmailContent({
   return {
     subject,
     html,
-    fromAddress: `${safeFromName} <${safeFromEmail}>`,
+    fromAddress: formatSenderAddress(safeFromName, safeFromEmail),
     replyTo: replyTo?.trim() || null,
   }
 }

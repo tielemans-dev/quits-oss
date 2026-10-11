@@ -1,3 +1,5 @@
+import { normalizeSenderName, parseSenderAddress } from "./email-sender"
+
 export type DocumentSendingDomainStatus =
   | "not_configured"
   | "pending_dns"
@@ -49,7 +51,7 @@ function normalizeDomain(value: string | null | undefined): string | null {
 }
 
 function getLocalPart(email: string): string {
-  const [localPart] = email.split("@")
+  const localPart = email.slice(0, email.lastIndexOf("@"))
   return localPart || "noreply"
 }
 
@@ -100,8 +102,8 @@ export function resolveDocumentEmailEnvelope(input: {
     domain?: string | null
   } | null
 }): DocumentEmailEnvelope {
-  const orgName = input.orgName?.trim() || "Quits"
-  const sharedFromEmail = normalizeEmailAddress(input.sharedFromEmail) ?? "noreply@yaip.app"
+  const orgName = normalizeSenderName(input.orgName)
+  const sharedFromEmail = parseSenderAddress(input.sharedFromEmail)
   const replyTo = normalizeEmailAddress(input.orgBillingEmail)
   const brandedDomain = normalizeDomain(input.branded?.domain)
   const brandedStatus = toDocumentSendingDomainStatus(input.branded?.status)
@@ -117,7 +119,7 @@ export function resolveDocumentEmailEnvelope(input: {
 
   return {
     fromEmail: sharedFromEmail,
-    fromName: `${orgName} via Quits`,
+    fromName: input.orgName?.replace(/\p{Cc}/gu, " ").trim() ? `${orgName} via Quits` : "Quits",
     replyTo,
     usingBrandedDomain: false,
   }

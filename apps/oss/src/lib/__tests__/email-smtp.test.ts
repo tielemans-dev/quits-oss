@@ -8,6 +8,7 @@ import { buildQuitsAuthOptions } from "../runtime/auth-config"
 import { readFileSync } from "node:fs"
 import { parse as parseDotenv } from "dotenv"
 import { isSmtpPreSubmissionFailure } from "../email-smtp-node"
+import { formatSenderAddress } from "../email-sender"
 import { betterAuth } from "better-auth"
 import { memoryAdapter } from "better-auth/adapters/memory"
 import { withSmtpDisconnect, withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
@@ -179,6 +180,27 @@ function recoveryAuth(environment: Record<string, string | undefined>) {
 }
 
 describe("real SMTP transport", () => {
+  it.each(['Æble "Øl" Århus via Quits', `${"ÆØÅ".repeat(30)} via Quits`])(
+    "preserves the encoded sender name on the SMTP wire: %s", async name => {
+      await withRelay("accept", async bodies => {
+        await deliver({ ...message, from: formatSenderAddress(name, "Quits <billing@example.com>") })
+        const header = bodies[0]!.match(/^From:([^\r\n]*(?:\r\n[ \t][^\r\n]*)*)/m)![1]!
+          .replace(/\r\n[ \t]+/g, " ").trim()
+        expect(header).toMatch(/^=\?UTF-8\?[BQ]\?/i)
+        expect(header).toContain("<billing@example.com>")
+        const words = [...header.matchAll(/=\?UTF-8\?([BQ])\?([^?]*)\?=/gi)]
+        const decoded = words.map(([, encoding, payload]) => {
+          const bytes = encoding!.toUpperCase() === "B"
+            ? Buffer.from(payload!, "base64")
+            : Buffer.from(payload!.replaceAll("_", " ").replace(/=([0-9A-F]{2})/gi,
+              (_, hex: string) => String.fromCharCode(parseInt(hex, 16))), "latin1")
+          return bytes.toString("utf8")
+        }).join("")
+        expect(decoded).toBe(name)
+      })
+    }
+  )
+
   it("recovers through the supplied SMTP environment while delivery is pending and global Resend has no key", async () => {
     await withRelay("hold", async (bodies, _commands, release) => {
       const environment = {
