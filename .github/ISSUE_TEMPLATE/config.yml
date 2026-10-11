@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions
+    url: mailto:hello@quits.dev
+    about: For questions about Quits, email hello@quits.dev.
