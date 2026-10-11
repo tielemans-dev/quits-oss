@@ -1,5 +1,5 @@
 export const daEmailMessages = {
-  "email.footer.sentVia": "Sendt via Quits",
+  "email.footer.sentVia": "Sendt via quits",
   "email.invoice.greeting": "Hej {name}, her er din faktura.",
   "email.invoice.subject": "Faktura {number} — {total} forfalder {dueDate}",
   "email.invoice.payCta": "Betal denne faktura",

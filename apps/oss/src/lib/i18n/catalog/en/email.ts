@@ -1,5 +1,5 @@
 export const enEmailMessages = {
-  "email.footer.sentVia": "Sent via Quits",
+  "email.footer.sentVia": "Sent via quits",
   "email.invoice.greeting": "Hi {name}, please find your invoice below.",
   "email.invoice.subject": "Invoice {number} — {total} due {dueDate}",
   "email.invoice.payCta": "Pay this invoice",
