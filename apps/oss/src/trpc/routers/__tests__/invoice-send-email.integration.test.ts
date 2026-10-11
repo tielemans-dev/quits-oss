@@ -214,7 +214,7 @@ describeIfDatabase("invoice send email delivery", () => {
         expect.objectContaining({
           to: "buyer@example.com",
           html: expect.stringContaining("https://app.example.test/pay/"),
-          from: "Acme via Quits <billing@example.com>",
+          from: '"Acme via quits" <billing@example.com>',
           replyTo: "billing@acme.com",
         }),
         { provider: "resend", idempotencyKey: expect.stringMatching(new RegExp(`^invoice-send:${invoice.id}:`)) }
@@ -249,7 +249,7 @@ describeIfDatabase("invoice send email delivery", () => {
 
       expect(deliver).toHaveBeenCalledWith(
         expect.objectContaining({
-          from: "Acme via Quits <billing@yaip.app>",
+          from: '"Acme via quits" <billing@yaip.app>',
           replyTo: "billing@acme.com",
         }),
         { provider: "resend", idempotencyKey: expect.stringMatching(/^invoice-send:/) }

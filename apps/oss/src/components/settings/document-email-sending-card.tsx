@@ -43,8 +43,8 @@ export type DocumentSendingState = {
   verifiedAt: Date | null
   lastSyncedAt: Date | null
   lastSyncSource: DocumentSendingSyncSource | null
-  sharedSender: DocumentSenderPreview
-  effectiveSender: DocumentSenderPreview
+  sharedSender: DocumentSenderPreview | null
+  effectiveSender: DocumentSenderPreview | null
 }
 
 function SenderPreview({
@@ -54,8 +54,9 @@ function SenderPreview({
 }: {
   label: string
   replyToLabel: string
-  sender: DocumentSenderPreview
+  sender: DocumentSenderPreview | null
 }) {
+  if (!sender) return null
   return (
     <div className="grid gap-1">
       <div className="text-sm font-medium">{label}</div>
