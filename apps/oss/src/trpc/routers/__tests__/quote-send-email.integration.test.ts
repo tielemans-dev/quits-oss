@@ -155,7 +155,7 @@ describeIfDatabase("quote send email delivery", () => {
         expect.objectContaining({
           to: "buyer@example.com",
           html: expect.stringContaining("https://app.example.test/q/"),
-          from: "Acme via Quits <billing@example.com>",
+          from: '"Acme via quits" <billing@example.com>',
           replyTo: "billing@acme.com",
         }),
         { provider: "resend", idempotencyKey: expect.stringMatching(new RegExp(`^quote-send:${quote.id}:`)) }
@@ -189,7 +189,7 @@ describeIfDatabase("quote send email delivery", () => {
 
       expect(deliver).toHaveBeenCalledWith(
         expect.objectContaining({
-          from: "Acme <billing@billing.acme.com>",
+          from: '"Acme" <billing@billing.acme.com>',
           replyTo: "billing@acme.com",
         }),
         { provider: "resend", idempotencyKey: expect.stringMatching(/^quote-send:/) }

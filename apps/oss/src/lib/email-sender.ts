@@ -14,7 +14,7 @@ export function parseSenderAddress(value: string): string {
 }
 
 export function normalizeSenderName(value: string | null | undefined): string {
-  return value?.replace(/\p{Cc}/gu, " ").trim() || "Quits"
+  return value?.replace(/\p{Cc}/gu, " ").trim() || "quits"
 }
 
 /** RFC 5322 quoted strings for ASCII; RFC 2047 encoded-words for UTF-8 names. */

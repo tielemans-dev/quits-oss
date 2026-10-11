@@ -180,7 +180,7 @@ function recoveryAuth(environment: Record<string, string | undefined>) {
 }
 
 describe("real SMTP transport", () => {
-  it.each(['Æble "Øl" Århus via Quits', `${"ÆØÅ".repeat(30)} via Quits`])(
+  it.each(['Æble "Øl" Århus via quits', `${"ÆØÅ".repeat(30)} via quits`])(
     "preserves the encoded sender name on the SMTP wire: %s", async name => {
       await withRelay("accept", async bodies => {
         await deliver({ ...message, from: formatSenderAddress(name, "Quits <billing@example.com>") })

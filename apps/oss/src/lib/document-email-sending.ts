@@ -119,7 +119,7 @@ export function resolveDocumentEmailEnvelope(input: {
 
   return {
     fromEmail: sharedFromEmail,
-    fromName: input.orgName?.replace(/\p{Cc}/gu, " ").trim() ? `${orgName} via Quits` : "Quits",
+    fromName: input.orgName?.replace(/\p{Cc}/gu, " ").trim() ? `${orgName} via quits` : "quits",
     replyTo,
     usingBrandedDomain: false,
   }

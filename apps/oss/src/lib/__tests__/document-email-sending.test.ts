@@ -22,12 +22,12 @@ describe("document email sending", () => {
       org: { companyName: "QA Test Co" },
       contactName: "Buyer",
     })
-    expect(content.fromAddress).toBe('"QA Test Co via Quits" <noreply@tielemans.dev>')
+    expect(content.fromAddress).toBe('"QA Test Co via quits" <noreply@tielemans.dev>')
   })
 
-  it.each([null, undefined, "", "  "])("uses Quits when the organization name is empty", orgName => {
+  it.each([null, undefined, "", "  ", "\r\n"])("uses quits when the organization name is empty", orgName => {
     expect(resolveDocumentEmailEnvelope({ orgName, sharedFromEmail: "Quits <noreply@example.com>" }))
-      .toMatchObject({ fromName: "Quits", fromEmail: "noreply@example.com" })
+      .toMatchObject({ fromName: "quits", fromEmail: "noreply@example.com" })
   })
 
   it("extracts the branded local part from a configured display-name mailbox", () => {
@@ -40,7 +40,7 @@ describe("document email sending", () => {
     })
   })
 
-  it.each(["QA Test Co", 'QA "Test" Co', "Æble Øl Århus"])(
+  it.each(["QA Test Co", 'QA "Test" Co', "Æble Øl Århus", "", "  "])(
     "formats the sender consistently for all document builders: %s", orgName => {
       const envelope = resolveDocumentEmailEnvelope({
         orgName, sharedFromEmail: "Quits <noreply@tielemans.dev>", orgBillingEmail: "reply@example.com",
@@ -56,7 +56,7 @@ describe("document email sending", () => {
         buildCreditNoteEmailContent({ ...common, creditNote: { ...document, reason: "Refund" }, invoice: document }),
         buildReminderEmailContent({ ...common, stage: "overdue", invoice: { ...document, balanceDue: 100 } }),
       ]
-      const name = `${orgName} via Quits`
+      const name = orgName.trim() ? `${orgName} via quits` : "quits"
       const expectedName = orgName === "Æble Øl Århus"
         ? `=?UTF-8?B?${Buffer.from(name).toString("base64")}?=`
         : `"${name.replaceAll('"', '\\"')}"`
@@ -99,7 +99,7 @@ describe("document email sending", () => {
       })
     ).toEqual({
       fromEmail: "billing@yaip.app",
-      fromName: "Acme via Quits",
+      fromName: "Acme via quits",
       replyTo: "billing@acme.com",
       usingBrandedDomain: false,
     })

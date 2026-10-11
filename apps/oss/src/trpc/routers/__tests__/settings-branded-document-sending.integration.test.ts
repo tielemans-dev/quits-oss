@@ -92,13 +92,13 @@ describeIfDatabase("settings branded document sending", () => {
         lastSyncedAt: null,
         lastSyncSource: null,
         sharedSender: {
-          fromName: "Acme via Quits",
+          fromName: "Acme via quits",
           fromEmail: "billing@yaip.example",
           replyTo: "billing@acme.com",
           usingBrandedDomain: false,
         },
         effectiveSender: {
-          fromName: "Acme via Quits",
+          fromName: "Acme via quits",
           fromEmail: "billing@yaip.example",
           replyTo: "billing@acme.com",
           usingBrandedDomain: false,

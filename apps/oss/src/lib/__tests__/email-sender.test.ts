@@ -12,8 +12,8 @@ describe("sender mailboxes", () => {
     "Æble & Øl <noreply@tielemans.dev>",
   ])("extracts one address from %s", value => {
     expect(parseSenderAddress(value)).toBe("noreply@tielemans.dev")
-    expect(formatSenderAddress("QA Test Co via Quits", value))
-      .toBe('"QA Test Co via Quits" <noreply@tielemans.dev>')
+    expect(formatSenderAddress("QA Test Co via quits", value))
+      .toBe('"QA Test Co via quits" <noreply@tielemans.dev>')
   })
 
   it("keeps plus addressing and quoted local parts", () => {
@@ -45,20 +45,20 @@ describe("sender mailboxes", () => {
 
 describe("sender display names", () => {
   it("quotes ASCII names and escapes quotes and backslashes", () => {
-    expect(formatSenderAddress('QA "Test" \\ Co, Inc. via Quits', "noreply@example.com"))
-      .toBe('"QA \\"Test\\" \\\\ Co, Inc. via Quits" <noreply@example.com>')
-    expect(formatSenderAddress("Acme <ApS> (billing) via Quits", "noreply@example.com"))
-      .toBe('"Acme <ApS> (billing) via Quits" <noreply@example.com>')
+    expect(formatSenderAddress('QA "Test" \\ Co, Inc. via quits', "noreply@example.com"))
+      .toBe('"QA \\"Test\\" \\\\ Co, Inc. via quits" <noreply@example.com>')
+    expect(formatSenderAddress("Acme <ApS> (billing) via quits", "noreply@example.com"))
+      .toBe('"Acme <ApS> (billing) via quits" <noreply@example.com>')
   })
 
   it("encodes Danish characters and quotes as RFC 2047 UTF-8 encoded-words", () => {
-    const name = 'Æble "Øl" Århus via Quits'
+    const name = 'Æble "Øl" Århus via quits'
     expect(formatSenderAddress(name, "noreply@example.com"))
       .toBe(`=?UTF-8?B?${Buffer.from(name).toString("base64")}?= <noreply@example.com>`)
   })
 
   it("splits long UTF-8 names into bounded encoded-words without breaking characters", () => {
-    const name = `${"ÆØÅ🍎".repeat(30)} via Quits`
+    const name = `${"ÆØÅ🍎".repeat(30)} via quits`
     const header = formatSenderAddress(name, "noreply@example.com")
     const words = header.slice(0, header.indexOf(" <")).split(" ")
     expect(words.length).toBeGreaterThan(1)
@@ -70,9 +70,9 @@ describe("sender display names", () => {
     expect(decoded).toBe(name)
   })
 
-  it.each([null, undefined, "", "  "])("falls back to Quits for an empty name", name => {
+  it.each([null, undefined, "", "  "])("falls back to quits for an empty name", name => {
     expect(formatSenderAddress(name, "noreply@example.com"))
-      .toBe('"Quits" <noreply@example.com>')
+      .toBe('"quits" <noreply@example.com>')
   })
 
   it("removes header controls from organization names", () => {
