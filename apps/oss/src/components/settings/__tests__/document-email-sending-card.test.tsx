@@ -40,6 +40,29 @@ vi.mock("../../../lib/i18n/react", () => ({
 import { DocumentEmailSendingCard } from "../document-email-sending-card"
 
 describe("DocumentEmailSendingCard", () => {
+  it("keeps domain settings usable without a valid sender preview", () => {
+    const html = renderToStaticMarkup(
+      <DocumentEmailSendingCard
+        documentSending={{
+          managed: true, supportsCustomDomain: true, status: "not_configured",
+          requestedDomain: null, records: [], failureReason: null, verifiedAt: null,
+          lastSyncedAt: null, lastSyncSource: null, sharedSender: null, effectiveSender: null,
+        }}
+        requestedDomain="billing.acme.com"
+        busy={false}
+        error={null}
+        success={null}
+        onRequestedDomainChange={() => {}}
+        onConfigure={() => {}}
+        onRefresh={() => {}}
+        onDisable={() => {}}
+      />
+    )
+    expect(html).toContain("Connect domain")
+    expect(html).not.toContain("Effective sender")
+    expect(html).not.toContain("Shared fallback sender")
+  })
+
   it("renders the empty managed state with a domain input", () => {
     const html = renderToStaticMarkup(
       <DocumentEmailSendingCard

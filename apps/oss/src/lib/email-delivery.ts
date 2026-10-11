@@ -7,6 +7,7 @@ import type {
 } from "@quits/contracts/email"
 import { readSmtpConfiguration, selectedEmailProvider, SmtpConfigurationError, type EmailEnvironment } from "./email-provider-config"
 import { getRuntimePlatform, type RuntimeKind } from "./runtime/platform"
+import { tryParseSenderAddress } from "./email-sender"
 
 export type { EmailDeliveryRuntimeStatus }
 
@@ -59,7 +60,7 @@ export function getEmailDeliveryRuntimeStatus(input: {
   runtimeKind?: RuntimeKind
 }): EmailDeliveryRuntimeStatus {
   const hasResendApiKey = Boolean(input.resendApiKey?.trim())
-  const hasFromEmail = Boolean(input.fromEmail?.trim())
+  const hasFromEmail = Boolean(input.fromEmail?.trim()) && tryParseSenderAddress(input.fromEmail ?? "") !== null
   let providerMissing: string[]
   try {
     // Empty selects the historical default without consulting this process's environment.

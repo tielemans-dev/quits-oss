@@ -80,6 +80,23 @@ describeIfDatabase("settings email delivery status", () => {
     }
   })
 
+  it("keeps settings available when FROM_EMAIL is malformed", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_test")
+    vi.stubEnv("EMAIL_PROVIDER", "resend")
+    vi.stubEnv("FROM_EMAIL", "Quits <noreply@example.com")
+    const { orgId, caller } = await createOrgWithCaller("Invalid Sender Org")
+    try {
+      const settings = await caller.settings.get()
+      expect(settings.emailDelivery).toMatchObject({
+        available: false, configured: false, missing: ["FROM_EMAIL"], status: "missing_configuration",
+      })
+      expect(settings.documentSending.sharedSender).toBeNull()
+      expect(settings.documentSending.effectiveSender).toBeNull()
+    } finally {
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
   it("reports SMTP unavailable on a Worker even when its environment is complete", async () => {
     const { orgId, caller } = await createOrgWithCaller("Settings Worker SMTP Org")
     const environment: Record<string, string> = { EMAIL_PROVIDER: "smtp", SMTP_HOST: "relay.example", FROM_EMAIL: "worker-reader@example.com" }
@@ -101,8 +118,8 @@ describeIfDatabase("settings email delivery status", () => {
     try {
       const settings = await caller.settings.get()
       expect(settings.emailDelivery.sender).toBe("platform@example.com")
-      expect(settings.documentSending.sharedSender.fromEmail).toBe("platform@example.com")
-      expect(settings.documentSending.effectiveSender.fromEmail).toBe("platform@example.com")
+      expect(settings.documentSending.sharedSender?.fromEmail).toBe("platform@example.com")
+      expect(settings.documentSending.effectiveSender?.fromEmail).toBe("platform@example.com")
     } finally {
       resetRuntimePlatform()
       await cleanupTestOrganizations({ where: { id: orgId } })
