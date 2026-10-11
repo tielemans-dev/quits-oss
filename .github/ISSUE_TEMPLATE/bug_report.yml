@@ -1,0 +1,73 @@
+name: Bug report
+description: Report something in Quits that does not work as expected.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Issues here sync to our Linear workspace.
+        Do not include passwords, API keys, invoices with real customer data or other personal data.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Blocker
+        - Should fix
+        - Minor
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Hosted (quits.dev)
+        - Self-host
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release version or commit, if known (self-host).
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: e.g. Safari 18 on iPhone 15, Firefox 131 on Windows 11
+  - type: dropdown
+    id: language
+    attributes:
+      label: App language
+      options:
+        - DA
+        - EN
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag images here if they help. Redact personal data.
