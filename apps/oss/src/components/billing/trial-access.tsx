@@ -103,7 +103,7 @@ export function PaywallBlock({ resource, endDate }: { resource: "contacts" | "in
     <div className="rounded-[10px] border border-[#E7E7E4] bg-white p-6 sm:p-10">
       <span className="inline-flex rounded-full bg-[#FDECEC] px-3 py-1 text-xs font-semibold text-[#B42318]">{t("trial.paywall.pill")}</span>
       <h1 className="mt-5 max-w-lg text-3xl font-semibold tracking-tight text-[#0B0B0C]">{t("trial.paywall.heading", { resource: t(`trial.resource.${resource}`) })}</h1>
-      <p className="mt-3 max-w-lg text-sm leading-6 text-[#6B6B70]">{t("trial.paywall.body", { date })}</p>
+      <p className="mt-3 max-w-lg text-sm leading-6 text-[#6B6B70]">{endDate ? t("trial.paywall.body", { date }) : t("trial.paywall.bodyNoDate")}</p>
       <div className="mt-7 flex flex-wrap gap-3">
         <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-[7px] bg-[#0B0B0C] px-5 text-sm font-semibold text-white">{t("trial.action.upgradeNow")}</Link>
         <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-[7px] border border-[#E7E7E4] px-5 text-sm font-semibold text-[#0B0B0C]">{t("trial.action.plans")}</Link>
