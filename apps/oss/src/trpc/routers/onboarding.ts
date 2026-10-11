@@ -15,6 +15,7 @@ import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode } from "../../lib/compliance/registry"
 import { authorizedProcedure, router } from "../init"
+import { billingProvider } from "../../lib/billing"
 
 const onboardingInputSchema = z.object({
   profile: cloudOnboardingProfileSchema,
@@ -301,6 +302,9 @@ export const onboardingRouter = router({
           message: `Onboarding is incomplete. Missing: ${snapshot.readiness.missing.join(", ")}`,
         })
       }
+
+      // Hosted distributions may provision a trial. The provider owns eligibility and retries.
+      await billingProvider.startTrial?.(ctx.organizationId)
 
       await prisma.orgSettings.update({
         where: { organizationId: ctx.organizationId },

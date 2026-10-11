@@ -8,6 +8,7 @@ import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
 import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
+import { isReadOnly, PaywallBlock, useTrialAccess } from "../../../components/billing/trial-access"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import {
   readEmailDeliveryAttempt,
@@ -187,6 +188,8 @@ async function downloadInvoicePdfFile(invoice: Invoice, _orgSettings: unknown) {
 
 function InvoiceDetailPage() {
   const { t, locale } = useI18n()
+  const trial = useTrialAccess()
+  const readOnly = isReadOnly(trial?.subscription ?? null)
   const { invoiceId } = Route.useParams()
   const { emailWarning, sendError } = Route.useSearch()
   const navigate = useNavigate()
@@ -299,6 +302,7 @@ function InvoiceDetailPage() {
 
   function startEditing() {
     if (!invoice) return
+    if (readOnly) { setEditing(true); return }
     setEditContactId(invoice.contact.id)
     setEditDueDate(new Date(invoice.dueDate).toISOString().split("T")[0])
     setEditNotes(invoice.notes ?? "")
@@ -517,6 +521,7 @@ function InvoiceDetailPage() {
   }
 
   // Edit mode
+  if (editing && readOnly) return <PaywallBlock resource="invoices" endDate={trial?.subscription?.trialEnd} />
   if (editing) {
     const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)

@@ -25,7 +25,7 @@ describe("billing presentation follows server state", () => {
   it.each(["en-US", "da-DK"])("has no free offer or URL-based activation for unpaid paid-only access in %s", async locale => {
     state.subscription = { status: "canceled", priceId: null, access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } }
     render(<I18nProvider locale={locale}><BillingPage /></I18nProvider>)
-    const button = await screen.findByRole("button", { name: locale === "da-DK" ? "Opgrader" : "Upgrade" })
+    const button = await screen.findByRole("button", { name: locale === "da-DK" ? "Opgrader nu" : "Upgrade now" })
     expect(screen.queryByText(/5 (invoices|fakturaer)/)).toBeNull()
     expect(screen.queryByText(/activated successfully|blev aktiveret/)).toBeNull()
     fireEvent.click(button)
@@ -35,9 +35,9 @@ describe("billing presentation follows server state", () => {
   it("offers recovery for a current past-due subscription without creating another subscription", async () => {
     state.subscription = { status: "past_due", priceId: "synthetic", access: { paidOnly: true, hasSubscription: true, checkoutAvailable: false, portalAvailable: true } }
     render(<I18nProvider locale="en-US"><BillingPage /></I18nProvider>)
-    fireEvent.click(await screen.findByRole("button", { name: "Manage Subscription" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Manage payment" }))
     expect(state.portal).toHaveBeenCalledOnce()
-    expect(screen.queryByRole("button", { name: "Upgrade" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Upgrade now" })).toBeNull()
   })
 
   it("shows activation only when server subscription is active", async () => {

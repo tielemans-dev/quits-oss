@@ -35,6 +35,7 @@ vi.mock("@tanstack/react-router", async () => {
       return <p>page</p>
     },
     useNavigate: () => vi.fn(),
+    useLocation: ({ select }: { select: (location: { pathname: string }) => unknown }) => select({ pathname: "/" }),
     useRouterState: () => ({ location: { pathname: "/" } }),
   }
 })
@@ -60,6 +61,11 @@ vi.mock("../../components/shell/app-main", () => ({
       {children as never}
     </>
   ),
+}))
+vi.mock("../../components/billing/trial-access", () => ({
+  TrialAccessProvider: ({ children }: { children: unknown }) => children,
+  TrialBanner: () => null,
+  TrialRouteGate: ({ children }: { children: unknown }) => children,
 }))
 vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ setLocale: state.setLocale, t: (key: string) => key }) }))
 vi.mock("../../lib/organization-settings-query", () => ({ loadOrganizationSettings: state.settingsQuery }))

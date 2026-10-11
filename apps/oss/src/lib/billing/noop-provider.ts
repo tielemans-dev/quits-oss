@@ -12,6 +12,10 @@ export class NoopBillingProvider implements Required<BillingProvider> {
     // Self-host distribution has no hosted billing limits.
   }
 
+  async startTrial(_organizationId: string) {
+    // Self-host distribution has no hosted trial.
+  }
+
   async createCheckoutSession(_organizationId: string) {
     return { url: null }
   }
