@@ -31,7 +31,7 @@ export const confirmOnboardingV2Schema = z.object({
   companyAddress: z.string().trim().min(1).max(240),
   source: z.enum(["cvr", "manual"]).default("cvr"),
   invoiceNextNum: z.number().int().min(1).max(2147483646).default(1),
-  cvr: z.string().trim().refine(isValidDanishCvr, "cvr.invalid"),
+  cvr: z.string().trim().max(8).default(""),
   companyForm: z.string().trim().min(1).max(80),
   momsRegistered: z.boolean(),
   vatId: z.string().trim().regex(/^DK\d{8}$/).optional(),
@@ -39,6 +39,19 @@ export const confirmOnboardingV2Schema = z.object({
   reklamebeskyttet: z.boolean().optional(),
   companyEmail: z.string().trim().email().max(254).nullish(),
   companyPhone: z.string().trim().regex(/^(\+45\s?)?\d{8}$/).nullish(),
+  // Editable review defaults, validated before the same confirmation transaction.
+  settings: z.object({
+    countryCode: z.literal("DK"),
+    defaultCurrency: z.enum(["DKK", "EUR", "USD", "GBP"]),
+    locale: z.enum(["da-DK", "en-GB"]),
+    timezone: z.string().trim().min(1).max(120).refine(value => {
+      try { new Intl.DateTimeFormat("en", { timeZone: value }); return true } catch { return false }
+    }, "Unknown timezone"),
+    taxRate: z.number().min(0).max(100),
+    pricesIncludeTax: z.boolean(),
+    invoicePrefix: z.string().trim().regex(/^[A-Z0-9-]{1,10}$/),
+    paymentTermsDays: z.number().int().min(0).max(365),
+  }).strict().optional(),
   // Only invoice-line suggestions the user accepted. Generation belongs to the lookup/UI layer.
   catalogSuggestions: z.array(z.object({
     name: z.string().trim().min(1).max(120),
@@ -50,13 +63,16 @@ export const confirmOnboardingV2Schema = z.object({
     accountNumber: z.string().regex(/^\d{1,10}$/),
   }).strict().optional(),
 }).strict().superRefine((value, ctx) => {
+  if ((value.source === "cvr" || value.cvr) && !isValidDanishCvr(value.cvr)) {
+    ctx.addIssue({ code: "custom", path: ["cvr"], message: "cvr.invalid" })
+  }
   if (new Set(value.catalogSuggestions.map(item => item.name)).size !== value.catalogSuggestions.length) {
     ctx.addIssue({ code: "custom", path: ["catalogSuggestions"], message: "save.failed" })
   }
-  if (value.momsRegistered && value.vatId !== `DK${value.cvr}`) {
+  if (value.momsRegistered && value.cvr && value.vatId !== `DK${value.cvr}`) {
     ctx.addIssue({ code: "custom", path: ["vatId"], message: "save.failed" })
   }
-  if (!value.momsRegistered && value.vatId !== undefined) {
+  if ((!value.momsRegistered || !value.cvr) && value.vatId !== undefined) {
     ctx.addIssue({ code: "custom", path: ["vatId"], message: "save.failed" })
   }
 })

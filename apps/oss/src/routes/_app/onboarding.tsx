@@ -1,8 +1,10 @@
+import { OnboardingV2 } from "../../components/onboarding-v2/onboarding-v2"
+import { createOnboardingV2Client } from "../../components/onboarding-v2/client"
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
 import type { RuntimeCapabilities } from '@quits/contracts/runtime'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { authClient, useSession } from '../../lib/auth-client'
 import { switchActiveOrganization } from '../../lib/active-organization'
 import { invalidateAppLayoutSession } from '../../lib/app-layout-session'
@@ -127,6 +129,15 @@ function OnboardingPageContent() {
   const { isCloud } = useRuntimeDistribution()
   const { data: session } = useSession()
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
+
+  const [v2Availability, setV2Availability] = useState<{ enabled: boolean; suggestions: boolean } | null>(null)
+  const v2Client = useMemo(() => createOnboardingV2Client(v2Availability?.suggestions ?? false), [v2Availability?.suggestions])
+  useEffect(() => {
+    if (!isCloud || !hasActiveOrg) return
+    let cancelled = false
+    trpc.cvr.available.query().then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2Availability({ enabled: false, suggestions: false }) })
+    return () => { cancelled = true }
+  }, [isCloud, hasActiveOrg])
 
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
@@ -598,6 +609,13 @@ function OnboardingPageContent() {
         </Card>
       </div>
     )
+  }
+
+  if (v2Availability?.enabled && session) {
+    return <OnboardingV2 key={`${session.user.id}:${session.session.activeOrganizationId}`} userId={session.user.id} organizationId={session.session.activeOrganizationId!} signupEmail={session.user.email} client={v2Client} onComplete={() => {
+      invalidateAppLayoutSession()
+      void navigate({ to: '/' })
+    }} />
   }
 
   return (

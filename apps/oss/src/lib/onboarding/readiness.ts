@@ -58,6 +58,7 @@ export function evaluateOnboardingReadiness(
   if (!hasPositiveInteger(input.quoteNextNum)) missing.push("quoteNextNum")
 
   if (
+    input.onboardingVersion !== 2 &&
     getOnboardingRules({
       countryCode: input.countryCode,
       invoicingIdentity: input.invoicingIdentity,

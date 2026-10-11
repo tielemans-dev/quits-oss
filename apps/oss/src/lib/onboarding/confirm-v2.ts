@@ -19,7 +19,12 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
     let existing = await tx.orgSettings.findUnique({ where: { organizationId } })
     // Use one set of defaults for the whole confirmation, even across midnight.
-    const presets = buildDkPresets(input, signupEmail)
+    const presets = {
+      ...buildDkPresets(input, signupEmail),
+      ...input.settings,
+      ...(input.settings ? { currency: input.settings.defaultCurrency, baseCurrency: input.settings.defaultCurrency } : {}),
+      taxRate: input.momsRegistered ? input.settings?.taxRate ?? 25 : 0,
+    }
     if (!existing) {
       // Insert inside confirm, then lock before checking issued documents. Another writer may
       // have created settings after the first read, so re-read under the same issuance lock.
@@ -73,7 +78,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     await tx.organizationTaxId.updateMany({ where: { organizationId, isPrimary: true }, data: { isPrimary: false } })
     await tx.organizationTaxId.deleteMany({ where: { organizationId, OR: ["cvr", "vat", "dk_cvr", "dk_vat"].map(scheme => ({ scheme: { equals: scheme, mode: "insensitive" as const } })) } })
     await tx.organizationTaxId.createMany({ data: [
-      { organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true },
+      ...(input.cvr ? [{ organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true }] : []),
       ...(input.vatId ? [{ organizationId, scheme: "vat", value: input.vatId, countryCode: "DK", isPrimary: false }] : []),
     ] })
     if (input.catalogSuggestions.length) {

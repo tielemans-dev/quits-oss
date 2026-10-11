@@ -59,6 +59,7 @@ vi.mock("../../lib/auth-client", () => ({
 
 vi.mock("../../trpc/client", () => ({
   trpc: {
+    cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) } },
     onboarding: {
       getStatus: {
         query: onboardingStatusQuery,

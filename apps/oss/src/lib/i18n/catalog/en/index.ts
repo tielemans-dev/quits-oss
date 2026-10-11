@@ -1,3 +1,4 @@
+import { enOnboardingV2Messages } from "./onboarding-v2"
 import { enAgreementsMessages } from "./agreements"
 import { enPaymentDetailsMessages } from "./payment-details"
 import { enPaymentsMessages } from "./payments"
@@ -28,6 +29,7 @@ import { enUiMessages } from "./ui"
 import { enUserMessages } from "./user"
 
 export const enCatalog = {
+  ...enOnboardingV2Messages,
   ...enAgreementsMessages,
   ...enPaymentDetailsMessages,
   ...enPaymentsMessages,
