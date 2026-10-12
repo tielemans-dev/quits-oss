@@ -220,7 +220,6 @@ export function layout(content: string, locale?: string | null, invoicePresentat
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${invoicePresentation ? `<meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark">
 <style>
-  @font-face { font-family: 'Geist Mono'; font-style: normal; font-weight: 100 900; src: url('https://cdn.jsdelivr.net/npm/@fontsource-variable/geist-mono@5.3.0/files/geist-mono-latin-wght-normal.woff2') format('woff2'); }
   @media (max-width:480px) {
     .email-panel { margin:16px auto !important; }
     .email-content, .email-brand { padding:24px !important; }
@@ -295,6 +294,8 @@ export type SendInvoiceEmailParams = {
     total: number
     currency: string
     notes?: string | null
+    /** Current outstanding amount; original totals above remain the issued invoice amounts. */
+    balanceDue?: number
     /** Issue-time seller payment details. Never substitute current organization settings. */
     bankAccount?: BankAccountSnapshot | null
     paymentNote?: string | null
@@ -359,7 +360,7 @@ export function buildInvoiceEmailContent({
 
     <h3 style="margin:24px 0 12px;font-size:16px;">${t("email.pay.heading", locale)}</h3>
     <table aria-label="${t("email.pay.heading", locale)}" style="width:100%;border-collapse:collapse;">
-      ${invoicePaymentRows(invoice, locale).map(row => `<tr>
+      ${invoicePaymentRows({ ...invoice, total: invoice.balanceDue ?? invoice.total }, locale).map(row => `<tr>
         <th scope="row" style="padding:10px 0;border-bottom:1px solid ${C.hairline};text-align:left;font-size:12px;font-weight:400;text-transform:uppercase;letter-spacing:0.06em;color:${C.muted};">${escapeHtml(row.label)}</th>
         <td style="padding:10px 0;border-bottom:1px solid ${C.hairline};text-align:right;font-family:'Geist Mono',Consolas,monospace;overflow-wrap:anywhere;">${escapeHtml(row.value)}</td>
       </tr>`).join("")}

@@ -1,4 +1,5 @@
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
+import { computeSettlement } from "./settlement"
 import { issuedInvoiceSnapshot } from "./issued-invoice"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { Effect } from "effect"
@@ -44,6 +45,8 @@ export type InvoiceForEmail = {
   notes: string | null
   subtotalNet: Decimalish
   totalTax: Decimalish
+  amountPaid: Decimalish
+  amountCredited: Decimalish
   totalGross: Decimalish
   pricesIncludeTax: boolean
   contact: { name: string; email: string | null }
@@ -125,6 +128,11 @@ export function composeInvoiceEmail(input: {
   const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
   const seller = frozen?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot)
   const buyer = frozen?.buyer ?? parseBuyerSnapshot(invoice.buyerSnapshot)
+  const settlement = computeSettlement({
+    totalGross: frozen ? frozen.totals.gross : invoice.totalGross.toNumber(),
+    amountPaid: invoice.amountPaid.toNumber(),
+    amountCredited: invoice.amountCredited.toNumber(),
+  })
   const vatSummary = documentVatSummary(invoice, frozen ? vatRowsByRate(frozen.vatGroups, frozen.currency) : undefined)
   const content = buildInvoiceEmailContent({
     fromName: envelope.fromName,
@@ -134,6 +142,7 @@ export function composeInvoiceEmail(input: {
       ...invoice,
       subtotal: frozen ? Number(frozen.totals.net) : invoice.subtotalNet.toNumber(),
       taxAmount: frozen ? Number(frozen.totals.tax) : invoice.totalTax.toNumber(),
+      balanceDue: settlement.balanceDue.toNumber(),
       total: frozen ? Number(frozen.totals.gross) : invoice.totalGross.toNumber(),
       issueDate: frozen?.occurredAt ?? invoice.issueDate,
       supplyDate: frozen ? frozen.supplyDate : invoice.supplyDate?.toISOString().slice(0, 10),

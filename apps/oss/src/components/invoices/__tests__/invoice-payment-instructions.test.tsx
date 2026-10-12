@@ -13,7 +13,7 @@ describe("invoice detail seller and payment blocks", () => {
   it.each(["da-DK", "en-US"])("renders the invoice's frozen seller and payment data in %s", locale => {
     const html = renderToStaticMarkup(<I18nProvider locale={locale}>
       <InvoiceSellerDetails sellerSnapshot={sellerSnapshot} />
-      <InvoicePaymentInstructions sellerSnapshot={sellerSnapshot} number="INV-0042" total={250} currency="DKK" dueDate="2026-03-23" />
+      <InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" balanceDue={250} currency="DKK" dueDate="2026-03-23" />
     </I18nProvider>)
     for (const value of ["Synthetic Seller ApS", "Testvej 1", "1000 København", "CVR-nr.: 12345678", "0040", "0440 116 243", "Frozen note"]) expect(html).toContain(value)
     expect(html).toContain(locale === "da-DK" ? 'aria-label="Fra"' : 'aria-label="From"')
@@ -24,13 +24,33 @@ describe("invoice detail seller and payment blocks", () => {
   })
 
   it.each([null, {}, { companyName: 42 }])("hides absent or invalid bank data: %s", snapshot => {
-    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions sellerSnapshot={snapshot} number="INV-0042" total={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={snapshot} number="INV-0042" balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
     expect(html).toBe("")
   })
 
   it("shows a payment note without bank rows and never assigns a draft number", () => {
-    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions sellerSnapshot={{ paymentNote: "Pay on delivery" }} number={null} total={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={{ paymentNote: "Pay on delivery" }} number={null} balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
     expect(html).toContain("Pay on delivery")
     expect(html).not.toMatch(/Reg. no.|Account number|Put invoice number/)
+  })
+})
+
+// MOCK: synthetic issued account and outstanding balances, confined to tests.
+describe("issued payment block regressions", () => {
+  it("shows an IBAN-only destination", () => {
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={{ bankAccount: { iban: "DK5000400440116243", bic: "DABADKKK" } }} number="INV-0042" balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
+    expect(html).toContain("DK50 0040 0440 1162 43")
+    expect(html).toContain("DABADKKK")
+  })
+
+  it.each([1000, 750, 0])("shows the supplied outstanding amount %s", balanceDue => {
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" balanceDue={balanceDue} currency="USD" dueDate="2026-03-23" /></I18nProvider>)
+    expect(html).toContain(balanceDue === 1000 ? "$1,000.00" : balanceDue === 750 ? "$750.00" : "$0.00")
+    expect(html).toContain("INV-0042")
+  })
+
+  it("hides draft creation-time payment details even after settings change", () => {
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="draft" sellerSnapshot={sellerSnapshot} number={null} balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
+    expect(html).toBe("")
   })
 })

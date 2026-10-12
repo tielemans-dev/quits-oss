@@ -36,3 +36,11 @@ QUI-61 PR #127 overlaps `lib/i18n/format.ts`, `lib/email.ts`, `lib/documents/inv
 The app/payment block uses `CVR-nr.` while other document callers retain their current CVR label through an optional argument. Account grouping is display-only, `0440 116 243`, preserving all stored digits and leading zeros.
 
 Browser regression: [invoice-payment-block.spec.ts](../../../apps/oss/tests/shared/invoice-payment-block.spec.ts). Opt-in capture fixture: [invoice-payment-capture.spec.ts](../../../apps/oss/tests/shared/invoice-payment-capture.spec.ts). The capture fixture requires `QUI52_CAPTURE_OUTPUT`, a local `QUI52_MAILPIT_URL`, SMTP configuration and the guarded disposable shared environment. `QUI52_CHROMIUM` can select an installed executable.
+
+## Bounded GitHub review fixes after 2bd7796
+
+The four review findings are addressed by sharing the existing bank-field formatter (including IBAN/BIC), showing current outstanding only in payment instructions, hiding the draft payment block, and removing the remote email font. Original invoice totals, issued seller identity and PDF/artifact storage remain unchanged. Resend already accepts sent/overdue invoices with partial settlement; settled invoices still cannot be resent. Tests cover settled rendering through the composer and authenticated page without changing that guard.
+
+New regressions run real send/resend, payment and credit commands with synthetic accounts. Shared browser scenarios cover IBAN-only issued email/page, draft settings changes, issued immutability, partial payment/credit and full settlement. Existing copy, date, account grouping and mobile assertions remain. All added data and provider/PDF adapters are test-only MOCK fixtures. No migrations were added.
+
+The 32 screenshots above describe their recorded earlier code heads; they are not final-head evidence for these fixes. The current-head capture workflow produces a separate 16-image artifact and manifest tagged with the exact pushed SHA, using an actual UI resend to disposable CI Mailpit and one worker. CI validation and capture results for the new head are pending when this implementation is handed to the parent. The parent owns PR watching and the final evidence/check handoff. Ines still owns the missing design reference/sign-off; Kai owns #127 integration.

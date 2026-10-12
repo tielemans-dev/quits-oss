@@ -66,7 +66,7 @@ const settings = {
 const storedInvoice: InvoiceForEmail = {
   ...invoice, id: "synthetic", locale: "da-DK", timezone: "Europe/Copenhagen",
   issueDate: new Date("2026-10-01"), dueDate: new Date("2026-11-01"),
-  subtotalNet: decimal(1000), totalTax: decimal(250), totalGross: decimal(1250), pricesIncludeTax: false,
+  subtotalNet: decimal(1000), totalTax: decimal(250), totalGross: decimal(1250), pricesIncludeTax: false, amountPaid: decimal(0), amountCredited: decimal(0),
   contact: { name: "Buyer", email: "buyer@example.invalid" },
   sellerSnapshot: { bankAccount, paymentNote: "Legacy frozen note" },
 }
@@ -98,5 +98,30 @@ describe("frozen invoice email payment details", () => {
       const html = compose({ ...storedInvoice, sellerSnapshot })
       expect(html).not.toMatch(/Reg.nr.|Kontonummer|Current payment note|9876543/)
     }
+  })
+})
+
+// MOCK: synthetic settlement/account fixtures, confined to tests.
+describe("issued transfer regressions", () => {
+  it("renders an IBAN-only issued destination and makes no remote font request", () => {
+    const html = compose({ ...storedInvoice, sellerSnapshot: { bankAccount: { iban: "DK5000400440116243", bic: "DABADKKK" } } })
+    expect(html).toContain("DK50 0040 0440 1162 43")
+    expect(html).toContain("DABADKKK")
+    expect(html).not.toMatch(/@font-face|@import|cdn\.jsdelivr\.net|\.woff2?/)
+    expect(html).toContain("Consolas,monospace")
+  })
+
+  it.each([
+    [250, 0, "1.000,00"], [0, 250, "1.000,00"], [250, 250, "750,00"],
+    [1250, 0, "0,00"], [0, 1250, "0,00"],
+  ])("uses outstanding payment amount for paid %s / credited %s without changing issued totals", (paid, credited, expected) => {
+    const document = { ...storedInvoice, amountPaid: decimal(paid), amountCredited: decimal(credited) }
+    const before = JSON.stringify(document)
+    const html = compose(document)
+    const payment = html.match(/<table aria-label="Sådan betaler du"[\s\S]*?<\/table>/)?.[0]
+    expect(payment).toContain(`${expected}\u00a0kr.`)
+    expect(payment).toContain(storedInvoice.number)
+    expect(html.slice(0, html.indexOf('<table aria-label="Sådan betaler du"'))).toContain("1.250,00\u00a0kr.")
+    expect(JSON.stringify(document)).toBe(before)
   })
 })

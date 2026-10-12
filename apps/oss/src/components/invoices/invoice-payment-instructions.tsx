@@ -1,3 +1,4 @@
+import { hasPaymentDetails } from "@quits/contracts/payment-details"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { useI18n } from "../../lib/i18n/react"
 import { invoicePaymentRows } from "../../lib/documents/invoice-payment-rows"
@@ -16,25 +17,24 @@ export function InvoiceSellerDetails({ sellerSnapshot }: { sellerSnapshot: unkno
   )
 }
 
-export function InvoicePaymentInstructions({ sellerSnapshot, number, total, currency, dueDate }: {
+export function InvoicePaymentInstructions({ status, sellerSnapshot, number, balanceDue, currency, dueDate }: {
+  status: string
   sellerSnapshot: unknown
   number: string | null
-  total: number
+  balanceDue: number
   currency: string
   dueDate: Date | string
 }) {
   const { t, locale } = useI18n()
   const seller = parseSellerSnapshot(sellerSnapshot)
   const account = seller?.bankAccount
-  const reg = account?.regNumber?.trim()
-  const accountNumber = account?.accountNumber?.trim()
   const note = seller?.paymentNote?.trim()
-  if (!reg && !accountNumber && !note) return null
+  if (status === "draft" || !hasPaymentDetails({ bankAccount: account, note })) return null
   return (
     <section aria-label={t("email.pay.heading")} className="grid gap-2 text-sm">
       <h3 className="font-medium">{t("email.pay.heading")}</h3>
       <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4">
-        {invoicePaymentRows({ bankAccount: account, number, total, currency, dueDate }, locale).map(row => (
+        {invoicePaymentRows({ bankAccount: account, number, total: balanceDue, currency, dueDate }, locale).map(row => (
           <div key={row.key} className="col-span-2 grid grid-cols-subgrid border-b py-2.5">
             <dt className="text-xs uppercase tracking-wider text-muted-foreground self-center">{row.label}</dt>
             <dd className="font-mono text-right break-words">{row.value}</dd>

@@ -9,8 +9,10 @@ test.afterEach(() => resetQuitsRuntimeForTests())
 
 for (const locale of ['da-DK', 'en-US']) {
   for (const theme of ['light', 'dark'] as const) {
-    for (const withBank of [true, false]) {
-      test(`issued invoice seller and email payment block in ${locale}, bank: ${withBank}, ${theme}`, async ({ page, baseURL }, testInfo) => {
+    for (const bankKind of ['domestic', 'iban', null] as const) {
+      const withBank = bankKind !== null
+      test(`issued invoice seller and email payment block in ${locale}, bank: ${bankKind}, ${theme}`, async ({ page, baseURL }, testInfo) => {
+        test.setTimeout(120_000)
         const database = new URL(process.env.DATABASE_URL!)
         if (baseURL !== 'http://127.0.0.1:4310' || database.hostname !== '127.0.0.1' || database.pathname !== '/quits_e2e') {
           throw new Error('Invoice payment scenarios require the shared disposable environment')
@@ -19,7 +21,7 @@ for (const locale of ['da-DK', 'en-US']) {
         await page.addInitScript(theme => localStorage.setItem('quits-theme', theme), theme)
         await resetDatabase()
         // MOCK: in-memory PDF/artifact adapters, confined to this disposable browser test.
-      const artifacts = new Map<string, Uint8Array>()
+        const artifacts = new Map<string, Uint8Array>()
         bootstrapQuitsRuntime({ services: {
           documentRenderer: { version: 'payment-block-browser-fixture', async renderPdf(input) { return new TextEncoder().encode(JSON.stringify(input)) } },
           documentArtifactStore: {
@@ -37,9 +39,14 @@ for (const locale of ['da-DK', 'en-US']) {
           session: { activeOrganizationId: setup.organizationId },
         } } as never)
         const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: 'Synthetic buyer', email: 'buyer@example.invalid', country: 'DK' } })
+        await caller.paymentDetails.update({ bankAccount: { regNumber: '2222', accountNumber: '2222222222' }, note: 'MOCK creation-time payment note' })
         const draft = await caller.invoices.create({ contactId: contact.id, dueDate: '2099-01-01', taxRate: 25, items: [{ description: 'Synthetic consulting', quantity: 2, unitPrice: 1000 }] })
         // Payment settings change after draft creation. Issuing must copy these values.
-        if (withBank) await caller.paymentDetails.update({ bankAccount: { regNumber: '0040', accountNumber: '0440116243' }, note: 'Issue-time payment note' })
+        if (withBank) await caller.paymentDetails.update({ bankAccount: bankKind === 'iban' ? { iban: 'DK5000400440116243', bic: 'DABADKKK' } : { regNumber: '0040', accountNumber: '0440116243' }, note: bankKind === 'iban' ? null : 'Issue-time payment note' })
+        else await caller.paymentDetails.update({ bankAccount: null, note: null })
+        await loginAsAdmin(page)
+        await page.goto(`/invoices/${draft.id}`)
+        await expect(page.getByRole('region', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })).toHaveCount(0)
         await caller.invoices.send({ id: draft.id, allowSendWithoutEmail: true })
         const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.id }, include: { contact: true, items: true } })
         const publicPaymentUrl = withBank ? (await caller.invoices.createPaymentLink({ id: draft.id })).url : null
@@ -47,7 +54,6 @@ for (const locale of ['da-DK', 'en-US']) {
         await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { companyName: 'Changed current seller', companyAddress: 'Changed current address' } })
         const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: setup.organizationId } })
 
-        await loginAsAdmin(page)
         await page.goto(`/invoices/${issued.id}`)
         const seller = page.getByRole('region', { name: locale === 'da-DK' ? 'Fra' : 'From', exact: true })
         await expect(seller).toContainText('Synthetic Seller ApS')
@@ -56,9 +62,12 @@ for (const locale of ['da-DK', 'en-US']) {
         await expect(page.getByText(locale === 'da-DK' ? 'Fakturer til' : 'Bill To', { exact: true })).toBeVisible()
         const payment = page.getByRole('region', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })
         if (withBank) {
-          await expect(payment).toContainText('0040')
-          await expect(payment).toContainText('0440 116 243')
-          await expect(payment).toContainText('Issue-time payment note')
+          await expect(payment).toContainText(bankKind === 'iban' ? 'DK50 0040 0440 1162 43' : '0440 116 243')
+          if (bankKind === 'iban') await expect(payment).toContainText('DABADKKK')
+          else {
+            await expect(payment).toContainText('0040')
+            await expect(payment).toContainText('Issue-time payment note')
+          }
           await expect(payment).toContainText(locale === 'da-DK' ? 'Skriv fakturanummeret i beskeden, så vi kan finde din betaling.' : 'Add the invoice number to the payment message so we can match your payment.')
         } else await expect(payment).toHaveCount(0)
         await expect(page.getByText('Changed current payment note')).toHaveCount(0)
@@ -76,17 +85,19 @@ for (const locale of ['da-DK', 'en-US']) {
         }
         await page.reload()
         await expect(seller).toContainText('Synthetic Seller ApS')
-        if (withBank) await expect(payment).toContainText('0440 116 243')
+        if (withBank) await expect(payment).toContainText(bankKind === 'iban' ? 'DK50 0040 0440 1162 43' : '0440 116 243')
 
         // Inspect the same rendered email the outbox composes, without sending to a provider.
         const email = composeInvoiceEmail({ invoice: { ...issued, number: issued.number! }, settings, to: contact.email!, publicPaymentUrl }).message
         await page.setViewportSize({ width: 390, height: 844 })
+        expect(email.html).not.toMatch(/@font-face|@import|cdn\.jsdelivr\.net|\.woff2?/)
         await page.setContent(email.html!)
         await expect(page.getByRole('heading', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })).toBeVisible()
         await expect(page.getByText(locale === 'da-DK' ? 'Skriv fakturanummeret i beskeden, så vi kan finde din betaling.' : 'Add the invoice number to the payment message so we can match your payment.', { exact: true })).toBeVisible()
         if (withBank) {
-          await expect(page.getByText('0040', { exact: true })).toBeVisible()
-          await expect(page.getByText('0440 116 243', { exact: true })).toBeVisible()
+          await expect(page.getByText(bankKind === 'iban' ? 'DK50 0040 0440 1162 43' : '0440 116 243', { exact: true })).toBeVisible()
+          if (bankKind === 'iban') await expect(page.getByText('DABADKKK', { exact: true })).toBeVisible()
+          else await expect(page.getByText('0040', { exact: true })).toBeVisible()
           await expect(page.getByRole('link', { name: locale === 'da-DK' ? 'Betal faktura' : 'Pay invoice', exact: true }).first()).toHaveAttribute('href', publicPaymentUrl!)
         } else {
           await expect(page.getByText(/Reg\.nr\.|Reg\. no\.|Account number|Kontonummer/)).toHaveCount(0)
@@ -104,6 +115,31 @@ for (const locale of ['da-DK', 'en-US']) {
         }
         expect(await page.locator('body').evaluate(element => getComputedStyle(element).backgroundColor)).toBe(theme === 'dark' ? 'rgb(17, 17, 18)' : 'rgb(250, 250, 249)')
         await testInfo.attach('invoice-email-mobile', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+        if (bankKind === 'domestic') {
+          // Actual payment/credit commands populate the balances used by both rendering paths.
+          for (const step of ['partial payment', 'partial credit', 'fully settled'] as const) {
+            if (step === 'partial payment') await caller.payments.record({ invoiceId: issued.id, amount: 500, paidAt: new Date().toISOString(), method: 'bank_transfer' })
+            if (step === 'partial credit') await caller.creditNotes.issue({ invoiceId: issued.id, mode: 'amount', amount: 250, reason: 'MOCK test credit' })
+            if (step === 'fully settled') await caller.invoices.markPaid({ invoiceId: issued.id, requestId: crypto.randomUUID() })
+            const expected = step === 'partial payment' ? 2000 : step === 'partial credit' ? 1750 : 0
+            const current = await caller.invoices.get({ id: issued.id })
+            expect(current.balanceDue).toBe(expected)
+            expect(current.total).toBe(2500)
+            await page.goto(`/invoices/${issued.id}`)
+            await expect(payment.locator('dd').first()).toHaveText(new Intl.NumberFormat(locale, { style: 'currency', currency: 'DKK' }).format(expected))
+            await expect(payment).toContainText('0440 116 243')
+            const fresh = await prisma.invoice.findUniqueOrThrow({ where: { id: issued.id }, include: { contact: true, items: true } })
+            expect(fresh.issuanceSnapshot).toEqual(issued.issuanceSnapshot)
+            expect(fresh.artifactPdfHash).toBe(issued.artifactPdfHash)
+            expect(fresh.artifactPdfRef).toBe(issued.artifactPdfRef)
+            const updatedEmail = composeInvoiceEmail({ invoice: { ...fresh, number: fresh.number! }, settings, to: contact.email!, publicPaymentUrl: null }).message
+            await page.setContent(updatedEmail.html!)
+            const rows = page.getByRole('table', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })
+            await expect(rows.locator('td').first()).toHaveText(new Intl.NumberFormat(locale, { style: 'currency', currency: 'DKK' }).format(expected))
+            await expect(rows).toContainText(issued.number!)
+          }
+        }
+
       })
     }
 }
