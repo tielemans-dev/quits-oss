@@ -174,11 +174,36 @@ for (const locale of ['da-DK', 'en-US']) {
             expect(fresh.issuanceSnapshot).toEqual(issued.issuanceSnapshot)
             expect(fresh.artifactPdfHash).toBe(issued.artifactPdfHash)
             expect(fresh.artifactPdfRef).toBe(issued.artifactPdfRef)
-            const updatedEmail = composeInvoiceEmail({ invoice: { ...fresh, number: fresh.number! }, settings, to: contact.email!, publicPaymentUrl: null }).message
+            // Keep the payment URL supplied even at settlement to exercise the whole email guard.
+            const updatedEmail = composeInvoiceEmail({ invoice: { ...fresh, number: fresh.number! }, settings, to: contact.email!, publicPaymentUrl }).message
             await page.setContent(updatedEmail.html!)
             const rows = page.getByRole('table', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })
-            await expect(rows.locator('td').first()).toHaveText(new Intl.NumberFormat(locale, { style: 'currency', currency: 'DKK' }).format(expected))
-            await expect(rows).toContainText(issued.number!)
+            const fallbackQuestion = locale === 'da-DK' ? 'Virker knappen ikke?' : 'Button not working?'
+            const fallbackLink = locale === 'da-DK' ? 'Åbn betalingssiden' : 'Open the payment page'
+            await expect(page.getByRole('row', { name: `Total ${new Intl.NumberFormat(locale, { style: 'currency', currency: 'DKK' }).format(2500)}`, exact: true })).toBeVisible()
+            if (step === 'fully settled') {
+              await expect(rows).toHaveCount(0)
+              await expect(emailPaymentHeading).toHaveCount(0)
+              await expect(emailReferenceHint).toHaveCount(0)
+              await expect(page.getByText('Issue-time payment note', { exact: true })).toHaveCount(0)
+              await expect(emailPaymentAction).toHaveCount(0)
+              await expect(page.getByText(fallbackQuestion, { exact: false })).toHaveCount(0)
+              await expect(page.getByRole('link', { name: fallbackLink, exact: true })).toHaveCount(0)
+              await expect(page.locator(`a[href="${publicPaymentUrl}"]`)).toHaveCount(0)
+            } else {
+              await expect(emailPaymentHeading).toBeVisible()
+              await expect(rows.locator('td').first()).toHaveText(new Intl.NumberFormat(locale, { style: 'currency', currency: 'DKK' }).format(expected))
+              await expect(rows).toContainText('0040')
+              await expect(rows).toContainText('0440 116 243')
+              await expect(rows.locator('td').last()).toHaveText(paymentMessage)
+              await expect(emailReferenceHint).toBeVisible()
+              await expect(page.getByText('Issue-time payment note', { exact: true })).toBeVisible()
+              await expect(emailPaymentAction).toHaveAttribute('href', publicPaymentUrl!)
+              const fallback = page.getByRole('link', { name: fallbackLink, exact: true })
+              await expect(fallback).toHaveAttribute('href', publicPaymentUrl!)
+              await expect(fallback.locator('..')).toHaveText(`${fallbackQuestion} ${fallbackLink}`)
+              await expect(page.getByText(publicPaymentUrl!, { exact: true })).toHaveCount(0)
+            }
           }
         }
 
