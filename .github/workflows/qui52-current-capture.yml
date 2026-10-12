@@ -65,8 +65,8 @@ jobs:
               data = p.read_bytes()
               width, height = struct.unpack('>II', data[16:24])
               images.append(dict(path=str(p.relative_to(root)), width=width, height=height, sha256=hashlib.sha256(data).hexdigest()))
-          assert len(images) == 16, images
-          manifest = dict(issue='QUI-52', source='Current PR head; actual UI resend to disposable CI Mailpit', codeHead=os.environ['CAPTURE_HEAD'], ciRun=os.environ['CAPTURE_RUN'], fullPage=True, viewports=dict(desktop=dict(width=1440,height=1000),mobile=dict(width=390,height=844)), mocks=['Synthetic seller/customer/invoice/bank details', 'In-memory PDF renderer and artifact store', 'Deterministic historical invoice dates and number', 'Disposable PostgreSQL and SMTP Mailpit'], screenshots=images)
+          assert len(images) == 8, images
+          manifest = dict(issue='QUI-52', source='Current PR head; draft page after company name, address and CVR settings changes; seller and payment blocks hidden until issuance', codeHead=os.environ['CAPTURE_HEAD'], ciRun=os.environ['CAPTURE_RUN'], fullPage=True, viewports=dict(desktop=dict(width=1440,height=1000),mobile=dict(width=390,height=844)), mocks=['Synthetic draft seller/customer/invoice/bank details and changed CVR', 'Test-only PDF/artifact adapters configured but no draft issuance', 'Disposable PostgreSQL and SMTP Mailpit'], screenshots=images)
           (root / 'current-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
           PY
       - name: Upload current-head screenshots, provenance and diagnostic logs

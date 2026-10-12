@@ -4,8 +4,10 @@ import { useI18n } from "../../lib/i18n/react"
 import { invoicePaymentRows } from "../../lib/documents/invoice-payment-rows"
 import { invoiceTaxIds } from "../../lib/documents/invoice-identity"
 
-export function InvoiceSellerDetails({ sellerSnapshot }: { sellerSnapshot: unknown }) {
+export function InvoiceSellerDetails({ status, sellerSnapshot }: { status: string; sellerSnapshot: unknown }) {
   const { t } = useI18n()
+  // Draft snapshots describe creation-time settings; issuance freezes the actual seller.
+  if (status === "draft") return null
   const seller = parseSellerSnapshot(sellerSnapshot)
   return (
     <section aria-label={t("pdf.from")}>

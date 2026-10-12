@@ -15,6 +15,7 @@ Object.assign(harness.env, {
   HOST: '127.0.0.1', PORT: '4310',
   EMAIL_PROVIDER: 'smtp', SMTP_HOST: '127.0.0.1', SMTP_PORT: '1025',
   SMTP_SECURE: 'false', SMTP_REQUIRE_TLS: 'false', FROM_EMAIL: 'MOCK-review@example.invalid',
+  QUI52_CAPTURE_DRAFT_ONLY: '1',
   QUI52_MAILPIT_URL: 'http://127.0.0.1:8025',
   QUI52_CAPTURE_OUTPUT: path.join(cwd, 'test-results/qui52-current'),
 })

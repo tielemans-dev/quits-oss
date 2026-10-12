@@ -41,24 +41,33 @@ for (const locale of ['da-DK', 'en-US']) {
         const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: 'Synthetic buyer', email: 'buyer@example.invalid', country: 'DK' } })
         await caller.paymentDetails.update({ bankAccount: { regNumber: '2222', accountNumber: '2222222222' }, note: 'MOCK creation-time payment note' })
         const draft = await caller.invoices.create({ contactId: contact.id, dueDate: '2099-01-01', taxRate: 25, items: [{ description: 'Synthetic consulting', quantity: 2, unitPrice: 1000 }] })
-        // Payment settings change after draft creation. Issuing must copy these values.
+        // Seller and payment settings change after draft creation. Issuance must freeze the new values.
+        await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { companyName: 'Issue-time Seller ApS', companyAddress: 'Issue-time address 42\n9000 Aalborg' } })
+        await prisma.organizationTaxId.updateMany({ where: { organizationId: setup.organizationId, scheme: 'DK_CVR' }, data: { value: '87654321' } })
         if (withBank) await caller.paymentDetails.update({ bankAccount: bankKind === 'iban' ? { iban: 'DK5000400440116243', bic: 'DABADKKK' } : { regNumber: '0040', accountNumber: '0440116243' }, note: bankKind === 'iban' ? null : 'Issue-time payment note' })
         else await caller.paymentDetails.update({ bankAccount: null, note: null })
         await loginAsAdmin(page)
         await page.goto(`/invoices/${draft.id}`)
+        await expect(page.getByRole('heading', { name: locale === 'da-DK' ? 'Fakturakladde' : 'Draft invoice', exact: true })).toBeVisible()
         await expect(page.getByRole('region', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })).toHaveCount(0)
+        await expect(page.getByRole('region', { name: locale === 'da-DK' ? 'Fra' : 'From', exact: true })).toHaveCount(0)
+        await testInfo.attach('invoice-draft-after-seller-settings-change', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
         await caller.invoices.send({ id: draft.id, allowSendWithoutEmail: true })
         const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.id }, include: { contact: true, items: true } })
         const publicPaymentUrl = withBank ? (await caller.invoices.createPaymentLink({ id: draft.id })).url : null
         await caller.paymentDetails.update({ bankAccount: { regNumber: '1234', accountNumber: '9876543' }, note: 'Changed current payment note' })
         await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { companyName: 'Changed current seller', companyAddress: 'Changed current address' } })
+        await prisma.organizationTaxId.updateMany({ where: { organizationId: setup.organizationId, scheme: 'DK_CVR' }, data: { value: '11223344' } })
         const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: setup.organizationId } })
 
         await page.goto(`/invoices/${issued.id}`)
         const seller = page.getByRole('region', { name: locale === 'da-DK' ? 'Fra' : 'From', exact: true })
-        await expect(seller).toContainText('Synthetic Seller ApS')
-        await expect(seller).toContainText('Testvej 1')
-        await expect(seller).toContainText('CVR-nr.: 12345678')
+        await expect(seller).toContainText('Issue-time Seller ApS')
+        await expect(seller).toContainText('Issue-time address 42')
+        await expect(seller).toContainText('CVR-nr.: 87654321')
+        await expect(seller).not.toContainText('Changed current seller')
+        await expect(seller).not.toContainText('Changed current address')
+        await expect(seller).not.toContainText('11223344')
         await expect(page.getByText(locale === 'da-DK' ? 'Fakturer til' : 'Bill To', { exact: true })).toBeVisible()
         const payment = page.getByRole('region', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })
         if (withBank) {
@@ -84,7 +93,7 @@ for (const locale of ['da-DK', 'en-US']) {
           expect(await button.evaluate(element => element.getBoundingClientRect().right <= innerWidth)).toBe(true)
         }
         await page.reload()
-        await expect(seller).toContainText('Synthetic Seller ApS')
+        await expect(seller).toContainText('Issue-time Seller ApS')
         if (withBank) await expect(payment).toContainText(bankKind === 'iban' ? 'DK50 0040 0440 1162 43' : '0440 116 243')
 
         // Inspect the same rendered email the outbox composes, without sending to a provider.

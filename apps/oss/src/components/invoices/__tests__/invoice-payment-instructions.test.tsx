@@ -12,7 +12,7 @@ const sellerSnapshot = {
 describe("invoice detail seller and payment blocks", () => {
   it.each(["da-DK", "en-US"])("renders the invoice's frozen seller and payment data in %s", locale => {
     const html = renderToStaticMarkup(<I18nProvider locale={locale}>
-      <InvoiceSellerDetails sellerSnapshot={sellerSnapshot} />
+      <InvoiceSellerDetails status="sent" sellerSnapshot={sellerSnapshot} />
       <InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" balanceDue={250} currency="DKK" dueDate="2026-03-23" />
     </I18nProvider>)
     for (const value of ["Synthetic Seller ApS", "Testvej 1", "1000 København", "CVR-nr.: 12345678", "0040", "0440 116 243", "Frozen note"]) expect(html).toContain(value)
@@ -21,6 +21,11 @@ describe("invoice detail seller and payment blocks", () => {
     expect(html).toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
     expect(html).toContain(locale === "da-DK" ? "23. mar. 2026" : "23 Mar 2026")
     expect(html).not.toMatch(/Payment reference|Betalingsreference|\+71/)
+  })
+
+  it.each(["da-DK", "en-US"])("hides the creation-time seller while the invoice is a draft in %s", locale => {
+    const html = renderToStaticMarkup(<I18nProvider locale={locale}><InvoiceSellerDetails status="draft" sellerSnapshot={sellerSnapshot} /></I18nProvider>)
+    expect(html).toBe("")
   })
 
   it.each([null, {}, { companyName: 42 }])("hides absent or invalid bank data: %s", snapshot => {

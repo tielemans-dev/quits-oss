@@ -48,6 +48,29 @@ for (const locale of ['da-DK', 'en-US']) {
     } } as never)
     const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: 'Invoice Customer', company: 'Invoice Customer LLC', email: 'buyer@example.invalid', country: 'DK' } })
     const draft = await caller.invoices.create({ contactId: contact.id, dueDate: '2099-01-01', taxRate: 0, items: [{ description: 'Implementation sprint', quantity: 1, unitPrice: 250 }] })
+    if (process.env.QUI52_CAPTURE_DRAFT_ONLY === '1') {
+      await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
+        companyName: 'Changed draft seller', companyAddress: 'Changed draft address',
+      } })
+      await prisma.organizationTaxId.updateMany({ where: { organizationId: setup.organizationId, scheme: 'DK_CVR' }, data: { value: '87654321' } })
+      await loginAsAdmin(page)
+      const language = locale === 'da-DK' ? 'da' : 'en'
+      for (const theme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme: theme })
+        await page.evaluate(theme => localStorage.setItem('quits-theme', theme), theme)
+        for (const [viewport, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 844]] as const) {
+          await page.setViewportSize({ width, height })
+          await page.goto(`/invoices/${draft.id}`)
+          await expect(page.getByRole('heading', { name: locale === 'da-DK' ? 'Fakturakladde' : 'Draft invoice', exact: true })).toBeVisible()
+          await expect(page.getByRole('region', { name: locale === 'da-DK' ? 'Fra' : 'From', exact: true })).toHaveCount(0)
+          await expect(page.getByRole('region', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })).toHaveCount(0)
+          await page.evaluate(() => document.fonts.ready)
+          mkdirSync(path.join(output!, theme), { recursive: true })
+          await page.screenshot({ path: path.join(output!, theme, `draft-${language}-${viewport}.png`), fullPage: true })
+        }
+      }
+      return
+    }
     await caller.invoices.send({ id: draft.id, allowSendWithoutEmail: true })
     const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.id } })
     // MOCK: deterministic historical dates/number in this synthetic invoice only.

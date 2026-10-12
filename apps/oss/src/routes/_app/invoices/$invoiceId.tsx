@@ -1046,7 +1046,7 @@ function InvoiceDetailPage() {
 
             {/* Seller and buyer */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <InvoiceSellerDetails sellerSnapshot={invoice.sellerSnapshot} />
+              <InvoiceSellerDetails status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} />
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   {t("pdf.billTo")}
