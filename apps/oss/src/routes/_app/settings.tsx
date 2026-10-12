@@ -865,6 +865,8 @@ function SettingsPage() {
                 <Select
                   value={countryCode}
                   onValueChange={(nextCountry) => {
+                    // The Danish choice does not establish registration in a new jurisdiction.
+                    if (normalizeCountryCode(countryCode) === "DK" && normalizeCountryCode(nextCountry) !== "DK") setMomsRegistered(null)
                     setCountryCode(nextCountry)
                     const preset = COUNTRY_OPTIONS.find((item) => item.code === nextCountry)
                     if (preset) {

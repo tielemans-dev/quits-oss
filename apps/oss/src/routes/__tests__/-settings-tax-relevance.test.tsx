@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react"
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
 import { afterEach as afterEachTest, describe, expect, it, vi } from "vitest"
 
 const {
@@ -18,6 +18,15 @@ const {
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ ...options }),
+}))
+
+// MOCK: native selects exercise the route's controlled value-change handlers without browser APIs.
+vi.mock("../../components/ui/select", () => ({
+  Select: ({ value, onValueChange, children }: { value: string; onValueChange: (value: string) => void; children: ReactNode }) => <select value={value} onChange={event => onValueChange(event.target.value)}>{children}</select>,
+  SelectTrigger: () => null,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectItem: ({ value, children }: { value: string; children: ReactNode }) => <option value={value}>{children}</option>,
 }))
 
 vi.mock("../../components/settings/document-email-sending-card", () => ({
@@ -187,6 +196,24 @@ afterEachTest(() => {
 })
 
 describe("Settings tax relevance", () => {
+  it.each([["DE", "eu_vat", "19"], ["US", "custom", "7.5"]])("clears the Danish choice on departure to %s and permits the %s tax default", async (countryCode, taxRegime, taxRate) => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime, taxRate: 0, momsRegistered: false })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
+    const { container } = render(<RouteComponent />)
+    const taxInput = await screen.findByLabelText("settings.taxRate.label") as HTMLInputElement
+    await waitFor(() => expect(taxInput.value).toBe("0"))
+    if (taxRegime === "eu_vat") expect((screen.getByRole("radio", { name: "vatStatus.no" }) as HTMLInputElement).checked).toBe(true)
+    const countrySelect = Array.from(container.querySelectorAll("select")).find(select => select.value === "DK")!
+    fireEvent.change(countrySelect, { target: { value: countryCode } })
+    expect(screen.queryByRole("radio", { name: "vatStatus.no" })).toBeNull()
+    fireEvent.change(taxInput, { target: { value: taxRate } })
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ countryCode, taxRegime, momsRegistered: null, taxRate: Number(taxRate) })))
+    await waitFor(() => expect(taxInput.value).toBe(taxRate))
+  })
   it.each(["eu_vat", "custom"])("shows the returned %s tax default immediately after saving", async taxRegime => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
     getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })

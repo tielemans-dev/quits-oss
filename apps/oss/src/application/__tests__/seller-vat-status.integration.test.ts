@@ -252,6 +252,33 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })).taxRate?.toNumber()).toBe(expectedRate === 0 ? 0 : 8)
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoice.id } })).totalGross.toString()).toBe("125")
   })
+  it.each([["DE", "eu_vat", 19], ["US", "custom", 7.5]] as const)("recovers taxed issuance after leaving Denmark for %s without rewriting the old invoice", async (countryCode, taxRegime, taxRate) => {
+    const ctx = await setup(false, 0)
+    await completed(issueDocument(ctx.args))
+    const frozen = await prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoice.id } })
+    // This is the normalized payload submitted by the country-change handler.
+    const saved = await ctx.caller.settings.update({ countryCode, taxRegime, momsRegistered: null, taxRate })
+    expect(saved.momsRegistered).toBeNull()
+    expect(saved.taxRate?.toNumber()).toBe(taxRate)
+    const draft = await completed(executeCommand(createInvoiceDraft, {
+      contactId: ctx.invoice.contactId, dueDate: "2026-11-09", supplyDate: "2026-10-11", taxRate,
+      items: [{ description: "Synthetic new-jurisdiction service", quantity: 1, unitPrice: 100 }],
+    }, { actor: ctx.org.actors.admin }))
+    if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+    await completed(issueDocument({ ...ctx.args, commandInput: { ...ctx.args.commandInput, id: draft.result.id } }))
+    const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id }, include: { items: true } })
+    expect(issued.status).toBe("sent")
+    expect(issued.items[0]!.taxRate.toNumber()).toBe(taxRate)
+    expect(issued.totalTax.toNumber()).toBe(taxRate)
+    expect(issued.totalGross.toNumber()).toBe(100 + taxRate)
+    expect(parseSellerSnapshot(issued.sellerSnapshot)?.momsRegistered).toBeNull()
+    const historic = await prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoice.id } })
+    expect(historic.sellerSnapshot).toEqual(frozen.sellerSnapshot)
+    expect(historic.issuanceSnapshot).toEqual(frozen.issuanceSnapshot)
+    expect(historic.totalGross.toString()).toBe("100")
+    expect(historic.totalTax.toString()).toBe("0")
+    expect(parseSellerSnapshot(historic.sellerSnapshot)?.momsRegistered).toBe(false)
+  })
   it("refuses an unchanged draft if VAT status changes after artifact preparation", async () => {
     const ctx = await setup(true)
     const staging = await reserveDocument({ ...ctx.args, clientRequestId: "vat-status-race" })

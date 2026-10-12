@@ -11,6 +11,7 @@ import { CreditNotePdfDocument, type CreditNoteForPdf } from "../credit-note-pdf
 import { buildCreditNoteEmailContent } from "../emails/credit-note-email"
 import { translate } from "../i18n/translate"
 import { formatCurrency } from "../i18n/format"
+import { buildDkPresets } from "../onboarding/dk-presets"
 import { nonVatStatement } from "../documents/non-vat-note"
 import { withoutNonVatStatement } from "../documents/non-vat-presentation"
 import { sellerVatLineText } from "../documents/seller-vat"
@@ -59,6 +60,31 @@ describe("seller VAT presentation", () => {
       expect(output).toContain("25 % moms")
       expect(output).not.toMatch(/The company is not VAT registered|Virksomheden er ikke momsregistreret/)
     }
+  })
+  it.each(["da-DK", "en-US"])("removes the onboarding preset after registration but preserves frozen non-registration in %s", locale => {
+    const preset = buildDkPresets({ companyName: "Synthetic seller", companyAddress: "Testvej 1", companyForm: "Enkeltmandsvirksomhed", momsRegistered: false })
+    const paymentNote = `Synthetic transfer instructions\n${preset.paymentNote}\n${nonVatStatement("en")}`
+    const notes = `Synthetic document instructions\n${nonVatStatement(locale)}`
+    for (const output of outputs(locale, true, { taxRegime: "eu_vat", paymentNote, notes })) {
+      expect(output).toContain("25 % moms")
+      expect(output).not.toMatch(/The company is not VAT registered|Virksomheden er ikke momsregistreret/)
+      expect(output).toContain(formatCurrency(125, "DKK", locale))
+    }
+    const [pdf, email, pay] = outputs(locale, true, { taxRegime: "eu_vat", paymentNote, notes })
+    expect(pdf).toContain("Synthetic transfer instructions")
+    expect(pay).toContain("Synthetic transfer instructions")
+    expect(email).toContain("Synthetic document instructions")
+    // The same stored note remains truthful on an issued document frozen as non-registered.
+    for (const output of outputs(locale, false, { taxRegime: "eu_vat", paymentNote, notes })) {
+      expect(output.split(nonVatStatement(locale))).toHaveLength(2)
+      expect(output).toContain(translate("line.noVat", locale))
+      expect(output).toContain(formatCurrency(100, "DKK", locale))
+      expect(output).not.toContain("25 % moms")
+    }
+    expect(withoutNonVatStatement("Synthetic custom instructions", true, "eu_vat")).toBe("Synthetic custom instructions")
+    expect(withoutNonVatStatement(preset.paymentNote, true, "eu_vat")).toBeNull()
+    expect(preset.momsRegistered).toBe(false)
+    expect(preset.taxRate).toBe(0)
   })
   it.each([null, undefined])("keeps historic documents without a status unchanged: %s", status => {
     for (const output of outputs("en-US", status)) expect(output).not.toMatch(/No moms|The company is not VAT registered|25 % moms/)
@@ -120,7 +146,7 @@ describe("seller VAT presentation", () => {
       expect(output).toContain(nonVatStatement(locale))
     }
   })
-  it.each([null, undefined, true])("preserves legacy and registered custom notes verbatim: %s", status => {
+  it.each([null, undefined])("preserves legacy custom notes verbatim: %s", status => {
     const note = `Synthetic instructions\n${nonVatStatement("da")}\n${nonVatStatement("en")}`
     expect(withoutNonVatStatement(note, status)).toBe(note)
   })
