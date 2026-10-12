@@ -39,6 +39,20 @@ describe("invoice email payment instructions", () => {
       expect(content.subject).toContain(total)
     })
 
+    it.each([
+      { total: 0, balanceDue: undefined },
+      { total: -10, balanceDue: undefined },
+      { total: 1250, balanceDue: 0 },
+      { total: 1250, balanceDue: -10 },
+    ])(`omits all ${locale} payment content for a non-positive effective balance: %j`, amounts => {
+      const html = buildInvoiceEmailContent({
+        invoice: { ...invoice, ...amounts, bankAccount, paymentReference: "ORDER-42", paymentNote: "Frozen payment note" },
+        org: { locale }, contactName: "Buyer", publicPaymentUrl: "https://app.example.invalid/pay/token",
+      }).html
+      for (const value of [heading, reference, button, "ORDER-42", "Frozen payment note", "0440 116 243", "https://app.example.invalid/pay/token", "Virker knappen ikke?", "Button not working?"]) expect(html).not.toContain(value)
+      expect(html).toContain("Invoice note")
+    })
+
     const methods: Array<{ name: string; details: Partial<SendInvoiceEmailParams["invoice"]>; url?: string; value?: string }> = [
       { name: "bank account only", details: { bankAccount }, value: "0440 116 243" },
       { name: "IBAN only", details: { bankAccount: { iban: "DK5000400440116243" } }, value: "DK50 0040 0440 1162 43" },
@@ -170,6 +184,54 @@ describe("frozen invoice email payment details", () => {
 
 // MOCK: synthetic settlement/account fixtures, confined to tests.
 describe("issued transfer regressions", () => {
+  for (const [locale, heading, _reg, _account, hint, button] of copies) {
+    it("omits payment collection in real initial zero invoice composition in " + locale, () => {
+      const document: InvoiceForEmail = {
+        ...storedInvoice, locale,
+        subtotalNet: decimal(0), totalTax: decimal(0), totalGross: decimal(0),
+        amountPaid: decimal(0), amountCredited: decimal(0), paymentReference: "ZERO-ORDER-42",
+        items: [{ description: "Complimentary service", quantity: decimal(1), unitPriceNet: decimal(0), unitPriceGross: decimal(0), lineNet: decimal(0), lineTax: decimal(0), lineGross: decimal(0), taxRate: decimal(0), vatTreatment: "standard", vatReasonCode: null, vatCountry: "DK", vatRateInput: null }],
+      }
+      const before = JSON.stringify(document)
+      const { message } = composeInvoiceEmail({ invoice: document, settings, to: "buyer@example.invalid", publicPaymentUrl: "https://app.example.invalid/pay/token" })
+      for (const value of [heading, hint, button, "ZERO-ORDER-42", "Legacy frozen note", "0440 116 243", "https://app.example.invalid/pay/token", "Virker knappen ikke?", "Button not working?"]) expect(message.html).not.toContain(value)
+      const total = locale === "da-DK" ? "0,00\u00a0kr." : "DKK\u00a00.00"
+      expect(message.html).toContain(total)
+      expect(message.subject).toContain(total)
+      expect(message.html).toContain("Complimentary service")
+      expect(message.html).toContain("Invoice note")
+      expect(JSON.stringify(document)).toBe(before)
+    })
+
+    it.each([[1250, 0], [0, 1250], [500, 750], [1500, 0], [0, 1500]])("omits settled payment content in " + locale + " for paid %s / credited %s", (paid, credited) => {
+      const document = { ...storedInvoice, locale, paymentReference: "SETTLED-42", amountPaid: decimal(paid), amountCredited: decimal(credited) }
+      const before = JSON.stringify(document)
+      const html = compose(document)
+      for (const value of [heading, hint, button, "SETTLED-42", "Legacy frozen note", "0440 116 243", "https://app.example.invalid/pay/token", "Virker knappen ikke?", "Button not working?"]) expect(html).not.toContain(value)
+      expect(html).toContain(locale === "da-DK" ? "1.250,00\u00a0kr." : "DKK\u00a01,250.00")
+      expect(html).toContain("Invoice note")
+      expect(JSON.stringify(document)).toBe(before)
+    })
+
+    it.each([[500, 0, 2000], [500, 250, 1750]])("preserves partial instructions in " + locale + " for paid %s / credited %s", (paid, credited, balance) => {
+      const document = { ...storedInvoice, locale, totalGross: decimal(2500), subtotalNet: decimal(2000), totalTax: decimal(500), paymentReference: "PARTIAL-42", amountPaid: decimal(paid), amountCredited: decimal(credited) }
+      const before = JSON.stringify(document)
+      const { message } = composeInvoiceEmail({ invoice: document, settings, to: "buyer@example.invalid", publicPaymentUrl: "https://app.example.invalid/pay/token" })
+      const html = message.html
+      const payment = html.match(new RegExp(`<table aria-label="${heading}"[\\s\\S]*?</table>`))?.[0]
+      expect(payment).toContain(locale === "da-DK" ? `${balance === 2000 ? "2.000" : "1.750"},00\u00a0kr.` : `DKK\u00a0${balance === 2000 ? "2,000" : "1,750"}.00`)
+      expect(payment).toContain("PARTIAL-42")
+      expect(payment).toContain("0440 116 243")
+      expect(html).toContain("Legacy frozen note")
+      expect(html).toContain(button)
+      expect(html).toContain(locale === "da-DK" ? "Skriv PARTIAL-42 i beskeden" : "Add PARTIAL-42 to the payment message")
+      const total = locale === "da-DK" ? "2.500,00\u00a0kr." : "DKK\u00a02,500.00"
+      expect(html.slice(0, html.indexOf(`<table aria-label="${heading}"`))).toContain(total)
+      expect(message.subject).toContain(total)
+      expect(JSON.stringify(document)).toBe(before)
+    })
+  }
+
   for (const [locale, heading, _reg, _account, defaultHint] of copies) {
     it.each([
       ["  ORDER-2026-42  ", "ORDER-2026-42"],
@@ -208,7 +270,6 @@ describe("issued transfer regressions", () => {
 
   it.each([
     [250, 0, "1.000,00"], [0, 250, "1.000,00"], [250, 250, "750,00"],
-    [1250, 0, "0,00"], [0, 1250, "0,00"],
   ])("uses outstanding payment amount for paid %s / credited %s without changing issued totals", (paid, credited, expected) => {
     const document = { ...storedInvoice, amountPaid: decimal(paid), amountCredited: decimal(credited) }
     const before = JSON.stringify(document)
