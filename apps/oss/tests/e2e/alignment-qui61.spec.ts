@@ -11,6 +11,7 @@ const captureDir = process.env.QUI61_SCREENSHOTS ? resolve(import.meta.dirname, 
 async function capture(page: Page, name: string) {
   if (!captureDir) return
   await mkdir(captureDir, { recursive: true })
+  await page.evaluate(() => window.scrollTo(0, 0))
   await page.screenshot({ path: resolve(captureDir, `${name}-${variant}.png`), fullPage: true })
 }
 async function searchAligned(page: Page) {
@@ -58,6 +59,9 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await page.goto(url!)
       await waitForClientReady(page)
       await expect(page.locator("[data-slot=app-content]")).toBeVisible()
+      if (screen === "dashboard") await expect(page.getByRole("heading", { name: da ? "Overblik" : "Dashboard", exact: true })).toBeVisible()
+      if (screen === "settings") await expect(page.getByRole("heading", { name: da ? "Indstillinger" : "Settings", exact: true })).toBeVisible()
+      if (screen === "invoice") await expect(page.getByRole("heading", { name: da ? "Faktura INV-0002" : "Invoice INV-0002", exact: true })).toBeVisible()
       if (variant === "after") await searchAligned(page)
       if (screen === "invoice" && variant === "after") {
         await expect(page.getByText(da ? "Faktura INV-0002 udstedt" : "Invoice INV-0002 issued", { exact: true })).toBeVisible()
@@ -66,12 +70,18 @@ for (const locale of [danishLocale, usEnglishLocale]) {
         expect(await email.locator("[data-slot=card]").count()).toBe(0)
       }
       await capture(page, `${screen}-${locale.locale}-desktop`)
-      if (screen === "settings" && variant === "after") {
+      if (variant === "after") {
+        await page.setViewportSize({ width: 390, height: 844 })
+        await searchAligned(page)
+        await page.setViewportSize({ width: 1440, height: 1000 })
+      }
+      if (screen === "settings") {
         const save = page.getByRole("button", { name: da ? "Gem betalingsoplysninger" : "Save payment details", exact: true })
         await expect(save).toBeDisabled()
         await page.getByLabel(da ? "Bank" : "Bank name", { exact: true }).fill("Test Bank edited")
         await expect(save).toBeEnabled()
         expect(await save.getAttribute("data-variant")).toBe("default")
+        await capture(page, `settings-edited-${locale.locale}-desktop`)
       }
     }
     await page.goto(seeded.url)

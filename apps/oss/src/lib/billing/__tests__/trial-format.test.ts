@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { formatPlanPrice, trialDaysLeft } from "../trial-format"
+import { formatPlanPrice, formatTrialDate, trialDaysLeft } from "../trial-format"
 
 describe("hosted plan display", () => {
+  it("uses abbreviated UI months for trial dates", () => {
+    const date = Date.UTC(2026, 9, 11, 12) / 1000
+    expect(formatTrialDate(date, "da-DK")).toBe("11. okt. 2026")
+    expect(formatTrialDate(date, "en-US")).toBe("11 Oct 2026")
+  })
+
   it("formats the Stripe minor-unit price in Danish and English without Stripe's currency style", () => {
     const plan = { name: "quits", unitAmount: 9900, currency: "dkk", interval: "month" as const, taxBehavior: "exclusive" as const }
     expect(formatPlanPrice(plan, "da-DK")).toBe("99 kr./md.")

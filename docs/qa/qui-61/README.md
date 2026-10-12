@@ -2,7 +2,7 @@
 
 All documents, people, addresses, bank details and activity in these captures are synthetic test data. The fixtures are marked `MOCK` and live under `apps/oss/tests`; application code never imports them.
 
-The before PDF renders use `origin/main` at `4931661dd7e53d83555590e06a2e2cf97448743b`. The after renders use the implementation in this branch. Both are A4, in Danish and English. PNGs are rasterized from the accompanying PDFs at 130 dpi.
+All before renders and browser captures use `origin/main` at `4931661dd7e53d83555590e06a2e2cf97448743b`. The after renders use the implementation in this branch. Both are A4, in Danish and English. PNGs are rasterized from the accompanying PDFs at 130 dpi.
 
 Reproduce the after PDFs from the repository root:
 
@@ -16,8 +16,12 @@ Browser coverage lives in `apps/oss/tests/e2e/alignment-qui61.spec.ts`. It check
 
 ## Coordination and review
 
-No open PR was identified as QUI-60 or QUI-52 when work started. Potential overlaps are the invoice detail route, shared email-delivery panel, email templates, payment details, and i18n catalogs. New-invoice form changes, the public-payment country-code change, and Settings payment-reference preview are excluded.
+At the final coordination check, QUI-52 draft PR #128 overlaps `src/routes/_app/invoices/$invoiceId.tsx` and `src/lib/email.ts`. Coordinate their later merge around the moved email panel and date-format arguments. No open QUI-60 PR was visible. Potential QUI-60 overlaps remain the shared email-delivery panel, payment details and i18n catalogs. New-invoice form changes, the public-payment country-code change, and Settings payment-reference preview are excluded.
 
-PDF review images are available. Screen captures and the signed-out-language browser result remain pending local browser verification. The available Linear connector identifies as Martin, not the authorized linear-kai account, so issue state, PR linking, mock disclosure and reviewer mentions cannot be posted through it.
+PDF review images and Danish/English light browser comparisons cover invoice detail, dashboard/top bar, Settings and desktop/mobile public payment. The edited Settings capture demonstrates the enabled ink save button. Browser assertions also check mobile search alignment. Signed-out login/signup follow Danish or English browser language after hydration; the initial server-rendered locale is English. The available Linear connector identifies as Martin, not the authorized linear-kai account, so issue state, PR linking, mock disclosure and reviewer mentions cannot be posted through it.
 
-The PR remains a draft until checks pass and Ines approves the design. Mira's reminder strings are final and implemented verbatim; the usual copy review is still required.
+The PR remains a draft until checks pass and Ines approves the design. Local screenshots use the installed Chromium revision 1234 through a temporary Playwright configuration; CI uses the browser version locked by Playwright. Desktop viewports are 1440×1000 and public-payment mobile viewports are 390×844. The baseline archive has temporary Vite cache and filesystem-access configuration so its shared dependency symlinks can load; its application sources remain at the recorded main commit. Mira's reminder strings are final and implemented verbatim; the usual copy review is still required.
+
+## Validation
+
+The implementation passed all CI jobs on `1f145e4`: repository lint, whole-repository typecheck, unit/router tests, i18n checks, integration smoke tests, browser smoke tests, shared product browser scenarios, and `verify-oss-boundary`. The QUI-61 browser scenario passed in both locales in CI and locally. Local targeted verification passed 253 tests, plus four trial-display tests. Local full checks encountered host resource contention; the required full checks passed in CI. Final evidence and added browser assertions run through the same required checks on the final PR head. Both baseline capture scenarios passed locally. The Settings lower-half images are crops of the full edited-state captures.
