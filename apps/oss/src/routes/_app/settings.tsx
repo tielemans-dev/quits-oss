@@ -1,4 +1,5 @@
 import { normalizeCountryCode } from "../../lib/compliance/registry"
+import { isSelfHostDistribution } from "../../lib/distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -818,9 +819,9 @@ function SettingsPage() {
               </div>
             </div>
 
-            {sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
-              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus value={sellerVatChoice} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
-                <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>
+            {(isSelfHostDistribution || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
+              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+                {sellerVatConfirmationEnabled && <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>}
               </div>
             ) : null}
 

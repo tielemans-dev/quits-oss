@@ -6,6 +6,7 @@ import { afterEach as afterEachTest, describe, expect, it, vi } from "vitest"
 
 const {
   hostedFlag,
+  distribution,
   prepareConfirmation,
   useSessionMock,
   settingsGetQuery,
@@ -13,12 +14,15 @@ const {
   getFullOrganization,
 } = vi.hoisted(() => ({
   hostedFlag: { enabled: false },
+  distribution: { selfhost: true },
   prepareConfirmation: vi.fn(async () => ({ token: "signed" })),
   useSessionMock: vi.fn(),
   settingsGetQuery: vi.fn(),
   settingsUpdate: vi.fn(),
   getFullOrganization: vi.fn(),
 }))
+
+vi.mock("../../lib/distribution", () => ({ get isSelfHostDistribution() { return distribution.selfhost } }))
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ ...options }),
@@ -196,6 +200,7 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
 afterEachTest(() => {
   cleanup()
   hostedFlag.enabled = false
+  distribution.selfhost = true
   prepareConfirmation.mockClear()
   useSessionMock.mockReset()
   settingsGetQuery.mockReset()
@@ -204,11 +209,12 @@ afterEachTest(() => {
 })
 
 describe("Settings tax relevance", () => {
-  it.each([true, false])("shows hosted-only company choice %s and saves signed confirmation", async registered => {
-    hostedFlag.enabled = true
+  it.each([[true, true], [true, false], [false, true], [false, false]])("shows company choice with hosted confirmation %s and saves registration %s", async (confirmationEnabled, registered) => {
+    hostedFlag.enabled = confirmationEnabled
+    distribution.selfhost = !confirmationEnabled
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
     getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
-    const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: true, primaryTaxId: "24256790" })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: confirmationEnabled ? true : null, primaryTaxId: "24256790" })
     settingsGetQuery.mockResolvedValue(current)
     settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
     const { container } = render(<RouteComponent />)
@@ -217,8 +223,20 @@ describe("Settings tax relevance", () => {
     expect(screen.getByText("sellerCard.body")).toBeTruthy()
     fireEvent.click(radios[registered ? 0 : 1]!)
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: "signed" })))
-    expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Acme LLC", cvr: "24256790", countryCode: "DK" }))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: confirmationEnabled ? "signed" : undefined, taxRate: registered ? 25 : 0 })))
+    if (confirmationEnabled) expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Acme LLC", cvr: "24256790", countryCode: "DK" }))
+    else expect(prepareConfirmation).not.toHaveBeenCalled()
+  })
+
+  it("preserves the disabled hosted confirmation flag", async () => {
+    distribution.selfhost = false
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    settingsGetQuery.mockResolvedValue(buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat" }))
+    render(<RouteComponent />)
+    await screen.findByLabelText("settings.taxRate.label")
+    expect(screen.queryByRole("radio")).toBeNull()
+    expect(prepareConfirmation).not.toHaveBeenCalled()
   })
 
   it.each([["DE", "eu_vat", "19"], ["US", "custom", "7.5"]])("clears the Danish choice on departure to %s and permits the %s tax default", async (countryCode, taxRegime, taxRate) => {
@@ -230,7 +248,7 @@ describe("Settings tax relevance", () => {
     const { container } = render(<RouteComponent />)
     const taxInput = await screen.findByLabelText("settings.taxRate.label") as HTMLInputElement
     await waitFor(() => expect(taxInput.value).toBe("0"))
-    expect(screen.queryByRole("radio", { name: "vatStatus.no" })).toBeNull()
+    expect(Boolean(screen.queryByRole("radio", { name: "vatStatus.no" }))).toBe(taxRegime === "eu_vat")
     const countrySelect = Array.from(container.querySelectorAll("select")).find(select => select.value === "DK")!
     fireEvent.change(countrySelect, { target: { value: countryCode } })
     expect(screen.queryByRole("radio", { name: "vatStatus.no" })).toBeNull()

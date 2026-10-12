@@ -48,7 +48,8 @@ for (const locale of ["da-DK", "en-US"]) {
     } })
     await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345678", countryCode: "DK" } })
     await loginAsAdmin(page)
-    await page.goto("/settings")
+    await page.goto("/settings/organization")
+    await expect(page).toHaveURL(/\/settings$/)
     await waitForClientReady(page)
     for (const [countryCode, taxRegime] of [["US", "us_sales_tax"], ["DE", "eu_vat"], ["DK", "custom"]] as const) {
       await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { countryCode, taxRegime } })
@@ -63,8 +64,9 @@ for (const locale of ["da-DK", "en-US"]) {
     const yes = page.getByRole("radio", { name: translate("vatStatus.yes", locale), exact: true })
     const no = page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })
     if (hosted) {
-    await expect(yes).not.toBeChecked()
-    await expect(no).not.toBeChecked()
+      await expect(yes).not.toBeChecked()
+      await expect(no).not.toBeChecked()
+    }
     await capture(page, "settings-unset", locale)
     await no.focus()
     await page.keyboard.press("Space")
@@ -73,19 +75,16 @@ for (const locale of ["da-DK", "en-US"]) {
     await expect(page.getByText(translate("settings.success.saved", locale), { exact: true })).toBeVisible()
     await expect(page.locator("#taxRate")).toHaveValue("0")
     await page.reload()
-    // Reload requires a fresh explicit operator choice. Saved financial truth persists.
-    await expect(yes).not.toBeChecked()
-    await expect(no).not.toBeChecked()
+    if (hosted) {
+      // Hosted evidence requires a fresh operator choice; financial truth persists.
+      await expect(yes).not.toBeChecked()
+      await expect(no).not.toBeChecked()
+    } else {
+      await expect(no).toBeChecked()
+      await expect(page.getByRole("button", { name: translate("vatStatus.withdraw", locale), exact: true })).toHaveCount(0)
+    }
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: setup.organizationId } })).momsRegistered).toBe(false)
     await capture(page, "settings", locale)
-    } else {
-      await expect(yes).toHaveCount(0)
-      await expect(no).toHaveCount(0)
-      await expect(page.getByText(translate("sellerCard.body", locale), { exact: true })).toHaveCount(0)
-      await capture(page, "settings-selfhost-no-hosted-gate", locale)
-      // Self-hosting keeps its configurable financial settings; no hosted evidence is required.
-      await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { momsRegistered: false, taxRate: 0 } })
-    }
     const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId, role: "admin" } })
     const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: member.userId })
     if (!actor) throw new Error("Synthetic admin is missing")
@@ -153,4 +152,58 @@ for (const locale of ["da-DK", "en-US"]) {
     if (hosted) await captureHostedOnboarding(page, setup.organizationId, locale)
     else await captureOnboarding(page, setup.organizationId, locale)
   })
+}
+
+// Each registration choice starts at a real app control, persists, and reaches app issuance.
+for (const source of ["settings", "onboarding"] as const) {
+  for (const registered of [true, false]) {
+    test(`${hosted ? "hosted contract fixture" : "selfhost"} ${source} choice ${registered} reaches invoice sending`, async ({ page }) => {
+      test.skip(source === "onboarding" && !hosted, "Self-host onboarding has no hosted company review")
+      await resetDatabase()
+      const setup = await seedCompletedSetup(danishLocale)
+      await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
+        companyName: "Synthetic Seller", companyAddress: "Testvej 1, 1000 København",
+        momsRegistered: null, taxRate: 0,
+        ...(hosted ? { onboardingStatus: "complete", onboardingVersion: 2, onboardingCompletedAt: new Date(), onboardingInvoicingIdentity: "registered_business" } : {}),
+      } })
+      await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true } })
+      await loginAsAdmin(page)
+      let organizationId = setup.organizationId
+      if (source === "onboarding") {
+        organizationId = await captureHostedOnboarding(page, setup.organizationId, danishLocale.locale, registered)
+      } else {
+        await page.goto("/settings/organization")
+        await expect(page).toHaveURL(/\/settings$/)
+        await waitForClientReady(page)
+        await page.getByRole("radio", { name: translate(registered ? "vatStatus.yes" : "vatStatus.no", danishLocale.locale), exact: true }).check()
+        await page.getByRole("button", { name: translate("settings.action.save", danishLocale.locale), exact: true }).click()
+        await expect(page.getByText(translate("settings.success.saved", danishLocale.locale), { exact: true })).toBeVisible()
+      }
+      const saved = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId } })
+      expect(saved.momsRegistered).toBe(registered)
+      expect(saved.taxRate?.toNumber()).toBe(registered ? 25 : 0)
+      await page.goto("/settings")
+      await waitForClientReady(page)
+      await expect(page.locator("#taxRate")).toHaveValue(registered ? "25" : "0")
+      const member = await prisma.member.findFirstOrThrow({ where: { organizationId, role: { in: ["owner", "admin"] } } })
+      const actor = await resolveUserActor({ organizationId, userId: member.userId })
+      if (!actor) throw new Error("Synthetic admin is missing")
+      if (hosted) installHostedVatFixture()
+      else bootstrapQuitsRuntime({ services: selfhostRuntimeServices() })
+      const contact = await prisma.contact.create({ data: { organizationId, name: "Synthetic Buyer", email: "buyer@example.test", address: "Testvej 2", city: "København", zip: "1000", country: "DK" } })
+      const draft = await executeCommand(createInvoiceDraft, {
+        contactId: contact.id, dueDate: "2026-11-09", supplyDate: "2026-10-11", taxRate: saved.taxRate!.toNumber(),
+        items: [{ description: "Synthetic service", quantity: 1, unitPrice: 100, vat: registered ? { treatment: "standard", rate: "0.25" } : { treatment: "unclassified_zero", rate: "0" } }],
+      }, { actor })
+      if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+      await page.goto(`/invoices/${draft.result.id}`)
+      await waitForClientReady(page)
+      await page.getByRole("button", { name: translate("invoices.detail.email.degraded.trigger", danishLocale.locale), exact: true }).click()
+      await page.getByRole("button", { name: translate("invoices.detail.email.degraded.confirm", danishLocale.locale), exact: true }).click()
+      await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).status).toBe("sent")
+      const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
+      expect(issued.sellerSnapshot).toMatchObject({ momsRegistered: registered })
+      expect(issued.totalTax.toNumber()).toBe(registered ? 25 : 0)
+    })
+  }
 }

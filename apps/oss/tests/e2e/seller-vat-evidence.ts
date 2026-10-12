@@ -66,7 +66,7 @@ export async function captureOnboarding(page: Page, organizationId: string, loca
 }
 
 /** Synthetic hosted extension evidence. This is not evidence for a released private consumer. */
-export async function captureHostedOnboarding(page: Page, organizationId: string, locale: string) {
+export async function captureHostedOnboarding(page: Page, organizationId: string, locale: string, registered = false) {
   // Existing documents forbid rerunning confirmV2. Use a fresh synthetic organization.
   const response = await page.request.post("/api/auth/organization/create", {
     headers: { origin: "http://127.0.0.1:3040" }, data: { name: "Synthetic Review", slug: `review-${crypto.randomUUID()}` },
@@ -86,12 +86,13 @@ export async function captureHostedOnboarding(page: Page, organizationId: string
   const no = page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })
   await expect(yes).not.toBeChecked(); await expect(no).not.toBeChecked()
   await page.screenshot({ path: test.info().outputPath(`onboarding-hosted-review-${locale}.png`), fullPage: true })
-  await no.check()
+  await (registered ? yes : no).check()
   await page.getByRole("button", { name: translate("settings.action.save", locale), exact: true }).click()
   await expect.poll(async () => (await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: organization.id } })).onboardingStatus).toBe("complete")
   const saved = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: organization.id } })
-  expect(saved.momsRegistered).toBe(false)
+  expect(saved.momsRegistered).toBe(registered)
   if (saved.taxRate === null) throw new Error("Completed synthetic onboarding must save its explicit tax rate")
-  expect(saved.taxRate.toNumber()).toBe(0)
+  expect(saved.taxRate.toNumber()).toBe(registered ? 25 : 0)
   expect(organization.id).not.toBe(organizationId)
+  return organization.id
 }
