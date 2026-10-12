@@ -21,10 +21,10 @@ export async function captureDocument(page: Page, surface: string, locale: strin
 }
 export async function capturePdf(page: Page, kind: "invoice" | "creditNote", id: string, locale: string) {
   const response = await page.request.get(`/api/documents/${kind}/${id}/pdf`)
-  expect(response.ok()).toBe(true)
+  expect(response.ok(), `PDF export returned HTTP ${response.status()}`).toBe(true)
   const bytes = await response.body()
   expect(bytes.subarray(0, 5).toString()).toBe("%PDF-")
-  if (revision === "after") expect(response.headers()["x-quits-artifact"]).toBe("stored")
+  expect(response.headers()["x-quits-artifact"]).toBe("stored")
   const prefix = test.info().outputPath(`${kind}-pdf-${locale}-${revision}`)
   await writeFile(`${prefix}.pdf`, bytes)
   // Poppler renders the actual export. The screenshot is an A4 preview scaled to each viewport.

@@ -6,6 +6,7 @@ import { prisma } from "../../src/lib/db"
 import { createInvoiceDraft } from "../../src/domain/commands/invoices"
 import { executeCommand } from "../../src/domain/execute"
 import { resolveUserActor } from "../../src/domain/user-actor"
+import { selfhostRuntimeServices } from "../../src/selfhost/runtime"
 import { bootstrapQuitsRuntime } from "../../src/lib/runtime/bootstrap"
 import { signInvoicePaymentToken } from "../../src/lib/payments/public"
 import { translate } from "../../src/lib/i18n/translate"
@@ -53,10 +54,11 @@ for (const locale of ["da-DK", "en-US"]) {
     const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId, role: "admin" } })
     const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: member.userId })
     if (!actor) throw new Error("Synthetic admin is missing")
-    bootstrapQuitsRuntime({})
+    bootstrapQuitsRuntime({ services: selfhostRuntimeServices() })
     const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: "Synthetic Buyer", email: "buyer@example.test", address: "Testvej 2", city: "København", zip: "1000", country: "DK" } })
+    // MOCK: VAT classification rates are fractions; the document taxRate is a percentage.
     const contradictory = await executeCommand(createInvoiceDraft, { contactId: contact.id, dueDate: "2026-11-09", taxRate: 25,
-      items: [{ description: "Synthetic existing VAT draft", quantity: 1, unitPrice: 100, vat: { treatment: "standard", rate: "25" } }] }, { actor })
+      items: [{ description: "Synthetic existing VAT draft", quantity: 1, unitPrice: 100, vat: { treatment: "standard", rate: "0.25" } }] }, { actor })
     if (contradictory.status !== "completed") throw new Error(JSON.stringify(contradictory))
     await page.goto(`/invoices/${contradictory.result.id}`)
     await waitForClientReady(page)
