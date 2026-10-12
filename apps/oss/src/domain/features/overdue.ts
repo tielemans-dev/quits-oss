@@ -1,3 +1,4 @@
+import { issuedInvoiceSettlement } from "../documents/issued-settlement"
 import { Effect } from "effect"
 import { z } from "zod"
 import { Prisma } from "../../../generated/prisma/client"
@@ -5,7 +6,6 @@ import { appLogger } from "../../lib/observability"
 import { schedulerActor } from "../commands/reminders"
 import { defineCommand } from "../command"
 import { isInvoicePastDue } from "../documents/overdue"
-import { computeSettlement } from "../documents/settlement"
 import { executeCommand } from "../execute"
 import {
   DEFAULT_ORGANIZATION_BUDGET,
@@ -67,6 +67,7 @@ export const markOrganizationInvoicesOverdue = defineCommand({
             dueDate: true,
             totalGross: true,
             amountPaid: true,
+            issuanceSnapshot: true,
             amountCredited: true,
           },
         })
@@ -74,7 +75,7 @@ export const markOrganizationInvoicesOverdue = defineCommand({
 
       let marked = 0
       for (const invoice of candidates) {
-        const { balanceDue } = computeSettlement(invoice)
+        const { balanceDue } = issuedInvoiceSettlement(invoice)
         if (!balanceDue.greaterThan(0)) {
           continue
         }

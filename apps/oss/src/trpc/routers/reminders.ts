@@ -61,6 +61,7 @@ export const remindersRouter = router({
           issueDate: true,
           dueDate: true,
           totalGross: true,
+          issuanceSnapshot: true,
           amountPaid: true,
           amountCredited: true,
           remindersPaused: true,

@@ -1,3 +1,4 @@
+import { issuedInvoiceSettlement } from "../../domain/documents/issued-settlement"
 import { DASHBOARD_ACTIVITY_EVENT_TYPES, type DashboardMoney, type DashboardSummary, type DashboardTotal } from "@quits/contracts/dashboard"
 import { getCurrencyExponent } from "@quits/shared/currency"
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client"
@@ -66,7 +67,7 @@ function totals() {
 type InvoiceRow = {
   id: string; number: string | null; customerName: string; email: string | null
   status: string; currency: string; dueDate: Date; createdAt: Date; paidAt: Date | null
-  totalGross: Prisma.Decimal; amountPaid: Prisma.Decimal; amountCredited: Prisma.Decimal
+  totalGross: Prisma.Decimal; amountPaid: Prisma.Decimal; amountCredited: Prisma.Decimal; issuanceSnapshot: unknown
   hasValuation: boolean; reminderSlotTaken: boolean; lastEmailAttemptOutcome: string | null
 }
 
@@ -76,16 +77,16 @@ type InvoiceRow = {
  * allocations, reversals and credits. Receipt net cash must never replace these debt quantities.
  * No relation loads, money conversion, or alternative SQL settlement formula here.
  */
-export function amountStillOwed(invoice: Parameters<typeof computeSettlement>[0]) {
-  return computeSettlement(invoice).balanceDue
+export function amountStillOwed(invoice: Parameters<typeof computeSettlement>[0] & { issuanceSnapshot?: unknown }) {
+  return issuedInvoiceSettlement(invoice).balanceDue
 }
 
 async function readInvoices(db: Db, organizationId: string, baseCurrency: string, now: Date) {
-  // Narrow rows, no snapshots or line items. Existing organization indexes bound this scan;
+  // Narrow rows, no line items; the issuance snapshot supplies the frozen gross for the balance due. Existing organization indexes bound this scan;
   // the reminder's unique (invoiceId, offsetDays) index serves the single joined slot.
   return db.$queryRaw<InvoiceRow[]>`
     SELECT i.id, i.number, i.status, i.currency, i."dueDate", i."createdAt", i."paidAt",
-      i."totalGross", i."amountPaid", i."amountCredited", i."lastEmailAttemptOutcome",
+      i."totalGross", i."issuanceSnapshot", i."amountPaid", i."amountCredited", i."lastEmailAttemptOutcome",
       c.name AS "customerName", c.email,
       COALESCE(i.valuation->>'rateSource' <> 'unknown'
         AND i.valuation->'base'->>'minor' IS NOT NULL

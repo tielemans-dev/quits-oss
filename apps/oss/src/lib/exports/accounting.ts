@@ -1,8 +1,8 @@
+import { issuedInvoiceSettlement } from "../../domain/documents/issued-settlement"
 import { ACCOUNTING_EXPORT_COLUMNS } from "@quits/contracts/exports"
 import { buildCsv, csvNumber } from "./csv"
 import { parseBuyerSnapshot } from "@quits/contracts/documents"
 import type { AccountingExportInput, AccountingExportResult } from "@quits/contracts/exports"
-import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { creditNotesCsv, invoicesCsv, paymentsCsv } from "./accounting-csv"
 import { dateRangeInTimeZone } from "./format"
@@ -61,7 +61,7 @@ export async function exportAccounting(
           gross: invoice.totalGross,
           paid: invoice.amountPaid,
           credited: invoice.amountCredited,
-          balance: computeSettlement(invoice).balanceDue,
+          balance: issuedInvoiceSettlement(invoice).balanceDue,
           status: invoice.status,
         })),
         timeZone

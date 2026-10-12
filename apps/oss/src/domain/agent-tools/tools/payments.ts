@@ -1,7 +1,7 @@
+import { issuedInvoiceSettlement } from "../../documents/issued-settlement"
 import { paymentListInputSchema, paymentRecordInputSchema, paymentVoidInputSchema } from "@quits/contracts/payments"
 import { prisma } from "../../../lib/db"
 import { recordPayment, voidPayment } from "../../commands/payments"
-import { computeSettlement } from "../../documents/settlement"
 import { NotFound } from "../../errors"
 import { defineCommandTool, defineQueryTool, type AgentTool } from "../define"
 
@@ -22,7 +22,7 @@ export const paymentTools: AgentTool[] = [
       if (!invoice) {
         throw new NotFound({ message: "Invoice not found", entity: "invoice", id: input.invoiceId })
       }
-      const settlement = computeSettlement(invoice)
+      const settlement = issuedInvoiceSettlement(invoice)
       return {
         invoiceId: invoice.id,
         number: invoice.number,

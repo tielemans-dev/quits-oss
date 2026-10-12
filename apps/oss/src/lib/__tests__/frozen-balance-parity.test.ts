@@ -23,6 +23,8 @@ vi.mock("../payments/stripe", async importOriginal => ({
 import { resolvePublicInvoiceCheckout } from "../payments/public-checkout"
 import { serializePublicInvoiceSession } from "../payments/public-session"
 import { composeInvoiceEmail, type InvoiceForEmail } from "../../domain/documents/invoice-email"
+import { reminderBalanceDue, reminderBlocker } from "../../domain/commands/reminders"
+import { buildReminderEmailContent } from "../emails/reminder-email"
 
 const decimal = (value: number) => new Prisma.Decimal(value)
 const base = {
@@ -70,5 +72,22 @@ describe("email, public page and Stripe checkout charge the same balance", () =>
 
     expect(await resolvePublicInvoiceCheckout("t")).toEqual({ status: "redirect", url: "https://checkout.example.invalid/cs_1" })
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ amountDue: balance }))
+
+    // The payment reminder states, and is eligible on, that same balance.
+    expect(reminderBalanceDue(invoice).toNumber()).toBe(balance)
+    expect(reminderBlocker(invoice)).toBeNull()
+    const reminder = buildReminderEmailContent({
+      fromName: "Seller", fromEmail: "noreply@example.invalid", replyTo: null, stage: "overdue",
+      invoice: { number: "INV-0042", dueDate: invoice.dueDate, currency: "DKK", balanceDue: reminderBalanceDue(invoice).toNumber() },
+      org: { companyName: "Seller", locale: "en-US" } as never, contactName: "Buyer", publicPaymentUrl: "https://app.example.invalid/pay/t",
+    })
+    expect(reminder.html).toContain(emailAmount)
+  })
+
+  it("treats an invoice paid to its issue-time gross as settled for reminders, even if the row gross drifted", () => {
+    const invoice = { ...base, issuanceSnapshot: frozen, amountPaid: decimal(2250), amountCredited: decimal(250) }
+    expect(reminderBalanceDue(invoice).toNumber()).toBe(0)
+    expect(reminderBlocker(invoice)).toBe("settled")
+    expect(reminderBlocker({ ...invoice, issuanceSnapshot: null })).toBeNull()
   })
 })

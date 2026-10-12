@@ -1,3 +1,4 @@
+import { issuedInvoiceSettlement } from "../documents/issued-settlement"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { Effect } from "effect"
 import { z } from "zod"
@@ -89,6 +90,15 @@ type SettlementFields = {
   totalGross: Parameters<typeof computeSettlement>[0]["totalGross"]
   amountPaid: Parameters<typeof computeSettlement>[0]["amountPaid"]
   amountCredited: Parameters<typeof computeSettlement>[0]["amountCredited"]
+  issuanceSnapshot?: unknown
+}
+
+/**
+ * Balance a reminder states, schedules on and is eligible by: the issue-time gross (row fallback),
+ * the same figure as the invoice email, the public payment page and Stripe checkout.
+ */
+export function reminderBalanceDue(invoice: Omit<SettlementFields, "status">) {
+  return issuedInvoiceSettlement(invoice).balanceDue
 }
 
 /** Why an invoice cannot be reminded, or null when it is open with a balance due. */
@@ -96,7 +106,7 @@ export function reminderBlocker(invoice: SettlementFields): "not_open" | "settle
   if (!(REMINDABLE_STATUSES as readonly string[]).includes(invoice.status)) {
     return "not_open"
   }
-  const { balanceDue } = computeSettlement(invoice)
+  const balanceDue = reminderBalanceDue(invoice)
   return balanceDue.greaterThan(0) ? null : "settled"
 }
 
@@ -205,6 +215,7 @@ registerDeliveryCompletion(REMINDER_COMPLETION, {
           select: {
             status: true,
             totalGross: true,
+            issuanceSnapshot: true,
             amountPaid: true,
             amountCredited: true,
             remindersPaused: true,
@@ -229,7 +240,7 @@ registerDeliveryCompletion(REMINDER_COMPLETION, {
     })
     if (skip) return skip
     // The stored email states the balance due when it was queued.
-    return computeSettlement(reminder.invoice).balanceDue.toString() === target.balanceDue ? null : BALANCE_CHANGED_MESSAGE
+    return reminderBalanceDue(reminder.invoice).toString() === target.balanceDue ? null : BALANCE_CHANGED_MESSAGE
   },
   failed: async ({ tx, target }, failure) => {
     const where = { id: target.reminderId, outcome: "sending", sentAt: new Date(target.attemptAt) }
@@ -306,7 +317,7 @@ const queueReminderEmail = (input: {
       (emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot)) && invoice.publicPaymentIssuedAt
         ? getPublicInvoicePaymentUrl(invoice)
         : null
-    const { balanceDue } = computeSettlement(invoice)
+    const balanceDue = reminderBalanceDue(invoice)
 
     const content = buildReminderEmailContent({
       fromName: emailContext.envelope.fromName,
@@ -445,7 +456,7 @@ export const reminderResumeApproval = (input: { invoiceId: string }) =>
       existing: invoice.reminders,
     })
     const nextDate = next ? (next.scheduledFor <= command.now ? command.now : next.scheduledFor) : null
-    const { balanceDue } = computeSettlement(invoice)
+    const balanceDue = reminderBalanceDue(invoice)
     const nextText = nextDate ? `next reminder ${nextDate.toISOString().slice(0, 10)}` : "no reminder scheduled"
     return {
       summary: `Resume automatic payment reminders for ${documentRef("invoice", invoice.number)} to ${recipient ?? invoice.contact.name} (${nextText})`,
@@ -659,6 +670,7 @@ export const scheduleDueReminders = defineCommand({
             issueDate: true,
             dueDate: true,
             totalGross: true,
+            issuanceSnapshot: true,
             amountPaid: true,
             amountCredited: true,
             contact: { select: { email: true } },
