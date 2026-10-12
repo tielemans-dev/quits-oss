@@ -17,6 +17,8 @@ export const sellerSnapshotSchema = z.object({
   companyName: z.string().nullable().optional(),
   companyEmail: z.string().nullable().optional(),
   companyAddress: z.string().nullable().optional(),
+  /** Null or absent preserves legacy VAT-ID inference; false explicitly means unregistered. */
+  momsRegistered: z.boolean().nullable().optional(),
   taxIds: z.array(documentTaxIdSchema).optional(),
   bankAccount: bankAccountSnapshotSchema.nullable().optional(),
   paymentNote: z.string().nullable().optional(),
