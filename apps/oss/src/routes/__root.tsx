@@ -3,6 +3,7 @@ import { HeadContent, Scripts, createRootRoute, Link, redirect, useRouterState }
 import { ThemeProvider } from '../components/theme-provider'
 import { TooltipProvider } from '../components/ui/tooltip'
 import { useI18n, I18nProvider } from '../lib/i18n/react'
+import { resolveLanguage } from '../lib/i18n/translate'
 import { getInstallationStatus, normalizeInstallationStatus } from '../lib/installation'
 import type { InstallationStatus } from '../lib/installation-state'
 import { rememberInstallationStatus, reuseInstallationStatus } from '../lib/installation-cache'
@@ -86,13 +87,18 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const installation = useRouterState({
     select: (state) => (state.matches[0]?.context as { installation?: InstallationStatus } | undefined)?.installation,
   })
+  // The loaded app context is available to the shell on SSR and hydration. Read only the
+  // editable app locale: public documents mark their fixed language on their own wrapper.
+  const locale = useRouterState({
+    select: (state) => (state.matches.find((match) => match.routeId === '/_app')?.context as { locale?: string } | undefined)?.locale,
+  })
   useEffect(() => {
     rememberInstallationStatus(installation)
   }, [installation])
 
   return (
     // The head script puts the theme's `dark` class on <html> before React hydrates.
-    <html lang="en" suppressHydrationWarning>
+    <html lang={resolveLanguage(locale)} suppressHydrationWarning>
       <head>
         <HeadContent />
         {/*

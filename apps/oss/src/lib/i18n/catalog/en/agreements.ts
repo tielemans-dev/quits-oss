@@ -182,6 +182,6 @@ export const enAgreementsMessages = {
   "agreements.templatePlaceholders": "Available placeholders: {{seller.name}}, {{buyer.name}}, {{agreement.title}}, {{agreement.validUntil}}, {{agreement.total}}, {{deliverables}}.",
   "agreements.createFromQuote": "Create agreement",
   "agreements.quoteHasAgreement": "This quote already has an agreement. Invoice its deliverables instead.",
-  "agreements.quoteHasInvoices": "This quote already has invoices and cannot be converted to an agreement.",
+  "agreements.quoteHasInvoices": "This quote is already invoiced, so it can't become an agreement.",
   "agreements.quoteConversionNotice": "Choose a new validity date. The draft copies the customer, services and tax context from this quote and uses your default template. Current pricing recalculates totals; rounding may differ for older quotes. Review the draft before sending.",
 } as const

@@ -5,6 +5,7 @@ import type { ComponentType } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const state = vi.hoisted(() => ({
+  locale: "en-US",
   quoteId: "q_1",
   get: vi.fn(),
   settings: vi.fn(),
@@ -16,7 +17,7 @@ vi.mock("@tanstack/react-router", () => ({
     useParams: () => ({ quoteId: state.quoteId }),
     useSearch: () => ({}),
   }),
-  Link: ({ children }: { children: unknown }) => children,
+  Link: ({ children, params }: { children: React.ReactNode; params: { invoiceId?: string; contactId?: string } }) => <a href={params.invoiceId ? `/invoices/${params.invoiceId}` : `/contacts/${params.contactId}`}>{children}</a>,
   useNavigate: () => vi.fn(),
 }))
 
@@ -32,11 +33,12 @@ vi.mock("../../lib/auth-client", () => ({
 }))
 
 vi.mock("../../lib/i18n/react", () => ({
-  useI18n: () => ({ locale: "en-US", t: translate }),
+  useI18n: () => ({ locale: state.locale, t: translate }),
 }))
 
-function translate(key: string) {
-  return key
+import { translate as catalogTranslate } from "../../lib/i18n/translate"
+function translate(key: Parameters<typeof catalogTranslate>[0], vars?: Record<string, string | number>) {
+  return catalogTranslate(key, state.locale, vars)
 }
 
 import { Route } from "../_app/quotes/$quoteId"
@@ -54,14 +56,16 @@ function quote(id: string, number: string, outcome: string | null = null) {
     taxAmount: 0,
     total: 100,
     currency: "DKK",
+    countryCode: "DK",
+    timezone: "Europe/Copenhagen",
     notes: null,
     publicViewUrl: null,
     publicDecisionAt: null,
     publicRejectionReason: null,
     lastEmailAttemptAt: outcome ? "2026-10-02T00:00:00.000Z" : null,
     lastEmailAttemptOutcome: outcome,
-    lastEmailAttemptCode: null,
-    lastEmailAttemptMessage: null,
+    lastEmailAttemptCode: outcome === "sent" ? "sent" : null,
+    lastEmailAttemptMessage: outcome ? "Test delivery status" : null,
     contact: {
       id: "c_1",
       name: "Acme",
@@ -87,6 +91,7 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
+  state.locale = "en-US"
   state.quoteId = "q_1"
   state.settings.mockResolvedValue({ emailDelivery: { available: true } })
 })
@@ -133,7 +138,7 @@ describe("quote detail page responses", () => {
     })
     expect(state.get).toHaveBeenCalledTimes(2)
     expect(screen.getByText("The active organization changed; reload and try again")).toBeTruthy()
-    const reload = screen.getByRole("button", { name: "ui.reloadRequired.action" })
+    const reload = screen.getByRole("button", { name: catalogTranslate("ui.reloadRequired.action", "en-US") })
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000)
@@ -144,5 +149,39 @@ describe("quote detail page responses", () => {
     Object.defineProperty(window, "location", { value: { ...window.location, reload: reloadSpy }, configurable: true })
     fireEvent.click(reload)
     expect(reloadSpy).toHaveBeenCalled()
+  })
+})
+
+// MOCK: synthetic quote responses exercise presentation only; no production imports or customers.
+describe.each(["da-DK", "en-US"])("quote detail polish in %s", (locale) => {
+  it("uses final copy, short dates, Danish postal order and a flat email section", async () => {
+    state.locale = locale
+    const data = quote("q_1", "Q-0001", "sent")
+    data.issueDate = "2026-10-11T12:00:00Z"
+    data.lastEmailAttemptAt = "2026-10-11T12:00:00Z"
+    Object.assign(data.contact, { address: "Testvej 2", zip: "9000", city: "Aalborg", country: "DK" })
+    state.get.mockResolvedValue(data)
+    const { container } = render(<RouteComponent />)
+    const da = locale === "da-DK"
+    await screen.findByText("9000 Aalborg")
+    expect(screen.queryByText("Aalborg, 9000")).toBeNull()
+    expect(screen.queryByText("Danmark")).toBeNull()
+    expect(screen.queryByText("DK")).toBeNull()
+    expect(screen.getAllByText(da ? "11. okt. 2026" : "11 Oct 2026").length).toBeGreaterThan(0)
+    expect(screen.getByText(da ? "Tilbudsdato:" : "Quote date:")).toBeTruthy()
+    expect(screen.getByText(da ? "Gyldigt til:" : "Valid until:")).toBeTruthy()
+    expect(screen.getByText(da ? "Send tilbuddet til kunden på e-mail." : "Email the quote to your customer.")).toBeTruthy()
+    expect(screen.getByText(da ? "Sendt 11. okt. 2026" : "Sent 11 Oct 2026")).toBeTruthy()
+    expect(screen.getByText(da ? "E-mailen med tilbuddet er sendt." : "The quote email was sent.")).toBeTruthy()
+    expect(container.querySelectorAll('[data-slot="card"] [data-slot="card"]').length).toBe(0)
+  })
+
+  it.each(["INV-0002", null])("links to the converted invoice with number %s or draft copy", async (number) => {
+    state.locale = locale
+    state.get.mockResolvedValue({ ...quote("q_1", "Q-0001"), status: "accepted", invoices: [{ id: "inv_2", number }] })
+    render(<RouteComponent />)
+    const text = number ? (locale === "da-DK" ? "Faktureret som INV-0002" : "Invoiced as INV-0002") : (locale === "da-DK" ? "Faktureret som kladde" : "Invoiced as a draft")
+    expect((await screen.findByRole("link", { name: text })).getAttribute("href")).toBe("/invoices/inv_2")
+    expect(screen.getByText(locale === "da-DK" ? "Tilbuddet er allerede faktureret, så det kan ikke laves om til en aftale." : "This quote is already invoiced, so it can't become an agreement.")).toBeTruthy()
   })
 })

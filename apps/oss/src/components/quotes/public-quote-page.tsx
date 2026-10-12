@@ -133,14 +133,14 @@ function PublicQuoteDocument({
 }) {
   const { t, locale } = useI18n()
   const { quote, decisionState, seller } = state
-  const format = useDocumentFormat(quote.timezone)
+  const format = useDocumentFormat(quote.timezone, true)
   const money = (amount: number) => format.money(amount, quote.currency)
   const decisionAt = quote.publicDecisionAt ? format.date(quote.publicDecisionAt) : null
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center gap-6 px-4 py-12">
+    <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-12">
       <PublicSellerHeader seller={seller} />
-      <div className="grid w-full gap-6 lg:grid-cols-[1.35fr_0.9fr]">
+      <div className="grid w-full items-start gap-6 lg:grid-cols-[1.35fr_0.9fr]">
         <Card>
           <CardHeader>
             <CardTitle>{quote.number}</CardTitle>
@@ -164,7 +164,7 @@ function PublicQuoteDocument({
             </div>
 
             <div className="grid gap-3">
-              <h2 className="text-sm font-medium text-muted-foreground">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {t("public.quote.summary")}
               </h2>
               <div className="rounded-lg border">
@@ -185,7 +185,7 @@ function PublicQuoteDocument({
                           })}
                         </p>
                       </div>
-                      <p className="font-medium">{money(toNumber(item.lineGross))}</p>
+                      <p className="text-right font-medium tabular-nums">{money(toNumber(item.lineGross))}</p>
                     </div>
                   ))}
               </div>
@@ -193,7 +193,7 @@ function PublicQuoteDocument({
 
             {quote.notes ? (
               <div className="grid gap-2">
-                <h2 className="text-sm font-medium text-muted-foreground">{t("public.document.notes")}</h2>
+                <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("public.document.notes")}</h2>
                 <p className="whitespace-pre-wrap text-sm">{quote.notes}</p>
               </div>
             ) : null}
@@ -207,7 +207,7 @@ function PublicQuoteDocument({
               {decisionState === "pending"
                 ? t("public.quote.decision.pending.description")
                 : decisionAt
-                  ? t("public.quote.decision.recorded", { date: decisionAt })
+                  ? t(decisionState === "accepted" ? "public.quote.decision.accepted.body" : "public.quote.decision.recorded", { date: decisionAt })
                   : t("public.quote.decision.closed")}
             </CardDescription>
           </CardHeader>
@@ -247,7 +247,7 @@ function PublicQuoteDocument({
             {decisionState === "pending" ? (
               <div className="grid gap-4">
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium" htmlFor="publicQuoteRejectionReason">
+                  <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground" htmlFor="publicQuoteRejectionReason">
                     {t("public.quote.rejectionReason.label")}
                   </label>
                   <Textarea
@@ -276,14 +276,14 @@ function PublicQuoteDocument({
 
             {decisionState === "rejected" && quote.publicRejectionReason ? (
               <div className="grid gap-2 rounded-lg border border-dashed p-4">
-                <p className="text-sm font-medium">{t("public.quote.rejectionReason.recorded")}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("public.quote.rejectionReason.recorded")}</p>
                 <p className="text-sm text-muted-foreground">{quote.publicRejectionReason}</p>
               </div>
             ) : null}
           </CardContent>
           <CardFooter className="justify-between text-sm text-muted-foreground">
             <span>{seller.name}</span>
-            <span>{money(toNumber(quote.totalGross))}</span>
+            <span className="text-right tabular-nums">{money(toNumber(quote.totalGross))}</span>
           </CardFooter>
         </Card>
       </div>
