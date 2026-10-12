@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { DANISH_ONBOARDING_V2_DEFAULTS } from "@quits/contracts/onboarding"
 import {
   cvrCompanySchema,
   onboardingSuggestionsSchema,
@@ -63,7 +64,7 @@ export function newDraft(
       timezone: "Europe/Copenhagen",
       taxRate: company?.momsRegistered === false ? 0 : 25,
       pricesIncludeTax: false,
-      invoicePrefix: "2026",
+      invoicePrefix: DANISH_ONBOARDING_V2_DEFAULTS.invoicePrefix,
       invoiceNextNum: 1,
       paymentTermsDays: 14,
       bankRegNumber: "",

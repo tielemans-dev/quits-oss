@@ -657,9 +657,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 onChange={(e) => update("momsRegistered", e.target.value === "true")}
               >
                 <option value="true">{TT("yes")}</option>
-                <option value="false">
-                  {draft.source === "cvr" ? TT("noVat.value") : TT("no")}
-                </option>
+                <option value="false">{TT("no")}</option>
               </select>
             </SourceField>
             {field("taxRate", "field.rate", TT("defaultTag"), {

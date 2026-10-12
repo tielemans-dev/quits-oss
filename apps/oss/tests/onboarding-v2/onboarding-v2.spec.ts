@@ -179,3 +179,25 @@ test("390px mobile and English copy", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "What's your company called?" })).toBeVisible()
   await expect(page.getByText("Step 1/3", { exact: true })).toBeVisible()
 })
+
+for (const registered of [false, true]) {
+  test(`Ja/Nej choice ${registered} survives reload and is submitted`, async ({ page }) => {
+    let payload: Record<string, unknown> = {}
+    await page.route("**/confirm", async route => {
+      payload = route.request().postDataJSON()
+      await route.fulfill({ json: { status: "complete" } })
+    })
+    await review(page, registered ? "no-vat" : "")
+    const choice = page.getByRole("combobox", { name: "Momsregistreret?", exact: true })
+    await expect(choice.getByRole("option", { name: "Ja", exact: true })).toHaveCount(1)
+    await expect(choice.getByRole("option", { name: "Nej", exact: true })).toHaveCount(1)
+    await choice.selectOption(String(registered))
+    await page.reload()
+    await expect(choice).toHaveValue(String(registered))
+    await confirm(page).click()
+    await expect(page.getByRole("status")).toHaveText("KLAR")
+    expect(payload).toMatchObject({ momsRegistered: registered, settings: { taxRate: registered ? 25 : 0 } })
+    if (registered) expect(payload.vatId).toBe("DK24256790")
+    else expect(payload).not.toHaveProperty("vatId")
+  })
+}
