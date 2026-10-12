@@ -136,6 +136,139 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
     expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(1)
   })
+  it("replaces mixed-case and duplicate registration IDs while preserving unrelated schemes", async () => {
+    const id = await organization()
+    await prisma.organizationTaxId.createMany({ data: ["CVR", "cVr", "VAT", "vAt", "Dk_CvR", "dK_VaT", "customer_ref"].map(scheme => ({ organizationId: id, scheme, value: "old", isPrimary: true })) })
+    await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(summary()), "signup@example.test")
+    const identifiers = await prisma.organizationTaxId.findMany({ where: { organizationId: id }, orderBy: { scheme: "asc" } })
+    expect(identifiers.map(({ scheme, value }) => ({ scheme, value }))).toEqual([
+      { scheme: "customer_ref", value: "old" }, { scheme: "cvr", value: "24256790" }, { scheme: "vat", value: "DK24256790" },
+    ])
+  })
+  it.each([["failure", false], ["failure", true], ["timeout", false], ["timeout", true]] as const)("leaves trial %s incomplete with existing settings %s, provisions on retry, and skips completed retries", async (failure, existing) => {
+    const id = await organization()
+    const api = await caller(id)
+    const { setRuntimeServices } = await import("../../../lib/runtime/services")
+    if (existing) await prisma.orgSettings.create({ data: { organizationId: id, companyName: "Original incomplete", onboardingStatus: "in_progress", onboardingVersion: 1 } })
+    const before = await prisma.orgSettings.findUnique({ where: { organizationId: id } })
+    const failureError = failure === "timeout" ? new DOMException("Trial unavailable", "TimeoutError") : new Error("Trial unavailable")
+    const startTrial = vi.fn().mockRejectedValueOnce(failureError).mockResolvedValue(undefined)
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    const input = summary()
+    await expect(api.onboarding.confirmV2(input)).rejects.toThrow("Trial unavailable")
+    expect(await prisma.orgSettings.findUnique({ where: { organizationId: id } })).toEqual(before)
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
+    expect(await api.onboarding.getStatus()).toMatchObject({ isComplete: false })
+    const [result, concurrent] = await Promise.all([api.onboarding.confirmV2(input), api.onboarding.confirmV2(input)])
+    expect(concurrent).toEqual(result)
+    expect(result.status).toBe("complete")
+    expect(await api.onboarding.confirmV2(input)).toEqual(result)
+    expect(await api.onboarding.confirmV2({ ...input, idempotencyKey: randomUUID() })).toEqual({ status: "already_complete" })
+    expect(startTrial).toHaveBeenCalledTimes(2)
+  })
+  it("reuses provider-owned provisioning after a confirmation write rolls back", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    const { setRuntimeServices } = await import("../../../lib/runtime/services")
+    // MOCK: provider contract fixture retains durable provisioning across OSS rollbacks.
+    const provisioned = new Set<string>()
+    const provision = vi.fn()
+    const startTrial = vi.fn(async (organizationId: string) => {
+      if (!provisioned.has(organizationId)) { provisioned.add(organizationId); provision(organizationId) }
+    })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    const input = summary()
+    const constraint = `qui56_trial_${id.replaceAll("-", "")}`
+    await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id ADD CONSTRAINT "${constraint}" CHECK ("organizationId" <> '${id}') NOT VALID`)
+    try { await expect(api.onboarding.confirmV2(input)).rejects.toThrow() }
+    finally { await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id DROP CONSTRAINT "${constraint}"`) }
+    expect(await prisma.orgSettings.findUnique({ where: { organizationId: id } })).toBeNull()
+    expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete" })
+    expect(startTrial).toHaveBeenCalledTimes(2)
+    expect(provision).toHaveBeenCalledTimes(1)
+  })
+  it("rolls back an expired confirmation transaction and reuses provisioning on retry", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await prisma.orgSettings.create({ data: { organizationId: id, companyName: "Original incomplete", onboardingStatus: "in_progress", onboardingVersion: 1 } })
+    const before = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
+    const { setRuntimeServices } = await import("../../../lib/runtime/services")
+    // MOCK: a durable provider provision succeeds once, but its first response exceeds
+    // the real PostgreSQL/Prisma confirmation deadline. No external billing requests run.
+    const provisioned = new Set<string>()
+    const provision = vi.fn()
+    const startTrial = vi.fn(async (organizationId: string) => {
+      if (!provisioned.has(organizationId)) {
+        provisioned.add(organizationId)
+        provision(organizationId)
+        await new Promise(resolve => setTimeout(resolve, 60_050))
+      }
+    })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    const input = summary()
+    await expect(api.onboarding.confirmV2(input)).rejects.toThrow(/expired|closed|timeout/i)
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toEqual(before)
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
+    expect(await api.onboarding.getStatus()).toMatchObject({ isComplete: false })
+    expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete" })
+    expect(startTrial).toHaveBeenCalledTimes(2)
+    expect(provision).toHaveBeenCalledTimes(1)
+  }, 75_000)
+  it("preserves v2 timestamp and null-email readiness against stale and concurrent legacy completion", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.saveDraft({ primaryTaxId: null, companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
+    const { setRuntimeServices } = await import("../../../lib/runtime/services")
+    let entered!: () => void
+    let release!: () => void
+    const started = new Promise<void>(resolve => { entered = resolve })
+    const blocked = new Promise<void>(resolve => { release = resolve })
+    const startTrial = vi.fn().mockImplementationOnce(async () => { entered(); await blocked }).mockResolvedValue(undefined)
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    const legacy = api.onboarding.completeManual({ method: "manual" })
+    await started
+    let confirmation
+    try { confirmation = await api.onboarding.confirmV2({ ...summary(), companyEmail: null }) }
+    finally { release() }
+    const response = await legacy
+    expect(response).toMatchObject({ version: 2, isComplete: true, missing: [] })
+    const before = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
+    expect(before.onboardingCompletedAt?.toISOString()).toBe(confirmation.status === "complete" ? confirmation.completedAt : null)
+    expect(before.companyEmail).toBeNull()
+    expect(await api.onboarding.completeManual({ method: "ai" })).toMatchObject({ version: 2, isComplete: true, missing: [] })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toEqual(before)
+    expect(startTrial).toHaveBeenCalledTimes(2)
+  })
+  it("rechecks the legacy update guard after waiting for a concurrent v2 row lock", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.saveDraft({ primaryTaxId: null, companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
+    const { setRuntimeServices } = await import("../../../lib/runtime/services")
+    let enteredV2!: () => void
+    let enteredLegacy!: () => void
+    let release!: () => void
+    const v2Started = new Promise<void>(resolve => { enteredV2 = resolve })
+    const legacyStarted = new Promise<void>(resolve => { enteredLegacy = resolve })
+    const blocked = new Promise<void>(resolve => { release = resolve })
+    const startTrial = vi.fn().mockImplementationOnce(async () => { enteredV2(); await blocked }).mockImplementationOnce(async () => { enteredLegacy() })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    const v2 = api.onboarding.confirmV2({ ...summary(), companyEmail: null })
+    await v2Started
+    const legacy = api.onboarding.completeManual({ method: "ai" })
+    try { await legacyStarted } finally { release() }
+    const [confirmation, response] = await Promise.all([v2, legacy])
+    expect(response).toMatchObject({ version: 2, isComplete: true, missing: [] })
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
+    expect(settings).toMatchObject({ onboardingVersion: 2, onboardingMethod: "cvr", companyEmail: null })
+    expect(settings.onboardingCompletedAt?.toISOString()).toBe(confirmation.status === "complete" ? confirmation.completedAt : null)
+  })
+  it("confirms when the runtime trial hook is absent", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    const { setRuntimeServices } = await import("../../../lib/runtime/services")
+    setRuntimeServices({ billingProvider: { getSubscription: async () => ({ status: "free", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    expect(await api.onboarding.confirmV2(summary())).toMatchObject({ status: "complete" })
+  })
   it("requires both cloud distribution and an explicit extension flag", async () => {
     const id = await organization()
     const api = await caller(id)

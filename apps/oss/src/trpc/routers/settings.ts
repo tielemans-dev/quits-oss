@@ -114,6 +114,7 @@ const timezoneSchema = z
 
 export const settingsUpdateSchema = z.object({
   currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
+  momsRegistered: z.boolean().nullable().optional(),
   taxRate: z.number().min(0).max(100).nullable().optional(),
   companyName: z.string().trim().max(120).optional(),
   companyAddress: z.string().trim().max(240).optional(),
@@ -165,6 +166,7 @@ const orgSettingsReadSelect = {
   pricesIncludeTax: true,
   currency: true,
   taxRate: true,
+  momsRegistered: true,
   companyName: true,
   companyAddress: true,
   companyEmail: true,
@@ -263,6 +265,7 @@ export const settingsRouter = router({
       pricesIncludeTax: settings.pricesIncludeTax,
       currency: settings.currency,
       taxRate: settings.taxRate?.toNumber() ?? null,
+      momsRegistered: settings.momsRegistered,
       companyName: settings.companyName,
       companyAddress: settings.companyAddress,
       companyEmail: settings.companyEmail,
