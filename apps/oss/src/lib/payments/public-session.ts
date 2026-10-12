@@ -1,4 +1,5 @@
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
+import { issuedInvoiceSettlement } from "../../domain/documents/issued-settlement"
 import { vatRowsByRate } from "../../domain/documents/frozen-vat-groups"
 import { payableRoundingOf } from "../../domain/documents/vat-summary"
 import { createServerFn } from "@tanstack/react-start"
@@ -78,13 +79,18 @@ export function serializePublicInvoiceSession(session: {
   stripeEnabled: boolean
 }, token: string) {
   const { invoice } = session
-  const totalGross = toNumber(invoice.totalGross)
   const amountPaid = toNumber(invoice.amountPaid)
   const amountCredited = toNumber(invoice.amountCredited)
-  const balanceDue =
-    session.paymentState === "paid"
-      ? 0
-      : Math.max(Math.round((totalGross - amountCredited - amountPaid) * 100) / 100, 0)
+  // Same source as the invoice email and Stripe checkout: the issue-time gross minus this
+  // invoice's payments and credits; the row gross only for invoices issued before snapshots.
+  const settlement = issuedInvoiceSettlement({
+    issuanceSnapshot: invoice.issuanceSnapshot,
+    totalGross: toNumber(invoice.totalGross),
+    amountPaid,
+    amountCredited,
+  })
+  const totalGross = settlement.totalGross.toNumber()
+  const balanceDue = session.paymentState === "paid" ? 0 : settlement.balanceDue.toNumber()
 
   const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
   const sellerSnapshot = frozen?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot)
@@ -110,13 +116,13 @@ export function serializePublicInvoiceSession(session: {
       dueDate: toDateString(invoice.dueDate),
       supplyDate: frozen ? frozen.supplyDate : (invoice.supplyDate ? toDateString(invoice.supplyDate).slice(0, 10) : null),
       vatRows: frozen ? vatRowsByRate(frozen.vatGroups, frozen.currency) : undefined,
-      rounding: payableRoundingOf({ currency: invoice.currency, subtotalNet: toNumber(invoice.subtotalNet), totalTax: toNumber(invoice.totalTax), totalGross }),
+      rounding: payableRoundingOf({ currency: invoice.currency, subtotalNet: frozen ? Number(frozen.totals.net) : toNumber(invoice.subtotalNet), totalTax: frozen ? Number(frozen.totals.tax) : toNumber(invoice.totalTax), totalGross }),
       totalGross,
       amountPaid,
       amountCredited,
       balanceDue,
-      totalTax: toNumber(invoice.totalTax),
-      subtotalNet: toNumber(invoice.subtotalNet),
+      totalTax: frozen ? Number(frozen.totals.tax) : toNumber(invoice.totalTax),
+      subtotalNet: frozen ? Number(frozen.totals.net) : toNumber(invoice.subtotalNet),
       currency: invoice.currency,
       timezone: presentation.timezone,
       notes: invoice.notes,

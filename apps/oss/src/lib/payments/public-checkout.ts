@@ -1,5 +1,5 @@
 import { buildAbsoluteUrl, resolveAppOrigin } from "@quits/shared/http"
-import { computeSettlement } from "../../domain/documents/settlement"
+import { issuedInvoiceSettlement } from "../../domain/documents/issued-settlement"
 import { prisma } from "../db"
 import { appLogger } from "../observability"
 import { loadPublicInvoiceByToken } from "./public-access"
@@ -50,7 +50,7 @@ async function openCheckoutSession(token: string) {
 
   // Customers pay what they still owe, not the invoice total: earlier partial payments and
   // credit notes reduce the checkout amount.
-  const { balanceDue } = computeSettlement(session.invoice)
+  const { balanceDue } = issuedInvoiceSettlement(session.invoice)
 
   if (session.paymentState === "paid" || balanceDue.isZero()) {
     paymentsLogger.info("invoice.checkout.already_paid", {
@@ -149,10 +149,10 @@ async function openCheckoutSession(token: string) {
   })
   const current = await prisma.invoice.findUniqueOrThrow({
     where: { id: session.invoice.id },
-    select: { totalGross: true, amountPaid: true, amountCredited: true },
+    select: { issuanceSnapshot: true, totalGross: true, amountPaid: true, amountCredited: true },
   })
 
-  if (tracked.count === 1 && computeSettlement(current).balanceDue.equals(balanceDue)) {
+  if (tracked.count === 1 && issuedInvoiceSettlement(current).balanceDue.equals(balanceDue)) {
     paymentsLogger.info("invoice.checkout.redirect", {
       ...logContext,
       checkoutSessionId: checkoutSession.id,

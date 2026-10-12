@@ -367,7 +367,7 @@ export function buildInvoiceEmailContent({
     ${showPaymentInstructions ? `
     <h3 style="margin:24px 0 12px;font-size:16px;">${t("email.pay.heading", locale)}</h3>
     <table aria-label="${t("email.pay.heading", locale)}" style="width:100%;border-collapse:collapse;">
-      ${invoicePaymentRows({ ...invoice, total: balanceDue }, locale).map(row => `<tr>
+      ${invoicePaymentRows({ ...invoice, total: balanceDue }, locale).filter(row => hasTransferDetails || row.key !== "email.pay.referenceLabel").map(row => `<tr>
         <th scope="row" style="padding:10px 0;border-bottom:1px solid ${C.hairline};text-align:left;font-size:12px;font-weight:400;text-transform:uppercase;letter-spacing:0.06em;color:${C.muted};">${escapeHtml(row.label)}</th>
         <td style="padding:10px 0;border-bottom:1px solid ${C.hairline};text-align:right;font-family:'Geist Mono',Consolas,monospace;overflow-wrap:anywhere;">${escapeHtml(row.value)}</td>
       </tr>`).join("")}

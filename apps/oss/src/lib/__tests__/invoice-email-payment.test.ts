@@ -67,8 +67,10 @@ describe("invoice email payment instructions", () => {
       const payment = content.html.match(new RegExp(`<table aria-label="${heading}"[\\s\\S]*?</table>`))?.[0]
       expect(payment).toBeDefined()
       expect(payment).toContain(locale === "da-DK" ? "750,00\u00a0kr." : "DKK\u00a0750.00")
-      expect(payment).toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
-      expect(payment).toContain("INV-0042")
+      // The payment-message row is transfer guidance: hidden for Stripe-only invoices.
+      expect(payment!.includes(locale === "da-DK" ? "Betalingsbesked" : "Payment message")).toBe(Boolean(value))
+      expect(payment!.includes("INV-0042")).toBe(Boolean(value))
+      expect(payment).toContain(locale === "da-DK" ? "23. mar. 2026" : "23 Mar 2026")
       // Transfer guidance only applies when bank transfer details/payment note exist, not Stripe-only.
       expect(content.html.includes(reference)).toBe(Boolean(value))
       if (value) expect(content.html).toContain(value)
