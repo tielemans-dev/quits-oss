@@ -8,7 +8,7 @@ The frozen synthetic seller is Issue-time Seller ApS, Testvej 42, 9000 Aalborg, 
 
 [Before provenance](before-manifest.json) preserves the supplied eight light-theme origin/main captures at `4931661dd7e53d83555590e06a2e2cf97448743b`. [After provenance](after-manifest.json) records the rework code at `4b47188a96620b248dbd5ddcdeeb7af059f5daf6`, pixel dimensions and SHA256 hashes.
 
-Before-dark captures are not present in the supplied baseline. They remain outstanding. The latest host instruction prohibited full local checks/builds and allowed a short browser run, so the existing main baseline was preserved. The missing `designs/pay-da-bank-only-desktop.png` was also unavailable in this checkout; the supplied design and final copy comments guided this rework. Ines must sign off before the draft can be ready for Martin.
+Before-dark captures are not present in the supplied baseline. They remain outstanding. The latest host instruction prohibits local builds, app servers and e2e runs, so the existing main baseline was preserved. The missing `designs/pay-da-bank-only-desktop.png` was also unavailable in this checkout; the supplied design and final copy comments guided this rework. Ines must sign off before the draft can be ready for Martin.
 
 | Screen | Locale | Viewport | Before, main light | After light | After dark |
 | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,8 @@ Before-dark captures are not present in the supplied baseline. They remain outst
 ## Validation and overlap
 
 The targeted email-render test passed with one worker and a worktree-local TMPDIR. Earlier focused unit checks, i18n and boundary checks passed. Local full typecheck/builds were interrupted by host memory cleanup; do not treat those as passing. Final full verification is delegated to GitHub CI.
+
+All six failed jobs on `1aae479` were inspected across push and PR workflows. Unit failures were stale email CVR and short-month expectations; the browser failure was the old inline due-date label and long date expectation. The browser artifact confirms `Due Date` and `15 Nov 2026`; all eight QUI-52 browser regressions passed. The bounded expectation fix passed 23 tests across the Danish invoice, settings localization and email payment files with one worker and a worktree-local TMPDIR. PDF date and frozen-identity assertions remain intact. The shared browser scenario passed a syntax check; its full rerun belongs in CI.
 
 QUI-61 PR #127 overlaps `lib/i18n/format.ts`, `lib/email.ts`, `lib/documents/invoice-identity.ts`, the invoice route and the shared Danish-field tests. QUI-52 extends the existing formatter with an opt-in day-first order and explicitly requests short months. It leaves the global month default to QUI-61. QUI-61’s explicit long invoice-email dates conflict with this final brief and must yield to these short invoice-email dates when the branches are integrated.
 

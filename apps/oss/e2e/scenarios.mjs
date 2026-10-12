@@ -6,10 +6,10 @@ const usd = (cents) => `$${(cents / 100).toLocaleString('en-US', { minimumFracti
 function nextMonthDue() {
   const now = new Date()
   const due = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 15))
-  const part = (options) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...options }).format(due)
+  const part = (options, locale = 'en-US') => new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...options }).format(due)
   return {
     calendarLabel: new RegExp(`${part({ month: 'long' })} 15th, ${due.getUTCFullYear()}`),
-    detailText: part({ year: 'numeric', month: 'short', day: 'numeric' }),
+    detailText: part({ year: 'numeric', month: 'short', day: 'numeric' }, 'en-GB'),
   }
 }
 
@@ -191,12 +191,12 @@ export function registerProductScenarios(test, expect) {
     const expected = { ...input, ...created }
     await expectInvoiceDetail(page, expected)
     await expect(page.getByText(input.notes, { exact: true })).toBeVisible()
-    await expect(page.getByText('Due Date:', { exact: true }).locator('xpath=..')).toContainText(created.due.detailText)
+    await expect(page.getByText('Due Date', { exact: true }).locator('xpath=..')).toContainText(created.due.detailText)
 
     await page.reload()
     await expectInvoiceDetail(page, expected)
     await expect(page.getByText(input.notes, { exact: true })).toBeVisible()
-    await expect(page.getByText('Due Date:', { exact: true }).locator('xpath=..')).toContainText(created.due.detailText)
+    await expect(page.getByText('Due Date', { exact: true }).locator('xpath=..')).toContainText(created.due.detailText)
 
     await page.goto(new URL('/invoices', entryURL).href)
     // The list names a draft by its customer: it has no number to find it by.
