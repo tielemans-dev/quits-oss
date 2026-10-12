@@ -90,6 +90,8 @@ export async function captureHostedOnboarding(page: Page, organizationId: string
   await page.getByRole("button", { name: translate("settings.action.save", locale), exact: true }).click()
   await expect.poll(async () => (await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: organization.id } })).onboardingStatus).toBe("complete")
   const saved = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: organization.id } })
-  expect(saved.momsRegistered).toBe(false); expect(saved.taxRate.toNumber()).toBe(0)
+  expect(saved.momsRegistered).toBe(false)
+  if (saved.taxRate === null) throw new Error("Completed synthetic onboarding must save its explicit tax rate")
+  expect(saved.taxRate.toNumber()).toBe(0)
   expect(organization.id).not.toBe(organizationId)
 }
