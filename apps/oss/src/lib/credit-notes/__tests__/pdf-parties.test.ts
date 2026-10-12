@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import type { OrgSettings } from "../../../../generated/prisma/client"
 import { creditNotePdfParties } from "../pdf-parties"
 
 const sellerSnapshot = {
@@ -79,7 +80,10 @@ describe("credit note PDF parties", () => {
       ],
     }
     const before = JSON.stringify(frozen)
-    const current = { momsRegistered: true }
+    const current: Pick<OrgSettings, "companyName" | "momsRegistered"> = {
+      companyName: "Acme Holding A/S",
+      momsRegistered: true,
+    }
     const { seller, buyer } = creditNotePdfParties({ ...issued, sellerSnapshot: frozen }, current)
     expect(seller.taxIds).toEqual([
       "CVR no.: 12345678",
@@ -89,7 +93,11 @@ describe("credit note PDF parties", () => {
     ])
     expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
     expect(JSON.stringify(frozen)).toBe(before)
-    expect(creditNotePdfParties({ ...issued, sellerSnapshot: { ...frozen, momsRegistered: true } }, { momsRegistered: false }).seller.taxIds)
+    const currentNonregistered: Pick<OrgSettings, "companyName" | "momsRegistered"> = {
+      ...current,
+      momsRegistered: false,
+    }
+    expect(creditNotePdfParties({ ...issued, sellerSnapshot: { ...frozen, momsRegistered: true } }, currentNonregistered).seller.taxIds)
       .toContain("VAT no.: DK12345678")
   })
 
