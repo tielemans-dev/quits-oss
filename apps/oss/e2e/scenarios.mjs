@@ -9,7 +9,7 @@ function nextMonthDue() {
   const part = (options) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...options }).format(due)
   return {
     calendarLabel: new RegExp(`${part({ month: 'long' })} 15th, ${due.getUTCFullYear()}`),
-    detailText: part({ year: 'numeric', month: 'long', day: 'numeric' }),
+    detailText: part({ year: 'numeric', month: 'short', day: 'numeric' }),
   }
 }
 

@@ -1,4 +1,5 @@
 import type { DocumentTaxId, BuyerSnapshot } from "@quits/contracts/documents"
+import { normalizeLocale } from "../i18n/locale"
 
 /** A Danish national identifier, whether stored as CVR or a Danish VAT identifier. */
 export function sellerCvr(ids: readonly DocumentTaxId[] | undefined): string | null {
@@ -18,4 +19,16 @@ export function invoiceTaxIds(ids: readonly DocumentTaxId[] | undefined): string
 
 export function buyerAddress(buyer: BuyerSnapshot | null | undefined): string[] {
   return [buyer?.address, [buyer?.zip, buyer?.city, buyer?.state].filter(Boolean).join(" "), buyer?.country].filter((value): value is string => Boolean(value))
+}
+
+/** PDF postal presentation. Public payment-page country presentation is managed separately. */
+export function pdfBuyerAddress(buyer: Omit<BuyerSnapshot, "email">, locale?: string | null): string[] {
+  const countryCode = buyer.country?.trim().toUpperCase()
+  const country = countryCode && /^[A-Z]{2}$/.test(countryCode)
+    ? new Intl.DisplayNames([normalizeLocale(locale)], { type: "region" }).of(countryCode)
+    : buyer.country
+  const locality = countryCode === "DK"
+    ? [buyer.zip, buyer.city].filter(Boolean).join(" ")
+    : [buyer.city, buyer.state, buyer.zip].filter(Boolean).join(", ")
+  return [buyer.address, locality, country].filter((line): line is string => Boolean(line))
 }
