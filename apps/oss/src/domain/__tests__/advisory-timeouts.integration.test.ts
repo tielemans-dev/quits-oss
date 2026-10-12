@@ -32,10 +32,68 @@ async function withHeldLock(key: string, work: (pid: number) => Promise<void>) {
 }
 
 async function expectNoWaiters(blocker: number) {
-  const [row] = await prisma.$queryRaw<Array<{ count: number }>>`
-    SELECT count(*)::int AS count FROM pg_stat_activity
+  const [row] = await prisma.$queryRaw<Array<{ count: number; waiterPids: number[] | null }>>`
+    SELECT count(*)::int AS count, (array_agg(pid ORDER BY pid))[1:16] AS "waiterPids"
+    FROM pg_stat_activity
     WHERE ${blocker} = ANY(pg_blocking_pids(pid))`
-  expect(row.count).toBe(0)
+  try {
+    expect(row.count).toBe(0)
+  } catch (assertionError) {
+    // Keep the failed observation, even if waiters disappear before this later snapshot.
+    // Only fixed query-kind labels and PostgreSQL lock identities may leave the database.
+    const evidence = {
+      holderPid: blocker, immediateCount: row.count, countedWaiterPids: row.waiterPids,
+      waiterPidsTruncated: row.count > 16, laterSnapshot: "unavailable" as unknown,
+    }
+    try {
+      const snapshot = await prisma.$transaction(async tx => {
+        await tx.$executeRaw`SET TRANSACTION READ ONLY`
+        await tx.$executeRaw`SELECT set_config('statement_timeout', '500ms', true)`
+        return tx.$queryRaw<Array<{ evidence: unknown }>>`
+          WITH involved AS (
+            SELECT pid, pg_blocking_pids(pid) AS blockers,
+              CASE
+                WHEN left(query, 128) ~* '^[[:space:]]*CREATE[[:space:]]+(UNIQUE[[:space:]]+)?INDEX[[:space:]]+CONCURRENTLY([[:space:]]|$)'
+                  THEN 'create-index-concurrently'
+                WHEN left(query, 128) ~* '^[[:space:]]*SELECT[[:space:]]+pg_advisory_[a-z_]+[[:space:]]*[(]'
+                  THEN 'select-advisory-lock'
+                WHEN left(query, 128) ~* '^[[:space:]]*SELECT([[:space:]]|$)' THEN 'select-redacted'
+                ELSE 'other-redacted'
+              END AS query_kind
+            FROM pg_stat_activity
+            WHERE pid = ${blocker} OR pid = ANY(${row.waiterPids ?? []}::int[])
+          ), relevant_locks AS (
+            SELECT l.* FROM pg_locks l JOIN involved i USING (pid)
+          ), bounded_locks AS (
+            SELECT * FROM relevant_locks
+            ORDER BY granted, pid, locktype, mode, database, relation, page, tuple,
+              virtualxid, transactionid::text, classid, objid, objsubid
+            LIMIT 128
+          )
+          SELECT jsonb_build_object(
+            'backends', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+              'pid', pid, 'pgBlockingPids', blockers, 'queryKind', query_kind
+            ) ORDER BY pid), '[]'::jsonb) FROM involved),
+            'lockCount', (SELECT count(*) FROM relevant_locks),
+            'locks', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+              'pid', pid, 'locktype', locktype, 'mode', mode, 'granted', granted,
+              'identity', jsonb_build_object(
+                'database', database, 'relation', relation, 'page', page, 'tuple', tuple,
+                'virtualxid', virtualxid, 'transactionid', transactionid::text,
+                'classid', classid, 'objid', objid, 'objsubid', objsubid
+              )
+            )), '[]'::jsonb) FROM bounded_locks)
+          ) AS evidence`
+      }, { maxWait: 250, timeout: 1_500 })
+      evidence.laterSnapshot = snapshot[0]?.evidence
+    } catch {
+      // Error messages can include SQL or connection details. Never print them.
+    }
+    try {
+      console.error("[advisory-waiters-diagnostic]", JSON.stringify(evidence))
+    } catch { /* Logging must not replace the original assertion failure either. */ }
+    throw assertionError
+  }
 }
 
 describeWithDatabase("server-side advisory lock bounds", () => {
