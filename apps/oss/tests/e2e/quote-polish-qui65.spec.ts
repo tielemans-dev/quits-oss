@@ -49,6 +49,16 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       const session = await page.request.get("/api/auth/get-session")
       expect(session.ok()).toBe(true)
       expect(await session.json()).toMatchObject({ session: { activeOrganizationId: quote.organizationId } })
+      // Assert the raw response before any public-decision scenario can fail. Hydrated DOM
+      // language alone would conceal a wrong server declaration.
+      if (!before) {
+        const response = await page.request.get("/quotes")
+        expect(response.ok()).toBe(true)
+        const html = await response.text()
+        expect(html.match(/<html\b[^>]*\blang="([^"]+)"/)?.[1]).toBe(da ? "da" : "en")
+        expect(html).toContain(da ? ">Fakturaer<" : ">Invoices<")
+        expect(html).not.toContain(da ? ">Invoices<" : ">Fakturaer<")
+      }
       for (const [viewport, width, height] of [["desktop", 1440, 1000], ["mobile", 390, 844]] as const) {
         await page.setViewportSize({ width, height })
         const suffix = `${locale.locale}-${theme}-${viewport}`
@@ -89,6 +99,14 @@ for (const locale of [danishLocale, usEnglishLocale]) {
           await capture(page, `admin-${number ? "invoiced" : "draft-invoice"}-${suffix}`)
         }
         const listResponse = await page.goto("/quotes")
+        const serverHtml = await listResponse!.text()
+        const serverHtmlLang = serverHtml.match(/<html\b[^>]*\blang="([^"]+)"/)?.[1]
+        if (!before) {
+          expect(listResponse!.ok()).toBe(true)
+          expect(serverHtmlLang).toBe(da ? "da" : "en")
+          expect(serverHtml).toContain(da ? ">Fakturaer<" : ">Invoices<")
+          expect(serverHtml).not.toContain(da ? ">Invoices<" : ">Fakturaer<")
+        }
         await waitForClientReady(page)
         await expect(page.getByRole("heading", { name: da ? "Tilbud" : "Quotes", exact: true })).toBeVisible()
         const row = page.getByRole("row").filter({ has: page.getByRole("link", { name: new RegExp(seeded.number) }) })
@@ -104,9 +122,8 @@ for (const locale of [danishLocale, usEnglishLocale]) {
         await capture(page, `locale-shell-${suffix}`)
         if (captureDir) {
           const phase = before ? "before" : "after"
-          const serverHtml = await listResponse!.text()
           const sidebar = await page.locator('[data-slot="sidebar"]').allTextContents()
-          const evidence = { locale: locale.locale, browserLocale: "en-US", theme, viewport, width, htmlLang: await page.locator("html").getAttribute("lang"), sidebar, serverHasDanishNavigation: serverHtml.includes(">Fakturaer<"), serverHasEnglishNavigation: serverHtml.includes(">Invoices<") }
+          const evidence = { locale: locale.locale, browserLocale: "en-US", theme, viewport, width, serverHtmlLang, htmlLang: await page.locator("html").getAttribute("lang"), sidebar, serverHasDanishNavigation: serverHtml.includes(">Fakturaer<"), serverHasEnglishNavigation: serverHtml.includes(">Invoices<") }
           if (!before && da) {
             expect(evidence.serverHasDanishNavigation).toBe(true)
             expect(evidence.serverHasEnglishNavigation).toBe(false)

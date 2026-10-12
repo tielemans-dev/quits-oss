@@ -15,14 +15,27 @@ Baseline language/layout defects remain visible and are not counted as regressio
 Each phase requires 56 full-page PNGs: public pending/accepted, admin numbered/draft invoice,
 quote list, activity log and locale shell. Every screen has DA/EN, light/dark and desktop 1440px/mobile
 390px captures. Eight JSON files record browser/org locale, HTML language, sidebar and SSR navigation;
-eight HTML files preserve the synthetic server response. The after run asserts initial Danish sidebar
+eight HTML files preserve the synthetic server response. JSON records both the raw response
+`serverHtmlLang` and hydrated `htmlLang`; after evidence requires both to match the organization. The after run asserts initial Danish sidebar
 markup in an English browser, matching HTML language, short list dates, and quote/credit activity copy.
-All registered quote/credit events and invoice crediting are present in the activity fixture.
+No-organization onboarding also checks the English SSR fallback and Danish browser detection after
+hydration. Fixed public documents retain their own language wrapper. All registered quote/credit events and invoice crediting are present in the activity fixture.
 
 The completeness script checks every expected file, PNG signature/width and exact SHA provenance.
 A green job produces `manifest.json`, a tar archive and an uploaded artifact retained for 30 days.
 The job summary links the artifact. A failed upload may contain partial diagnostics; it is not complete
 evidence. Artifact links and CI status in the PR must be refreshed for the final head.
+
+## Prior evidence provenance
+
+[Run 38255955430](https://github.com/tielemans-dev/quits-oss/actions/runs/38255955430) used harness
+head `821660e0795fcc71a4b25864429382549d5f30a8`. Its verify/browser smoke and both quote evidence
+jobs failed at the public acceptance assertion, before a complete matrix was captured. The
+[before artifact](https://github.com/tielemans-dev/quits-oss/actions/runs/38255955430/artifacts/11749563576)
+and [after artifact](https://github.com/tielemans-dev/quits-oss/actions/runs/38255955430/artifacts/11749907973)
+are partial diagnostics for that prior head, not final validation or visual approval. Earlier green
+CI at `6c08b81` also does not validate the SSR follow-up. Final-head links and status belong in the PR;
+the parent owns monitoring and Ines owns separate visual sign-off.
 
 ## CI-only execution
 

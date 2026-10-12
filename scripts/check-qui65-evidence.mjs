@@ -20,7 +20,7 @@ for (const locale of ["da-DK", "en-US"]) {
       const json = `locale-${suffix}.json`
       const evidence = JSON.parse(await readFile(join(directory, json), "utf8"))
       if (evidence.locale !== locale || evidence.width !== (viewport === "mobile" ? 390 : 1440)) throw new Error(`Wrong locale evidence: ${json}`)
-      if (phase === "after" && (evidence.htmlLang !== (locale === "da-DK" ? "da" : "en") || (locale === "da-DK" && (!evidence.serverHasDanishNavigation || evidence.serverHasEnglishNavigation)))) throw new Error(`Locale regression: ${json}`)
+      if (phase === "after" && (evidence.serverHtmlLang !== (locale === "da-DK" ? "da" : "en") || evidence.htmlLang !== (locale === "da-DK" ? "da" : "en") || (locale === "da-DK" && (!evidence.serverHasDanishNavigation || evidence.serverHasEnglishNavigation)))) throw new Error(`Locale regression: ${json}`)
       const html = `locale-${suffix}.html`
       if ((await stat(join(directory, html))).size < 1000) throw new Error(`Missing SSR evidence: ${html}`)
       files.push(json, html)

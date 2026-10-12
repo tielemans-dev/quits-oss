@@ -47,6 +47,18 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/onboarding/)
   await expect(page.getByText("Create your organization")).toBeVisible()
+
+  // No organization has supplied a locale. The raw response stays English, then the sole
+  // language owner detects this browser's Danish preference after hydration.
+  await page.addInitScript(() => Object.defineProperty(navigator, "language", { get: () => "da-DK" }))
+  const response = await page.reload()
+  expect(response!.ok()).toBe(true)
+  const serverHtml = await response!.text()
+  expect(serverHtml).toMatch(/<html\b[^>]*\blang="en"/)
+  expect(serverHtml).toContain(">Invoices<")
+  expect(serverHtml).not.toContain(">Fakturaer<")
+  await waitForClientReady(page)
+  await expect(page.locator("html")).toHaveAttribute("lang", "da")
 })
 
 test("shows adaptive cloud onboarding after organization creation", async ({ page }) => {
