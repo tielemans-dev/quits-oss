@@ -76,7 +76,7 @@ function readDefaultCapabilities(
   )
 
   return {
-    onboardingV2: { enabled: false },
+    onboardingV2: { enabled: false, nonVatEnabled: false },
     documents: { artifactsRequired: true },
     agreements: { depositsEnabled: readBooleanEnv(readProductEnv(env, "DEPOSITS_ENABLED"), true) },
     aiInvoiceDraft: {
@@ -148,8 +148,20 @@ export function getRuntimeCapabilities(
   ai.enabled = enabledByExtension !== false && (ai.byok || ai.managed || ai.localAgent)
 
   // V2 is opt-in for hosted deployments; self-hosted installations stay on manual setup.
-  capabilities.onboardingV2 = { enabled: readProductEnv(env, "DISTRIBUTION")?.trim().toLowerCase() === "cloud" && capabilities.onboardingV2?.enabled === true }
+  capabilities.onboardingV2 = {
+    enabled: isHostedRuntime(env) && capabilities.onboardingV2?.enabled === true,
+    nonVatEnabled: isHostedRuntime(env) && capabilities.onboardingV2?.nonVatEnabled === true,
+  }
   // Issuance artifacts are a release invariant; runtime extensions cannot opt out.
   capabilities.documents.artifactsRequired = true
   return capabilities
+}
+
+function isHostedRuntime(env: Record<string, string | undefined>) {
+  return readProductEnv(env, "DISTRIBUTION")?.trim().toLowerCase() === "cloud"
+}
+
+/** The hosted extension can opt in after it supports non-VAT onboarding. OSS remains configurable. */
+export function isNonVatRegistrationAllowed() {
+  return !isHostedRuntime(getRuntimeEnv()) || getRuntimeCapabilities().onboardingV2?.nonVatEnabled === true
 }
