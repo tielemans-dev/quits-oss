@@ -171,7 +171,7 @@ function formatCurrency(amount: number, currency: string, locale?: string | null
 }
 
 function formatDate(dateStr: string, locale?: string | null, timezone?: string | null) {
-  return formatDateIntl(dateStr, locale, timezone)
+  return formatDateIntl(dateStr, locale, timezone, { month: "short", dayFirst: true })
 }
 
 function isValidEmailAddress(email: string | null) {
@@ -832,12 +832,12 @@ function InvoiceDetailPage() {
       `}</style>
 
       {/* Back button and actions */}
-      <div className="flex items-center justify-between mb-6 no-print">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 no-print">
         <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/invoices" })}>
           <ArrowLeft className="size-4" />
           {t("invoices.detail.action.back")}
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="size-4" />
             {t("invoices.detail.action.print")}
@@ -896,7 +896,7 @@ function InvoiceDetailPage() {
             </>
           )}
           {(invoice.status === "sent" || invoice.status === "overdue") && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {orgSettings.stripeByokConfigured && invoice.paymentStatus !== "paid" && (
                 <Button variant="outline" size="sm" disabled={acting} onClick={handleCreatePaymentLink}>
                   {acting
@@ -996,7 +996,7 @@ function InvoiceDetailPage() {
         <Card>
           <CardContent className="p-6 grid grid-cols-1 gap-6">
             {/* Header */}
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h1 className="text-2xl font-bold">
                   {invoice.number ? `${t("pdf.invoice")} ${invoice.number}` : t("invoices.number.draftHeading")}
@@ -1012,7 +1012,7 @@ function InvoiceDetailPage() {
                   <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
                 </div>
               </div>
-              <div className="text-right text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground grid gap-3 sm:text-right">
                 {orgSettings.companyLogo && (
                   <img
                     src={orgSettings.companyLogo}
@@ -1021,21 +1021,21 @@ function InvoiceDetailPage() {
                   />
                 )}
                 <p>
-                  <span className="font-medium text-foreground">
-                    {t("pdf.issueDate")}:
+                  <span className="block text-xs uppercase tracking-wider">
+                    {t("pdf.issueDate")}
                   </span>{" "}
                   {formatDate(invoice.issueDate, locale, orgSettings.timezone)}
                 </p>
                 <p>
-                  <span className="font-medium text-foreground">
-                    {t("pdf.dueDate")}:
+                  <span className="block text-xs uppercase tracking-wider">
+                    {t("pdf.dueDate")}
                   </span>{" "}
                   {formatDate(invoice.dueDate, locale, "UTC")}
                 </p>
                 {invoice.supplyDate && (
                   <p>
-                    <span className="font-medium text-foreground">
-                      {t("pdf.supplyDate")}:
+                    <span className="block text-xs uppercase tracking-wider">
+                      {t("pdf.supplyDate")}
                     </span>{" "}
                     {/* A calendar date, not an instant: the organization's time zone must not move it a day. */}
                     {formatDate(new Date(invoice.supplyDate).toISOString(), locale, "UTC")}
@@ -1121,7 +1121,7 @@ function InvoiceDetailPage() {
               </div>
             </div>
 
-            <InvoicePaymentInstructions sellerSnapshot={invoice.sellerSnapshot} number={invoice.number} />
+            <InvoicePaymentInstructions sellerSnapshot={invoice.sellerSnapshot} number={invoice.number} total={invoice.total} currency={invoice.currency} dueDate={invoice.dueDate} />
 
             {/* Notes */}
             {invoice.notes && (

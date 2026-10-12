@@ -1,5 +1,6 @@
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { useI18n } from "../../lib/i18n/react"
+import { invoicePaymentRows } from "../../lib/documents/invoice-payment-rows"
 import { invoiceTaxIds } from "../../lib/documents/invoice-identity"
 
 export function InvoiceSellerDetails({ sellerSnapshot }: { sellerSnapshot: unknown }) {
@@ -10,13 +11,19 @@ export function InvoiceSellerDetails({ sellerSnapshot }: { sellerSnapshot: unkno
       <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("pdf.from")}</h3>
       {seller?.companyName && <p className="font-semibold">{seller.companyName}</p>}
       {seller?.companyAddress && <p className="text-sm whitespace-pre-wrap">{seller.companyAddress}</p>}
-      {invoiceTaxIds(seller?.taxIds).map(id => <p key={id} className="text-sm">{id}</p>)}
+      {invoiceTaxIds(seller?.taxIds, "CVR-nr.").map(id => <p key={id} className="text-sm">{id}</p>)}
     </section>
   )
 }
 
-export function InvoicePaymentInstructions({ sellerSnapshot, number }: { sellerSnapshot: unknown; number: string | null }) {
-  const { t } = useI18n()
+export function InvoicePaymentInstructions({ sellerSnapshot, number, total, currency, dueDate }: {
+  sellerSnapshot: unknown
+  number: string | null
+  total: number
+  currency: string
+  dueDate: Date | string
+}) {
+  const { t, locale } = useI18n()
   const seller = parseSellerSnapshot(sellerSnapshot)
   const account = seller?.bankAccount
   const reg = account?.regNumber?.trim()
@@ -26,9 +33,15 @@ export function InvoicePaymentInstructions({ sellerSnapshot, number }: { sellerS
   return (
     <section aria-label={t("email.pay.heading")} className="grid gap-2 text-sm">
       <h3 className="font-medium">{t("email.pay.heading")}</h3>
-      {reg && <p className="break-words">{t("email.pay.reg")}: {reg}</p>}
-      {accountNumber && <p className="break-words">{t("email.pay.account")}: {accountNumber}</p>}
-      {number && <p>{t("email.pay.reference", { number })}</p>}
+      <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4">
+        {invoicePaymentRows({ bankAccount: account, number, total, currency, dueDate }, locale).map(row => (
+          <div key={row.key} className="col-span-2 grid grid-cols-subgrid border-b py-2.5">
+            <dt className="text-xs uppercase tracking-wider text-muted-foreground self-center">{row.label}</dt>
+            <dd className="font-mono text-right break-words">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {number && <p className="mt-2 text-muted-foreground">{t("email.pay.reference")}</p>}
       {note && <p className="whitespace-pre-wrap break-words">{note}</p>}
     </section>
   )

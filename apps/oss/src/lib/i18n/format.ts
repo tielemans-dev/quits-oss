@@ -28,14 +28,22 @@ export function formatDate(
   timeZone?: string | null,
   options?: {
     month?: "numeric" | "2-digit" | "long" | "short" | "narrow"
+    /** Compact invoice dates use day-month-year even in en-US. */
+    dayFirst?: boolean
   }
 ): string {
-  return new Intl.DateTimeFormat(normalizeLocale(locale), {
+  const formatter = new Intl.DateTimeFormat(normalizeLocale(locale), {
     year: "numeric",
     month: options?.month ?? "short",
     day: "numeric",
     timeZone: normalizeTimeZone(timeZone),
-  }).format(new Date(date))
+  })
+  const value = new Date(date)
+  if (!options?.dayFirst) return formatter.format(value)
+  const parts = formatter.formatToParts(value)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(piece => piece.type === type)?.value ?? ""
+  const daySuffix = normalizeLocale(locale) === "da-DK" ? "." : ""
+  return `${part("day")}${daySuffix} ${part("month")} ${part("year")}`
 }
 
 /** Compact document dates, with day before month in both supported languages. */

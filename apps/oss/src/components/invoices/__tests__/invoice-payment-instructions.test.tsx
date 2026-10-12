@@ -13,21 +13,23 @@ describe("invoice detail seller and payment blocks", () => {
   it.each(["da-DK", "en-US"])("renders the invoice's frozen seller and payment data in %s", locale => {
     const html = renderToStaticMarkup(<I18nProvider locale={locale}>
       <InvoiceSellerDetails sellerSnapshot={sellerSnapshot} />
-      <InvoicePaymentInstructions sellerSnapshot={sellerSnapshot} number="INV-0042" />
+      <InvoicePaymentInstructions sellerSnapshot={sellerSnapshot} number="INV-0042" total={250} currency="DKK" dueDate="2026-03-23" />
     </I18nProvider>)
-    for (const value of ["Synthetic Seller ApS", "Testvej 1", "1000 København", "CVR: 12345678", "0040", "0440116243", "Frozen note"]) expect(html).toContain(value)
+    for (const value of ["Synthetic Seller ApS", "Testvej 1", "1000 København", "CVR-nr.: 12345678", "0040", "0440 116 243", "Frozen note"]) expect(html).toContain(value)
     expect(html).toContain(locale === "da-DK" ? 'aria-label="Fra"' : 'aria-label="From"')
-    expect(html).toContain(locale === "da-DK" ? "Skriv fakturanummer INV-0042 i beskeden til modtager." : "Put invoice number INV-0042 in the payment message.")
+    expect(html).toContain(locale === "da-DK" ? "Skriv fakturanummeret i beskeden, så vi kan finde din betaling." : "Add the invoice number to the payment message so we can match your payment.")
+    expect(html).toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
+    expect(html).toContain(locale === "da-DK" ? "23. mar. 2026" : "23 Mar 2026")
     expect(html).not.toMatch(/Payment reference|Betalingsreference|\+71/)
   })
 
   it.each([null, {}, { companyName: 42 }])("hides absent or invalid bank data: %s", snapshot => {
-    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions sellerSnapshot={snapshot} number="INV-0042" /></I18nProvider>)
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions sellerSnapshot={snapshot} number="INV-0042" total={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
     expect(html).toBe("")
   })
 
   it("shows a payment note without bank rows and never assigns a draft number", () => {
-    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions sellerSnapshot={{ paymentNote: "Pay on delivery" }} number={null} /></I18nProvider>)
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions sellerSnapshot={{ paymentNote: "Pay on delivery" }} number={null} total={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
     expect(html).toContain("Pay on delivery")
     expect(html).not.toMatch(/Reg. no.|Account number|Put invoice number/)
   })

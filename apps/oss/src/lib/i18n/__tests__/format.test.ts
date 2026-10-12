@@ -43,6 +43,13 @@ describe("i18n format helpers", () => {
     expect(formatCurrency(1250, "DKK", "da-DK")).toBe("1.250,00\u00a0kr.")
   })
 
+  it("uses compact day-first invoice dates without changing the shared default", () => {
+    expect(formatDate("2026-03-09", "da-DK", "UTC", { month: "short", dayFirst: true })).toBe("9. mar. 2026")
+    expect(formatDate("2026-03-09", "en-US", "UTC", { month: "short", dayFirst: true })).toBe("9 Mar 2026")
+    expect(formatDate("2026-03-09T23:30:00Z", "en-US", "Europe/Copenhagen", { month: "short", dayFirst: true })).toBe("10 Mar 2026")
+    expect(formatDate("2026-03-09", "en-US", "UTC", { month: "long" })).toBe("March 9, 2026")
+  })
+
   it("formats a quantity with the locale's decimal separator", () => {
     expect(formatNumber(1.5, "en-US")).toBe("1.5")
     expect(formatNumber(1.5, "da-DK")).toBe("1,5")
