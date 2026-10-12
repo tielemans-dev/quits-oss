@@ -198,6 +198,7 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [taxRateInput, setTaxRateInput] = useState("")
   const [momsRegistered, setMomsRegistered] = useState<boolean | null>(null)
   const [countryCode, setCountryCode] = useState("US")
   const [locale, setLocale] = useState("en-US")
@@ -278,6 +279,7 @@ function SettingsPage() {
           nextSettings.onboardingInvoicingIdentity ?? "registered_business"
         )
         setMomsRegistered(nextSettings.momsRegistered ?? null)
+        setTaxRateInput(nextSettings.taxRate == null ? "" : String(nextSettings.taxRate))
         setTaxRegime(nextSettings.taxRegime)
         setPricesIncludeTax(nextSettings.pricesIncludeTax)
         setPrimaryTaxId(nextSettings.primaryTaxId ?? "")
@@ -477,7 +479,7 @@ function SettingsPage() {
     }
 
     try {
-      await trpc.settings.update.mutate({
+      const savedSettings = await trpc.settings.update.mutate({
         countryCode,
         locale,
         timezone: timezoneInput,
@@ -514,6 +516,8 @@ function SettingsPage() {
         clearStripeSecretKey,
         clearStripeWebhookSecret,
       })
+      setTaxRateInput(savedSettings.taxRate == null ? "" : String(savedSettings.taxRate))
+      setMomsRegistered(savedSettings.momsRegistered)
       setTimezone(timezoneInput)
       const savedBaseUrl = aiProvider === "openai_compatible" ? aiBaseUrlInput || null : settings?.aiBaseUrl ?? null
       // The server drops the saved key when the provider or endpoint changes without a new key.
@@ -1028,7 +1032,8 @@ function SettingsPage() {
                   min="0"
                   max="100"
                   placeholder="0.00"
-                  defaultValue={settings.taxRate ?? ""}
+                  value={taxRateInput}
+                  onChange={event => setTaxRateInput(event.target.value)}
                 />
               </div>
             </div>

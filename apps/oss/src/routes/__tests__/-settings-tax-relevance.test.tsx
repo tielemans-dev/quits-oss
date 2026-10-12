@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react"
 import type { ComponentType } from "react"
 import { afterEach as afterEachTest, describe, expect, it, vi } from "vitest"
 
 const {
   useSessionMock,
   settingsGetQuery,
+  settingsUpdate,
   getFullOrganization,
 } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
   settingsGetQuery: vi.fn(),
+  settingsUpdate: vi.fn(),
   getFullOrganization: vi.fn(),
 }))
 
@@ -26,9 +28,8 @@ vi.mock("../../components/settings/email-delivery-card", () => ({
   EmailDeliveryCard: () => <div>email-delivery-card</div>,
 }))
 
-vi.mock("../../lib/i18n/react", () => ({
-  useI18n: () => ({
-    t: (key: string) =>
+vi.mock("../../lib/i18n/react", () => {
+  const t = (key: string) =>
       (
         {
           "settings.error.loadFailed": "load failed",
@@ -56,9 +57,9 @@ vi.mock("../../lib/i18n/react", () => ({
           "settings.currency.label": "Currency",
           "settings.currency.placeholder": "Select currency",
         } as const
-      )[key] ?? key,
-  }),
-}))
+      )[key] ?? key
+  return { useI18n: () => ({ t, locale: "en-US" }) }
+})
 
 vi.mock("../../lib/auth-client", () => ({
   authClient: {
@@ -83,7 +84,7 @@ vi.mock("../../trpc/client", () => ({
         query: settingsGetQuery,
       },
       update: {
-        mutate: vi.fn(),
+        mutate: settingsUpdate,
       },
       configureDocumentSendingDomain: {
         mutate: vi.fn(),
@@ -181,10 +182,26 @@ afterEachTest(() => {
   cleanup()
   useSessionMock.mockReset()
   settingsGetQuery.mockReset()
+  settingsUpdate.mockReset()
   getFullOrganization.mockReset()
 })
 
 describe("Settings tax relevance", () => {
+  it.each(["eu_vat", "custom"])("shows the returned %s tax default immediately after saving", async taxRegime => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime, taxRate: 25, momsRegistered: true })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockResolvedValue({ ...current, taxRate: taxRegime === "eu_vat" ? 0 : 25, momsRegistered: false })
+    const { container } = render(<RouteComponent />)
+    const input = await screen.findByLabelText("settings.taxRate.label") as HTMLInputElement
+    await waitFor(() => expect(input.value).toBe("25"))
+    if (taxRegime === "eu_vat") fireEvent.click(screen.getByRole("radio", { name: "vatStatus.no" }))
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    await waitFor(() => expect(input.value).toBe(taxRegime === "eu_vat" ? "0" : "25"))
+    expect(settingsGetQuery).toHaveBeenCalledTimes(1)
+  })
   it("hides irrelevant tax id fields and shows danish vat copy when needed", async () => {
     useSessionMock.mockReturnValue({
       data: {

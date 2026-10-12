@@ -17,7 +17,7 @@ export function requireSellerVatIssuance(document: {
   }>
 }) {
   const seller = parseSellerSnapshot(document.sellerSnapshot)
-  if (document.taxRegime === "eu_vat" && seller?.momsRegistered == null)
+  if (document.taxRegime === "eu_vat" && seller?.countryCode === "DK" && seller.momsRegistered == null)
     return Effect.fail(new InvalidState({ code: "seller_vat_status_unset", message: "Choose whether the seller is VAT-registered in company settings before sending." }))
   if (document.taxRegime === "eu_vat" && seller?.momsRegistered === false && document.items.some(item =>
     !toDecimal(item.taxRate.toString()).isZero() ||

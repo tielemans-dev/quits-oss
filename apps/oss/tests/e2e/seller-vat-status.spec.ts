@@ -1,3 +1,5 @@
+import { createAgreementDraft } from "../../src/domain/commands/agreements"
+import { mintAgreementLink } from "../../src/lib/agreements/tokens"
 import { captureDocument, captureInvoiceEmail, captureOnboarding, capturePdf } from "./seller-vat-evidence"
 import { buildCreditNoteEmailContent } from "../../src/lib/emails/credit-note-email"
 import { issueDocument } from "../../src/application/issuance"
@@ -58,6 +60,7 @@ for (const locale of ["da-DK", "en-US"]) {
     await no.check()
     await page.getByRole("button", { name: translate("settings.action.save", locale), exact: true }).click()
     await expect(page.getByText(translate("settings.success.saved", locale), { exact: true })).toBeVisible()
+    await expect(page.locator("#taxRate")).toHaveValue("0")
     await page.reload()
     await expect(no).toBeChecked()
     await capture(page, "settings", locale)
@@ -94,6 +97,20 @@ for (const locale of ["da-DK", "en-US"]) {
     await capture(page, "pay", locale)
     await captureInvoiceEmail(page, row.id, setup.organizationId, locale, `http://127.0.0.1:3040/pay/${encodeURIComponent(token)}`)
     await capturePdf(page, "invoice", row.id, locale)
+    const agreementDraft = await executeCommand(createAgreementDraft, { contactId: contact.id, title: "Synthetic non-VAT agreement", validUntil: "2099-12-01", taxRate: 0,
+      deliverables: [{ title: "Synthetic service", description: "Service", quantity: 1, unitPrice: 100, vat: { treatment: "unclassified_zero", rate: "0" } }],
+    }, { actor })
+    if (agreementDraft.status !== "completed") throw new Error(JSON.stringify(agreementDraft))
+    const agreementIssue = await issueDocument({ kind: "agreement", actor, commandInput: { id: agreementDraft.result.id }, options: { method: "manual" } })
+    if (agreementIssue.status !== "completed") throw new Error(JSON.stringify(agreementIssue))
+    const agreement = await prisma.agreement.findUniqueOrThrow({ where: { id: agreementDraft.result.id } })
+    // Customer-facing agreement status stays frozen after the seller's current choice changes.
+    await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { momsRegistered: true } })
+    const agreementLink = mintAgreementLink(agreement, "decide", new Date())
+    await page.goto(`/a/${encodeURIComponent(agreementLink.token)}`)
+    await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toHaveCount(1)
+    await expect(page.getByText(translate("line.noVat", locale), { exact: true })).toBeVisible()
+    await capture(page, "agreement-public", locale)
     // Freeze the credit choice from the invoice, even after current settings change.
     await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { momsRegistered: true } })
     const outcome = await issueDocument({ kind: "creditNote", actor, commandInput: { invoiceId: row.id, mode: "full", reason: translate("pdf.nonVatRegistered", locale) } })

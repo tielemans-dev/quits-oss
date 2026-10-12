@@ -11,7 +11,7 @@ import { authenticateAgentSecret, createAgentKey } from "../../domain/agent-keys
 import { decideApproval } from "../../domain/approvals"
 import { createInvoiceDraft } from "../../domain/commands/invoices"
 import { executeCommand } from "../../domain/execute"
-import { issueDocument, reserveDocument, prepareDocument } from "../issuance"
+import { issueDocument, reserveDocument, prepareDocument, executeIssuanceCommand } from "../issuance"
 import { appRouter } from "../../trpc/router"
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
 import { composeQuoteEmail } from "../../domain/documents/quote-email"
@@ -22,6 +22,9 @@ import { serializePublicInvoiceSession } from "../../lib/payments/public-session
 import { loadDocumentView } from "../../domain/documents/view"
 import { setRuntimeExtensions } from "../../lib/runtime/extensions"
 import { creditNotePdfParties } from "../../lib/credit-notes/pdf-parties"
+import { selfhostDocumentRenderer } from "../../selfhost/runtime"
+import { validateEinvoice } from "../../lib/exports/ubl"
+import { getDocumentRenderer, getDocumentArtifactStore } from "../../lib/runtime/services"
 import type { RenderInput } from "../../domain/documents/render-input"
 
 const cleanups: Array<() => Promise<void>> = []
@@ -85,7 +88,15 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     }, { actor: ctx.org.actors.admin }))
     if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
     await ctx.caller.settings.update({ momsRegistered: false })
-    expect(await executeCommand(command, { id: draft.result.id }, { actor: ctx.org.actors.admin })).toMatchObject({ status: "failed", error: { code: "seller_not_vat_registered" } })
+    const render = vi.spyOn(getDocumentRenderer()!, "renderPdf")
+    const store = vi.spyOn(getDocumentArtifactStore()!, "put")
+    expect(await executeIssuanceCommand(command, { id: draft.result.id }, { actor: ctx.org.actors.admin })).toMatchObject({ status: "failed", error: { code: "seller_not_vat_registered" } })
+    expect(render).not.toHaveBeenCalled()
+    expect(store).not.toHaveBeenCalled()
+    render.mockRestore()
+    store.mockRestore()
+    expect(await prisma.artifactStaging.count({ where: { documentId: draft.result.id } })).toBe(0)
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })).agreementNextNum).toBe(1)
     const unchanged = await prisma.agreement.findUniqueOrThrow({ where: { id: draft.result.id }, include: { deliverables: true } })
     expect(unchanged).toMatchObject({ status: "draft", number: null, offerSnapshotHash: null, publicAccessIssuedAt: null })
     expect(unchanged.deliverables[0]!.taxRate.toNumber()).toBe(25)
@@ -93,7 +104,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     expect(await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })).toBe(0)
     // The same stored draft still issues with custom tax, despite the remembered VAT choice.
     await prisma.agreement.update({ where: { id: draft.result.id }, data: { taxRegime: "custom" } })
-    await completed(executeCommand(issueAgreement, { id: draft.result.id }, { actor: ctx.org.actors.admin }))
+    await completed(executeIssuanceCommand(issueAgreement, { id: draft.result.id }, { actor: ctx.org.actors.admin }))
   })
   it.each([null, true] as const)("guards agreement registration %s against unclassified-zero lines", async momsRegistered => {
     const ctx = await setup(false, 0)
@@ -103,9 +114,49 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     }, { actor: ctx.org.actors.admin }))
     if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
     await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { momsRegistered } })
-    expect(await executeCommand(issueAgreement, { id: draft.result.id }, { actor: ctx.org.actors.admin })).toMatchObject({ status: "failed", error: { code: momsRegistered === null ? "seller_vat_status_unset" : "evidence_incomplete" } })
+    expect(await executeIssuanceCommand(issueAgreement, { id: draft.result.id }, { actor: ctx.org.actors.admin })).toMatchObject({ status: "failed", error: { code: momsRegistered === null ? "seller_vat_status_unset" : "evidence_incomplete" } })
     await ctx.caller.settings.update({ momsRegistered: false })
-    await completed(executeCommand(issueAgreement, { id: draft.result.id }, { actor: ctx.org.actors.admin }))
+    await completed(executeIssuanceCommand(issueAgreement, { id: draft.result.id }, { actor: ctx.org.actors.admin }))
+  })
+  it.each(["DE", "FR", "NL"])("keeps %s EU self-hosted issuance available without the Danish registration choice", async countryCode => {
+    const ctx = await setup(null)
+    await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { countryCode } })
+    const input = { contactId: ctx.invoice.contactId, taxRate: 25, items: [{ description: "Synthetic EU service", quantity: 1, unitPrice: 100 }] }
+    const invoice = await completed(executeCommand(createInvoiceDraft, { ...input, dueDate: "2099-12-01" }, { actor: ctx.org.actors.admin }))
+    if (invoice.status !== "completed") throw new Error(JSON.stringify(invoice))
+    await completed(issueDocument({ kind: "invoice", actor: ctx.org.actors.admin, commandInput: { id: invoice.result.id, allowSendWithoutEmail: true } }))
+    const quote = await ctx.caller.quotes.create({ ...input, expiryDate: "2099-12-01" })
+    await ctx.caller.quotes.send({ id: quote.id, allowSendWithoutEmail: true })
+    const agreement = await completed(executeCommand(createAgreementDraft, { contactId: ctx.invoice.contactId, title: "Synthetic EU agreement", validUntil: "2099-12-01", taxRate: 25,
+      deliverables: [{ title: "Synthetic service", description: "Service", quantity: 1, unitPrice: 100 }],
+    }, { actor: ctx.org.actors.admin }))
+    if (agreement.status !== "completed") throw new Error(JSON.stringify(agreement))
+    await completed(executeIssuanceCommand(issueAgreement, { id: agreement.result.id }, { actor: ctx.org.actors.admin }))
+    expect(await prisma.agreement.findUniqueOrThrow({ where: { id: agreement.result.id } })).toMatchObject({ status: "sent" })
+  })
+  it("keeps custom taxed invoice and inherited credit UBL valid despite remembered non-registration", async () => {
+    const ctx = await setup(false, 0)
+    await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { taxRegime: "custom", companyName: "Synthetic custom seller", companyAddress: "Testvej 1, 1000 København" } })
+    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "24256790" } })
+    await prisma.contact.update({ where: { id: ctx.invoice.contactId }, data: { address: "Testvej 2", city: "København", zip: "1000", peppolEndpointId: "24256790", peppolEndpointScheme: "0184" } })
+    const draft = await completed(executeCommand(createInvoiceDraft, { contactId: ctx.invoice.contactId, taxRate: 25, notes: `Synthetic custom instructions\n${nonVatStatement("da-DK")}`, dueDate: "2099-12-01", items: [{ description: "Synthetic custom tax", quantity: 1, unitPrice: 100 }] }, { actor: ctx.org.actors.admin }))
+    if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+    await completed(issueDocument({ kind: "invoice", actor: ctx.org.actors.admin, commandInput: { id: draft.result.id, allowSendWithoutEmail: true } }))
+    const check = async (kind: "invoice" | "creditNote", documentId: string) => {
+      const candidate = await prisma.issuanceCandidate.findFirstOrThrow({ where: { documentId } })
+      const render = candidate.renderInput as unknown as Extract<RenderInput, { kind: typeof kind }>
+      if (!render.ubl) throw new Error("Custom tax UBL input missing")
+      expect(render.ubl.seller.vatId).toBe("DK24256790")
+      expect(render.ubl.seller.momsRegistered).toBeUndefined()
+      expect(render.ubl.note ?? "").not.toContain(nonVatStatement("da-DK"))
+      expect(validateEinvoice(render.ubl)).toEqual([])
+      const bytes = await selfhostDocumentRenderer.renderUbl!(render)
+      expect(bytes).not.toBeNull()
+      expect(new TextDecoder().decode(bytes!)).toContain("DK24256790")
+    }
+    await check("invoice", draft.result.id)
+    await completed(issueDocument({ kind: "creditNote", actor: ctx.org.actors.admin, commandInput: { invoiceId: draft.result.id, mode: "full", reason: "Synthetic custom correction" } }))
+    await check("creditNote", (await prisma.creditNote.findFirstOrThrow({ where: { invoiceId: draft.result.id } })).id)
   })
   it.each([true, false])("invalidates a quote send approval after registration %s changes", async registered => {
     const ctx = await setup(registered, 0)
