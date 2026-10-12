@@ -1,4 +1,3 @@
-import { issuedInvoiceSettlement } from "../documents/issued-settlement"
 import { Effect } from "effect"
 import {
   invoiceMarkPaidInputSchema,
@@ -10,6 +9,7 @@ import { Prisma } from "../../../generated/prisma/client"
 import { formatIsoDate } from "../../lib/exports/format"
 import { defineCommand } from "../command"
 import { lockDocument } from "../documents/locks"
+import { computeSettlement } from "../documents/settlement"
 import { Forbidden, InvalidState, NotFound } from "../errors"
 import { eventRegistry } from "../events/registry"
 import { Command, Db } from "../services"
@@ -69,7 +69,7 @@ export const markInvoicePaid = defineCommand({
     if (invoice.status === "voided" || invoice.status === "cancelled") {
       return yield* new InvalidState({ code: "invoice_not_payable", message: "A voided or cancelled invoice cannot be marked paid" })
     }
-    const { balanceDue } = issuedInvoiceSettlement(invoice)
+    const { balanceDue } = computeSettlement(invoice)
     if (invoice.status === "paid" || invoice.status === "credited" || balanceDue.isZero()) {
       return yield* new InvalidState({ code: "already_settled", message: "The invoice is already settled" })
     }

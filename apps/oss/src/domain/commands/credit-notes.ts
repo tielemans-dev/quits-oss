@@ -1,4 +1,3 @@
-import { issuedInvoiceSettlement } from "../documents/issued-settlement"
 import { Effect } from "effect"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { documentVatSummary } from "../documents/vat-summary"
@@ -13,7 +12,7 @@ import { loadDocumentContext } from "../documents/context"
 import { requireRecipientEmail, resolveInvoiceEmailContext } from "../documents/invoice-email"
 import { allocateDocumentNumber, asIssued } from "../documents/numbering"
 import { priceCreditNote } from "../documents/credit-pricing"
-import { refreshInvoiceSettlement } from "../documents/settlement"
+import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
 import { buildBuyerSnapshot, buildSellerSnapshot, withoutPaymentDetails } from "../documents/snapshots"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
@@ -68,7 +67,7 @@ export const issueCreditNote = defineCommand({
       const invoice = yield* lockInvoiceForCredit(input.invoiceId)
 
       const built = yield* priceCreditNote(invoice, input)
-      if (new Prisma.Decimal(built.totalGross).greaterThan(issuedInvoiceSettlement(invoice).balanceDue)) {
+      if (new Prisma.Decimal(built.totalGross).greaterThan(computeSettlement(invoice).balanceDue)) {
         const funded = yield* Effect.promise(() => db.payment.count({ where: { invoiceId: invoice.id, receiptId: { not: null }, voidedAt: null } }))
         if (funded) return yield* new InvalidState({ code: "receipt_allocations_pending", message: "Reverse receipt allocations before crediting paid amounts, then refund or reallocate the released funds" })
       }
