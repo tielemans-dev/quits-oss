@@ -2,7 +2,7 @@ import { translate } from "../i18n/translate"
 
 /** The registration statement follows the document language, not the organization's language. */
 export function nonVatStatement(locale?: string | null) {
-  return translate("pdf.nonVatRegistered", locale)
+  return translate("invoice.noVatNote", locale)
 }
 
 export function withNonVatStatement(note: string | null, momsRegistered: boolean | null | undefined, locale?: string | null) {
@@ -11,8 +11,10 @@ export function withNonVatStatement(note: string | null, momsRegistered: boolean
   return note?.includes(statement) ? note : [note, statement].filter(Boolean).join("\n")
 }
 
-/** Translate only the generated preset. A seller's custom payment instructions stay verbatim. */
+/** Normalize only known generated lines when creating a new frozen payment snapshot. */
 export function localizedNonVatPaymentNote(note: string | null | undefined, momsRegistered: boolean | null | undefined, locale?: string | null) {
-  return momsRegistered === false && [nonVatStatement("da"), nonVatStatement("en")].includes(note ?? "")
-    ? nonVatStatement(locale) : note
+  if (momsRegistered == null) return note
+  const generated = [nonVatStatement("da"), nonVatStatement("en"), "Virksomheden er ikke momsregistreret.", "The company is not VAT registered."]
+  const custom = note?.split("\n").filter(line => !generated.includes(line)).join("\n") || null
+  return momsRegistered ? custom : withNonVatStatement(custom, false, locale)
 }

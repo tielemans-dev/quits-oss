@@ -24,7 +24,7 @@ import {
 } from "../../lib/ai/provider"
 import { encryptSecret } from "../../lib/secrets"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
-import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
 import { localeSchema } from "../../lib/compliance/countries"
@@ -115,6 +115,7 @@ const timezoneSchema = z
 export const settingsUpdateSchema = z.object({
   currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   momsRegistered: z.boolean().nullable().optional(),
+  paymentTermsDays: z.number().int().min(0).max(3650).optional(),
   taxRate: z.number().min(0).max(100).nullable().optional(),
   companyName: z.string().trim().max(120).optional(),
   companyAddress: z.string().trim().max(240).optional(),
@@ -165,6 +166,7 @@ const orgSettingsReadSelect = {
   taxRegime: true,
   pricesIncludeTax: true,
   currency: true,
+  paymentTermsDays: true,
   taxRate: true,
   momsRegistered: true,
   companyName: true,
@@ -264,6 +266,7 @@ export const settingsRouter = router({
       taxRegime: settings.taxRegime,
       pricesIncludeTax: settings.pricesIncludeTax,
       currency: settings.currency,
+      paymentTermsDays: settings.paymentTermsDays,
       taxRate: settings.taxRate?.toNumber() ?? null,
       momsRegistered: settings.momsRegistered,
       companyName: settings.companyName,
@@ -308,6 +311,9 @@ export const settingsRouter = router({
       } = input
 
 
+      if (settingsInput.momsRegistered === false && !isNonVatRegistrationAllowed()) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
+      }
       assertSettingsCurrency(settingsInput.currency)
       assertSettingsCurrency(settingsInput.defaultCurrency)
       assertSettingsCurrency(settingsInput.baseCurrency)

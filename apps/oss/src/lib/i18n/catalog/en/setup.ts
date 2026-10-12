@@ -1,4 +1,6 @@
 export const enSetupMessages = {
+  "cvr.invalid": "Enter a valid CVR number.",
+  "save.failed": "Could not save. Try again.",
   "setup.title": "Set up your Quits instance",
   "setup.subtitle": "Configure your workspace before inviting your team and creating invoices.",
   "setup.loadingStatus": "Loading setup status…",

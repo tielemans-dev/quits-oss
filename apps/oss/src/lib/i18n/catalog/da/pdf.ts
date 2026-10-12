@@ -1,5 +1,6 @@
 export const daPdfMessages = {
-  "pdf.nonVatRegistered": "Virksomheden er ikke momsregistreret.",
+  "invoice.noVatNote": "Der er ikke beregnet moms, da sælger ikke er momsregistreret.",
+  "pdf.nonVatRegistered": "Der er ikke beregnet moms, da sælger ikke er momsregistreret.",
   "pdf.invoice": "Faktura",
   "pdf.issueDate": "Udstedelsesdato",
   "pdf.dueDate": "Forfaldsdato",
