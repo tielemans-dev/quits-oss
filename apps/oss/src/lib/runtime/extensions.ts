@@ -1,3 +1,5 @@
+import type { CompanyLookupService } from "./company-lookup"
+export type { CompanyLookupService, CompanyLookupResult } from "./company-lookup"
 import type { SellerVatConfirmationService } from "./seller-vat-confirmation"
 export type { SellerVatConfirmationService, SellerVatConfirmationActor, SellerVatConfirmationTransaction } from "./seller-vat-confirmation"
 import type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
@@ -9,8 +11,12 @@ import type {
 import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
 import { getRuntimeEnv, getRuntimePlatform } from "./platform"
 
+/** Released distributions can require the factual company lookup/review contract. */
+export const COMPANY_LOOKUP_CONTRACT_VERSION = 1
+
 export type RuntimeExtension = {
   id: string
+  companyLookup?: CompanyLookupService
   sellerVatConfirmation?: SellerVatConfirmationService
   resolveInvoiceIssuancePolicy?: (context: InvoiceIssuancePolicyContext) => InvoiceIssuancePolicy | undefined | Promise<InvoiceIssuancePolicy | undefined>
   resolveCapabilities?: (

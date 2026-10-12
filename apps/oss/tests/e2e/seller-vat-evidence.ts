@@ -64,3 +64,32 @@ export async function captureOnboarding(page: Page, organizationId: string, loca
   }
   await writeFile(test.info().outputPath(`onboarding-evidence-gap-${locale}.txt`), "OSS /onboarding organization creation only. This route has no VAT registration confirmation control. Kai/Ines require separate confirmation evidence from its owning integration.\n")
 }
+
+/** Synthetic hosted extension evidence. This is not evidence for a released private consumer. */
+export async function captureHostedOnboarding(page: Page, organizationId: string, locale: string) {
+  // Existing documents forbid rerunning confirmV2. Use a fresh synthetic organization.
+  const response = await page.request.post("/api/auth/organization/create", {
+    headers: { origin: "http://127.0.0.1:3040" }, data: { name: "Synthetic Review", slug: `review-${crypto.randomUUID()}` },
+  })
+  expect(response.ok()).toBe(true)
+  const organization = await response.json() as { id: string }
+  const active = await page.request.post("/api/auth/organization/set-active", { headers: { origin: "http://127.0.0.1:3040" }, data: { organizationId: organization.id } })
+  expect(active.ok()).toBe(true)
+  await prisma.orgSettings.upsert({ where: { organizationId: organization.id }, create: { organizationId: organization.id, locale, onboardingStatus: "in_progress" }, update: { locale, onboardingStatus: "in_progress", onboardingCompletedAt: null } })
+  await page.goto("/onboarding")
+  await waitForClientReady(page)
+  await page.getByLabel(translate("onboardingV2.lookupLabel", locale), { exact: true }).fill("Synthetic")
+  await page.getByRole("button", { name: translate("onboardingV2.lookup", locale), exact: true }).click()
+  await page.getByRole("button", { name: translate("onboardingV2.reviewTitle", locale), exact: true }).click()
+  await expect(page.getByLabel("CVR", { exact: true })).toHaveValue("24256790")
+  const yes = page.getByRole("radio", { name: translate("vatStatus.yes", locale), exact: true })
+  const no = page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })
+  await expect(yes).not.toBeChecked(); await expect(no).not.toBeChecked()
+  await page.screenshot({ path: test.info().outputPath(`onboarding-hosted-review-${locale}.png`), fullPage: true })
+  await no.check()
+  await page.getByRole("button", { name: translate("settings.action.save", locale), exact: true }).click()
+  await expect.poll(async () => (await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: organization.id } })).onboardingStatus).toBe("complete")
+  const saved = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: organization.id } })
+  expect(saved.momsRegistered).toBe(false); expect(saved.taxRate.toNumber()).toBe(0)
+  expect(organization.id).not.toBe(organizationId)
+}

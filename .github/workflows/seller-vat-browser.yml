@@ -15,13 +15,19 @@ permissions:
 
 jobs:
   seller-vat-browser:
-    name: Seller VAT browser (${{ matrix.revision }})
+    name: Seller VAT browser (${{ matrix.revision }}, ${{ matrix.distribution }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        revision: [before, after]
+        include:
+          - revision: before
+            distribution: selfhost
+          - revision: after
+            distribution: selfhost
+          - revision: after
+            distribution: cloud
     services:
       postgres:
         # MOCK: disposable test database only. Same pinned Official Image as CI.
@@ -43,12 +49,13 @@ jobs:
       BETTER_AUTH_SECRET: qui62-browser-test-secret-over-32-characters
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:3040
       QUITS_APP_ORIGIN: http://127.0.0.1:3040
-      QUITS_DISTRIBUTION: selfhost
-      VITE_QUITS_DISTRIBUTION: selfhost
+      QUITS_DISTRIBUTION: ${{ matrix.distribution }}
+      VITE_QUITS_DISTRIBUTION: ${{ matrix.distribution }}
       QUITS_PUBLIC_PAYMENT_SECRET: qui62-browser-payment-test-secret
       RESEND_API_KEY: ''
       EMAIL_PROVIDER: ''
       SMTP_HOST: ''
+      QUI62_HOSTED_FIXTURE: ${{ matrix.distribution == 'cloud' && 'true' || 'false' }}
       QUI62_EVIDENCE_REVISION: ${{ matrix.revision }}
       EVIDENCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       # Production TSX imported by the Node worker must create actual React elements.
@@ -87,7 +94,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: seller-vat-${{ matrix.revision }}
+          name: seller-vat-${{ matrix.revision }}-${{ matrix.distribution }}
           path: |
             apps/oss/test-results
             apps/oss/playwright-report/seller-vat

@@ -1,6 +1,7 @@
+import { installHostedVatFixture } from "./hosted-vat-extension"
 import { createAgreementDraft } from "../../src/domain/commands/agreements"
 import { mintAgreementLink } from "../../src/lib/agreements/tokens"
-import { captureDocument, captureInvoiceEmail, captureOnboarding, capturePdf } from "./seller-vat-evidence"
+import { captureHostedOnboarding, captureDocument, captureInvoiceEmail, captureOnboarding, capturePdf } from "./seller-vat-evidence"
 import { buildCreditNoteEmailContent } from "../../src/lib/emails/credit-note-email"
 import { issueDocument } from "../../src/application/issuance"
 import { expect, test, type Page } from "@playwright/test"
@@ -34,14 +35,16 @@ async function capture(page: Page, surface: string, locale: string) {
     }
   }
 }
+const hosted = process.env.QUI62_HOSTED_FIXTURE === "true"
 for (const locale of ["da-DK", "en-US"]) {
-  test(`saves the explicit ${locale} choice and issues without VAT`, async ({ page }) => {
+  test(`${hosted ? "hosted contract fixture" : "selfhost without hosted gate"} ${locale} issues without VAT`, async ({ page }) => {
     await resetDatabase()
     const setup = await seedCompletedSetup({ ...danishLocale, locale })
     await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
       companyName: "Synthetic Seller", companyAddress: "Testvej 1, 1000 København", taxRate: 25,
       paymentNote: translate("pdf.nonVatRegistered", locale),
       bankRegNumber: "0040", bankAccountNumber: "0440116243",
+      ...(hosted ? { onboardingStatus: "complete", onboardingVersion: 2, onboardingCompletedAt: new Date(), onboardingInvoicingIdentity: "registered_business" } : {}),
     } })
     await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345678", countryCode: "DK" } })
     await loginAsAdmin(page)
@@ -59,6 +62,7 @@ for (const locale of ["da-DK", "en-US"]) {
     await waitForClientReady(page)
     const yes = page.getByRole("radio", { name: translate("vatStatus.yes", locale), exact: true })
     const no = page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })
+    if (hosted) {
     await expect(yes).not.toBeChecked()
     await expect(no).not.toBeChecked()
     await capture(page, "settings-unset", locale)
@@ -67,12 +71,24 @@ for (const locale of ["da-DK", "en-US"]) {
     await expect(page.getByText(translate("settings.success.saved", locale), { exact: true })).toBeVisible()
     await expect(page.locator("#taxRate")).toHaveValue("0")
     await page.reload()
-    await expect(no).toBeChecked()
+    // Reload requires a fresh explicit operator choice. Saved financial truth persists.
+    await expect(yes).not.toBeChecked()
+    await expect(no).not.toBeChecked()
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: setup.organizationId } })).momsRegistered).toBe(false)
     await capture(page, "settings", locale)
+    } else {
+      await expect(yes).toHaveCount(0)
+      await expect(no).toHaveCount(0)
+      await expect(page.getByText(translate("sellerCard.body", locale), { exact: true })).toHaveCount(0)
+      await capture(page, "settings-selfhost-no-hosted-gate", locale)
+      // Self-hosting keeps its configurable financial settings; no hosted evidence is required.
+      await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { momsRegistered: false, taxRate: 0 } })
+    }
     const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId, role: "admin" } })
     const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: member.userId })
     if (!actor) throw new Error("Synthetic admin is missing")
-    bootstrapQuitsRuntime({ services: selfhostRuntimeServices() })
+    if (hosted) installHostedVatFixture()
+    else bootstrapQuitsRuntime({ services: selfhostRuntimeServices() })
     const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: "Synthetic Buyer", email: "buyer@example.test", address: "Testvej 2", city: "København", zip: "1000", country: "DK" } })
     // MOCK: VAT classification rates are fractions; the document taxRate is a percentage.
     const contradictory = await executeCommand(createInvoiceDraft, { contactId: contact.id, dueDate: "2026-11-09", taxRate: 25,
@@ -132,6 +148,7 @@ for (const locale of ["da-DK", "en-US"]) {
       invoice: { number: row.number!, issueDate: row.issueDate }, org: { locale }, contactName: "Synthetic Buyer" }).html
     expect(creditEmail.split(translate("pdf.nonVatRegistered", locale))).toHaveLength(2)
     await captureDocument(page, "credit-note-email", locale, creditEmail)
-    await captureOnboarding(page, setup.organizationId, locale)
+    if (hosted) await captureHostedOnboarding(page, setup.organizationId, locale)
+    else await captureOnboarding(page, setup.organizationId, locale)
   })
 }

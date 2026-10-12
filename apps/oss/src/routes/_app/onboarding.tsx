@@ -26,7 +26,7 @@ import { Label } from '../../components/ui/label'
 import { useI18n } from '../../lib/i18n/react'
 import { countryOptionsIncluding, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
-import { CompanyReview } from "../../components/onboarding/company-review"
+import { CompanySetup } from "../../components/onboarding/company-setup"
 import { AiAssistantPanel } from '../../components/onboarding/ai-assistant-panel'
 
 export const Route = createFileRoute('/_app/onboarding')({
@@ -566,7 +566,7 @@ function OnboardingPage() {
   }
 
   if (runtimeCapabilities?.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled) {
-    return <div className="mx-auto w-full max-w-xl p-6"><CompanyReview confirmationEnabled onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
+    return <div className="mx-auto w-full max-w-xl p-6"><CompanySetup onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
   }
 
   return (

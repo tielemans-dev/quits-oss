@@ -4,6 +4,7 @@ const databaseURL = process.env.DATABASE_URL
 if (!databaseURL || new URL(databaseURL).pathname !== "/qui62_oss_browser") {
   throw new Error("Seller VAT browser checks require the disposable qui62_oss_browser database")
 }
+const hosted = process.env.QUI62_HOSTED_FIXTURE === "true"
 const baseURL = "http://127.0.0.1:3040"
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -14,7 +15,7 @@ export default defineConfig({
   expect: { timeout: 30_000 },
   use: { baseURL, colorScheme: "light", viewport: { width: 1440, height: 1100 }, trace: "retain-on-failure" },
   webServer: {
-    command: "bunx prisma migrate deploy && bunx vite dev --port 3040 --host 127.0.0.1",
+    command: `bunx prisma migrate deploy && bunx vite dev ${hosted ? "--config vite.seller-vat.config.ts" : ""} --port 3040 --host 127.0.0.1`,
     cwd: import.meta.dirname,
     reuseExistingServer: false,
     timeout: 180_000,
@@ -23,7 +24,8 @@ export default defineConfig({
       PLAYWRIGHT_BASE_URL: baseURL,
       BETTER_AUTH_SECRET: "qui62-browser-test-secret-over-32-characters",
       BETTER_AUTH_URL: baseURL, QUITS_APP_ORIGIN: baseURL,
-      QUITS_DISTRIBUTION: "selfhost", VITE_QUITS_DISTRIBUTION: "selfhost",
+      QUITS_DISTRIBUTION: hosted ? "cloud" : "selfhost", VITE_QUITS_DISTRIBUTION: hosted ? "cloud" : "selfhost",
+      QUI62_HOSTED_FIXTURE: hosted ? "true" : "false",
       QUITS_PUBLIC_PAYMENT_SECRET: "qui62-browser-payment-test-secret",
       RESEND_API_KEY: "", EMAIL_PROVIDER: "", SMTP_HOST: "",
     },
