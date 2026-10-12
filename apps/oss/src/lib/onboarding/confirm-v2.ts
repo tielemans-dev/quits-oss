@@ -19,11 +19,16 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
     let existing = await tx.orgSettings.findUnique({ where: { organizationId } })
     // Use one set of defaults for the whole confirmation, even across midnight.
-    const presets = buildDkPresets(input, signupEmail)
+    const presets = {
+      ...buildDkPresets(input, signupEmail),
+      ...input.settings,
+      ...(input.settings ? { currency: input.settings.defaultCurrency, baseCurrency: input.settings.defaultCurrency } : {}),
+      taxRate: input.momsRegistered ? input.settings?.taxRate ?? 25 : 0,
+    }
     if (!existing) {
       // Insert inside confirm, then lock before checking issued documents. Another writer may
       // have created settings after the first read, so re-read under the same issuance lock.
-      await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...presets, ...(input.settings ? { invoicePrefix: input.settings.invoicePrefix } : {}) }, update: {} })
+      await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...presets }, update: {} })
       await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
       existing = await tx.orgSettings.findUniqueOrThrow({ where: { organizationId } })
     }
@@ -49,9 +54,6 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     const result = { status: "complete" as const, version: 2 as const, completedAt: completedAt.toISOString(), bankMissing: !input.bank }
     const settings = {
       ...presets,
-      ...input.settings,
-      ...(input.settings ? { currency: input.settings.defaultCurrency, baseCurrency: input.settings.defaultCurrency } : {}),
-      taxRate: input.momsRegistered ? input.settings?.taxRate ?? 25 : 0,
       // Preserve the book re-read under the lock, including a concurrently created row.
       invoicePrefix: existing.invoicePrefix,
       invoiceNextNum: Math.max(existing.invoiceNextNum, input.invoiceNextNum),
