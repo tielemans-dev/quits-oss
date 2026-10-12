@@ -1,5 +1,4 @@
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
-import { issuedInvoiceSettlement } from "../../domain/documents/issued-settlement"
 import { vatRowsByRate } from "../../domain/documents/frozen-vat-groups"
 import { payableRoundingOf } from "../../domain/documents/vat-summary"
 import { createServerFn } from "@tanstack/react-start"
@@ -79,20 +78,19 @@ export function serializePublicInvoiceSession(session: {
   stripeEnabled: boolean
 }, token: string) {
   const { invoice } = session
+  const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
+  // Same source as the invoice email and Stripe checkout (issuedInvoiceSettlement): the issue-time
+  // gross minus this invoice's payments and credits; the row gross only for invoices issued
+  // before snapshots. Kept Prisma-free because this module is bundled for the browser.
+  const totalGross = frozen ? Number(frozen.totals.gross) : toNumber(invoice.totalGross)
   const amountPaid = toNumber(invoice.amountPaid)
   const amountCredited = toNumber(invoice.amountCredited)
-  // Same source as the invoice email and Stripe checkout: the issue-time gross minus this
-  // invoice's payments and credits; the row gross only for invoices issued before snapshots.
-  const settlement = issuedInvoiceSettlement({
-    issuanceSnapshot: invoice.issuanceSnapshot,
-    totalGross: toNumber(invoice.totalGross),
-    amountPaid,
-    amountCredited,
-  })
-  const totalGross = settlement.totalGross.toNumber()
-  const balanceDue = session.paymentState === "paid" ? 0 : settlement.balanceDue.toNumber()
+  const payable = Math.max(Math.round((totalGross - amountCredited) * 100) / 100, 0)
+  const balanceDue =
+    session.paymentState === "paid"
+      ? 0
+      : Math.max(Math.round((payable - amountPaid) * 100) / 100, 0)
 
-  const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
   const sellerSnapshot = frozen?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot)
   const presentation = resolvePublicPresentation({
     document: { locale: invoice.locale, timezone: invoice.timezone, sellerSnapshot },

@@ -5,6 +5,7 @@ import { createContact } from "../../domain/commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../../domain/commands/invoices"
 
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
+import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../db"
 import { signInvoicePaymentToken } from "../payments/public"
 import { resolvePublicInvoiceCheckout } from "../payments/public-checkout"
@@ -72,10 +73,11 @@ describeIfDatabase("public invoice checkout amount precision", () => {
     )
     if (sent.status !== "completed") throw new Error("send failed")
     // New JPY documents are priced in whole yen; fractional totals only exist on invoices created
-    // before that, so set the total directly to cover them.
+    // before that (and before issue-time snapshots), so set the total directly and drop the
+    // snapshot to cover them.
     const invoice = await prisma.invoice.update({
       where: { id: draft.result.id },
-      data: { publicPaymentIssuedAt: new Date(), subtotalNet: unitPrice, totalGross: unitPrice },
+      data: { publicPaymentIssuedAt: new Date(), subtotalNet: unitPrice, totalGross: unitPrice, issuanceSnapshot: Prisma.DbNull },
     })
     return signInvoicePaymentToken(
       { invoiceId: invoice.id, keyVersion: invoice.publicPaymentKeyVersion, scope: "invoice_payment" },
