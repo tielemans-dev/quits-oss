@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import fixture from "../../events/__tests__/fixtures/invoice.issued.v1.json"
-import { issuedInvoiceSettlement } from "../issued-settlement"
+import { issuedInvoiceSettlement, issuedInvoiceTotals } from "../issued-settlement"
 import { issuedSeller } from "../issued-invoice"
 
 const issued = {
@@ -39,5 +39,17 @@ describe("issued invoice payment facts", () => {
     })
     expect(seller?.bankAccount).toBeUndefined()
     expect(seller?.paymentNote).toBeUndefined()
+  })
+
+  it("agrees across list, detail and payment instructions when the snapshot differs from the row", () => {
+    const row = { issuanceSnapshot: issued, subtotalNet: 8000, totalTax: 1999, totalGross: 9999, amountPaid: 500, amountCredited: 250 }
+    const totals = issuedInvoiceTotals(row)
+    const settlement = issuedInvoiceSettlement(row)
+    expect(totals.total).toBe(2500)
+    expect(totals.subtotal).toBe(Number(issued.totals.net))
+    expect(totals.taxAmount).toBe(Number(issued.totals.tax))
+    expect(settlement.totalGross.toNumber()).toBe(totals.total)
+    expect(settlement.balanceDue.toNumber()).toBe(1750)
+    expect(issuedInvoiceTotals({ ...row, issuanceSnapshot: null })).toEqual({ subtotal: 8000, taxAmount: 1999, total: 9999 })
   })
 })

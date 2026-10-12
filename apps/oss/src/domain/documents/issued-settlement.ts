@@ -27,3 +27,19 @@ export function issuedInvoiceSettlement(input: {
     amountCredited: settlementAmount(input.amountCredited),
   })
 }
+
+/** Net, tax, and gross as plain numbers: the issue-time snapshot when it parses, the row otherwise. */
+export function issuedInvoiceTotals(input: {
+  issuanceSnapshot?: unknown
+  subtotalNet: Amount
+  totalTax: Amount
+  totalGross: Amount
+}) {
+  const frozen = issuedInvoiceSnapshot(input.issuanceSnapshot)
+  const num = (value: Amount) => new Prisma.Decimal(settlementAmount(value)).toNumber()
+  return {
+    subtotal: num(frozen ? frozen.totals.net : input.subtotalNet),
+    taxAmount: num(frozen ? frozen.totals.tax : input.totalTax),
+    total: num(frozen ? frozen.totals.gross : input.totalGross),
+  }
+}

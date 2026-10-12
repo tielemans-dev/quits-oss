@@ -31,7 +31,7 @@ import {
 import { markInvoicePaid, undoInvoiceMarkPaid } from "../../domain/commands/paid-moment"
 import { invoicePaidMomentResultSchema } from "@quits/contracts/invoices"
 import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
-import { issuedInvoiceSettlement } from "../../domain/documents/issued-settlement"
+import { issuedInvoiceSettlement, issuedInvoiceTotals } from "../../domain/documents/issued-settlement"
 import { executeCommand } from "../../domain/execute"
 import { markOrganizationInvoicesOverdue } from "../../domain/features/overdue"
 import { router, authorizedProcedure } from "../init"
@@ -66,6 +66,7 @@ function mapInvoiceItemForUi(
 
 function serializeInvoiceForUi<
   Invoice extends {
+    issuanceSnapshot?: unknown
     subtotalNet: { toNumber: () => number }
     totalTax: { toNumber: () => number }
     totalGross: { toNumber: () => number }
@@ -77,9 +78,7 @@ function serializeInvoiceForUi<
   return {
     ...sanitizeDocumentEmailAttempt(invoice),
     ...documentDisplayForUi(invoice),
-    subtotal: invoice.subtotalNet.toNumber(),
-    taxAmount: invoice.totalTax.toNumber(),
-    total: invoice.totalGross.toNumber(),
+    ...issuedInvoiceTotals(invoice),
     items: invoice.items.map((item) => ({ ...item, ...mapInvoiceItemForUi(item, invoice) })),
   }
 }
@@ -140,9 +139,7 @@ export const invoicesRouter = router({
 
       return invoices.map((inv) => ({
         ...sanitizeDocumentEmailAttempt(inv),
-        subtotal: inv.subtotalNet.toNumber(),
-        taxAmount: inv.totalTax.toNumber(),
-        total: inv.totalGross.toNumber(),
+        ...issuedInvoiceTotals(inv),
         ...settlementForUi(inv),
         publicPaymentUrl: getPublicInvoicePaymentUrl(inv),
       }))
@@ -168,9 +165,7 @@ export const invoicesRouter = router({
             ? await previewNextDocumentNumber(ctx.organizationId, "invoice")
             : null,
         agreementTaxRate: invoice.agreement?.taxRateInput ?? invoice.agreement?.taxRate.toString() ?? null,
-        subtotal: invoice.subtotalNet.toNumber(),
-        taxAmount: invoice.totalTax.toNumber(),
-        total: invoice.totalGross.toNumber(),
+        ...issuedInvoiceTotals(invoice),
         ...settlementForUi(invoice),
         publicPaymentUrl: getPublicInvoicePaymentUrl(invoice),
         ...documentDisplayForUi(invoice),
