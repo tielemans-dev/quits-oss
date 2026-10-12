@@ -233,14 +233,14 @@ export const onboardingRouter = router({
     return DANISH_ONBOARDING_V2_DEFAULTS
   }),
   confirmV2: authorizedProcedure("settings:update")
-    .input({ parse(value: unknown) {
+    .input(z.preprocess<z.output<typeof confirmOnboardingV2Schema>, typeof confirmOnboardingV2Schema, z.input<typeof confirmOnboardingV2Schema>>((value) => {
       const result = confirmOnboardingV2Schema.safeParse(value)
       if (!result.success) {
         const key = result.error.issues.some(issue => issue.path[0] === "cvr") ? "cvr.invalid" : "save.failed"
         throw new TRPCError({ code: "BAD_REQUEST", message: key })
       }
       return result.data
-    } })
+    }, confirmOnboardingV2Schema))
     .mutation(({ ctx, input }) => {
       assertOnboardingV2Enabled()
       if (input.catalogSuggestions.length && !actorCan(ctx.actor, "catalog:create")) {

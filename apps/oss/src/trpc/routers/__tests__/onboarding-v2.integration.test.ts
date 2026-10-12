@@ -217,7 +217,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   it.each(["saveDraft", "complete", "completeManual"].flatMap(mutation => [false, true].map(existing => [mutation, existing] as const)))("serializes %s behind v2 with existing settings %s and preserves identifiers", async (mutation, existing) => {
     const id = await organization()
     const api = await caller(id)
-    if (existing) await api.onboarding.saveDraft({ companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
+    if (existing) await api.onboarding.saveDraft({ primaryTaxId: null, companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
     let entered!: () => void
     let release!: () => void
@@ -310,7 +310,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   it("serializes confirmation behind a legacy completion without resetting the legacy receipt", async () => {
     const id = await organization()
     const api = await caller(id)
-    await api.onboarding.saveDraft({ companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
+    await api.onboarding.saveDraft({ primaryTaxId: null, companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
     let entered!: () => void
     let release!: () => void
