@@ -121,8 +121,10 @@ export function validateEinvoice(document: EinvoiceDocument): EinvoiceMissingFie
   if (!seller.name?.trim()) missing.push("seller.name")
   if (!seller.countryCode) missing.push("seller.country")
   if (!seller.street && !seller.city) missing.push("seller.address")
-  const nonVatSeller = seller.momsRegistered === false &&
-    document.lines.every(line => toDecimal(line.taxRate).isZero())
+  // BR-Z-02/BR-E-02 still require a tax identifier for zero-rated/exempt sales.
+  // Only frozen category O sales permit omission, never infer it from a zero rate.
+  const nonVatSeller = seller.momsRegistered === false && document.calculationVersion === "v2" &&
+    (document.frozenGroups?.length ?? 0) > 0 && document.frozenGroups?.every(group => group.treatment === "out_of_scope")
   if (!seller.vatId && !nonVatSeller) missing.push("seller.taxId")
   // National rules such as DK-R-002 and DK-R-014 require the national registration number.
   const registration = findCountryModule(seller.countryCode)?.nationalRegistration
