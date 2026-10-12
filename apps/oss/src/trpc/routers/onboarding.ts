@@ -246,7 +246,7 @@ export const onboardingRouter = router({
       if (input.catalogSuggestions.length && !actorCan(ctx.actor, "catalog:create")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Your role does not allow catalog:create" })
       }
-      return confirmOnboardingV2(ctx.organizationId, input, ctx.user.email)
+      return confirmOnboardingV2(ctx.organizationId, input, ctx.user.email, { organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request })
     }),
 
   getStatus: authorizedProcedure("settings:read").query(async ({ ctx }) => {

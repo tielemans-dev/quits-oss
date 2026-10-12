@@ -199,6 +199,9 @@ function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [taxRateInput, setTaxRateInput] = useState("")
+  const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
+  const [withdrawSellerVatEvidence, setWithdrawSellerVatEvidence] = useState(false)
+  const [sellerVatConfirmationEnabled, setSellerVatConfirmationEnabled] = useState(false)
   const [momsRegistered, setMomsRegistered] = useState<boolean | null>(null)
   const [countryCode, setCountryCode] = useState("US")
   const [locale, setLocale] = useState("en-US")
@@ -318,12 +321,15 @@ function SettingsPage() {
   useEffect(() => {
     trpc.runtime.capabilities
       .query()
-      .then((data) =>
+      .then((data) => {
         setAiCapabilities((data as Pick<RuntimeCapabilities, "aiInvoiceDraft">).aiInvoiceDraft)
-      )
+        setSellerVatConfirmationEnabled(data.sellerVatConfirmation?.enabled === true)
+      })
       .catch(() => {})
       .finally(() => setLoadingAiCapabilities(false))
   }, [])
+
+  useEffect(() => { setSellerVatChoice(null); setWithdrawSellerVatEvidence(false) }, [countryCode, taxRegime])
 
   // Only providers the server's runtime capabilities allow are offered.
   const aiProviderOptions: Array<{ value: AiProviderId; label: string }> = aiCapabilities?.enabled
@@ -479,6 +485,9 @@ function SettingsPage() {
     }
 
     try {
+      const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (sellerVatChoice !== null || withdrawSellerVatEvidence)
+        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim() })).token
+        : undefined
       const savedSettings = await trpc.settings.update.mutate({
         countryCode,
         locale,
@@ -491,7 +500,8 @@ function SettingsPage() {
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
-        momsRegistered,
+        momsRegistered: sellerVatConfirmationEnabled ? withdrawSellerVatEvidence ? null : sellerVatChoice ?? undefined : momsRegistered,
+        sellerVatConfirmationToken,
         companyName: companyNameInput || undefined,
         companyAddress: companyAddressInput || undefined,
         companyEmail: companyEmailInput || undefined,
@@ -518,6 +528,8 @@ function SettingsPage() {
       })
       setTaxRateInput(savedSettings.taxRate == null ? "" : String(savedSettings.taxRate))
       setMomsRegistered(savedSettings.momsRegistered)
+      setSellerVatChoice(null)
+      setWithdrawSellerVatEvidence(false)
       setTimezone(timezoneInput)
       const savedBaseUrl = aiProvider === "openai_compatible" ? aiBaseUrlInput || null : settings?.aiBaseUrl ?? null
       // The server drops the saved key when the provider or endpoint changes without a new key.
@@ -806,8 +818,10 @@ function SettingsPage() {
               </div>
             </div>
 
-            {normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
-              <SellerVatStatus value={momsRegistered} onChange={setMomsRegistered} disabled={saving} />
+            {sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
+              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus value={sellerVatChoice} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+                <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>
+              </div>
             ) : null}
 
             <div className="grid gap-2">

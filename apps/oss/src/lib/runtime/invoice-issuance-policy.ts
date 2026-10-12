@@ -9,6 +9,8 @@ export type InvoiceIssuancePolicy = {
   standardVatRate?: string
   /** Require an explicit choice, including when standardVatRate is not restricted. */
   requireSellerVatStatus?: boolean
+  /** Identity-bound evidence; unset always refuses, including for a non-registered snapshot. */
+  sellerVatStatus?: "registered" | "not_registered" | "unset"
   requireCvr?: boolean
   requireBusinessBuyer?: boolean
   requireIdentity?: boolean

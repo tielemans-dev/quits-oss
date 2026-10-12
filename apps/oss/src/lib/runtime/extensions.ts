@@ -1,3 +1,5 @@
+import type { SellerVatConfirmationService } from "./seller-vat-confirmation"
+export type { SellerVatConfirmationService, SellerVatConfirmationActor, SellerVatConfirmationTransaction } from "./seller-vat-confirmation"
 import type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
 export type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
 import type {
@@ -9,6 +11,7 @@ import { getRuntimeEnv, getRuntimePlatform } from "./platform"
 
 export type RuntimeExtension = {
   id: string
+  sellerVatConfirmation?: SellerVatConfirmationService
   resolveInvoiceIssuancePolicy?: (context: InvoiceIssuancePolicyContext) => InvoiceIssuancePolicy | undefined | Promise<InvoiceIssuancePolicy | undefined>
   resolveCapabilities?: (
     baseCapabilities: Readonly<RuntimeCapabilities>
@@ -27,6 +30,7 @@ function mergeCapabilities(
   }
 
   return {
+    sellerVatConfirmation: { enabled: base.sellerVatConfirmation?.enabled ?? false, ...patch.sellerVatConfirmation },
     documents: { ...base.documents, ...patch.documents },
     agreements: { ...base.agreements, ...patch.agreements },
     aiInvoiceDraft: {
@@ -77,6 +81,7 @@ function readDefaultCapabilities(
 
   return {
     onboardingV2: { enabled: false, nonVatEnabled: false },
+    sellerVatConfirmation: { enabled: false },
     documents: { artifactsRequired: true },
     agreements: { depositsEnabled: readBooleanEnv(readProductEnv(env, "DEPOSITS_ENABLED"), true) },
     aiInvoiceDraft: {
@@ -152,6 +157,7 @@ export function getRuntimeCapabilities(
     enabled: isHostedRuntime(env) && capabilities.onboardingV2?.enabled === true,
     nonVatEnabled: isHostedRuntime(env) && capabilities.onboardingV2?.nonVatEnabled === true,
   }
+  capabilities.sellerVatConfirmation = { enabled: isHostedRuntime(env) && capabilities.sellerVatConfirmation?.enabled === true }
   // Issuance artifacts are a release invariant; runtime extensions cannot opt out.
   capabilities.documents.artifactsRequired = true
   return capabilities

@@ -26,6 +26,7 @@ import { Label } from '../../components/ui/label'
 import { useI18n } from '../../lib/i18n/react'
 import { countryOptionsIncluding, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
+import { CompanyReview } from "../../components/onboarding/company-review"
 import { AiAssistantPanel } from '../../components/onboarding/ai-assistant-panel'
 
 export const Route = createFileRoute('/_app/onboarding')({
@@ -128,7 +129,7 @@ function OnboardingPage() {
   const [method, setMethod] = useState<CloudOnboardingMethod>('manual')
   const [missingFields, setMissingFields] = useState<OnboardingMissingField[]>([])
   const [runtimeCapabilities, setRuntimeCapabilities] = useState<
-    Pick<RuntimeCapabilities, 'onboardingAi'> | null
+    Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'> | null
   >(null)
   const [values, setValues] = useState<CloudOnboardingValues>(
     DEFAULT_CLOUD_ONBOARDING_VALUES
@@ -267,7 +268,7 @@ function OnboardingPage() {
       .then((capabilities) => {
         if (!cancelled) {
           setRuntimeCapabilities(
-            capabilities as Pick<RuntimeCapabilities, 'onboardingAi'>
+            capabilities as Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'>
           )
         }
       })
@@ -562,6 +563,10 @@ function OnboardingPage() {
         </Card>
       </div>
     )
+  }
+
+  if (runtimeCapabilities?.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled) {
+    return <div className="mx-auto w-full max-w-xl p-6"><CompanyReview confirmationEnabled onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
   }
 
   return (

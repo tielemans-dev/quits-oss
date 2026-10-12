@@ -1,3 +1,4 @@
+import { confirmSellerVatStatus } from "../../lib/runtime/seller-vat-confirmation"
 import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { InvalidState } from "../../domain/errors"
 import { isUniqueViolation } from "../../domain/execute"
@@ -116,6 +117,7 @@ export const settingsUpdateSchema = z.object({
   currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   momsRegistered: z.boolean().nullable().optional(),
   paymentTermsDays: z.number().int().min(0).max(3650).optional(),
+  sellerVatConfirmationToken: z.string().max(2048).optional(),
   taxRate: z.number().min(0).max(100).nullable().optional(),
   companyName: z.string().trim().max(120).optional(),
   companyAddress: z.string().trim().max(240).optional(),
@@ -297,6 +299,7 @@ export const settingsRouter = router({
     .input(settingsUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       const {
+        sellerVatConfirmationToken,
         primaryTaxId,
         primaryTaxIdScheme,
         aiApiKey,
@@ -438,6 +441,7 @@ export const settingsRouter = router({
           }
         }
 
+        await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken })
         return settings
       })
     }),

@@ -52,6 +52,13 @@ describe("optional invoice issuance policy", () => {
     expect(invoicePolicyIssues({ ...zero, currency: "USD" }, policy).length).toBeGreaterThan(0)
     expect(invoicePolicyIssues({ ...zero, buyerSnapshot: { ...document.buyerSnapshot, country: "SE" } }, policy).length).toBeGreaterThan(0)
   })
+  it.each([true, false, null])("refuses missing identity-bound evidence even when the snapshot registration is %s", momsRegistered => {
+    expect(invoicePolicyIssues({ ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered } }, { sellerVatStatus: "unset" }).length).toBeGreaterThan(0)
+  })
+  it.each([["registered", true], ["not_registered", false]] as const)("matches identity-bound %s evidence only to snapshot %s", (sellerVatStatus, registered) => {
+    expect(invoicePolicyIssues({ ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered: registered } }, { sellerVatStatus })).toEqual([])
+    expect(invoicePolicyIssues({ ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered: !registered } }, { sellerVatStatus }).length).toBeGreaterThan(0)
+  })
   it.each([true, false])("enforces explicit adopter confirmation %s in both directions without rate restrictions", confirmation => {
     for (const status of [true, false, null, undefined]) {
       const issues = invoicePolicyIssues({ ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered: status } }, { sellerVatRegistered: confirmation })

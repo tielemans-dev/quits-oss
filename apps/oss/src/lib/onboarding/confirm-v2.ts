@@ -1,3 +1,4 @@
+import { confirmSellerVatStatus, getSellerVatConfirmationService, type SellerVatConfirmationActor } from "../runtime/seller-vat-confirmation"
 import { TRPCError } from "@trpc/server"
 import { onboardingV2ConfirmationResultSchema, type ConfirmOnboardingV2 } from "@quits/contracts/onboarding"
 import { billingProvider } from "../billing"
@@ -7,7 +8,8 @@ import { buildDkPresets } from "./dk-presets"
 import { hasIssuedDocuments } from "../../domain/documents/base-currency"
 
 /** One final save. The organization lock also serializes confirms before a settings row exists. */
-export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string) {
+export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string, actor?: SellerVatConfirmationActor) {
+  if (getSellerVatConfirmationService() && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
   // Client-supplied protection metadata cannot attest to a trusted registry lookup.
   // Until a server lookup supplies that trust, scrub all registry-sourced contacts.
   input = { ...input, reklamebeskyttet: input.source === "cvr" || input.reklamebeskyttet === true }
@@ -66,6 +68,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
       { organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true },
       ...(input.vatId ? [{ organizationId, scheme: "vat", value: input.vatId, countryCode: "DK", isPrimary: false }] : []),
     ] })
+    if (actor) await confirmSellerVatStatus({ ...actor, tx, registered: input.momsRegistered, token: input.sellerVatConfirmationToken })
     if (input.catalogSuggestions.length) {
       await tx.catalogItem.createMany({ data: input.catalogSuggestions.map(item => ({
         organizationId, name: item.name, description: item.description ?? null, defaultUnitPrice: item.defaultUnitPrice,

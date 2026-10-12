@@ -47,6 +47,7 @@ export const runtimeCapabilitiesSchema = z
     aiInvoiceDraft: aiInvoiceDraftCapabilitiesSchema,
     onboardingAi: onboardingAiCapabilitiesSchema,
     onboardingV2: z.object({ enabled: z.boolean(), nonVatEnabled: z.boolean().optional() }).strict().optional(),
+    sellerVatConfirmation: z.object({ enabled: z.boolean() }).strict().default({ enabled: false }),
     payments: paymentsCapabilitiesSchema,
     emailDelivery: emailDeliveryCapabilitiesSchema,
   })
@@ -59,6 +60,7 @@ export const runtimeCapabilityPatchSchema = z
     aiInvoiceDraft: aiInvoiceDraftCapabilitiesSchema.partial().optional(),
     onboardingAi: onboardingAiCapabilitiesSchema.partial().optional(),
     onboardingV2: z.object({ enabled: z.boolean().optional(), nonVatEnabled: z.boolean().optional() }).strict().optional(),
+    sellerVatConfirmation: z.object({ enabled: z.boolean().optional() }).strict().optional(),
     payments: paymentsCapabilitiesSchema.partial().optional(),
     emailDelivery: emailDeliveryCapabilitiesSchema.partial().optional(),
   })

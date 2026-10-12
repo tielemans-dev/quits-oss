@@ -33,6 +33,7 @@ export const confirmOnboardingV2Schema = z.object({
   cvr: z.string().trim().refine(isValidDanishCvr, "cvr.invalid"),
   companyForm: z.string().trim().min(1).max(80),
   momsRegistered: z.boolean(),
+  sellerVatConfirmationToken: z.string().max(2048).optional(),
   vatId: z.string().trim().regex(/^DK\d{8}$/).optional(),
   // Informational client metadata only. Registry contacts are scrubbed server-side.
   reklamebeskyttet: z.boolean().optional(),
