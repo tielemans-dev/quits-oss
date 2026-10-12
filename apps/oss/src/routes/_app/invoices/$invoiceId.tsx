@@ -1,3 +1,5 @@
+import { nonVatStatement } from "../../../lib/documents/non-vat-note"
+import { sellerVatLineText } from "../../../lib/documents/seller-vat"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -145,6 +147,7 @@ type Invoice = {
   contact: Contact
   items: InvoiceItem[]
   pricesIncludeTax?: boolean
+  momsRegistered?: boolean | null
   priceBasis?: PriceBasis
   vatRows?: VatRow[]
   rounding?: string
@@ -1075,7 +1078,7 @@ function InvoiceDetailPage() {
                 <TableBody>
                   {invoice.items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>{item.description}</TableCell>
+                      <TableCell>{item.description}{sellerVatLineText(invoice.momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(invoice.momsRegistered, item.taxRate, locale)}</p>}</TableCell>
                       <TableCell className="text-right num">{item.quantity}</TableCell>
                       <TableCell className="text-right num">
                         {formatCurrency(item.displayUnitPrice ?? item.unitPrice, invoice.currency, locale)}
@@ -1088,6 +1091,8 @@ function InvoiceDetailPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {invoice.momsRegistered === false && <p className="text-sm text-muted-foreground">{nonVatStatement(locale)}</p>}
 
             {/* Totals */}
             <div className="flex justify-end">

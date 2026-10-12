@@ -1,3 +1,4 @@
+import { SellerVatStatus } from "../../components/seller-vat-status"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { trpc } from "../../trpc/client"
@@ -122,6 +123,7 @@ type SettingsData = {
   pricesIncludeTax: boolean
   currency: string
   taxRate: number | null
+  momsRegistered?: boolean | null
   companyName: string | null
   companyAddress: string | null
   companyEmail: string | null
@@ -195,6 +197,7 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [momsRegistered, setMomsRegistered] = useState<boolean | null>(null)
   const [countryCode, setCountryCode] = useState("US")
   const [locale, setLocale] = useState("en-US")
   const [timezone, setTimezone] = useState("UTC")
@@ -273,6 +276,7 @@ function SettingsPage() {
         setInvoicingIdentity(
           nextSettings.onboardingInvoicingIdentity ?? "registered_business"
         )
+        setMomsRegistered(nextSettings.momsRegistered ?? null)
         setTaxRegime(nextSettings.taxRegime)
         setPricesIncludeTax(nextSettings.pricesIncludeTax)
         setPrimaryTaxId(nextSettings.primaryTaxId ?? "")
@@ -484,6 +488,7 @@ function SettingsPage() {
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
+        momsRegistered,
         companyName: companyNameInput || undefined,
         companyAddress: companyAddressInput || undefined,
         companyEmail: companyEmailInput || undefined,
@@ -795,6 +800,8 @@ function SettingsPage() {
                 />
               </div>
             </div>
+
+            <SellerVatStatus value={momsRegistered} onChange={setMomsRegistered} disabled={saving} />
 
             <div className="grid gap-2">
               <Label htmlFor="companyLogoUrl">{t("settings.companyLogo.label")}</Label>

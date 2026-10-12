@@ -328,12 +328,12 @@ export const sendQuote = defineCommand({
         return yield* new InvalidState({ message: "Only draft quotes can be sent", code: "not_draft" })
       }
       yield* refuseWhileSending("quote", found)
+      const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       // The number is taken here, in the issuing transaction: if any later check fails, the
       // transaction rolls back and the number goes back with it.
-      const quote = { ...found, number: yield* numberForIssuance("quote", found) }
+      const quote = { ...found, sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds), number: yield* numberForIssuance("quote", found) }
       yield* requireVatIssuance(quote)
 
-      const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
       const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(quote))
       if (compliance.blocking.length > 0) {
         return yield* new InvalidState({

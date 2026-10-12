@@ -75,6 +75,7 @@ async function createInvoiceFixture(options?: {
       baseCurrency: "DKK",
       currency: "DKK",
       taxRegime: "eu_vat",
+      momsRegistered: true,
       pricesIncludeTax: false,
       companyName: "Acme",
       companyEmail: "billing@acme.com",

@@ -59,6 +59,7 @@ export async function createTestOrganization(
   options: {
     roles?: Role[]
     settings?: Partial<{
+      momsRegistered: boolean | null
       countryCode: string
       locale: string
       timezone: string
@@ -86,6 +87,7 @@ export async function createTestOrganization(
   await prisma.orgSettings.create({
     data: {
       organizationId,
+      momsRegistered: settings.momsRegistered === undefined ? true : settings.momsRegistered,
       countryCode: settings.countryCode ?? "US",
       locale: settings.locale ?? "en-US",
       timezone: settings.timezone ?? "UTC",

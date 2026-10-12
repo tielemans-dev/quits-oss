@@ -1,3 +1,5 @@
+import { nonVatStatement } from "./documents/non-vat-note"
+import { sellerVatLineText } from "./documents/seller-vat"
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
 import { buyerAddress, invoiceTaxIds } from "./documents/invoice-identity"
 import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
@@ -144,15 +146,16 @@ export function t(
 
 /** Item unit prices and totals are the stored amounts on the document's price basis, named in the headers. */
 export function itemsTable(
-  items: { description: string; quantity: number; unitPrice: number; total: number }[],
+  items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[],
   currency: string,
   locale?: string | null,
-  basis?: PriceBasis
+  basis?: PriceBasis,
+  momsRegistered?: boolean | null
 ) {
   const columns = lineColumnKeys(basis)
   const rows = items.map((item) => `
     <tr>
-      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};">${escapeHtml(item.description)}</td>
+      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};">${escapeHtml(item.description)}${sellerVatLineText(momsRegistered, item.taxRate, locale) ? `<div style="font-size:12px;color:${C.muted};">${escapeHtml(sellerVatLineText(momsRegistered, item.taxRate, locale)!)}</div>` : ""}</td>
       <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${item.quantity}</td>
       <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.unitPrice, currency, locale)}</td>
       <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.total, currency, locale)}</td>
@@ -267,13 +270,14 @@ export type SendInvoiceEmailParams = {
     taxAmount: number
     total: number
     currency: string
+    momsRegistered?: boolean | null
     notes?: string | null
     /** The basis `items` state their amounts on. Absent, the headers stay plain. */
     priceBasis?: PriceBasis
     /** VAT by rate and the rounding between net plus tax and the total; absent, the single tax amount is printed. */
     vatRows?: VatRow[]
     rounding?: string
-    items: { description: string; quantity: number; unitPrice: number; total: number }[]
+    items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[]
   }
   org: {
     companyName?: string | null
@@ -323,10 +327,11 @@ export function buildInvoiceEmailContent({
     </div>
 
     ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[invoice.buyer.company, ...buyerAddress(invoice.buyer)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
-    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis)}
+    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, invoice.momsRegistered)}
     ${totalsBlock(invoice, locale)}
 
     ${invoice.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
+    ${invoice.momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
     ${publicPaymentUrl
       ? actionBlock({
           href: publicPaymentUrl,

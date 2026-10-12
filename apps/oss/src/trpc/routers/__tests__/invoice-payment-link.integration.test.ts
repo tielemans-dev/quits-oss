@@ -55,6 +55,7 @@ describeIfDatabase("invoice payment links", () => {
           baseCurrency: "DKK",
           currency: "DKK",
           taxRegime: "eu_vat",
+          momsRegistered: true,
           pricesIncludeTax: false,
           invoicePrefix: "INVLNK",
           quotePrefix: "QTELNK",

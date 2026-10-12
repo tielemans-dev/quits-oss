@@ -99,6 +99,7 @@ export async function runInvoiceQuoteSmokeFlow(
         baseCurrency: config.currency,
         currency: config.currency,
         taxRegime: config.taxRegime,
+        ...(config.taxRegime === "eu_vat" ? { momsRegistered: true } : {}),
         pricesIncludeTax: config.pricesIncludeTax,
         invoicePrefix: "INVSMK",
         quotePrefix: "QTSMK",

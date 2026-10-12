@@ -1,3 +1,5 @@
+import { nonVatStatement } from "../../lib/documents/non-vat-note"
+import { sellerVatLineText } from "../../lib/documents/seller-vat"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { buildPaymentDetailsBlock } from "../../lib/payment-details-block"
 import type { SellerSnapshot, BuyerSnapshot } from "@quits/contracts/documents"
@@ -20,6 +22,7 @@ type PublicInvoiceContact = {
 }
 
 type PublicInvoiceItem = {
+  taxRate?: number
   id: string
   description: string
   quantity: Decimalish
@@ -191,6 +194,7 @@ function PublicInvoiceDocument({
                             price: money(toNumber(item.unitPriceNet ?? item.unitPriceGross)),
                           })}
                         </p>
+                        {sellerVatLineText(invoice.sellerSnapshot?.momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(invoice.sellerSnapshot?.momsRegistered, item.taxRate, locale)}</p>}
                         {item.unitPriceNet !== undefined ? <p className="text-xs text-muted-foreground">{t("pdf.unitPriceNet")}</p> : null}
                       </div>
                       <div className="text-right tabular-nums"><p className="font-medium">{money(toNumber(item.lineNet ?? item.lineGross))}</p>
@@ -255,6 +259,8 @@ function PublicInvoiceDocument({
               ) : null}
               </dl>
             </div>
+
+            {invoice.sellerSnapshot?.momsRegistered === false && <p className="text-sm text-muted-foreground">{nonVatStatement(locale)}</p>}
 
             {paymentState === "unpaid" && balanceDue > 0 && paymentDetails ? (
               <section className="grid min-w-0 gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>

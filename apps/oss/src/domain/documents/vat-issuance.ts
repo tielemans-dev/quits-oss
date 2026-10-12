@@ -2,10 +2,12 @@ import { Effect } from "effect"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { validateVatIssuance, percentageToFraction, assertStoredDocumentEquation } from "@quits/shared/pricing"
 import { isVatNumberScheme } from "../../lib/compliance"
+import { toDecimal } from "../../lib/exports/format"
 import { InvalidState } from "../errors"
 
 /** Shared by issuance entry commands. Resends and issued-document operations never reprice. */
 export function requireVatIssuance(document: {
+  taxRegime?: string
   currency: string
   pricesIncludeTax: boolean
   subtotalNet: { toString(): string }
@@ -27,7 +29,15 @@ export function requireVatIssuance(document: {
 }) {
   const seller = parseSellerSnapshot(document.sellerSnapshot)
   const buyer = parseBuyerSnapshot(document.buyerSnapshot)
+  if (document.taxRegime === "eu_vat" && seller?.momsRegistered == null)
+    return Effect.fail(new InvalidState({ code: "seller_vat_status_unset", message: "Choose whether the seller is VAT-registered in company settings before sending." }))
+  if (seller?.momsRegistered === false && document.items.some(item =>
+    !toDecimal(item.taxRate.toString()).isZero() ||
+    (item.vatRateInput !== null && !toDecimal(item.vatRateInput).isZero()) ||
+    !toDecimal(item.lineTax.toString()).isZero()))
+    return Effect.fail(new InvalidState({ code: "seller_not_vat_registered", message: "A seller who is not VAT-registered cannot send an invoice with VAT. Set every line to 0% before sending." }))
   const issues = validateVatIssuance({
+    momsRegistered: seller?.momsRegistered,
     lines: document.items.map((item) => ({
       treatment: item.vatTreatment,
       reasonCode: item.vatReasonCode,

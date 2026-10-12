@@ -69,6 +69,7 @@ async function createQuoteFixture(options?: {
       defaultCurrency: "DKK",
       currency: "DKK",
       taxRegime: "eu_vat",
+      momsRegistered: true,
       pricesIncludeTax: false,
       companyName: "Acme",
       companyEmail: "billing@acme.com",

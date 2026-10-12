@@ -36,7 +36,7 @@ import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { asIssued, numberForIssuance, numberVoidedByDraftDeletion, documentRef } from "../documents/numbering"
 import { requireDraftCurrency } from "../documents/currency"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
-import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, withSellerVatStatus, buyerContactSelect } from "../documents/snapshots"
 import { requireVatIssuance } from "../documents/vat-issuance"
 import { draftVatEvidenceSchema } from "@quits/contracts/vat"
 import { InvalidState, NotFound } from "../errors"
@@ -326,7 +326,7 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
         action === "send"
           ? `Send ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name}`
           : `Email ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name} again`,
-      version: `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}`,
+      version: `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds, momsRegistered: settings.momsRegistered, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}`,
       details: {
         disputed: String(invoice.disputed),
         acknowledgeDisputed: String(acknowledgeDisputed),
@@ -377,7 +377,7 @@ export const sendInvoice = defineCommand({
       yield* requireDepositInvoiceEnabled(found)
       yield* refuseWhileSending("invoice", found)
       const { settings, sellerTaxIds } = yield* loadDocumentContext
-      const seller = (found.agreementId || found.quoteId) ? parseSellerSnapshot(found.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds)
+      const seller = withSellerVatStatus((found.agreementId || found.quoteId) ? parseSellerSnapshot(found.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds), settings)
       const buyer = (found.agreementId || found.quoteId) ? parseBuyerSnapshot(found.buyerSnapshot) : buildBuyerSnapshot(found.contact)
       const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate }
       yield* requireInvoiceIssuancePolicy(organizationId, effective)

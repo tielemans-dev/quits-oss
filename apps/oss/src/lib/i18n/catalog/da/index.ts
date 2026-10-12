@@ -1,3 +1,4 @@
+import { daSellerVatMessages } from "./seller-vat"
 import { daAgreementsMessages } from "./agreements"
 import { daPaymentDetailsMessages } from "./payment-details"
 import { daPaymentsMessages } from "./payments"
@@ -28,6 +29,7 @@ import { daUiMessages } from "./ui"
 import { daUserMessages } from "./user"
 
 export const daCatalog = {
+  ...daSellerVatMessages,
   ...daAgreementsMessages,
   ...daPaymentDetailsMessages,
   ...daPaymentsMessages,

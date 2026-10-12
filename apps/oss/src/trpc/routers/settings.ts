@@ -117,6 +117,7 @@ export const settingsUpdateSchema = z.object({
   momsRegistered: z.boolean().nullable().optional(),
   paymentTermsDays: z.number().int().min(0).max(3650).optional(),
   taxRate: z.number().min(0).max(100).nullable().optional(),
+  momsRegistered: z.boolean().nullable().optional(),
   companyName: z.string().trim().max(120).optional(),
   companyAddress: z.string().trim().max(240).optional(),
   companyEmail: z.string().trim().email().optional(),
@@ -385,6 +386,7 @@ export const settingsRouter = router({
 
         const settingsUpdateData = {
           ...settingsInput,
+          ...(settingsInput.momsRegistered === false ? { taxRate: 0 } : {}),
           baseCurrency,
           ...(aiBaseUrl !== undefined ? { aiBaseUrl: aiBaseUrl || null } : {}),
           ...(aiApiKey ? { aiApiKeyEnc: encryptSecret(aiApiKey) } : {}),

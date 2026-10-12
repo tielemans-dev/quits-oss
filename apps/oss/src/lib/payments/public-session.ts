@@ -66,6 +66,7 @@ export function serializePublicInvoiceSession(session: {
     items: Array<{
       id: string
       description: string
+      taxRate?: Decimalish
       quantity: Decimalish
       unitPriceNet?: Decimalish
       lineNet?: Decimalish
@@ -128,6 +129,7 @@ export function serializePublicInvoiceSession(session: {
         id: item.id,
         description: item.description,
         quantity: toNumber(item.quantity),
+        ...(item.taxRate !== undefined ? { taxRate: toNumber(item.taxRate) } : {}),
         ...(item.unitPriceNet !== undefined ? { unitPriceNet: toNumber(item.unitPriceNet) } : {}),
         ...(item.lineNet !== undefined ? { lineNet: toNumber(item.lineNet) } : {}),
         unitPriceGross: toNumber(item.unitPriceGross),

@@ -81,3 +81,8 @@ export const buyerContactSelect = {
   taxId: true,
   taxIds: { select: { scheme: true, value: true, countryCode: true } },
 } as const
+
+/** Refresh VAT status at invoice issue, including drafts converted from frozen quotes/agreements. */
+export function withSellerVatStatus<T extends SellerSnapshot>(seller: T, settings: { momsRegistered: boolean | null }): T {
+  return { ...seller, momsRegistered: settings.momsRegistered }
+}

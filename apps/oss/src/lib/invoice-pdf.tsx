@@ -1,4 +1,6 @@
 import { invoiceTaxIds, pdfBuyerAddress } from "./documents/invoice-identity"
+import { nonVatStatement } from "./documents/non-vat-note"
+import { sellerVatLineText } from "./documents/seller-vat"
 import type { DocumentTaxId } from "@quits/contracts/documents"
 import {
   Document,
@@ -226,6 +228,7 @@ export type InvoiceForPdf = {
    * when false and gross when true. Absent on inputs frozen before documents stated their basis,
    * whose items are gross; those keep their plain column headers.
    */
+  momsRegistered?: boolean | null
   pricesIncludeTax?: boolean
   /** The date of supply, as `YYYY-MM-DD`. Absent when the invoice has none. */
   supplyDate?: string | null
@@ -257,6 +260,7 @@ export type InvoiceForPdf = {
   /** Unit price and total are the stored amounts on the document's price basis; never derive one from the other. */
   items: Array<{
     description: string
+    taxRate?: number
     quantity: number
     unitPrice: number
     total: number
@@ -358,7 +362,10 @@ export function InvoicePdfDocument({
           </View>
           {invoice.items.map((item, i) => (
             <View key={i} style={styles.tableRow}>
-              <Text style={styles.colDescription}>{item.description}</Text>
+              <View style={styles.colDescription}>
+                <Text>{item.description}</Text>
+                {sellerVatLineText(invoice.momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(invoice.momsRegistered, item.taxRate, locale)}</Text>}
+              </View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>
                 {formatCurrency(item.unitPrice, invoice.currency, locale)}
@@ -387,6 +394,8 @@ export function InvoicePdfDocument({
         </View>
 
         {/* Payment details */}
+        {invoice.momsRegistered === false && <Text style={[styles.notesText, { marginTop: 24 }]}>{nonVatStatement(locale)}</Text>}
+
         {paymentDetails && (
           <View style={styles.paymentBox} wrap={false}>
             <Text style={styles.sectionTitle}>{paymentDetails.title}</Text>

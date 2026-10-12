@@ -132,6 +132,7 @@ export function composeInvoiceEmail(input: {
     replyTo: envelope.replyTo,
     invoice: {
       ...invoice,
+      momsRegistered: seller?.momsRegistered,
       subtotal: frozen ? Number(frozen.totals.net) : invoice.subtotalNet.toNumber(),
       taxAmount: frozen ? Number(frozen.totals.tax) : invoice.totalTax.toNumber(),
       total: frozen ? Number(frozen.totals.gross) : invoice.totalGross.toNumber(),
@@ -144,6 +145,7 @@ export function composeInvoiceEmail(input: {
         const shown = lineAmounts("net", item)
         return {
           description: item.description,
+          taxRate: item.taxRate.toNumber(),
           quantity: item.quantity.toNumber(),
           unitPrice: shown.unitPrice.toNumber(),
           total: shown.amount.toNumber(),

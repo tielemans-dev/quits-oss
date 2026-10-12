@@ -7,7 +7,7 @@ import type { InvoiceIssuancePolicy } from "../../../lib/runtime/invoice-issuanc
 const policy: InvoiceIssuancePolicy = { sellerCountry: "DK", buyerCountries: ["DK"], currencies: ["DKK", "EUR"], standardVatRate: "25", requireCvr: true, requireBusinessBuyer: true, requireIdentity: true, requireSupplyDate: true, sellerVatRegistered: true }
 const document = {
   currency: "DKK", countryCode: "DK", purpose: "sale", supplyDate: "2026-10-09",
-  sellerSnapshot: { countryCode: "DK", companyName: "Synthetic Seller ApS", companyAddress: "Testvej 1, 1000 København", taxIds: [{ scheme: "cvr", value: "12345678", countryCode: "DK" }] },
+  sellerSnapshot: { momsRegistered: true, countryCode: "DK", companyName: "Synthetic Seller ApS", companyAddress: "Testvej 1, 1000 København", taxIds: [{ scheme: "cvr", value: "12345678", countryCode: "DK" }] },
   buyerSnapshot: { name: "Synthetic Buyer", company: "Synthetic Buyer ApS", address: "Testvej 2", city: "København", zip: "1000", country: "DK" },
   items: [{ vatTreatment: "standard", vatCountry: "DK", taxRate: "25", vatRateInput: "0.25" }],
 }
@@ -41,8 +41,15 @@ describe("optional invoice issuance policy", () => {
   ])("rejects missing or unsupported %s", (_field, patch) => {
     expect(invoicePolicyIssues({ ...document, ...patch }, policy).length).toBeGreaterThan(0)
   })
-  it.each([undefined, false])("does not infer VAT registration from a CVR: %s", sellerVatRegistered => {
-    expect(invoicePolicyIssues(document, { ...policy, sellerVatRegistered }).join(" ")).toContain("VAT registration")
+  it.each([undefined, null])("does not infer VAT registration from a CVR: %s", momsRegistered => {
+    expect(invoicePolicyIssues({ ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered } }, policy).length).toBeGreaterThan(0)
+  })
+  it("accepts explicit non-registration and zero VAT, while retaining the other restrictions", () => {
+    const zero = { ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered: false }, items: [{ ...document.items[0]!, vatTreatment: "unclassified_zero", taxRate: "0", vatRateInput: "0" }] }
+    expect(invoicePolicyIssues(zero, { ...policy, sellerVatRegistered: false })).toEqual([])
+    expect(invoicePolicyIssues({ ...zero, items: document.items }, policy).length).toBeGreaterThan(0)
+    expect(invoicePolicyIssues({ ...zero, currency: "USD" }, policy).length).toBeGreaterThan(0)
+    expect(invoicePolicyIssues({ ...zero, buyerSnapshot: { ...document.buyerSnapshot, country: "SE" } }, policy).length).toBeGreaterThan(0)
   })
   it("preserves self-host scope when no policy is installed", async () => {
     await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", { ...document, currency: "USD", sellerSnapshot: {}, buyerSnapshot: null }))).resolves.toBeUndefined()

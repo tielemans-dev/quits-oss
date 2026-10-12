@@ -17,7 +17,7 @@ import type { CreditNoteForPdf } from "../../lib/credit-note-pdf"
 import type { AgreementPdfInput } from "../../lib/agreement-pdf"
 import { buildOfferSnapshot, canonicalizeOffer, hashOfferSnapshot } from "../agreements/snapshot"
 import { creditNoteIssueInputSchema } from "@quits/contracts/credit-notes"
-import { buildBuyerSnapshot, buildSellerSnapshot, withInvoicePaymentDetails, withoutPaymentDetails } from "./snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, withSellerVatStatus, withInvoicePaymentDetails, withoutPaymentDetails } from "./snapshots"
 import { loadDocumentContext } from "./context"
 import { priceCreditNote } from "./credit-pricing"
 import { InvalidState, NotFound } from "../errors"
@@ -86,7 +86,7 @@ export const prospectiveRenderInput = (input: {
     // Payment details are always the ones valid now, also for agreement invoices, which keep the
     // agreed seller identity but are paid to the account in force when they are issued.
     const seller = withInvoicePaymentDetails(
-      (invoice.agreementId || invoice.quoteId) ? parseSellerSnapshot(invoice.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds),
+      withSellerVatStatus((invoice.agreementId || invoice.quoteId) ? parseSellerSnapshot(invoice.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds), settings),
       settings, invoice.locale
     )
     const refreshedBuyer = buildBuyerSnapshot(invoice.contact)
@@ -105,7 +105,7 @@ export const prospectiveRenderInput = (input: {
     const pdfInvoice: InvoiceForPdf = {
       number: input.number, status: "sent", issueDate: base.issuedAt, dueDate: invoice.dueDate.toISOString(),
       subtotal: num(invoice.subtotalNet), taxAmount: num(invoice.totalTax), total: num(invoice.totalGross),
-      currency: invoice.currency, notes: invoice.notes, ...(seller.bankAccount ? { bankAccount: seller.bankAccount } : {}), ...(seller.paymentNote ? { paymentNote: seller.paymentNote } : {}),
+      currency: invoice.currency, notes: invoice.notes, momsRegistered: seller.momsRegistered, ...(seller.bankAccount ? { bankAccount: seller.bankAccount } : {}), ...(seller.paymentNote ? { paymentNote: seller.paymentNote } : {}),
       // Frozen with the rest of the payment details; absent without them, so the render input of an
       // organization without payment details is unchanged. A draft preview has no number yet.
       ...(seller.bankAccount || seller.paymentNote ? { paymentReference } : {}),
@@ -116,10 +116,10 @@ export const prospectiveRenderInput = (input: {
       ...(vatRows ? { vatRows } : {}),
       rounding,
       items: invoice.items.map(line => { const shown = lineAmounts("net", line)
-        return { description: line.description, quantity: num(line.quantity), unitPrice: num(shown.unitPrice), total: num(shown.amount) } }),
+        return { description: line.description, quantity: num(line.quantity), unitPrice: num(shown.unitPrice), total: num(shown.amount), taxRate: num(line.taxRate) } }),
     }
     return { ...base, kind: "invoice" as const, recipient: invoice.contact.email?.trim() || null,
-      ...(money ? { ubl: frozenEinvoiceInput({ kind: "invoice", money, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
+      ...(money && !money.vatGroups.some(group => group.treatment === "unclassified_zero") ? { ubl: frozenEinvoiceInput({ kind: "invoice", money, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
       snapshot: { ...(money ? { money } : {}), purpose: invoice.purpose, agreementId: invoice.agreementId, seller, buyer: pdfInvoice.contact,
         invoice: pdfInvoice, items: invoice.items, supplyDate: invoice.supplyDate,
         pricesIncludeTax: invoice.pricesIncludeTax, countryCode: invoice.countryCode,
@@ -140,7 +140,7 @@ export const prospectiveRenderInput = (input: {
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: selection.invoiceId })
     const built = yield* priceCreditNote(invoice, selection)
-    const sellerSnapshot = withoutPaymentDetails(invoice.sellerSnapshot) ?? buildSellerSnapshot(settings, sellerTaxIds)
+    const sellerSnapshot = withoutPaymentDetails(invoice.sellerSnapshot) ?? {}
     const buyerSnapshot = invoice.buyerSnapshot ?? buildBuyerSnapshot(invoice.contact)
     const money = creditMoneySnapshot(invoice, { id: input.documentId, number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, reason: selection.reason, mode: selection.mode, built, hasPayments: invoice.payments.length > 0, paid: invoice.payments.reduce((sum, payment) => sum.plus(payment.amount), toDecimal(0)).toString(), priorCredits: invoice.creditNotes.reduce((sum, credit) => sum.plus(credit.totalGross), toDecimal(0)).toString(), seller: parseSellerSnapshot(sellerSnapshot) ?? {}, buyer: parseBuyerSnapshot(buyerSnapshot) ?? {} })
     // The credited groups, validated against the credit note's own stored totals.
@@ -161,7 +161,7 @@ export const prospectiveRenderInput = (input: {
     }
     return { ...base, kind: "creditNote" as const, recipient: null,
       selectionFingerprint: createHash("sha256").update(canonicalizeOffer(selection)).digest("hex"),
-      ubl: frozenEinvoiceInput({ kind: "creditNote", money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) }),
+      ...(money.vatGroups.some(group => group.treatment === "unclassified_zero") ? {} : { ubl: frozenEinvoiceInput({ kind: "creditNote", money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) }) }),
       snapshot: { money, sellerSnapshot, buyerSnapshot, built, invoiceId: invoice.id,
         currency: invoice.currency, countryCode: invoice.countryCode, locale: invoice.locale,
         timezone: invoice.timezone, taxRegime: invoice.taxRegime, pricesIncludeTax: invoice.pricesIncludeTax },
