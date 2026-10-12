@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { confirmOnboardingV2Schema, type ConfirmOnboardingV2Input } from "@quits/contracts/onboarding"
+import { confirmOnboardingV2Schema, isValidDanishCvr, type ConfirmOnboardingV2Input } from "@quits/contracts/onboarding"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
 import { SellerVatStatus } from "../seller-vat-status"
@@ -25,8 +25,10 @@ export function CompanyReview({ company, confirmationEnabled, onComplete }: {
     setError(null)
     try {
       if (!confirmationEnabled || registered === null) throw new Error(t("vatStatus.label"))
-      const summary = confirmOnboardingV2Schema.parse({ ...values, idempotencyKey: key, source: company ? "cvr" : "manual",
-        momsRegistered: registered, ...(registered ? { vatId: `DK${values.cvr.trim()}` } : {}) })
+      const cvr = values.cvr
+      if (typeof cvr !== "string" || !isValidDanishCvr(cvr.trim())) throw new Error(t("cvr.invalid"))
+      const summary = confirmOnboardingV2Schema.parse({ ...values, cvr: cvr.trim(), idempotencyKey: key, source: company ? "cvr" : "manual",
+        momsRegistered: registered, ...(registered ? { vatId: `DK${cvr.trim()}` } : {}) })
       const { token } = await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: summary.companyName,
         companyAddress: summary.companyAddress, countryCode: "DK", cvr: summary.cvr })
       const result = await trpc.onboarding.confirmV2.mutate({ ...summary, sellerVatConfirmationToken: token })
