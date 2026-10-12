@@ -6,6 +6,10 @@ Never @-mention Ines, Mira, Noah, Lumi, or Kai on GitHub, regardless of case, in
 comments, review comments, and issues. Write the name plainly, e.g. "Ines: please review". Those
 handles ping unrelated real GitHub users; the bots have no GitHub accounts.
 
+## Product UX
+
+Every user-facing flow lives inside the app's own screens (onboarding, Settings), never on a separate standalone page. Cloud-only requirements show only on hosted, through cloud flags and extension points in the OSS UI. Self-hosted gets no gates.
+
 ## Task Completion Requirements
 
 - `bun run lint` must pass before considering work complete.
