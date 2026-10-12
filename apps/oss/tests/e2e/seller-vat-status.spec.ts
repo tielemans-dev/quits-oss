@@ -40,6 +40,16 @@ for (const locale of ["da-DK", "en-US"]) {
     await loginAsAdmin(page)
     await page.goto("/settings")
     await waitForClientReady(page)
+    for (const [countryCode, taxRegime] of [["US", "us_sales_tax"], ["DE", "eu_vat"], ["DK", "custom"]] as const) {
+      await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { countryCode, taxRegime } })
+      await page.reload()
+      await waitForClientReady(page)
+      await expect(page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })).toHaveCount(0)
+      await expect(page.getByText(translate("vatStatus.noHint", locale), { exact: true })).toHaveCount(0)
+    }
+    await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { countryCode: "DK", taxRegime: "eu_vat" } })
+    await page.reload()
+    await waitForClientReady(page)
     const yes = page.getByRole("radio", { name: translate("vatStatus.yes", locale), exact: true })
     const no = page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })
     await expect(yes).not.toBeChecked()

@@ -51,6 +51,9 @@ jobs:
       SMTP_HOST: ''
       QUI62_EVIDENCE_REVISION: ${{ matrix.revision }}
       EVIDENCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      # Production TSX imported by the Node worker must create actual React elements.
+      PW_TEST_SOURCE_TRANSFORM: ${{ github.workspace }}/apps/oss/tests/e2e/react-jsx-transform.cjs
+      PW_TEST_SOURCE_TRANSFORM_SCOPE: ${{ github.workspace }}/apps/oss/src
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,6 +65,7 @@ jobs:
           git show "$EVIDENCE_SHA:apps/oss/playwright.seller-vat.config.ts" > apps/oss/playwright.seller-vat.config.ts
           git show "$EVIDENCE_SHA:apps/oss/tests/e2e/seller-vat-evidence.ts" > apps/oss/tests/e2e/seller-vat-evidence.ts
           git show "$EVIDENCE_SHA:apps/oss/tests/e2e/seller-vat-before.spec.ts" > apps/oss/tests/e2e/seller-vat-before.spec.ts
+          git show "$EVIDENCE_SHA:apps/oss/tests/e2e/react-jsx-transform.cjs" > apps/oss/tests/e2e/react-jsx-transform.cjs
       - name: Record source revisions
         run: |
           git rev-parse HEAD > source-revision.txt

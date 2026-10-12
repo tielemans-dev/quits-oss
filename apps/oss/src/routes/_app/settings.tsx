@@ -1,3 +1,4 @@
+import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { SellerVatStatus } from "../../components/seller-vat-status"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -801,7 +802,9 @@ function SettingsPage() {
               </div>
             </div>
 
-            <SellerVatStatus value={momsRegistered} onChange={setMomsRegistered} disabled={saving} />
+            {normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
+              <SellerVatStatus value={momsRegistered} onChange={setMomsRegistered} disabled={saving} />
+            ) : null}
 
             <div className="grid gap-2">
               <Label htmlFor="companyLogoUrl">{t("settings.companyLogo.label")}</Label>

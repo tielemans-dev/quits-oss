@@ -31,13 +31,13 @@ export function requireVatIssuance(document: {
   const buyer = parseBuyerSnapshot(document.buyerSnapshot)
   if (document.taxRegime === "eu_vat" && seller?.momsRegistered == null)
     return Effect.fail(new InvalidState({ code: "seller_vat_status_unset", message: "Choose whether the seller is VAT-registered in company settings before sending." }))
-  if (seller?.momsRegistered === false && document.items.some(item =>
+  if (document.taxRegime === "eu_vat" && seller?.momsRegistered === false && document.items.some(item =>
     !toDecimal(item.taxRate.toString()).isZero() ||
     (item.vatRateInput !== null && !toDecimal(item.vatRateInput).isZero()) ||
     !toDecimal(item.lineTax.toString()).isZero()))
     return Effect.fail(new InvalidState({ code: "seller_not_vat_registered", message: "A seller who is not VAT-registered cannot send an invoice with VAT. Set every line to 0% before sending." }))
   const issues = validateVatIssuance({
-    momsRegistered: seller?.momsRegistered,
+    momsRegistered: document.taxRegime === "eu_vat" ? seller?.momsRegistered : undefined,
     lines: document.items.map((item) => ({
       treatment: item.vatTreatment,
       reasonCode: item.vatReasonCode,

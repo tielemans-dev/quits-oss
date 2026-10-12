@@ -9,6 +9,9 @@ import { executeCommand } from "../../domain/execute"
 import { issueDocument, reserveDocument, prepareDocument } from "../issuance"
 import { appRouter } from "../../trpc/router"
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
+import { composeQuoteEmail } from "../../domain/documents/quote-email"
+import { serializePublicQuoteSession } from "../../lib/quotes/public-session"
+import { nonVatStatement } from "../../lib/documents/non-vat-note"
 import { composeInvoiceEmail } from "../../domain/documents/invoice-email"
 import { serializePublicInvoiceSession } from "../../lib/payments/public-session"
 import { loadDocumentView } from "../../domain/documents/view"
@@ -68,6 +71,40 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     await ctx.caller.settings.update({ momsRegistered: false })
     await expect(ctx.caller.quotes.send({ id: second.id, allowSendWithoutEmail: true })).rejects.toThrow("not VAT-registered")
     expect(await prisma.quote.findUniqueOrThrow({ where: { id: second.id } })).toMatchObject({ status: "draft", number: null })
+  })
+  it.each(["us_sales_tax", "custom"] as const)("issues taxed invoices and quotes under %s despite non-VAT registration", async taxRegime => {
+    const ctx = await setup(false, 0)
+    await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { taxRegime, taxRate: 7 } })
+    const input = { contactId: ctx.invoice.contactId, taxRate: 7, items: [{ description: "Synthetic taxed service", quantity: 1, unitPrice: 100 }] }
+    const invoice = await completed(executeCommand(createInvoiceDraft, { ...input, dueDate: "2026-11-09", supplyDate: "2026-10-11" }, { actor: ctx.org.actors.admin }))
+    await completed(issueDocument({ kind: "invoice", actor: ctx.org.actors.admin, commandInput: { id: invoice.result.id, allowSendWithoutEmail: true } }))
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.result.id } })).toMatchObject({ status: "sent", taxRegime })
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.result.id } })).totalTax.toNumber()).toBe(7)
+    const quote = await ctx.caller.quotes.create({ ...input, expiryDate: "2026-11-09" })
+    await ctx.caller.quotes.send({ id: quote.id, allowSendWithoutEmail: true })
+    const sent = await prisma.quote.findUniqueOrThrow({ where: { id: quote.id } })
+    expect(sent.status).toBe("sent")
+    expect(sent.totalTax.toNumber()).toBe(7)
+  })
+  it.each(["da-DK", "en-US"])("keeps frozen non-VAT quote status and rates in public and email data in %s", async locale => {
+    const ctx = await setup(false, 0)
+    await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { locale, companyName: "Frozen synthetic seller" } })
+    const quote = await ctx.caller.quotes.create({ contactId: ctx.invoice.contactId, expiryDate: "2026-11-09", taxRate: 0,
+      notes: `Synthetic instructions\n${nonVatStatement(locale)}`, items: [{ description: "Synthetic service", quantity: 1, unitPrice: 100, vat: { treatment: "unclassified_zero", rate: "0" } }] })
+    await ctx.caller.quotes.send({ id: quote.id, allowSendWithoutEmail: true })
+    await ctx.caller.settings.update({ momsRegistered: true, companyName: "Changed synthetic seller" })
+    const sent = await prisma.quote.findUniqueOrThrow({ where: { id: quote.id }, include: { items: true, contact: true, invoices: true } })
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })
+    const publicQuote = serializePublicQuoteSession({ quote: sent, decisionState: "pending" }, "synthetic").quote
+    expect(publicQuote.sellerSnapshot?.momsRegistered).toBe(false)
+    expect(publicQuote.items[0]?.taxRate).toBe(0)
+    expect(publicQuote.totalGross).toBe(100)
+    const html = composeQuoteEmail({ quote: { ...sent, number: sent.number! }, settings, to: "buyer@example.test", publicQuoteUrl: "https://example.test/q/synthetic" }).message.html
+    expect(html.split(nonVatStatement(locale))).toHaveLength(2)
+    expect(html).toContain(locale === "da-DK" ? "Ingen moms" : "No moms")
+    expect(html).toContain("Synthetic instructions")
+    expect(html).toContain("Frozen synthetic seller")
+    expect(html).not.toContain("Changed synthetic seller")
   })
   it.each([true, false])("freezes registration %s on issue across later status changes", async registered => {
     const ctx = await setup(registered, registered ? 25 : 0)

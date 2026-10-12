@@ -69,6 +69,7 @@ export function serializePublicQuoteSession(session: {
       quantity: Decimalish
       unitPriceGross: Decimalish
       lineGross: Decimalish
+      taxRate?: Decimalish
       sortOrder: number
     }>
     invoices: Array<{
@@ -118,6 +119,7 @@ export function serializePublicQuoteSession(session: {
         quantity: toNumber(item.quantity),
         unitPriceGross: toNumber(item.unitPriceGross),
         lineGross: toNumber(item.lineGross),
+        taxRate: item.taxRate == null ? undefined : toNumber(item.taxRate),
         sortOrder: item.sortOrder,
       })),
       // A draft invoice is not the customer's to see; it has no number until it is issued.

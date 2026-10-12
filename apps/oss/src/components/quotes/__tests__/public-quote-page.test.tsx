@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 
+// MOCK: synthetic quote data only. Rendering uses the real public component.
+import { nonVatStatement } from "../../../lib/documents/non-vat-note"
+import { translate } from "../../../lib/i18n/translate"
+import { formatCurrency } from "../../../lib/i18n/format"
 import type { ReactNode } from "react"
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
@@ -119,6 +123,28 @@ describe("PublicQuotePage", () => {
     expect(html).toMatch(/<label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"/)
     expect(html).toContain('class="text-right font-medium tabular-nums"')
   })
+  it.each(["da-DK", "en-US"])("renders frozen non-registration once with stored line rates and totals in %s", locale => {
+    for (const taxRate of [0, 25]) {
+      const html = page(locale, <PublicQuotePage token="synthetic" state={{ kind: "ready", decisionState: "pending", seller,
+        quote: { ...baseQuote, sellerSnapshot: { ...baseQuote.sellerSnapshot, momsRegistered: false },
+          notes: `Synthetic instructions\n${nonVatStatement("da")}\n${nonVatStatement("en")}`,
+          items: baseQuote.items.map(item => ({ ...item, taxRate })) },
+      }} />)
+      expect(html.split(nonVatStatement(locale))).toHaveLength(2)
+      expect(html).toContain("Synthetic instructions")
+      expect(html).toContain(formatCurrency(1250, "USD", locale))
+      if (taxRate === 0) expect(html).toContain(translate("line.noVat", locale))
+      else { expect(html).toContain("25 % moms"); expect(html).not.toContain(translate("line.noVat", locale)) }
+    }
+  })
+  it.each([null, undefined, true])("does not infer non-registration for legacy/registered quotes %s", momsRegistered => {
+    const html = page("en-US", <PublicQuotePage token="synthetic" state={{ kind: "ready", decisionState: "pending", seller,
+      quote: { ...baseQuote, sellerSnapshot: { ...baseQuote.sellerSnapshot, momsRegistered }, items: baseQuote.items.map(item => ({ ...item, taxRate: 0 })) },
+    }} />)
+    expect(html).not.toContain(nonVatStatement("en"))
+    expect(html).not.toContain("No moms")
+  })
+
   it.each(["America/New_York", "Pacific/Pago_Pago", "Europe/Copenhagen"])(
     "preserves calendar dates while localizing the issue instant in %s", timezone => {
       const html = page("en-US", <PublicQuotePage token="signed-token" state={{

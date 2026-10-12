@@ -381,7 +381,8 @@ export type SendQuoteEmailParams = {
     /** VAT by rate and the rounding between net plus tax and the total; absent, the single tax amount is printed. */
     vatRows?: VatRow[]
     rounding?: string
-    items: { description: string; quantity: number; unitPrice: number; total: number }[]
+    momsRegistered?: boolean | null
+    items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[]
   }
   org: {
     companyName?: string | null
@@ -405,6 +406,7 @@ export function buildQuoteEmailContent({
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeQuoteNumber = escapeHtml(quote.number)
+  const notes = withoutNonVatStatement(quote.notes, quote.momsRegistered)
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
@@ -424,10 +426,11 @@ export function buildQuoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(quote.items, quote.currency, locale, quote.priceBasis)}
+    ${itemsTable(quote.items, quote.currency, locale, quote.priceBasis, quote.momsRegistered)}
     ${totalsBlock(quote, locale)}
 
-    ${quote.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(quote.notes)}</p>` : ""}
+    ${quote.momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
+    ${notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(notes)}</p>` : ""}
     ${publicQuoteUrl
       ? actionBlock({
           href: publicQuoteUrl,
