@@ -77,6 +77,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { taxRegime, taxRate: 7 } })
     const input = { contactId: ctx.invoice.contactId, taxRate: 7, items: [{ description: "Synthetic taxed service", quantity: 1, unitPrice: 100 }] }
     const invoice = await completed(executeCommand(createInvoiceDraft, { ...input, dueDate: "2026-11-09", supplyDate: "2026-10-11" }, { actor: ctx.org.actors.admin }))
+    if (invoice.status !== "completed") throw new Error(JSON.stringify(invoice))
     await completed(issueDocument({ kind: "invoice", actor: ctx.org.actors.admin, commandInput: { id: invoice.result.id, allowSendWithoutEmail: true } }))
     expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.result.id } })).toMatchObject({ status: "sent", taxRegime })
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.result.id } })).totalTax.toNumber()).toBe(7)

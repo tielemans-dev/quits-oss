@@ -20,6 +20,8 @@ for (const locale of ["da-DK", "en-US"]) {
       companyName: "Synthetic Seller", companyAddress: "Testvej 1, 1000 København", taxRate: 25,
       bankRegNumber: "0040", bankAccountNumber: "0440116243",
     } })
+    // MOCK: main's Danish compliance profile requires a seller tax identifier even for zero-VAT issuance.
+    await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345678", countryCode: "DK" } })
     const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: "Synthetic Buyer", email: "buyer@example.test", country: "DK" } })
     const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId, role: "admin" } })
     const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: member.userId })
