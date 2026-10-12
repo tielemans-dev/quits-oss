@@ -18,6 +18,7 @@ export type QuoteForEmail = {
   timezone: string
   issueDate: Date
   expiryDate: Date
+  taxRegime?: string
   currency: string
   notes: string | null
   sellerSnapshot?: unknown
@@ -55,12 +56,14 @@ export function composeQuoteEmail(input: {
   to: string
   publicQuoteUrl: string | null
 }) {
-  const { envelope } = resolveQuoteEmailContext(input.settings)
   const { quote } = input
   const seller = parseSellerSnapshot(quote.sellerSnapshot)
+  const { envelope } = resolveQuoteEmailContext({ ...input.settings,
+    ...(seller ? { companyName: seller.companyName ?? null, companyEmail: seller.companyEmail ?? null } : {}),
+  })
   const vatSummary = documentVatSummary(quote)
   const content = buildQuoteEmailContent({
-    fromName: seller ? seller.companyName : envelope.fromName,
+    fromName: envelope.fromName,
     fromEmail: envelope.fromEmail,
     replyTo: envelope.replyTo,
     quote: {

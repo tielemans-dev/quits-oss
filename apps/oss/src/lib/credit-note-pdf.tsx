@@ -1,4 +1,4 @@
-import { sellerVatLineText } from "./documents/seller-vat"
+import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { nonVatStatement } from "./documents/non-vat-note"
 import { withoutNonVatStatement } from "./documents/non-vat-presentation"
@@ -73,6 +73,7 @@ export type CreditNoteForPdf = {
   subtotal: number
   taxAmount: number
   total: number
+  taxRegime?: string
   currency: string
   locale?: string | null
   timezone?: string | null
@@ -108,8 +109,8 @@ export function CreditNotePdfDocument({
   const locale = creditNote.locale ?? org.locale
   const timezone = creditNote.timezone ?? org.timezone
   const { seller, buyer } = creditNotePdfParties(creditNote, org)
-  const momsRegistered = parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered
-  const reason = withoutNonVatStatement(creditNote.reason, momsRegistered)
+  const momsRegistered = sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime)
+  const reason = withoutNonVatStatement(creditNote.reason, momsRegistered, creditNote.taxRegime)
   const logo = seller.logo
   const money = (amount: number) => formatCurrency(amount, creditNote.currency, locale)
   const columns = lineColumnKeys(creditNote.pricesIncludeTax === undefined ? undefined : priceBasis(creditNote.pricesIncludeTax))

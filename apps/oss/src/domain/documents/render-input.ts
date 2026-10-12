@@ -105,7 +105,7 @@ export const prospectiveRenderInput = (input: {
     const pdfInvoice: InvoiceForPdf = {
       number: input.number, status: "sent", issueDate: base.issuedAt, dueDate: invoice.dueDate.toISOString(),
       subtotal: num(invoice.subtotalNet), taxAmount: num(invoice.totalTax), total: num(invoice.totalGross),
-      currency: invoice.currency, notes: invoice.notes, momsRegistered: seller.momsRegistered, ...(seller.bankAccount ? { bankAccount: seller.bankAccount } : {}), ...(seller.paymentNote ? { paymentNote: seller.paymentNote } : {}),
+      currency: invoice.currency, taxRegime: invoice.taxRegime, notes: invoice.notes, momsRegistered: seller.momsRegistered, ...(seller.bankAccount ? { bankAccount: seller.bankAccount } : {}), ...(seller.paymentNote ? { paymentNote: seller.paymentNote } : {}),
       // Frozen with the rest of the payment details; absent without them, so the render input of an
       // organization without payment details is unchanged. A draft preview has no number yet.
       ...(seller.bankAccount || seller.paymentNote ? { paymentReference } : {}),
@@ -150,7 +150,7 @@ export const prospectiveRenderInput = (input: {
     const creditNote: CreditNoteForPdf = {
       number: input.number, issueDate: base.issuedAt, reason: selection.reason,
       subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
-      currency: invoice.currency, locale: invoice.locale, timezone: invoice.timezone,
+      currency: invoice.currency, taxRegime: invoice.taxRegime, locale: invoice.locale, timezone: invoice.timezone,
       sellerSnapshot, buyerSnapshot, contact: { ...buildBuyerSnapshot(invoice.contact), name: invoice.contact.name },
       invoice: { number: issuedNumber(invoice), issueDate: invoice.issueDate.toISOString() },
       // Credit notes mirror the basis of the invoice they credit.

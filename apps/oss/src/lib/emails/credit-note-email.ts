@@ -1,3 +1,4 @@
+import { sellerVatPresentationStatus } from "../documents/seller-vat"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { nonVatStatement } from "../documents/non-vat-note"
 import { withoutNonVatStatement } from "../documents/non-vat-presentation"
@@ -29,6 +30,7 @@ export type SendCreditNoteEmailParams = {
     subtotal: number
     taxAmount: number
     total: number
+    taxRegime?: string
     currency: string
     /** The basis `items` state their amounts on. Absent, the headers stay plain. */
     priceBasis?: PriceBasis
@@ -58,8 +60,8 @@ export function buildCreditNoteEmailContent({
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
-  const momsRegistered = parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered
-  const reason = withoutNonVatStatement(creditNote.reason, momsRegistered)
+  const momsRegistered = sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime)
+  const reason = withoutNonVatStatement(creditNote.reason, momsRegistered, creditNote.taxRegime)
   const locale = org.locale
   const timezone = org.timezone
   const label = `font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;`
@@ -85,7 +87,7 @@ export function buildCreditNoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis, momsRegistered)}
+    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis, momsRegistered, creditNote.taxRegime)}
     ${totalsBlock(creditNote, locale)}
     ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
 

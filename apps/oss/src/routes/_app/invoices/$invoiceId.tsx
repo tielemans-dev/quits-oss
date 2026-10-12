@@ -1,6 +1,6 @@
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
-import { sellerVatLineText } from "../../../lib/documents/seller-vat"
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -148,6 +148,7 @@ type Invoice = {
   contact: Contact
   items: InvoiceItem[]
   pricesIncludeTax?: boolean
+  taxRegime?: string
   momsRegistered?: boolean | null
   priceBasis?: PriceBasis
   vatRows?: VatRow[]
@@ -736,6 +737,7 @@ function InvoiceDetailPage() {
   }
 
   // View mode
+  const momsRegistered = sellerVatPresentationStatus(invoice.momsRegistered, invoice.taxRegime)
   const contact = invoice.contact
   const emailAttempt = readEmailDeliveryAttempt({
     lastEmailAttemptAt: invoice.lastEmailAttemptAt
@@ -1079,7 +1081,7 @@ function InvoiceDetailPage() {
                 <TableBody>
                   {invoice.items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>{item.description}{sellerVatLineText(invoice.momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(invoice.momsRegistered, item.taxRate, locale)}</p>}</TableCell>
+                      <TableCell>{item.description}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}</TableCell>
                       <TableCell className="text-right num">{item.quantity}</TableCell>
                       <TableCell className="text-right num">
                         {formatCurrency(item.displayUnitPrice ?? item.unitPrice, invoice.currency, locale)}
@@ -1093,7 +1095,7 @@ function InvoiceDetailPage() {
               </Table>
             </div>
 
-            {invoice.momsRegistered === false && <p className="text-sm text-muted-foreground">{nonVatStatement(locale)}</p>}
+            {momsRegistered === false && <p className="text-sm text-muted-foreground">{nonVatStatement(locale)}</p>}
 
             {/* Totals */}
             <div className="flex justify-end">
@@ -1123,12 +1125,12 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Notes */}
-            {withoutNonVatStatement(invoice.notes, invoice.momsRegistered) && (
+            {withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime) && (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   {t("pdf.notes")}
                 </h3>
-                <p className="text-sm whitespace-pre-wrap">{withoutNonVatStatement(invoice.notes, invoice.momsRegistered)}</p>
+                <p className="text-sm whitespace-pre-wrap">{withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime)}</p>
               </div>
             )}
           </CardContent>

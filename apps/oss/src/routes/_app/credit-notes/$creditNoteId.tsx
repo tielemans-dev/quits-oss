@@ -1,4 +1,4 @@
-import { sellerVatLineText } from "../../../lib/documents/seller-vat"
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { createFileRoute, Link } from "@tanstack/react-router"
@@ -207,7 +207,7 @@ function CreditNoteDetailPage() {
 
   const timezone = creditNote.timezone
   const money = (value: number) => formatCurrency(value, creditNote.currency, locale)
-  const momsRegistered = parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered
+  const momsRegistered = sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime)
   const buyer = parseBuyerSnapshot(creditNote.buyerSnapshot)
   const contact = { ...creditNote.contact, ...buyer, name: buyer?.name ?? creditNote.contact.name }
   const recipientValid = isValidEmailAddress(creditNote.contact.email)
@@ -322,7 +322,7 @@ function CreditNoteDetailPage() {
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("creditNotes.detail.reason")}</h3>
             {momsRegistered === false && <p className="mb-4 text-sm text-muted-foreground">{nonVatStatement(locale)}</p>}
-            <p className="text-sm whitespace-pre-wrap">{withoutNonVatStatement(creditNote.reason, momsRegistered)}</p>
+            <p className="text-sm whitespace-pre-wrap">{withoutNonVatStatement(creditNote.reason, momsRegistered, creditNote.taxRegime)}</p>
           </div>
         </CardContent>
       </Card>

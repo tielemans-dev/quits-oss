@@ -1,4 +1,4 @@
-import { sellerVatLineText } from "../../lib/documents/seller-vat"
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../lib/documents/seller-vat"
 import { nonVatStatement } from "../../lib/documents/non-vat-note"
 import { withoutNonVatStatement } from "../../lib/documents/non-vat-presentation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
@@ -41,6 +41,7 @@ type PublicQuote = {
   subtotalNet: Decimalish
   vatRows?: VatRow[]
   rounding?: string
+  taxRegime?: string
   currency: string
   /** The timezone the document's dates are shown in, as its PDF and email do. */
   timezone: string
@@ -138,8 +139,8 @@ function PublicQuoteDocument({
 }) {
   const { t, locale } = useI18n()
   const { quote, decisionState, seller } = state
-  const momsRegistered = quote.sellerSnapshot?.momsRegistered
-  const notes = withoutNonVatStatement(quote.notes, momsRegistered)
+  const momsRegistered = sellerVatPresentationStatus(quote.sellerSnapshot?.momsRegistered, quote.taxRegime)
+  const notes = withoutNonVatStatement(quote.notes, momsRegistered, quote.taxRegime)
   const format = useDocumentFormat(quote.timezone, true)
   const money = (amount: number) => format.money(amount, quote.currency)
   const decisionAt = quote.publicDecisionAt ? format.date(quote.publicDecisionAt) : null

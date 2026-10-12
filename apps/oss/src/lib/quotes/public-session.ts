@@ -40,6 +40,7 @@ export function serializePublicQuoteSession(session: {
     subtotalNet: Decimalish
     vatRows?: VatRow[]
     rounding?: string
+    taxRegime?: string
     currency: string
     /** The document's own language and timezone, the ones its PDF and email use. */
     locale?: string | null
@@ -106,6 +107,7 @@ export function serializePublicQuoteSession(session: {
       vatRows: quote.vatRows,
       rounding: quote.rounding,
       currency: quote.currency,
+      taxRegime: quote.taxRegime,
       timezone: presentation.timezone,
       notes: quote.notes,
       sellerSnapshot,

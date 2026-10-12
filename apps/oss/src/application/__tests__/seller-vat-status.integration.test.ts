@@ -4,6 +4,11 @@ import { Prisma } from "../../../generated/prisma/client"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
+import { createAgreementDraft } from "../../domain/commands/agreements"
+import { sendAgreement, issueAgreement } from "../../domain/commands/agreement-lifecycle"
+import { createQuoteDraft, sendQuote } from "../../domain/commands/quotes"
+import { authenticateAgentSecret, createAgentKey } from "../../domain/agent-keys"
+import { decideApproval } from "../../domain/approvals"
 import { createInvoiceDraft } from "../../domain/commands/invoices"
 import { executeCommand } from "../../domain/execute"
 import { issueDocument, reserveDocument, prepareDocument } from "../issuance"
@@ -71,6 +76,54 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     await ctx.caller.settings.update({ momsRegistered: false })
     await expect(ctx.caller.quotes.send({ id: second.id, allowSendWithoutEmail: true })).rejects.toThrow("not VAT-registered")
     expect(await prisma.quote.findUniqueOrThrow({ where: { id: second.id } })).toMatchObject({ status: "draft", number: null })
+  })
+  it.each([sendAgreement, issueAgreement])("guards existing agreement drafts at $type before issuance", async command => {
+    const ctx = await setup(true)
+    const draft = await completed(executeCommand(createAgreementDraft, {
+      contactId: ctx.invoice.contactId, title: "Synthetic agreement", validUntil: "2099-12-01", taxRate: 25,
+      deliverables: [{ title: "Synthetic service", description: "Service", quantity: 1, unitPrice: 100 }],
+    }, { actor: ctx.org.actors.admin }))
+    if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+    await ctx.caller.settings.update({ momsRegistered: false })
+    expect(await executeCommand(command, { id: draft.result.id }, { actor: ctx.org.actors.admin })).toMatchObject({ status: "failed", error: { code: "seller_not_vat_registered" } })
+    const unchanged = await prisma.agreement.findUniqueOrThrow({ where: { id: draft.result.id }, include: { deliverables: true } })
+    expect(unchanged).toMatchObject({ status: "draft", number: null, offerSnapshotHash: null, publicAccessIssuedAt: null })
+    expect(unchanged.deliverables[0]!.taxRate.toNumber()).toBe(25)
+    expect(unchanged.totalGross.toNumber()).toBe(125)
+    expect(await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })).toBe(0)
+    // The same stored draft still issues with custom tax, despite the remembered VAT choice.
+    await prisma.agreement.update({ where: { id: draft.result.id }, data: { taxRegime: "custom" } })
+    await completed(executeCommand(issueAgreement, { id: draft.result.id }, { actor: ctx.org.actors.admin }))
+  })
+  it.each([null, true] as const)("guards agreement registration %s against unclassified-zero lines", async momsRegistered => {
+    const ctx = await setup(false, 0)
+    const draft = await completed(executeCommand(createAgreementDraft, {
+      contactId: ctx.invoice.contactId, title: "Synthetic zero agreement", validUntil: "2099-12-01", taxRate: 0,
+      deliverables: [{ title: "Synthetic service", description: "Service", quantity: 1, unitPrice: 100, vat: { treatment: "unclassified_zero", rate: "0" } }],
+    }, { actor: ctx.org.actors.admin }))
+    if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+    await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { momsRegistered } })
+    expect(await executeCommand(issueAgreement, { id: draft.result.id }, { actor: ctx.org.actors.admin })).toMatchObject({ status: "failed", error: { code: momsRegistered === null ? "seller_vat_status_unset" : "evidence_incomplete" } })
+    await ctx.caller.settings.update({ momsRegistered: false })
+    await completed(executeCommand(issueAgreement, { id: draft.result.id }, { actor: ctx.org.actors.admin }))
+  })
+  it.each([true, false])("invalidates a quote send approval after registration %s changes", async registered => {
+    const ctx = await setup(registered, 0)
+    const draft = await completed(executeCommand(createQuoteDraft, {
+      contactId: ctx.invoice.contactId, expiryDate: "2099-12-01", taxRate: 0,
+      items: [{ description: "Synthetic service", quantity: 1, unitPrice: 100 }],
+    }, { actor: ctx.org.actors.admin }))
+    if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+    const { secret } = await createAgentKey(ctx.org.actors.admin, { name: "Synthetic sender", mode: "approval_required", scopes: ["quote:send"] })
+    const actor = await authenticateAgentSecret(secret)
+    const queued = await executeCommand(sendQuote, { id: draft.result.id, allowSendWithoutEmail: true }, { actor })
+    expect(queued.status).toBe("awaiting_approval")
+    if (queued.status !== "awaiting_approval") throw new Error(JSON.stringify(queued))
+    await ctx.caller.settings.update({ momsRegistered: !registered })
+    const approval = await decideApproval({ approvalRequestId: queued.approvalRequestId, decider: ctx.org.actors.admin, decision: "approve" })
+    expect(approval).toMatchObject({ status: "failed", error: { code: "changed_since_review" } })
+    expect(await prisma.quote.findUniqueOrThrow({ where: { id: draft.result.id } })).toMatchObject({ status: "draft", number: null, publicAccessIssuedAt: null })
+    expect(await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })).toBe(0)
   })
   it.each(["us_sales_tax", "custom"] as const)("issues taxed invoices and quotes under %s despite non-VAT registration", async taxRegime => {
     const ctx = await setup(false, 0)

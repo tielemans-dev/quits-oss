@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import { Text } from "@react-pdf/renderer"
 import { renderToStaticMarkup } from "react-dom/server"
 import { InvoicePdfDocument, type InvoiceForPdf } from "../invoice-pdf"
-import { buildInvoiceEmailContent } from "../email"
+import { buildInvoiceEmailContent, buildQuoteEmailContent } from "../email"
 import { LocalizedDocument } from "../../components/documents/localized-document"
 import { PublicInvoicePaymentPage } from "../../components/invoices/public-invoice-payment-page"
 import { CreditNotePdfDocument, type CreditNoteForPdf } from "../credit-note-pdf"
@@ -62,6 +62,26 @@ describe("seller VAT presentation", () => {
   })
   it.each([null, undefined])("keeps historic documents without a status unchanged: %s", status => {
     for (const output of outputs("en-US", status)) expect(output).not.toMatch(/No moms|The company is not VAT registered|25 % moms/)
+  })
+  it.each(["custom", "us_sales_tax"])("preserves 25 percent custom tax without VAT-specific presentation under %s", taxRegime => {
+    for (const output of outputs("en-US", false, { taxRegime, notes: `Synthetic instructions\n${nonVatStatement("en")}`, paymentNote: `Synthetic transfer instructions\n${nonVatStatement("en")}`, taxAmount: 25, total: 125,
+      vatRows: [{ ratePercent: "25", net: "100", tax: "25", gross: "125" }],
+      items: [{ ...invoice.items[0]!, taxRate: 25 }] }).concat(buildQuoteEmailContent({
+        quote: { number: "Synthetic quote", expiryDate: "2099-12-01", subtotal: 100, taxAmount: 25, total: 125, currency: "DKK", momsRegistered: false, taxRegime, items: [{ ...invoice.items[0]!, taxRate: 25 }] },
+        org: { locale: "en-US" }, contactName: "Synthetic buyer",
+      }).html)) {
+      expect(output).not.toMatch(/25 % moms|No moms|Ingen moms|The company is not VAT registered/)
+      expect(output).toContain(formatCurrency(125, "DKK", "en-US"))
+      expect(output).toContain(formatCurrency(25, "DKK", "en-US"))
+    }
+    const creditNote = { ...credit, taxRegime, sellerSnapshot: { momsRegistered: false }, taxAmount: 25, total: 125,
+      items: [{ ...credit.items[0]!, taxRate: 25 }] }
+    const pdf = pdfText(CreditNotePdfDocument({ creditNote, org: { locale: "en-US" } })).join(" ")
+    const email = buildCreditNoteEmailContent({ creditNote, invoice: credit.invoice, org: { locale: "en-US" }, contactName: "Synthetic buyer" }).html
+    for (const output of [pdf, email]) {
+      expect(output).not.toMatch(/25 % moms|The company is not VAT registered/)
+      expect(output).toContain(formatCurrency(125, "DKK", "en-US"))
+    }
   })
   it("does not label other registered rates as 25 %%", () => {
     expect(sellerVatLineText(true, 20, "en-US")).toBeNull()

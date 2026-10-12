@@ -41,6 +41,7 @@ export function serializePublicInvoiceSession(session: {
     amountCredited: Decimalish
     totalTax: Decimalish
     subtotalNet: Decimalish
+    taxRegime?: string
     currency: string
     /** The document's own language and timezone, the ones its PDF is rendered with. */
     locale?: string | null
@@ -119,6 +120,7 @@ export function serializePublicInvoiceSession(session: {
       totalTax: toNumber(invoice.totalTax),
       subtotalNet: toNumber(invoice.subtotalNet),
       currency: invoice.currency,
+      taxRegime: invoice.taxRegime,
       timezone: presentation.timezone,
       notes: invoice.notes,
       paymentReference: invoice.paymentReference?.trim() || issuedNumber(invoice),

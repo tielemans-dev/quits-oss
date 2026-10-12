@@ -1,6 +1,6 @@
 import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { nonVatStatement } from "./documents/non-vat-note"
-import { sellerVatLineText } from "./documents/seller-vat"
+import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
 import { buyerAddress, invoiceTaxIds } from "./documents/invoice-identity"
 import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
@@ -271,6 +271,7 @@ export type SendInvoiceEmailParams = {
     taxAmount: number
     total: number
     currency: string
+    taxRegime?: string
     momsRegistered?: boolean | null
     notes?: string | null
     /** The basis `items` state their amounts on. Absent, the headers stay plain. */
@@ -303,7 +304,8 @@ export function buildInvoiceEmailContent({
 }: Omit<SendInvoiceEmailParams, "to">) {
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
-  const notes = withoutNonVatStatement(invoice.notes, invoice.momsRegistered)
+  const momsRegistered = sellerVatPresentationStatus(invoice.momsRegistered, invoice.taxRegime)
+  const notes = withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime)
   const safeInvoiceNumber = escapeHtml(invoice.number)
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
@@ -329,11 +331,11 @@ export function buildInvoiceEmailContent({
     </div>
 
     ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[invoice.buyer.company, ...buyerAddress(invoice.buyer)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
-    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, invoice.momsRegistered)}
+    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, momsRegistered)}
     ${totalsBlock(invoice, locale)}
 
     ${notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(notes)}</p>` : ""}
-    ${invoice.momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
+    ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
     ${publicPaymentUrl
       ? actionBlock({
           href: publicPaymentUrl,
@@ -381,6 +383,7 @@ export type SendQuoteEmailParams = {
     /** VAT by rate and the rounding between net plus tax and the total; absent, the single tax amount is printed. */
     vatRows?: VatRow[]
     rounding?: string
+    taxRegime?: string
     momsRegistered?: boolean | null
     items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[]
   }
@@ -406,7 +409,8 @@ export function buildQuoteEmailContent({
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeQuoteNumber = escapeHtml(quote.number)
-  const notes = withoutNonVatStatement(quote.notes, quote.momsRegistered)
+  const momsRegistered = sellerVatPresentationStatus(quote.momsRegistered, quote.taxRegime)
+  const notes = withoutNonVatStatement(quote.notes, momsRegistered, quote.taxRegime)
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
@@ -426,10 +430,10 @@ export function buildQuoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(quote.items, quote.currency, locale, quote.priceBasis, quote.momsRegistered)}
+    ${itemsTable(quote.items, quote.currency, locale, quote.priceBasis, momsRegistered)}
     ${totalsBlock(quote, locale)}
 
-    ${quote.momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
+    ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
     ${notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(notes)}</p>` : ""}
     ${publicQuoteUrl
       ? actionBlock({

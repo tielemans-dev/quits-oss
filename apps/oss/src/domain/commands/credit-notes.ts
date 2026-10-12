@@ -179,6 +179,7 @@ export const sendCreditNote = defineCommand({
           taxAmount: num(creditNote.totalTax),
           total: num(creditNote.totalGross),
           currency: creditNote.currency,
+          taxRegime: creditNote.taxRegime,
           priceBasis: priceBasis(creditNote.pricesIncludeTax),
           ...documentVatSummary(creditNote),
           items: creditNote.items.map((item) => {

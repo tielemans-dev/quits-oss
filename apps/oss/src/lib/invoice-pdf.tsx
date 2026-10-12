@@ -1,7 +1,7 @@
 import { invoiceTaxIds, pdfBuyerAddress } from "./documents/invoice-identity"
 import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { nonVatStatement } from "./documents/non-vat-note"
-import { sellerVatLineText } from "./documents/seller-vat"
+import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
 import type { DocumentTaxId } from "@quits/contracts/documents"
 import {
   Document,
@@ -229,8 +229,9 @@ export type InvoiceForPdf = {
    * when false and gross when true. Absent on inputs frozen before documents stated their basis,
    * whose items are gross; those keep their plain column headers.
    */
-  momsRegistered?: boolean | null
   pricesIncludeTax?: boolean
+  taxRegime?: string
+  momsRegistered?: boolean | null
   /** The date of supply, as `YYYY-MM-DD`. Absent when the invoice has none. */
   supplyDate?: string | null
   /** VAT by rate. Absent on inputs frozen before they carried it; the VAT row is then the single `taxAmount`. */
@@ -275,7 +276,8 @@ export function InvoicePdfDocument({
   invoice: InvoiceForPdf
   org?: OrgSettingsForPdf
 }) {
-  const notes = withoutNonVatStatement(invoice.notes, invoice.momsRegistered)
+  const momsRegistered = sellerVatPresentationStatus(invoice.momsRegistered, invoice.taxRegime)
+  const notes = withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime)
   const contact = invoice.contact
   const fromName = org.companyName ?? ""
   const locale = org.locale
@@ -288,7 +290,7 @@ export function InvoicePdfDocument({
     vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale,
   })
   const paymentDetails = buildPaymentDetailsBlock(
-    { bankAccount: invoice.bankAccount, note: withoutNonVatStatement(invoice.paymentNote, invoice.momsRegistered) },
+    { bankAccount: invoice.bankAccount, note: withoutNonVatStatement(invoice.paymentNote, momsRegistered, invoice.taxRegime) },
     invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference,
     locale
   )
@@ -366,7 +368,7 @@ export function InvoicePdfDocument({
             <View key={i} style={styles.tableRow}>
               <View style={styles.colDescription}>
                 <Text>{item.description}</Text>
-                {sellerVatLineText(invoice.momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(invoice.momsRegistered, item.taxRate, locale)}</Text>}
+                {sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}
               </View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>
@@ -396,7 +398,7 @@ export function InvoicePdfDocument({
         </View>
 
         {/* Payment details */}
-        {invoice.momsRegistered === false && <Text style={[styles.notesText, { marginTop: 24 }]}>{nonVatStatement(locale)}</Text>}
+        {momsRegistered === false && <Text style={[styles.notesText, { marginTop: 24 }]}>{nonVatStatement(locale)}</Text>}
 
         {paymentDetails && (
           <View style={styles.paymentBox} wrap={false}>

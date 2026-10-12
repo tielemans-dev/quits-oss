@@ -40,6 +40,7 @@ export type InvoiceForEmail = {
   supplyDate?: Date | null
   issueDate: Date
   dueDate: Date
+  taxRegime?: string
   currency: string
   notes: string | null
   subtotalNet: Decimalish

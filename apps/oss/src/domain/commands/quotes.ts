@@ -278,7 +278,13 @@ const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
     yield* lockDocument("quote", id)
     const found = yield* findQuote(id)
     // Lock the contact before reading the address, so the approved recipient cannot change.
-    const quote = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
+    const effectiveSeller = action === "send"
+      ? yield* Effect.gen(function* () {
+          const { settings, sellerTaxIds } = yield* loadDocumentContext
+          return buildSellerSnapshot(settings, sellerTaxIds)
+        })
+      : found.sellerSnapshot
+    const quote = { ...found, sellerSnapshot: effectiveSeller, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
     const recipient = quote.contact.email?.trim() || null
     const total = `${quote.totalGross.toFixed(2)} ${quote.currency}`
     return {
