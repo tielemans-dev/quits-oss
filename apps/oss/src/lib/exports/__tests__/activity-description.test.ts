@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { translate } from "../../i18n/translate"
-import { aggregateLabel, describeActivity, humanizeEventType } from "../activity-description"
+import { eventRegistry } from "../../../domain/events/registry"
+import { daMessages, enMessages } from "../../i18n/messages"
+import { activityMessageKey, aggregateLabel, describeActivity, humanizeEventType } from "../activity-description"
 
 const en = (key: Parameters<typeof translate>[0], vars?: Record<string, string | number>) =>
   translate(key, "en-US", vars)
@@ -8,6 +10,33 @@ const da = (key: Parameters<typeof translate>[0], vars?: Record<string, string |
   translate(key, "da-DK", vars)
 
 describe("activity descriptions", () => {
+  it("localizes invoice issuance with its document number", () => {
+    const event = { type: "invoice.issued", aggregateType: "invoice", payload: { number: "INV-0002" } }
+    expect(describeActivity(event, da)).toBe("Faktura INV-0002 udstedt")
+    expect(describeActivity(event, en)).toBe("Invoice INV-0002 issued")
+  })
+
+  it.each(Object.keys(eventRegistry).filter(type => type !== "settlement.changed"))("has da/en copy for registered event %s", type => {
+    const key = activityMessageKey({ type, aggregateType: "invoice", payload: {} })
+    expect(key).not.toBeNull()
+    expect(daMessages[key!]).toBeTruthy()
+    expect(enMessages[key!]).toBeTruthy()
+    expect(describeActivity({ type, aggregateType: "invoice", payload: {} }, da)).not.toMatch(/\{\w+\}/)
+  })
+
+  it.each(["refund", "customer_credit", "reverse_allocation", "reverse_refund", "reverse_receipt"])("localizes settlement action %s", action => {
+    const key = activityMessageKey({ type: "settlement.changed", aggregateType: "settlementReceipt", payload: { action } })
+    expect(key).not.toBeNull()
+    expect(daMessages[key!]).toBeTruthy()
+    expect(enMessages[key!]).toBeTruthy()
+  })
+
+  it("does not invent an English description for an unknown event", () => {
+    const event = { type: "widget.updated", aggregateType: "widget", payload: {} }
+    expect(describeActivity(event, da)).toBe("Aktivitet registreret (widget.updated)")
+    expect(describeActivity(event, en)).toBe("Activity recorded (widget.updated)")
+  })
+
   it("describes known events with payload values", () => {
     const event = { type: "invoice.draft_created", aggregateType: "invoice", payload: { number: "INV-0001" } }
     expect(describeActivity(event, en)).toBe("Draft invoice INV-0001 created")

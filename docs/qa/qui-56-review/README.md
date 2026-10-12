@@ -1,6 +1,6 @@
 # QUI-56 review evidence
 
-The saved-default form captures use implementation head `9bc6e5051cf8cfb2779756af622ccd4899916486`. The production PDF evidence includes the subsequent future non-VAT CVR-label fix in this commit. The before/main baseline is `808debcfc95a1a5cf8cd782895e40e6e999baa85`. This evidence uses actual application forms, authenticated sessions and a disposable local synthetic database, `qui56_review_5492172888`. No production data, email or hosted provisioning is used.
+The after form and production PDF captures were refreshed on the merged tree in this commit: QUI-56 fixes including `f8dd0d6d`, plus current main `21065ada03ec0274a013ee335dde15cb6ef3677d`. All form rates were asserted again before capture. The before/main baseline is `808debcfc95a1a5cf8cd782895e40e6e999baa85`. This evidence uses actual application forms, authenticated sessions and a disposable local synthetic database, `qui56_review_5492172888`. No production data, email or hosted provisioning is used.
 
 ## Ines shot list
 
@@ -78,7 +78,7 @@ All heavy commands ran sequentially through Fleet with one worker. The queue was
 
 ## Onboarding step and manual-entry ownership
 
-Current main was verified as `21065ada03ec0274a013ee335dde15cb6ef3677d`, already an ancestor of this branch. No new merge was needed. The earlier saved-default before captures use the documented `808debcf` baseline; they are not new current-main onboarding captures.
+Current main `21065ada03ec0274a013ee335dde15cb6ef3677d` was merged normally in this continuation. The earlier ancestry report was incorrect: merge `4fa6fdab` had integrated `808debcf`, not `21065ada`. The sole merge conflict combined current-main PDF party layout with the frozen non-VAT CVR label, preserving both. The earlier saved-default before captures use the documented `808debcf` baseline; they are not new current-main onboarding captures.
 
 The v2 onboarding components, step flow and manual entry belong to stacked PR #122, branch `qui-56-screens`, inspected at `ad07867326c857db5f558a06e5c2ac57e3d403e4`, based on `qui-56-confirm-v2`. This T2 checkout has no `src/components/onboarding-v2` directory. Actual current-main/after onboarding-step screenshots, including manual entry, must be completed by a fresh #122 maintenance child after #121 is green. Existing T3 images were not changed or copied, and the T3 feature was not added to T2. Ines remains the approval gate.
 
@@ -90,7 +90,7 @@ One infrastructure retry submission was refused by GitHub with `job 114961178366
 
 ## Verification
 
-123 blocker regressions and 74 focused calendar/PDF/hook/runtime tests passed against this worktree's own frozen dependencies on a dedicated disposable database. The inherited-dependency run is excluded. Workspace lint and typecheck, i18n, 26 boundary regressions, the boundary scan and whitespace checks passed for the corrected implementation. The preserved full-suite run exited without a final summary; it is not a full-suite pass. This continuation also passed 36 focused PDF/issuance/legal-field tests, lint, whole-app typecheck, i18n, 26 boundary cases and the boundary scan against its own dependencies. No additional full suite or build was started.
+123 blocker regressions and 74 focused calendar/PDF/hook/runtime tests passed against this worktree's own frozen dependencies on a dedicated disposable database. The inherited-dependency run is excluded. Workspace lint and typecheck, i18n, 26 boundary regressions, the boundary scan and whitespace checks passed for the corrected implementation. The preserved full-suite run exited without a final summary; it is not a full-suite pass. After merging current main, this continuation also passed 42 focused PDF/issuance/legal-field/layout tests, lint, whole-app typecheck, i18n, 26 boundary cases and the boundary scan against its own dependencies. No additional full suite or build was started.
 
 Test-only billing/session/settings mocks remain labelled in regression tests. The completed browser captures use real auth, database settings and application forms. Production PDF rendering and artifact storage remain real in the earlier issuance regressions.
 

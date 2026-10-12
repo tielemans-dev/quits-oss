@@ -1,4 +1,4 @@
-import { invoiceTaxIds } from "./documents/invoice-identity"
+import { invoiceTaxIds, pdfBuyerAddress } from "./documents/invoice-identity"
 import type { DocumentTaxId } from "@quits/contracts/documents"
 import {
   Document,
@@ -12,7 +12,6 @@ import type { BankAccountSnapshot } from "@quits/contracts/payment-details"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import { canRenderLogo } from "./documents/logo"
-import type { TranslationKey } from "./i18n/messages"
 import { buildPaymentDetailsBlock } from "./payment-details-block"
 import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
 import { buildTotals } from "./documents/totals"
@@ -44,13 +43,29 @@ const styles = StyleSheet.create({
     height: "100%",
     objectFit: "contain",
   },
-  statusBadge: {
-    marginTop: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+  sellerMark: {
+    fontSize: 16,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 8,
+  },
+  parties: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  seller: {
+    flex: 1,
+    paddingRight: 24,
+  },
+  buyer: {
+    width: 270,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 20,
+    left: 40,
     fontSize: 9,
-    alignSelf: "flex-start",
+    color: C.muted,
   },
   headerRight: {
     textAlign: "right",
@@ -59,9 +74,6 @@ const styles = StyleSheet.create({
     color: C.muted,
     fontSize: 9,
     marginBottom: 2,
-  },
-  section: {
-    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 9,
@@ -251,34 +263,6 @@ export type InvoiceForPdf = {
   }>
 }
 
-function getStatusStyle(status: string) {
-  switch (status) {
-    case "paid":
-      return { backgroundColor: C.settledSoft, color: C.tones.success.text }
-    case "sent":
-      return { backgroundColor: C.tones.info.tint, color: C.tones.info.text }
-    case "overdue":
-      return { backgroundColor: C.tones.danger.tint, color: C.tones.danger.text }
-    default:
-      return { backgroundColor: C.tones.neutral.tint, color: C.tones.neutral.text }
-  }
-}
-
-function statusKey(status: string): TranslationKey {
-  switch (status) {
-    case "sent":
-      return "status.sent"
-    case "viewed":
-      return "status.viewed"
-    case "paid":
-      return "status.paid"
-    case "overdue":
-      return "status.overdue"
-    default:
-      return "status.draft"
-  }
-}
-
 export function InvoicePdfDocument({
   invoice,
   org = {},
@@ -287,7 +271,6 @@ export function InvoicePdfDocument({
   org?: OrgSettingsForPdf
 }) {
   const contact = invoice.contact
-  const statusStyle = getStatusStyle(invoice.status)
   const fromName = org.companyName ?? ""
   const locale = org.locale
   const timezone = org.timezone
@@ -309,7 +292,8 @@ export function InvoicePdfDocument({
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1, paddingRight: 16 }}>
+            {fromName && <Text style={styles.sellerMark}>{fromName}</Text>}
             {logo && (
               <View style={styles.logoContainer}>
                 <Image src={logo} style={styles.logo} />
@@ -318,57 +302,44 @@ export function InvoicePdfDocument({
             <Text style={styles.title}>
               {translate("pdf.invoice", locale)} {invoice.number}
             </Text>
-            <Text
-              style={[
-                styles.statusBadge,
-                { backgroundColor: statusStyle.backgroundColor, color: statusStyle.color },
-              ]}
-            >
-              {translate(statusKey(invoice.status), locale)}
-            </Text>
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.label}>{translate("pdf.issueDate", locale)}</Text>
-            <Text>{formatDate(invoice.issueDate, locale, timezone)}</Text>
+            <Text>{formatDate(invoice.issueDate, locale, timezone, { month: "long" })}</Text>
             <Text style={[styles.label, { marginTop: 6 }]}>
               {translate("pdf.dueDate", locale)}
             </Text>
-            <Text>{formatDate(invoice.dueDate, locale, "UTC")}</Text>
+            <Text>{formatDate(invoice.dueDate, locale, "UTC", { month: "long" })}</Text>
             {invoice.supplyDate && (
               <>
                 <Text style={[styles.label, { marginTop: 6 }]}>
                   {translate("pdf.supplyDate", locale)}
                 </Text>
                 {/* A calendar date, not an instant: formatting it in the organization's zone could move it a day. */}
-                <Text>{formatDate(invoice.supplyDate, locale, "UTC")}</Text>
+                <Text>{formatDate(invoice.supplyDate, locale, "UTC", { month: "long" })}</Text>
               </>
             )}
           </View>
         </View>
 
-        {/* From */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{translate("pdf.from", locale)}</Text>
-          <Text style={styles.contactName}>{fromName}</Text>
-          {org.companyEmail && <Text style={styles.contactLine}>{org.companyEmail}</Text>}
-          {org.companyPhone && <Text style={styles.contactLine}>{org.companyPhone}</Text>}
-          {org.companyAddress && <Text style={styles.contactLine}>{org.companyAddress}</Text>}
-          {invoiceTaxIds(org.taxIds, org.cvrLabel).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
-        </View>
+        <View style={styles.parties} wrap={false}>
+          {/* From */}
+          <View style={styles.seller}>
+            <Text style={styles.sectionTitle}>{translate("pdf.from", locale)}</Text>
+            <Text style={styles.contactName}>{fromName}</Text>
+            {org.companyEmail && <Text style={styles.contactLine}>{org.companyEmail}</Text>}
+            {org.companyPhone && <Text style={styles.contactLine}>{org.companyPhone}</Text>}
+            {org.companyAddress && <Text style={styles.contactLine}>{org.companyAddress}</Text>}
+            {invoiceTaxIds(org.taxIds, org.cvrLabel).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
+          </View>
 
-        {/* Bill To */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{translate("pdf.billTo", locale)}</Text>
-          <Text style={styles.contactName}>{contact.name}</Text>
-          {contact.company && <Text style={styles.contactLine}>{contact.company}</Text>}
-          {contact.email && <Text style={styles.contactLine}>{contact.email}</Text>}
-          {contact.address && <Text style={styles.contactLine}>{contact.address}</Text>}
-          {(contact.city || contact.state || contact.zip) && (
-            <Text style={styles.contactLine}>
-              {[contact.city, contact.state, contact.zip].filter(Boolean).join(", ")}
-            </Text>
-          )}
-          {contact.country && <Text style={styles.contactLine}>{contact.country}</Text>}
+          {/* Bill To */}
+          <View style={styles.buyer}>
+            <Text style={styles.sectionTitle}>{translate("pdf.billTo", locale)}</Text>
+            <Text style={styles.contactName}>{contact.name}</Text>
+            {contact.company && <Text style={styles.contactLine}>{contact.company}</Text>}
+            {pdfBuyerAddress(contact, locale).map((line, index) => <Text key={index} style={styles.contactLine}>{line}</Text>)}
+          </View>
         </View>
 
         {/* Items Table */}
@@ -442,6 +413,7 @@ export function InvoicePdfDocument({
             <Text style={styles.notesText}>{invoice.notes}</Text>
           </View>
         )}
+        <Text style={styles.footer} fixed>quits.</Text>
       </Page>
     </Document>
   )
