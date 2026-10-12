@@ -50,7 +50,7 @@ describe("invoice email payment instructions", () => {
       const content = buildInvoiceEmailContent({
         invoice: { ...invoice, ...details, balanceDue: 750 }, org: { locale }, contactName: "Buyer", publicPaymentUrl: url,
       })
-      const payment = content.html.match(new RegExp(`<table aria-label="${heading}"[\\s\\S]*?<\/table>`))?.[0]
+      const payment = content.html.match(new RegExp(`<table aria-label="${heading}"[\\s\\S]*?</table>`))?.[0]
       expect(payment).toBeDefined()
       expect(payment).toContain(locale === "da-DK" ? "750,00\u00a0kr." : "DKK\u00a0750.00")
       expect(payment).toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
