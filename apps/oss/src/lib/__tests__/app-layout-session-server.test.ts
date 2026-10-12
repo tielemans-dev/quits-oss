@@ -27,7 +27,7 @@ import { getAppLayoutSession } from "../auth-session"
 const load = getAppLayoutSession as unknown as () => Promise<{
   user: { id: string; name: string | null; email: string | null; image: string | null } | null
   activeOrganizationId: string | null
-  locale: string
+  locale: string | undefined
   runtime: { distribution: string; billingEnabled: boolean }
   cloudOnboardingComplete: boolean | null
 }>
@@ -69,13 +69,21 @@ describe("getAppLayoutSession", () => {
     })
   })
 
-  it("returns only the organization locale before either deployment renders", async () => {
-    state.distribution = { value: "selfhost", billingEnabled: false }
+  it.each(["cloud", "selfhost"] as const)("returns only the organization locale before %s renders", async distribution => {
+    state.distribution = { value: distribution, billingEnabled: distribution === "cloud" }
     state.getSession.mockResolvedValue(signedIn("org_a"))
-    expect(await load()).toMatchObject({ locale: "da-DK" })
+    state.loadCloudOnboardingState.mockResolvedValue({ isComplete: false })
+
+    for (const locale of ["da-DK", "en-US"]) {
+      state.settings.mockResolvedValue({ locale })
+      expect((await load()).locale).toBe(locale)
+    }
     expect(state.settings).toHaveBeenCalledWith({ where: { organizationId: "org_a" }, select: { locale: true } })
+
     state.settings.mockResolvedValue(null)
-    expect(await load()).toMatchObject({ locale: "en-US" })
+    const withoutSettings = await load()
+    expect(withoutSettings.activeOrganizationId).toBe("org_a")
+    expect(withoutSettings.locale).toBeUndefined()
   })
 
   it("reports incomplete onboarding", async () => {
