@@ -42,13 +42,30 @@ describe("invoice detail seller and payment blocks", () => {
 
 // MOCK: synthetic issued account and outstanding balances, confined to tests.
 describe("issued payment block regressions", () => {
-  it.each([
-    ["  ORDER-2026-42  ", "ORDER-2026-42"],
-    ["  ", "INV-0042"],
-  ])("renders the stored payment message or fallback: %s", (paymentReference, expected) => {
-    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" paymentReference={paymentReference} balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
-    expect(html).toContain(`<dd class="font-mono text-right break-words">${expected}</dd>`)
-    if (paymentReference.trim()) expect(html).not.toContain("INV-0042")
+  for (const locale of ["da-DK", "en-US"]) {
+    it.each([
+      ["  ORDER-2026-42  ", "ORDER-2026-42"],
+      ["  ", "INV-0042"],
+      [null, "INV-0042"],
+      [undefined, "INV-0042"],
+      ["  INV-0042  ", "INV-0042"],
+    ])(`renders matching ${locale} payment rows and hints: %s`, (paymentReference, expected) => {
+      const html = renderToStaticMarkup(<I18nProvider locale={locale}><InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" paymentReference={paymentReference} balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
+      expect(html).toContain(`<dd class="font-mono text-right break-words">${expected}</dd>`)
+      const defaultHint = locale === "da-DK" ? "Skriv fakturanummeret i beskeden, så vi kan finde din betaling." : "Add the invoice number to the payment message so we can match your payment."
+      if (expected === "INV-0042") expect(html).toContain(defaultHint)
+      else {
+        expect(html).toContain(locale === "da-DK" ? `Skriv ${expected} i beskeden, så vi kan finde din betaling.` : `Add ${expected} to the payment message so we can match your payment.`)
+        expect(html).not.toContain(defaultHint)
+        expect(html).not.toContain("INV-0042")
+      }
+    })
+  }
+
+  it("escapes a custom reference in both the detail row and hint", () => {
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" paymentReference="<img src=x>" balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
+    expect(html).toContain("Add &lt;img src=x&gt; to the payment message so we can match your payment.")
+    expect(html).not.toContain("<img")
   })
 
   it("shows an IBAN-only destination", () => {

@@ -1,6 +1,6 @@
 # QUI-52 invoice payment review
 
-The rework uses Mira's final “Betalingsbesked / Payment message” copy. The row value is the trimmed stored payment reference, falling back to the invoice number when the reference is absent or blank. The guard against “Betalingsreference” remains in unit and browser tests.
+The rework uses Mira's final “Betalingsbesked / Payment message” copy. The row value is the trimmed stored payment reference, falling back to the invoice number when the reference is absent or blank. The approved invoice-number hint remains for default and blank references. Custom-reference hints name the same trimmed value as the row in DA/EN. The guard against “Betalingsreference” remains in unit and browser tests.
 
 The 16 historical after captures at `4b47188a96620b248dbd5ddcdeeb7af059f5daf6` cover received email and the authenticated invoice page in DA/EN, light/dark, desktop 1440×1000 and mobile 390×844. Email HTML comes from an actual UI resend through disposable Mailpit. Both capture tests passed, including bounds checks for every visible invoice action at 390px. Full-page image height can exceed viewport height.
 
@@ -50,3 +50,11 @@ Starting head `c35017bbf0834261f0623cc4f55654ba9439862b` passed both CI verify j
 The bounded follow-up preserves stored custom payment references in email/detail, with a trimmed invoice-number fallback. Compact dates retain Intl calendar parts and locale notation outside Danish/English Gregorian formatting, including the Japanese era. Focused unit regressions and the existing shared browser reference assertions cover these changes. The starting-head evidence does not validate this follow-up; exact-head checks and refreshed evidence remain pending in CI. No local runtime checks were run because no parent Fleet slot was supplied.
 
 The parent owns final verification and review. The missing `designs/pay-da-bank-only-desktop.png` and Ines's design sign-off remain unresolved. Kai owns #127 integration. Capture duplication remains deferred.
+
+## Follow-up for stored-reference type and hint consistency
+
+The server's `invoices.get` query loads every invoice column, including nullable `paymentReference`, and its email-attempt sanitizer preserves the payload. No output DTO in `packages/contracts` filters the field. The detail page now types its payment reference directly from the query's return type, fixing the missing-field TS2339 without a cast or a changed server payload.
+
+The shared hint helper preserves Mira's invoice-number default verbatim when the effective reference is the invoice number. Custom references appear in the DA/EN hint as well as the payment row. Email escapes the interpolated hint; React escapes the detail text. Focused composer/detail regressions cover custom, whitespace, null, absent and explicit invoice-number references in both locales. The existing shared browser scenarios assert the real query preserves the stored value and that custom rows and hints agree, with no contradictory default hint.
+
+On prior head `af910b324d6a0f9ff0019cf3c1ac4f2973955c3e`, both verify and both boundary jobs failed on the missing detail type field; both shared browser jobs and the draft capture passed. Those captures do not validate this follow-up. Fresh exact-head checks and evidence are still required. No local runtime checks ran under the parent's resource constraint. The missing design reference and Ines sign-off remain unresolved.

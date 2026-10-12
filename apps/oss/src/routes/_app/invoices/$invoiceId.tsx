@@ -123,6 +123,7 @@ type Invoice = {
   id: string
   /** Null until the invoice is sent. */
   number: string | null
+  paymentReference: Awaited<ReturnType<typeof trpc.invoices.get.query>>["paymentReference"]
   /** The number a draft would take if sent now; not reserved. */
   nextNumber?: string | null
   status: string

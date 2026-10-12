@@ -163,20 +163,31 @@ describe("frozen invoice email payment details", () => {
 
 // MOCK: synthetic settlement/account fixtures, confined to tests.
 describe("issued transfer regressions", () => {
-  it.each([
-    ["  ORDER-2026-42  ", "ORDER-2026-42"],
-    ["  ", "INV-0042"],
-  ])("propagates the stored reference into issued email instructions: %s", (paymentReference, expected) => {
-    const html = compose({ ...storedInvoice, paymentReference })
-    const payment = html.match(/<table aria-label="Sådan betaler du"[\s\S]*?<\/table>/)?.[0]
-    expect(payment).toContain(expected)
-    if (paymentReference.trim()) expect(payment).not.toContain("INV-0042")
-    expect(html).toContain("INV-0042")
-  })
+  for (const [locale, heading, _reg, _account, defaultHint] of copies) {
+    it.each([
+      ["  ORDER-2026-42  ", "ORDER-2026-42"],
+      ["  ", "INV-0042"],
+      [null, "INV-0042"],
+      [undefined, "INV-0042"],
+      ["  INV-0042  ", "INV-0042"],
+    ])(`propagates the stored reference into matching ${locale} email rows and hints: %s`, (paymentReference, expected) => {
+      const html = compose({ ...storedInvoice, locale, paymentReference })
+      const payment = html.match(new RegExp(`<table aria-label="${heading}"[\\s\\S]*?</table>`))?.[0]
+      expect(payment).toContain(expected)
+      if (expected === "INV-0042") expect(html).toContain(defaultHint)
+      else {
+        expect(payment).not.toContain("INV-0042")
+        expect(html).toContain(locale === "da-DK" ? `Skriv ${expected} i beskeden, så vi kan finde din betaling.` : `Add ${expected} to the payment message so we can match your payment.`)
+        expect(html).not.toContain(defaultHint)
+      }
+      expect(html).toContain("INV-0042")
+    })
+  }
 
   it("escapes a stored custom payment reference", () => {
     const html = compose({ ...storedInvoice, paymentReference: '<img src=x>' })
     expect(html).toContain("&lt;img src=x&gt;")
+    expect(html).toContain("Skriv &lt;img src=x&gt; i beskeden, så vi kan finde din betaling.")
     expect(html).not.toContain("<img")
   })
 

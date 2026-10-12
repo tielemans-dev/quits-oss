@@ -9,6 +9,7 @@ export const enEmailMessages = {
   "email.pay.due": "Due date",
   "email.pay.referenceLabel": "Payment message",
   "email.pay.reference": "Add the invoice number to the payment message so we can match your payment.",
+  "email.pay.customReference": "Add {reference} to the payment message so we can match your payment.",
   "email.pay.button": "Pay invoice",
   "email.invoice.payCta": "Pay this invoice",
   "email.invoice.payFallback": "If the button does not work, use this secure payment link:",

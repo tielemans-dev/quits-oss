@@ -1,5 +1,5 @@
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
-import { invoicePaymentRows } from "./documents/invoice-payment-rows"
+import { invoicePaymentReferenceHint, invoicePaymentRows } from "./documents/invoice-payment-rows"
 import { buyerAddress, invoiceTaxIds } from "./documents/invoice-identity"
 import { hasPaymentDetails, type BankAccountSnapshot } from "@quits/contracts/payment-details"
 import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
@@ -334,6 +334,7 @@ export function buildInvoiceEmailContent({
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
+  const referenceHint = invoicePaymentReferenceHint(invoice, locale)
   const showPaymentInstructions = hasPaymentDetails({ bankAccount: invoice.bankAccount, note: invoice.paymentNote }) || Boolean(publicPaymentUrl)
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:22px;">${t("pdf.invoice", locale)} ${safeInvoiceNumber}</h2>
@@ -368,7 +369,7 @@ export function buildInvoiceEmailContent({
         <td style="padding:10px 0;border-bottom:1px solid ${C.hairline};text-align:right;font-family:'Geist Mono',Consolas,monospace;overflow-wrap:anywhere;">${escapeHtml(row.value)}</td>
       </tr>`).join("")}
     </table>
-    <p style="margin:12px 0;color:${C.muted};font-size:14px;">${t("email.pay.reference", locale)}</p>
+    ${referenceHint ? `<p style="margin:12px 0;color:${C.muted};font-size:14px;">${escapeHtml(referenceHint)}</p>` : ""}
     ${invoice.paymentNote?.trim() ? `<p style="margin:12px 0;font-size:14px;">${formatMultilineHtml(invoice.paymentNote)}</p>` : ""}
     ${publicPaymentUrl
       ? actionBlock({

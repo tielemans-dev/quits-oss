@@ -57,7 +57,13 @@ for (const locale of ['da-DK', 'en-US']) {
         await prisma.invoice.update({ where: { id: draft.id }, data: { paymentReference } })
         await caller.invoices.send({ id: draft.id, allowSendWithoutEmail: true })
         const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.id }, include: { contact: true, items: true } })
+        const detailPayload = await caller.invoices.get({ id: issued.id })
+        expect(detailPayload.paymentReference).toBe(paymentReference)
         const paymentMessage = issued.paymentReference?.trim() || issued.number!
+        const defaultReferenceHint = locale === 'da-DK' ? 'Skriv fakturanummeret i beskeden, så vi kan finde din betaling.' : 'Add the invoice number to the payment message so we can match your payment.'
+        const referenceHint = bankKind === 'iban'
+          ? (locale === 'da-DK' ? `Skriv ${paymentMessage} i beskeden, så vi kan finde din betaling.` : `Add ${paymentMessage} to the payment message so we can match your payment.`)
+          : defaultReferenceHint
         const publicPaymentUrl = withBank ? (await caller.invoices.createPaymentLink({ id: draft.id })).url : null
         await caller.paymentDetails.update({ bankAccount: { regNumber: '1234', accountNumber: '9876543' }, note: 'Changed current payment note' })
         await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { companyName: 'Changed current seller', companyAddress: 'Changed current address' } })
@@ -82,7 +88,8 @@ for (const locale of ['da-DK', 'en-US']) {
             await expect(payment).toContainText('0040')
             await expect(payment).toContainText('Issue-time payment note')
           }
-          await expect(payment).toContainText(locale === 'da-DK' ? 'Skriv fakturanummeret i beskeden, så vi kan finde din betaling.' : 'Add the invoice number to the payment message so we can match your payment.')
+          await expect(payment).toContainText(referenceHint)
+          if (bankKind === 'iban') await expect(payment).not.toContainText(defaultReferenceHint)
         } else await expect(payment).toHaveCount(0)
         await expect(page.getByText('Changed current payment note')).toHaveCount(0)
         await testInfo.attach('invoice-detail', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
@@ -105,10 +112,11 @@ for (const locale of ['da-DK', 'en-US']) {
         const email = composeInvoiceEmail({ invoice: { ...issued, number: issued.number! }, settings, to: contact.email!, publicPaymentUrl }).message
         await page.setViewportSize({ width: 390, height: 844 })
         expect(email.html).not.toMatch(/@font-face|@import|cdn\.jsdelivr\.net|\.woff2?/)
+        if (bankKind === 'iban') expect(email.html).not.toContain(defaultReferenceHint)
         await page.setContent(email.html!)
         const emailPaymentHeading = page.getByRole('heading', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })
         const emailPaymentRows = page.getByRole('table', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })
-        const emailReferenceHint = page.getByText(locale === 'da-DK' ? 'Skriv fakturanummeret i beskeden, så vi kan finde din betaling.' : 'Add the invoice number to the payment message so we can match your payment.', { exact: true })
+        const emailReferenceHint = page.getByText(referenceHint, { exact: true })
         const emailPaymentAction = page.getByRole('link', { name: locale === 'da-DK' ? 'Betal faktura' : 'Pay invoice', exact: true })
         // Payment-less issued emails retain the invoice and frozen seller, without invented instructions.
         await expect(page.getByRole('heading', { name: `${locale === 'da-DK' ? 'Faktura' : 'Invoice'} ${issued.number}`, exact: true })).toBeVisible()

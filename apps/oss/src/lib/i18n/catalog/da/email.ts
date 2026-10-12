@@ -9,6 +9,7 @@ export const daEmailMessages = {
   "email.pay.due": "Forfaldsdato",
   "email.pay.referenceLabel": "Betalingsbesked",
   "email.pay.reference": "Skriv fakturanummeret i beskeden, så vi kan finde din betaling.",
+  "email.pay.customReference": "Skriv {reference} i beskeden, så vi kan finde din betaling.",
   "email.pay.button": "Betal faktura",
   "email.invoice.payCta": "Betal denne faktura",
   "email.invoice.payFallback": "Hvis knappen ikke virker, kan du bruge dette sikre betalingslink:",

@@ -10,6 +10,21 @@ export function groupAccountNumber(value: string): string {
   return /^\d{10}$/.test(trimmed) ? `${trimmed.slice(0, 4)} ${trimmed.slice(4, 7)} ${trimmed.slice(7)}` : trimmed
 }
 
+type InvoicePaymentReference = { number: string | null; paymentReference?: string | null }
+
+function paymentMessageForInvoice(input: InvoicePaymentReference) {
+  return input.paymentReference?.trim() || input.number?.trim()
+}
+
+/** Keep the approved default hint; custom messages must name the same value as the row. */
+export function invoicePaymentReferenceHint(input: InvoicePaymentReference, locale?: string | null) {
+  const reference = paymentMessageForInvoice(input)
+  if (!reference) return null
+  return reference === input.number?.trim()
+    ? translate("email.pay.reference", locale)
+    : translate("email.pay.customReference", locale, { reference })
+}
+
 /** The same stored payment message and frozen destination rows in email and the app. */
 export function invoicePaymentRows(input: {
   bankAccount?: BankAccountSnapshot | null
@@ -27,7 +42,7 @@ export function invoicePaymentRows(input: {
     const key = row.key === "pdf.regNumber" ? "email.pay.reg" : row.key === "pdf.accountNumber" ? "email.pay.account" : row.key
     return { key, label: translate(key, locale), value: row.key === "pdf.accountNumber" ? groupAccountNumber(row.value) : row.value }
   })
-  const paymentMessage = input.paymentReference?.trim() || input.number?.trim()
+  const paymentMessage = paymentMessageForInvoice(input)
   const reference = paymentMessage
     ? [{ key: "email.pay.referenceLabel" as const, label: translate("email.pay.referenceLabel", locale), value: paymentMessage }]
     : []

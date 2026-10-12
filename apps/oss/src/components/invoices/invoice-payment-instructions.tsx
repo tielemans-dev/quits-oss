@@ -1,7 +1,7 @@
 import { hasPaymentDetails } from "@quits/contracts/payment-details"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { useI18n } from "../../lib/i18n/react"
-import { invoicePaymentRows } from "../../lib/documents/invoice-payment-rows"
+import { invoicePaymentReferenceHint, invoicePaymentRows } from "../../lib/documents/invoice-payment-rows"
 import { invoiceTaxIds } from "../../lib/documents/invoice-identity"
 
 export function InvoiceSellerDetails({ status, sellerSnapshot }: { status: string; sellerSnapshot: unknown }) {
@@ -30,6 +30,7 @@ export function InvoicePaymentInstructions({ status, sellerSnapshot, number, pay
 }) {
   const { t, locale } = useI18n()
   const seller = parseSellerSnapshot(sellerSnapshot)
+  const referenceHint = invoicePaymentReferenceHint({ number, paymentReference }, locale)
   const account = seller?.bankAccount
   const note = seller?.paymentNote?.trim()
   if (status === "draft" || !hasPaymentDetails({ bankAccount: account, note })) return null
@@ -44,7 +45,7 @@ export function InvoicePaymentInstructions({ status, sellerSnapshot, number, pay
           </div>
         ))}
       </dl>
-      {number && <p className="mt-2 text-muted-foreground">{t("email.pay.reference")}</p>}
+      {referenceHint && <p className="mt-2 text-muted-foreground">{referenceHint}</p>}
       {note && <p className="whitespace-pre-wrap break-words">{note}</p>}
     </section>
   )
