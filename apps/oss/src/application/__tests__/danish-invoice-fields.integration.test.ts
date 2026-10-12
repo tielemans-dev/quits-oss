@@ -119,7 +119,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     }
     enable()
     await prisma.orgSettings.update({ where: { organizationId: context.org.organizationId }, data: { companyName: "Changed Seller", companyAddress: null } })
-    await prisma.organizationTaxId.deleteMany({ where: { organizationId: context.org.organizationId } })
+    // A changed trading name/address retains the same legal seller identified by its CVR.
     await prisma.contact.update({ where: { id: context.contact.id }, data: { name: "Changed Buyer", address: null } })
     const issued = await issue(context, invoiceId)
     expect(issued, JSON.stringify(issued)).toMatchObject({ status: "completed" })

@@ -92,6 +92,8 @@ export async function runInvoiceQuoteSmokeFlow(
     await prisma.orgSettings.create({
       data: {
         organizationId: orgId,
+        companyName: "Synthetic Smoke Seller",
+        companyAddress: "1 Synthetic Street, Test City",
         countryCode: config.countryCode,
         locale: config.locale,
         timezone: config.timezone,

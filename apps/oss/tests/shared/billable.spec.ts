@@ -25,6 +25,8 @@ test.beforeEach(async ({ baseURL }) => {
 async function seedReservedWork(lineCount = 1) {
   bootstrapQuitsRuntime({})
   const setup = await seedCompletedSetup()
+  // MOCK: complete the same US legal seller before the agreement freezes its identity.
+  await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { companyAddress: '1 Synthetic Street, Test City' } })
   const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: setup.adminUserId, userName: 'E2E Admin' })
   if (!actor) throw new Error('Missing fixture membership')
   const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: 'Billable customer', email: 'customer@example.invalid' } })

@@ -147,12 +147,26 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     try {
       expect(await issueDocument(args)).toMatchObject({ status: "failed", error: { code } })
       expect(render).not.toHaveBeenCalled()
-      expect(await executeCommand(sendInvoice, args.commandInput, { actor })).toMatchObject({ status: "failed", error: { code } })
+      // The public command boundary still requires a real issuance reservation.
+      expect(await executeCommand(sendInvoice, args.commandInput, { actor })).toMatchObject({ status: "failed", error: { code: "issuance_required" } })
     } finally { render.mockRestore() }
     expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { items: true } })).toMatchObject({ status: "draft", number: null, sellerSnapshot: before.sellerSnapshot, items: before.items })
     expect(await prisma.artifactStaging.count({ where: { documentId: invoiceId } })).toBe(0)
     expect(await prisma.issuanceCandidate.count({ where: { documentId: invoiceId } })).toBe(0)
     expect((await ctx.caller.settings.get()).invoiceNextNum).toBe(1)
+    // Prepare with seller A, then change settings before the actual staged command revalidates.
+    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "12345678" } })
+    await ctx.caller.settings.update({ momsRegistered: registered })
+    const staged = await reserveDocument({ ...args, clientRequestId: "retained-seller-command" })
+    await prepareDocument(staged.id)
+    const prepared = await prisma.artifactStaging.findUniqueOrThrow({ where: { id: staged.id } })
+    await ctx.caller.settings.update({ momsRegistered: !registered })
+    if (changedCvr) await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "87654321" } })
+    expect(await executeCommand(sendInvoice, args.commandInput, { actor, issuanceStagingId: staged.id })).toMatchObject({ status: "failed", error: { code } })
+    expect(await prisma.artifactStaging.findUniqueOrThrow({ where: { id: staged.id } })).toEqual(prepared)
+    expect(await prisma.issuanceCandidate.count({ where: { documentId: invoiceId } })).toBe(0)
+    expect((await ctx.caller.settings.get()).invoiceNextNum).toBe(1)
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { items: true } })).toMatchObject({ status: "draft", number: null, sellerSnapshot: before.sellerSnapshot, items: before.items })
     // Restore the confirmed seller and issue without rewriting the agreed identity or lines.
     await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "12345678" } })
     await ctx.caller.settings.update({ momsRegistered: registered })
@@ -388,7 +402,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     expect(issued.items[0]!.taxRate.toNumber()).toBe(taxRate)
     expect(issued.totalTax.toNumber()).toBe(taxRate)
     expect(issued.totalGross.toNumber()).toBe(100 + taxRate)
-    expect(parseSellerSnapshot(issued.sellerSnapshot)?.momsRegistered).toBeNull()
+    expect(parseSellerSnapshot(issued.sellerSnapshot)).not.toHaveProperty("momsRegistered")
     const historic = await prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoice.id } })
     expect(historic.sellerSnapshot).toEqual(frozen.sellerSnapshot)
     expect(historic.issuanceSnapshot).toEqual(frozen.issuanceSnapshot)
