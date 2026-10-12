@@ -1,5 +1,11 @@
 # AGENTS.md
 
+## GitHub communication
+
+Never @-mention Ines, Mira, Noah, Lumi, or Kai on GitHub, regardless of case, including in PR bodies,
+comments, review comments, and issues. Write the name plainly, e.g. "Ines: please review". Those
+handles ping unrelated real GitHub users; the bots have no GitHub accounts.
+
 ## Task Completion Requirements
 
 - `bun run lint` must pass before considering work complete.
