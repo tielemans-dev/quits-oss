@@ -52,7 +52,7 @@ export function installHostedVatFixture() {
     async resolveInvoiceIssuancePolicy(context) {
       await table()
       const rows = await prisma.$queryRaw<Array<{ identity: string; status: "registered" | "not_registered" }>>`SELECT identity, status FROM qui62_fixture_confirmation WHERE organization_id = ${context.organizationId}`
-      return { requireSellerVatStatus: true, standardVatRate: "0.25", sellerVatStatus: rows[0]?.identity === identity(context.seller) ? rows[0].status : "unset" }
+      return { requireSellerVatStatus: true, standardVatRate: "25", sellerVatStatus: rows[0]?.identity === identity(context.seller) ? rows[0].status : "unset" }
     },
   }] })
 }
