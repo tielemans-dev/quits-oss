@@ -5,6 +5,7 @@ import { vatRowsByRate } from "./frozen-vat-groups"
 import { documentVatSummary } from "./vat-summary"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { formatIsoDate } from "../../lib/exports/format"
+import { withNonVatStatement } from "../../lib/documents/non-vat-note"
 import { requireVatIssuance } from "./vat-issuance"
 import { toDecimal } from "../../lib/exports/format"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
@@ -148,7 +149,7 @@ export const prospectiveRenderInput = (input: {
       vatRowsByRate((built.creditedGroups ?? []).map(group => ({ rate: group.original.rate, net: group.creditedNet, tax: group.creditedTax, gross: group.creditedGross })), invoice.currency))
     const creditVatSummary = { ...(creditSummary.vatRows ? { vatRows: creditSummary.vatRows } : {}), rounding: creditSummary.rounding }
     const creditNote: CreditNoteForPdf = {
-      number: input.number, issueDate: base.issuedAt, reason: selection.reason,
+      number: input.number, issueDate: base.issuedAt, reason: withNonVatStatement(selection.reason, money.seller.momsRegistered, invoice.locale) ?? selection.reason,
       subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
       currency: invoice.currency, locale: invoice.locale, timezone: invoice.timezone,
       sellerSnapshot, buyerSnapshot, contact: { ...buildBuyerSnapshot(invoice.contact), name: invoice.contact.name },

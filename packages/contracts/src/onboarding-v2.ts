@@ -30,7 +30,7 @@ export const confirmOnboardingV2Schema = z.object({
   companyName: z.string().trim().min(1).max(120),
   companyAddress: z.string().trim().min(1).max(240),
   source: z.enum(["cvr", "manual"]).default("cvr"),
-  invoiceNextNum: z.number().int().min(1).max(2147483647).default(1),
+  invoiceNextNum: z.number().int().min(1).max(2147483646).default(1),
   cvr: z.string().trim().refine(isValidDanishCvr, "cvr.invalid"),
   companyForm: z.string().trim().min(1).max(80),
   momsRegistered: z.boolean(),

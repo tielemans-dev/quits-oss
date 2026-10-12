@@ -57,6 +57,15 @@ describe("credit note PDF parties", () => {
     expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
   })
 
+  it("suppresses retained VAT IDs for the frozen nonregistered seller without changing legal IDs or buyer IDs", () => {
+    const frozen = { ...sellerSnapshot, momsRegistered: false, taxIds: [...sellerSnapshot.taxIds, { scheme: "lei", value: "LEGAL-ID" }] }
+    const before = JSON.stringify(frozen)
+    const { seller, buyer } = creditNotePdfParties({ ...issued, sellerSnapshot: frozen }, { taxIds: [{ scheme: "vat", value: "DK87654321" }] })
+    expect(seller.taxIds).toEqual(["CVR no.: 12345678", "LEI: LEGAL-ID"])
+    expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
+    expect(JSON.stringify(frozen)).toBe(before)
+  })
+
   it("translates tax identifier labels", () => {
     const { seller } = creditNotePdfParties({ ...issued, locale: "da" }, {})
     expect(seller.taxIds).toEqual(["Momsnr.: DK12345678", "CVR-nr.: 12345678"])

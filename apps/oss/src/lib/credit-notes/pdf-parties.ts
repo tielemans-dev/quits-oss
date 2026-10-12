@@ -84,7 +84,9 @@ export function creditNotePdfParties(
         name: sellerSnapshot.companyName || org.companyName || "Quits",
         email: sellerSnapshot.companyEmail ?? null,
         address: sellerSnapshot.companyAddress ?? null,
-        taxIds: formatTaxIds(sellerSnapshot.taxIds, locale),
+        taxIds: formatTaxIds(sellerSnapshot.momsRegistered === false
+          ? sellerSnapshot.taxIds?.filter(id => !VAT_SCHEMES.has(id.scheme.trim().toLowerCase()))
+          : sellerSnapshot.taxIds, locale),
         phone: org.companyPhone ?? null,
         logo: canRenderLogo(org.companyLogo) ? org.companyLogo : null,
       }
