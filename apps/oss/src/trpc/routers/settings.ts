@@ -325,7 +325,7 @@ export const settingsRouter = router({
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
-          select: { countryCode: true, aiProvider: true, aiBaseUrl: true },
+          select: { countryCode: true, taxRegime: true, momsRegistered: true, aiProvider: true, aiBaseUrl: true },
         })
         // Re-saving the stored provider is always fine; only switching to a new one is checked, so
         // capability changes on the server never block saving unrelated settings.
