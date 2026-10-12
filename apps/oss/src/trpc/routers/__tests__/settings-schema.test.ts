@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest"
 import { settingsUpdateSchema } from "../settings"
 
 describe("settingsUpdateSchema", () => {
+  it("preserves unknown, registered, and deregistered registration values", () => {
+    for (const momsRegistered of [null, false, true]) {
+      expect(settingsUpdateSchema.parse({ momsRegistered })).toEqual({ momsRegistered })
+    }
+    expect(settingsUpdateSchema.parse({})).not.toHaveProperty("momsRegistered")
+    expect(() => settingsUpdateSchema.parse({ momsRegistered: "false" })).toThrow()
+  })
   it("accepts global locale and compliance fields", () => {
     const parsed = settingsUpdateSchema.parse({
       countryCode: "DK",

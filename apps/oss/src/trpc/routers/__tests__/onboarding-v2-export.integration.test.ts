@@ -82,7 +82,38 @@ let artifactDirectory: string
       if (locale === "en-US") expect(exported.xml).not.toContain("Virksomheden er ikke momsregistreret.")
     } else expect(exported.xml).not.toContain("The company is not VAT registered.")
     // Current settings cannot change an issued invoice's registration or language.
-    await prisma.orgSettings.update({ where: { organizationId: id }, data: { momsRegistered: !momsRegistered, locale: "da-DK", paymentNote: "Changed note" } })
+    vi.resetModules()
+    const { appRouter } = await import("../../router")
+    const api = appRouter.createCaller({ session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
+    expect(await api.settings.get()).toMatchObject({ momsRegistered })
+    await api.settings.update({ momsRegistered: !momsRegistered, locale: "da-DK" })
+    expect(await api.settings.get()).toMatchObject({ momsRegistered: !momsRegistered })
     expect(await exportEinvoice(id, "invoice", invoice.id)).toEqual(exported)
+    const future = await executeIssuanceCommand(createInvoiceDraft, {
+      contactId: contact.result.id, dueDate: "2026-12-01", taxRate: momsRegistered ? 0 : 25,
+      items: [{ description: "Future work", quantity: 1, unitPrice: 100 }],
+    }, { actor })
+    if (future.status !== "completed") throw new Error(JSON.stringify(future))
+    const futureIssued = await executeIssuanceCommand(sendInvoice, { id: future.result.id, allowSendWithoutEmail: true }, { actor })
+    if (futureIssued.status !== "completed") throw new Error(JSON.stringify(futureIssued))
+    const futureInvoice = await prisma.invoice.findUniqueOrThrow({ where: { id: future.result.id } })
+    expect(parseSellerSnapshot(futureInvoice.sellerSnapshot)?.momsRegistered).toBe(!momsRegistered)
+    const futureExport = await exportEinvoice(id, "invoice", futureInvoice.id)
+    if (!futureExport.ok) throw new Error(JSON.stringify(futureExport))
+    const futureSupplier = futureExport.xml.split("<cac:AccountingSupplierParty>")[1]?.split("</cac:AccountingSupplierParty>")[0]
+    if (momsRegistered) {
+      expect(futureSupplier).not.toContain("<cac:PartyTaxScheme>")
+      expect(futureExport.xml).toContain("Virksomheden er ikke momsregistreret.")
+    } else {
+      expect(futureSupplier).toContain("<cac:PartyTaxScheme>")
+      expect(futureExport.xml).not.toContain("Virksomheden er ikke momsregistreret.")
+    }
+    // Omission preserves the choice; explicit null restores unknown registration for future work.
+    await api.settings.update({ taxRate: 0 })
+    expect(await api.settings.get()).toMatchObject({ momsRegistered: !momsRegistered })
+    await api.settings.update({ momsRegistered: null })
+    expect(await api.settings.get()).toMatchObject({ momsRegistered: null })
+    expect(await exportEinvoice(id, "invoice", invoice.id)).toEqual(exported)
+    expect(await exportEinvoice(id, "invoice", futureInvoice.id)).toEqual(futureExport)
   })
 })
