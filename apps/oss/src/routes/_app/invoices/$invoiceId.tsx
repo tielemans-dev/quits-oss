@@ -980,7 +980,7 @@ function InvoiceDetailPage() {
             paymentLinkUrl && invoice.paymentStatus !== "paid"
               ? {
                   title: t("invoices.detail.paymentLink.title"),
-                  description: t("invoices.detail.paymentLink.description"),
+                  description: t(orgSettings.stripeByokConfigured ? "invoices.detail.paymentLink.description" : "invoices.detail.paymentLink.bankDescription"),
                   url: paymentLinkUrl,
                   copyLabel: t("invoices.detail.paymentLink.copy"),
                   onCopy: () => {

@@ -114,6 +114,7 @@ export const daInvoicesMessages = {
   "invoices.detail.paymentLink.title": "Betalingslink til kunde",
   "invoices.detail.paymentLink.description":
     "Del dette hostede link med kunden for at modtage betaling via Stripe.",
+  "invoices.detail.paymentLink.bankDescription": "Kunden kan se fakturaen og dine bankoplysninger via linket.",
   "invoices.detail.paymentLink.copy": "Kopiér link",
   "invoices.detail.email.status.sending": "Sender",
   "invoices.detail.email.reason.sending": "E-mailudbyderen har endnu ikke bekræftet leveringen. Der prøves automatisk igen, og kunden får ikke en dublet. Fakturaen kan ikke redigeres, før leveringen er bekræftet eller opgivet.",

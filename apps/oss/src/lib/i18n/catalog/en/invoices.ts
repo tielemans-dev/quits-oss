@@ -109,6 +109,7 @@ export const enInvoicesMessages = {
   "invoices.detail.paymentLink.title": "Customer payment link",
   "invoices.detail.paymentLink.description":
     "Share this hosted link with the customer to collect payment through Stripe.",
+  "invoices.detail.paymentLink.bankDescription": "Your customer can see the invoice and your bank details via the link.",
   "invoices.detail.paymentLink.copy": "Copy link",
   "invoices.detail.email.status.sending": "Sending",
   "invoices.detail.email.reason.sending": "The email provider has not confirmed delivery yet. It is retried automatically, and the customer will not get a duplicate. The invoice cannot be edited until delivery is confirmed or given up.",

@@ -1,3 +1,4 @@
+import { translate } from "../i18n/translate"
 import { agreementPublicDecisionSchema, deliverablePublicDecisionSchema } from "@quits/contracts/agreements"
 import { prisma } from "../db"
 import { publicPresentationSettingsSelect } from "../documents/public-presentation"
@@ -84,12 +85,13 @@ export async function decidePublicAgreementByToken(
   decision: unknown,
   evidence: { ip?: string | null; userAgent?: string | null } = {},
   now = new Date(),
+  locale?: string | null,
 ) {
   const payload = verifyAgreementPublicToken(token, getAgreementPublicSecret())
   if (!payload || payload.scope !== "decide")
     throw new InvalidState({
       code: "invalid",
-      message: "This link is no longer valid",
+      message: translate("agreements.invalidLink", locale),
     })
   await recordPublicLinkAttempt(
     {
@@ -110,7 +112,7 @@ export async function decidePublicAgreementByToken(
   if (!target)
     throw new InvalidState({
       code: "invalid",
-      message: "This link is no longer valid",
+      message: translate("agreements.invalidLink", locale),
     })
   const outcome = await executeCommand(
     recordAgreementCustomerDecision,
@@ -138,16 +140,16 @@ export async function decidePublicAgreementByToken(
   }
 }
 
-export async function decidePublicDeliverableByToken(token: string, decision: unknown, now = new Date()) {
+export async function decidePublicDeliverableByToken(token: string, decision: unknown, now = new Date(), locale?: string | null) {
   const payload = verifyAgreementPublicToken(token, getAgreementPublicSecret())
-  if (!payload || payload.scope !== "sign_off") throw new InvalidState({ code: "invalid", message: "This link is no longer valid" })
+  if (!payload || payload.scope !== "sign_off") throw new InvalidState({ code: "invalid", message: translate("agreements.invalidLink", locale) })
   await recordPublicLinkAttempt({
     documentKind: "agreement", documentId: payload.agreementId, scope: payload.scope,
     keyVersion: payload.keyVersion, targetId: payload.deliverableId, revision: payload.deliveryRevision,
   }, now)
   const parsed = deliverablePublicDecisionSchema.parse(decision)
   const target = await prisma.agreement.findUnique({ where: { id: payload.agreementId }, select: { organizationId: true } })
-  if (!target) throw new InvalidState({ code: "invalid", message: "This link is no longer valid" })
+  if (!target) throw new InvalidState({ code: "invalid", message: translate("agreements.invalidLink", locale) })
   const options = { actor: { kind: "system" as const, reason: "customer_link" as const, organizationId: target.organizationId, label: "Customer (public sign-off link)" }, now }
   const outcome = parsed.decision === "accept"
     ? await executeCommand(publicAcceptDeliverable, { token, confirmed: parsed.confirmed }, options)

@@ -1,3 +1,4 @@
+import { translate } from "../../lib/i18n/translate"
 import { lockInvoiceForCompletion } from "./locks"
 import { Effect } from "effect"
 import type { Prisma } from "../../../generated/prisma/client"
@@ -83,7 +84,7 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
               at: attemptAt,
               outcome: "sent",
               code: "sent",
-              message: `${noun[0].toUpperCase()}${noun.slice(1)} email sent.`,
+              message: kind === "agreement" ? translate("agreements.email.sent", target.locale) : `${noun[0].toUpperCase()}${noun.slice(1)} email sent.`,
             }),
           },
         })
@@ -187,7 +188,7 @@ export function refuseWhileSending(kind: DocumentKind, document: { lastEmailAtte
 export const queueDocumentEmail = <Row>(input: {
   kind: DocumentKind
   mode: Mode
-  document: { id: string; number: string | null }
+  document: { id: string; number: string | null; locale?: string | null }
   recipient: string
   message: StoredEmailMessage
   /** Names exactly this delivery; the provider drops a repeat sent under the same key. */
@@ -216,6 +217,7 @@ export const queueDocumentEmail = <Row>(input: {
         target: {
           ...(issuance ? { candidateId: issuance.candidateId, issuedAt: issuance.issuedAt.toISOString() } : {}),
           documentId: input.document.id,
+          ...(input.kind === "agreement" && input.document.locale ? { locale: input.document.locale } : {}),
           attemptAt: now.toISOString(),
           number: input.document.number ?? "",
           recipient: input.recipient,

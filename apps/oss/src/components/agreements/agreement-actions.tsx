@@ -233,7 +233,7 @@ export function AgreementActions({
         </div>
       </details>}
       {agreement.lastEmailAttemptMessage && (
-        <p className="text-sm text-muted-foreground">{agreement.lastEmailAttemptMessage}</p>
+        <p className="text-sm text-muted-foreground">{agreement.lastEmailAttemptCode === "sent" ? t("agreements.email.sent") : agreement.lastEmailAttemptMessage}</p>
       )}
     </section>
   )

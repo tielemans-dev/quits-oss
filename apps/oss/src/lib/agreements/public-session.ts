@@ -1,3 +1,4 @@
+import { localeFromAcceptLanguage } from "../i18n/accept-language"
 import { getRuntimeCapabilities } from "../runtime/extensions"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
@@ -71,7 +72,7 @@ export const submitPublicAgreementDecision = createServerFn({ method: "POST" })
       const result = await decidePublicAgreementByToken(data.token, data.decision, {
         ip: headers.get("x-forwarded-for")?.split(",")[0]?.trim().slice(0, 200) ?? null,
         userAgent: headers.get("user-agent")?.slice(0, 1000) ?? null,
-      })
+      }, new Date(), localeFromAcceptLanguage(headers.get("accept-language")))
       return { kind: "ready", ...result, depositsEnabled: getRuntimeCapabilities().agreements.depositsEnabled } as const
     } catch (error) {
       const code = error && typeof error === "object" && "code" in error ? error.code : "invalid"
@@ -87,7 +88,7 @@ export const submitPublicDeliverableDecision = createServerFn({ method: "POST" }
   .handler(async ({ data }) => {
     try {
       const { decidePublicDeliverableByToken } = await import("./public-access")
-      return { kind: "ready", ...await decidePublicDeliverableByToken(data.token, data.decision) } as const
+      return { kind: "ready", ...await decidePublicDeliverableByToken(data.token, data.decision, new Date(), localeFromAcceptLanguage(getRequestHeaders().get("accept-language"))) } as const
     } catch (error) {
       const code = error && typeof error === "object" && "code" in error ? error.code : "invalid"
       if (code === "retry_later") return { kind: "retry_later" } as const

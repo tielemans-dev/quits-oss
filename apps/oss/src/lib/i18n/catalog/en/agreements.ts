@@ -184,4 +184,9 @@ export const enAgreementsMessages = {
   "agreements.quoteHasAgreement": "This quote already has an agreement. Invoice its deliverables instead.",
   "agreements.quoteHasInvoices": "This quote is already invoiced, so it can't become an agreement.",
   "agreements.quoteConversionNotice": "Choose a new validity date. The draft copies the customer, services and tax context from this quote and uses your default template. Current pricing recalculates totals; rounding may differ for older quotes. Review the draft before sending.",
+  "agreements.templates.fixed.name": "Fixed-scope project",
+  "agreements.templates.milestone.name": "Milestone project",
+  "agreements.templates.fixed.terms": "# {{agreement.title}}\n\n{{seller.name}} will provide the following work for {{buyer.name}}.\n\n{{deliverables}}\n\nThe agreed total is {{agreement.total}}. This offer is valid until {{agreement.validUntil}}.\n\nChanges to the agreed scope require a new agreement. Payment is due according to the agreement's payment terms.\n\nThis template is not legal advice.",
+  "agreements.templates.milestone.terms": "# {{agreement.title}}\n\n{{seller.name}} will provide these milestones for {{buyer.name}}.\n\n{{deliverables}}\n\nThe milestones, including any deposit, total {{agreement.total}}. This offer is valid until {{agreement.validUntil}}.\n\nEach milestone follows its agreed date and payment terms. Changes to scope require a new agreement.\n\nThis template is not legal advice.",
+  "agreements.email.sent": "Agreement email sent.",
 } as const

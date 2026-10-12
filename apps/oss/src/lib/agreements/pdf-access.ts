@@ -1,3 +1,4 @@
+import { translate } from "../i18n/translate"
 import { storedPdfResponse } from "../documents/pdf-access"
 import { agreementOfferSnapshotSchema } from "@quits/contracts/agreements"
 import { auth } from "../auth"
@@ -14,9 +15,9 @@ export async function agreementPdfActor(request: Request) {
   const actor = await resolveUserActor({ organizationId, userId: session.user.id })
   return actor && actorCan(actor, "agreement:read") ? actor : null
 }
-export async function publicAgreementPdf(token: string) {
+export async function publicAgreementPdf(token: string, locale?: string | null) {
   const session = await loadPublicAgreementByToken(token)
-  if (!session || session.payload.scope === "sign_off") return new Response("This link is no longer valid", { status: 404 })
+  if (!session || session.payload.scope === "sign_off") return new Response(translate("agreements.invalidLink", locale), { status: 404, headers: { "Cache-Control": "private, no-store", Vary: "Accept-Language" } })
   return await storedPdfResponse(session.agreement) ?? new Response("Stored artifact unavailable", { status: 503 })
 }
 export async function privateAgreementPdf(request: Request, id: string) {

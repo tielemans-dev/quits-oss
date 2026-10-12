@@ -123,6 +123,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
           setForm({
             ...initial,
             currency: settings.defaultCurrency,
+            taxRate: String(settings.taxRegime === "eu_vat" && "momsRegistered" in settings && settings.momsRegistered === false ? 0 : settings.taxRate ?? 0),
             templateId: template?.id ?? null,
             termsMarkdown: template?.termsMarkdown ?? "",
           })

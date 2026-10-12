@@ -1,3 +1,4 @@
+import { translate } from "../../lib/i18n/translate"
 import { requireDepositsEnabled } from "../agreements/deposit-capability"
 import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
 import { Effect } from "effect"
@@ -497,27 +498,30 @@ export const recordAgreementCustomerDecision = defineCommand({
       const command = yield* Command
       if (command.actor.kind !== "system" || command.actor.reason !== "customer_link")
         return yield* new Forbidden({ message: "Customer decisions require a public link" })
+      const settings = yield* Effect.promise(() => db.orgSettings.findUnique({ where: { organizationId: command.organizationId }, select: { locale: true } }))
+      let locale = settings?.locale
       const payload = verifyAgreementPublicToken(input.token, getAgreementPublicSecret())
       if (!payload || payload.scope !== "decide")
-        return yield* new InvalidState({ code: "invalid", message: "This link is no longer valid" })
+        return yield* new InvalidState({ code: "invalid", message: translate("agreements.invalidLink", locale) })
       const identity = yield* Effect.promise(() =>
         db.agreement.findFirst({
           where: { id: payload.agreementId, organizationId: command.organizationId },
-          select: { publicAccessKeyVersion: true, offerRevision: true },
+          select: { publicAccessKeyVersion: true, offerRevision: true, locale: true },
         }),
       )
+      locale = identity?.locale ?? locale
       if (
         !identity ||
         identity.publicAccessKeyVersion !== payload.keyVersion ||
         identity.offerRevision !== payload.offerRevision
       )
-        return yield* new InvalidState({ code: "invalid", message: "This link is no longer valid" })
+        return yield* new InvalidState({ code: "invalid", message: translate("agreements.invalidLink", locale) })
       const agreement = yield* lockedAgreement(payload.agreementId)
       if (
         agreement.publicAccessKeyVersion !== payload.keyVersion ||
         agreement.offerRevision !== payload.offerRevision
       )
-        return yield* new InvalidState({ code: "invalid", message: "This link is no longer valid" })
+        return yield* new InvalidState({ code: "invalid", message: translate("agreements.invalidLink", locale) })
       const accepted =
         agreement.acceptedOfferRevision === payload.offerRevision && agreement.acceptedAt !== null
       const declined =
@@ -540,7 +544,7 @@ export const recordAgreementCustomerDecision = defineCommand({
         })
       yield* requireLiveOffer(agreement, command.now)
       if (command.now >= new Date(payload.exp))
-        return yield* new InvalidState({ code: "invalid", message: "This link is no longer valid" })
+        return yield* new InvalidState({ code: "invalid", message: translate("agreements.invalidLink", locale) })
       const decision = input.decision
       if (decision.decision === "accept")
         yield* requireDepositsEnabled([{ isDeposit: offerHasDeposits(readAgreementOfferSnapshot(agreement.offerSnapshot)) }])
