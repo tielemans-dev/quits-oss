@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const state = vi.hoisted(() => ({
   getSession: vi.fn(),
+  settings: vi.fn(),
   loadCloudOnboardingState: vi.fn(),
   distribution: { value: "cloud" as "cloud" | "selfhost", billingEnabled: true },
 }))
@@ -19,11 +20,14 @@ vi.mock("../runtime-distribution", () => ({
   }),
 }))
 
+vi.mock("../db", () => ({ prisma: { orgSettings: { findUnique: state.settings } } }))
+
 import { getAppLayoutSession } from "../auth-session"
 
 const load = getAppLayoutSession as unknown as () => Promise<{
   user: { id: string; name: string | null; email: string | null; image: string | null } | null
   activeOrganizationId: string | null
+  locale: string
   runtime: { distribution: string; billingEnabled: boolean }
   cloudOnboardingComplete: boolean | null
 }>
@@ -43,6 +47,7 @@ function signedIn(organizationId: string | null) {
 }
 
 beforeEach(() => {
+  state.settings.mockReset().mockResolvedValue({ locale: "da-DK" })
   state.getSession.mockReset()
   state.loadCloudOnboardingState.mockReset()
   state.distribution = { value: "cloud", billingEnabled: true }
@@ -62,6 +67,15 @@ describe("getAppLayoutSession", () => {
       cloudOnboardingComplete: true,
       runtime: { distribution: "cloud", billingEnabled: true },
     })
+  })
+
+  it("returns only the organization locale before either deployment renders", async () => {
+    state.distribution = { value: "selfhost", billingEnabled: false }
+    state.getSession.mockResolvedValue(signedIn("org_a"))
+    expect(await load()).toMatchObject({ locale: "da-DK" })
+    expect(state.settings).toHaveBeenCalledWith({ where: { organizationId: "org_a" }, select: { locale: true } })
+    state.settings.mockResolvedValue(null)
+    expect(await load()).toMatchObject({ locale: "en-US" })
   })
 
   it("reports incomplete onboarding", async () => {
@@ -104,6 +118,7 @@ describe("getAppLayoutSession", () => {
     expect(result).toEqual({
       user: { id: "u_1", name: "Ada", email: "ada@example.com", image: null },
       activeOrganizationId: "org_a",
+      locale: "da-DK",
       runtime: { distribution: "cloud", billingEnabled: true },
       cloudOnboardingComplete: true,
     })

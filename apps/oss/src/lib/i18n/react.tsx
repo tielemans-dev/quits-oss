@@ -29,23 +29,26 @@ function detectBrowserLocale() {
 export function I18nProvider({
   children,
   locale: fixedLocale,
+  initialLocale,
 }: {
   children: React.ReactNode
   locale?: string
+  /** Organization locale from route context, identical on SSR and hydration; remains editable. */
+  initialLocale?: string
 }) {
   // The first render, on the server and in the browser, must produce the same text, so it cannot
   // read the browser's language: that would make every translated string of a non-English browser
   // differ from the server's HTML and fail hydration. The browser's language is taken right
   // after hydration instead.
-  const [detectedLocale, setLocale] = useState<string>(SERVER_LOCALE)
+  const [detectedLocale, setLocale] = useState<string>(initialLocale ?? SERVER_LOCALE)
   const locale = fixedLocale ?? detectedLocale
   const isFixed = fixedLocale !== undefined
 
   useEffect(() => {
-    if (isFixed) return
+    if (isFixed || initialLocale) return
     // Keep a language that was set meanwhile (the organization's), which wins over the browser's.
     setLocale((current) => (current === SERVER_LOCALE ? detectBrowserLocale() : current))
-  }, [isFixed])
+  }, [isFixed, initialLocale])
 
   useEffect(() => {
     if (isFixed) return

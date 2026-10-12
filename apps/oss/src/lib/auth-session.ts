@@ -34,10 +34,18 @@ export const getAppLayoutSession = createServerFn({ method: "GET" }).handler(asy
       ? session.session.activeOrganizationId
       : null
 
+  // Resolve the organization's language before rendering any translated shell content.
+  const locale = user && activeOrganizationId
+    ? (await (await import("./db")).prisma.orgSettings.findUnique({
+        where: { organizationId: activeOrganizationId },
+        select: { locale: true },
+      }))?.locale ?? "en-US"
+    : "en-US"
+
   if (runtime.distribution !== "cloud" || !activeOrganizationId) {
-    return { user, activeOrganizationId, runtime, cloudOnboardingComplete: null }
+    return { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete: null }
   }
 
   const onboarding = await loadCloudOnboardingState(activeOrganizationId)
-  return { user, activeOrganizationId, runtime, cloudOnboardingComplete: onboarding.isComplete }
+  return { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete: onboarding.isComplete }
 })

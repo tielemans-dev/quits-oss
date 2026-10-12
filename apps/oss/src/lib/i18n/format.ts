@@ -37,3 +37,9 @@ export function formatDate(
     timeZone: normalizeTimeZone(timeZone),
   }).format(new Date(date))
 }
+
+/** Compact document dates, with day before month in both supported languages. */
+export function formatShortDate(date: Date | string, locale?: string | null, timeZone?: string | null): string {
+  const language = normalizeLocale(locale).toLowerCase().startsWith("da") ? "da-DK" : "en-GB"
+  return formatDate(date, language, timeZone, { month: "short" })
+}

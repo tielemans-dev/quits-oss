@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatCurrency, formatDate, formatNumber } from "../format"
+import { formatCurrency, formatDate, formatNumber, formatShortDate } from "../format"
 
 describe("i18n format helpers", () => {
   it.each([
@@ -15,6 +15,11 @@ describe("i18n format helpers", () => {
     expect(formatDate("2026-10-11T00:00:00Z", "da-DK", "America/New_York")).toBe("10. okt. 2026")
   })
 
+  it("formats quote dates day first with a short month in both languages", () => {
+    expect(formatShortDate("2026-10-11T12:00:00Z", "da-DK", "Europe/Copenhagen")).toBe("11. okt. 2026")
+    expect(formatShortDate("2026-10-11T12:00:00Z", "en-US", "UTC")).toBe("11 Oct 2026")
+    expect(formatShortDate("2026-10-11T00:00:00Z", "en-US", "America/New_York")).toBe("10 Oct 2026")
+  })
   it("formats US currency with en-US locale", () => {
     expect(formatCurrency(1234.56, "USD", "en-US")).toBe("$1,234.56")
   })

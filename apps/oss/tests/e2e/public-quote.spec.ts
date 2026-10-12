@@ -83,7 +83,7 @@ test("presents the quote in Danish, with kroner, and keeps the seller's identity
   expect(decisionBody).toMatch(/\/q\/[^/]+\/logo/)
 
   await expect(page.getByText("Tilbud accepteret")).toBeVisible()
-  await expect(page.getByText(/^Dit svar blev registreret den \d{1,2}\. \w+\.? \d{4}\.$/)).toBeVisible()
+  await expect(page.getByText(/^Du accepterede tilbuddet den \d{1,2}\. \w+\.? \d{4}\.$/)).toBeVisible()
   await expect(page.getByRole("button", { name: "Acceptér tilbud" })).toHaveCount(0)
   // The decided page still presents the seller.
   await expectLogoServedFromRoute(page, "q")
