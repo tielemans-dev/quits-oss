@@ -54,6 +54,7 @@ import {
 import { Settings, UserPlus, X, Crown, User, Eye } from "lucide-react"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
+import type { OrgStripeAccount } from "@quits/contracts/payments"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { shouldAutoLoadAiModels, type AiProviderId } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
@@ -64,6 +65,7 @@ import { ReminderPolicyCard } from "../../components/settings/reminder-policy-ca
 import { useRuntimeUi } from "../../lib/runtime/ui"
 import { useRequestOrganizationId } from "../../lib/active-organization"
 import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-layout-session"
+import { StripePaymentsSection, stripeByokUpdate } from "../../components/settings/stripe-payments-section"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -149,6 +151,7 @@ type SettingsData = {
   aiByokConfigured: boolean
   stripeByokConfigured: boolean
   stripePublishableKey: string | null
+  stripeAccount?: OrgStripeAccount
   emailDelivery: {
     managed: boolean
     configured: boolean
@@ -589,11 +592,14 @@ function SettingsPage() {
               clearAiApiKey,
             }
           : {}),
-        stripePublishableKey: stripePublishableKeyInput || undefined,
-        stripeSecretKey: stripeSecretKeyInput || undefined,
-        stripeWebhookSecret: stripeWebhookSecretInput || undefined,
-        clearStripeSecretKey,
-        clearStripeWebhookSecret,
+        ...stripeByokUpdate({
+          mode: settings?.stripeAccount?.mode,
+          stripePublishableKey: stripePublishableKeyInput,
+          stripeSecretKey: stripeSecretKeyInput,
+          stripeWebhookSecret: stripeWebhookSecretInput,
+          clearStripeSecretKey,
+          clearStripeWebhookSecret,
+        }),
       })
       setTaxRateInput(savedSettings.taxRate == null ? "" : String(savedSettings.taxRate))
       setMomsRegistered(savedSettings.momsRegistered)
@@ -1293,99 +1299,15 @@ function SettingsPage() {
           />
         ) : null}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("settings.section.payments.title")}</CardTitle>
-            <CardDescription>
-              {t("settings.section.payments.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="stripePublishableKey">{t("settings.payments.stripePublishableKey.label")}</Label>
-              <Input
-                id="stripePublishableKey"
-                name="stripePublishableKey"
-                autoComplete="off"
-                placeholder="pk_test_..."
-                defaultValue={settings.stripePublishableKey ?? ""}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="stripeSecretKey">{t("settings.payments.stripeSecretKey.label")}</Label>
-              <Input
-                id="stripeSecretKey"
-                name="stripeSecretKey"
-                type="password"
-                autoComplete="off"
-                placeholder="sk_test_..."
-                onChange={() => setClearStripeSecretKey(false)}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="stripeWebhookSecret">{t("settings.payments.stripeWebhookSecret.label")}</Label>
-              <Input
-                id="stripeWebhookSecret"
-                name="stripeWebhookSecret"
-                type="password"
-                autoComplete="off"
-                placeholder="whsec_..."
-                onChange={() => setClearStripeWebhookSecret(false)}
-              />
-              <p className="text-xs text-muted-foreground">
-                {settings.stripeByokConfigured
-                  ? t("settings.payments.configuredHelp")
-                  : t("settings.payments.notConfiguredHelp")}
-              </p>
-            </div>
-
-            {settings.stripeByokConfigured && (
-              <div className="flex flex-wrap items-center gap-2">
-                {!clearStripeSecretKey ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setClearStripeSecretKey(true)}
-                  >
-                    {t("settings.payments.removeSecret")}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setClearStripeSecretKey(false)}
-                  >
-                    {t("settings.payments.undo")}
-                  </Button>
-                )}
-
-                {!clearStripeWebhookSecret ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setClearStripeWebhookSecret(true)}
-                  >
-                    {t("settings.payments.removeWebhook")}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setClearStripeWebhookSecret(false)}
-                  >
-                    {t("settings.payments.undo")}
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <StripePaymentsSection
+          account={settings.stripeAccount}
+          stripeByokConfigured={settings.stripeByokConfigured}
+          stripePublishableKey={settings.stripePublishableKey}
+          clearStripeSecretKey={clearStripeSecretKey}
+          clearStripeWebhookSecret={clearStripeWebhookSecret}
+          onClearStripeSecretKeyChange={setClearStripeSecretKey}
+          onClearStripeWebhookSecretChange={setClearStripeWebhookSecret}
+        />
 
         {/* AI invoice drafting */}
         <Card>
