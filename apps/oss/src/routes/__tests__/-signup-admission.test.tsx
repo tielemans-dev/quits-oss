@@ -160,6 +160,17 @@ describe('signup admission UI', () => {
     expect(document.activeElement).toBe(submit)
     fireEvent.click(submit)
     expect(document.activeElement).toBe(email)
+    // Reproduce the browser sequence: invalid, valid, then invalid again.
+    // Show the error before pointer-down blurs the field, so it cannot move
+    // the submit button away from the pointer during the click.
+    fireEvent.change(email, { target: { value: 'person@example.test' } })
+    expect(email.getAttribute('aria-invalid')).toBeNull()
+    fireEvent.change(email, { target: { value: 'person@example.t' } })
+    expect(email.getAttribute('aria-invalid')).toBe('true')
+    await act(async () => { submit.focus() })
+    expect(document.activeElement).toBe(submit)
+    fireEvent.click(submit)
+    expect(document.activeElement).toBe(email)
     expect(fetcher).not.toHaveBeenCalled()
   })
   it('keeps an email error until valid and revalidates on blur after submission', async () => {

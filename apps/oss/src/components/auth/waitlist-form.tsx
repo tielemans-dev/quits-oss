@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -29,7 +29,7 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
   const pending = useRef(false)
   const validated = useRef(false)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Each failed submit requests focus, even if blur already set the same error.
     // Wait for React to re-enable the checkbox after a server rejection.
     if (focusRequest && !busy) {
@@ -78,7 +78,12 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
       <Input id="waitlist-email" ref={emailRef} type="email" autoComplete="email" autoCapitalize="none"
         spellCheck={false} maxLength={254} value={email} readOnly={busy} required
         aria-invalid={emailError || undefined} aria-describedby={emailError ? 'waitlist-email-error' : undefined}
-        onChange={(event) => { setEmail(event.target.value); if (validEmail(event.target.value)) setEmailError(false) }}
+        onChange={(event) => {
+          setEmail(event.target.value)
+          // Once validation starts, update before a pointer press can blur the
+          // field and insert an error that moves the submit button mid-click.
+          if (validated.current) setEmailError(!validEmail(event.target.value))
+        }}
         onBlur={() => { if (validated.current) setEmailError(!validEmail(email)) }} />
       {emailError && <p id="waitlist-email-error" role="alert" className="text-xs text-destructive">▪ {t('auth.waitlist.errInvalid')}</p>}
     </div>

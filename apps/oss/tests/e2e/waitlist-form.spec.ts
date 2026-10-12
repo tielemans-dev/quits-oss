@@ -28,9 +28,13 @@ test("waitlist validation, consent rejection and bodyless success preserve focus
   await email.fill("person@example.test")
   await expect(email).not.toHaveAttribute("aria-invalid", "true")
   await email.fill("person@example.t")
+  await expect(email).toHaveAttribute("aria-invalid", "true")
+  const submitBeforeBlur = await submit.boundingBox()
   await submit.click()
   await expect(email).toBeFocused()
   await expect(email).toHaveAttribute("aria-invalid", "true")
+  // The pointer click blurs the email; validation must not move its target.
+  expect(await submit.boundingBox()).toEqual(submitBeforeBlur)
   await email.fill("person@example.test")
   await consent.check()
   await page.route("**/api/waitlist", (route) => route.fulfill({ status: 422, json: { error: "consent_required" } }))
