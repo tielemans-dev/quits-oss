@@ -5,6 +5,9 @@ import { PublicSellerHeader } from "../documents/public-seller-header"
 import { useDocumentFormat } from "../documents/use-document-format"
 import type { PublicSeller } from "../../lib/documents/public-presentation"
 import { useI18n } from "../../lib/i18n/react"
+import { Amount } from "../kvit/amount"
+import { DocumentTotals } from "../documents/document-totals"
+import type { VatRow } from "../../lib/documents/line-amounts"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -32,6 +35,8 @@ type PublicQuote = {
   totalGross: Decimalish
   totalTax: Decimalish
   subtotalNet: Decimalish
+  vatRows?: VatRow[]
+  rounding?: string
   currency: string
   /** The timezone the document's dates are shown in, as its PDF and email do. */
   timezone: string
@@ -126,7 +131,7 @@ function PublicQuoteDocument({
   submitting: boolean
   error?: string | null
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { quote, decisionState, seller } = state
   const format = useDocumentFormat(quote.timezone)
   const money = (amount: number) => format.money(amount, quote.currency)
@@ -223,7 +228,20 @@ function PublicQuoteDocument({
                   t("public.document.notProvided")
                 }
               />
-              <InfoBlock label={t("public.document.total")} value={money(toNumber(quote.totalGross))} />
+              <div className="grid gap-2 text-sm" aria-label={t("public.document.total")}>
+                <DocumentTotals
+                  priceBasis="gross"
+                  subtotal={toNumber(quote.subtotalNet)}
+                  taxAmount={toNumber(quote.totalTax)}
+                  total={toNumber(quote.totalGross)}
+                  vatRows={quote.vatRows}
+                  rounding={quote.rounding}
+                  currency={quote.currency}
+                  renderAmount={(amount) => (
+                    <Amount value={amount} currency={quote.currency} locale={locale} />
+                  )}
+                />
+              </div>
             </div>
 
             {decisionState === "pending" ? (

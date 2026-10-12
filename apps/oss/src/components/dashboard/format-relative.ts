@@ -30,7 +30,7 @@ export function formatRelativeTime(
 
 /**
  * The day the summary was taken, in the organization's time zone, as a heading line: "Torsdag 8.
- * oktober" or "Thursday 8 October". Built from the parts of the date rather than a locale pattern,
+ * okt. 2026" or "Thursday 8 Oct 2026". Built from the parts of the date rather than a locale pattern,
  * so it reads the same in every ICU version ("torsdag den 8. oktober" in some).
  */
 export function formatLongDate(
@@ -42,14 +42,15 @@ export function formatLongDate(
   const parts = new Intl.DateTimeFormat(danish ? "da-DK" : "en-GB", {
     weekday: "long",
     day: "numeric",
-    month: "long",
+    month: "short",
+    year: "numeric",
     timeZone: normalizeTimeZone(timeZone),
   }).formatToParts(new Date(iso))
   const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? ""
   const weekday = part("weekday")
   const text = danish
-    ? `${weekday} ${part("day")}. ${part("month")}`
-    : `${weekday} ${part("day")} ${part("month")}`
+    ? `${weekday} ${part("day")}. ${part("month")} ${part("year")}`
+    : `${weekday} ${part("day")} ${part("month")} ${part("year")}`
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 

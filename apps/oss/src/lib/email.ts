@@ -315,10 +315,10 @@ export function buildInvoiceEmailContent({
         ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div style="text-align:right;">
-        <div>${t("pdf.issueDate", locale)}: ${formatDate(invoice.issueDate, locale, org.timezone)}</div>
-        ${invoice.supplyDate ? `<div>${t("pdf.supplyDate", locale)}: ${formatDate(invoice.supplyDate, locale, "UTC")}</div>` : ""}
+        <div>${t("pdf.issueDate", locale)}: ${formatDate(invoice.issueDate, locale, org.timezone, { month: "long" })}</div>
+        ${invoice.supplyDate ? `<div>${t("pdf.supplyDate", locale)}: ${formatDate(invoice.supplyDate, locale, "UTC", { month: "long" })}</div>` : ""}
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.dueDate", locale)}</div>
-        <div style="font-weight:500;">${formatDate(invoice.dueDate, locale, "UTC")}</div>
+        <div style="font-weight:500;">${formatDate(invoice.dueDate, locale, "UTC", { month: "long" })}</div>
       </div>
     </div>
 
@@ -340,7 +340,7 @@ export function buildInvoiceEmailContent({
     t("email.invoice.subject", locale, {
       number: invoice.number,
       total: formatCurrency(invoice.total, invoice.currency, locale),
-      dueDate: formatDate(invoice.dueDate, locale, "UTC"),
+      dueDate: formatDate(invoice.dueDate, locale, "UTC", { month: "long" }),
     })
   )
   const fromAddressValue = formatSenderAddress(safeFromName, safeFromEmail)
@@ -413,7 +413,7 @@ export function buildQuoteEmailContent({
       </div>
       <div style="text-align:right;">
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("email.quote.validUntil", locale)}</div>
-        <div style="font-weight:500;">${formatDate(quote.expiryDate, locale, "UTC")}</div>
+        <div style="font-weight:500;">${formatDate(quote.expiryDate, locale, "UTC", { month: "long" })}</div>
       </div>
     </div>
 
@@ -434,7 +434,7 @@ export function buildQuoteEmailContent({
     t("email.quote.subject", locale, {
       number: quote.number,
       total: formatCurrency(quote.total, quote.currency, locale),
-      expiryDate: formatDate(quote.expiryDate, locale, "UTC"),
+      expiryDate: formatDate(quote.expiryDate, locale, "UTC", { month: "long" }),
     })
   )
   const fromAddressValue = formatSenderAddress(safeFromName, safeFromEmail)

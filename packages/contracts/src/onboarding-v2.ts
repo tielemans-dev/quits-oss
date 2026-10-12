@@ -34,6 +34,8 @@ export const confirmOnboardingV2Schema = z.object({
   companyForm: z.string().trim().min(1).max(80),
   momsRegistered: z.boolean(),
   vatId: z.string().trim().regex(/^DK\d{8}$/).optional(),
+  // Informational client metadata only. Registry contacts are scrubbed server-side.
+  reklamebeskyttet: z.boolean().optional(),
   companyEmail: z.string().trim().email().max(254).nullish(),
   companyPhone: z.string().trim().regex(/^(\+45\s?)?\d{8}$/).nullish(),
   // Editable review defaults, validated before the same confirmation transaction.
@@ -61,16 +63,16 @@ export const confirmOnboardingV2Schema = z.object({
   }).strict().optional(),
 }).strict().superRefine((value, ctx) => {
   if ((value.source === "cvr" || value.cvr) && !isValidDanishCvr(value.cvr)) {
-    ctx.addIssue({ code: "custom", path: ["cvr"], message: "CVR must be 8 digits with a valid mod-11 checksum" })
+    ctx.addIssue({ code: "custom", path: ["cvr"], message: "cvr.invalid" })
   }
   if (new Set(value.catalogSuggestions.map(item => item.name)).size !== value.catalogSuggestions.length) {
-    ctx.addIssue({ code: "custom", path: ["catalogSuggestions"], message: "Suggestion names must be unique" })
+    ctx.addIssue({ code: "custom", path: ["catalogSuggestions"], message: "save.failed" })
   }
   if (value.momsRegistered && value.cvr && value.vatId !== `DK${value.cvr}`) {
-    ctx.addIssue({ code: "custom", path: ["vatId"], message: "VAT-registered companies must provide DK followed by their CVR" })
+    ctx.addIssue({ code: "custom", path: ["vatId"], message: "save.failed" })
   }
   if ((!value.momsRegistered || !value.cvr) && value.vatId !== undefined) {
-    ctx.addIssue({ code: "custom", path: ["vatId"], message: "A company not registered for VAT must omit its VAT ID" })
+    ctx.addIssue({ code: "custom", path: ["vatId"], message: "save.failed" })
   }
 })
 

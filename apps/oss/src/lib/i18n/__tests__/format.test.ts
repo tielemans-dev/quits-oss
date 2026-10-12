@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest"
 import { formatCurrency, formatDate, formatNumber } from "../format"
 
 describe("i18n format helpers", () => {
+  it.each([
+    ["da-DK", "11. okt. 2026", "11. oktober 2026"],
+    ["en-US", "Oct 11, 2026", "October 11, 2026"],
+  ])("uses a short UI date and an explicit long PDF date in %s", (locale, short, long) => {
+    expect(formatDate("2026-10-11T12:00:00Z", locale, "UTC")).toBe(short)
+    expect(formatDate("2026-10-11T12:00:00Z", locale, "UTC", { month: "long" })).toBe(long)
+  })
+
+  it("keeps calendar days in UTC and instants in their display zone", () => {
+    expect(formatDate("2026-10-11", "da-DK", "UTC")).toBe("11. okt. 2026")
+    expect(formatDate("2026-10-11T00:00:00Z", "da-DK", "America/New_York")).toBe("10. okt. 2026")
+  })
+
   it("formats US currency with en-US locale", () => {
     expect(formatCurrency(1234.56, "USD", "en-US")).toBe("$1,234.56")
   })
