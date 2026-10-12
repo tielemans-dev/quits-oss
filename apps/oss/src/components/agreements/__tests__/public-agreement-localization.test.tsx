@@ -102,9 +102,9 @@ describe("public agreement page in Danish", () => {
   it("writes dates, quantities and money the Danish way, not as raw stored values", () => {
     const html = agreementPage("da-DK")
 
-    expect(html).toContain("Gyldig til: 28. marts 2027")
-    expect(html).toContain("Aftalt dato: 1. marts 2027")
-    expect(html).toContain("Forventet dato: 15. april 2027")
+    expect(html).toContain("Gyldig til: 28. mar. 2027")
+    expect(html).toContain("Aftalt dato: 1. mar. 2027")
+    expect(html).toContain("Forventet dato: 15. apr. 2027")
     expect(html).toContain("1,5\u00a0×\u00a0500,00 kr. = 750,00 kr.")
     expect(html).toContain("1.250,00 kr.")
     expect(html).not.toContain("2027-03-28")
@@ -134,7 +134,7 @@ describe("public agreement page in Danish", () => {
       snapshot: { ...snapshot, currency: "USD", locale: "en-US" },
     })
 
-    expect(html).toContain("Valid until: March 28, 2027")
+    expect(html).toContain("Valid until: Mar 28, 2027")
     expect(html).toContain("1.5\u00a0×\u00a0$500.00 = $750.00")
   })
 })
@@ -176,8 +176,8 @@ describe("public deliverable page", () => {
       </LocalizedDocument>
     )
 
-    expect(html).toContain("Aftalt dato: 1. marts 2027")
-    expect(html).toContain("Forventet dato: 15. april 2027")
+    expect(html).toContain("Aftalt dato: 1. mar. 2027")
+    expect(html).toContain("Forventet dato: 15. apr. 2027")
     expect(html).toContain("Leveret")
     expect(html).not.toContain("2027-03-01")
   })

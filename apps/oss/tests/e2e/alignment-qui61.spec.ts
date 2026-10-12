@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises"
 import { resolve } from "node:path"
 import { expect, test, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
-import issuedFixture from "../../src/domain/events/__tests__/fixtures/invoice.issued.v1.json"
+import issuedFixture from "../../src/domain/events/__tests__/fixtures/invoice.issued.v1.json" with { type: "json" }
 import { adminCredentials, danishLocale, resetDatabase, seedPublicInvoice, usEnglishLocale, waitForClientReady } from "./support"
 
 // MOCK: synthetic local/test organizations only. Never imported by application code.
