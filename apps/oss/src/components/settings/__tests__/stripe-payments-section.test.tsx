@@ -8,7 +8,7 @@ vi.mock("../../../lib/i18n/react", () => ({
   useI18n: () => ({ t: (key: string) => key }),
 }))
 
-import { StripePaymentsSection, stripeByokUpdate } from "../stripe-payments-section"
+import { StripePaymentsSection, stripeByokUpdate, stripeConnectActionHandlers } from "../stripe-payments-section"
 
 const noop = () => {}
 
@@ -91,6 +91,21 @@ describe("StripePaymentsSection", () => {
       cleanup()
     }
   )
+})
+
+describe("stripeConnectActionHandlers", () => {
+  it("passes nothing until a runtime handler is registered, then forwards each action", () => {
+    const run = vi.fn()
+    expect(stripeConnectActionHandlers(false, run)).toEqual({})
+    expect(stripeConnectActionHandlers(undefined, run)).toEqual({})
+
+    const handlers = stripeConnectActionHandlers(true, run)
+    handlers.onConnect?.()
+    handlers.onResume?.()
+    handlers.onFixInStripe?.()
+    handlers.onDisconnect?.()
+    expect(run.mock.calls).toEqual([["connect"], ["resume"], ["fix"], ["disconnect"]])
+  })
 })
 
 describe("stripeByokUpdate", () => {

@@ -30,7 +30,11 @@ import { encryptSecret } from "../../lib/secrets"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
-import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
+import { getManagedDocumentDomainProvider, getStripeConnectSettingsHandler } from "../../lib/runtime/services"
+import {
+  stripeConnectRedirectUrl,
+  stripeConnectSettingsActions,
+} from "../../lib/runtime/stripe-connect-settings"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode, isNationalRegistrationScheme, nationalRegistrationForScheme } from "../../lib/compliance/registry"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
@@ -302,6 +306,8 @@ export const settingsRouter = router({
         status: settings.stripeAccountStatus,
         statusAt: settings.stripeAccountStatusAt,
       }),
+      stripeConnectActions:
+        runtimeCapabilities.payments.managed && getStripeConnectSettingsHandler() != null,
       primaryTaxId: primaryTaxId?.value ?? null,
       primaryTaxIdScheme: primaryTaxId?.scheme ?? null,
       emailDelivery,
@@ -680,6 +686,24 @@ export const settingsRouter = router({
         managed: getRuntimeCapabilities().emailDelivery.managed,
         supportsCustomDomain: provider.supported,
       })
+    }),
+
+  /**
+   * Calls the hosted Connect handler when one is registered. Does not create account
+   * links or change the stored account.
+   */
+  runStripeConnectAction: authorizedProcedure("settings:update")
+    .input(z.object({ action: z.enum(stripeConnectSettingsActions) }))
+    .mutation(async ({ ctx, input }) => {
+      const handler = getStripeConnectSettingsHandler()
+      if (!getRuntimeCapabilities().payments.managed || !handler) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Stripe Connect actions are not available",
+        })
+      }
+      const result = await handler.run(input.action, { organizationId: ctx.organizationId })
+      return { url: stripeConnectRedirectUrl(result?.url) }
     }),
 })
 

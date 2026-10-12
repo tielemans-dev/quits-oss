@@ -1,4 +1,5 @@
 import type { OrgStripeAccount, StripePaymentMode } from "@quits/contracts/payments"
+import type { StripeConnectSettingsAction } from "../../lib/runtime/stripe-connect-settings"
 import { useI18n } from "../../lib/i18n/react"
 import { Button } from "../ui/button"
 import {
@@ -17,6 +18,25 @@ const BYOK_ACCOUNT: OrgStripeAccount = {
   accountId: null,
   status: "none",
   statusAt: null,
+}
+
+/** Handlers for the Connect card. Empty until a runtime handler is registered. */
+export function stripeConnectActionHandlers(
+  registered: boolean | undefined,
+  run: (action: StripeConnectSettingsAction) => void,
+): {
+  onConnect?: () => void
+  onResume?: () => void
+  onFixInStripe?: () => void
+  onDisconnect?: () => void
+} {
+  if (!registered) return {}
+  return {
+    onConnect: () => run("connect"),
+    onResume: () => run("resume"),
+    onFixInStripe: () => run("fix"),
+    onDisconnect: () => run("disconnect"),
+  }
 }
 
 /** Stripe key fields for a settings save. Managed Connect omits them so raw keys are not written. */

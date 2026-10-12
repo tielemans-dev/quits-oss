@@ -50,7 +50,7 @@ describe("StripeConnectCard", () => {
     expect(onResume).toHaveBeenCalledOnce()
     expect(button("settings.payments.connect.action.connect")).toBeNull()
     expect(button("settings.payments.connect.action.fix")).toBeNull()
-    expect(button("settings.payments.connect.action.disconnect")).toBeTruthy()
+    expect((button("settings.payments.connect.action.disconnect") as HTMLButtonElement).disabled).toBe(true)
   })
 
   it("shows an active account with disconnect and no setup actions", () => {
@@ -62,7 +62,7 @@ describe("StripeConnectCard", () => {
     expect(button("settings.payments.connect.action.connect")).toBeNull()
     expect(button("settings.payments.connect.action.resume")).toBeNull()
     expect(button("settings.payments.connect.action.fix")).toBeNull()
-    expect(button("settings.payments.connect.action.disconnect")).toBeTruthy()
+    expect((button("settings.payments.connect.action.disconnect") as HTMLButtonElement).disabled).toBe(true)
   })
 
   it("shows a restricted account with fix in Stripe", () => {
@@ -76,6 +76,35 @@ describe("StripeConnectCard", () => {
     expect(button("settings.payments.connect.action.connect")).toBeNull()
     expect(button("settings.payments.connect.action.resume")).toBeNull()
     expect(button("settings.payments.connect.action.disconnect")).toBeTruthy()
+  })
+
+  it("disables Connect, Resume, Fix in Stripe, and Disconnect until a handler is passed", () => {
+    const actions = [
+      { status: "none", name: "settings.payments.connect.action.connect", prop: "onConnect" },
+      { status: "pending", name: "settings.payments.connect.action.resume", prop: "onResume" },
+      { status: "restricted", name: "settings.payments.connect.action.fix", prop: "onFixInStripe" },
+      { status: "active", name: "settings.payments.connect.action.disconnect", prop: "onDisconnect" },
+    ] as const
+
+    for (const { status, name, prop } of actions) {
+      const { unmount } = render(<StripeConnectCard account={account(status)} />)
+      const disabled = screen.getByRole("button", { name }) as HTMLButtonElement
+      expect(disabled.disabled).toBe(true)
+      fireEvent.click(disabled)
+      expect(screen.queryByText("settings.payments.connect.disconnect.description")).toBeNull()
+      unmount()
+
+      const handler = vi.fn()
+      render(<StripeConnectCard account={account(status)} {...{ [prop]: handler }} />)
+      const enabled = screen.getByRole("button", { name }) as HTMLButtonElement
+      expect(enabled.disabled).toBe(false)
+      fireEvent.click(enabled)
+      if (prop === "onDisconnect") {
+        fireEvent.click(screen.getByRole("button", { name: "settings.payments.connect.disconnect.confirm" }))
+      }
+      expect(handler).toHaveBeenCalledOnce()
+      cleanup()
+    }
   })
 
   it("asks before disconnecting and leaves the account linked when cancelled", () => {

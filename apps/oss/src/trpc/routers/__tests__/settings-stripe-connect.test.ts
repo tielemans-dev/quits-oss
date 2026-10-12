@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { decryptSecret } from "../../../lib/secrets"
+import { resetRuntimeServices, setRuntimeServices } from "../../../lib/runtime/services"
 import { settingsRouter } from "../settings"
 
 const mocks = vi.hoisted(() => ({
@@ -130,6 +131,7 @@ const byokKeys = {
 describe("settings stripe account contract", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetRuntimeServices()
     mocks.paymentsManaged = false
     mocks.findFirst.mockResolvedValue(null)
     mocks.txFindUnique.mockResolvedValue({
@@ -153,6 +155,7 @@ describe("settings stripe account contract", () => {
       status: "none",
       statusAt: null,
     })
+    expect(settings.stripeConnectActions).toBe(false)
     expect(settings.stripePublishableKey).toBe("pk_test_123456789")
     expect(settings.stripeByokConfigured).toBe(true)
   })
@@ -210,6 +213,45 @@ describe("settings stripe account contract", () => {
       status: "active",
       statusAt: "2026-10-12T12:00:00.000Z",
     })
+    expect(settings.stripeConnectActions).toBe(false)
+  })
+
+  it("reports Connect actions only when payments are managed and a handler is registered", async () => {
+    mocks.findUnique.mockResolvedValue(settingsRow())
+    const run = vi.fn(async () => {})
+    setRuntimeServices({ stripeConnectSettings: { run } })
+
+    expect((await createCaller().get()).stripeConnectActions).toBe(false)
+
+    mocks.paymentsManaged = true
+    expect((await createCaller().get()).stripeConnectActions).toBe(true)
+  })
+
+  it("calls the registered Connect handler and does not persist the account", async () => {
+    mocks.paymentsManaged = true
+    const run = vi.fn(async () => ({ url: "https://connect.stripe.com/setup/s/test" }))
+    setRuntimeServices({ stripeConnectSettings: { run } })
+
+    await expect(createCaller().runStripeConnectAction({ action: "resume" })).resolves.toEqual({
+      url: "https://connect.stripe.com/setup/s/test",
+    })
+    expect(run).toHaveBeenCalledWith("resume", { organizationId: "org-1" })
+    expect(mocks.txUpsert).not.toHaveBeenCalled()
+
+    run.mockResolvedValueOnce({ url: "http://example.test/insecure" })
+    await expect(createCaller().runStripeConnectAction({ action: "connect" })).resolves.toEqual({
+      url: null,
+    })
+  })
+
+  it("refuses Connect actions when no handler is registered", async () => {
+    mocks.paymentsManaged = true
+
+    await expect(createCaller().runStripeConnectAction({ action: "disconnect" })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "Stripe Connect actions are not available",
+    })
+    expect(mocks.txUpsert).not.toHaveBeenCalled()
   })
 
   it("stores Stripe keys when payments are not managed", async () => {
@@ -305,4 +347,8 @@ describe("settings stripe account contract", () => {
     expect(update.stripeSecretKeyEnc).toBeNull()
     expect(update.stripeWebhookSecretEnc).toBeNull()
   })
+})
+
+afterEach(() => {
+  resetRuntimeServices()
 })
