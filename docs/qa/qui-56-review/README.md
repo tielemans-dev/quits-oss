@@ -101,3 +101,22 @@ Legacy save/complete/manual paths retain serialized guards. Future PDF registrat
 Mira approved the exact copy in `COPY.md`: DA "Der er ikke beregnet moms, da sælger ikke er momsregistreret." and EN "No VAT charged – the seller is not VAT-registered." Validation keys include `cvr.invalid` and `save.failed`.
 
 Local capture scripts and logs are preserved in `.verify-qui56/`. Kai owns Linear coordination. No Linear calls or bot review comments were made. New-head CI, actual #122 onboarding/manual-entry evidence and Ines approval remain outstanding. #122 maintenance stays with the parent after #121 is green. This work does not claim readiness for Kai.
+
+## Review 5495265870 blockers
+
+This pass starts from exact head `c7db767023288a8c99fd2494078026a020bfc4e7` and addresses findings 4251714026, 4251714032, 4251714038 and 4251714045.
+
+- AI settings and identifier writes now share one transaction and the v2 organization/settings lock order. Completed v2 organizations reject stale AI patches with `CONFLICT`. PostgreSQL barriers cover both race orders, including confirmation waiting for the AI identifier write.
+- The published defaults resolve the year at use time in `Europe/Copenhagen`, including a running server crossing midnight on New Year's Eve. Confirmation uses one defaults snapshot and preserves existing prefixes/counters under the settings lock. It never lowers an existing invoice counter.
+- A missing seller tax identifier is exempted only for non-VAT sellers whose nonempty frozen v2 groups are all `out_of_scope`. Zero-rated and exempt groups, and legacy zero-rate documents, still require the identifier. Nominal line rates cannot override frozen classifications.
+- Confirmation rejects numbered invoice/quote drafts as history. A real legacy `QTE-0001` draft regression verifies the existing book remains intact, sending the legacy quote preserves its number, and the next quote issues as `QTE-0002`.
+
+The primary [Peppol CompanyID specification](https://docs.peppol.eu/poacc/billing/3.0/syntax/ubl-invoice/cac-AccountingSupplierParty/cac-Party/cac-PartyTaxScheme/cbc-CompanyID/) was checked on 2026-10-12. BR-Z-02 and BR-E-02 require a seller VAT, tax-registration or tax-representative identifier for Z/E; BR-O-02 prohibits VAT identifiers for O. This patch narrows the application's exemption, without rewriting issued artifacts or changing Mira's approved copy.
+
+Hosted non-VAT remains disabled without an explicit runtime opt-in until QUI-62. Self-host settings remain configurable. No migration, T3 worktree, onboarding step UI, or existing capture was changed. Ines approval remains required.
+
+The focused run passed all 142 tests. After correcting two export fixture types, the final Fleet run passed 67 export tests, all 3,649 workspace tests, workspace lint and whole-app typecheck, i18n checks, all 26 OSS boundary regressions, the boundary scan and whitespace checks. The full app run includes all 38 confirmation tests and the real 60-second expiry case. No skipped database suite or earlier failed invocation is counted as a pass.
+
+Both browser checks passed with one worker: saved 25% invoice/quote defaults across DA/EN, light/dark and desktop/mobile, and the self-host 0% invoice form plus actual DA/EN production PDF endpoints. The PDFs retain the approved non-VAT copy and CVR labels. New verification outputs are local in `.verify-qui56/new-blockers-captures/`; the existing committed before/after screenshots and PDFs are unchanged. Logs are preserved in `.verify-qui56/new-blockers-corrected.log` and `.verify-qui56/new-blockers-final.log`. All heavy commands used Fleet sequentially with one test worker, waited for existing jobs, and exited. No unrelated job was interrupted.
+
+This commit still requires CI on its published head and a fresh parent review. The active #122 child must integrate the new #121 head through its parent; this pass did not edit its worktree or reuse earlier children. Kai owns any Codex review request after the fixed head is green. No bot review request was sent, and Ines remains the approval gate.
