@@ -10,6 +10,9 @@ import { resetDatabase, seedCompletedSetup, danishLocale, loginAsAdmin } from '.
 // and a guarded, disposable local database. No runtime or hosted production mock.
 const output = process.env.QUI52_CAPTURE_OUTPUT
 const mailpit = process.env.QUI52_MAILPIT_URL
+// Main predates the mobile action fix. Baseline captures record that UI without
+// applying the after-only bounds assertion. All other fixture guards remain.
+const baseline = process.env.QUI52_CAPTURE_BASELINE === '4931661dd7e53d83555590e06a2e2cf97448743b'
 if (process.env.QUI52_CHROMIUM) test.use({ launchOptions: { executablePath: process.env.QUI52_CHROMIUM } })
 test.skip(!output || !mailpit, 'Opt-in review captures need disposable Mailpit and an output directory')
 test.afterEach(() => resetQuitsRuntimeForTests())
@@ -70,7 +73,7 @@ for (const locale of ['da-DK', 'en-US']) {
     }, { timeout: 30_000 }).toBe(true)
     await expect(page.getByRole('button', { name: locale === 'da-DK' ? 'Send e-mail igen' : 'Resend email', exact: true })).toBeEnabled()
     const language = locale === 'da-DK' ? 'da' : 'en'
-    for (const theme of ['light', 'dark'] as const) {
+    for (const theme of (baseline ? ['dark'] : ['light', 'dark']) as ('light' | 'dark')[]) {
       await page.emulateMedia({ colorScheme: theme })
       await page.evaluate(theme => localStorage.setItem('quits-theme', theme), theme)
       for (const [viewport, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 844]] as const) {
@@ -78,7 +81,7 @@ for (const locale of ['da-DK', 'en-US']) {
         await page.goto(`/invoices/${issued.id}`)
         await expect(page.getByRole('heading', { name: /INV-0042/ })).toBeVisible()
         await page.evaluate(() => document.fonts.ready)
-        if (width === 390) {
+        if (width === 390 && !baseline) {
           for (const button of await page.locator('button:visible').all()) expect(await button.evaluate(element => element.getBoundingClientRect().right <= innerWidth)).toBe(true)
         }
         mkdirSync(path.join(output!, theme), { recursive: true })
