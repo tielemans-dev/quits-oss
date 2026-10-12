@@ -337,8 +337,8 @@ export function buildInvoiceEmailContent({
   const locale = org.locale
   const referenceHint = invoicePaymentReferenceHint(invoice, locale)
   const balanceDue = invoice.balanceDue ?? invoice.total
-  const showPaymentInstructions = balanceDue > 0
-    && (hasPaymentDetails({ bankAccount: invoice.bankAccount, note: invoice.paymentNote }) || Boolean(publicPaymentUrl))
+  const hasTransferDetails = hasPaymentDetails({ bankAccount: invoice.bankAccount, note: invoice.paymentNote })
+  const showPaymentInstructions = balanceDue > 0 && (hasTransferDetails || Boolean(publicPaymentUrl))
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:22px;">${t("pdf.invoice", locale)} ${safeInvoiceNumber}</h2>
     <p style="margin:0 0 24px;color:${C.muted};">${t("email.invoice.greeting", locale, { name: safeContactName })}</p>
@@ -372,7 +372,7 @@ export function buildInvoiceEmailContent({
         <td style="padding:10px 0;border-bottom:1px solid ${C.hairline};text-align:right;font-family:'Geist Mono',Consolas,monospace;overflow-wrap:anywhere;">${escapeHtml(row.value)}</td>
       </tr>`).join("")}
     </table>
-    ${referenceHint ? `<p style="margin:12px 0;color:${C.muted};font-size:14px;">${escapeHtml(referenceHint)}</p>` : ""}
+    ${hasTransferDetails && referenceHint ? `<p style="margin:12px 0;color:${C.muted};font-size:14px;">${escapeHtml(referenceHint)}</p>` : ""}
     ${invoice.paymentNote?.trim() ? `<p style="margin:12px 0;font-size:14px;">${formatMultilineHtml(invoice.paymentNote)}</p>` : ""}
     ${publicPaymentUrl
       ? actionBlock({

@@ -69,7 +69,8 @@ describe("invoice email payment instructions", () => {
       expect(payment).toContain(locale === "da-DK" ? "750,00\u00a0kr." : "DKK\u00a0750.00")
       expect(payment).toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
       expect(payment).toContain("INV-0042")
-      expect(content.html).toContain(reference)
+      // Transfer guidance only applies when bank transfer details/payment note exist, not Stripe-only.
+      expect(content.html.includes(reference)).toBe(Boolean(value))
       if (value) expect(content.html).toContain(value)
       expect(content.html.includes(button)).toBe(Boolean(url))
       if (url) expect(content.html).toContain(`href="${url}"`)
