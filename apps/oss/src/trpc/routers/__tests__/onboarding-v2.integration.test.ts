@@ -398,7 +398,6 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(confirmation).toEqual({ status: "already_complete" })
     expect(await api.onboarding.getStatus()).toEqual(receipt)
     expect(startTrial).toHaveBeenCalledTimes(1)
-
   })
   it("uses current-year defaults for a fresh confirmation but preserves an existing numbering book", async () => {
     const api = await caller(await organization())
