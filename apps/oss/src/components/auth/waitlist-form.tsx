@@ -1,8 +1,13 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { useI18n } from '../../lib/i18n/react'
+
+function validEmail(value: string) {
+  const email = value.trim()
+  return email.length <= 254 && /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(email) && email.slice(email.lastIndexOf('.') + 1).length >= 2
+}
 
 export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoined }: {
   initialEmail: string
@@ -17,20 +22,33 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
   const [emailError, setEmailError] = useState(false)
   const [consentError, setConsentError] = useState(false)
   const [banner, setBanner] = useState<'rate' | 'network' | null>(null)
+  const [focusRequest, setFocusRequest] = useState<{ field: 'email' | 'consent' } | null>(null)
   const emailRef = useRef<HTMLInputElement>(null)
   const consentRef = useRef<HTMLInputElement>(null)
   const honeypotRef = useRef<HTMLInputElement>(null)
   const pending = useRef(false)
+  const validated = useRef(false)
+
+  useLayoutEffect(() => {
+    // Each failed submit requests focus, even if blur already set the same error.
+    // Wait for React to re-enable the checkbox after a server rejection.
+    if (focusRequest && !busy) {
+      const ref = focusRequest.field === 'email' ? emailRef : consentRef
+      ref.current?.focus()
+    }
+  }, [focusRequest, busy])
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (pending.current) return
-    const valid = email.trim().length <= 254 && /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(email.trim())
+    validated.current = true
+    const valid = validEmail(email)
     setEmailError(!valid)
     setConsentError(!consent)
     setBanner(null)
-    if (!valid) { emailRef.current?.focus(); return }
-    if (!consent) { consentRef.current?.focus(); return }
+    if (!valid) { setFocusRequest({ field: 'email' }); return }
+    if (!consent) { setFocusRequest({ field: 'consent' }); return }
+    setFocusRequest(null)
     pending.current = true
     setBusy(true)
     const controller = new AbortController()
@@ -43,12 +61,12 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
           locale: locale.toLowerCase().startsWith('da') ? 'da' : 'en', source: 'app-signup',
           note: '', honeypot: honeypotRef.current?.value ?? '' }),
       })
+      if (response.ok) { onJoined(email.trim()); return }
       const body = await response.json().catch(() => null)
-      if (response.ok && body?.ok === true) { onJoined(email.trim()); return }
-      if (response.status === 400 && body?.error === 'consent_required') {
-        setConsent(false); setConsentError(true); consentRef.current?.focus()
-      } else if (response.status === 400 && body?.error === 'invalid_email') {
-        setEmailError(true); emailRef.current?.focus()
+      if ((response.status === 400 || response.status === 422) && body?.error === 'consent_required') {
+        setConsent(false); setConsentError(true); setFocusRequest({ field: 'consent' })
+      } else if (response.status === 400 || (response.status === 422 && body?.error === 'invalid_email')) {
+        setEmailError(true); setFocusRequest({ field: 'email' })
       } else setBanner(response.status === 429 ? 'rate' : 'network')
     } catch { setBanner('network') }
     finally { clearTimeout(timer); pending.current = false; setBusy(false) }
@@ -60,7 +78,13 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
       <Input id="waitlist-email" ref={emailRef} type="email" autoComplete="email" autoCapitalize="none"
         spellCheck={false} maxLength={254} value={email} readOnly={busy} required
         aria-invalid={emailError || undefined} aria-describedby={emailError ? 'waitlist-email-error' : undefined}
-        onChange={(event) => { setEmail(event.target.value); setEmailError(false) }} />
+        onChange={(event) => {
+          setEmail(event.target.value)
+          // Once validation starts, update before a pointer press can blur the
+          // field and insert an error that moves the submit button mid-click.
+          if (validated.current) setEmailError(!validEmail(event.target.value))
+        }}
+        onBlur={() => { if (validated.current) setEmailError(!validEmail(email)) }} />
       {emailError && <p id="waitlist-email-error" role="alert" className="text-xs text-destructive">▪ {t('auth.waitlist.errInvalid')}</p>}
     </div>
     <div className="absolute -left-[10000px]" aria-hidden="true">
