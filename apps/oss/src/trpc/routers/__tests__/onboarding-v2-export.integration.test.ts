@@ -8,6 +8,9 @@ import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { executeIssuanceCommand } from "../../../application/issuance"
 import { createContact } from "../../../domain/commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../../../domain/commands/invoices"
+import { issueCreditNote } from "../../../domain/commands/credit-notes"
+import { creditNotePdfParties } from "../../../lib/credit-notes/pdf-parties"
+import type { CreditNoteForPdf } from "../../../lib/credit-note-pdf"
 import { resolveUserActor } from "../../../domain/user-actor"
 import { prisma } from "../../../lib/db"
 import { selfhostDocumentRenderer, localDiskArtifactStore } from "../../../selfhost/runtime"
@@ -49,6 +52,7 @@ let artifactDirectory: string
     await ensureTestMembership(id, `qui56-${id}`)
     await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse({
       idempotencyKey: randomUUID(), companyName: "Synthetic Test ApS", companyAddress: "Testvej 1\n1000 København",
+      invoiceNextNum: momsRegistered ? 2147483646 : 1,
       cvr: "24256790", companyForm: "ApS", momsRegistered, ...(momsRegistered ? { vatId: "DK24256790" } : {}),
     }), "signup@example.test")
     await prisma.orgSettings.update({ where: { organizationId: id }, data: { locale } })
@@ -56,6 +60,39 @@ let artifactDirectory: string
     if (!actor) throw new Error("Missing test actor")
     const contact = await executeIssuanceCommand(createContact, { name: "Test Buyer", email: "buyer@example.test", country: "DK", address: "Testvej 2", city: "København", zip: "1000", peppolEndpointScheme: "0184", peppolEndpointId: "24256790" }, { actor })
     if (contact.status !== "completed") throw new Error(JSON.stringify(contact))
+    if (!momsRegistered) {
+      // Self-host settings allow registration and rate to be configured independently.
+      vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
+      const { appRouter } = await import("../../router")
+      const api = appRouter.createCaller({ session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
+      await api.settings.update({ momsRegistered: false, taxRate: 25 })
+      expect(await api.settings.get()).toMatchObject({ momsRegistered: false, taxRate: 25 })
+      // The draft command defaults an omitted document rate to zero, independently of settings.
+      // Exercise both document-level VAT and explicit line VAT through real issuance.
+      for (const { taxRate, vat } of [
+        { taxRate: 25, vat: undefined },
+        { taxRate: undefined, vat: { treatment: "standard" as const, rate: "0.25", country: "DK" } },
+      ]) {
+        const taxed = await executeIssuanceCommand(createInvoiceDraft, {
+          contactId: contact.result.id, dueDate: "2026-12-01", taxRate,
+          items: [{ description: "VAT-bearing work", quantity: 1, unitPrice: 100, ...(vat ? { vat } : {}) }],
+        }, { actor })
+        if (taxed.status !== "completed") throw new Error(JSON.stringify(taxed))
+        const taxedDraft = await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id }, include: { items: true } })
+        expect(parseSellerSnapshot(taxedDraft.sellerSnapshot)?.momsRegistered).toBe(false)
+        expect(taxedDraft.totalTax.toNumber()).toBe(25)
+        expect(taxedDraft.items).toHaveLength(1)
+        expect(taxedDraft.items[0]!.taxRate.toNumber()).toBe(25)
+        expect(taxedDraft.items[0]!.lineTax.toNumber()).toBe(25)
+        const rejected = await executeIssuanceCommand(sendInvoice, { id: taxed.result.id, allowSendWithoutEmail: true }, { actor })
+        expect(rejected.status).not.toBe("completed")
+        expect(JSON.stringify(rejected)).toContain("seller_not_vat_registered")
+        expect(await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id } })).toMatchObject({ status: "draft", number: null, artifactPdfRef: null, artifactUblRef: null })
+        expect(await prisma.artifactStaging.count({ where: { organizationId: id } })).toBe(0)
+        expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ invoiceNextNum: 1 })
+      }
+      vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    }
     // This fixture exercises stored UBL for an explicitly classified supply. Registration alone
     // does not make an ordinary domestic sale outside scope: omitted zero-rate VAT is
     // unclassified_zero for a non-registered seller and cannot be represented in legal UBL.
@@ -69,6 +106,12 @@ let artifactDirectory: string
     if (issued.status !== "completed") throw new Error(JSON.stringify(issued))
     expect(issued).toMatchObject({ status: "completed", result: { status: "sent" } })
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
+    if (momsRegistered) {
+      expect(invoice.number).toBe(`${new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Europe/Copenhagen" }).format(new Date())}-2147483646`)
+      expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ invoiceNextNum: 2147483647 })
+      // Later assertions issue another invoice; move its fixture counter into the normal range.
+      await prisma.orgSettings.update({ where: { organizationId: id }, data: { invoiceNextNum: 2 } })
+    }
     expect(parseSellerSnapshot(invoice.sellerSnapshot)?.momsRegistered).toBe(momsRegistered)
     expect(invoice.artifactUblRef).toEqual(expect.any(String))
     const staging = await prisma.artifactStaging.findFirstOrThrow({ where: { organizationId: id, documentKind: "invoice", documentId: invoice.id } })
@@ -135,6 +178,18 @@ let artifactDirectory: string
       expect(futureSupplier).toContain("<cac:PartyTaxScheme>")
       expect(futureExport.xml).not.toContain("Der er ikke beregnet moms, da sælger ikke er momsregistreret.")
     }
+    const reason = "Original correction reason"
+    const credited = await executeIssuanceCommand(issueCreditNote, { invoiceId: invoice.id, mode: "full", reason }, { actor })
+    if (credited.status !== "completed") throw new Error(JSON.stringify(credited))
+    const credit = await prisma.creditNote.findFirstOrThrow({ where: { organizationId: id, invoiceId: invoice.id } })
+    expect(credit.reason).toBe(reason)
+    const creditStaging = await prisma.artifactStaging.findFirstOrThrow({ where: { organizationId: id, documentKind: "creditNote", documentId: credit.id } })
+    const creditInput = creditStaging.renderInput as unknown as { pdf: { creditNote: CreditNoteForPdf } }
+    expect(creditInput.pdf.creditNote.reason).toBe(statement ? `${reason}\n${statement}` : reason)
+    const parties = creditNotePdfParties(creditInput.pdf.creditNote, {})
+    expect(parties.seller.taxIds).toContain(locale === "da-DK" ? "CVR-nr.: 24256790" : "CVR no.: 24256790")
+    expect(parties.seller.taxIds.some(value => value.includes("DK24256790"))).toBe(momsRegistered)
+    expect(await getDocumentArtifactStore()?.get(invoice.artifactPdfRef!)).toEqual(oldPdf)
     // Omission preserves the choice; explicit null restores unknown registration for future work.
     await api.settings.update({ taxRate: 0 })
     expect(await api.settings.get()).toMatchObject({ momsRegistered: !momsRegistered })

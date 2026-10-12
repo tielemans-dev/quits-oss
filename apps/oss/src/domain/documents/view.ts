@@ -136,7 +136,8 @@ export type DocumentViewResult = {
 export async function loadDocumentView(actor: Actor, kind: DocumentKind, id: string): Promise<DocumentViewResult | null> {
   const organizationId = actor.organizationId
   return prisma.$transaction(async db => {
-    const include = { items: { orderBy: { sortOrder: "asc" as const } } }
+    // Legacy rows can share a position. Their unique ID breaks ties without overriding position.
+    const include = { items: { orderBy: [{ sortOrder: "asc" as const }, { id: "asc" as const }] } }
     const document = kind === "invoice"
       ? await db.invoice.findFirst({ where: { id, organizationId }, include })
       : kind === "quote"

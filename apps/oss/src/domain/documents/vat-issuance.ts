@@ -9,6 +9,7 @@ import { InvalidState } from "../errors"
 export function requireSellerVatIssuance(document: {
   taxRegime?: string
   sellerSnapshot: unknown
+  totalTax?: { toString(): string }
   items: Array<{
     vatRateInput: string | null
     vatTreatment: string
@@ -19,10 +20,11 @@ export function requireSellerVatIssuance(document: {
   const seller = parseSellerSnapshot(document.sellerSnapshot)
   if (document.taxRegime === "eu_vat" && seller?.countryCode === "DK" && seller.momsRegistered == null)
     return Effect.fail(new InvalidState({ code: "seller_vat_status_unset", message: "Choose whether the seller is VAT-registered in company settings before sending." }))
-  if (document.taxRegime === "eu_vat" && seller?.momsRegistered === false && document.items.some(item =>
+  if (document.taxRegime === "eu_vat" && seller?.momsRegistered === false && (
+    (document.totalTax != null && !toDecimal(document.totalTax.toString()).isZero()) || document.items.some(item =>
     !toDecimal(item.taxRate.toString()).isZero() ||
     (item.vatRateInput !== null && !toDecimal(item.vatRateInput).isZero()) ||
-    !toDecimal(item.lineTax.toString()).isZero()))
+    !toDecimal(item.lineTax.toString()).isZero())))
     return Effect.fail(new InvalidState({ code: "seller_not_vat_registered", message: "A seller who is not VAT-registered cannot issue a document with VAT. Set every line to 0% before sending." }))
   if (document.taxRegime === "eu_vat" && seller?.momsRegistered !== false &&
       document.items.some(item => item.vatTreatment === "unclassified_zero"))
