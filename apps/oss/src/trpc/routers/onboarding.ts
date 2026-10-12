@@ -340,6 +340,10 @@ export const onboardingRouter = router({
 
       const snapshot = await loadOnboardingSnapshot(ctx.organizationId)
 
+      if (snapshot.cloudState.version === 2 && snapshot.cloudState.status === "complete") {
+        return toOnboardingResponse(snapshot)
+      }
+
       if (!snapshot.readiness.isComplete) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -350,8 +354,10 @@ export const onboardingRouter = router({
       // Hosted distributions may provision a trial. The provider owns eligibility and retries.
       await billingProvider.startTrial?.(ctx.organizationId)
 
-      await prisma.orgSettings.update({
-        where: { organizationId: ctx.organizationId },
+      // An in-flight v2 confirmation may finish while the legacy billing hook awaits.
+      // PostgreSQL rechecks this predicate after waiting for the settings row lock.
+      await prisma.orgSettings.updateMany({
+        where: { organizationId: ctx.organizationId, OR: [{ onboardingVersion: null }, { onboardingVersion: { lt: 2 } }] },
         data: {
           onboardingStatus: "complete",
           onboardingMethod: input.method,
