@@ -1,12 +1,16 @@
 import { TRPCError } from "@trpc/server"
 import { onboardingV2ConfirmationResultSchema, type ConfirmOnboardingV2 } from "@quits/contracts/onboarding"
 import { billingProvider } from "../billing"
+import { isNonVatRegistrationAllowed } from "../runtime/extensions"
 import { prisma } from "../db"
 import { buildDkPresets } from "./dk-presets"
 import { hasIssuedDocuments } from "../../domain/documents/base-currency"
 
 /** One final save. The organization lock also serializes confirms before a settings row exists. */
 export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string) {
+  // Client-supplied protection metadata cannot attest to a trusted registry lookup.
+  // Until a server lookup supplies that trust, scrub all registry-sourced contacts.
+  input = { ...input, reklamebeskyttet: input.source === "cvr" || input.reklamebeskyttet === true }
   // Lifecycle hooks can make several bounded provider requests. Allow their total latency
   // without changing the provider's individual request deadlines.
   return prisma.$transaction(async tx => {
@@ -27,8 +31,11 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     if (existing?.onboardingCompletedAt || ["complete", "completed"].includes(existing?.onboardingStatus ?? "")) {
       return { status: "already_complete" as const }
     }
+    if (!input.momsRegistered && !isNonVatRegistrationAllowed()) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
+    }
     if (await hasIssuedDocuments(tx, organizationId)) {
-      throw new TRPCError({ code: "CONFLICT", message: "Onboarding cannot reset settings after documents have been issued" })
+      throw new TRPCError({ code: "CONFLICT", message: "save.failed" })
     }
     // The provider owns durable provisioning retries if the following writes roll back.
     // A failed hook must leave the confirmation incomplete. Completed retries return above.

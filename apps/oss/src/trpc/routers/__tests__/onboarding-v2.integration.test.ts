@@ -9,7 +9,7 @@ import { bootstrapQuitsRuntime } from "../../../lib/runtime/bootstrap"
 import { setRuntimeExtensions, getRuntimeCapabilities } from "../../../lib/runtime/extensions"
 
 const ids: string[] = []
-const summary = (): ConfirmOnboardingV2Input => ({ idempotencyKey: randomUUID(), companyName: "Synthetic Test ApS", companyAddress: "Testvej 1, 2. th.\n1000 København", cvr: "24256790", companyForm: "ApS", momsRegistered: true, vatId: "DK24256790" })
+const summary = (): ConfirmOnboardingV2Input => ({ idempotencyKey: randomUUID(), companyName: "Synthetic Test ApS", companyAddress: "Testvej 1, 2. th.\n1000 København", cvr: "24256790", companyForm: "ApS", reklamebeskyttet: false, momsRegistered: true, vatId: "DK24256790" })
 async function organization() {
   const id = randomUUID()
   ids.push(id)
@@ -21,7 +21,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   vi.resetModules()
   const { appRouter } = await import("../../router")
   const runtime = await import("../../../lib/runtime/extensions")
-  runtime.setRuntimeExtensions([{ id: "v2-test", resolveCapabilities: () => ({ onboardingV2: { enabled: true } }) }])
+  runtime.setRuntimeExtensions([{ id: "v2-test", resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true } }) }])
   return appRouter.createCaller({ requestedOrganizationId, session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
 }
 
@@ -106,15 +106,15 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const input = { ...summary(), source: "manual" as const, momsRegistered: false, vatId: undefined, companyForm: "Enkeltmandsvirksomhed", companyEmail: null, companyPhone: null }
     expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete", bankMissing: true })
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
-    expect(settings).toMatchObject({ bankRegNumber: null, bankAccountNumber: null, bankAccountHolder: null, bankIban: null, companyEmail: null, companyPhone: null, onboardingInvoicingIdentity: "individual", onboardingMethod: "manual", paymentNote: "Virksomheden er ikke momsregistreret.", baseCurrency: "DKK" })
+    expect(settings).toMatchObject({ bankRegNumber: null, bankAccountNumber: null, bankAccountHolder: null, bankIban: null, companyEmail: null, companyPhone: null, onboardingInvoicingIdentity: "individual", onboardingMethod: "manual", paymentNote: "Der er ikke beregnet moms, da sælger ikke er momsregistreret.", baseCurrency: "DKK" })
     expect(settings.taxRate?.toString()).toBe("0")
     expect(await api.onboarding.getStatus()).toMatchObject({ isComplete: true, missing: [], bankMissing: true })
   })
   it("rejects invalid payloads before any persistence", async () => {
     const id = await organization()
     const api = await caller(id)
-    await expect(api.onboarding.confirmV2({ ...summary(), cvr: "12345678" })).rejects.toMatchObject({ code: "BAD_REQUEST" })
-    await expect(api.onboarding.confirmV2({ ...summary(), bank: { regNumber: "1234", accountNumber: "12345678901" } })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await expect(api.onboarding.confirmV2({ ...summary(), cvr: "12345678" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "cvr.invalid" })
+    await expect(api.onboarding.confirmV2({ ...summary(), bank: { regNumber: "1234", accountNumber: "12345678901" } })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "save.failed" })
     expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
     expect(await prisma.organizationTaxId.count({ where: { organizationId: id } })).toBe(0)
   })
@@ -214,53 +214,68 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(startTrial).toHaveBeenCalledTimes(2)
     expect(provision).toHaveBeenCalledTimes(1)
   }, 75_000)
-  it("preserves v2 timestamp and null-email readiness against stale and concurrent legacy completion", async () => {
+  it.each(["saveDraft", "complete", "completeManual"].flatMap(mutation => [false, true].map(existing => [mutation, existing] as const)))("serializes %s behind v2 with existing settings %s and preserves identifiers", async (mutation, existing) => {
     const id = await organization()
     const api = await caller(id)
-    await api.onboarding.saveDraft({ primaryTaxId: null, companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
+    if (existing) await api.onboarding.saveDraft({ companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
     let entered!: () => void
     let release!: () => void
     const started = new Promise<void>(resolve => { entered = resolve })
     const blocked = new Promise<void>(resolve => { release = resolve })
-    const startTrial = vi.fn().mockImplementationOnce(async () => { entered(); await blocked }).mockResolvedValue(undefined)
+    // MOCK: test-only lifecycle barrier holds the real confirmation transaction open.
+    const startTrial = vi.fn(async () => { entered(); await blocked })
     setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
-    const legacy = api.onboarding.completeManual({ method: "manual" })
+    const v2 = api.onboarding.confirmV2({ ...summary(), source: "manual", companyEmail: null })
     await started
-    let confirmation
-    try { confirmation = await api.onboarding.confirmV2({ ...summary(), companyEmail: null }) }
-    finally { release() }
-    const response = await legacy
-    expect(response).toMatchObject({ version: 2, isComplete: true, missing: [] })
-    const before = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
-    expect(before.onboardingCompletedAt?.toISOString()).toBe(confirmation.status === "complete" ? confirmation.completedAt : null)
-    expect(before.companyEmail).toBeNull()
-    expect(await api.onboarding.completeManual({ method: "ai" })).toMatchObject({ version: 2, isComplete: true, missing: [] })
-    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toEqual(before)
-    expect(startTrial).toHaveBeenCalledTimes(2)
-  })
-  it("rechecks the legacy update guard after waiting for a concurrent v2 row lock", async () => {
-    const id = await organization()
-    const api = await caller(id)
-    await api.onboarding.saveDraft({ primaryTaxId: null, companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
-    const { setRuntimeServices } = await import("../../../lib/runtime/services")
-    let enteredV2!: () => void
-    let enteredLegacy!: () => void
-    let release!: () => void
-    const v2Started = new Promise<void>(resolve => { enteredV2 = resolve })
-    const legacyStarted = new Promise<void>(resolve => { enteredLegacy = resolve })
-    const blocked = new Promise<void>(resolve => { release = resolve })
-    const startTrial = vi.fn().mockImplementationOnce(async () => { enteredV2(); await blocked }).mockImplementationOnce(async () => { enteredLegacy() })
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
-    const v2 = api.onboarding.confirmV2({ ...summary(), companyEmail: null })
-    await v2Started
-    const legacy = api.onboarding.completeManual({ method: "ai" })
-    try { await legacyStarted } finally { release() }
+    const mutate = () => mutation === "saveDraft"
+      ? api.onboarding.saveDraft({ primaryTaxId: null, companyName: "Stale company" })
+      : mutation === "complete" ? api.onboarding.complete({ profile: "enterprise" })
+      : api.onboarding.completeManual({ method: "ai" })
+    const legacy = mutate()
+    try {
+      // Verify the real legacy transaction is waiting on our organization lock.
+      await vi.waitFor(async () => {
+        const [row] = await prisma.$queryRaw<[{ waiting: boolean }]>`SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%organization%' AND pid <> pg_backend_pid()) AS waiting`
+        expect(row.waiting).toBe(true)
+      })
+    } finally { release() }
     const [confirmation, response] = await Promise.all([v2, legacy])
     expect(response).toMatchObject({ version: 2, isComplete: true, missing: [] })
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
-    expect(settings).toMatchObject({ onboardingVersion: 2, onboardingMethod: "cvr", companyEmail: null })
+    const taxIds = await prisma.organizationTaxId.findMany({ where: { organizationId: id }, orderBy: { scheme: "asc" } })
+    expect(taxIds.map(tax => tax.scheme)).toEqual(["cvr", "vat"])
+    expect(settings).toMatchObject({ onboardingVersion: 2, companyName: "Synthetic Test ApS", companyEmail: null })
     expect(settings.onboardingCompletedAt?.toISOString()).toBe(confirmation.status === "complete" ? confirmation.completedAt : null)
+    expect(await mutate()).toMatchObject({ version: 2, isComplete: true, missing: [] })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toEqual(settings)
+    expect(await prisma.organizationTaxId.findMany({ where: { organizationId: id }, orderBy: { scheme: "asc" } })).toEqual(taxIds)
+    expect(startTrial).toHaveBeenCalledTimes(1)
+  })
+  it("rolls back legacy draft settings when identifier persistence fails", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "Original ID" })
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
+    const taxIds = await prisma.organizationTaxId.findMany({ where: { organizationId: id } })
+    const constraint = `qui56_draft_${id.replaceAll("-", "")}`
+    await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id ADD CONSTRAINT "${constraint}" CHECK ("organizationId" <> '${id}' OR value <> 'Rejected ID') NOT VALID`)
+    try { await expect(api.onboarding.saveDraft({ companyName: "Must roll back", primaryTaxId: "Rejected ID" })).rejects.toThrow() }
+    finally { await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id DROP CONSTRAINT "${constraint}"`) }
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toEqual(settings)
+    expect(await prisma.organizationTaxId.findMany({ where: { organizationId: id } })).toEqual(taxIds)
+  })
+  it.each([true, false, undefined])("scrubs registry contacts when protection metadata is %s", async reklamebeskyttet => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.confirmV2({ ...summary(), reklamebeskyttet, companyEmail: "protected@example.test", companyPhone: "12345678" })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ companyEmail: "signup@example.test", companyPhone: null })
+  })
+  it("allows manually entered contacts", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.confirmV2({ ...summary(), source: "manual", reklamebeskyttet: false, companyEmail: "public@example.test", companyPhone: "12345678" })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ companyEmail: "public@example.test", companyPhone: "12345678" })
   })
   it("confirms when the runtime trial hook is absent", async () => {
     const id = await organization()
@@ -269,13 +284,62 @@ async function caller(id: string, requestedOrganizationId?: string) {
     setRuntimeServices({ billingProvider: { getSubscription: async () => ({ status: "free", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
     expect(await api.onboarding.confirmV2(summary())).toMatchObject({ status: "complete" })
   })
+  it("rejects hosted non-VAT confirmation and settings changes until the runtime opts in", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    const runtime = await import("../../../lib/runtime/extensions")
+    runtime.setRuntimeExtensions([{ id: "v2-only", resolveCapabilities: () => ({ onboardingV2: { enabled: true } }) }])
+    const input = { ...summary(), source: "manual" as const, momsRegistered: false, vatId: undefined }
+    await expect(api.onboarding.confirmV2(input)).rejects.toMatchObject({ code: "FORBIDDEN", message: "save.failed" })
+    await expect(api.settings.update({ momsRegistered: false })).rejects.toMatchObject({ code: "FORBIDDEN", message: "save.failed" })
+    expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
+    runtime.setRuntimeExtensions([{ id: "v2-non-vat", resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true } }) }])
+    expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete" })
+    expect(await api.settings.update({ momsRegistered: false })).toBeDefined()
+  })
+  it("allows self-hosted registration and custom VAT rates without a hosted opt-in", async () => {
+    const id = await organization()
+    vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
+    const api = await caller(id)
+    const runtime = await import("../../../lib/runtime/extensions")
+    runtime.setRuntimeExtensions([])
+    await api.settings.update({ momsRegistered: false, taxRate: 0 })
+    await api.settings.update({ momsRegistered: true, taxRate: 17.5 })
+    expect(await api.settings.get()).toMatchObject({ momsRegistered: true, taxRate: 17.5 })
+  })
+  it("serializes confirmation behind a legacy completion without resetting the legacy receipt", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.saveDraft({ companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
+    const { setRuntimeServices } = await import("../../../lib/runtime/services")
+    let entered!: () => void
+    let release!: () => void
+    const started = new Promise<void>(resolve => { entered = resolve })
+    const blocked = new Promise<void>(resolve => { release = resolve })
+    // MOCK: hold the legacy trial hook inside the real serialized transaction.
+    const startTrial = vi.fn(async () => { entered(); await blocked })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    const legacy = api.onboarding.completeManual({ method: "manual" })
+    await started
+    const v2 = api.onboarding.confirmV2(summary())
+    try {
+      await vi.waitFor(async () => {
+        const [row] = await prisma.$queryRaw<[{ waiting: boolean }]>`SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%organization%' AND pid <> pg_backend_pid()) AS waiting`
+        expect(row.waiting).toBe(true)
+      })
+    } finally { release() }
+    const [receipt, confirmation] = await Promise.all([legacy, v2])
+    expect(confirmation).toEqual({ status: "already_complete" })
+    expect(await api.onboarding.getStatus()).toEqual(receipt)
+    expect(startTrial).toHaveBeenCalledTimes(1)
+  })
   it("requires both cloud distribution and an explicit extension flag", async () => {
     const id = await organization()
     const api = await caller(id)
     const runtime = await import("../../../lib/runtime/extensions")
     runtime.setRuntimeExtensions([])
     await expect(api.onboarding.confirmV2(summary())).rejects.toMatchObject({ code: "FORBIDDEN" })
-    setRuntimeExtensions([{ id: "enabled", resolveCapabilities: () => ({ onboardingV2: { enabled: true } }) }])
+    setRuntimeExtensions([{ id: "enabled", resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true } }) }])
     expect(getRuntimeCapabilities({ QUITS_DISTRIBUTION: "selfhost" }).onboardingV2?.enabled).toBe(false)
     vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
     await expect(api.onboarding.confirmV2(summary())).rejects.toMatchObject({ code: "FORBIDDEN" })

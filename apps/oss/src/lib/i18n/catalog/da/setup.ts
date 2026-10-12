@@ -1,4 +1,6 @@
 export const daSetupMessages = {
+  "cvr.invalid": "Indtast et gyldigt CVR-nummer.",
+  "save.failed": "Kunne ikke gemme. Prøv igen.",
   "setup.title": "Opsæt din Quits-instans",
   "setup.subtitle": "Konfigurer dit workspace, før du inviterer dit team og opretter fakturaer.",
   "setup.loadingStatus": "Indlæser opsætningsstatus…",
