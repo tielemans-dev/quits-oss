@@ -302,9 +302,14 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA" > "$RUNNER_TEMP/qui56-changed.txt"
-          if rg -q '^(\.github/workflows/ci\.yml|scripts/check-qui56-evidence\.mjs|docs/qa/qui-56-screens-integration\.md|apps/oss/(tests/onboarding-v2/|playwright\.runtime-captures\.config\.ts|src/.*onboarding|src/server\.ts)|packages/contracts/src/.*onboarding)' "$RUNNER_TEMP/qui56-changed.txt"; then
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-          fi
+          while IFS= read -r changed_path; do
+            case "$changed_path" in
+              .github/workflows/ci.yml|scripts/check-qui56-evidence.mjs|docs/qa/qui-56-screens-integration.md|apps/oss/tests/onboarding-v2/*|apps/oss/playwright.runtime-captures.config.ts|apps/oss/src/*onboarding*|apps/oss/src/server.ts|packages/contracts/src/*onboarding*)
+                echo 'changed=true' >> "$GITHUB_OUTPUT"
+                break
+                ;;
+            esac
+          done < "$RUNNER_TEMP/qui56-changed.txt"
           echo "baseline=$(git rev-parse refs/remotes/origin/main^{commit})" >> "$GITHUB_OUTPUT"
 
   qui56-evidence:
