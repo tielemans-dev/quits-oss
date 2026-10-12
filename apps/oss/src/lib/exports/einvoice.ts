@@ -107,6 +107,7 @@ export function buildSellerParty(source: SellerSource): EinvoiceParty {
     name: source.snapshot?.companyName || source.settings?.companyName || null,
     countryCode,
     vatId,
+    ...(typeof momsRegistered === "boolean" ? { momsRegistered } : {}),
     legalId,
     electronicAddress: electronicAddressFromVat(vatId) ?? (countryCode === "DK" && legalId?.scheme === "0184" ? explicitElectronicAddress(legalId.id, legalId.scheme) : null),
     email: source.snapshot?.companyEmail || source.settings?.companyEmail || null,

@@ -21,6 +21,8 @@ export type EinvoiceParty = PostalAddress & {
   name: string | null
   countryCode: string | null
   vatId: string | null
+  /** Explicit seller registration status; absent/null keeps legacy VAT-ID validation. */
+  momsRegistered?: boolean | null
   /** Legal registration number (BT-30 / BT-47). */
   legalId: LegalIdentifier | null
   electronicAddress: ElectronicAddress | null
@@ -119,7 +121,9 @@ export function validateEinvoice(document: EinvoiceDocument): EinvoiceMissingFie
   if (!seller.name?.trim()) missing.push("seller.name")
   if (!seller.countryCode) missing.push("seller.country")
   if (!seller.street && !seller.city) missing.push("seller.address")
-  if (!seller.vatId) missing.push("seller.taxId")
+  const nonVatSeller = seller.momsRegistered === false &&
+    document.lines.every(line => toDecimal(line.taxRate).isZero())
+  if (!seller.vatId && !nonVatSeller) missing.push("seller.taxId")
   // National rules such as DK-R-002 and DK-R-014 require the national registration number.
   const registration = findCountryModule(seller.countryCode)?.nationalRegistration
   if (registration?.requiredForSeller && seller.legalId?.scheme !== registration.icd) {
