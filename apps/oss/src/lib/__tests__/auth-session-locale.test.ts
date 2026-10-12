@@ -19,6 +19,14 @@ describe("app layout session locale", () => {
     expect(session.locale).toBeUndefined()
     expect(state.findUnique).not.toHaveBeenCalled()
   })
+  it("leaves locale absent for an active organization without settings", async () => {
+    state.getSession.mockResolvedValue({ user: { id: "MOCK-user" }, session: { activeOrganizationId: "MOCK-org" } })
+    state.findUnique.mockResolvedValue(null)
+    const session = await getAppLayoutSession()
+    expect(session.activeOrganizationId).toBe("MOCK-org")
+    expect(session.locale).toBeUndefined()
+    expect(state.findUnique).toHaveBeenCalledWith({ where: { organizationId: "MOCK-org" }, select: { locale: true } })
+  })
   it("loads the active organization's locale for initial shell rendering", async () => {
     state.getSession.mockResolvedValue({ user: { id: "MOCK-user" }, session: { activeOrganizationId: "MOCK-org" } })
     state.findUnique.mockResolvedValue({ locale: "da-DK" })

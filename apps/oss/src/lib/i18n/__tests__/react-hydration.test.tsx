@@ -5,6 +5,16 @@ import { hydrateRoot } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+// MOCK: session and settings I/O only; locale detection and providers use real code.
+const sessionState = vi.hoisted(() => ({ getSession: vi.fn(), findUnique: vi.fn() }))
+vi.mock("@tanstack/react-start", () => ({ createServerFn: () => ({ handler: (handler: unknown) => handler }) }))
+vi.mock("@tanstack/react-start/server", () => ({ getRequestHeaders: () => new Headers() }))
+vi.mock("../../auth", () => ({ auth: { api: { getSession: sessionState.getSession } } }))
+vi.mock("../../db", () => ({ prisma: { orgSettings: { findUnique: sessionState.findUnique } } }))
+vi.mock("../../runtime-distribution", () => ({ readRuntimeDistribution: () => ({ distribution: "selfhost" }) }))
+vi.mock("../../cloud-onboarding-session", () => ({ loadCloudOnboardingState: vi.fn() }))
+
+import { getAppLayoutSession } from "../../auth-session"
 import { I18nProvider, useI18n } from "../react"
 
 function Probe() {
@@ -18,6 +28,7 @@ function browserLanguage(language: string) {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.resetAllMocks()
   cleanup()
   document.body.innerHTML = ""
 })
@@ -61,6 +72,16 @@ describe("nested editable organization locale", () => {
   it("uses the browser language before organization selection", () => {
     browserLanguage("da-DK")
     const view = render(<I18nProvider><I18nProvider initialLocale={undefined}><Probe /></I18nProvider></I18nProvider>)
+    expect(view.container.textContent).toBe("Fakturaer")
+    expect(document.documentElement.lang).toBe("da")
+  })
+  it("detects Danish for an active organization whose settings do not exist yet", async () => {
+    browserLanguage("da-DK")
+    sessionState.getSession.mockResolvedValue({ user: { id: "MOCK-user" }, session: { activeOrganizationId: "MOCK-org" } })
+    sessionState.findUnique.mockResolvedValue(null)
+    const session = await getAppLayoutSession()
+    expect(session.activeOrganizationId).toBe("MOCK-org")
+    const view = render(<I18nProvider><I18nProvider initialLocale={session.locale}><Probe /></I18nProvider></I18nProvider>)
     expect(view.container.textContent).toBe("Fakturaer")
     expect(document.documentElement.lang).toBe("da")
   })

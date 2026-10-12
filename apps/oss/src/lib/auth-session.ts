@@ -34,12 +34,12 @@ export const getAppLayoutSession = createServerFn({ method: "GET" }).handler(asy
       ? session.session.activeOrganizationId
       : null
 
-  // Resolve the organization's language before rendering any translated shell content.
+  // Resolve saved settings before rendering; new organizations still need browser detection.
   const locale = user && activeOrganizationId
     ? (await (await import("./db")).prisma.orgSettings.findUnique({
         where: { organizationId: activeOrganizationId },
         select: { locale: true },
-      }))?.locale ?? "en-US"
+      }))?.locale
     : undefined
 
   if (runtime.distribution !== "cloud" || !activeOrganizationId) {
