@@ -81,6 +81,13 @@ describe("invoice email payment instructions", () => {
       expect(html.includes(reg)).toBe(withBank)
       expect(html.includes(account)).toBe(withBank)
       expect(html).toContain('href="https://app.example.invalid/pay/token"')
+      const question = locale === "da-DK" ? "Virker knappen ikke?" : "Button not working?"
+      const link = locale === "da-DK" ? "Åbn betalingssiden" : "Open the payment page"
+      const fallback = html.match(/<p[^>]*>([^<]*<a href="https:\/\/app\.example\.invalid\/pay\/token"[^>]*>[^<]*<\/a>)<\/p>/)?.[1]
+      expect(fallback?.replace(/<[^>]+>/g, "")).toBe(`${question} ${link}`)
+      expect(fallback).toContain(`${question} <a `)
+      expect(fallback).toContain(`>${link}</a>`)
+      expect(html.match(new RegExp(`>\\s*${button}\\s*</a>`, "g"))).toHaveLength(1)
       expect(html).toContain(locale === "da-DK" ? "Beløb" : "Amount")
       expect(html).toContain(locale === "da-DK" ? "23. mar. 2026" : "23 Mar 2026")
       expect(html).toContain(locale === "da-DK" ? "9. mar. 2026" : "9 Mar 2026")

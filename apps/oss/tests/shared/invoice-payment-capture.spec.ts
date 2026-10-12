@@ -110,6 +110,15 @@ for (const locale of ['da-DK', 'en-US']) {
         mkdirSync(path.join(output!, theme), { recursive: true })
         await page.screenshot({ path: path.join(output!, theme, `invoice-${language}-${viewport}.png`), fullPage: true })
         await page.setContent(delivered!.HTML)
+        if (!baseline) {
+          const question = locale === 'da-DK' ? 'Virker knappen ikke?' : 'Button not working?'
+          const linkLabel = locale === 'da-DK' ? 'Åbn betalingssiden' : 'Open the payment page'
+          const fallback = page.locator('p').filter({ hasText: question })
+          await expect(fallback).toHaveText(`${question} ${linkLabel}`)
+          await expect(fallback.locator('a')).toHaveCount(1)
+          await expect(fallback.getByRole('link', { name: linkLabel, exact: true })).toHaveAttribute('href', /\/pay\//)
+          await expect(page.getByRole('link', { name: locale === 'da-DK' ? 'Betal faktura' : 'Pay invoice', exact: true })).toHaveCount(1)
+        }
         await page.evaluate(() => document.fonts.ready)
         await page.screenshot({ path: path.join(output!, theme, `email-${language}-${viewport}.png`), fullPage: true })
       }

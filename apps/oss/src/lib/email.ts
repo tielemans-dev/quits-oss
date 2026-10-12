@@ -261,6 +261,7 @@ export function actionBlock(input: {
   label: string
   fallbackLabel: string
   linkLabel?: string
+  inlineFallback?: boolean
 }) {
   const safeHref = escapeAttribute(input.href)
   return `
@@ -269,10 +270,10 @@ export function actionBlock(input: {
          style="${emailButtonStyle()}">
         ${escapeHtml(input.label)}
       </a>
-      <p style="margin:16px 0 0;color:${C.muted};font-size:14px;">${escapeHtml(input.fallbackLabel)}</p>
+      ${input.inlineFallback ? `<p style="margin:16px 0 0;color:${C.muted};font-size:14px;">${escapeHtml(input.fallbackLabel)} <a href="${safeHref}" style="color:${C.ink};">${escapeHtml(input.linkLabel ?? input.href)}</a></p>` : `<p style="margin:16px 0 0;color:${C.muted};font-size:14px;">${escapeHtml(input.fallbackLabel)}</p>
       <p style="margin:8px 0 0;font-size:14px;word-break:break-all;">
         <a href="${safeHref}" style="color:${C.ink};">${escapeHtml(input.linkLabel ?? input.href)}</a>
-      </p>
+      </p>`}
     </div>`
 }
 
@@ -375,7 +376,8 @@ export function buildInvoiceEmailContent({
       ? actionBlock({
           href: publicPaymentUrl,
           label: t("email.pay.button", locale),
-          linkLabel: t("email.pay.button", locale),
+          linkLabel: t("email.invoice.payFallbackLink", locale),
+          inlineFallback: true,
           fallbackLabel: t("email.invoice.payFallback", locale),
         })
       : ""}
