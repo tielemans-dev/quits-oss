@@ -3,6 +3,7 @@ import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
 import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
+import { useDocumentTaxRate } from "../../../hooks/use-document-tax-rate"
 import { useOrgPricingSettings } from "../../../hooks/use-org-pricing-settings"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
@@ -62,7 +63,7 @@ function NewInvoicePage() {
   const [contactId, setContactId] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [notes, setNotes] = useState("")
-  const [taxRate, setTaxRate] = useState("0")
+  const [taxRate, setTaxRate] = useDocumentTaxRate()
   const [items, setItems] = useState<LineItem[]>([
     { description: "", quantity: "1", unitPrice: "0", catalogItemId: undefined },
   ])
