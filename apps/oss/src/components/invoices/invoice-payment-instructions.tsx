@@ -19,10 +19,11 @@ export function InvoiceSellerDetails({ status, sellerSnapshot }: { status: strin
   )
 }
 
-export function InvoicePaymentInstructions({ status, sellerSnapshot, number, balanceDue, currency, dueDate }: {
+export function InvoicePaymentInstructions({ status, sellerSnapshot, number, paymentReference, balanceDue, currency, dueDate }: {
   status: string
   sellerSnapshot: unknown
   number: string | null
+  paymentReference?: string | null
   balanceDue: number
   currency: string
   dueDate: Date | string
@@ -36,7 +37,7 @@ export function InvoicePaymentInstructions({ status, sellerSnapshot, number, bal
     <section aria-label={t("email.pay.heading")} className="grid gap-2 text-sm">
       <h3 className="font-medium">{t("email.pay.heading")}</h3>
       <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4">
-        {invoicePaymentRows({ bankAccount: account, number, total: balanceDue, currency, dueDate }, locale).map(row => (
+        {invoicePaymentRows({ bankAccount: account, number, paymentReference, total: balanceDue, currency, dueDate }, locale).map(row => (
           <div key={row.key} className="col-span-2 grid grid-cols-subgrid border-b py-2.5">
             <dt className="text-xs uppercase tracking-wider text-muted-foreground self-center">{row.label}</dt>
             <dd className="font-mono text-right break-words">{row.value}</dd>

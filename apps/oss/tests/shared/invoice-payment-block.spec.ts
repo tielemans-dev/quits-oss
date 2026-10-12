@@ -52,8 +52,12 @@ for (const locale of ['da-DK', 'en-US']) {
         await expect(page.getByRole('region', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })).toHaveCount(0)
         await expect(page.getByRole('region', { name: locale === 'da-DK' ? 'Fra' : 'From', exact: true })).toHaveCount(0)
         await testInfo.attach('invoice-draft-after-seller-settings-change', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+        // MOCK: custom stored reference on IBAN invoices; blank domestic values use the number.
+        const paymentReference = bankKind === 'iban' ? '  ORDER-2026-42  ' : '  '
+        await prisma.invoice.update({ where: { id: draft.id }, data: { paymentReference } })
         await caller.invoices.send({ id: draft.id, allowSendWithoutEmail: true })
         const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.id }, include: { contact: true, items: true } })
+        const paymentMessage = issued.paymentReference?.trim() || issued.number!
         const publicPaymentUrl = withBank ? (await caller.invoices.createPaymentLink({ id: draft.id })).url : null
         await caller.paymentDetails.update({ bankAccount: { regNumber: '1234', accountNumber: '9876543' }, note: 'Changed current payment note' })
         await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { companyName: 'Changed current seller', companyAddress: 'Changed current address' } })
@@ -71,6 +75,7 @@ for (const locale of ['da-DK', 'en-US']) {
         await expect(page.getByText(locale === 'da-DK' ? 'Fakturer til' : 'Bill To', { exact: true })).toBeVisible()
         const payment = page.getByRole('region', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })
         if (withBank) {
+          await expect(payment.locator('dd').last()).toHaveText(paymentMessage)
           await expect(payment).toContainText(bankKind === 'iban' ? 'DK50 0040 0440 1162 43' : '0440 116 243')
           if (bankKind === 'iban') await expect(payment).toContainText('DABADKKK')
           else {
@@ -132,7 +137,7 @@ for (const locale of ['da-DK', 'en-US']) {
         if (withBank) {
           await expect(page.getByText(publicPaymentUrl!, { exact: true })).toHaveCount(0)
           const paymentRows = page.getByRole('table', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })
-          await expect(paymentRows).toContainText(issued.number!)
+          await expect(paymentRows.locator('td').last()).toHaveText(paymentMessage)
           expect(await paymentRows.locator('td').first().evaluate(cell => getComputedStyle(cell).textAlign)).toBe('right')
           expect(await paymentRows.locator('th').first().evaluate(cell => getComputedStyle(cell).textTransform)).toBe('uppercase')
         }

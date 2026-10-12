@@ -8,6 +8,15 @@ describe("invoice transfer display", () => {
     for (const value of ["1234567", "0001-2345", "0440 116 243", "<script>"]) expect(groupAccountNumber(value)).toBe(value)
   })
 
+  it.each([
+    ["  ORDER-2026-42  ", "ORDER-2026-42"],
+    ["  ", "INV-0042"],
+    [null, "INV-0042"],
+  ])("uses the stored reference or invoice-number fallback: %s", (paymentReference, expected) => {
+    const rows = invoicePaymentRows({ number: "INV-0042", paymentReference, total: 250, currency: "DKK", dueDate: "2026-03-23" }, "en-US")
+    expect(rows.find(row => row.key === "email.pay.referenceLabel")?.value).toBe(expected)
+  })
+
   it("does not invent a draft payment message or missing bank rows", () => {
     const rows = invoicePaymentRows({ number: null, total: 250, currency: "DKK", dueDate: "2026-03-23" }, "da-DK")
     expect(rows).toEqual([

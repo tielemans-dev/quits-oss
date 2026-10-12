@@ -50,6 +50,20 @@ describe("i18n format helpers", () => {
     expect(formatDate("2026-03-09", "en-US", "UTC", { month: "long" })).toBe("March 9, 2026")
   })
 
+  it.each(["ja-JP-u-ca-japanese", "en-US-u-ca-japanese", "zh-CN-u-ca-chinese", "ja-JP"])("preserves calendar parts and locale notation in compact dates for %s", locale => {
+    const date = new Date("2026-03-09T00:00:00Z")
+    const formatter = new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })
+    const formatted = formatDate(date, locale, "UTC", { month: "short", dayFirst: true })
+    expect(formatted).toBe(formatter.format(date))
+    for (const part of formatter.formatToParts(date).filter(part => ["era", "relatedYear", "yearName"].includes(part.type))) {
+      expect(formatted).toContain(part.value)
+    }
+  })
+
+  it("retains the Japanese era alongside its year", () => {
+    expect(formatDate("2026-03-09", "ja-JP-u-ca-japanese", "UTC", { month: "short", dayFirst: true })).toContain("令和8")
+  })
+
   it("formats a quantity with the locale's decimal separator", () => {
     expect(formatNumber(1.5, "en-US")).toBe("1.5")
     expect(formatNumber(1.5, "da-DK")).toBe("1,5")

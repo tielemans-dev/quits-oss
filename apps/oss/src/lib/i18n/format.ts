@@ -28,7 +28,7 @@ export function formatDate(
   timeZone?: string | null,
   options?: {
     month?: "numeric" | "2-digit" | "long" | "short" | "narrow"
-    /** Compact invoice dates use day-month-year even in en-US. */
+    /** Compact Gregorian invoice dates use day-month-year in Danish and English. */
     dayFirst?: boolean
   }
 ): string {
@@ -39,10 +39,17 @@ export function formatDate(
     timeZone: normalizeTimeZone(timeZone),
   })
   const value = new Date(date)
-  if (!options?.dayFirst) return formatter.format(value)
+  const language = new Intl.Locale(normalizeLocale(locale)).language
+  // Other locales/calendars need Intl's era, related year and native date notation.
+  if (!options?.dayFirst || formatter.resolvedOptions().calendar !== "gregory" || (language !== "da" && language !== "en")) {
+    return formatter.format(value)
+  }
   const parts = formatter.formatToParts(value)
+  if (parts.some(piece => piece.type !== "day" && piece.type !== "month" && piece.type !== "year" && piece.type !== "literal")) {
+    return formatter.format(value)
+  }
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(piece => piece.type === type)?.value ?? ""
-  const daySuffix = normalizeLocale(locale) === "da-DK" ? "." : ""
+  const daySuffix = language === "da" ? "." : ""
   return `${part("day")}${daySuffix} ${part("month")} ${part("year")}`
 }
 

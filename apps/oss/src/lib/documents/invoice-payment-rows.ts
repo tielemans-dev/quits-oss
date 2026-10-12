@@ -10,10 +10,11 @@ export function groupAccountNumber(value: string): string {
   return /^\d{10}$/.test(trimmed) ? `${trimmed.slice(0, 4)} ${trimmed.slice(4, 7)} ${trimmed.slice(7)}` : trimmed
 }
 
-/** The same invoice-number message and frozen destination rows in email and the app. */
+/** The same stored payment message and frozen destination rows in email and the app. */
 export function invoicePaymentRows(input: {
   bankAccount?: BankAccountSnapshot | null
   number: string | null
+  paymentReference?: string | null
   total: number
   currency: string
   dueDate: Date | string
@@ -26,8 +27,9 @@ export function invoicePaymentRows(input: {
     const key = row.key === "pdf.regNumber" ? "email.pay.reg" : row.key === "pdf.accountNumber" ? "email.pay.account" : row.key
     return { key, label: translate(key, locale), value: row.key === "pdf.accountNumber" ? groupAccountNumber(row.value) : row.value }
   })
-  const reference = input.number?.trim()
-    ? [{ key: "email.pay.referenceLabel" as const, label: translate("email.pay.referenceLabel", locale), value: input.number.trim() }]
+  const paymentMessage = input.paymentReference?.trim() || input.number?.trim()
+  const reference = paymentMessage
+    ? [{ key: "email.pay.referenceLabel" as const, label: translate("email.pay.referenceLabel", locale), value: paymentMessage }]
     : []
   return [...entries.flatMap(([key, value]) => value?.trim() ? [{ key, label: translate(key, locale), value: value.trim() }] : []), ...bankRows, ...reference]
 }

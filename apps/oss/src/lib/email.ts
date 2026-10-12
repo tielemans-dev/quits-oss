@@ -285,6 +285,7 @@ export type SendInvoiceEmailParams = {
   replyTo?: string | null
   invoice: {
     number: string
+    paymentReference?: string | null
     issueDate: Date | string
     supplyDate?: string | null
     buyer?: BuyerSnapshot | null

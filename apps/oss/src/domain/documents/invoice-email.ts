@@ -32,6 +32,7 @@ type OrgEmailSettings = {
 export type InvoiceForEmail = {
   id: string
   number: string
+  paymentReference?: string | null
   /** Copied from the organization when the draft was created. Required so no caller can drop them. */
   locale: string
   timezone: string

@@ -163,6 +163,23 @@ describe("frozen invoice email payment details", () => {
 
 // MOCK: synthetic settlement/account fixtures, confined to tests.
 describe("issued transfer regressions", () => {
+  it.each([
+    ["  ORDER-2026-42  ", "ORDER-2026-42"],
+    ["  ", "INV-0042"],
+  ])("propagates the stored reference into issued email instructions: %s", (paymentReference, expected) => {
+    const html = compose({ ...storedInvoice, paymentReference })
+    const payment = html.match(/<table aria-label="Sådan betaler du"[\s\S]*?<\/table>/)?.[0]
+    expect(payment).toContain(expected)
+    if (paymentReference.trim()) expect(payment).not.toContain("INV-0042")
+    expect(html).toContain("INV-0042")
+  })
+
+  it("escapes a stored custom payment reference", () => {
+    const html = compose({ ...storedInvoice, paymentReference: '<img src=x>' })
+    expect(html).toContain("&lt;img src=x&gt;")
+    expect(html).not.toContain("<img")
+  })
+
   it("renders an IBAN-only issued destination and makes no remote font request", () => {
     const html = compose({ ...storedInvoice, sellerSnapshot: { bankAccount: { iban: "DK5000400440116243", bic: "DABADKKK" } } })
     expect(html).toContain("DK50 0040 0440 1162 43")

@@ -42,6 +42,15 @@ describe("invoice detail seller and payment blocks", () => {
 
 // MOCK: synthetic issued account and outstanding balances, confined to tests.
 describe("issued payment block regressions", () => {
+  it.each([
+    ["  ORDER-2026-42  ", "ORDER-2026-42"],
+    ["  ", "INV-0042"],
+  ])("renders the stored payment message or fallback: %s", (paymentReference, expected) => {
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" paymentReference={paymentReference} balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
+    expect(html).toContain(`<dd class="font-mono text-right break-words">${expected}</dd>`)
+    if (paymentReference.trim()) expect(html).not.toContain("INV-0042")
+  })
+
   it("shows an IBAN-only destination", () => {
     const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={{ bankAccount: { iban: "DK5000400440116243", bic: "DABADKKK" } }} number="INV-0042" balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
     expect(html).toContain("DK50 0040 0440 1162 43")

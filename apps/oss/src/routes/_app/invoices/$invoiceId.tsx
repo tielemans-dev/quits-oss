@@ -1121,7 +1121,7 @@ function InvoiceDetailPage() {
               </div>
             </div>
 
-            <InvoicePaymentInstructions status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} number={invoice.number} balanceDue={invoice.balanceDue} currency={invoice.currency} dueDate={invoice.dueDate} />
+            <InvoicePaymentInstructions status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} number={invoice.number} paymentReference={invoice.paymentReference} balanceDue={invoice.balanceDue} currency={invoice.currency} dueDate={invoice.dueDate} />
 
             {/* Notes */}
             {invoice.notes && (
