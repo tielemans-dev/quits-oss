@@ -21,12 +21,12 @@ function submitSignup() {
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Test Person' } })
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'person@example.test' } })
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'local-password123' } })
-  fireEvent.submit(screen.getByRole('button', { name: 'Sign up' }).closest('form')!)
+  fireEvent.submit(screen.getByRole('button', { name: 'Create account' }).closest('form')!)
 }
 async function blocked() {
   signUp.mockResolvedValue({ error: { code: 'not_invited', message: 'PRIVATE ACCOUNT DETAIL' } })
   show(); submitSignup()
-  await screen.findByText('quits is invite-only for now')
+  await screen.findByText('You need an invitation')
 }
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 beforeEach(() => { state.mode = 'invite_only'; state.invite = undefined; state.waitlist = { privacyVersion: '2026-10-12.2', privacyPath: '/privacy' }; signUp.mockReset(); loadPage.mockReset() })
@@ -45,7 +45,7 @@ describe('signup admission UI', () => {
     expect((screen.getByLabelText(/Invite code/) as HTMLInputElement).value).toBe(state.invite)
     expect(signUp).not.toHaveBeenCalled()
     submitSignup()
-    await waitFor(() => expect(loadPage).toHaveBeenCalledWith('/onboarding'))
+    await waitFor(() => expect(loadPage).toHaveBeenCalledWith('/onboarding?lang=en'))
     expect(signUp.mock.calls[0]![1].body).toEqual({ inviteCode: 'QUITS-7K4M-2P9X' })
   })
   it('keeps values and focuses the code on invalid admission without showing server messages', async () => {
@@ -200,8 +200,8 @@ describe('signup admission UI', () => {
     await blocked()
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: 'Use it' }))
-    fireEvent.submit(screen.getByRole('button', { name: 'Sign up' }).closest('form')!)
-    await screen.findByText('quits is invite-only for now')
+    fireEvent.submit(screen.getByRole('button', { name: 'Create account' }).closest('form')!)
+    await screen.findByText('You need an invitation')
     expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false)
   })
   it('aborts after ten seconds and keeps the form available for retry', async () => {
@@ -221,7 +221,7 @@ describe('signup admission UI', () => {
     } finally { vi.useRealTimers() }
   })
   it('renders final Danish invitation copy', () => {
-    show('da'); expect(screen.getByText('quits kræver en invitation frem til lanceringen. Har du fået en, kan du oprette din konto her.')).toBeTruthy()
+    show('da'); expect(screen.getByText('Du skal have en invitation for at oprette en konto. Har du fået en, kan du oprette din konto her.')).toBeTruthy()
     expect(screen.getByLabelText(/Invitationskode/)).toBeTruthy()
   })
 })

@@ -21,7 +21,7 @@ const ForgotPage = asMockedRoute(ForgotRoute).component
 const ResetPage = asMockedRoute(ResetRoute).component
 const fillPasswords = (password: string, confirmation = password) => {
   fireEvent.change(screen.getByLabelText("New password"), { target: { value: password } })
-  fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: confirmation } })
+  fireEvent.change(screen.getByLabelText("Repeat password"), { target: { value: confirmation } })
   fireEvent.click(screen.getByRole("button", { name: "Save new password" }))
 }
 
@@ -39,8 +39,8 @@ describe("password recovery screens", () => {
     render(<I18nProvider><ForgotPage /></I18nProvider>)
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "user@example.com" } })
     fireEvent.click(screen.getByRole("button", { name: "Send reset link" }))
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("If an account exists"))
-    expect(requestPasswordReset).toHaveBeenCalledWith({ email: "user@example.com", redirectTo: `${window.location.origin}/reset-password` })
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("If user@example.com belongs to an account"))
+    expect(requestPasswordReset).toHaveBeenCalledWith({ email: "user@example.com", redirectTo: `${window.location.origin}/reset-password?lang=en` })
     expect(screen.getByRole("link", { name: "Back to log in" }).getAttribute("href")).toBe("/login")
   })
 
@@ -50,7 +50,7 @@ describe("password recovery screens", () => {
     render(<I18nProvider><ForgotPage /></I18nProvider>)
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "user@example.com" } })
     fireEvent.click(screen.getByRole("button", { name: "Send reset link" }))
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Please try again"))
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Check your connection"))
     fireEvent.click(screen.getByRole("button", { name: "Send reset link" }))
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Wait a minute"))
   })
@@ -58,9 +58,9 @@ describe("password recovery screens", () => {
   it("checks password policy and confirmation before sending the token", async () => {
     render(<I18nProvider><ResetPage /></I18nProvider>)
     fillPasswords("short")
-    expect(screen.getByRole("alert").textContent).toContain("between 8 and 128")
+    expect(screen.getByRole("alert").textContent).toContain("at least 8")
     fillPasswords("new-password", "different-password")
-    expect(screen.getByRole("alert").textContent).toContain("do not match")
+    expect(screen.getByRole("alert").textContent).toContain("need to match")
     expect(resetPassword).not.toHaveBeenCalled()
   })
 
@@ -69,17 +69,17 @@ describe("password recovery screens", () => {
     const replace = vi.spyOn(window.history, "replaceState").mockImplementation(() => {})
     render(<I18nProvider><ResetPage /></I18nProvider>)
     fillPasswords("new-password")
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("has been reset"))
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("is changed"))
     expect(resetPassword).toHaveBeenCalledWith({ token: "valid-token", newPassword: "new-password" })
-    expect(replace).toHaveBeenCalledWith(window.history.state, "", "/reset-password")
+    expect(replace).toHaveBeenCalledWith(window.history.state, "", "/reset-password?lang=en")
     expect(screen.queryByLabelText("New password")).toBeNull()
   })
 
   it.each([{}, { error: "INVALID_TOKEN" }])("offers a new link when token search is invalid (%j)", (value) => {
     search.value = value
     render(<I18nProvider><ResetPage /></I18nProvider>)
-    expect(screen.getByRole("alert").textContent).toContain("invalid or has expired")
-    expect(screen.getByRole("link", { name: "Request a new reset link" }).getAttribute("href")).toBe("/forgot-password")
+    expect(screen.getByRole("alert").textContent).toContain("has expired or was already used")
+    expect(screen.getByRole("link", { name: "Send a new link" }).getAttribute("href")).toBe("/forgot-password")
     expect(screen.queryByLabelText("New password")).toBeNull()
   })
 
@@ -87,7 +87,19 @@ describe("password recovery screens", () => {
     resetPassword.mockResolvedValue({ error: { code: "INVALID_TOKEN" } })
     render(<I18nProvider><ResetPage /></I18nProvider>)
     fillPasswords("new-password")
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("invalid or has expired"))
-    expect(screen.getByRole("link", { name: "Request a new reset link" })).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("has expired or was already used"))
+    expect(screen.getByRole("link", { name: "Send a new link" })).toBeTruthy()
   })
+  it.each([7, 8, 128, 129])("checks reset policy bounds at length %s", async (length) => {
+    resetPassword.mockResolvedValue({ data: {} })
+    render(<I18nProvider locale="en"><ResetPage /></I18nProvider>)
+    fillPasswords('p'.repeat(length))
+    if (length === 7 || length === 129) {
+      expect(resetPassword).not.toHaveBeenCalled()
+      expect(screen.getByRole('alert').textContent).toBe(length === 7 ? 'Use at least 8 characters' : '128 characters max')
+    } else {
+      await waitFor(() => expect(resetPassword).toHaveBeenCalledWith({ token: 'valid-token', newPassword: 'p'.repeat(length) }))
+    }
+  })
+
 })

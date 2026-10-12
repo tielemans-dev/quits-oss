@@ -142,7 +142,7 @@ export function registerProductScenarios(test, expect) {
     // an explicit 429; authentication errors still fail immediately.
     for (let attempt = 0; ; attempt++) {
       const pending = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/sign-in/email' && response.request().method() === 'POST')
-      await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+      await page.getByRole('button', { name: 'Log in', exact: true }).click()
       const response = await pending
       if (response.status() !== 429 || attempt === 2) {
         expect(response.ok(), `Browser sign-in returned ${response.status()}`).toBeTruthy()
