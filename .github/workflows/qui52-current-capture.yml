@@ -7,6 +7,7 @@ on:
       - .github/workflows/qui52-current-capture.yml
       - apps/oss/e2e/qui52-current-capture.mjs
       - apps/oss/tests/shared/invoice-payment-capture.spec.ts
+      - apps/oss/tests/shared/invoice-payment-block.spec.ts
       - apps/oss/src/lib/email.ts
       - apps/oss/src/lib/__tests__/invoice-email-payment.test.ts
       - apps/oss/src/lib/documents/invoice-payment-rows.ts
