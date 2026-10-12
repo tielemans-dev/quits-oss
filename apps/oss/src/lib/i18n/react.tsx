@@ -4,6 +4,7 @@ import type { TranslationKey } from "./messages"
 
 type I18nContextValue = {
   locale: string
+  setDocumentLocale: (locale: string | null) => void
   setLocale: (locale: string) => void
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string
   /** @deprecated Use `t` with catalog keys instead of inline translation objects. */
@@ -40,6 +41,8 @@ export function I18nProvider({
   // read the browser's language: that would make every translated string of a non-English browser
   // differ from the server's HTML and fail hydration. The browser's language is taken right
   // after hydration instead.
+  const parent = useContext(I18nContext)
+  const [documentLocale, setDocumentLocale] = useState<string | null>(null)
   const [detectedLocale, setLocale] = useState<string>(initialLocale ?? SERVER_LOCALE)
   const locale = fixedLocale ?? detectedLocale
   const isFixed = fixedLocale !== undefined
@@ -50,12 +53,19 @@ export function I18nProvider({
     setLocale((current) => (current === SERVER_LOCALE ? detectBrowserLocale() : current))
   }, [isFixed, initialLocale])
 
+  // Editable subtrees publish their language to the root. Only the root writes <html lang>,
+  // so its browser detection cannot overwrite the loaded organization's language.
+  const publishDocumentLocale = parent?.setDocumentLocale ?? setDocumentLocale
   useEffect(() => {
-    if (isFixed) return
-    if (typeof document !== "undefined") {
-      document.documentElement.lang = resolveLanguage(locale)
-    }
-  }, [isFixed, locale])
+    if (!parent || isFixed) return
+    publishDocumentLocale(locale)
+    return () => publishDocumentLocale(null)
+  }, [parent !== null, isFixed, locale, publishDocumentLocale])
+
+  useEffect(() => {
+    if (parent || isFixed) return
+    document.documentElement.lang = resolveLanguage(documentLocale ?? locale)
+  }, [parent !== null, isFixed, documentLocale, locale])
 
   const t = useCallback(
     (key: TranslationKey, vars?: Record<string, string | number>) =>
@@ -74,10 +84,11 @@ export function I18nProvider({
     () => ({
       locale,
       setLocale,
+      setDocumentLocale: publishDocumentLocale,
       t,
       tm,
     }),
-    [locale, t, tm]
+    [locale, t, tm, publishDocumentLocale]
   )
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>

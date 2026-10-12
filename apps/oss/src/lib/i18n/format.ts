@@ -40,6 +40,7 @@ export function formatDate(
 
 /** Compact document dates, with day before month in both supported languages. */
 export function formatShortDate(date: Date | string, locale?: string | null, timeZone?: string | null): string {
-  const language = normalizeLocale(locale).toLowerCase().startsWith("da") ? "da-DK" : "en-GB"
+  const configuredLocale = normalizeLocale(locale)
+  const language = configuredLocale.toLowerCase().startsWith("en") ? "en-GB" : configuredLocale
   return formatDate(date, language, timeZone, { month: "short" })
 }

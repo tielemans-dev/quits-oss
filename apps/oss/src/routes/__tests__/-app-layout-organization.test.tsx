@@ -152,7 +152,10 @@ describe("app layout request organization", () => {
   })
 
   it("hydrates the server-rendered placeholder without a mismatch, then renders the page", async () => {
+    vi.spyOn(window.navigator, "language", "get").mockReturnValue("en-US")
     const html = renderToString(<route.component />)
+    expect(html).toContain("Fakturaer")
+    expect(html).not.toContain("Invoices")
     const container = document.createElement("div")
     container.innerHTML = html
     document.body.appendChild(container)
@@ -167,6 +170,7 @@ describe("app layout request organization", () => {
     expect(container.textContent).toContain("page")
     expect(container.textContent).toContain("Fakturaer")
     expect(container.textContent).not.toContain("Invoices")
+    expect(document.documentElement.lang).toBe("da")
     expect(state.outletRenders.every((organizationId) => organizationId === "org_a")).toBe(true)
     act(() => root.unmount())
     container.remove()

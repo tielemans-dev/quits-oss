@@ -1,9 +1,10 @@
 import type { BuyerSnapshot } from "@quits/contracts/documents"
+import { toCountryCode } from "../exports/parties"
 import { normalizeLocale } from "../i18n/locale"
 
 /** Postal order shared with QUI-61's PDF fix; domestic country is redundant on detail pages. */
 export function detailBuyerAddress(buyer: Omit<BuyerSnapshot, "email">, sellerCountry: string, locale: string): string[] {
-  const countryCode = buyer.country?.trim().toUpperCase()
+  const countryCode = toCountryCode(buyer.country)
   const country = countryCode && /^[A-Z]{2}$/.test(countryCode)
     ? new Intl.DisplayNames([normalizeLocale(locale)], { type: "region" }).of(countryCode)
     : buyer.country

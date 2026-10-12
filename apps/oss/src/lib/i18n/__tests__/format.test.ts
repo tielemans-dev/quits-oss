@@ -20,6 +20,9 @@ describe("i18n format helpers", () => {
     expect(formatShortDate("2026-10-11T12:00:00Z", "en-US", "UTC")).toBe("11 Oct 2026")
     expect(formatShortDate("2026-10-11T00:00:00Z", "en-US", "America/New_York")).toBe("10 Oct 2026")
   })
+  it.each(["de-DE", "fr-FR", "nl-NL"])("preserves the configured short month for %s", locale => {
+    expect(formatShortDate("2026-10-11T12:00:00Z", locale, "UTC")).toBe(formatDate("2026-10-11T12:00:00Z", locale, "UTC", { month: "short" }))
+  })
   it("formats US currency with en-US locale", () => {
     expect(formatCurrency(1234.56, "USD", "en-US")).toBe("$1,234.56")
   })

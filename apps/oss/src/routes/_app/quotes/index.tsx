@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
-import { formatDate as formatDateIntl } from "../../../lib/i18n/format"
+import { formatShortDate } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
 import { StatusBadge } from "../../../components/status-badge"
 import { Amount } from "../../../components/kvit/amount"
@@ -52,7 +52,7 @@ type Quote = {
 }
 
 function formatDate(dateStr: string, locale?: string) {
-  return formatDateIntl(dateStr, locale, undefined, { month: "short" })
+  return formatShortDate(dateStr, locale, "UTC")
 }
 
 function QuotesListPage() {

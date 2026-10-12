@@ -6,6 +6,9 @@ describe("detail buyer address", () => {
   it.each(["da-DK", "en-US"])("orders Danish postal lines and omits domestic country in %s", locale => {
     expect(detailBuyerAddress(buyer, "DK", locale)).toEqual(["Testvej 2", "9000 Aalborg"])
   })
+  it.each(["Denmark", "Danmark", " dk "])("recognizes supported free-text country %s", country => {
+    expect(detailBuyerAddress({ ...buyer, country }, "DK", "da-DK")).toEqual(["Testvej 2", "9000 Aalborg"])
+  })
   it("keeps a localized country for foreign buyers and the foreign postal order", () => {
     expect(detailBuyerAddress(buyer, "US", "en-US")).toEqual(["Testvej 2", "9000 Aalborg", "Denmark"])
     expect(detailBuyerAddress({ ...buyer, city: "Boston", state: "MA", zip: "02108", country: "US" }, "DK", "da-DK")).toEqual(["Testvej 2", "Boston, MA, 02108", "USA"])

@@ -40,7 +40,7 @@ export const getAppLayoutSession = createServerFn({ method: "GET" }).handler(asy
         where: { organizationId: activeOrganizationId },
         select: { locale: true },
       }))?.locale ?? "en-US"
-    : "en-US"
+    : undefined
 
   if (runtime.distribution !== "cloud" || !activeOrganizationId) {
     return { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete: null }

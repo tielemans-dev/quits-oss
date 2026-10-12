@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises"
+import { mkdir, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { expect, test, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
@@ -8,6 +8,9 @@ import { danishLocale, loginAsAdmin, resetDatabase, seedPublicQuote, usEnglishLo
 // Screenshot mode is test-only and never imported into production code.
 const before = process.env.QUI65_SCREENSHOTS === "before"
 const captureDir = process.env.QUI65_CAPTURE_DIR
+if (process.env.QUI65_EVIDENCE === "true" && (!process.env.CI || !captureDir)) {
+  throw new Error("QUI-65 evidence requires CI and an explicit capture directory")
+}
 async function capture(page: Page, name: string) {
   if (!captureDir) return
   await mkdir(captureDir, { recursive: true })
@@ -25,6 +28,16 @@ for (const locale of [danishLocale, usEnglishLocale]) {
     await prisma.contact.update({ where: { id: quote.contactId }, data: { name: "Test Buyer", company: "Test Buyer ApS", address: "Testvej 2", zip: "9000", city: "Aalborg", country: locale.countryCode } })
     await prisma.quote.update({ where: { id: quote.id }, data: { issueDate: new Date("2026-10-11T12:00:00Z"), expiryDate: new Date("2026-10-25"), notes: "Test project scope and delivery terms.", lastEmailAttemptAt: new Date("2026-10-11T12:00:00Z"), lastEmailAttemptOutcome: "sent", lastEmailAttemptCode: "sent", lastEmailAttemptMessage: "Test email delivered" } })
     const invoice = await prisma.invoice.create({ data: { organizationId: quote.organizationId, contactId: quote.contactId, quoteId: quote.id, number: "INV-0002", status: "sent", dueDate: new Date("2026-10-25"), subtotalNet: "1250.00", totalGross: "1250.00", currency: locale.currency, countryCode: locale.countryCode, locale: locale.locale, timezone: locale.timezone } })
+    // MOCK: all registered quote/credit events, plus invoice crediting, for localization evidence.
+    const activityTypes = ["quote.draft_created", "quote.draft_updated", "quote.draft_deleted", "quote.sent", "quote.email_resent", "quote.accepted", "quote.rejected", "quote.converted", "credit_note.issued", "credit_note.sent", "invoice.credited"]
+    const lastEvent = await prisma.domainEvent.aggregate({ where: { organizationId: quote.organizationId }, _max: { sequence: true } })
+    await prisma.domainEvent.createMany({ data: activityTypes.map((type, index) => ({
+      organizationId: quote.organizationId, sequence: (lastEvent._max.sequence ?? 0) + index + 1,
+      aggregateType: type.startsWith("quote.") ? "quote" : type.startsWith("credit_note.") ? "credit_note" : "invoice",
+      aggregateId: type.startsWith("quote.") ? quote.id : invoice.id, type,
+      payload: { number: type.startsWith("quote.") ? seeded.number : type.startsWith("credit_note.") ? "CN-0001" : "INV-0002", invoiceNumber: "INV-0002", creditNoteNumber: "CN-0001", recipient: "buyer@e2e.example" },
+      actorKind: "system", actorLabel: "MOCK test fixture", occurredAt: new Date("2026-10-11T12:00:00Z"),
+    })) })
     const da = locale.locale === "da-DK"
     for (const theme of ["light", "dark"] as const) {
       const context = await browser.newContext({ locale: "en-US", colorScheme: theme, viewport: { width: 1440, height: 1000 } })
@@ -75,10 +88,44 @@ for (const locale of [danishLocale, usEnglishLocale]) {
           }
           await capture(page, `admin-${number ? "invoiced" : "draft-invoice"}-${suffix}`)
         }
-        await page.goto("/quotes")
+        const listResponse = await page.goto("/quotes")
         await waitForClientReady(page)
         await expect(page.getByRole("heading", { name: da ? "Tilbud" : "Quotes", exact: true })).toBeVisible()
+        const row = page.getByRole("row").filter({ has: page.getByRole("link", { name: new RegExp(seeded.number) }) })
+        await expect(row).toBeVisible()
+        if (!before) {
+          // The issue cell is hidden on mobile; the expiry date remains in the compact row.
+          await expect(row).toContainText(da ? "11. okt. 2026" : "11 Oct 2026")
+          await expect(row).toContainText(da ? "25. okt. 2026" : "25 Oct 2026")
+          await expect(row).not.toContainText("Oct 11, 2026")
+          await expect(page.locator("html")).toHaveAttribute("lang", da ? "da" : "en")
+        }
         await capture(page, `quote-list-${suffix}`)
+        await capture(page, `locale-shell-${suffix}`)
+        if (captureDir) {
+          const phase = before ? "before" : "after"
+          const serverHtml = await listResponse!.text()
+          const sidebar = await page.locator('[data-slot="sidebar"]').allTextContents()
+          const evidence = { locale: locale.locale, browserLocale: "en-US", theme, viewport, width, htmlLang: await page.locator("html").getAttribute("lang"), sidebar, serverHasDanishNavigation: serverHtml.includes(">Fakturaer<"), serverHasEnglishNavigation: serverHtml.includes(">Invoices<") }
+          if (!before && da) {
+            expect(evidence.serverHasDanishNavigation).toBe(true)
+            expect(evidence.serverHasEnglishNavigation).toBe(false)
+          }
+          await writeFile(resolve(captureDir, `locale-${suffix}-${phase}.json`), JSON.stringify(evidence, null, 2))
+          // Only synthetic test HTML is archived; no production session/data is involved.
+          await writeFile(resolve(captureDir, `locale-${suffix}-${phase}.html`), serverHtml)
+        }
+        await page.goto("/activity")
+        await waitForClientReady(page)
+        if (!before) {
+          await expect(page.getByText(da ? `Tilbud ${seeded.number} sendt` : `Quote ${seeded.number} sent`, { exact: true })).toBeVisible()
+          await expect(page.getByText(da ? "Kreditnota CN-0001 udstedt" : "Credit note CN-0001 issued", { exact: true })).toBeVisible()
+          await expect(page.getByText(da ? "Faktura INV-0002 krediteret med kreditnota CN-0001" : "Invoice INV-0002 credited with credit note CN-0001", { exact: true })).toBeVisible()
+        } else {
+          // Baseline labels may be untranslated. Wait for actual fixture events without fixing them.
+          await expect(page.getByText("MOCK test fixture").first()).toBeVisible()
+        }
+        await capture(page, `activity-log-${suffix}`)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
       }
       await context.close()
