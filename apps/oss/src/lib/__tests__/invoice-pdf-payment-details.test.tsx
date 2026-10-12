@@ -190,6 +190,15 @@ describe("invoice PDF calendar dates", () => {
 
 
 describe("registration changes in future PDF snapshots", () => {
+  it.each([["da-DK", "CVR-nr."], ["en-US", "CVR no."]])("uses the frozen CVR label in %s and preserves historical inputs", (locale, cvrLabel) => {
+    const org = { locale, taxIds: [{ scheme: "DK_CVR", countryCode: "DK", value: "12345678" }] }
+    const historical = textOf(InvoicePdfDocument({ invoice, org })).join("\n")
+    const future = textOf(InvoicePdfDocument({ invoice, org: { ...org, cvrLabel } })).join("\n")
+    expect(historical).toContain("CVR: 12345678")
+    expect(future).toContain(`${cvrLabel}: 12345678`)
+    expect(future).not.toContain("CVR: 12345678")
+    expect(textOf(InvoicePdfDocument({ invoice, org })).join("\n")).toBe(historical)
+  })
   it.each(["da-DK", "en-US"])("keeps old PDFs frozen and normalizes future declarations in %s", locale => {
     const statement = locale === "da-DK" ? "Der er ikke beregnet moms, da sælger ikke er momsregistreret." : "No VAT charged – the seller is not VAT-registered."
     const seller = { companyName: "Synthetic seller", companyEmail: null, companyAddress: null, taxIds: [], momsRegistered: false }

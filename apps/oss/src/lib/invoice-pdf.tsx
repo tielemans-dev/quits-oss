@@ -200,6 +200,8 @@ const styles = StyleSheet.create({
 
 export type OrgSettingsForPdf = {
   taxIds?: DocumentTaxId[]
+  /** Frozen for future non-VAT invoices. Historical render inputs keep their original CVR label. */
+  cvrLabel?: string
   companyName?: string | null
   companyEmail?: string | null
   companyPhone?: string | null
@@ -328,7 +330,7 @@ export function InvoicePdfDocument({
             {org.companyEmail && <Text style={styles.contactLine}>{org.companyEmail}</Text>}
             {org.companyPhone && <Text style={styles.contactLine}>{org.companyPhone}</Text>}
             {org.companyAddress && <Text style={styles.contactLine}>{org.companyAddress}</Text>}
-            {invoiceTaxIds(org.taxIds).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
+            {invoiceTaxIds(org.taxIds, org.cvrLabel).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
           </View>
 
           {/* Bill To */}
