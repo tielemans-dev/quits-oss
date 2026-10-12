@@ -28,7 +28,7 @@ export function invoicePolicyIssues(document: InvoicePolicyInput, policy: Invoic
   if (policy.requireCvr && !sellerCvr(seller?.taxIds)) issues.push("Set a valid Danish CVR in the seller identity before issuing.")
   if ((policy.requireSellerVatStatus || policy.standardVatRate) && seller?.momsRegistered == null)
     issues.push("Choose whether this seller is VAT-registered before issuing.")
-  if (policy.sellerVatRegistered === false && seller?.momsRegistered !== false)
+  if (policy.sellerVatRegistered !== undefined && seller?.momsRegistered !== policy.sellerVatRegistered)
     issues.push("Seller VAT registration confirmation is missing or does not match the effective seller.")
   if (policy.buyerCountries && !policy.buyerCountries.includes(buyer?.country ?? "")) issues.push(`Only customers in ${policy.buyerCountries.join(", ")} are supported. Correct the customer country or use a supported invoicing service.`)
   if (policy.requireBusinessBuyer && !buyer?.company?.trim()) issues.push("This issuance policy supports business customers only. Set the customer's business name.")

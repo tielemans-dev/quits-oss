@@ -1,3 +1,4 @@
+// MOCK: synthetic test organizations, parties, document amounts and rates only.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { Prisma } from "../../../generated/prisma/client"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
@@ -95,6 +96,19 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     const credit = await prisma.creditNote.findFirstOrThrow({ where: { invoiceId: ctx.invoice.id } })
     expect(parseSellerSnapshot(credit.sellerSnapshot)?.momsRegistered).toBe(registered)
     expect((credit.issuanceSnapshot as { seller: { momsRegistered: boolean } }).seller.momsRegistered).toBe(registered)
+  })
+  it.each([
+    ["us_sales_tax", undefined, 7], ["custom", undefined, 7], ["eu_vat", undefined, 0],
+    ["eu_vat", "us_sales_tax", 7], ["eu_vat", "custom", 7], ["custom", "eu_vat", 0],
+  ] as const)("uses effective tax regime %s -> %s when saving non-registration", async (storedRegime, taxRegime, expectedRate) => {
+    const ctx = await setup(true)
+    await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: { taxRegime: storedRegime, taxRate: 7 } })
+    await ctx.caller.settings.update({ momsRegistered: false, ...(taxRegime ? { taxRegime } : {}) })
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })).taxRate?.toNumber()).toBe(expectedRate)
+    // A subsequent partial update keeps a non-VAT tax default and still normalizes EU VAT only.
+    await ctx.caller.settings.update({ taxRate: 8 })
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })).taxRate?.toNumber()).toBe(expectedRate === 0 ? 0 : 8)
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoice.id } })).totalGross.toString()).toBe("125")
   })
   it("refuses an unchanged draft if VAT status changes after artifact preparation", async () => {
     const ctx = await setup(true)

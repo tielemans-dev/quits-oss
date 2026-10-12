@@ -188,6 +188,7 @@ export const sendCreditNote = defineCommand({
               quantity: num(item.quantity),
               unitPrice: num(shown.unitPrice),
               total: num(shown.amount),
+              taxRate: num(item.taxRate),
             }
           }),
         },

@@ -1,3 +1,4 @@
+import { sellerVatLineText } from "./documents/seller-vat"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { nonVatStatement } from "./documents/non-vat-note"
 import { withoutNonVatStatement } from "./documents/non-vat-presentation"
@@ -93,7 +94,7 @@ export type CreditNoteForPdf = {
   /** The stored total minus the stored subtotal and tax, as a decimal string; printed when non-zero. */
   rounding?: string
   /** Unit price and total are the stored amounts on the document's price basis. */
-  items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>
+  items: Array<{ description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }>
 }
 
 export function CreditNotePdfDocument({
@@ -187,7 +188,7 @@ export function CreditNotePdfDocument({
           </View>
           {creditNote.items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
-              <Text style={styles.colDescription}>{item.description}</Text>
+              <View style={styles.colDescription}><Text>{item.description}</Text>{sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}</View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>{money(item.unitPrice)}</Text>
               <Text style={styles.colTotal}>{money(item.total)}</Text>

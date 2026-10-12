@@ -34,7 +34,7 @@ export type SendCreditNoteEmailParams = {
     priceBasis?: PriceBasis
     vatRows?: VatRow[]
     rounding?: string
-    items: { description: string; quantity: number; unitPrice: number; total: number }[]
+    items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[]
   }
   invoice: { number: string; issueDate: Date | string }
   org: {
@@ -85,7 +85,7 @@ export function buildCreditNoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis)}
+    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis, momsRegistered)}
     ${totalsBlock(creditNote, locale)}
     ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
 

@@ -94,7 +94,7 @@ for (const locale of ["da-DK", "en-US"]) {
     await capturePdf(page, "creditNote", credit.id, locale)
     const creditEmail = buildCreditNoteEmailContent({ creditNote: { number: credit.number, issueDate: credit.issueDate,
       sellerSnapshot: credit.sellerSnapshot, reason: credit.reason, subtotal: credit.subtotalNet.toNumber(), taxAmount: credit.totalTax.toNumber(), total: credit.totalGross.toNumber(), currency: credit.currency,
-      priceBasis: "net", items: credit.items.map(item => ({ description: item.description, quantity: item.quantity.toNumber(), unitPrice: item.unitPriceNet.toNumber(), total: item.lineNet.toNumber() })) },
+      priceBasis: "net", items: credit.items.map(item => ({ description: item.description, quantity: item.quantity.toNumber(), unitPrice: item.unitPriceNet.toNumber(), total: item.lineNet.toNumber(), taxRate: item.taxRate.toNumber() })) },
       invoice: { number: row.number!, issueDate: row.issueDate }, org: { locale }, contactName: "Synthetic Buyer" }).html
     expect(creditEmail.split(translate("pdf.nonVatRegistered", locale))).toHaveLength(2)
     await captureDocument(page, "credit-note-email", locale, creditEmail)

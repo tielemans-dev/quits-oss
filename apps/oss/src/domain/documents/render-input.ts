@@ -157,7 +157,7 @@ export const prospectiveRenderInput = (input: {
       pricesIncludeTax: invoice.pricesIncludeTax,
       ...creditVatSummary,
       items: built.lines.map(line => { const shown = lineAmounts(priceBasis(invoice.pricesIncludeTax), line)
-        return { description: line.description, quantity: line.quantity, unitPrice: shown.unitPrice, total: shown.amount } }),
+        return { description: line.description, quantity: line.quantity, unitPrice: shown.unitPrice, total: shown.amount, taxRate: line.taxRate } }),
     }
     return { ...base, kind: "creditNote" as const, recipient: null,
       selectionFingerprint: createHash("sha256").update(canonicalizeOffer(selection)).digest("hex"),

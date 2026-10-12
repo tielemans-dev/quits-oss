@@ -1,3 +1,4 @@
+// MOCK: synthetic test organizations, parties, document amounts and rates only.
 import { afterEach, describe, expect, it } from "vitest"
 import { Effect } from "effect"
 import { invoicePolicyIssues, requireInvoiceIssuancePolicy } from "../issuance-policy"
@@ -50,6 +51,16 @@ describe("optional invoice issuance policy", () => {
     expect(invoicePolicyIssues({ ...zero, items: document.items }, policy).length).toBeGreaterThan(0)
     expect(invoicePolicyIssues({ ...zero, currency: "USD" }, policy).length).toBeGreaterThan(0)
     expect(invoicePolicyIssues({ ...zero, buyerSnapshot: { ...document.buyerSnapshot, country: "SE" } }, policy).length).toBeGreaterThan(0)
+  })
+  it.each([true, false])("enforces explicit adopter confirmation %s in both directions without rate restrictions", confirmation => {
+    for (const status of [true, false, null, undefined]) {
+      const issues = invoicePolicyIssues({ ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered: status } }, { sellerVatRegistered: confirmation })
+      expect(issues.length).toBe(status === confirmation ? 0 : 1)
+    }
+  })
+  it("refuses a zero VAT seller when the adopter affirms registration", () => {
+    const zero = { ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered: false }, items: [{ ...document.items[0]!, vatTreatment: "unclassified_zero", taxRate: "0", vatRateInput: "0" }] }
+    expect(invoicePolicyIssues(zero, policy)).toEqual(["Seller VAT registration confirmation is missing or does not match the effective seller."])
   })
   it("preserves self-host scope when no policy is installed", async () => {
     await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", { ...document, currency: "USD", sellerSnapshot: {}, buyerSnapshot: null }))).resolves.toBeUndefined()

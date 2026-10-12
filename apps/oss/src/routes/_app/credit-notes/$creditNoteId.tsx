@@ -1,3 +1,4 @@
+import { sellerVatLineText } from "../../../lib/documents/seller-vat"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { createFileRoute, Link } from "@tanstack/react-router"
@@ -302,7 +303,7 @@ function CreditNoteDetailPage() {
               <TableBody>
                 {creditNote.items.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>{item.description}</TableCell>
+                    <TableCell>{item.description}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}</TableCell>
                     <TableCell className="text-right num">{item.quantity}</TableCell>
                     <TableCell className="text-right num">{money(item.displayUnitPrice ?? item.unitPrice)}</TableCell>
                     <TableCell className="text-right num">{money(item.displayAmount ?? item.total)}</TableCell>

@@ -1,3 +1,4 @@
+// MOCK: synthetic test organizations, parties, document amounts and rates only.
 import { isValidElement, type ReactNode } from "react"
 import { describe, expect, it } from "vitest"
 import { Text } from "@react-pdf/renderer"
@@ -119,6 +120,7 @@ describe("credit note registration statement", () => {
     for (const output of [pdf, email]) {
       expect(output.split(note)).toHaveLength(2)
       expect(output).toContain(credit.reason)
+      expect(output).toContain(translate("line.noVat", locale))
       expect(output).not.toContain(nonVatStatement(locale === "da-DK" ? "en" : "da"))
     }
     expect(pdf).toContain("Frozen synthetic seller")

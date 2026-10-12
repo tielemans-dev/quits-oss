@@ -386,7 +386,8 @@ export const settingsRouter = router({
 
         const settingsUpdateData = {
           ...settingsInput,
-          ...(settingsInput.momsRegistered === false ? { taxRate: 0 } : {}),
+          ...((settingsInput.momsRegistered === undefined ? current?.momsRegistered : settingsInput.momsRegistered) === false
+            && (settingsInput.taxRegime ?? current?.taxRegime) === "eu_vat" ? { taxRate: 0 } : {}),
           baseCurrency,
           ...(aiBaseUrl !== undefined ? { aiBaseUrl: aiBaseUrl || null } : {}),
           ...(aiApiKey ? { aiApiKeyEnc: encryptSecret(aiApiKey) } : {}),
