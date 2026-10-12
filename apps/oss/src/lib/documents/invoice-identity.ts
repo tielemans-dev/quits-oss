@@ -11,9 +11,9 @@ export function sellerCvr(ids: readonly DocumentTaxId[] | undefined): string | n
   return null
 }
 
-export function invoiceTaxIds(ids: readonly DocumentTaxId[] | undefined): string[] {
+export function invoiceTaxIds(ids: readonly DocumentTaxId[] | undefined, cvrLabel = "CVR"): string[] {
   const cvr = sellerCvr(ids)
-  return cvr ? [`CVR: ${cvr}`] : (ids ?? []).filter(id => id.value.trim()).map(id => `${id.scheme?.toUpperCase() ?? "ID"}: ${id.value}`)
+  return cvr ? [`${cvrLabel}: ${cvr}`] : (ids ?? []).filter(id => id.value.trim()).map(id => `${id.scheme?.toUpperCase() ?? "ID"}: ${id.value}`)
 }
 
 export function buyerAddress(buyer: BuyerSnapshot | null | undefined): string[] {
