@@ -1,5 +1,4 @@
-import { mkdir } from "node:fs/promises"
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { createInvoiceDraft } from "../../src/domain/commands/invoices"
 import { executeCommand } from "../../src/domain/execute"
@@ -9,11 +8,23 @@ import { signInvoicePaymentToken } from "../../src/lib/payments/public"
 import { translate } from "../../src/lib/i18n/translate"
 import { danishLocale, loginAsAdmin, resetDatabase, seedCompletedSetup, waitForClientReady } from "./support"
 
-// Synthetic organizations and invoices only; the config refuses any other database.
-const evidence = "../../docs/evidence/qui62"
+// MOCK: synthetic organizations and invoices only; the config refuses any other database.
+async function capture(page: Page, surface: string, locale: string) {
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme })
+    await page.evaluate(() => localStorage.setItem("quits-theme", "system"))
+    await page.reload()
+    await waitForClientReady(page)
+    if (!surface.startsWith("pay")) await expect(page.locator("html")).toHaveClass(colorScheme === "dark" ? /dark/ : /^(?!.*\bdark\b)/)
+    for (const [device, width] of [["desktop", 1440], ["mobile390", 390]] as const) {
+      await page.setViewportSize({ width, height: 1100 })
+      await page.screenshot({ path: test.info().outputPath(`${surface}-${locale}-${colorScheme}-${device}-after.png`), fullPage: true })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    }
+  }
+}
 for (const locale of ["da-DK", "en-US"]) {
   test(`saves the explicit ${locale} choice and issues without VAT`, async ({ page }) => {
-    await mkdir(evidence, { recursive: true })
     await resetDatabase()
     const setup = await seedCompletedSetup({ ...danishLocale, locale })
     await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
@@ -28,16 +39,13 @@ for (const locale of ["da-DK", "en-US"]) {
     const no = page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })
     await expect(yes).not.toBeChecked()
     await expect(no).not.toBeChecked()
-    await page.screenshot({ path: `${evidence}/settings-${locale}-desktop-unset-after.png`, fullPage: true })
+    await capture(page, "settings-unset", locale)
     await no.check()
     await page.getByRole("button", { name: translate("settings.action.save", locale), exact: true }).click()
     await expect(page.getByText(translate("settings.success.saved", locale), { exact: true })).toBeVisible()
     await page.reload()
     await expect(no).toBeChecked()
-    for (const [device, width] of [["desktop", 1440], ["mobile", 390]] as const) {
-      await page.setViewportSize({ width, height: 1100 })
-      await page.screenshot({ path: `${evidence}/settings-${locale}-${device}-after.png`, fullPage: true })
-    }
+    await capture(page, "settings", locale)
     const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId, role: "admin" } })
     const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: member.userId })
     if (!actor) throw new Error("Synthetic admin is missing")
@@ -52,18 +60,11 @@ for (const locale of ["da-DK", "en-US"]) {
     await page.getByRole("button", { name: translate("invoices.detail.email.degraded.trigger", locale), exact: true }).click()
     await page.getByRole("button", { name: translate("invoices.detail.email.degraded.confirm", locale), exact: true }).click()
     await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).status).toBe("sent")
-    for (const [device, width] of [["desktop", 1440], ["mobile", 390]] as const) {
-      await page.setViewportSize({ width, height: 1100 })
-      await page.screenshot({ path: `${evidence}/invoice-${locale}-${device}-after.png`, fullPage: true })
-    }
+    await capture(page, "invoice", locale)
     const row = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
     const token = signInvoicePaymentToken({ invoiceId: row.id, keyVersion: row.publicPaymentKeyVersion, scope: "invoice_payment" }, "qui62-browser-payment-test-secret")
     await page.goto(`/pay/${encodeURIComponent(token)}`)
     await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toBeVisible()
-    for (const [device, width] of [["desktop", 1440], ["mobile", 390]] as const) {
-      await page.setViewportSize({ width, height: 1100 })
-      await page.screenshot({ path: `${evidence}/pay-${locale}-${device}-after.png`, fullPage: true })
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-    }
+    await capture(page, "pay", locale)
   })
 }

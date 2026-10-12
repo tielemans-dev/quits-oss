@@ -17,7 +17,7 @@ import type { CreditNoteForPdf } from "../../lib/credit-note-pdf"
 import type { AgreementPdfInput } from "../../lib/agreement-pdf"
 import { buildOfferSnapshot, canonicalizeOffer, hashOfferSnapshot } from "../agreements/snapshot"
 import { creditNoteIssueInputSchema } from "@quits/contracts/credit-notes"
-import { buildBuyerSnapshot, buildSellerSnapshot, withSellerVatStatus, withInvoicePaymentDetails, withoutPaymentDetails } from "./snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, withSellerVatStatus, withInvoicePaymentDetails, creditSellerSnapshot } from "./snapshots"
 import { loadDocumentContext } from "./context"
 import { priceCreditNote } from "./credit-pricing"
 import { InvalidState, NotFound } from "../errors"
@@ -140,7 +140,7 @@ export const prospectiveRenderInput = (input: {
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: selection.invoiceId })
     const built = yield* priceCreditNote(invoice, selection)
-    const sellerSnapshot = withoutPaymentDetails(invoice.sellerSnapshot) ?? {}
+    const sellerSnapshot = creditSellerSnapshot(invoice.sellerSnapshot, settings, sellerTaxIds)
     const buyerSnapshot = invoice.buyerSnapshot ?? buildBuyerSnapshot(invoice.contact)
     const money = creditMoneySnapshot(invoice, { id: input.documentId, number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, reason: selection.reason, mode: selection.mode, built, hasPayments: invoice.payments.length > 0, paid: invoice.payments.reduce((sum, payment) => sum.plus(payment.amount), toDecimal(0)).toString(), priorCredits: invoice.creditNotes.reduce((sum, credit) => sum.plus(credit.totalGross), toDecimal(0)).toString(), seller: parseSellerSnapshot(sellerSnapshot) ?? {}, buyer: parseBuyerSnapshot(buyerSnapshot) ?? {} })
     // The credited groups, validated against the credit note's own stored totals.

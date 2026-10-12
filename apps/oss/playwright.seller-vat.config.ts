@@ -7,7 +7,8 @@ if (!databaseURL || new URL(databaseURL).pathname !== "/qui62_oss_browser") {
 const baseURL = "http://127.0.0.1:3040"
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: "seller-vat-status.spec.ts",
+  testMatch: process.env.QUI62_EVIDENCE_REVISION === "before" ? "seller-vat-before.spec.ts" : "seller-vat-status.spec.ts",
+  reporter: [["list"], ["html", { outputFolder: "playwright-report/seller-vat", open: "never" }]],
   workers: 1,
   timeout: 180_000,
   expect: { timeout: 30_000 },
@@ -15,10 +16,11 @@ export default defineConfig({
   webServer: {
     command: "bunx prisma migrate deploy && bunx vite dev --port 3040 --host 127.0.0.1",
     cwd: import.meta.dirname,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 180_000,
     url: baseURL,
     env: { ...process.env, DATABASE_URL: databaseURL,
+      PLAYWRIGHT_BASE_URL: baseURL,
       BETTER_AUTH_SECRET: "qui62-browser-test-secret-over-32-characters",
       BETTER_AUTH_URL: baseURL, QUITS_APP_ORIGIN: baseURL,
       QUITS_DISTRIBUTION: "selfhost", VITE_QUITS_DISTRIBUTION: "selfhost",

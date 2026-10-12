@@ -12,7 +12,7 @@ import { requireRecipientEmail, resolveInvoiceEmailContext } from "../documents/
 import { allocateDocumentNumber, asIssued } from "../documents/numbering"
 import { priceCreditNote } from "../documents/credit-pricing"
 import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
-import { buildBuyerSnapshot, withoutPaymentDetails } from "../documents/snapshots"
+import { buildBuyerSnapshot, creditSellerSnapshot } from "../documents/snapshots"
 import { loadDocumentContext } from "../documents/context"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
@@ -72,6 +72,7 @@ export const issueCreditNote = defineCommand({
         if (funded) return yield* new InvalidState({ code: "receipt_allocations_pending", message: "Reverse receipt allocations before crediting paid amounts, then refund or reallocate the released funds" })
       }
 
+      const { settings, sellerTaxIds } = yield* loadDocumentContext
       const number = command.issuance?.number ?? (yield* allocateDocumentNumber("creditNote"))
 
       const creditNote = yield* Effect.promise(() =>
@@ -100,7 +101,7 @@ export const issueCreditNote = defineCommand({
               payableRounding: built.payableRounding,
               vatEvidence: invoice.vatEvidence ?? undefined,
             } : {}),
-            sellerSnapshot: (withoutPaymentDetails(invoice.sellerSnapshot) ?? {}) as Prisma.InputJsonValue,
+            sellerSnapshot: creditSellerSnapshot(invoice.sellerSnapshot, settings, sellerTaxIds) as Prisma.InputJsonValue,
             buyerSnapshot: (invoice.buyerSnapshot ??
               buildBuyerSnapshot(invoice.contact)) as Prisma.InputJsonValue,
             items: {

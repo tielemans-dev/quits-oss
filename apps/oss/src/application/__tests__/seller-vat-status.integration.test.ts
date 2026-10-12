@@ -12,6 +12,7 @@ import { composeInvoiceEmail } from "../../domain/documents/invoice-email"
 import { serializePublicInvoiceSession } from "../../lib/payments/public-session"
 import { loadDocumentView } from "../../domain/documents/view"
 import { setRuntimeExtensions } from "../../lib/runtime/extensions"
+import { creditNotePdfParties } from "../../lib/credit-notes/pdf-parties"
 import type { RenderInput } from "../../domain/documents/render-input"
 
 const cleanups: Array<() => Promise<void>> = []
@@ -120,4 +121,40 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     expect(result.status).toBe("completed")
     expect(parseSellerSnapshot((await prisma.creditNote.findFirstOrThrow({ where: { invoiceId: ctx.invoice.id } })).sellerSnapshot)?.momsRegistered).toBeUndefined()
   })
+  it.each([true, false])("preserves null-snapshot seller identity without borrowing current VAT status %s", async registered => {
+    // MOCK: synthetic organization and historical invoice, never customer records.
+    const ctx = await setup(true)
+    await completed(issueDocument(ctx.args))
+    await ctx.caller.settings.update({ momsRegistered: registered })
+    await prisma.orgSettings.update({ where: { organizationId: ctx.org.organizationId }, data: {
+      companyName: "Synthetic legacy seller", companyEmail: "legacy@example.test",
+      companyAddress: "Testvej 1, 1000 København", bankRegNumber: "0040", bankAccountNumber: "0440116243",
+    } })
+    await prisma.invoice.update({ where: { id: ctx.invoice.id }, data: { sellerSnapshot: Prisma.DbNull, issuanceSnapshot: Prisma.DbNull } })
+    await completed(issueDocument({ kind: "creditNote", actor: ctx.org.actors.admin, commandInput: {
+      invoiceId: ctx.invoice.id, mode: "full", reason: "Synthetic historical correction",
+    } }))
+    const credit = await prisma.creditNote.findFirstOrThrow({ where: { invoiceId: ctx.invoice.id } })
+    const candidate = await prisma.issuanceCandidate.findFirstOrThrow({ where: { documentId: credit.id } })
+    const render = candidate.renderInput as unknown as Extract<RenderInput, { kind: "creditNote" }>
+    const identity = {
+      companyName: "Synthetic legacy seller", companyEmail: "legacy@example.test",
+      companyAddress: "Testvej 1, 1000 København",
+      taxIds: [{ scheme: "cvr", value: "12345678", countryCode: "DK" }],
+    }
+    expect(credit.sellerSnapshot).toMatchObject(identity)
+    expect(render.pdf.creditNote.sellerSnapshot).toEqual(credit.sellerSnapshot)
+    expect((credit.issuanceSnapshot as { seller: unknown }).seller).toEqual(credit.sellerSnapshot)
+    for (const snapshot of [credit.sellerSnapshot, render.pdf.creditNote.sellerSnapshot]) {
+      expect(parseSellerSnapshot(snapshot)?.momsRegistered).toBeUndefined()
+      expect(snapshot).not.toHaveProperty("bankAccount")
+      expect(snapshot).not.toHaveProperty("paymentNote")
+    }
+    const parties = creditNotePdfParties(render.pdf.creditNote, render.pdf.org)
+    expect(parties.seller).toMatchObject({ name: identity.companyName, email: identity.companyEmail, address: identity.companyAddress })
+    expect(parties.seller.taxIds.join(" ")).toContain("12345678")
+    await ctx.caller.settings.update({ momsRegistered: !registered, companyName: "Changed synthetic seller" })
+    expect((await prisma.creditNote.findUniqueOrThrow({ where: { id: credit.id } })).sellerSnapshot).toEqual(credit.sellerSnapshot)
+  })
+
 })

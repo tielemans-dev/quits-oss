@@ -86,3 +86,13 @@ export const buyerContactSelect = {
 export function withSellerVatStatus<T extends SellerSnapshot>(seller: T, settings: { momsRegistered: boolean | null }): T {
   return { ...seller, momsRegistered: settings.momsRegistered }
 }
+
+/** Historical credits inherit known identity, but never today's VAT registration or payment details. */
+export function creditSellerSnapshot(
+  source: unknown,
+  settings: Parameters<typeof buildSellerSnapshot>[0],
+  taxIds: TaxId[]
+): unknown {
+  if (source !== null && source !== undefined) return withoutPaymentDetails(source)
+  return buildSellerSnapshot({ ...settings, momsRegistered: undefined }, taxIds)
+}

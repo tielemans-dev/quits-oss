@@ -1,0 +1,89 @@
+name: Seller VAT browser evidence
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/seller-vat-browser.yml'
+      - 'apps/oss/**'
+      - 'packages/contracts/**'
+      - 'packages/shared/**'
+      - 'bun.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seller-vat-browser:
+    name: Seller VAT browser (${{ matrix.revision }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: [before, after]
+    services:
+      postgres:
+        # MOCK: disposable test database only. Same pinned Official Image as CI.
+        image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: qui62_oss_browser
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qui62_oss_browser"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/qui62_oss_browser?schema=public
+      BETTER_AUTH_URL: http://127.0.0.1:3040
+      BETTER_AUTH_SECRET: qui62-browser-test-secret-over-32-characters
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3040
+      QUITS_APP_ORIGIN: http://127.0.0.1:3040
+      QUITS_DISTRIBUTION: selfhost
+      VITE_QUITS_DISTRIBUTION: selfhost
+      QUITS_PUBLIC_PAYMENT_SECRET: qui62-browser-payment-test-secret
+      RESEND_API_KEY: ''
+      EMAIL_PROVIDER: ''
+      SMTP_HOST: ''
+      QUI62_EVIDENCE_REVISION: ${{ matrix.revision }}
+      EVIDENCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision == 'before' && 'main' || github.event.pull_request.head.sha || github.sha }}
+      - name: Install the test-only baseline harness from the PR
+        if: matrix.revision == 'before'
+        run: |
+          git fetch origin "$EVIDENCE_SHA"
+          git show "$EVIDENCE_SHA:apps/oss/playwright.seller-vat.config.ts" > apps/oss/playwright.seller-vat.config.ts
+          git show "$EVIDENCE_SHA:apps/oss/tests/e2e/seller-vat-before.spec.ts" > apps/oss/tests/e2e/seller-vat-before.spec.ts
+      - name: Record source revisions
+        run: |
+          git rev-parse HEAD > source-revision.txt
+          echo "$EVIDENCE_SHA" > harness-revision.txt
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun --filter @quits/oss prisma:generate
+      - name: Install Chromium
+        working-directory: apps/oss
+        run: bunx playwright install --with-deps chromium
+      - name: Verify feature and capture screenshots
+        working-directory: apps/oss
+        run: bunx playwright test -c playwright.seller-vat.config.ts
+      - name: Upload screenshots, traces and source revisions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seller-vat-${{ matrix.revision }}
+          path: |
+            apps/oss/test-results
+            apps/oss/playwright-report/seller-vat
+            source-revision.txt
+            harness-revision.txt
+          retention-days: 14
