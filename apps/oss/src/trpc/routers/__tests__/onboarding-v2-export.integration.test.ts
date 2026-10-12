@@ -61,14 +61,15 @@ let artifactDirectory: string
     const contact = await executeIssuanceCommand(createContact, { name: "Test Buyer", email: "buyer@example.test", country: "DK", address: "Testvej 2", city: "København", zip: "1000", peppolEndpointScheme: "0184", peppolEndpointId: "24256790" }, { actor })
     if (contact.status !== "completed") throw new Error(JSON.stringify(contact))
     if (!momsRegistered) {
-      // Self-host settings allow registration and rate to be configured independently.
+      // Self-host EU-VAT settings normalize the default to zero for a non-registered seller,
+      // even when a positive rate is supplied alongside the registration choice.
       vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
       const { appRouter } = await import("../../router")
       const api = appRouter.createCaller({ session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
       await api.settings.update({ momsRegistered: false, taxRate: 25 })
-      expect(await api.settings.get()).toMatchObject({ momsRegistered: false, taxRate: 25 })
-      // The draft command defaults an omitted document rate to zero, independently of settings.
-      // Exercise both document-level VAT and explicit line VAT through real issuance.
+      expect(await api.settings.get()).toMatchObject({ momsRegistered: false, taxRate: 0 })
+      // Explicit document and line VAT still produce taxable drafts despite the zero default.
+      // Exercise both overrides through real issuance and refuse them before artifacts/numbering.
       for (const { taxRate, vat } of [
         { taxRate: 25, vat: undefined },
         { taxRate: undefined, vat: { treatment: "standard" as const, rate: "0.25", country: "DK" } },
