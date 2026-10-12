@@ -4,7 +4,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const fixture = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn() }))
-vi.mock("@tanstack/react-router", () => ({ createFileRoute: () => (options: unknown) => options, useNavigate: () => vi.fn() }))
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  // Keep real Link navigation available to the first-invoice bank nudge.
+  ...await importOriginal<typeof import("@tanstack/react-router")>(),
+  createFileRoute: () => (options: unknown) => options,
+  useNavigate: () => vi.fn(),
+}))
 vi.mock("../../lib/active-organization", () => ({ useRequestOrganizationId: () => "synthetic-org" }))
 vi.mock("../../lib/organization-settings-query", () => ({ loadOrganizationSettings: fixture.load }))
 vi.mock("../../trpc/client", () => ({ trpc: {
