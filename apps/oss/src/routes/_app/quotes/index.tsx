@@ -45,14 +45,15 @@ type Quote = {
   number: string | null
   status: string
   issueDate: string
+  timezone: string
   expiryDate: string
   total: number
   currency: string
   contact: { name: string }
 }
 
-function formatDate(dateStr: string, locale?: string) {
-  return formatShortDate(dateStr, locale, "UTC")
+function formatDate(dateStr: string, locale?: string, timezone = "UTC") {
+  return formatShortDate(dateStr, locale, timezone)
 }
 
 function QuotesListPage() {
@@ -170,7 +171,7 @@ function QuotesListPage() {
                     )}
                   </ListCell>
                   <ListCell className="text-muted-foreground hidden @5xl:block">
-                    {formatDate(quote.issueDate, locale)}
+                    {formatDate(quote.issueDate, locale, quote.timezone)}
                   </ListCell>
                   <ListCell className="text-muted-foreground hidden @4xl:block">{expiryDate}</ListCell>
                   <ListCell align="end" className="@max-4xl:col-start-2 @max-4xl:row-start-1">

@@ -3,10 +3,14 @@ import { cleanup, render, screen, within } from "@testing-library/react"
 import type { ComponentType } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-// MOCK: one synthetic quote, with no network or customer data.
+// MOCK: synthetic quotes, with no network or customer data.
 vi.mock("../../trpc/client", () => ({ trpc: { quotes: { list: { query: async () => [{
-  id: "mock-quote", number: "QUO-0001", status: "sent", issueDate: "2026-10-11T12:00:00Z",
+  id: "mock-quote", number: "QUO-0001", status: "sent", issueDate: "2026-10-11T12:00:00Z", timezone: "UTC",
   expiryDate: "2026-10-25T00:00:00Z", total: 1250, currency: "DKK", contact: { name: "MOCK Buyer" },
+}, {
+  id: "mock-midnight-quote", number: "QUO-0002", status: "sent",
+  issueDate: "2026-10-11T00:30:00Z", timezone: "America/New_York",
+  expiryDate: "2026-10-25T00:00:00Z", total: 1250, currency: "DKK", contact: { name: "MOCK Midnight Buyer" },
 }] } } } }))
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => options,
@@ -32,5 +36,17 @@ describe("quote list dates", () => {
     expect(within(row as HTMLElement).getByText(`${label} ${expiry}`).textContent).toBe(`${label} ${expiry}`)
     expect(row.textContent).not.toContain("Oct 11, 2026")
     expect(row.textContent).not.toContain("11. oktober 2026")
+  })
+
+  it.each([
+    ["da-DK", "10. okt. 2026", "25. okt. 2026", "Gyldigt til"],
+    ["en-US", "10 Oct 2026", "25 Oct 2026", "Valid until"],
+  ])("uses the quote timezone for a near-midnight issue instant and UTC for expiry in %s", async (locale, issue, expiry, label) => {
+    render(<I18nProvider locale={locale}><Page /></I18nProvider>)
+    const buyer = await screen.findByRole("link", { name: "MOCK Midnight Buyer" })
+    const row = buyer.closest('[role="row"]')!
+    expect(within(row as HTMLElement).getByText(issue).textContent).toBe(issue)
+    expect(within(row as HTMLElement).getByText(expiry).textContent).toBe(expiry)
+    expect(within(row as HTMLElement).getByText(`${label} ${expiry}`).textContent).toBe(`${label} ${expiry}`)
   })
 })
