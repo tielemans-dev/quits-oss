@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nProvider } from '../../lib/i18n/react'
 
 const { state, signUp, loadPage, getConfiguration } = vi.hoisted(() => ({
-  state: { invite: undefined as string | undefined, mode: 'invite_only' as 'open' | 'invite_only', waitlist: { privacyVersion: '2026-10-09', privacyPath: '/privacy' } as { privacyVersion: string; privacyPath: string } | undefined },
+  state: { invite: undefined as string | undefined, mode: 'invite_only' as 'open' | 'invite_only', waitlist: { privacyVersion: '2026-10-12.2', privacyPath: '/privacy' } as { privacyVersion: string; privacyPath: string } | undefined },
   signUp: vi.fn(), loadPage: vi.fn(), getConfiguration: vi.fn(),
 }))
 vi.mock('@tanstack/react-router', () => ({
@@ -29,7 +29,7 @@ async function blocked() {
   await screen.findByText('quits is invite-only for now')
 }
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
-beforeEach(() => { state.mode = 'invite_only'; state.invite = undefined; state.waitlist = { privacyVersion: '2026-10-09', privacyPath: '/privacy' }; signUp.mockReset(); loadPage.mockReset() })
+beforeEach(() => { state.mode = 'invite_only'; state.invite = undefined; state.waitlist = { privacyVersion: '2026-10-12.2', privacyPath: '/privacy' }; signUp.mockReset(); loadPage.mockReset() })
 
 describe('signup admission UI', () => {
   it('uses the server loader and preserves the open presentation', () => {
@@ -40,7 +40,7 @@ describe('signup admission UI', () => {
     expect(screen.getByText('Sign up to start managing your invoices')).toBeTruthy()
   })
   it('prefills a code without validating and normalizes only on submission', async () => {
-    state.invite = 'quits-7k4m-2p9x'
+    state.invite = ' quits-7k4m- 2p9x '
     signUp.mockResolvedValue({ data: { user: {} } }); show()
     expect((screen.getByLabelText(/Invite code/) as HTMLInputElement).value).toBe(state.invite)
     expect(signUp).not.toHaveBeenCalled()
@@ -82,7 +82,7 @@ describe('signup admission UI', () => {
     const title = await screen.findByRole('heading', { level: 1, name: 'You’re on the list' })
     const [path, options] = fetcher.mock.calls[0]!
     expect(path).toBe('/api/waitlist'); expect(options.credentials).toBe('same-origin')
-    expect(JSON.parse(options.body)).toEqual({ email: 'person@example.test', note: '', source: 'app-signup', consent: true, privacyVersion: '2026-10-09', locale: 'en', honeypot: '' })
+    expect(JSON.parse(options.body)).toEqual({ email: 'person@example.test', note: '', source: 'app-signup', consent: true, privacyVersion: '2026-10-12.2', locale: 'en', honeypot: '' })
     // The heading can be committed before the passive effect assigns focus.
     await waitFor(() => expect(document.activeElement).toBe(title))
   })
@@ -90,11 +90,18 @@ describe('signup admission UI', () => {
     signUp.mockResolvedValue({ error: { code, message: 'PRIVATE ACCOUNT DETAIL' } }); show(); submitSignup()
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(message === 'Too many attempts' ? 'Too many attempts. Wait a minute, then try again.' : message))
   })
-  it.each([['consent_required', 400, 'Tick the box'], ['invalid_email', 400, 'Enter a valid'], ['rate_limited', 429, 'Too many attempts'], ['OTHER', 500, 'Check your connection']])('keeps waitlist values on %s', async (error, status, message) => {
+  it.each([['consent_required', 400, 'Tick the box'], ['consent_required', 422, 'Tick the box'], ['invalid_email', 400, 'Enter a valid'], ['invalid_email', 422, 'Enter a valid'], ['OTHER', 400, 'Enter a valid'], ['rate_limited', 429, 'Too many attempts'], ['OTHER', 500, 'Check your connection']])('keeps waitlist values on %s', async (error, status, message) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ error }, { status }))); await blocked()
     fireEvent.click(screen.getByRole('checkbox')); fireEvent.click(screen.getByRole('button', { name: 'Join the waitlist' }))
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain(message))
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('person@example.test')
+    if (error === 'consent_required') {
+      expect(document.activeElement).toBe(screen.getByRole('checkbox'))
+      expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false)
+    } else if (status === 400 || error === 'invalid_email') {
+      expect(document.activeElement).toBe(screen.getByLabelText('Email'))
+      expect(screen.getByLabelText('Email').getAttribute('aria-describedby')).toBe('waitlist-email-error')
+    }
   })
   it('prevents concurrent waitlist requests and preserves values on network failure', async () => {
     let reject!: (value: unknown) => void
@@ -104,6 +111,65 @@ describe('signup admission UI', () => {
     fireEvent.submit(form); fireEvent.submit(form); expect(fetcher).toHaveBeenCalledOnce()
     reject(new Error('offline'))
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Check your connection'))
+  })
+  it.each([200, 201, 202, 204])('joins on %s without inspecting the response body', async (status) => {
+    const json = vi.fn().mockRejectedValue(new Error('body must be ignored'))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status, json }))
+    await blocked()
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: ' edited@example.test ' } })
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Join the waitlist' }))
+    await screen.findByRole('heading', { name: 'You’re on the list' })
+    expect(screen.getByText('edited@example.test')).toBeTruthy()
+    expect(json).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Back to log in' }).getAttribute('href')).toBe('/login')
+  })
+  it('keeps an email error until valid and revalidates on blur after submission', async () => {
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher); await blocked()
+    const email = screen.getByLabelText('Email')
+    fireEvent.change(email, { target: { value: 'person@example.t' } })
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Join the waitlist' }))
+    expect(email.getAttribute('aria-invalid')).toBe('true')
+    expect(document.activeElement).toBe(email)
+    expect(fetcher).not.toHaveBeenCalled()
+    fireEvent.change(email, { target: { value: 'still-invalid' } })
+    expect(email.getAttribute('aria-invalid')).toBe('true')
+    fireEvent.change(email, { target: { value: 'person@example.test' } })
+    expect(email.getAttribute('aria-invalid')).toBeNull()
+    fireEvent.change(email, { target: { value: 'person@example.t' } })
+    fireEvent.blur(email)
+    expect(email.getAttribute('aria-invalid')).toBe('true')
+  })
+  it('does not validate on blur before the first submission', async () => {
+    await blocked()
+    const email = screen.getByLabelText('Email')
+    fireEvent.change(email, { target: { value: 'invalid' } }); fireEvent.blur(email)
+    expect(email.getAttribute('aria-invalid')).toBeNull()
+  })
+  it('starts fresh with unticked consent when returning from the signup form', async () => {
+    await blocked()
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Use it' }))
+    fireEvent.submit(screen.getByRole('button', { name: 'Sign up' }).closest('form')!)
+    await screen.findByText('quits is invite-only for now')
+    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false)
+  })
+  it('aborts after ten seconds and keeps the form available for retry', async () => {
+    await blocked()
+    vi.useFakeTimers()
+    try {
+      const fetcher = vi.fn((_path, options: RequestInit) => new Promise((_resolve, reject) => {
+        options.signal!.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+      }))
+      vi.stubGlobal('fetch', fetcher)
+      fireEvent.click(screen.getByRole('checkbox'))
+      fireEvent.click(screen.getByRole('button', { name: 'Join the waitlist' }))
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+      expect(fetcher.mock.calls[0]![1].signal!.aborted).toBe(true)
+      expect(screen.getByRole('alert').textContent).toContain('Check your connection')
+      expect((screen.getByRole('button', { name: 'Join the waitlist' }) as HTMLButtonElement).disabled).toBe(false)
+    } finally { vi.useRealTimers() }
   })
   it('renders final Danish invitation copy', () => {
     show('da'); expect(screen.getByText('quits kræver en invitation frem til lanceringen. Har du fået en, kan du oprette din konto her.')).toBeTruthy()

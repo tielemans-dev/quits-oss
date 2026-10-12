@@ -4,6 +4,11 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { useI18n } from '../../lib/i18n/react'
 
+function validEmail(value: string) {
+  const email = value.trim()
+  return email.length <= 254 && /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(email) && email.slice(email.lastIndexOf('.') + 1).length >= 2
+}
+
 export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoined }: {
   initialEmail: string
   privacyVersion: string
@@ -21,11 +26,13 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
   const consentRef = useRef<HTMLInputElement>(null)
   const honeypotRef = useRef<HTMLInputElement>(null)
   const pending = useRef(false)
+  const validated = useRef(false)
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (pending.current) return
-    const valid = email.trim().length <= 254 && /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(email.trim())
+    validated.current = true
+    const valid = validEmail(email)
     setEmailError(!valid)
     setConsentError(!consent)
     setBanner(null)
@@ -43,11 +50,11 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
           locale: locale.toLowerCase().startsWith('da') ? 'da' : 'en', source: 'app-signup',
           note: '', honeypot: honeypotRef.current?.value ?? '' }),
       })
+      if (response.ok) { onJoined(email.trim()); return }
       const body = await response.json().catch(() => null)
-      if (response.ok && body?.ok === true) { onJoined(email.trim()); return }
-      if (response.status === 400 && body?.error === 'consent_required') {
+      if ((response.status === 400 || response.status === 422) && body?.error === 'consent_required') {
         setConsent(false); setConsentError(true); consentRef.current?.focus()
-      } else if (response.status === 400 && body?.error === 'invalid_email') {
+      } else if (response.status === 400 || (response.status === 422 && body?.error === 'invalid_email')) {
         setEmailError(true); emailRef.current?.focus()
       } else setBanner(response.status === 429 ? 'rate' : 'network')
     } catch { setBanner('network') }
@@ -60,7 +67,8 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
       <Input id="waitlist-email" ref={emailRef} type="email" autoComplete="email" autoCapitalize="none"
         spellCheck={false} maxLength={254} value={email} readOnly={busy} required
         aria-invalid={emailError || undefined} aria-describedby={emailError ? 'waitlist-email-error' : undefined}
-        onChange={(event) => { setEmail(event.target.value); setEmailError(false) }} />
+        onChange={(event) => { setEmail(event.target.value); if (validEmail(event.target.value)) setEmailError(false) }}
+        onBlur={() => { if (validated.current) setEmailError(!validEmail(email)) }} />
       {emailError && <p id="waitlist-email-error" role="alert" className="text-xs text-destructive">▪ {t('auth.waitlist.errInvalid')}</p>}
     </div>
     <div className="absolute -left-[10000px]" aria-hidden="true">
