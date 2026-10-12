@@ -8,22 +8,26 @@ The frozen synthetic seller is Issue-time Seller ApS, Testvej 42, 9000 Aalborg, 
 
 [Before provenance](before-manifest.json) preserves the supplied eight light-theme origin/main captures at `4931661dd7e53d83555590e06a2e2cf97448743b`. [After provenance](after-manifest.json) records the rework code at `4b47188a96620b248dbd5ddcdeeb7af059f5daf6`, pixel dimensions and SHA256 hashes.
 
-Before-dark captures are not present in the supplied baseline. They remain outstanding. The latest host instruction prohibits local builds, app servers and e2e runs, so the existing main baseline was preserved. The missing `designs/pay-da-bank-only-desktop.png` was also unavailable in this checkout; the supplied design and final copy comments guided this rework. Ines must sign off before the draft can be ready for Martin.
+The eight missing before-dark captures are now included with [provenance and SHA256 hashes](before-dark-manifest.json). [GitHub CI run 38253320209](https://github.com/tielemans-dev/quits-oss/actions/runs/38253320209) passed both locale capture scenarios with one worker. [Download the original artifact](https://github.com/tielemans-dev/quits-oss/actions/runs/38253320209/artifacts/11748558987). All 32 committed screenshots have verified hashes and pixel dimensions.
 
-| Screen | Locale | Viewport | Before, main light | After light | After dark |
-| --- | --- | --- | --- | --- | --- |
-| Email | DA | desktop | [Before](before/email-da-desktop.png) | [After](after/light/email-da-desktop.png) | [After](after/dark/email-da-desktop.png) |
-| Email | DA | mobile | [Before](before/email-da-mobile.png) | [After](after/light/email-da-mobile.png) | [After](after/dark/email-da-mobile.png) |
-| Email | EN | desktop | [Before](before/email-en-desktop.png) | [After](after/light/email-en-desktop.png) | [After](after/dark/email-en-desktop.png) |
-| Email | EN | mobile | [Before](before/email-en-mobile.png) | [After](after/light/email-en-mobile.png) | [After](after/dark/email-en-mobile.png) |
-| Invoice | DA | desktop | [Before](before/invoice-da-desktop.png) | [After](after/light/invoice-da-desktop.png) | [After](after/dark/invoice-da-desktop.png) |
-| Invoice | DA | mobile | [Before](before/invoice-da-mobile.png) | [After](after/light/invoice-da-mobile.png) | [After](after/dark/invoice-da-mobile.png) |
-| Invoice | EN | desktop | [Before](before/invoice-en-desktop.png) | [After](after/light/invoice-en-desktop.png) | [After](after/dark/invoice-en-desktop.png) |
-| Invoice | EN | mobile | [Before](before/invoice-en-mobile.png) | [After](after/light/invoice-en-mobile.png) | [After](after/dark/invoice-en-mobile.png) |
+This is the true pinned main UI at `4931661dd7e53d83555590e06a2e2cf97448743b`, with no tracked baseline runtime changes. Only the PR's opt-in capture fixture and CI runner were copied into that checkout from `5ff4896954e5f20fbdcfda9e869b465124353169`. Dark captures use the app's dark theme and Chromium's dark color preference. Main's delivered email retains its original light styling under that preference; no CSS or reference screenshot was substituted. The main mobile layout predates the action bounds fix, so the baseline path skips that after-only assertion and records the existing overflow. The ordinary after capture still checks mobile bounds. Desktop is 1440×1000; mobile is 390×844; all screenshots are full-page.
+
+MOCK/TODO: synthetic seller/customer/invoice/bank details, deterministic historical invoice dates and number, in-memory PDF renderer/artifact store, disposable PostgreSQL and Mailpit. These test fixtures do not establish real PDF rendering. No production mocks, data or services are used. All new browser/build work ran in GitHub CI; local verification was script syntax and evidence hashes only. The missing `designs/pay-da-bank-only-desktop.png` was also unavailable in this checkout; the supplied design and final copy comments guided this rework. Ines must sign off before the draft can be ready for Martin.
+
+| Screen | Locale | Viewport | Before, main light | Before, main dark preference | After light | After dark |
+| --- | --- | --- | --- | --- | --- | --- |
+| Email | DA | desktop | [Before](before/email-da-desktop.png) | [Before dark](before/dark/email-da-desktop.png) | [After](after/light/email-da-desktop.png) | [After](after/dark/email-da-desktop.png) |
+| Email | DA | mobile | [Before](before/email-da-mobile.png) | [Before dark](before/dark/email-da-mobile.png) | [After](after/light/email-da-mobile.png) | [After](after/dark/email-da-mobile.png) |
+| Email | EN | desktop | [Before](before/email-en-desktop.png) | [Before dark](before/dark/email-en-desktop.png) | [After](after/light/email-en-desktop.png) | [After](after/dark/email-en-desktop.png) |
+| Email | EN | mobile | [Before](before/email-en-mobile.png) | [Before dark](before/dark/email-en-mobile.png) | [After](after/light/email-en-mobile.png) | [After](after/dark/email-en-mobile.png) |
+| Invoice | DA | desktop | [Before](before/invoice-da-desktop.png) | [Before dark](before/dark/invoice-da-desktop.png) | [After](after/light/invoice-da-desktop.png) | [After](after/dark/invoice-da-desktop.png) |
+| Invoice | DA | mobile | [Before](before/invoice-da-mobile.png) | [Before dark](before/dark/invoice-da-mobile.png) | [After](after/light/invoice-da-mobile.png) | [After](after/dark/invoice-da-mobile.png) |
+| Invoice | EN | desktop | [Before](before/invoice-en-desktop.png) | [Before dark](before/dark/invoice-en-desktop.png) | [After](after/light/invoice-en-desktop.png) | [After](after/dark/invoice-en-desktop.png) |
+| Invoice | EN | mobile | [Before](before/invoice-en-mobile.png) | [Before dark](before/dark/invoice-en-mobile.png) | [After](after/light/invoice-en-mobile.png) | [After](after/dark/invoice-en-mobile.png) |
 
 ## Validation and overlap
 
-The targeted email-render test passed with one worker and a worktree-local TMPDIR. Earlier focused unit checks, i18n and boundary checks passed. Local full typecheck/builds were interrupted by host memory cleanup; do not treat those as passing. Final full verification is delegated to GitHub CI.
+The targeted email-render test passed with one worker and a worktree-local TMPDIR. Earlier focused unit checks, i18n and boundary checks passed. Local full typecheck/builds were interrupted by host memory cleanup; do not treat those as passing. The starting head `114f5b158e15a30e5400c2a53cbbe47d1343e643` passed all six push/PR CI jobs. New evidence commits rerun full verification in GitHub CI; the PR Validation section records the final exact head and results. `bun run test` includes `i18n:check`.
 
 All six failed jobs on `1aae479` were inspected across push and PR workflows. Unit failures were stale email CVR and short-month expectations; the browser failure was the old inline due-date label and long date expectation. The browser artifact confirms `Due Date` and `15 Nov 2026`; all eight QUI-52 browser regressions passed. The bounded expectation fix passed 23 tests across the Danish invoice, settings localization and email payment files with one worker and a worktree-local TMPDIR. PDF date and frozen-identity assertions remain intact. The shared browser scenario passed a syntax check; its full rerun belongs in CI.
 
