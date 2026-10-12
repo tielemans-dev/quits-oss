@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 const state = vi.hoisted(() => ({
   getAppLayoutSession: vi.fn(),
   loadedOrganizationId: "org_a" as string | null,
+  locale: "da-DK" as string | undefined,
   sessionOrganizationId: "org_a" as string | null,
   outletRenders: [] as Array<string | null>,
   reloadPage: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("@tanstack/react-router", async () => {
         activeOrganizationId: state.loadedOrganizationId,
         runtime: { distribution: "selfhost", billingEnabled: false },
         cloudOnboardingComplete: null,
+        locale: state.locale,
       }),
     }),
     redirect: (payload: unknown) => payload,
@@ -53,7 +55,10 @@ vi.mock("../../components/ui/sidebar", () => ({
   SidebarProvider: ({ children }: { children: unknown }) => children,
   SidebarTrigger: () => null,
 }))
-vi.mock("../../components/app-sidebar", () => ({ AppSidebar: () => null }))
+vi.mock("../../components/app-sidebar", async () => {
+  const { useI18n } = await import("../../lib/i18n/react")
+  return { AppSidebar: () => <nav>{useI18n().t("nav.invoices")}</nav> }
+})
 vi.mock("../../components/shell/app-main", () => ({
   AppMain: ({ banner, children }: { banner?: unknown; children: unknown }) => (
     <>
@@ -67,7 +72,7 @@ vi.mock("../../components/billing/trial-access", () => ({
   TrialBanner: () => null,
   TrialRouteGate: ({ children }: { children: unknown }) => children,
 }))
-vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ setLocale: state.setLocale, t: (key: string) => key }) }))
+
 vi.mock("../../lib/organization-settings-query", () => ({ loadOrganizationSettings: state.settingsQuery }))
 
 import { invalidateAppLayoutSession } from "../../lib/app-layout-session"
@@ -78,17 +83,22 @@ import {
   resetRequestOrganizationForTesting,
 } from "../../lib/active-organization"
 import { Route } from "../_app"
+import { translate } from "../../lib/i18n/translate"
+import { I18nProvider } from "../../lib/i18n/react"
 
-const route = Route as unknown as {
+const originalRoute = Route as unknown as {
   beforeLoad: (context: unknown) => Promise<unknown>
   component: ComponentType
 }
+
+const route = { ...originalRoute, component: () => <I18nProvider><originalRoute.component /></I18nProvider> }
 
 afterEach(() => {
   cleanup()
   invalidateAppLayoutSession()
   state.getAppLayoutSession.mockReset()
   resetRequestOrganizationForTesting()
+  state.locale = "da-DK"
   state.loadedOrganizationId = "org_a"
   state.sessionOrganizationId = "org_a"
   state.outletRenders = []
@@ -108,16 +118,38 @@ function layoutFor(organizationId: string) {
 }
 
 describe("app layout request organization", () => {
-  it("loads locale once after organization initialization, without refetching as the session settles", async () => {
+  it("uses the loaded organization locale before hydration and without a settings round trip", async () => {
+    const html = renderToString(<route.component />)
+    expect(html).toContain("Fakturaer")
+    expect(html).not.toContain("Invoices")
     state.sessionOrganizationId = null
     const view = render(<route.component />)
     await act(async () => { await Promise.resolve() })
-    expect(state.settingsQuery).toHaveBeenCalledTimes(1)
+    expect(state.settingsQuery).not.toHaveBeenCalled()
     state.sessionOrganizationId = "org_a"
     view.rerender(<route.component />)
     await act(async () => { await Promise.resolve() })
-    expect(state.settingsQuery).toHaveBeenCalledTimes(1)
-    expect(state.setLocale).toHaveBeenCalledWith("en-US")
+    expect(state.settingsQuery).not.toHaveBeenCalled()
+    expect(screen.getByRole("navigation").textContent).toBe("Fakturaer")
+  })
+
+  it("applies saved English settings after onboarding navigation retains the layout", () => {
+    vi.spyOn(window.navigator, "language", "get").mockReturnValue("da-DK")
+    // MOCK: route context before and after saving onboarding settings and navigating to '/'.
+    // The real app layout and both providers stay mounted across the route update.
+    state.locale = undefined
+    const view = render(<route.component />)
+    const navigation = screen.getByRole("navigation")
+    expect(navigation.textContent).toBe("Fakturaer")
+    expect(document.documentElement.lang).toBe("da")
+
+    state.locale = "en-US"
+    view.rerender(<route.component />)
+
+    expect(screen.getByRole("navigation")).toBe(navigation)
+    expect(navigation.textContent).toBe("Invoices")
+    expect(document.documentElement.lang).toBe("en")
+    expect(state.settingsQuery).not.toHaveBeenCalled()
   })
 
   it("sets the organization of the loaded page once the layout has committed", () => {
@@ -141,7 +173,10 @@ describe("app layout request organization", () => {
   })
 
   it("hydrates the server-rendered placeholder without a mismatch, then renders the page", async () => {
+    vi.spyOn(window.navigator, "language", "get").mockReturnValue("en-US")
     const html = renderToString(<route.component />)
+    expect(html).toContain("Fakturaer")
+    expect(html).not.toContain("Invoices")
     const container = document.createElement("div")
     container.innerHTML = html
     document.body.appendChild(container)
@@ -154,6 +189,9 @@ describe("app layout request organization", () => {
     expect(consoleError).not.toHaveBeenCalled()
     expect(getRequestOrganizationId()).toBe("org_a")
     expect(container.textContent).toContain("page")
+    expect(container.textContent).toContain("Fakturaer")
+    expect(container.textContent).not.toContain("Invoices")
+    expect(document.documentElement.lang).toBe("da")
     expect(state.outletRenders.every((organizationId) => organizationId === "org_a")).toBe(true)
     act(() => root.unmount())
     container.remove()
@@ -190,12 +228,12 @@ describe("app layout request organization", () => {
 describe("app layout organization changed banner", () => {
   it("asks to reload once the organization changed in another tab", () => {
     render(<route.component />)
-    expect(screen.queryByText("ui.organizationChanged.message")).toBeNull()
+    expect(screen.queryByText(translate("ui.organizationChanged.message", "da-DK"))).toBeNull()
 
     act(() => markOrganizationChanged())
 
-    expect(screen.getByRole("alert").textContent).toContain("ui.organizationChanged.message")
-    fireEvent.click(screen.getByRole("button", { name: "ui.organizationChanged.action" }))
+    expect(screen.getByRole("alert").textContent).toContain(translate("ui.organizationChanged.message", "da-DK"))
+    fireEvent.click(screen.getByRole("button", { name: translate("ui.organizationChanged.action", "da-DK") }))
     expect(state.reloadPage).toHaveBeenCalledTimes(1)
   })
 })

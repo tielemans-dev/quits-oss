@@ -32,8 +32,15 @@ export function formatDate(
 ): string {
   return new Intl.DateTimeFormat(normalizeLocale(locale), {
     year: "numeric",
-    month: options?.month ?? "long",
+    month: options?.month ?? "short",
     day: "numeric",
     timeZone: normalizeTimeZone(timeZone),
   }).format(new Date(date))
+}
+
+/** Compact document dates, with day before month in both supported languages. */
+export function formatShortDate(date: Date | string, locale?: string | null, timeZone?: string | null): string {
+  const configuredLocale = normalizeLocale(locale)
+  const language = configuredLocale.toLowerCase().startsWith("en") ? "en-GB" : configuredLocale
+  return formatDate(date, language, timeZone, { month: "short" })
 }

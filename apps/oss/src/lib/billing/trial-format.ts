@@ -19,7 +19,7 @@ export function formatPlanAmount(plan: NonNullable<BillingSubscription["plan"]>,
 
 export function formatTrialDate(unixSeconds: number, locale: string) {
   return new Intl.DateTimeFormat(locale.toLowerCase().startsWith("da") ? "da-DK" : "en-GB", {
-    day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Copenhagen",
+    day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Copenhagen",
   }).format(new Date(unixSeconds * 1000))
 }
 

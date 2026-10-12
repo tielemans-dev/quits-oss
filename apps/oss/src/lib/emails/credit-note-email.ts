@@ -75,7 +75,7 @@ export function buildCreditNoteEmailContent({
       <div style="text-align:right;">
         <div style="${label}">${t("creditNotes.email.reference", locale)}</div>
         <div style="font-weight:500;">${escapeHtml(invoice.number)}</div>
-        <div style="color:${C.muted};font-size:14px;">${formatDate(invoice.issueDate, locale, timezone)}</div>
+        <div style="color:${C.muted};font-size:14px;">${formatDate(invoice.issueDate, locale, timezone, { month: "long" })}</div>
       </div>
     </div>
 

@@ -142,7 +142,7 @@ function PublicInvoiceDocument({
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center gap-6 px-4 py-12">
       <PublicSellerHeader seller={seller} />
-      <div className="grid w-full min-w-0 gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)]">
+      <div className="grid w-full min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)]">
         <Card className="min-w-0">
           <CardHeader>
             <CardTitle>{invoice.number}</CardTitle>
@@ -161,17 +161,17 @@ function PublicInvoiceDocument({
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div><h2>{t("pdf.from")}</h2>
+              <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.from")}</h2>
                 <p>{invoice.sellerSnapshot?.companyName}</p><p className="whitespace-pre-line">{invoice.sellerSnapshot?.companyAddress}</p>
                 {invoiceTaxIds(invoice.sellerSnapshot?.taxIds).map(id => <p key={id}>{id}</p>)}
               </div>
-              <div><h2>{t("pdf.billTo")}</h2>
+              <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.billTo")}</h2>
                 <p>{invoice.buyerSnapshot?.name}</p><p>{invoice.buyerSnapshot?.company}</p>
                 {buyerAddress(invoice.buyerSnapshot).map((line, index) => <p key={index}>{line}</p>)}
               </div>
             </div>
             <div className="grid gap-3">
-              <h2 className="text-sm font-medium text-muted-foreground">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {t("public.invoice.summary")}
               </h2>
               <div className="rounded-lg border">
@@ -193,7 +193,7 @@ function PublicInvoiceDocument({
                         </p>
                         {item.unitPriceNet !== undefined ? <p className="text-xs text-muted-foreground">{t("pdf.unitPriceNet")}</p> : null}
                       </div>
-                      <div className="text-right"><p className="font-medium">{money(toNumber(item.lineNet ?? item.lineGross))}</p>
+                      <div className="text-right tabular-nums"><p className="font-medium">{money(toNumber(item.lineNet ?? item.lineGross))}</p>
                         {item.lineNet !== undefined ? <p className="text-xs text-muted-foreground">{t("pdf.amountNet")}</p> : null}
                       </div>
                     </div>
@@ -238,25 +238,27 @@ function PublicInvoiceDocument({
                   t("public.document.notProvided")
                 }
               />
-              {totals.lines.map((row, index) => <InfoBlock key={index} label={row.label} value={money(Number(row.amount))} />)}
-              <InfoBlock label={totals.total.label} value={money(total)} />
+              <dl data-slot="invoice-totals" className="grid gap-3">
+              {totals.lines.map((row, index) => <AmountRow key={index} label={row.label} value={money(Number(row.amount))} />)}
+              <AmountRow label={totals.total.label} value={money(total)} />
               {credited ? (
-                <InfoBlock label={t("public.invoice.credited")} value={money(amountCredited)} />
+                <AmountRow label={t("public.invoice.credited")} value={money(amountCredited)} />
               ) : null}
               {partiallySettled && amountPaid > 0 ? (
-                <InfoBlock label={t("public.invoice.paid")} value={money(amountPaid)} />
+                <AmountRow label={t("public.invoice.paid")} value={money(amountPaid)} />
               ) : null}
               {partiallySettled && amountCredited > 0 ? (
-                <InfoBlock label={t("public.invoice.credited")} value={money(amountCredited)} />
+                <AmountRow label={t("public.invoice.credited")} value={money(amountCredited)} />
               ) : null}
               {paymentState === "unpaid" ? (
-                <InfoBlock label={t("public.invoice.balanceDue")} value={money(balanceDue)} />
+                <AmountRow label={t("public.invoice.balanceDue")} value={money(balanceDue)} />
               ) : null}
+              </dl>
             </div>
 
             {paymentState === "unpaid" && balanceDue > 0 && paymentDetails ? (
               <section className="grid min-w-0 gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>
-                <h2 className="text-sm font-medium">{paymentDetails.title}</h2>
+                <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{paymentDetails.title}</h2>
                 {paymentDetails.rows.map((row) => (
                   <InfoBlock key={row.label} label={row.label} value={row.value} />
                 ))}
@@ -281,10 +283,19 @@ function PublicInvoiceDocument({
           </CardContent>
           <CardFooter className="justify-between text-sm text-muted-foreground">
             <span>{seller.name}</span>
-            <span>{money(paymentState === "paid" && !credited ? total : balanceDue)}</span>
+            <span className="tabular-nums">{money(paymentState === "paid" && !credited ? total : balanceDue)}</span>
           </CardFooter>
         </Card>
       </div>
+    </div>
+  )
+}
+
+function AmountRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-4 text-sm">
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium tabular-nums">{value}</dd>
     </div>
   )
 }

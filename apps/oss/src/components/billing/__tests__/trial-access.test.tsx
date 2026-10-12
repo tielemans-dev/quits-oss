@@ -50,7 +50,7 @@ describe("trial form gate", () => {
     expect(screen.queryByRole("form", { name: "invoice form" })).toBeNull()
     expect(await screen.findByRole("heading", { name: "Opgrader for at oprette fakturaer" })).toBeTruthy()
     expect(screen.queryByRole("form", { name: "invoice form" })).toBeNull()
-    expect(screen.getByText(/25\. oktober 2026/)).toBeTruthy()
+    expect(screen.getByText(/25\. okt\. 2026/)).toBeTruthy()
   })
 
   it("allows a trial form and leaves read routes available", async () => {

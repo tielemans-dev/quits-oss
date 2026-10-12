@@ -76,6 +76,7 @@ export function EmailDeliveryPanel({
   fallback,
   publicLink,
   className,
+  embedded = false,
 }: {
   title: string
   description: string
@@ -85,10 +86,13 @@ export function EmailDeliveryPanel({
   fallback?: EmailDeliveryPanelFallback | null
   publicLink?: EmailDeliveryPanelPublicLink | null
   className?: string
+  /** A section inside an existing document card. */
+  embedded?: boolean
 }) {
+  const Container = embedded ? "section" : Card
   return (
-    <Card className={className}>
-      <CardHeader className="gap-3">
+    <Container className={className}>
+      <CardHeader className={embedded ? "gap-3 px-0" : "gap-3"}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle>{title}</CardTitle>
@@ -101,9 +105,9 @@ export function EmailDeliveryPanel({
           ) : null}
         </div>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className={embedded ? "grid gap-4 divide-y px-0" : "grid gap-4 divide-y"}>
         {status ? (
-          <div className="rounded-md border p-4">
+          <div className="grid gap-2 pb-4 last:pb-0">
             <p className="text-sm font-medium">{status.detail}</p>
             {status.message ? (
               <p className="mt-1 text-sm text-muted-foreground">{status.message}</p>
@@ -112,7 +116,7 @@ export function EmailDeliveryPanel({
         ) : null}
 
         {action ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pb-4 last:pb-0">
             <Button disabled={action.disabled || action.pending} onClick={action.onClick}>
               {action.pending ? action.pendingLabel : action.label}
             </Button>
@@ -142,12 +146,12 @@ export function EmailDeliveryPanel({
         ) : null}
 
         {fallback ? (
-          <div className="grid gap-3 rounded-md border border-dashed p-4">
+          <div className="grid gap-2 pb-4 last:pb-0">
             <div>
               <h3 className="text-sm font-medium">{fallback.title}</h3>
               <p className="text-sm text-muted-foreground">{fallback.description}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 pb-4 last:pb-0">
               {fallback.fixAction}
               {fallback.copyLabel && fallback.onCopy ? (
                 <Button type="button" variant="outline" onClick={fallback.onCopy}>
@@ -159,7 +163,7 @@ export function EmailDeliveryPanel({
         ) : null}
 
         {publicLink ? (
-          <div className="grid gap-2 rounded-md border p-4">
+          <div className="grid gap-2 pb-4 last:pb-0">
             <div>
               <h3 className="text-sm font-medium">{publicLink.title}</h3>
               <p className="text-sm text-muted-foreground">{publicLink.description}</p>
@@ -178,6 +182,6 @@ export function EmailDeliveryPanel({
           </div>
         ) : null}
       </CardContent>
-    </Card>
+    </Container>
   )
 }

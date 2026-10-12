@@ -126,6 +126,16 @@ jobs:
             apps/oss/test-results/
             apps/oss/playwright-report/
 
+      - name: Upload browser smoke reports and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-smoke-results
+          path: |
+            apps/oss/playwright-report/
+            apps/oss/test-results/
+          retention-days: 7
+
       - name: Verify packed package artifact
         run: node scripts/check-packed-build.mjs
 
@@ -166,3 +176,102 @@ jobs:
             apps/oss/playwright-report/shared
             apps/oss/test-results
           retention-days: 7
+
+  quote-evidence:
+    name: Quote evidence (${{ matrix.phase }})
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 130
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        phase: [before, after]
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: qui65
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qui65"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/qui65?schema=public
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      BETTER_AUTH_SECRET: ci-example-secret-that-is-over-32-characters
+      QUI65_EVIDENCE: 'true'
+      QUI65_SCREENSHOTS: ${{ matrix.phase }}
+      QUI65_CAPTURE_DIR: ${{ github.workspace }}/evidence/${{ matrix.phase }}
+    steps:
+      - name: Checkout exact PR head and capture harness
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+      - name: Checkout main baseline
+        if: matrix.phase == 'before'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: baseline
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: head/.bun-version
+      - name: Select application and record provenance
+        env:
+          PHASE: ${{ matrix.phase }}
+        run: |
+          if [ "$PHASE" = before ]; then
+            app=baseline
+            # Copy only test harness files. Baseline production sources stay at main.
+            cp head/apps/oss/tests/e2e/quote-polish-qui65.spec.ts baseline/apps/oss/tests/e2e/
+            cp head/apps/oss/tests/e2e/support.ts baseline/apps/oss/tests/e2e/support.ts
+            cp head/apps/oss/playwright.config.ts baseline/apps/oss/playwright.config.ts
+            git -C baseline diff --exit-code -- apps/oss/src packages
+          else
+            app=head
+          fi
+          echo "QUI65_APP=$app" >> "$GITHUB_ENV"
+          mkdir -p "$QUI65_CAPTURE_DIR" "$GITHUB_WORKSPACE/$app/.tmp"
+          echo "TMPDIR=$GITHUB_WORKSPACE/$app/.tmp" >> "$GITHUB_ENV"
+          node -e 'const fs=require("node:fs"),cp=require("node:child_process"); const sha=p=>cp.execFileSync("git",["-C",p,"rev-parse","HEAD"],{encoding:"utf8"}).trim(); fs.writeFileSync(process.env.QUI65_CAPTURE_DIR+"/provenance.json",JSON.stringify({phase:process.env.PHASE,applicationSha:sha(process.argv[1]),harnessSha:sha("head"),baseline:"PR base commit on main; only test harness copied",mock:"Synthetic documents/customers/events in disposable localhost qui65 database",run:process.env.GITHUB_SERVER_URL+"/"+process.env.GITHUB_REPOSITORY+"/actions/runs/"+process.env.GITHUB_RUN_ID},null,2))' "$app"
+      - name: Install application dependencies
+        run: cd "$QUI65_APP" && bun install --frozen-lockfile
+      - name: Install pinned browser in CI
+        run: cd "$QUI65_APP/apps/oss" && bunx playwright install --with-deps chromium
+      - name: Capture real application matrix with one worker
+        run: cd "$QUI65_APP/apps/oss" && bunx playwright test quote-polish-qui65.spec.ts --workers=1
+      - name: Check complete matrix and archive
+        env:
+          PHASE: ${{ matrix.phase }}
+        run: |
+          node head/scripts/check-qui65-evidence.mjs "$QUI65_CAPTURE_DIR" "$PHASE"
+          tar -czf "evidence/qui65-$PHASE.tar.gz" -C evidence "$PHASE"
+      - name: Upload quote evidence and browser diagnostics
+        id: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qui65-${{ matrix.phase }}-${{ github.event.pull_request.head.sha }}
+          if-no-files-found: error
+          path: |
+            evidence/
+            baseline/apps/oss/playwright-report/
+            baseline/apps/oss/test-results/
+            head/apps/oss/playwright-report/
+            head/apps/oss/test-results/
+          retention-days: 30
+      - name: Link evidence for visual review
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          PHASE: ${{ matrix.phase }}
+        run: |
+          echo "QUI-65 $PHASE evidence: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "A green capture job certifies the manifest has all 56 screenshots and 16 locale files. A failed job may contain partial diagnostics only. Ines visual sign-off remains separate." >> "$GITHUB_STEP_SUMMARY"
