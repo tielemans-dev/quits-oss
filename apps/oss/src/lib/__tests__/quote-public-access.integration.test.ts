@@ -81,6 +81,18 @@ async function seedPublicQuote() {
 }
 
 describeIfDatabase("quote public access", () => {
+  it("returns stored VAT rows before and after a public decision", async () => {
+    const quote = await seedPublicQuote()
+    await prisma.quote.update({ where: { id: quote.id }, data: { totalTax: "25", totalGross: "125" } })
+    await prisma.quoteItem.updateMany({ where: { quoteId: quote.id }, data: {
+      taxRate: "25", lineTax: "25", lineGross: "125", unitPriceGross: "125",
+    } })
+    const token = signQuotePublicToken({ quoteId: quote.id, keyVersion: 1, scope: "quote_public" }, secret)
+    const rows = [{ ratePercent: "25", net: "100.00", tax: "25.00", gross: "125.00" }]
+    expect((await loadPublicQuoteByToken(token, secret))?.quote.vatRows).toEqual(rows)
+    const decided = await decidePublicQuoteByToken(token, secret, { decision: "accepted" })
+    expect(decided.quote.vatRows).toEqual(rows)
+  })
   afterEach(async () => {
     await cleanupTestOrganizations({
       where: {

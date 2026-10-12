@@ -13,6 +13,7 @@ const baseQuote = {
   totalGross: { toNumber: () => 1250 },
   totalTax: { toNumber: () => 250 },
   subtotalNet: { toNumber: () => 1000 },
+  vatRows: [{ ratePercent: "25", net: "1000.00", tax: "250.00", gross: "1250.00" }],
   currency: "USD",
   timezone: "UTC",
   notes: "Net 14",
@@ -55,6 +56,41 @@ function page(locale: string, children: ReactNode) {
 }
 
 describe("PublicQuotePage", () => {
+  it.each([
+    ["en-US", "Subtotal excl. tax", "Tax (25%)", "Total incl. tax"],
+    ["da-DK", "Subtotal ekskl. moms", "Moms (25 %)", "Total inkl. moms"],
+  ])("shows stored VAT totals in %s", (locale, subtotal, tax, total) => {
+    const html = page(locale, <PublicQuotePage token="signed-token" state={{
+      kind: "ready", decisionState: "pending", seller, quote: { ...baseQuote, currency: "DKK" },
+    }} />)
+    expect(html).toContain(subtotal)
+    expect(html).toContain(tax)
+    expect(html).toContain(total)
+    expect(html).toContain('class="num"')
+  })
+
+  it("omits VAT for a seller charging no VAT", () => {
+    const html = page("da-DK", <PublicQuotePage token="signed-token" state={{
+      kind: "ready", decisionState: "pending", seller,
+      quote: { ...baseQuote, totalGross: 1000, totalTax: 0, subtotalNet: 1000,
+        vatRows: [{ ratePercent: "0", net: "1000.00", tax: "0.00", gross: "1000.00" }] },
+    }} />)
+    expect(html).not.toContain("Moms (")
+    expect(html).toContain("Total inkl. moms")
+  })
+
+  it("shows each stored VAT rate and rounding without deriving a rate from header totals", () => {
+    const html = page("en-US", <PublicQuotePage token="signed-token" state={{
+      kind: "ready", decisionState: "pending", seller,
+      quote: { ...baseQuote, totalGross: 1200.01, totalTax: 200, rounding: "0.01",
+        vatRows: [{ ratePercent: "25", net: "600.00", tax: "150.00", gross: "750.00" },
+          { ratePercent: "12.5", net: "400.00", tax: "50.00", gross: "450.00" }] },
+    }} />)
+    expect(html).toContain("Tax 25% of $600.00")
+    expect(html).toContain("Tax 12.5% of $400.00")
+    expect(html).toContain("Rounding")
+    expect(html).toContain("$1,200.01")
+  })
   it.each(["America/New_York", "Pacific/Pago_Pago", "Europe/Copenhagen"])(
     "preserves calendar dates while localizing the issue instant in %s", timezone => {
       const html = page("en-US", <PublicQuotePage token="signed-token" state={{

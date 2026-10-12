@@ -11,6 +11,7 @@ import { invalidLinkLocale } from "../documents/public-invalid-link"
 import { publicLogoPath } from "../documents/public-logo"
 import { resolvePublicPresentation } from "../documents/public-presentation"
 import { isDocumentNotIssued, issuedNumber } from "../../domain/documents/numbering"
+import type { VatRow } from "../documents/line-amounts"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -37,6 +38,8 @@ export function serializePublicQuoteSession(session: {
     totalGross: Decimalish
     totalTax: Decimalish
     subtotalNet: Decimalish
+    vatRows?: VatRow[]
+    rounding?: string
     currency: string
     /** The document's own language and timezone, the ones its PDF and email use. */
     locale?: string | null
@@ -99,6 +102,8 @@ export function serializePublicQuoteSession(session: {
       totalGross: toNumber(quote.totalGross),
       totalTax: toNumber(quote.totalTax),
       subtotalNet: toNumber(quote.subtotalNet),
+      vatRows: quote.vatRows,
+      rounding: quote.rounding,
       currency: quote.currency,
       timezone: presentation.timezone,
       notes: quote.notes,
