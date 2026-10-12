@@ -41,7 +41,7 @@ async function setup(currency = "USD", timezone = "UTC") {
 type Context = Awaited<ReturnType<typeof setup>>
 async function issue(ctx: Context) {
   await ctx.admin.invoices.send({ id: ctx.invoice.id, allowSendWithoutEmail: true })
-  return prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoice.id }, include: { items: true } })
+  return prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoice.id }, include: { items: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] } } })
 }
 
 ;(hasTestDatabase ? describe : describe.skip)("server document views and draft revisions", () => {

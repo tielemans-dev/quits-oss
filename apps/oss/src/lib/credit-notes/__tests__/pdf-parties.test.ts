@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import type { OrgSettings } from "../../../../generated/prisma/client"
 import { creditNotePdfParties } from "../pdf-parties"
 
 const sellerSnapshot = {
@@ -55,6 +56,49 @@ describe("credit note PDF parties", () => {
     const { seller, buyer } = creditNotePdfParties(issued, {})
     expect(seller.taxIds).toEqual(["VAT no.: DK12345678", "CVR no.: 12345678"])
     expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
+  })
+
+  it("suppresses retained VAT IDs for the frozen nonregistered seller without changing legal IDs or buyer IDs", () => {
+    const frozen = { ...sellerSnapshot, momsRegistered: false, taxIds: [...sellerSnapshot.taxIds, { scheme: "lei", value: "LEGAL-ID" }] }
+    const before = JSON.stringify(frozen)
+    const { seller, buyer } = creditNotePdfParties({ ...issued, sellerSnapshot: frozen }, { taxIds: [{ scheme: "vat", value: "DK87654321" }] })
+    expect(seller.taxIds).toEqual(["CVR no.: 12345678", "LEI: LEGAL-ID"])
+    expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
+    expect(JSON.stringify(frozen)).toBe(before)
+  })
+
+  it("normalizes optional schemes while preserving legal IDs and frozen registration status", () => {
+    const frozen = {
+      ...sellerSnapshot,
+      momsRegistered: false,
+      taxIds: [
+        { scheme: " VAT_ID ", value: "DK12345678" },
+        { scheme: " CVR ", value: "12345678" },
+        { scheme: " lei ", value: "LEGAL-ID" },
+        { value: "UNSPECIFIED-ID" },
+        { scheme: "   ", value: "BLANK-SCHEME-ID" },
+      ],
+    }
+    const before = JSON.stringify(frozen)
+    const current: Pick<OrgSettings, "companyName" | "momsRegistered"> = {
+      companyName: "Acme Holding A/S",
+      momsRegistered: true,
+    }
+    const { seller, buyer } = creditNotePdfParties({ ...issued, sellerSnapshot: frozen }, current)
+    expect(seller.taxIds).toEqual([
+      "CVR no.: 12345678",
+      "LEI: LEGAL-ID",
+      "Tax ID: UNSPECIFIED-ID",
+      "Tax ID: BLANK-SCHEME-ID",
+    ])
+    expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
+    expect(JSON.stringify(frozen)).toBe(before)
+    const currentNonregistered: Pick<OrgSettings, "companyName" | "momsRegistered"> = {
+      ...current,
+      momsRegistered: false,
+    }
+    expect(creditNotePdfParties({ ...issued, sellerSnapshot: { ...frozen, momsRegistered: true } }, currentNonregistered).seller.taxIds)
+      .toContain("VAT no.: DK12345678")
   })
 
   it("translates tax identifier labels", () => {

@@ -16,7 +16,10 @@ vi.mock("../../lib/auth-session", () => ({ getAppLayoutSession: state.getAppLayo
 // layout must follow what the server says instead.
 vi.mock("../../lib/distribution", () => ({ isCloudDistribution: false, billingEnabled: false }))
 vi.mock("../../lib/auth-client", () => ({ useSession: () => ({ data: null }) }))
-vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ setLocale: vi.fn() }) }))
+vi.mock("../../lib/i18n/react", () => ({
+  useI18n: () => ({ setLocale: vi.fn() }),
+  I18nProvider: ({ children }: { children: unknown }) => children,
+}))
 vi.mock("../../trpc/client", () => ({ trpc: { settings: { get: { query: () => new Promise(() => undefined) } } } }))
 vi.mock("../../components/app-sidebar", () => ({ AppSidebar: () => null }))
 vi.mock("../../components/organization-changed-banner", () => ({ OrganizationChangedBanner: () => null }))

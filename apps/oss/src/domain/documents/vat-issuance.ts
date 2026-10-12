@@ -26,6 +26,15 @@ export function requireVatIssuance(document: {
   }>
 }) {
   const seller = parseSellerSnapshot(document.sellerSnapshot)
+  // Registration restricts charged VAT, not the legal category of an ordinary zero-tax line.
+  // Both preparation and commit call this guard before artifacts or numbers are allocated.
+  if (seller?.momsRegistered === false && (
+    Number(document.totalTax.toString()) !== 0 || document.items.some(item =>
+      Number(item.taxRate.toString()) !== 0 ||
+      (item.vatRateInput != null && Number(item.vatRateInput) !== 0) ||
+      Number(item.lineTax.toString()) !== 0
+    )
+  )) return Effect.fail(new InvalidState({ code: "seller_not_vat_registered", message: "A seller who is not VAT-registered cannot issue an invoice charging VAT." }))
   const buyer = parseBuyerSnapshot(document.buyerSnapshot)
   const issues = validateVatIssuance({
     lines: document.items.map((item) => ({

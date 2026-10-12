@@ -16,15 +16,14 @@ import { shouldRedirectToCloudOnboarding } from '../lib/cloud-onboarding'
 import { SidebarProvider } from '../components/ui/sidebar'
 import { AppSidebar } from '../components/app-sidebar'
 import { AppMain } from '../components/shell/app-main'
-import { useI18n } from '../lib/i18n/react'
-import { loadOrganizationSettings } from '../lib/organization-settings-query'
+import { I18nProvider } from '../lib/i18n/react'
 import { TrialAccessProvider, TrialBanner, TrialRouteGate } from '../components/billing/trial-access'
 
 export const Route = createFileRoute('/_app')({
   beforeLoad: async ({ location }) => {
     // One server call answers everything the layout needs, and is reused for a few seconds so
     // switching tabs and hovering links do not repeat it.
-    const { user, activeOrganizationId, runtime, cloudOnboardingComplete } =
+    const { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete } =
       await reuseAppLayoutSession(() => getAppLayoutSession())
     if (!user) {
       throw redirect({ to: '/login' })
@@ -52,14 +51,18 @@ export const Route = createFileRoute('/_app')({
     }
 
     // Route context is rendered into the server's HTML, so it holds only what the browser uses.
-    return { user, activeOrganizationId, runtime, cloudOnboardingComplete }
+    return { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete }
   },
   component: AppLayout,
 })
 
 function AppLayout() {
+  const { locale } = Route.useRouteContext()
+  return <I18nProvider initialLocale={locale}><AppLayoutContent /></I18nProvider>
+}
+
+function AppLayoutContent() {
   const pathname = useLocation({ select: location => location.pathname })
-  const { setLocale } = useI18n()
   const { data: session, isPending } = useSession()
   const layoutContext = Route.useRouteContext()
   const loadedOrgId = layoutContext.activeOrganizationId ?? null
@@ -87,24 +90,6 @@ function AppLayout() {
   useLayoutEffect(() => {
     initializeRequestOrganizationId(loadedOrgId)
   }, [loadedOrgId])
-
-  useEffect(() => {
-    if (!organizationReady || !loadedOrgId) return
-    let cancelled = false
-    loadOrganizationSettings()
-      .then((settings) => {
-        if (!cancelled && settings.locale) {
-          setLocale(settings.locale)
-        }
-      })
-      .catch(() => {
-        // Keep browser locale when settings are not yet available.
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [setLocale, organizationReady, loadedOrgId])
 
   return (
     <SidebarProvider>

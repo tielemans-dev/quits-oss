@@ -180,6 +180,6 @@ export const daAgreementsMessages = {
   "agreements.templatePlaceholders": "Tilgængelige pladsholdere: {{seller.name}}, {{buyer.name}}, {{agreement.title}}, {{agreement.validUntil}}, {{agreement.total}}, {{deliverables}}.",
   "agreements.createFromQuote": "Opret aftale",
   "agreements.quoteHasAgreement": "Dette tilbud har allerede en aftale. Fakturer aftalens leverancer i stedet.",
-  "agreements.quoteHasInvoices": "Dette tilbud har allerede fakturaer og kan ikke konverteres til en aftale.",
+  "agreements.quoteHasInvoices": "Tilbuddet er allerede faktureret, så det kan ikke laves om til en aftale.",
   "agreements.quoteConversionNotice": "Vælg en ny gyldighedsdato. Kladden kopierer kunden, ydelserne og momsoplysningerne fra tilbuddet og bruger din standardskabelon. Totalerne genberegnes med den aktuelle prisberegning; afrunding kan være anderledes for ældre tilbud. Gennemgå kladden, før du sender den.",
 } as const
