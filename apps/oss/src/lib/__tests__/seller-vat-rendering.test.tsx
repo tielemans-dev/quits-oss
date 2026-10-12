@@ -67,7 +67,7 @@ describe("seller VAT presentation", () => {
     for (const output of outputs("en-US", false, { taxRegime, notes: `Synthetic instructions\n${nonVatStatement("en")}`, paymentNote: `Synthetic transfer instructions\n${nonVatStatement("en")}`, taxAmount: 25, total: 125,
       vatRows: [{ ratePercent: "25", net: "100", tax: "25", gross: "125" }],
       items: [{ ...invoice.items[0]!, taxRate: 25 }] }).concat(buildQuoteEmailContent({
-        quote: { number: "Synthetic quote", expiryDate: "2099-12-01", subtotal: 100, taxAmount: 25, total: 125, currency: "DKK", momsRegistered: false, taxRegime, items: [{ ...invoice.items[0]!, taxRate: 25 }] },
+        quote: { number: "Synthetic quote", issueDate: invoice.issueDate, expiryDate: "2099-12-01", subtotal: 100, taxAmount: 25, total: 125, currency: "DKK", momsRegistered: false, taxRegime, items: [{ ...invoice.items[0]!, taxRate: 25 }] },
         org: { locale: "en-US" }, contactName: "Synthetic buyer",
       }).html)) {
       expect(output).not.toMatch(/25 % moms|No moms|Ingen moms|The company is not VAT registered/)

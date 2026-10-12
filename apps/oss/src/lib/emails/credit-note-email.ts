@@ -87,7 +87,7 @@ export function buildCreditNoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis, momsRegistered, creditNote.taxRegime)}
+    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis, momsRegistered)}
     ${totalsBlock(creditNote, locale)}
     ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
 
