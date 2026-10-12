@@ -1,4 +1,5 @@
 export const enPdfMessages = {
+  "pdf.nonVatRegistered": "The company is not VAT registered.",
   "pdf.invoice": "Invoice",
   "pdf.issueDate": "Issue Date",
   "pdf.dueDate": "Due Date",

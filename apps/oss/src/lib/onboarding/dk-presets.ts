@@ -1,3 +1,4 @@
+import { nonVatStatement } from "../documents/non-vat-note"
 import { DANISH_ONBOARDING_V2_DEFAULTS } from "@quits/contracts/onboarding"
 
 /** Only mapped invoicing fields, never a raw CVR response. T1 supplies the Danish address. */
@@ -23,7 +24,7 @@ export function buildDkPresets(company: DkCompanySummary, signupEmail?: string) 
     onboardingInvoicingIdentity: soleTrader ? "individual" : "registered_business",
     momsRegistered: company.momsRegistered,
     taxRate: company.momsRegistered ? 25 : 0,
-    paymentNote: company.momsRegistered ? null : "Virksomheden er ikke momsregistreret.",
+    paymentNote: company.momsRegistered ? null : nonVatStatement(defaults.locale),
     companyEmail: company.reklamebeskyttet ? signupEmail ?? null : company.companyEmail === undefined ? signupEmail ?? null : company.companyEmail,
     companyPhone: company.reklamebeskyttet ? null : company.companyPhone ?? null,
     invoiceNextNum: company.invoiceNextNum ?? defaults.invoiceNextNum,
