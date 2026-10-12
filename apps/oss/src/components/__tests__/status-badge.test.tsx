@@ -15,6 +15,8 @@ vi.mock("../../lib/i18n/react", async () => {
   }
 })
 
+import { invoiceDisplayStatus } from "../../lib/payments/invoice-display-status"
+
 import { StatusBadge, ToneBadge } from "../status-badge"
 
 afterEach(() => {
@@ -23,6 +25,20 @@ afterEach(() => {
 })
 
 describe("StatusBadge", () => {
+  it.each([["en-US", "Overdue"], ["da-DK", "Forfalden"]])(
+    "shows a past-due sent invoice in %s",
+    (locale, label) => {
+      state.locale = locale
+      const status = invoiceDisplayStatus(
+        { status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11" },
+        "Europe/Copenhagen",
+        new Date("2026-10-12T10:00:00Z")
+      )
+      render(<StatusBadge domain="invoice" status={status} />)
+      expect(screen.getByText(label).dataset.tone).toBe("danger")
+    }
+  )
+
   it("shows the label and carries the tone of the status", () => {
     render(<StatusBadge domain="invoice" status="overdue" />)
 

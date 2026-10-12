@@ -1,9 +1,24 @@
+import { formatIsoDate } from "../exports/format"
+
 /**
  * The status badge an invoice shows. Partial payment is tracked in `paymentStatus`, not the
  * lifecycle status, so a sent invoice with some money received reads as "partially paid".
  * Overdue stays overdue: that is the more urgent fact.
  */
-export function invoiceDisplayStatus(invoice: { status: string; paymentStatus: string }) {
+export function invoiceDisplayStatus(
+  invoice: { status: string; paymentStatus: string; dueDate?: string | Date },
+  timezone?: string | null,
+  now: Date = new Date()
+) {
+  const collectible = ["sent", "viewed", "overdue"].includes(invoice.status)
+  if (collectible && invoice.paymentStatus === "paid") return "paid"
+  // Due dates are calendar dates stored at UTC midnight. Compare calendar days, not instants.
+  if (collectible && invoice.dueDate) {
+    const dueDate = new Date(invoice.dueDate)
+    if (Number.isFinite(dueDate.getTime()) && dueDate.toISOString().slice(0, 10) < formatIsoDate(now, timezone)) {
+      return "overdue"
+    }
+  }
   if (
     (invoice.status === "sent" || invoice.status === "viewed") &&
     invoice.paymentStatus === "partially_paid"

@@ -1007,7 +1007,7 @@ function InvoiceDetailPage() {
                   </p>
                 )}
                 <div className="mt-1">
-                  <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
+                  <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice, orgSettings.timezone)} />
                 </div>
               </div>
               <div className="text-right text-sm text-muted-foreground">
