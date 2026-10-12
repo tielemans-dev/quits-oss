@@ -9,26 +9,9 @@ test("waitlist validation, consent rejection and bodyless success preserve focus
   await page.goto("/signup")
   await waitForClientReady(page)
   await page.evaluate(async () => {
-    const reactPath = "/node_modules/.vite/deps/react.js"
-    const domPath = "/node_modules/.vite/deps/react-dom_client.js"
-    const formPath = "/src/components/auth/waitlist-form.tsx"
-    const i18nPath = "/src/lib/i18n/react.tsx"
-    const { createElement } = await import(/* @vite-ignore */ reactPath)
-    const { createRoot } = await import(/* @vite-ignore */ domPath)
-    const { WaitlistForm } = await import(/* @vite-ignore */ formPath)
-    const { I18nProvider } = await import(/* @vite-ignore */ i18nPath)
-    const fixture = document.createElement("main")
-    document.body.replaceChildren(fixture)
-    createRoot(fixture).render(createElement(I18nProvider, { locale: "en" }, createElement(WaitlistForm, {
-      initialEmail: "person@example.test", privacyVersion: "2026-10-12.2", privacyPath: "/privacy",
-      onJoined: (email: string) => {
-        const heading = document.createElement("h1")
-        heading.textContent = `Joined as ${email}`
-        heading.tabIndex = -1
-        fixture.replaceChildren(heading)
-        heading.focus()
-      },
-    })))
+    const fixturePath = "/tests/e2e/fixtures/waitlist-form.tsx"
+    const { mountWaitlistForm } = await import(/* @vite-ignore */ fixturePath)
+    mountWaitlistForm()
   })
   const email = page.getByLabel("Email", { exact: true })
   const consent = page.getByRole("checkbox")
