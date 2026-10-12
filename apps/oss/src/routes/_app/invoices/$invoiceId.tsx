@@ -928,75 +928,75 @@ function InvoiceDetailPage() {
       </div>
 
       {/* Invoice content (printable) */}
-      <div className="print-area">
+      <div className="print-area grid gap-6">
+        {invoice.disputed && invoice.status === "draft" && <section className="grid gap-2 no-print">
+          <p role="status">{t("agreements.disputedDraft")}</p>
+          <label className="flex items-start gap-2"><input type="checkbox" checked={acknowledgeDisputed} disabled={acting || emailSending} onChange={event => setAcknowledgeDisputed(event.target.checked)} />{t("agreements.acknowledgeDisputed")}</label>
+        </section>}
+        <EmailDeliveryPanel
+          className="no-print"
+          title={t("invoices.detail.email.title")}
+          description={t("invoices.detail.email.description")}
+          status={deliveryStatus}
+          action={
+            invoice.purpose !== "prepayment" && invoice.status === "draft" && recipientEmailValid && emailDelivery?.available
+              ? {
+                  label: t("invoices.detail.action.send"),
+                  pendingLabel: t("invoices.detail.action.sending"),
+                  pending: acting,
+                  // A queued email settles on its own; sending again is refused meanwhile.
+                  disabled: acting || emailSending,
+                  onClick: () => {
+                    void handleSend()
+                  },
+                }
+              : canResendEmail && recipientEmailValid && emailDelivery?.available
+                ? {
+                    label: t("invoices.detail.action.resendEmail"),
+                    pendingLabel: t("invoices.detail.action.sending"),
+                    pending: acting,
+                    disabled: acting || emailSending,
+                    onClick: () => {
+                      void handleResendEmail()
+                    },
+                  }
+                : null
+          }
+          degradedAction={
+            canShowDegradedSend && !emailSending
+              ? {
+                  open: sendWithoutEmailOpen,
+                  triggerLabel: t("invoices.detail.email.degraded.trigger"),
+                  title: t("invoices.detail.email.degraded.title"),
+                  description: t("invoices.detail.email.degraded.description"),
+                  confirmLabel: t("invoices.detail.email.degraded.confirm"),
+                  cancelLabel: t("invoices.detail.email.degraded.cancel"),
+                  pending: acting,
+                  onConfirm: () => {
+                    void handleSend(true)
+                  },
+                  onOpenChange: setSendWithoutEmailOpen,
+                }
+              : null
+          }
+          fallback={recipientFallback}
+          publicLink={
+            paymentLinkUrl && invoice.paymentStatus !== "paid"
+              ? {
+                  title: t("invoices.detail.paymentLink.title"),
+                  description: t("invoices.detail.paymentLink.description"),
+                  url: paymentLinkUrl,
+                  copyLabel: t("invoices.detail.paymentLink.copy"),
+                  onCopy: () => {
+                    navigator.clipboard.writeText(paymentLinkUrl)
+                  },
+                }
+              : null
+          }
+        />
+
         <Card>
           <CardContent className="p-6 grid gap-6">
-            {invoice.disputed && invoice.status === "draft" && <section className="grid gap-2 no-print">
-              <p role="status">{t("agreements.disputedDraft")}</p>
-              <label className="flex items-start gap-2"><input type="checkbox" checked={acknowledgeDisputed} disabled={acting || emailSending} onChange={event => setAcknowledgeDisputed(event.target.checked)} />{t("agreements.acknowledgeDisputed")}</label>
-            </section>}
-            <EmailDeliveryPanel
-              className="no-print"
-              title={t("invoices.detail.email.title")}
-              description={t("invoices.detail.email.description")}
-              status={deliveryStatus}
-              action={
-                invoice.purpose !== "prepayment" && invoice.status === "draft" && recipientEmailValid && emailDelivery?.available
-                  ? {
-                      label: t("invoices.detail.action.send"),
-                      pendingLabel: t("invoices.detail.action.sending"),
-                      pending: acting,
-                      // A queued email settles on its own; sending again is refused meanwhile.
-                      disabled: acting || emailSending,
-                      onClick: () => {
-                        void handleSend()
-                      },
-                    }
-                  : canResendEmail && recipientEmailValid && emailDelivery?.available
-                    ? {
-                        label: t("invoices.detail.action.resendEmail"),
-                        pendingLabel: t("invoices.detail.action.sending"),
-                        pending: acting,
-                        disabled: acting || emailSending,
-                        onClick: () => {
-                          void handleResendEmail()
-                        },
-                      }
-                    : null
-              }
-              degradedAction={
-                canShowDegradedSend && !emailSending
-                  ? {
-                      open: sendWithoutEmailOpen,
-                      triggerLabel: t("invoices.detail.email.degraded.trigger"),
-                      title: t("invoices.detail.email.degraded.title"),
-                      description: t("invoices.detail.email.degraded.description"),
-                      confirmLabel: t("invoices.detail.email.degraded.confirm"),
-                      cancelLabel: t("invoices.detail.email.degraded.cancel"),
-                      pending: acting,
-                      onConfirm: () => {
-                        void handleSend(true)
-                      },
-                      onOpenChange: setSendWithoutEmailOpen,
-                    }
-                  : null
-              }
-              fallback={recipientFallback}
-              publicLink={
-                paymentLinkUrl && invoice.paymentStatus !== "paid"
-                  ? {
-                      title: t("invoices.detail.paymentLink.title"),
-                      description: t("invoices.detail.paymentLink.description"),
-                      url: paymentLinkUrl,
-                      copyLabel: t("invoices.detail.paymentLink.copy"),
-                      onCopy: () => {
-                        navigator.clipboard.writeText(paymentLinkUrl)
-                      },
-                    }
-                  : null
-              }
-            />
-
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>

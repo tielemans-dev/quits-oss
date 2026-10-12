@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import { formatCurrency, formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table"
@@ -14,7 +14,6 @@ export function CreditNotesTable({
   showInvoice?: boolean
 }) {
   const { t, locale } = useI18n()
-  const navigate = useNavigate()
 
   return (
     <div className="rounded-md border">
@@ -33,15 +32,12 @@ export function CreditNotesTable({
           {creditNotes.map((creditNote) => (
             <TableRow
               key={creditNote.id}
-              className="cursor-pointer"
-              onClick={() =>
-                navigate({
-                  to: "/credit-notes/$creditNoteId",
-                  params: { creditNoteId: creditNote.id },
-                })
-              }
             >
-              <TableCell className="font-medium">{creditNote.number}</TableCell>
+              <TableCell className="font-medium">
+                <Link to="/credit-notes/$creditNoteId" params={{ creditNoteId: creditNote.id }} className="underline underline-offset-4">
+                  {creditNote.number}
+                </Link>
+              </TableCell>
               {showInvoice && <TableCell>{creditNote.invoice.number}</TableCell>}
               {showInvoice && <TableCell>{creditNote.contact.name}</TableCell>}
               <TableCell>

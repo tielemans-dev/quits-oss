@@ -32,7 +32,7 @@ export function formatDate(
 ): string {
   return new Intl.DateTimeFormat(normalizeLocale(locale), {
     year: "numeric",
-    month: options?.month ?? "long",
+    month: options?.month ?? "short",
     day: "numeric",
     timeZone: normalizeTimeZone(timeZone),
   }).format(new Date(date))

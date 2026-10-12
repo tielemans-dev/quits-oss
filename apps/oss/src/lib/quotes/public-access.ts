@@ -4,6 +4,7 @@ import type { SystemActor } from "../../domain/actor"
 import { recordQuoteCustomerDecision } from "../../domain/commands/quotes"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../db"
+import { documentVatSummary } from "../../domain/documents/vat-summary"
 import { publicPresentationSettingsSelect } from "../documents/public-presentation"
 import {
   getQuotePublicDecisionState,
@@ -53,7 +54,7 @@ export async function loadPublicQuoteByToken(token: string, secret: string) {
   }
 
   return {
-    quote,
+    quote: { ...quote, ...documentVatSummary(quote) },
     decisionState: getQuotePublicDecisionState({
       status: quote.status,
       publicDecisionAt: quote.publicDecisionAt,
@@ -124,7 +125,7 @@ export async function decidePublicQuoteByToken(
     where: { organizationId: target.organizationId },
     select: publicPresentationSettingsSelect,
   })
-  const quote = { ...outcome.result, organization: { settings } }
+  const quote = { ...outcome.result, ...documentVatSummary(outcome.result), organization: { settings } }
   return {
     quote,
     decisionState: getQuotePublicDecisionState({

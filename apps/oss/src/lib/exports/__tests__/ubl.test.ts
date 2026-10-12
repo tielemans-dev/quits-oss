@@ -366,18 +366,18 @@ describe("UBL e-invoice", () => {
     }))).toEqual(["seller.taxId"])
   })
 
-  it("allows an explicitly unregistered seller without VAT ID only when no VAT is charged", () => {
+  it("requires a tax identifier for legacy exempt zero-rate sales even when the seller is unregistered", () => {
     const nonVat = invoice({
       seller: { ...seller, momsRegistered: false, vatId: null },
       lines: [{ description: "Design", quantity: "1", unitPriceNet: "100", lineNet: "100", taxRate: "0", taxCategory: "exempt" }],
     })
-    expect(validateEinvoice(nonVat)).toEqual([])
-    expect(validateEinvoice({ ...nonVat, kind: "creditNote", billingReference: { number: "INV-1", issueDate: "2026-10-01" } })).toEqual([])
+    expect(validateEinvoice(nonVat)).toEqual(["seller.taxId"])
+    expect(validateEinvoice({ ...nonVat, kind: "creditNote", billingReference: { number: "INV-1", issueDate: "2026-10-01" } })).toEqual(["seller.taxId"])
     expect(validateEinvoice({ ...nonVat, lines: invoice().lines })).toEqual(["seller.taxId"])
     expect(validateEinvoice({ ...nonVat, seller: { ...nonVat.seller, legalId: null, electronicAddress: null } }))
-      .toEqual(["seller.legalId", "seller.electronicAddress"])
+      .toEqual(["seller.taxId", "seller.legalId", "seller.electronicAddress"])
     expect(validateEinvoice({ ...nonVat, buyer: { ...buyer, electronicAddress: null } }))
-      .toEqual(["buyer.electronicAddress"])
+      .toEqual(["seller.taxId", "buyer.electronicAddress"])
   })
 
   it("requires a CVR with scheme 0184 for Danish suppliers (DK-R-002, DK-R-014)", () => {

@@ -64,9 +64,9 @@ export function ReceiptsPanel({
     await Promise.all([load(), onChanged()])
   }
   return (
-    <section className="grid gap-3 border-t pt-4" aria-label={t("payments.receipts.title")}>
+    <section className="mt-2 grid gap-3 border-t pt-6" aria-label={t("payments.receipts.title")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-medium">{t("payments.receipts.title")}</h3>
+        <h3 className="text-base font-semibold">{t("payments.receipts.title")}</h3>
         {view?.canCreate ? (
           <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
             {t("payments.receipts.record")}

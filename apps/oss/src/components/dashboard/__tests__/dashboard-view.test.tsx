@@ -314,21 +314,21 @@ describe("page subtitle", () => {
 
   it("is the date in the organization's time zone, not a count", () => {
     const { container } = renderView(activeSummary())
-    expect(subtitle(container)).toBe("Torsdag 8. oktober")
+    expect(subtitle(container)).toBe("Torsdag 8. okt. 2026")
     // The hero counts the invoices; the subtitle must not count them again, in another number.
     expect(subtitle(container)).not.toMatch(/faktura/)
   })
 
   it("reads the day in the summary's zone, so it can differ from UTC", () => {
     const summary = activeSummary({ asOf: "2026-10-08T23:30:00.000Z" })
-    expect(subtitle(renderView(summary).container)).toBe("Fredag 9. oktober")
+    expect(subtitle(renderView(summary).container)).toBe("Fredag 9. okt. 2026")
     cleanup()
-    expect(subtitle(renderView({ ...summary, timezone: "UTC" }).container)).toBe("Torsdag 8. oktober")
+    expect(subtitle(renderView({ ...summary, timezone: "UTC" }).container)).toBe("Torsdag 8. okt. 2026")
   })
 
   it("is the same line when everything is paid", () => {
     const summary = activeSummary({ outstanding: emptyTotal(), overdue: { ...emptyTotal(), oldestDaysOverdue: 0 }, incoming: [], attention: [] })
-    expect(subtitle(renderView(summary).container)).toBe("Torsdag 8. oktober")
+    expect(subtitle(renderView(summary).container)).toBe("Torsdag 8. okt. 2026")
   })
 
   it("keeps the first-run and drafts lines", () => {
@@ -341,7 +341,7 @@ describe("page subtitle", () => {
         <DashboardView summary={activeSummary()} sendReminder={async () => ({ delivery: "sent" })} />
       </I18nProvider>
     )
-    expect(subtitle(container)).toBe("Thursday 8 October")
+    expect(subtitle(container)).toBe("Thursday 8 Oct 2026")
   })
 })
 

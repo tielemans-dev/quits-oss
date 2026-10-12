@@ -1,9 +1,11 @@
 import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
+import { useInvoiceDueDate } from "../../../hooks/use-invoice-due-date"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
 import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
+import { useDocumentTaxRate } from "../../../hooks/use-document-tax-rate"
 import { useOrgPricingSettings } from "../../../hooks/use-org-pricing-settings"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
@@ -62,9 +64,9 @@ function NewInvoicePage() {
   const navigate = useNavigate()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactId, setContactId] = useState("")
-  const [dueDate, setDueDate] = useState("")
+  const [dueDate, setDueDate] = useInvoiceDueDate()
   const [notes, setNotes] = useState("")
-  const [taxRate, setTaxRate] = useState("0")
+  const [taxRate, setTaxRate] = useDocumentTaxRate()
   const [items, setItems] = useState<LineItem[]>([
     { description: "", quantity: "1", unitPrice: "0", catalogItemId: undefined },
   ])
