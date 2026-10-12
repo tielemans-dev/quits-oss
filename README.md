@@ -337,3 +337,4 @@ stops retries, because retrying could duplicate the recipients it accepted. Full
 accepted messages settle without contacting the relay again. Resend keeps its
 existing idempotent retry behavior. A queued delivery keeps the provider recorded
 before its first submission even if deployment settings later change.
+<!-- quits-bot identity test -->
