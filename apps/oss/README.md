@@ -25,6 +25,38 @@ Source-available invoicing for freelancers and small businesses.
 - [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS — UI components
 - [Turbo](https://turbo.build/repo) — Repository task orchestration
 
+## Runtime Settings UI extension
+
+Runtime adopters can supply an organization company-details component in the app's Settings
+page. With no component configured, Settings renders no additional UI. The slot adds no access
+rules or business logic.
+
+```tsx
+import { getRouter } from "@quits/oss"
+import type { SettingsCompanyDetailsProps } from "@quits/oss/runtime/ui"
+
+function CompanyDetails({ organizationId, locale }: SettingsCompanyDetailsProps) {
+  // Render the adopter's organization details here.
+  return <OrganizationDetails organizationId={organizationId} locale={locale} />
+}
+
+export function createAppRouter() {
+  return getRouter({ runtimeUi: { settingsCompanyDetails: CompanyDetails } })
+}
+```
+
+The component receives the organization ID pinned by the authenticated layout and the current
+display locale. It renders immediately after the company card, outside the OSS save form, and
+can own its own form.
+The existing authenticated layout and its permission and capability context still surround it.
+Adopters remain responsible for authorizing their own data operations.
+
+`getRouter` creates a `RuntimeUiProvider` for each router tree. Adopters that create their own
+router can instead import that provider from `@quits/oss/runtime/ui` and use it in the router's
+`Wrap`, with `value={{ settingsCompanyDetails: CompanyDetails }}`. Configuration stays in React
+context rather than a process-wide registry, so separate router trees and server renders do not
+share components. Configure the same component on the server and client for hydration.
+
 ## Getting Started
 
 ### Prerequisites
