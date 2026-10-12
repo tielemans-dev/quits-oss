@@ -17,12 +17,12 @@ async function organization() {
   await ensureTestMembership(id, `qui56-${id}`)
   return id
 }
-async function caller(id: string) {
+async function caller(id: string, requestedOrganizationId?: string) {
   vi.resetModules()
   const { appRouter } = await import("../../router")
   const runtime = await import("../../../lib/runtime/extensions")
   runtime.setRuntimeExtensions([{ id: "v2-test", resolveCapabilities: () => ({ onboardingV2: { enabled: true } }) }])
-  return appRouter.createCaller({ session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
+  return appRouter.createCaller({ requestedOrganizationId, session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
 }
 
 ;(hasTestDatabase ? describe : describe.skip)("onboarding v2 confirmation", () => {
@@ -49,6 +49,17 @@ async function caller(id: string) {
       { scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true },
       { scheme: "vat", value: "DK24256790", countryCode: "DK", isPrimary: false },
     ])
+  })
+  it.each(["nonmember", "organization-mismatch", "denied-permission"])("rejects %s without saving confirmation", async scenario => {
+    const id = await organization()
+    if (scenario === "nonmember") await prisma.member.deleteMany({ where: { organizationId: id } })
+    if (scenario === "denied-permission") await prisma.member.updateMany({ where: { organizationId: id }, data: { role: "accountant" } })
+    const otherId = scenario === "organization-mismatch" ? await organization() : undefined
+    const api = await caller(id, otherId)
+    await expect(api.onboarding.confirmV2(summary())).rejects.toMatchObject({ code: scenario === "organization-mismatch" ? "CONFLICT" : "FORBIDDEN" })
+    expect(await prisma.orgSettings.count({ where: { organizationId: { in: [id, ...(otherId ? [otherId] : [])] } } })).toBe(0)
+    expect(await prisma.organizationTaxId.count({ where: { organizationId: id } })).toBe(0)
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
   })
   it("serializes double submits, returns the original response, and never writes on retry", async () => {
     const id = await organization()
