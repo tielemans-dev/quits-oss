@@ -12,6 +12,7 @@ import { selfhostRuntimeServices } from "../../src/selfhost/runtime"
 import { bootstrapQuitsRuntime } from "../../src/lib/runtime/bootstrap"
 import { signInvoicePaymentToken } from "../../src/lib/payments/public"
 import { translate } from "../../src/lib/i18n/translate"
+import { isPublicDocumentPath } from "../../src/lib/theme"
 import { danishLocale, loginAsAdmin, resetDatabase, seedCompletedSetup, waitForClientReady } from "./support"
 
 // MOCK: synthetic organizations and invoices only; the config refuses any other database.
@@ -21,7 +22,11 @@ async function capture(page: Page, surface: string, locale: string) {
     await page.evaluate(() => localStorage.setItem("quits-theme", "system"))
     await page.reload()
     await waitForClientReady(page)
-    if (!surface.startsWith("pay")) await expect(page.locator("html")).toHaveClass(colorScheme === "dark" ? /dark/ : /^(?!.*\bdark\b)/)
+    // Recipient invoices, quotes and agreements stay light under either browser preference.
+    const publicDocument = isPublicDocumentPath(new URL(page.url()).pathname)
+    const expectedDark = !publicDocument && colorScheme === "dark"
+    await expect(page.locator("html")).toHaveClass(expectedDark ? /\bdark\b/ : /^(?!.*\bdark\b)/)
+    await expect(page.locator("html[data-document]")).toHaveCount(publicDocument ? 1 : 0)
     for (const [device, width] of [["desktop", 1440], ["mobile390", 390]] as const) {
       await page.setViewportSize({ width, height: 1100 })
       await page.screenshot({ path: test.info().outputPath(`${surface}-${locale}-${colorScheme}-${device}-after.png`), fullPage: true })
