@@ -64,7 +64,7 @@ def capture_group(args, language, device, theme):
                     raise
                 print("Network ready", flush=True)
                 page.evaluate("document.fonts.ready.then(() => true)")
-                
+
                 if state == "baseline":
                     page.get_by_text("Finish organization setup", exact=True).wait_for()
                 elif state in {"dashboard", "baseline-dashboard"}:
