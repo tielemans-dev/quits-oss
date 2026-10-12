@@ -1,3 +1,4 @@
+import { useInvoiceDueDate } from "../../../hooks/use-invoice-due-date"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -61,7 +62,7 @@ function NewInvoicePage() {
   const navigate = useNavigate()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactId, setContactId] = useState("")
-  const [dueDate, setDueDate] = useState("")
+  const [dueDate, setDueDate] = useInvoiceDueDate()
   const [notes, setNotes] = useState("")
   const [taxRate, setTaxRate] = useDocumentTaxRate()
   const [items, setItems] = useState<LineItem[]>([
