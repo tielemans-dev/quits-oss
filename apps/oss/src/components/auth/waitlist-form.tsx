@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -28,6 +28,11 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
   const pending = useRef(false)
   const validated = useRef(false)
 
+  useEffect(() => {
+    // Focus only after React commits the enabled checkbox following a rejection.
+    if (consentError && !busy) consentRef.current?.focus()
+  }, [consentError, busy])
+
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (pending.current) return
@@ -53,7 +58,7 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
       if (response.ok) { onJoined(email.trim()); return }
       const body = await response.json().catch(() => null)
       if ((response.status === 400 || response.status === 422) && body?.error === 'consent_required') {
-        setConsent(false); setConsentError(true); consentRef.current?.focus()
+        setConsent(false); setConsentError(true)
       } else if (response.status === 400 || (response.status === 422 && body?.error === 'invalid_email')) {
         setEmailError(true); emailRef.current?.focus()
       } else setBanner(response.status === 429 ? 'rate' : 'network')

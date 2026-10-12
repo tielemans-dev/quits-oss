@@ -103,6 +103,26 @@ describe('signup admission UI', () => {
       expect(screen.getByLabelText('Email').getAttribute('aria-describedby')).toBe('waitlist-email-error')
     }
   })
+  it.each([400, 422])('focuses consent after re-enabling it on a delayed %s rejection', async (status) => {
+    let respond!: (response: Response) => void
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { respond = resolve })))
+    await blocked()
+    const consent = screen.getByRole('checkbox') as HTMLInputElement
+    const email = screen.getByLabelText('Email') as HTMLInputElement
+    fireEvent.change(email, { target: { value: 'edited@example.test' } })
+    fireEvent.click(consent)
+    fireEvent.click(screen.getByRole('button', { name: 'Join the waitlist' }))
+    expect(consent.disabled).toBe(true)
+    expect(consent.checked).toBe(true)
+    expect(email.readOnly).toBe(true)
+    await act(async () => { respond(Response.json({ error: 'consent_required' }, { status })) })
+    expect(consent.disabled).toBe(false)
+    expect(document.activeElement).toBe(consent)
+    expect(consent.checked).toBe(false)
+    expect(consent.getAttribute('aria-describedby')).toBe('waitlist-consent-error')
+    expect(email.value).toBe('edited@example.test')
+    expect(email.readOnly).toBe(false)
+  })
   it('prevents concurrent waitlist requests and preserves values on network failure', async () => {
     let reject!: (value: unknown) => void
     const fetcher = vi.fn(() => new Promise((_resolve, fail) => { reject = fail })); vi.stubGlobal('fetch', fetcher); await blocked()
