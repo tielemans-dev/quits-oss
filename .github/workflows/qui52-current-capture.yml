@@ -14,6 +14,10 @@ on:
       - apps/oss/src/lib/payment-details-block.ts
       - apps/oss/src/components/invoices/invoice-payment-instructions.tsx
       - apps/oss/src/domain/documents/invoice-email.ts
+      - apps/oss/src/domain/documents/issued-invoice.ts
+      - apps/oss/src/domain/documents/issued-settlement.ts
+      - apps/oss/src/domain/documents/settlement.ts
+      - apps/oss/src/trpc/routers/invoices.ts
       - apps/oss/src/routes/_app/invoices/$invoiceId.tsx
 
 permissions:
