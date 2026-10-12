@@ -1,4 +1,3 @@
-import { issuedInvoiceSettlement } from "./documents/issued-settlement"
 import { createHash } from "node:crypto"
 import { Effect } from "effect"
 import type { CreditNoteIssueInput } from "@quits/contracts/credit-notes"
@@ -6,6 +5,7 @@ import type { ApprovalContext } from "./command"
 import { formatIsoDate } from "../lib/exports/format"
 import { lockDocument } from "./documents/locks"
 import { priceCreditNote } from "./documents/credit-pricing"
+import { computeSettlement } from "./documents/settlement"
 import { NotFound, type DomainError } from "./errors"
 import { documentRef } from "./documents/numbering"
 import { Command, Db } from "./services"
@@ -139,7 +139,7 @@ export const paymentRecordApproval = (input: {
 }): Effect.Effect<ApprovalContext, NotFound, Db | Command> =>
   Effect.gen(function* () {
     const invoice = yield* loadInvoice(input.invoiceId)
-    const { balanceDue } = issuedInvoiceSettlement(invoice)
+    const { balanceDue } = computeSettlement(invoice)
     return {
       summary: `Record a ${money(input.amount, invoice.currency)} ${input.method.replaceAll("_", " ")} payment on ${documentRef("invoice", invoice.number)}`,
       version: fingerprint([invoice.currency, invoice.totalGross.toString(), balanceDue.toString()]),
@@ -284,7 +284,7 @@ export const reminderSendApproval = (input: {
   Effect.gen(function* () {
     const invoice = yield* loadInvoice(input.invoiceId)
     const recipient = invoice.contact.email?.trim() || null
-    const { balanceDue } = issuedInvoiceSettlement(invoice)
+    const { balanceDue } = computeSettlement(invoice)
     return {
       summary: `Send a payment reminder for ${documentRef("invoice", invoice.number)} (${money(balanceDue, invoice.currency)} due) to ${recipient ?? invoice.contact.name}`,
       version: fingerprint([invoice.number, balanceDue.toString(), invoice.dueDate.toISOString(), recipient]),

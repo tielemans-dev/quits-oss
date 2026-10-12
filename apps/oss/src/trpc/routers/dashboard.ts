@@ -1,9 +1,9 @@
-import { issuedInvoiceSettlement } from "../../domain/documents/issued-settlement"
 import { dashboardSummarySchema } from "@quits/contracts/dashboard"
 import { dashboardSummary, moneyReceived } from "../../lib/dashboard/summary"
 import { router, authorizedProcedure } from "../init"
 import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
+import { computeSettlement } from "../../domain/documents/settlement"
 import { requireCurrencyExponent } from "@quits/shared/currency"
 
 export const dashboardRouter = router({
@@ -21,7 +21,6 @@ export const dashboardRouter = router({
           status: true,
           valuation: true,
           totalGross: true,
-          issuanceSnapshot: true,
           amountPaid: true,
           amountCredited: true,
           creditNotes: { where: { status: "issued" }, select: { valuation: true } },
@@ -37,7 +36,6 @@ export const dashboardRouter = router({
           status: true,
           paymentStatus: true,
           totalGross: true,
-          issuanceSnapshot: true,
           amountPaid: true,
           amountCredited: true,
           issueDate: true,
@@ -65,7 +63,7 @@ export const dashboardRouter = router({
     for (const invoice of invoices) {
       const b = bucket(invoice.currency)
       if (["sent", "viewed", "overdue"].includes(invoice.status)) {
-        b.outstanding = b.outstanding.plus(issuedInvoiceSettlement(invoice).balanceDue)
+        b.outstanding = b.outstanding.plus(computeSettlement(invoice).balanceDue)
       }
       const valuations = [invoice.valuation, ...invoice.creditNotes.map(note => note.valuation)] as Array<Valuation | null>
       if (valuations.some(value => !value || value.rateSource === "unknown" || value.base.minor === null || value.base.currency !== baseCurrency)) { excludedUnknownValuations++; continue }
@@ -80,7 +78,7 @@ export const dashboardRouter = router({
       baseTotal: { currency: baseCurrency, amount: baseMinor.div(new Prisma.Decimal(10).pow(requireCurrencyExponent(baseCurrency))).toFixed(requireCurrencyExponent(baseCurrency)), excludedUnknownValuations },
       overdueCount: invoices.filter(invoice => invoice.status === "overdue").length,
       totalContacts,
-      recentInvoices: recentInvoices.map(inv => ({ id: inv.id, number: inv.number, contactName: inv.contact.name, total: inv.totalGross.toNumber(), currency: inv.currency, status: inv.status, paymentStatus: inv.paymentStatus, balanceDue: issuedInvoiceSettlement(inv).balanceDue.toNumber(), issueDate: inv.issueDate.toISOString(), dueDate: inv.dueDate.toISOString() })),
+      recentInvoices: recentInvoices.map(inv => ({ id: inv.id, number: inv.number, contactName: inv.contact.name, total: inv.totalGross.toNumber(), currency: inv.currency, status: inv.status, paymentStatus: inv.paymentStatus, balanceDue: computeSettlement(inv).balanceDue.toNumber(), issueDate: inv.issueDate.toISOString(), dueDate: inv.dueDate.toISOString() })),
     }
   }),
 })

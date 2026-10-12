@@ -78,19 +78,16 @@ export function serializePublicInvoiceSession(session: {
   stripeEnabled: boolean
 }, token: string) {
   const { invoice } = session
-  const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
-  // Same source as the invoice email and Stripe checkout (issuedInvoiceSettlement): the issue-time
-  // gross minus this invoice's payments and credits; the row gross only for invoices issued
-  // before snapshots. Kept Prisma-free because this module is bundled for the browser.
-  const totalGross = frozen ? Number(frozen.totals.gross) : toNumber(invoice.totalGross)
+  // Amounts come from the invoice row, the single source of truth (immutable after issue).
+  const totalGross = toNumber(invoice.totalGross)
   const amountPaid = toNumber(invoice.amountPaid)
   const amountCredited = toNumber(invoice.amountCredited)
-  const payable = Math.max(Math.round((totalGross - amountCredited) * 100) / 100, 0)
   const balanceDue =
     session.paymentState === "paid"
       ? 0
-      : Math.max(Math.round((payable - amountPaid) * 100) / 100, 0)
+      : Math.max(Math.round((totalGross - amountCredited - amountPaid) * 100) / 100, 0)
 
+  const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
   const sellerSnapshot = frozen?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot)
   const presentation = resolvePublicPresentation({
     document: { locale: invoice.locale, timezone: invoice.timezone, sellerSnapshot },
@@ -114,13 +111,13 @@ export function serializePublicInvoiceSession(session: {
       dueDate: toDateString(invoice.dueDate),
       supplyDate: frozen ? frozen.supplyDate : (invoice.supplyDate ? toDateString(invoice.supplyDate).slice(0, 10) : null),
       vatRows: frozen ? vatRowsByRate(frozen.vatGroups, frozen.currency) : undefined,
-      rounding: payableRoundingOf({ currency: invoice.currency, subtotalNet: frozen ? Number(frozen.totals.net) : toNumber(invoice.subtotalNet), totalTax: frozen ? Number(frozen.totals.tax) : toNumber(invoice.totalTax), totalGross }),
+      rounding: payableRoundingOf({ currency: invoice.currency, subtotalNet: toNumber(invoice.subtotalNet), totalTax: toNumber(invoice.totalTax), totalGross }),
       totalGross,
       amountPaid,
       amountCredited,
       balanceDue,
-      totalTax: frozen ? Number(frozen.totals.tax) : toNumber(invoice.totalTax),
-      subtotalNet: frozen ? Number(frozen.totals.net) : toNumber(invoice.subtotalNet),
+      totalTax: toNumber(invoice.totalTax),
+      subtotalNet: toNumber(invoice.subtotalNet),
       currency: invoice.currency,
       timezone: presentation.timezone,
       notes: invoice.notes,

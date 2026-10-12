@@ -23,7 +23,7 @@ import {
 } from "@quits/contracts/payments"
 import { actorCan } from "../../domain/actor"
 import { recordPayment, voidPayment } from "../../domain/commands/payments"
-import { issuedInvoiceSettlement } from "../../domain/documents/issued-settlement"
+import { computeSettlement } from "../../domain/documents/settlement"
 import { InvalidState } from "../../domain/errors"
 import { executeCommand, type CommandOutcome } from "../../domain/execute"
 import { prisma } from "../../lib/db"
@@ -119,7 +119,7 @@ export const paymentsRouter = router({
           id: row.id,
           number: row.number,
           currency: row.currency,
-          balanceDue: issuedInvoiceSettlement(row).balanceDue.toFixed(2),
+          balanceDue: computeSettlement(row).balanceDue.toFixed(2),
         })),
         receipts: receipts.map((row) => {
           const allocated = row.payments.reduce(
@@ -229,7 +229,6 @@ export const paymentsRouter = router({
           id: true,
           status: true,
           currency: true,
-          issuanceSnapshot: true,
           totalGross: true,
           amountPaid: true,
           amountCredited: true,
@@ -246,7 +245,7 @@ export const paymentsRouter = router({
         select: { timezone: true },
       })
 
-      const settlement = issuedInvoiceSettlement(invoice)
+      const settlement = computeSettlement(invoice)
       return {
         /** Calendar payment dates are stored as the start of that day in this time zone. */
         timeZone: settings?.timezone ?? "UTC",

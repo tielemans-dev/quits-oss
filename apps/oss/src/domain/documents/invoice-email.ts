@@ -1,6 +1,6 @@
 import { parseBuyerSnapshot } from "@quits/contracts/documents"
 import { issuedInvoiceSnapshot, issuedSeller } from "./issued-invoice"
-import { issuedInvoiceSettlement } from "./issued-settlement"
+import { computeSettlement } from "./settlement"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { Effect } from "effect"
 import { z } from "zod"
@@ -18,6 +18,11 @@ import { lineAmounts } from "../../lib/documents/line-amounts"
 import { documentVatSummary } from "./vat-summary"
 
 type Decimalish = { toNumber(): number }
+
+/** Keep a stored decimal exact (Prisma.Decimal stringifies losslessly). */
+function decimalString(value: Decimalish): string {
+  return typeof (value as { toFixed?: unknown }).toFixed === "function" ? String(value) : String(value.toNumber())
+}
 
 type OrgEmailSettings = {
   companyName: string | null
@@ -129,11 +134,11 @@ export function composeInvoiceEmail(input: {
   const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
   const seller = issuedSeller(invoice.issuanceSnapshot, invoice.sellerSnapshot)
   const buyer = frozen?.buyer ?? parseBuyerSnapshot(invoice.buyerSnapshot)
-  const settlement = issuedInvoiceSettlement({
-    issuanceSnapshot: invoice.issuanceSnapshot,
-    totalGross: invoice.totalGross,
-    amountPaid: invoice.amountPaid,
-    amountCredited: invoice.amountCredited,
+  // Amounts come from the invoice row, the single source of truth (immutable after issue).
+  const settlement = computeSettlement({
+    totalGross: decimalString(invoice.totalGross),
+    amountPaid: decimalString(invoice.amountPaid),
+    amountCredited: decimalString(invoice.amountCredited),
   })
   const vatSummary = documentVatSummary(invoice, frozen ? vatRowsByRate(frozen.vatGroups, frozen.currency) : undefined)
   const content = buildInvoiceEmailContent({
@@ -142,8 +147,8 @@ export function composeInvoiceEmail(input: {
     replyTo: envelope.replyTo,
     invoice: {
       ...invoice,
-      subtotal: frozen ? Number(frozen.totals.net) : invoice.subtotalNet.toNumber(),
-      taxAmount: frozen ? Number(frozen.totals.tax) : invoice.totalTax.toNumber(),
+      subtotal: invoice.subtotalNet.toNumber(),
+      taxAmount: invoice.totalTax.toNumber(),
       balanceDue: settlement.balanceDue.toNumber(),
       total: settlement.totalGross.toNumber(),
       issueDate: frozen?.occurredAt ?? invoice.issueDate,

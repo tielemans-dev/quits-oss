@@ -23,7 +23,8 @@ vi.mock("../payments/stripe", async importOriginal => ({
 import { resolvePublicInvoiceCheckout } from "../payments/public-checkout"
 import { serializePublicInvoiceSession } from "../payments/public-session"
 import { composeInvoiceEmail, type InvoiceForEmail } from "../../domain/documents/invoice-email"
-import { reminderBalanceDue, reminderBlocker } from "../../domain/commands/reminders"
+import { reminderBlocker } from "../../domain/commands/reminders"
+import { computeSettlement } from "../../domain/documents/settlement"
 import { buildReminderEmailContent } from "../emails/reminder-email"
 
 const decimal = (value: number) => new Prisma.Decimal(value)
@@ -48,14 +49,16 @@ const settings = {
   documentSendingDomain: null, documentSendingDomainStatus: null, bankRegNumber: null, bankAccountNumber: null, paymentNote: null,
 }
 
-describe("email, public page and Stripe checkout charge the same balance", () => {
+const reminderBalanceDue = (invoice: typeof base) => computeSettlement(invoice).balanceDue
+
+describe("email, public page, Stripe checkout, reminders and payments all use the invoice row balance", () => {
   beforeEach(() => {
     mocks.create.mockReset()
     mocks.create.mockResolvedValue({ id: "cs_1", url: "https://checkout.example.invalid/cs_1" })
   })
 
   it.each([
-    ["issue-time snapshot gross, not the drifted row gross", frozen, 1750, 2500],
+    ["row gross when an issuance snapshot exists", frozen, 9249, 9999],
     ["row gross for invoices issued before snapshots", null, 9249, 9999],
   ])("uses the %s", async (_name, issuanceSnapshot, balance, gross) => {
     const invoice = { ...base, issuanceSnapshot }
@@ -84,10 +87,9 @@ describe("email, public page and Stripe checkout charge the same balance", () =>
     expect(reminder.html).toContain(emailAmount)
   })
 
-  it("treats an invoice paid to its issue-time gross as settled for reminders, even if the row gross drifted", () => {
-    const invoice = { ...base, issuanceSnapshot: frozen, amountPaid: decimal(2250), amountCredited: decimal(250) }
+  it("settles reminders on the row balance", () => {
+    const invoice = { ...base, issuanceSnapshot: frozen, amountPaid: decimal(9749), amountCredited: decimal(250) }
     expect(reminderBalanceDue(invoice).toNumber()).toBe(0)
     expect(reminderBlocker(invoice)).toBe("settled")
-    expect(reminderBlocker({ ...invoice, issuanceSnapshot: null })).toBeNull()
   })
 })

@@ -31,7 +31,7 @@ import {
 import { markInvoicePaid, undoInvoiceMarkPaid } from "../../domain/commands/paid-moment"
 import { invoicePaidMomentResultSchema } from "@quits/contracts/invoices"
 import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
-import { issuedInvoiceSettlement, issuedInvoiceTotals } from "../../domain/documents/issued-settlement"
+import { computeSettlement } from "../../domain/documents/settlement"
 import { executeCommand } from "../../domain/execute"
 import { markOrganizationInvoicesOverdue } from "../../domain/features/overdue"
 import { router, authorizedProcedure } from "../init"
@@ -66,7 +66,6 @@ function mapInvoiceItemForUi(
 
 function serializeInvoiceForUi<
   Invoice extends {
-    issuanceSnapshot?: unknown
     subtotalNet: { toNumber: () => number }
     totalTax: { toNumber: () => number }
     totalGross: { toNumber: () => number }
@@ -78,23 +77,23 @@ function serializeInvoiceForUi<
   return {
     ...sanitizeDocumentEmailAttempt(invoice),
     ...documentDisplayForUi(invoice),
-    ...issuedInvoiceTotals(invoice),
+    subtotal: invoice.subtotalNet.toNumber(),
+    taxAmount: invoice.totalTax.toNumber(),
+    total: invoice.totalGross.toNumber(),
     items: invoice.items.map((item) => ({ ...item, ...mapInvoiceItemForUi(item, invoice) })),
   }
 }
 
 /** Paid, credited, and outstanding amounts as plain numbers for the UI. */
 function settlementForUi(invoice: {
-  issuanceSnapshot?: unknown
   totalGross: { toNumber: () => number }
   amountPaid: { toNumber: () => number }
   amountCredited: { toNumber: () => number }
 }) {
-  const settlement = issuedInvoiceSettlement({
-    issuanceSnapshot: invoice.issuanceSnapshot,
-    totalGross: invoice.totalGross,
-    amountPaid: invoice.amountPaid,
-    amountCredited: invoice.amountCredited,
+  const settlement = computeSettlement({
+    totalGross: invoice.totalGross.toNumber(),
+    amountPaid: invoice.amountPaid.toNumber(),
+    amountCredited: invoice.amountCredited.toNumber(),
   })
   return {
     amountPaid: settlement.amountPaid.toNumber(),
@@ -139,7 +138,9 @@ export const invoicesRouter = router({
 
       return invoices.map((inv) => ({
         ...sanitizeDocumentEmailAttempt(inv),
-        ...issuedInvoiceTotals(inv),
+        subtotal: inv.subtotalNet.toNumber(),
+        taxAmount: inv.totalTax.toNumber(),
+        total: inv.totalGross.toNumber(),
         ...settlementForUi(inv),
         publicPaymentUrl: getPublicInvoicePaymentUrl(inv),
       }))
@@ -165,7 +166,9 @@ export const invoicesRouter = router({
             ? await previewNextDocumentNumber(ctx.organizationId, "invoice")
             : null,
         agreementTaxRate: invoice.agreement?.taxRateInput ?? invoice.agreement?.taxRate.toString() ?? null,
-        ...issuedInvoiceTotals(invoice),
+        subtotal: invoice.subtotalNet.toNumber(),
+        taxAmount: invoice.totalTax.toNumber(),
+        total: invoice.totalGross.toNumber(),
         ...settlementForUi(invoice),
         publicPaymentUrl: getPublicInvoicePaymentUrl(invoice),
         ...documentDisplayForUi(invoice),
