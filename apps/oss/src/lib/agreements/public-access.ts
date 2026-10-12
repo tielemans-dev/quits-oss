@@ -130,7 +130,9 @@ export async function decidePublicAgreementByToken(
   if (outcome.status !== "completed")
     throw new InvalidState({
       code: outcome.status === "failed" ? (outcome.error.code ?? "invalid") : "retry_later",
-      message: outcome.status === "failed" ? outcome.error.message : "Please try again later",
+      message: outcome.status === "failed"
+        ? outcome.error.code === "invalid" ? translate("agreements.invalidLink", locale) : outcome.error.message
+        : "Please try again later",
     })
   const agreement = outcome.result
   return {
@@ -156,7 +158,9 @@ export async function decidePublicDeliverableByToken(token: string, decision: un
     : await executeCommand(publicRequestDeliverableChanges, { token, note: parsed.note }, options)
   if (outcome.status !== "completed") throw new InvalidState({
     code: outcome.status === "failed" ? outcome.error.code ?? "invalid" : "retry_later",
-    message: outcome.status === "failed" ? outcome.error.message : "Please try again later",
+    message: outcome.status === "failed"
+      ? outcome.error.code === "invalid" ? translate("agreements.invalidLink", locale) : outcome.error.message
+      : "Please try again later",
   })
   return { scope: "sign_off" as const, deliverable: publicDeliverableDto(outcome.result.agreement, outcome.result.line) }
 }
