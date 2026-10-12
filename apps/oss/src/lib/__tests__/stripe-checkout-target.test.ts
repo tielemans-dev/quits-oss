@@ -54,6 +54,55 @@ describe("Stripe Connect checkout target", () => {
     expect(params).not.toHaveProperty("payment_intent_data")
   })
 
+  it("classifies expire errors from another Stripe installation by type and code", async () => {
+    const { client, sessions } = connectClient()
+    const foreignInvalidRequest = (fields: { code?: string; message: string }) =>
+      Object.assign(new Error(fields.message), {
+        type: "StripeInvalidRequestError",
+        rawType: "invalid_request_error",
+        code: fields.code,
+      })
+
+    sessions.expire.mockRejectedValueOnce(
+      foreignInvalidRequest({ code: "resource_missing", message: "No such checkout.session" })
+    )
+    await expect(
+      expireOpenStripeCheckoutSession({
+        target: { kind: "connect", client, stripeAccount },
+        sessionId: "cs_foreign",
+      })
+    ).resolves.toBe("missing")
+    expect(sessions.retrieve).not.toHaveBeenCalled()
+
+    sessions.expire.mockRejectedValueOnce(
+      Object.assign(new Error("No such checkout.session"), {
+        type: "invalid_request_error",
+        code: "resource_missing",
+      })
+    )
+    await expect(
+      expireOpenStripeCheckoutSession({
+        target: { kind: "connect", client, stripeAccount },
+        sessionId: "cs_foreign",
+      })
+    ).resolves.toBe("missing")
+
+    sessions.expire.mockRejectedValueOnce(
+      foreignInvalidRequest({ message: "This Checkout Session has a status of complete and cannot be expired" })
+    )
+    sessions.retrieve.mockResolvedValueOnce({ id: "cs_foreign", status: "complete" })
+    await expect(
+      expireOpenStripeCheckoutSession({
+        target: { kind: "connect", client, stripeAccount },
+        sessionId: "cs_foreign",
+      })
+    ).resolves.toBe("not_open")
+    expect(sessions.retrieve).toHaveBeenCalledWith(
+      "cs_foreign",
+      expect.objectContaining({ stripeAccount })
+    )
+  })
+
   it("expires the session on the connected account", async () => {
     const { client, sessions } = connectClient()
     sessions.expire.mockResolvedValue({ id: "cs_123", status: "expired" })

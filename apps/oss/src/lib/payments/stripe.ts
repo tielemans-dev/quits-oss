@@ -199,8 +199,37 @@ export async function createStripeInvoiceCheckoutSession(
 
 export type CheckoutSessionExpiry = "expired" | "not_open" | "missing"
 
+/**
+ * An injected Connect client may be a different copy of the Stripe SDK, so its errors are not
+ * instances of this package's `Stripe.errors.StripeInvalidRequestError`. The API fields are
+ * stable: `type` / `rawType` of `invalid_request_error`, and stripe-node's own `type` of
+ * `StripeInvalidRequestError`, plus `code` of `resource_missing` when the session is gone.
+ */
+function stripeErrorFields(error: unknown) {
+  if (typeof error !== "object" || error === null) return null
+  const value = error as { type?: unknown; code?: unknown; rawType?: unknown; raw?: unknown }
+  const type = typeof value.type === "string" ? value.type : undefined
+  const code = typeof value.code === "string" ? value.code : undefined
+  const raw = typeof value.raw === "object" && value.raw !== null ? value.raw as { type?: unknown } : undefined
+  const rawType = typeof value.rawType === "string"
+    ? value.rawType
+    : typeof raw?.type === "string"
+      ? raw.type
+      : undefined
+  if (type === undefined && code === undefined && rawType === undefined) return null
+  return { type, code, rawType }
+}
+
+function isInvalidRequest(error: unknown) {
+  const fields = stripeErrorFields(error)
+  if (!fields) return false
+  return fields.type === "invalid_request_error"
+    || fields.rawType === "invalid_request_error"
+    || fields.type === "StripeInvalidRequestError"
+}
+
 function isMissingResource(error: unknown) {
-  return error instanceof Stripe.errors.StripeInvalidRequestError && error.code === "resource_missing"
+  return isInvalidRequest(error) && stripeErrorFields(error)?.code === "resource_missing"
 }
 
 /**
@@ -223,7 +252,7 @@ export async function expireOpenStripeCheckoutSession(input: {
     if (isMissingResource(error)) {
       return "missing"
     }
-    if (!(error instanceof Stripe.errors.StripeInvalidRequestError)) {
+    if (!isInvalidRequest(error)) {
       throw error
     }
     // Only open sessions can be expired; find out whether this one is no longer open.
