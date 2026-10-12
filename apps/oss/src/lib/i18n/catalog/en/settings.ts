@@ -162,6 +162,31 @@ export const enSettingsMessages = {
   "settings.payments.removeSecret": "Remove saved secret key",
   "settings.payments.removeWebhook": "Remove saved webhook secret",
   "settings.payments.undo": "Undo",
+  "settings.payments.connect.title": "Connect Stripe",
+  "settings.payments.connect.description":
+    "Customers pay invoices by card through your Stripe account.",
+  "settings.payments.connect.status.none": "Not connected",
+  "settings.payments.connect.status.pending": "Onboarding incomplete",
+  "settings.payments.connect.status.active": "Active",
+  "settings.payments.connect.status.restricted": "Restricted",
+  "settings.payments.connect.help.none":
+    "Card payments stay off until Stripe is connected.",
+  "settings.payments.connect.help.pending":
+    "Finish onboarding in Stripe to turn card payments on.",
+  "settings.payments.connect.help.active":
+    "Card payments are on. Processing fees are charged on your Stripe account.",
+  "settings.payments.connect.help.restricted":
+    "Stripe is restricting this account. Card payments stay off until you fix it in Stripe.",
+  "settings.payments.connect.account.label": "Stripe account",
+  "settings.payments.connect.action.connect": "Connect Stripe",
+  "settings.payments.connect.action.resume": "Resume onboarding",
+  "settings.payments.connect.action.fix": "Fix in Stripe",
+  "settings.payments.connect.action.disconnect": "Disconnect",
+  "settings.payments.connect.disconnect.title": "Disconnect Stripe?",
+  "settings.payments.connect.disconnect.description":
+    "This removes the connected account from the organization. The account stays open in Stripe.",
+  "settings.payments.connect.disconnect.confirm": "Disconnect",
+  "settings.payments.connect.disconnect.cancel": "Cancel",
   "settings.section.ai.title": "AI Invoice Drafting",
   "settings.section.ai.description":
     "Choose how AI invoice drafts are generated and configure the connection.",

@@ -3,6 +3,7 @@ import { agreementStatusSchema, deliverableBillingStatusSchema, deliverableStatu
 import { creditNoteStatusSchema } from "@quits/contracts/credit-notes"
 import { emailDeliveryOutcomeSchema, emailDeliveryRuntimeStateSchema } from "@quits/contracts/email"
 import { invoiceStatusSchema } from "@quits/contracts/invoices"
+import { stripeAccountStatusSchema } from "@quits/contracts/payments"
 import { reminderStatusSchema } from "@quits/contracts/reminders"
 import { recurringStatusSchema } from "@quits/contracts/recurring"
 import { describe, expect, it } from "vitest"
@@ -32,6 +33,7 @@ const contractStatuses: Partial<Record<StatusDomain, readonly string[]>> = {
   emailDelivery: emailDeliveryOutcomeSchema.options,
   emailSetup: emailDeliveryRuntimeStateSchema.options,
   reminder: reminderStatusSchema.options,
+  stripeAccount: stripeAccountStatusSchema.options,
 }
 
 describe("status tones", () => {
@@ -96,6 +98,10 @@ describe("status tones", () => {
     expect(getStatusTone("recurring", "ended")).toBe("muted")
     expect(getStatusTone("emailDelivery", "unconfirmed")).toBe("warning")
     expect(getStatusTone("reminder", "failed")).toBe("danger")
+    expect(getStatusTone("stripeAccount", "none")).toBe("neutral")
+    expect(getStatusTone("stripeAccount", "pending")).toBe("warning")
+    expect(getStatusTone("stripeAccount", "active")).toBe("success")
+    expect(getStatusTone("stripeAccount", "restricted")).toBe("danger")
   })
 
   it("reads an unknown status as neutral and shows it as it is", () => {
