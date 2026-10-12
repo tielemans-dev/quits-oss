@@ -30,10 +30,12 @@ export const confirmOnboardingV2Schema = z.object({
   companyAddress: z.string().trim().min(1).max(240),
   source: z.enum(["cvr", "manual"]).default("cvr"),
   invoiceNextNum: z.number().int().min(1).max(2147483647).default(1),
-  cvr: z.string().trim().refine(isValidDanishCvr, "CVR must be 8 digits with a valid mod-11 checksum"),
+  cvr: z.string().trim().refine(isValidDanishCvr, "cvr.invalid"),
   companyForm: z.string().trim().min(1).max(80),
   momsRegistered: z.boolean(),
   vatId: z.string().trim().regex(/^DK\d{8}$/).optional(),
+  // Informational client metadata only. Registry contacts are scrubbed server-side.
+  reklamebeskyttet: z.boolean().optional(),
   companyEmail: z.string().trim().email().max(254).nullish(),
   companyPhone: z.string().trim().regex(/^(\+45\s?)?\d{8}$/).nullish(),
   // Only invoice-line suggestions the user accepted. Generation belongs to the lookup/UI layer.
@@ -48,13 +50,13 @@ export const confirmOnboardingV2Schema = z.object({
   }).strict().optional(),
 }).strict().superRefine((value, ctx) => {
   if (new Set(value.catalogSuggestions.map(item => item.name)).size !== value.catalogSuggestions.length) {
-    ctx.addIssue({ code: "custom", path: ["catalogSuggestions"], message: "Suggestion names must be unique" })
+    ctx.addIssue({ code: "custom", path: ["catalogSuggestions"], message: "save.failed" })
   }
   if (value.momsRegistered && value.vatId !== `DK${value.cvr}`) {
-    ctx.addIssue({ code: "custom", path: ["vatId"], message: "VAT-registered companies must provide DK followed by their CVR" })
+    ctx.addIssue({ code: "custom", path: ["vatId"], message: "save.failed" })
   }
   if (!value.momsRegistered && value.vatId !== undefined) {
-    ctx.addIssue({ code: "custom", path: ["vatId"], message: "A company not registered for VAT must omit its VAT ID" })
+    ctx.addIssue({ code: "custom", path: ["vatId"], message: "save.failed" })
   }
 })
 

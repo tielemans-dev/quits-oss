@@ -16,16 +16,16 @@ describe("Danish onboarding v2", () => {
     expect(buildDkPresets(confirmOnboardingV2Schema.parse({ ...input, source: "manual", invoiceNextNum: 42 }))).toMatchObject({ invoiceNextNum: 42, baseCurrency: "DKK" })
   })
   it("maps sole traders to the existing individual identity and adds a non-VAT note", () => {
-    expect(buildDkPresets({ ...company, companyForm: "Enkeltmandsvirksomhed", momsRegistered: false })).toMatchObject({ onboardingInvoicingIdentity: "individual", taxRegime: "eu_vat", taxRate: 0, pricesIncludeTax: false, paymentNote: "Virksomheden er ikke momsregistreret." })
+    expect(buildDkPresets({ ...company, companyForm: "Enkeltmandsvirksomhed", momsRegistered: false })).toMatchObject({ onboardingInvoicingIdentity: "individual", taxRegime: "eu_vat", taxRate: 0, pricesIncludeTax: false, paymentNote: "Der er ikke beregnet moms, da sælger ikke er momsregistreret." })
   })
-  it.each([ ["da-DK", "Virksomheden er ikke momsregistreret."], ["en-US", "The company is not VAT registered."] ])("translates the non-VAT statement for %s and preserves custom notes", (locale, statement) => {
+  it.each([ ["da-DK", "Der er ikke beregnet moms, da sælger ikke er momsregistreret."], ["en-US", "No VAT charged – the seller is not VAT-registered."] ])("translates the non-VAT statement for %s and preserves custom notes", (locale, statement) => {
     expect(nonVatStatement(locale)).toBe(statement)
     expect(withNonVatStatement("Invoice note", false, locale)).toBe(`Invoice note\n${statement}`)
     expect(withNonVatStatement(statement, false, locale)).toBe(statement)
     expect(withNonVatStatement(null, true, locale)).toBeNull()
     expect(withNonVatStatement(null, undefined, locale)).toBeNull()
-    expect(localizedNonVatPaymentNote("Virksomheden er ikke momsregistreret.", false, locale)).toBe(statement)
-    expect(localizedNonVatPaymentNote("Pay by bank transfer", false, locale)).toBe("Pay by bank transfer")
+    expect(localizedNonVatPaymentNote("Der er ikke beregnet moms, da sælger ikke er momsregistreret.", false, locale)).toBe(statement)
+    expect(localizedNonVatPaymentNote("Pay by bank transfer", false, locale)).toBe(`Pay by bank transfer\n${statement}`)
   })
   it("does not preset protected register contacts", () => {
     expect(buildDkPresets({ ...company, companyEmail: "public@example.test", companyPhone: "12345678", reklamebeskyttet: true }, "signup@example.test")).toMatchObject({ companyEmail: "signup@example.test", companyPhone: null })

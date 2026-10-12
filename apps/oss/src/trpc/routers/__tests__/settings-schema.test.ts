@@ -9,6 +9,10 @@ describe("settingsUpdateSchema", () => {
     expect(settingsUpdateSchema.parse({})).not.toHaveProperty("momsRegistered")
     expect(() => settingsUpdateSchema.parse({ momsRegistered: "false" })).toThrow()
   })
+  it("accepts configurable payment terms including immediate payment and rejects invalid days", () => {
+    for (const paymentTermsDays of [0, 14, 30, 3650]) expect(settingsUpdateSchema.parse({ paymentTermsDays })).toEqual({ paymentTermsDays })
+    for (const paymentTermsDays of [-1, 1.5, 3651, null]) expect(() => settingsUpdateSchema.parse({ paymentTermsDays })).toThrow()
+  })
   it("accepts global locale and compliance fields", () => {
     const parsed = settingsUpdateSchema.parse({
       countryCode: "DK",
