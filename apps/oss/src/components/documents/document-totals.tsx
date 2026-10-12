@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+
 import { useI18n } from "../../lib/i18n/react"
 import { formatCurrency } from "../../lib/i18n/format"
 import type { PriceBasis, VatRow } from "../../lib/documents/line-amounts"
@@ -16,6 +18,7 @@ export function DocumentTotals({
   vatRows,
   rounding,
   currency,
+  renderAmount,
 }: {
   priceBasis?: PriceBasis
   subtotal: number
@@ -24,21 +27,24 @@ export function DocumentTotals({
   vatRows?: readonly VatRow[] | null
   rounding?: string | null
   currency: string
+  /** Optional presentation for callers that need separator-aware tabular digits. */
+  renderAmount?: (amount: string) => ReactNode
 }) {
   const { locale } = useI18n()
   const totals = buildTotals({ basis: priceBasis, subtotal, taxAmount, total, vatRows, rounding, currency, locale })
   const money = (amount: string) => formatCurrency(Number(amount), currency, locale)
+  const amount = renderAmount ?? ((value: string) => <span className="num">{money(value)}</span>)
   return (
     <>
       {totals.lines.map((row, index) => (
         <div key={index} className="flex justify-between">
           <span className="text-muted-foreground">{row.label}</span>
-          <span className="num">{money(row.amount)}</span>
+          {amount(row.amount)}
         </div>
       ))}
       <div className="flex justify-between font-semibold text-base border-t pt-2">
         <span>{totals.total.label}</span>
-        <span className="num">{money(totals.total.amount)}</span>
+        {amount(totals.total.amount)}
       </div>
     </>
   )
