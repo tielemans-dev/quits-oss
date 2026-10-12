@@ -112,6 +112,28 @@ describe("invoice list", () => {
     expect(state.settings).toHaveBeenCalledTimes(1)
   })
 
+  it.each([["en-US", "Sent", "Overdue"], ["da-DK", "Sendt", "Forfalden"]])(
+    "uses the balance to distinguish past-due invoice labels in %s",
+    async (locale, sentLabel, overdueLabel) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date("2026-10-12T10:00:00Z"))
+      state.locale = locale
+      state.invoices.mockResolvedValue([
+        { ...common, id: "zero", number: "1042", total: 0, status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11", balanceDue: 0 },
+        { ...common, id: "positive", number: "1043", status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11", balanceDue: 0.01 },
+        { ...common, id: "credited", number: "1044", status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11", balanceDue: 0 },
+      ])
+
+      show(InvoicesRoute)
+      const table = await screen.findByRole("table", { name: locale === "da-DK" ? "Fakturaer" : "Invoices" })
+      const rows = within(table).getAllByRole("row").slice(1)
+      expect(rows).toHaveLength(3)
+      expect(within(rows[0]).getByText(sentLabel).dataset.tone).toBe("info")
+      expect(within(rows[1]).getByText(overdueLabel).dataset.tone).toBe("danger")
+      expect(within(rows[2]).getByText(sentLabel).dataset.tone).toBe("info")
+    }
+  )
+
   it("names each row link with the document, so one customer's invoices differ", async () => {
     show(InvoicesRoute)
     await screen.findByRole("link", { name: "Invoice 1042, Acme" })

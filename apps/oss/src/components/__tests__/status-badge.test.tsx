@@ -30,12 +30,26 @@ describe("StatusBadge", () => {
     (locale, label) => {
       state.locale = locale
       const status = invoiceDisplayStatus(
-        { status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11" },
+        { status: "sent", paymentStatus: "unpaid", balanceDue: 100, dueDate: "2026-10-11" },
         "Europe/Copenhagen",
         new Date("2026-10-12T10:00:00Z")
       )
       render(<StatusBadge domain="invoice" status={status} />)
       expect(screen.getByText(label).dataset.tone).toBe("danger")
+    }
+  )
+
+  it.each([["en-US", "Sent"], ["da-DK", "Sendt"]])(
+    "keeps a zero-balance past-due invoice sent in %s",
+    (locale, label) => {
+      state.locale = locale
+      const status = invoiceDisplayStatus(
+        { status: "sent", paymentStatus: "unpaid", balanceDue: 0, dueDate: "2026-10-11" },
+        "Europe/Copenhagen",
+        new Date("2026-10-12T10:00:00Z")
+      )
+      render(<StatusBadge domain="invoice" status={status} />)
+      expect(screen.getByText(label).dataset.tone).toBe("info")
     }
   )
 

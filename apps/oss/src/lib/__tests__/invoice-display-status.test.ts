@@ -1,12 +1,38 @@
 import { describe, expect, it } from "vitest"
+import { computeSettlement } from "../../domain/documents/settlement"
 import { invoiceDisplayStatus } from "../payments/invoice-display-status"
 
 const now = new Date("2026-10-12T10:00:00Z")
-const invoice = { status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11T00:00:00Z" }
+const invoice = { balanceDue: 100, status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11T00:00:00Z" }
 
 describe("invoiceDisplayStatus", () => {
   it.each(["sent", "viewed"])("shows a past-due %s invoice as overdue before the scheduler runs", status => {
     expect(invoiceDisplayStatus({ ...invoice, status }, "Europe/Copenhagen", now)).toBe("overdue")
+  })
+
+  it.each([
+    [0, 0, 0, "sent"],
+    [100, 0, 0, "overdue"],
+    ["0.01", 0, 0, "overdue"],
+    [100, 40, 0, "overdue"],
+    [100, 100, 0, "paid"],
+    [100, 120, 0, "paid"],
+    [-100, 0, 0, "sent"],
+    [100, 0, 100, "sent"],
+    [100, 0, 120, "sent"],
+    [100, 0, "99.99", "overdue"],
+    [100, 70, 30, "paid"],
+  ])("uses the settlement balance for total=%s, paid=%s, credited=%s", (totalGross, amountPaid, amountCredited, expected) => {
+    const settlement = computeSettlement({ totalGross, amountPaid, amountCredited })
+    expect(invoiceDisplayStatus({
+      ...invoice,
+      paymentStatus: settlement.paymentStatus,
+      balanceDue: settlement.balanceDue.toNumber(),
+    }, "Europe/Copenhagen", now)).toBe(expected)
+  })
+
+  it.each([0, -0.01])("does not derive overdue for a nonpositive balance of %s", balanceDue => {
+    expect(invoiceDisplayStatus({ ...invoice, balanceDue }, "Europe/Copenhagen", now)).toBe("sent")
   })
 
   it.each(["draft", "paid", "cancelled", "credited"])("preserves %s over a past due date", status => {
@@ -48,6 +74,6 @@ describe("invoiceDisplayStatus", () => {
     for (const dueDate of [undefined, "invalid"]) {
       expect(invoiceDisplayStatus({ ...invoice, dueDate }, "UTC", now)).toBe("sent")
     }
-    expect(invoiceDisplayStatus({ status: "overdue", paymentStatus: "partially_paid" }, "UTC", now)).toBe("overdue")
+    expect(invoiceDisplayStatus({ status: "overdue", paymentStatus: "partially_paid", balanceDue: 100 }, "UTC", now)).toBe("overdue")
   })
 })

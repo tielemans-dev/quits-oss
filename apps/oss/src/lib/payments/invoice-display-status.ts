@@ -6,14 +6,14 @@ import { formatIsoDate } from "../exports/format"
  * Overdue stays overdue: that is the more urgent fact.
  */
 export function invoiceDisplayStatus(
-  invoice: { status: string; paymentStatus: string; dueDate?: string | Date },
+  invoice: { status: string; paymentStatus: string; balanceDue: number; dueDate?: string | Date },
   timezone?: string | null,
   now: Date = new Date()
 ) {
   const collectible = ["sent", "viewed", "overdue"].includes(invoice.status)
   if (collectible && invoice.paymentStatus === "paid") return "paid"
   // Due dates are calendar dates stored at UTC midnight. Compare calendar days, not instants.
-  if (collectible && invoice.dueDate) {
+  if (collectible && invoice.balanceDue > 0 && invoice.dueDate) {
     const dueDate = new Date(invoice.dueDate)
     if (Number.isFinite(dueDate.getTime()) && dueDate.toISOString().slice(0, 10) < formatIsoDate(now, timezone)) {
       return "overdue"
