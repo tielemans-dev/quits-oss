@@ -67,6 +67,9 @@ let artifactDirectory: string
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
     expect(parseSellerSnapshot(invoice.sellerSnapshot)?.momsRegistered).toBe(momsRegistered)
     expect(invoice.artifactUblRef).toEqual(expect.any(String))
+    const staging = await prisma.artifactStaging.findFirstOrThrow({ where: { organizationId: id, documentKind: "invoice", documentId: invoice.id } })
+    const frozen = staging.renderInput as { pdf: { org: { cvrLabel?: string } } }
+    expect(frozen.pdf.org.cvrLabel).toBe(momsRegistered ? undefined : locale === "da-DK" ? "CVR-nr." : "CVR no.")
     const storedUbl = await getDocumentArtifactStore()?.get(invoice.artifactUblRef!)
     expect(storedUbl).toBeInstanceOf(Uint8Array)
     const oldPdf = await getDocumentArtifactStore()?.get(invoice.artifactPdfRef!)
