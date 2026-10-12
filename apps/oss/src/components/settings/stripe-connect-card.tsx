@@ -30,8 +30,8 @@ const HELP_KEYS = {
 } as const satisfies Record<StripeAccountStatus, TranslationKey>
 
 /**
- * Hosted Connect status from settings. Account Links and disconnect run in the hosted
- * runtime; this card only shows `stripeAccount` and calls the handlers it is given.
+ * Hosted Connect status from settings. Actions stay disabled until the page passes a
+ * handler registered by the runtime. This card does not call Stripe.
  */
 export function StripeConnectCard({
   account,
@@ -70,44 +70,50 @@ export function StripeConnectCard({
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
           {status === "none" ? (
-            <Button type="button" onClick={onConnect}>
+            <Button type="button" disabled={!onConnect} onClick={onConnect}>
               {t("settings.payments.connect.action.connect")}
             </Button>
           ) : null}
           {status === "pending" ? (
-            <Button type="button" onClick={onResume}>
+            <Button type="button" disabled={!onResume} onClick={onResume}>
               {t("settings.payments.connect.action.resume")}
             </Button>
           ) : null}
           {status === "restricted" ? (
-            <Button type="button" onClick={onFixInStripe}>
+            <Button type="button" disabled={!onFixInStripe} onClick={onFixInStripe}>
               {t("settings.payments.connect.action.fix")}
             </Button>
           ) : null}
           {status !== "none" ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button type="button" variant="outline">
-                  {t("settings.payments.connect.action.disconnect")}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{t("settings.payments.connect.disconnect.title")}</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t("settings.payments.connect.disconnect.description")}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel type="button">
-                    {t("settings.payments.connect.disconnect.cancel")}
-                  </AlertDialogCancel>
-                  <AlertDialogAction type="button" variant="destructive" onClick={() => onDisconnect?.()}>
-                    {t("settings.payments.connect.disconnect.confirm")}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            onDisconnect ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="outline">
+                    {t("settings.payments.connect.action.disconnect")}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("settings.payments.connect.disconnect.title")}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("settings.payments.connect.disconnect.description")}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel type="button">
+                      {t("settings.payments.connect.disconnect.cancel")}
+                    </AlertDialogCancel>
+                    <AlertDialogAction type="button" variant="destructive" onClick={onDisconnect}>
+                      {t("settings.payments.connect.disconnect.confirm")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button type="button" variant="outline" disabled>
+                {t("settings.payments.connect.action.disconnect")}
+              </Button>
+            )
           ) : null}
         </div>
       </CardContent>
