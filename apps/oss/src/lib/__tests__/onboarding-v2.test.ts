@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { confirmOnboardingV2Schema, isValidDanishCvr } from "@quits/contracts/onboarding"
 import { formatDocumentNumber } from "@quits/shared/documents"
 import { buildDkPresets } from "../onboarding/dk-presets"
+import { nonVatStatement, withNonVatStatement, localizedNonVatPaymentNote } from "../documents/non-vat-note"
 import { getCloudOnboardingState } from "../cloud-onboarding"
 
 const company = { companyName: "Test ApS", companyAddress: "Testvej 1, 2. th.\n1000 København", companyForm: "ApS", momsRegistered: true }
@@ -16,6 +17,15 @@ describe("Danish onboarding v2", () => {
   })
   it("maps sole traders to the existing individual identity and adds a non-VAT note", () => {
     expect(buildDkPresets({ ...company, companyForm: "Enkeltmandsvirksomhed", momsRegistered: false })).toMatchObject({ onboardingInvoicingIdentity: "individual", taxRegime: "eu_vat", taxRate: 0, pricesIncludeTax: false, paymentNote: "Virksomheden er ikke momsregistreret." })
+  })
+  it.each([ ["da-DK", "Virksomheden er ikke momsregistreret."], ["en-US", "The company is not VAT registered."] ])("translates the non-VAT statement for %s and preserves custom notes", (locale, statement) => {
+    expect(nonVatStatement(locale)).toBe(statement)
+    expect(withNonVatStatement("Invoice note", false, locale)).toBe(`Invoice note\n${statement}`)
+    expect(withNonVatStatement(statement, false, locale)).toBe(statement)
+    expect(withNonVatStatement(null, true, locale)).toBeNull()
+    expect(withNonVatStatement(null, undefined, locale)).toBeNull()
+    expect(localizedNonVatPaymentNote("Virksomheden er ikke momsregistreret.", false, locale)).toBe(statement)
+    expect(localizedNonVatPaymentNote("Pay by bank transfer", false, locale)).toBe("Pay by bank transfer")
   })
   it("does not preset protected register contacts", () => {
     expect(buildDkPresets({ ...company, companyEmail: "public@example.test", companyPhone: "12345678", reklamebeskyttet: true }, "signup@example.test")).toMatchObject({ companyEmail: "signup@example.test", companyPhone: null })

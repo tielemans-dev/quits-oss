@@ -86,7 +86,7 @@ export const prospectiveRenderInput = (input: {
     // agreed seller identity but are paid to the account in force when they are issued.
     const seller = withInvoicePaymentDetails(
       (invoice.agreementId || invoice.quoteId) ? parseSellerSnapshot(invoice.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds),
-      settings
+      settings, invoice.locale
     )
     const refreshedBuyer = buildBuyerSnapshot(invoice.contact)
     const buyer = (invoice.agreementId || invoice.quoteId) ? parseBuyerSnapshot(invoice.buyerSnapshot) ?? {} : refreshedBuyer
@@ -118,7 +118,7 @@ export const prospectiveRenderInput = (input: {
         return { description: line.description, quantity: num(line.quantity), unitPrice: num(shown.unitPrice), total: num(shown.amount) } }),
     }
     return { ...base, kind: "invoice" as const, recipient: invoice.contact.email?.trim() || null,
-      ...(money ? { ubl: frozenEinvoiceInput({ kind: "invoice", money, contact: invoice.contact, countryCode: invoice.countryCode, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
+      ...(money ? { ubl: frozenEinvoiceInput({ kind: "invoice", money, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
       snapshot: { ...(money ? { money } : {}), purpose: invoice.purpose, agreementId: invoice.agreementId, seller, buyer: pdfInvoice.contact,
         invoice: pdfInvoice, items: invoice.items, supplyDate: invoice.supplyDate,
         pricesIncludeTax: invoice.pricesIncludeTax, countryCode: invoice.countryCode,
@@ -158,7 +158,7 @@ export const prospectiveRenderInput = (input: {
     }
     return { ...base, kind: "creditNote" as const, recipient: null,
       selectionFingerprint: createHash("sha256").update(canonicalizeOffer(selection)).digest("hex"),
-      ubl: frozenEinvoiceInput({ kind: "creditNote", money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) }),
+      ubl: frozenEinvoiceInput({ kind: "creditNote", money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) }),
       snapshot: { money, sellerSnapshot, buyerSnapshot, built, invoiceId: invoice.id,
         currency: invoice.currency, countryCode: invoice.countryCode, locale: invoice.locale,
         timezone: invoice.timezone, taxRegime: invoice.taxRegime, pricesIncludeTax: invoice.pricesIncludeTax },
