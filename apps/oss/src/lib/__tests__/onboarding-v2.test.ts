@@ -62,6 +62,7 @@ describe("Danish onboarding v2", () => {
     { companyPhone: "abc" },
     { invoiceNextNum: 0 },
     { invoiceNextNum: 1.5 },
+    { invoiceNextNum: 2147483647 },
     { vatId: "DK12345678" },
     { vatId: undefined },
     { momsRegistered: false },
