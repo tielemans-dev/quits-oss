@@ -18,10 +18,12 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     // Match the settings lock used by document issuance before checking/resetting its counters.
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
     let existing = await tx.orgSettings.findUnique({ where: { organizationId } })
+    // Use one set of defaults for the whole confirmation, even across midnight.
+    const presets = buildDkPresets(input, signupEmail)
     if (!existing) {
       // Insert inside confirm, then lock before checking issued documents. Another writer may
       // have created settings after the first read, so re-read under the same issuance lock.
-      await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...buildDkPresets(input, signupEmail) }, update: {} })
+      await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...presets, ...(input.settings ? { invoicePrefix: input.settings.invoicePrefix } : {}) }, update: {} })
       await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
       existing = await tx.orgSettings.findUniqueOrThrow({ where: { organizationId } })
     }
@@ -34,7 +36,10 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     if (!input.momsRegistered && !isNonVatRegistrationAllowed()) {
       throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
     }
-    if (await hasIssuedDocuments(tx, organizationId)) {
+    // Pre-issuance-numbering migrations deliberately retain numbered drafts.
+    const numberedDrafts = await tx.invoice.count({ where: { organizationId, status: "draft", number: { not: null } } }) +
+      await tx.quote.count({ where: { organizationId, status: "draft", number: { not: null } } })
+    if (numberedDrafts > 0 || await hasIssuedDocuments(tx, organizationId)) {
       throw new TRPCError({ code: "CONFLICT", message: "save.failed" })
     }
     // The provider owns durable provisioning retries if the following writes roll back.
@@ -43,10 +48,15 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     const completedAt = new Date()
     const result = { status: "complete" as const, version: 2 as const, completedAt: completedAt.toISOString(), bankMissing: !input.bank }
     const settings = {
-      ...buildDkPresets(input, signupEmail),
+      ...presets,
       ...input.settings,
       ...(input.settings ? { currency: input.settings.defaultCurrency, baseCurrency: input.settings.defaultCurrency } : {}),
       taxRate: input.momsRegistered ? input.settings?.taxRate ?? 25 : 0,
+      // Preserve the book re-read under the lock, including a concurrently created row.
+      invoicePrefix: existing.invoicePrefix,
+      invoiceNextNum: Math.max(existing.invoiceNextNum, input.invoiceNextNum),
+      quotePrefix: existing.quotePrefix,
+      quoteNextNum: existing.quoteNextNum,
       bankAccountHolder: input.bank ? input.companyName : null,
       bankName: null,
       bankRegNumber: input.bank?.regNumber ?? null,

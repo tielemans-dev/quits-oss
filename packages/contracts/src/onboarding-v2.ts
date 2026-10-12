@@ -18,7 +18,8 @@ export const DANISH_ONBOARDING_V2_DEFAULTS = {
   taxRate: 25,
   pricesIncludeTax: false,
   paymentTermsDays: 14,
-  invoicePrefix: "2026",
+  // Resolve at use time, including long-running servers across the Danish new year.
+  get invoicePrefix() { return new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Europe/Copenhagen" }).format(new Date()) },
   invoiceNextNum: 1,
   quotePrefix: "QTE",
   quoteNextNum: 1,
