@@ -3,7 +3,7 @@ import { confirmSellerVatStatus, type SellerVatConfirmationTransaction } from ".
 import { setRuntimeExtensions } from "../runtime/extensions"
 const confirm = vi.fn(async () => {})
 const actor = { organizationId: "org", userId: "user", sessionId: "session" }
-const seller = { companyName: "Synthetic Seller", companyAddress: "Testvej 1", countryCode: "DK" }
+const seller = { taxRegime: "eu_vat", companyName: "Synthetic Seller", companyAddress: "Testvej 1", countryCode: "DK" }
 const taxIds = [{ scheme: "cvr", value: "24256790", countryCode: "DK" }]
 const reads = { orgSettings: { findUniqueOrThrow: vi.fn(async () => seller) }, organizationTaxId: { findMany: vi.fn(async () => taxIds) } }
 const tx = reads as unknown as SellerVatConfirmationTransaction
@@ -21,7 +21,7 @@ describe("transactional seller VAT confirmation", () => {
   it.each([true, false, null])("passes explicit registration/withdrawal %s and the final transactional identity", async registered => {
     enabled()
     await confirmSellerVatStatus({ ...actor, tx, registered, token: "signed" })
-    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ ...actor, tx, registered, token: "signed", seller: { ...seller, taxIds } }))
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ ...actor, tx, registered, token: "signed", seller: { companyName: seller.companyName, companyAddress: seller.companyAddress, countryCode: seller.countryCode, taxIds } }))
   })
   it("refuses a supplied choice without evidence, allows unrelated saves, and propagates rollback failures", async () => {
     enabled()

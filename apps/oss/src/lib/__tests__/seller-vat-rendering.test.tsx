@@ -43,8 +43,8 @@ function outputs(locale: string, momsRegistered?: boolean | null, overrides: Par
 }
 describe("seller VAT presentation", () => {
   it.each([
-    ["da-DK", "Ingen moms", "Virksomheden er ikke momsregistreret.", "Betalingsoplysninger"],
-    ["en-US", "No moms", "The company is not VAT registered.", "Payment details"],
+    ["da-DK", "Ingen moms", "Der er ikke beregnet moms, da sælger ikke er momsregistreret.", "Betalingsoplysninger"],
+    ["en-US", "No moms", "No VAT charged – the seller is not VAT-registered.", "Payment details"],
   ])("renders the exact %s note and plain line text before payment", (locale, line, note, paymentTitle) => {
     const [pdf, email, pay] = outputs(locale, false)
     for (const output of [pdf!, email!, pay!]) {
@@ -58,7 +58,7 @@ describe("seller VAT presentation", () => {
   it.each(["da-DK", "en-US"])("keeps registered 25 %% moms text and omits the non-registration note in %s", locale => {
     for (const output of outputs(locale, true)) {
       expect(output).toContain("25 % moms")
-      expect(output).not.toMatch(/The company is not VAT registered|Virksomheden er ikke momsregistreret/)
+      expect(output).not.toContain(nonVatStatement(locale))
     }
   })
   it.each(["da-DK", "en-US"])("removes the onboarding preset after registration but preserves frozen non-registration in %s", locale => {
@@ -67,7 +67,7 @@ describe("seller VAT presentation", () => {
     const notes = `Synthetic document instructions\n${nonVatStatement(locale)}`
     for (const output of outputs(locale, true, { taxRegime: "eu_vat", paymentNote, notes })) {
       expect(output).toContain("25 % moms")
-      expect(output).not.toMatch(/The company is not VAT registered|Virksomheden er ikke momsregistreret/)
+      expect(output).not.toContain(nonVatStatement(locale))
       expect(output).toContain(formatCurrency(125, "DKK", locale))
     }
     const [pdf, email, pay] = outputs(locale, true, { taxRegime: "eu_vat", paymentNote, notes })

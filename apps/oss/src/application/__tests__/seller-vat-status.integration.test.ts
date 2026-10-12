@@ -362,7 +362,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     expect(serializePublicInvoiceSession({ invoice: after, stripeEnabled: false, paymentState: "unpaid" }, "synthetic").invoice.sellerSnapshot?.momsRegistered).toBe(registered)
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })
     const email = composeInvoiceEmail({ invoice: { ...after, number: after.number! }, settings, to: "buyer@example.test", publicPaymentUrl: null }).message.html
-    expect(email.includes("Virksomheden er ikke momsregistreret.")).toBe(!registered)
+    expect(email.includes(nonVatStatement("da-DK"))).toBe(!registered)
     expect((await prisma.issuanceCandidate.findUniqueOrThrow({ where: { id: candidate.id } })).renderInput).toEqual(candidate.renderInput)
     const note = await completed(issueDocument({ kind: "creditNote", actor: ctx.org.actors.admin, commandInput: { invoiceId: ctx.invoice.id, mode: "full", reason: "Synthetic correction" } }))
     expect(note.status).toBe("completed")

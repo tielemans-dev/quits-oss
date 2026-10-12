@@ -500,7 +500,7 @@ function SettingsPage() {
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
-        momsRegistered: sellerVatConfirmationEnabled ? withdrawSellerVatEvidence ? null : sellerVatChoice ?? undefined : momsRegistered,
+        momsRegistered: sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : sellerVatChoice ?? undefined : momsRegistered,
         sellerVatConfirmationToken,
         companyName: companyNameInput || undefined,
         companyAddress: companyAddressInput || undefined,
@@ -819,7 +819,7 @@ function SettingsPage() {
             </div>
 
             {sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
-              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus value={sellerVatChoice} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus value={sellerVatChoice} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
                 <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>
               </div>
             ) : null}
