@@ -66,12 +66,24 @@ let artifactDirectory: string
       const { appRouter } = await import("../../router")
       const api = appRouter.createCaller({ session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
       await api.settings.update({ momsRegistered: false, taxRate: 25 })
-      for (const vat of [undefined, { treatment: "standard" as const, rate: "0.25", country: "DK" }]) {
+      expect(await api.settings.get()).toMatchObject({ momsRegistered: false, taxRate: 25 })
+      // The draft command defaults an omitted document rate to zero, independently of settings.
+      // Exercise both document-level VAT and explicit line VAT through real issuance.
+      for (const { taxRate, vat } of [
+        { taxRate: 25, vat: undefined },
+        { taxRate: undefined, vat: { treatment: "standard" as const, rate: "0.25", country: "DK" } },
+      ]) {
         const taxed = await executeIssuanceCommand(createInvoiceDraft, {
-          contactId: contact.result.id, dueDate: "2026-12-01",
+          contactId: contact.result.id, dueDate: "2026-12-01", taxRate,
           items: [{ description: "VAT-bearing work", quantity: 1, unitPrice: 100, ...(vat ? { vat } : {}) }],
         }, { actor })
         if (taxed.status !== "completed") throw new Error(JSON.stringify(taxed))
+        const taxedDraft = await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id }, include: { items: true } })
+        expect(parseSellerSnapshot(taxedDraft.sellerSnapshot)?.momsRegistered).toBe(false)
+        expect(taxedDraft.totalTax.toNumber()).toBe(25)
+        expect(taxedDraft.items).toHaveLength(1)
+        expect(taxedDraft.items[0]!.taxRate.toNumber()).toBe(25)
+        expect(taxedDraft.items[0]!.lineTax.toNumber()).toBe(25)
         const rejected = await executeIssuanceCommand(sendInvoice, { id: taxed.result.id, allowSendWithoutEmail: true }, { actor })
         expect(rejected.status).not.toBe("completed")
         expect(JSON.stringify(rejected)).toContain("seller_not_vat_registered")
