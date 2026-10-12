@@ -42,7 +42,7 @@ export function buildReminderEmailContent({
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   // Due dates are calendar dates stored as UTC midnight; formatting them in the organization's
   // timezone would show the previous day west of UTC.
-  const dueDate = formatDate(invoice.dueDate, locale, "UTC")
+  const dueDate = formatDate(invoice.dueDate, locale, "UTC", { month: "long" })
   const balance = formatCurrency(invoice.balanceDue, invoice.currency, locale)
   const company = org.companyName ?? safeFromName
 

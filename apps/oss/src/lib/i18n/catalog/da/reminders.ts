@@ -62,4 +62,11 @@ export const daRemindersMessages = {
   "reminders.status.unconfirmed": "Levering ikke bekræftet",
   "reminders.status.failed": "Mislykket",
   "reminders.status.skipped": "Sprunget over",
+  "reminder.before.one": "1 dag før forfald",
+  "reminder.before.other": "{n} dage før forfald",
+  "reminder.onDue": "På forfaldsdagen",
+  "reminder.after.one": "1 dag efter forfald",
+  "reminder.after.other": "{n} dage efter forfald",
+  "reminder.remove": "Fjern påmindelse",
+  "reminder.save": "Gem påmindelser",
 } as const

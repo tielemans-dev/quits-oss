@@ -62,4 +62,11 @@ export const enRemindersMessages = {
   "reminders.status.unconfirmed": "Delivery not confirmed",
   "reminders.status.failed": "Failed",
   "reminders.status.skipped": "Skipped",
+  "reminder.before.one": "1 day before due date",
+  "reminder.before.other": "{n} days before due date",
+  "reminder.onDue": "On the due date",
+  "reminder.after.one": "1 day after due date",
+  "reminder.after.other": "{n} days after due date",
+  "reminder.remove": "Remove reminder",
+  "reminder.save": "Save reminders",
 } as const

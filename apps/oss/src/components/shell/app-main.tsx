@@ -46,9 +46,9 @@ export function AppMain({ banner, children }: { banner?: ReactNode; children: Re
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <header className="sticky top-0 z-20 border-b border-hairline bg-background">
-        <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center gap-2 px-3 md:gap-3 md:px-8">
-          <SidebarTrigger className="-ml-1 size-9 shrink-0" />
+        <div className="relative mx-auto flex h-14 w-full max-w-[1280px] items-center gap-2 px-4 md:gap-3 md:px-8">
           <SearchField onOpen={openPalette} className="max-w-[560px]" />
+          <SidebarTrigger className="size-8 shrink-0 md:absolute md:left-0" />
           <div className="flex-1 max-md:hidden" />
           <NewMenu open={newMenuOpen} onOpenChange={setNewMenuOpen} can={can} ready={ready} readOnly={readOnly} />
         </div>

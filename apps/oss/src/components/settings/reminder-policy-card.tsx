@@ -17,12 +17,12 @@ type Translate = ReturnType<typeof useI18n>["t"]
 
 /** "3 days before due", "on the due date", "7 days after". */
 export function describeReminderOffset(offsetDays: number, t: Translate) {
-  if (offsetDays === 0) return t("reminders.offset.onDue")
-  const count = Math.abs(offsetDays)
+  if (offsetDays === 0) return t("reminder.onDue")
+  const n = Math.abs(offsetDays)
   if (offsetDays < 0) {
-    return count === 1 ? t("reminders.offset.before.one") : t("reminders.offset.before.other", { count })
+    return n === 1 ? t("reminder.before.one") : t("reminder.before.other", { n })
   }
-  return count === 1 ? t("reminders.offset.after.one") : t("reminders.offset.after.other", { count })
+  return n === 1 ? t("reminder.after.one") : t("reminder.after.other", { n })
 }
 
 type ParsedOffsets =
@@ -56,6 +56,7 @@ export function ReminderPolicyCard() {
   const [canUpdate, setCanUpdate] = useState(false)
   const [enabled, setEnabled] = useState(false)
   const [offsets, setOffsets] = useState<string[]>([])
+  const [editingOffset, setEditingOffset] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null)
   // The policy and the user's rights belong to the active organization; `undefined` while loading.
@@ -72,6 +73,7 @@ export function ReminderPolicyCard() {
     setLoaded(false)
     setCanUpdate(false)
     setSaving(false)
+    setEditingOffset(null)
     setMessage(null)
     if (organizationId === undefined) return
     let cancelled = false
@@ -114,6 +116,7 @@ export function ReminderPolicyCard() {
       if (!stillCurrent()) return
       setEnabled(policy.enabled)
       setOffsets(policy.offsetsDays.map(String))
+      setEditingOffset(null)
       setMessage({ kind: "success", text: t("reminders.policy.saved") })
     } catch (error) {
       if (!stillCurrent()) return
@@ -148,32 +151,48 @@ export function ReminderPolicyCard() {
           {offsets.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("reminders.policy.offsets.empty")}</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="grid divide-y rounded-lg border">
               {offsets.map((value, index) => (
-                <div key={index} className="flex items-center gap-1">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    step={1}
-                    min={REMINDER_OFFSET_MIN_DAYS}
-                    max={REMINDER_OFFSET_MAX_DAYS}
-                    className="w-20"
-                    value={value}
-                    disabled={!editable}
-                    onChange={(event) =>
-                      setOffsets((current) =>
-                        current.map((entry, entryIndex) => (entryIndex === index ? event.target.value : entry))
-                      )
-                    }
-                  />
+                <div key={index} data-slot="reminder-offset" data-offset-days={value} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2">
+                  {editingOffset === index ? (
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      step={1}
+                      min={REMINDER_OFFSET_MIN_DAYS}
+                      max={REMINDER_OFFSET_MAX_DAYS}
+                      aria-label={t("reminders.policy.offsets.label")}
+                      className="w-24"
+                      value={value}
+                      disabled={!editable}
+                      autoFocus
+                      onFocus={event => event.target.select()}
+                      onBlur={() => {
+                        if (parseOffsets([value]).ok) setEditingOffset(null)
+                      }}
+                      onKeyDown={event => {
+                        if (event.key === "Enter" && parseOffsets([value]).ok) setEditingOffset(null)
+                      }}
+                      onChange={event => setOffsets(current => current.map((entry, i) => i === index ? event.target.value : entry))}
+                    />
+                  ) : editable ? (
+                    <Button type="button" variant="ghost" className="h-auto justify-start whitespace-normal px-0 text-left" onClick={() => setEditingOffset(index)}>
+                      {describeReminderOffset(Number(value), t)}
+                    </Button>
+                  ) : (
+                    <span className="text-sm font-medium">{describeReminderOffset(Number(value), t)}</span>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-7 text-muted-foreground"
-                    aria-label={t("reminders.policy.offsets.remove")}
+                    className="size-9 text-muted-foreground"
+                    aria-label={t("reminder.remove")}
                     disabled={!editable}
-                    onClick={() => setOffsets((current) => current.filter((_, entryIndex) => entryIndex !== index))}
+                    onClick={() => {
+                      setOffsets(current => current.filter((_, i) => i !== index))
+                      setEditingOffset(null)
+                    }}
                   >
                     <X className="size-3.5" />
                   </Button>
@@ -189,7 +208,10 @@ export function ReminderPolicyCard() {
                 variant="outline"
                 size="sm"
                 disabled={!editable}
-                onClick={() => setOffsets((current) => [...current, ""])}
+                onClick={() => {
+                  setEditingOffset(offsets.length)
+                  setOffsets(current => [...current, ""])
+                }}
               >
                 <Plus className="size-3.5" />
                 {t("reminders.policy.offsets.add")}
@@ -214,7 +236,7 @@ export function ReminderPolicyCard() {
         {editable && (
           <div>
             <Button type="button" onClick={handleSave} disabled={saving || !parsed.ok}>
-              {saving ? t("reminders.policy.saving") : t("reminders.policy.save")}
+              {saving ? t("reminders.policy.saving") : t("reminder.save")}
             </Button>
           </div>
         )}
