@@ -17,11 +17,11 @@ async function handleTrpcRequest(request: Request) {
       }
     } finally { reader?.releaseLock() }
   }
-  const [{ appRouter }, { auth }, { createRequestContext }] = await Promise.all([
-    import("../../../trpc/router"),
-    import("../../../lib/auth"),
-    import("../../../trpc/init"),
-  ])
+  // Vite's SSR runner can expose unfinished exports when overlapping imports
+  // evaluate init and its router dependants concurrently on a cold request.
+  const { auth } = await import("../../../lib/auth")
+  const { createRequestContext } = await import("../../../trpc/init")
+  const { appRouter } = await import("../../../trpc/router")
 
   return fetchRequestHandler({
     endpoint: "/api/trpc",

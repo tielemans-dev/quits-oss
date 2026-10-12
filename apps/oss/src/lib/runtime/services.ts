@@ -1,3 +1,4 @@
+import type { CvrCompany, OnboardingSuggestions } from "@quits/contracts/cvr"
 import type { AiProvider } from "../ai/provider"
 import { setOperationPolicy, type OperationPolicy } from "./operation-policy"
 export type { OperationPolicy, RuntimeOperation, OperationDecision } from "./operation-policy"
@@ -62,7 +63,16 @@ export type DocumentArtifactStore = {
   delete(ref: ArtifactRef): Promise<void>
 }
 
+/** Cloud supplies a server-side registry proxy. Self-host has no lookup provider. */
+export type CvrLookupProvider = {
+  search(query: string, context: CvrLookupContext): Promise<CvrCompany[]>
+  get(cvr: string, context: CvrLookupContext): Promise<CvrCompany | null>
+  suggestions?(cvr: string, context: CvrLookupContext): Promise<OnboardingSuggestions>
+}
+export type CvrLookupContext = { userId: string; organizationId: string; signal: AbortSignal }
+
 export type RuntimeServices = {
+  cvrLookupProvider?: CvrLookupProvider
   operationPolicy?: OperationPolicy
   documentRenderer?: DocumentRenderer
   documentArtifactStore?: DocumentArtifactStore
@@ -123,3 +133,5 @@ export function getDocumentArtifactStore() { return runtimeServices.documentArti
 export function getManagedAiProvider(): AiProvider | undefined {
   return runtimeServices.managedAiProvider
 }
+
+export function getCvrLookupProvider() { return runtimeServices.cvrLookupProvider }

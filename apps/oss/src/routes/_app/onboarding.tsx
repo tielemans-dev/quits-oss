@@ -1,7 +1,9 @@
+import { OnboardingV2 } from "../../components/onboarding-v2/onboarding-v2"
+import { createOnboardingV2Client } from "../../components/onboarding-v2/client"
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
 import type { RuntimeCapabilities } from '@quits/contracts/runtime'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { authClient, useSession } from '../../lib/auth-client'
 import { switchActiveOrganization } from '../../lib/active-organization'
 import { invalidateAppLayoutSession } from '../../lib/app-layout-session'
@@ -116,6 +118,14 @@ function OnboardingPage() {
   const { data: session } = useSession()
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
+  const [v2Availability, setV2Availability] = useState<{ enabled: boolean; suggestions: boolean } | null>(null)
+  useEffect(() => {
+    if (!isCloud || !hasActiveOrg) return
+    let cancelled = false
+    trpc.cvr.available.query().then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2Availability({ enabled: false, suggestions: false }) })
+    return () => { cancelled = true }
+  }, [isCloud, hasActiveOrg])
+
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
@@ -131,6 +141,7 @@ function OnboardingPage() {
   const [runtimeCapabilities, setRuntimeCapabilities] = useState<
     Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'> | null
   >(null)
+  const v2Client = useMemo(() => createOnboardingV2Client(v2Availability?.suggestions ?? false, runtimeCapabilities?.sellerVatConfirmation?.enabled === true), [v2Availability?.suggestions, runtimeCapabilities?.sellerVatConfirmation?.enabled])
   const [values, setValues] = useState<CloudOnboardingValues>(
     DEFAULT_CLOUD_ONBOARDING_VALUES
   )
@@ -565,8 +576,15 @@ function OnboardingPage() {
     )
   }
 
-  if (runtimeCapabilities?.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled) {
+  if (!v2Availability?.enabled && runtimeCapabilities?.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled) {
     return <div className="mx-auto w-full max-w-xl p-6"><CompanySetup onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
+  }
+
+  if (v2Availability?.enabled && session) {
+    return <OnboardingV2 key={`${session.user.id}:${session.session.activeOrganizationId}`} userId={session.user.id} organizationId={session.session.activeOrganizationId!} signupEmail={session.user.email} client={v2Client} confirmationEnabled={runtimeCapabilities?.sellerVatConfirmation?.enabled === true} onComplete={() => {
+      invalidateAppLayoutSession()
+      void navigate({ to: '/' })
+    }} />
   }
 
   return (

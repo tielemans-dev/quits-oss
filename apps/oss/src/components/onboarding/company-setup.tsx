@@ -41,7 +41,7 @@ export function CompanySetup({ onComplete }: { onComplete: () => void }) {
       <Input id="company-query" value={query} minLength={3} maxLength={160} required onChange={event => {
         generation.current++; setBusy(false); setResult(null); setQuery(event.target.value)
       }} />
-      <Button disabled={busy}>{t("onboardingV2.lookup")}</Button>
+      <Button disabled={busy}>{t("sellerSetup.lookup")}</Button>
     </form>
     {result && (result.unavailable || !result.companies.length) && <p role="status">{t("onboardingV2.lookupUnavailable")}</p>}
     {result?.companies.map(company => <div key={company.cvr} className="grid gap-2 rounded-md border p-4">
@@ -50,6 +50,6 @@ export function CompanySetup({ onComplete }: { onComplete: () => void }) {
       {company.presetsAllowed ? <Button variant="outline" onClick={() => setReview({ company })}>{t("onboardingV2.reviewTitle")}</Button>
         : <p>{t("onboardingV2.statusUnknown")}</p>}
     </div>)}
-    <Button variant="outline" onClick={() => { generation.current++; setBusy(false); setReview({}) }}>{t("onboardingV2.manual")}</Button>
+    <Button variant="outline" onClick={() => { generation.current++; setBusy(false); setReview({}) }}>{t("sellerSetup.manual")}</Button>
   </div>
 }

@@ -163,7 +163,7 @@ for (const source of ["settings", "onboarding"] as const) {
       const setup = await seedCompletedSetup(danishLocale)
       await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
         companyName: "Synthetic Seller", companyAddress: "Testvej 1, 1000 København",
-        momsRegistered: null, taxRate: 0,
+        momsRegistered: null, taxRate: 0, bankRegNumber: "0040", bankAccountNumber: "0440116243",
         ...(hosted ? { onboardingStatus: "complete", onboardingVersion: 2, onboardingCompletedAt: new Date(), onboardingInvoicingIdentity: "registered_business" } : {}),
       } })
       await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true } })

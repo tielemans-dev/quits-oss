@@ -31,7 +31,10 @@ async function table() {
 }
 export function installHostedVatFixture() {
   assertDisposable()
-  bootstrapQuitsRuntime({ services: selfhostRuntimeServices(), extensions: [{
+  const company = { cvr: "24256790", name: "Synthetic Seller", address: "Testvej 1, 1000 København", companyForm: "ApS", momsRegistered: true, status: "active" as const, statusClass: "active" as const }
+  bootstrapQuitsRuntime({ services: { ...selfhostRuntimeServices(), cvrLookupProvider: {
+    search: async () => [company], get: async () => company,
+  } }, extensions: [{
     id: "synthetic-ci-operator",
     resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true }, sellerVatConfirmation: { enabled: true } }),
     companyLookup: { async lookup(input) {

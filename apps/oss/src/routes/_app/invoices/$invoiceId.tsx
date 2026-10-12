@@ -1,6 +1,7 @@
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
+import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -193,6 +194,7 @@ async function downloadInvoicePdfFile(invoice: Invoice, _orgSettings: unknown) {
 
 function InvoiceDetailPage() {
   const { t, locale } = useI18n()
+  const bankNudge = useFirstInvoiceBankNudge()
   const trial = useTrialAccess()
   const readOnly = isReadOnly(trial?.subscription ?? null)
   const { invoiceId } = Route.useParams()
@@ -398,6 +400,7 @@ function InvoiceDetailPage() {
     setError(null)
     setActing(true)
     try {
+      if (!await bankNudge.beforeSend()) return
       const result = await trpc.invoices.send.mutate({
         id: invoice.id,
         allowSendWithoutEmail,
@@ -535,6 +538,7 @@ function InvoiceDetailPage() {
 
     return (
       <div className="p-6 max-w-3xl">
+      {bankNudge.dialog}
         <Card>
           <CardHeader>
             <CardTitle>

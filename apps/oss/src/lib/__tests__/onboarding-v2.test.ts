@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest"
-import { confirmOnboardingV2Schema, isValidDanishCvr } from "@quits/contracts/onboarding"
+import { describe, expect, it, vi } from "vitest"
+import { DANISH_ONBOARDING_V2_DEFAULTS, confirmOnboardingV2Schema, isValidDanishCvr } from "@quits/contracts/onboarding"
+import { newDraft, confirmationPayload, draftSchema } from "../../components/onboarding-v2/draft"
 import { formatDocumentNumber } from "@quits/shared/documents"
 import { buildDkPresets } from "../onboarding/dk-presets"
 import { nonVatStatement, withNonVatStatement, localizedNonVatPaymentNote } from "../documents/non-vat-note"
@@ -9,10 +10,31 @@ const company = { companyName: "Test ApS", companyAddress: "Testvej 1, 2. th.\n1
 const input = { ...company, idempotencyKey: "4a8d7e5c-b2f1-4f72-8ba3-b58e21b55d45", cvr: "24256790", vatId: "DK24256790" }
 
 describe("Danish onboarding v2", () => {
+  it("resolves the year on each read in the Danish timezone", () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date("2026-12-31T22:59:59Z"))
+      expect(DANISH_ONBOARDING_V2_DEFAULTS.invoicePrefix).toBe("2026")
+      vi.setSystemTime(new Date("2026-12-31T23:00:00Z"))
+      expect(DANISH_ONBOARDING_V2_DEFAULTS.invoicePrefix).toBe("2027")
+      expect(buildDkPresets(company).invoicePrefix).toBe("2027")
+      expect(newDraft(null, "signup@example.test", false).values.invoicePrefix).toBe("2027")
+      vi.setSystemTime(new Date("2028-07-01T12:00:00Z"))
+      expect(buildDkPresets(company).invoicePrefix).toBe("2028")
+    } finally { vi.useRealTimers() }
+  })
+  it.each([true, false])("keeps registration %s through a serialized draft and validated payload", momsRegistered => {
+    const draft = newDraft(null, "signup@example.test", false)
+    Object.assign(draft.values, { companyName: "Manual company", companyAddress: "Testvej 1", momsRegistered })
+    const restored = draftSchema.parse(JSON.parse(JSON.stringify(draft)))
+    const payload = confirmOnboardingV2Schema.parse(confirmationPayload(restored))
+    expect(payload).toMatchObject({ source: "manual", momsRegistered, settings: { taxRate: momsRegistered ? 25 : 0 } })
+    expect(payload.vatId).toBeUndefined()
+  })
   it("sets every Danish default explicitly for CVR and manual summaries", () => {
     const settings = buildDkPresets(company, "signup@example.test")
-    expect(settings).toMatchObject({ countryCode: "DK", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", currency: "DKK", baseCurrency: "DKK", taxRegime: "eu_vat", taxRate: 25, pricesIncludeTax: false, paymentTermsDays: 14, invoicePrefix: "2026", invoiceNextNum: 1, companyEmail: "signup@example.test", companyPhone: null })
-    expect(formatDocumentNumber(settings.invoicePrefix, settings.invoiceNextNum)).toBe("2026-0001")
+    expect(settings).toMatchObject({ countryCode: "DK", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", currency: "DKK", baseCurrency: "DKK", taxRegime: "eu_vat", taxRate: 25, pricesIncludeTax: false, paymentTermsDays: 14, invoicePrefix: DANISH_ONBOARDING_V2_DEFAULTS.invoicePrefix, invoiceNextNum: 1, companyEmail: "signup@example.test", companyPhone: null })
+    expect(formatDocumentNumber(settings.invoicePrefix, settings.invoiceNextNum)).toBe(`${DANISH_ONBOARDING_V2_DEFAULTS.invoicePrefix}-0001`)
     expect(buildDkPresets(confirmOnboardingV2Schema.parse({ ...input, source: "manual", invoiceNextNum: 42 }))).toMatchObject({ invoiceNextNum: 42, baseCurrency: "DKK" })
   })
   it("maps sole traders to the existing individual identity and adds a non-VAT note", () => {
