@@ -1,3 +1,4 @@
+import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
 import { sellerVatLineText } from "../../../lib/documents/seller-vat"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
@@ -1122,12 +1123,12 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Notes */}
-            {invoice.notes && (
+            {withoutNonVatStatement(invoice.notes, invoice.momsRegistered) && (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   {t("pdf.notes")}
                 </h3>
-                <p className="text-sm whitespace-pre-wrap">{invoice.notes}</p>
+                <p className="text-sm whitespace-pre-wrap">{withoutNonVatStatement(invoice.notes, invoice.momsRegistered)}</p>
               </div>
             )}
           </CardContent>

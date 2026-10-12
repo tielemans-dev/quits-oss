@@ -60,6 +60,7 @@ jobs:
         run: |
           git fetch origin "$EVIDENCE_SHA"
           git show "$EVIDENCE_SHA:apps/oss/playwright.seller-vat.config.ts" > apps/oss/playwright.seller-vat.config.ts
+          git show "$EVIDENCE_SHA:apps/oss/tests/e2e/seller-vat-evidence.ts" > apps/oss/tests/e2e/seller-vat-evidence.ts
           git show "$EVIDENCE_SHA:apps/oss/tests/e2e/seller-vat-before.spec.ts" > apps/oss/tests/e2e/seller-vat-before.spec.ts
       - name: Record source revisions
         run: |
@@ -73,6 +74,8 @@ jobs:
       - name: Install Chromium
         working-directory: apps/oss
         run: bunx playwright install --with-deps chromium
+      - name: Install PDF rasterizer for exported PDF evidence
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - name: Verify feature and capture screenshots
         working-directory: apps/oss
         run: bunx playwright test -c playwright.seller-vat.config.ts

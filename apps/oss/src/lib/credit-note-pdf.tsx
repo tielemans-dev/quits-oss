@@ -1,3 +1,6 @@
+import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { nonVatStatement } from "./documents/non-vat-note"
+import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
@@ -104,6 +107,8 @@ export function CreditNotePdfDocument({
   const locale = creditNote.locale ?? org.locale
   const timezone = creditNote.timezone ?? org.timezone
   const { seller, buyer } = creditNotePdfParties(creditNote, org)
+  const momsRegistered = parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered
+  const reason = withoutNonVatStatement(creditNote.reason, momsRegistered)
   const logo = seller.logo
   const money = (amount: number) => formatCurrency(amount, creditNote.currency, locale)
   const columns = lineColumnKeys(creditNote.pricesIncludeTax === undefined ? undefined : priceBasis(creditNote.pricesIncludeTax))
@@ -203,9 +208,11 @@ export function CreditNotePdfDocument({
           </View>
         </View>
 
+        {momsRegistered === false && <Text style={[styles.reasonText, { marginTop: 24 }]}>{nonVatStatement(locale)}</Text>}
+
         <View style={styles.reason}>
           <Text style={styles.sectionTitle}>{translate("creditNotes.pdf.reason", locale)}</Text>
-          <Text style={styles.reasonText}>{creditNote.reason}</Text>
+          <Text style={styles.reasonText}>{reason}</Text>
         </View>
       </Page>
     </Document>

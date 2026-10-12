@@ -1,4 +1,6 @@
+import { captureInvoiceEmail, captureOnboarding, capturePdf } from "./seller-vat-evidence"
 import { expect, test } from "@playwright/test"
+import { bootstrapQuitsRuntime } from "../../src/lib/runtime/bootstrap"
 import { prisma } from "../../src/lib/db"
 import { signInvoicePaymentToken } from "../../src/lib/payments/public"
 import { danishLocale, loginAsAdmin, resetDatabase, seedCompletedSetup, waitForClientReady } from "./support"
@@ -6,6 +8,7 @@ import { danishLocale, loginAsAdmin, resetDatabase, seedCompletedSetup, waitForC
 // MOCK: synthetic baseline fixture only. Main has no non-registration choice; this is visual evidence, not feature verification.
 for (const locale of ["da-DK", "en-US"]) {
   test(`captures main before non-registration UI in ${locale}`, async ({ page }) => {
+    bootstrapQuitsRuntime({})
     await resetDatabase()
     const setup = await seedCompletedSetup({ ...danishLocale, locale })
     await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
@@ -39,5 +42,8 @@ for (const locale of ["da-DK", "en-US"]) {
         }
       }
     }
+    await captureInvoiceEmail(page, invoice.id, setup.organizationId, locale, `http://127.0.0.1:3040/pay/${encodeURIComponent(token)}`)
+    await capturePdf(page, "invoice", invoice.id, locale)
+    await captureOnboarding(page, setup.organizationId, locale)
   })
 }

@@ -1,3 +1,4 @@
+import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { nonVatStatement } from "./documents/non-vat-note"
 import { sellerVatLineText } from "./documents/seller-vat"
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
@@ -302,6 +303,7 @@ export function buildInvoiceEmailContent({
 }: Omit<SendInvoiceEmailParams, "to">) {
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
+  const notes = withoutNonVatStatement(invoice.notes, invoice.momsRegistered)
   const safeInvoiceNumber = escapeHtml(invoice.number)
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
@@ -330,7 +332,7 @@ export function buildInvoiceEmailContent({
     ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, invoice.momsRegistered)}
     ${totalsBlock(invoice, locale)}
 
-    ${invoice.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
+    ${notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(notes)}</p>` : ""}
     ${invoice.momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
     ${publicPaymentUrl
       ? actionBlock({

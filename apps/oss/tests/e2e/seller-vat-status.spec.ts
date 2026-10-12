@@ -1,3 +1,6 @@
+import { captureDocument, captureInvoiceEmail, captureOnboarding, capturePdf } from "./seller-vat-evidence"
+import { buildCreditNoteEmailContent } from "../../src/lib/emails/credit-note-email"
+import { issueDocument } from "../../src/application/issuance"
 import { expect, test, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { createInvoiceDraft } from "../../src/domain/commands/invoices"
@@ -29,6 +32,7 @@ for (const locale of ["da-DK", "en-US"]) {
     const setup = await seedCompletedSetup({ ...danishLocale, locale })
     await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
       companyName: "Synthetic Seller", companyAddress: "Testvej 1, 1000 København", taxRate: 25,
+      paymentNote: translate("pdf.nonVatRegistered", locale),
       bankRegNumber: "0040", bankAccountNumber: "0440116243",
     } })
     await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345678", countryCode: "DK" } })
@@ -51,7 +55,15 @@ for (const locale of ["da-DK", "en-US"]) {
     if (!actor) throw new Error("Synthetic admin is missing")
     bootstrapQuitsRuntime({})
     const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: "Synthetic Buyer", email: "buyer@example.test", address: "Testvej 2", city: "København", zip: "1000", country: "DK" } })
-    const draft = await executeCommand(createInvoiceDraft, { contactId: contact.id, dueDate: "2026-11-09", supplyDate: "2026-10-11", taxRate: 0,
+    const contradictory = await executeCommand(createInvoiceDraft, { contactId: contact.id, dueDate: "2026-11-09", taxRate: 25,
+      items: [{ description: "Synthetic existing VAT draft", quantity: 1, unitPrice: 100, vat: { treatment: "standard", rate: "25" } }] }, { actor })
+    if (contradictory.status !== "completed") throw new Error(JSON.stringify(contradictory))
+    await page.goto(`/invoices/${contradictory.result.id}`)
+    await waitForClientReady(page)
+    await expect(page.getByText("25 % moms", { exact: true })).toBeVisible()
+    await expect(page.getByText(translate("line.noVat", locale), { exact: true })).toHaveCount(0)
+    await capture(page, "invoice-existing-vat-draft", locale)
+    const draft = await executeCommand(createInvoiceDraft, { contactId: contact.id, notes: translate("pdf.nonVatRegistered", locale), dueDate: "2026-11-09", supplyDate: "2026-10-11", taxRate: 0,
       items: [{ description: "Synthetic consulting", quantity: 2, unitPrice: 500, vat: { treatment: "unclassified_zero", rate: "0" } }] }, { actor })
     if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
     await page.goto(`/invoices/${draft.result.id}`)
@@ -60,11 +72,32 @@ for (const locale of ["da-DK", "en-US"]) {
     await page.getByRole("button", { name: translate("invoices.detail.email.degraded.trigger", locale), exact: true }).click()
     await page.getByRole("button", { name: translate("invoices.detail.email.degraded.confirm", locale), exact: true }).click()
     await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).status).toBe("sent")
+    await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toHaveCount(1)
     await capture(page, "invoice", locale)
     const row = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
     const token = signInvoicePaymentToken({ invoiceId: row.id, keyVersion: row.publicPaymentKeyVersion, scope: "invoice_payment" }, "qui62-browser-payment-test-secret")
     await page.goto(`/pay/${encodeURIComponent(token)}`)
     await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toBeVisible()
+    await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toHaveCount(1)
     await capture(page, "pay", locale)
+    await captureInvoiceEmail(page, row.id, setup.organizationId, locale, `http://127.0.0.1:3040/pay/${encodeURIComponent(token)}`)
+    await capturePdf(page, "invoice", row.id, locale)
+    // Freeze the credit choice from the invoice, even after current settings change.
+    await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { momsRegistered: true } })
+    const outcome = await issueDocument({ kind: "creditNote", actor, commandInput: { invoiceId: row.id, mode: "full", reason: translate("pdf.nonVatRegistered", locale) } })
+    if (outcome.status !== "completed") throw new Error(JSON.stringify(outcome))
+    const credit = await prisma.creditNote.findFirstOrThrow({ where: { invoiceId: row.id }, include: { items: true } })
+    await page.goto(`/credit-notes/${credit.id}`)
+    await waitForClientReady(page)
+    await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toHaveCount(1)
+    await capture(page, "credit-note", locale)
+    await capturePdf(page, "creditNote", credit.id, locale)
+    const creditEmail = buildCreditNoteEmailContent({ creditNote: { number: credit.number, issueDate: credit.issueDate,
+      sellerSnapshot: credit.sellerSnapshot, reason: credit.reason, subtotal: credit.subtotalNet.toNumber(), taxAmount: credit.totalTax.toNumber(), total: credit.totalGross.toNumber(), currency: credit.currency,
+      priceBasis: "net", items: credit.items.map(item => ({ description: item.description, quantity: item.quantity.toNumber(), unitPrice: item.unitPriceNet.toNumber(), total: item.lineNet.toNumber() })) },
+      invoice: { number: row.number!, issueDate: row.issueDate }, org: { locale }, contactName: "Synthetic Buyer" }).html
+    expect(creditEmail.split(translate("pdf.nonVatRegistered", locale))).toHaveLength(2)
+    await captureDocument(page, "credit-note-email", locale, creditEmail)
+    await captureOnboarding(page, setup.organizationId, locale)
   })
 }

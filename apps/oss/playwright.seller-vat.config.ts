@@ -10,7 +10,7 @@ export default defineConfig({
   testMatch: process.env.QUI62_EVIDENCE_REVISION === "before" ? "seller-vat-before.spec.ts" : "seller-vat-status.spec.ts",
   reporter: [["list"], ["html", { outputFolder: "playwright-report/seller-vat", open: "never" }]],
   workers: 1,
-  timeout: 180_000,
+  timeout: 300_000,
   expect: { timeout: 30_000 },
   use: { baseURL, colorScheme: "light", viewport: { width: 1440, height: 1100 }, trace: "retain-on-failure" },
   webServer: {

@@ -1,4 +1,5 @@
 import { invoiceTaxIds, pdfBuyerAddress } from "./documents/invoice-identity"
+import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { nonVatStatement } from "./documents/non-vat-note"
 import { sellerVatLineText } from "./documents/seller-vat"
 import type { DocumentTaxId } from "@quits/contracts/documents"
@@ -274,6 +275,7 @@ export function InvoicePdfDocument({
   invoice: InvoiceForPdf
   org?: OrgSettingsForPdf
 }) {
+  const notes = withoutNonVatStatement(invoice.notes, invoice.momsRegistered)
   const contact = invoice.contact
   const fromName = org.companyName ?? ""
   const locale = org.locale
@@ -286,7 +288,7 @@ export function InvoicePdfDocument({
     vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale,
   })
   const paymentDetails = buildPaymentDetailsBlock(
-    { bankAccount: invoice.bankAccount, note: invoice.paymentNote },
+    { bankAccount: invoice.bankAccount, note: withoutNonVatStatement(invoice.paymentNote, invoice.momsRegistered) },
     invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference,
     locale
   )
@@ -416,10 +418,10 @@ export function InvoicePdfDocument({
         )}
 
         {/* Notes */}
-        {invoice.notes && (
+        {notes && (
           <View style={styles.notes}>
             <Text style={styles.sectionTitle}>{translate("pdf.notes", locale)}</Text>
-            <Text style={styles.notesText}>{invoice.notes}</Text>
+            <Text style={styles.notesText}>{notes}</Text>
           </View>
         )}
         <Text style={styles.footer} fixed>quits.</Text>

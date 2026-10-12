@@ -174,6 +174,7 @@ export const sendCreditNote = defineCommand({
           number: creditNote.number,
           issueDate: creditNote.issueDate,
           reason: creditNote.reason,
+          sellerSnapshot: creditNote.sellerSnapshot,
           subtotal: num(creditNote.subtotalNet),
           taxAmount: num(creditNote.totalTax),
           total: num(creditNote.totalGross),

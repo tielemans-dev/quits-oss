@@ -1,3 +1,4 @@
+import { withoutNonVatStatement } from "../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../lib/documents/non-vat-note"
 import { sellerVatLineText } from "../../lib/documents/seller-vat"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
@@ -119,7 +120,7 @@ function PublicInvoiceDocument({
   const { invoice, paymentState, seller } = state
   const bankTransfer = hasInvoiceBankTransfer(invoice.sellerSnapshot)
   const paymentDetails = buildPaymentDetailsBlock(
-    { bankAccount: invoice.sellerSnapshot?.bankAccount, note: invoice.sellerSnapshot?.paymentNote },
+    { bankAccount: invoice.sellerSnapshot?.bankAccount, note: withoutNonVatStatement(invoice.sellerSnapshot?.paymentNote, invoice.sellerSnapshot?.momsRegistered) },
     invoice.paymentReference?.trim() || invoice.number,
     locale
   )
