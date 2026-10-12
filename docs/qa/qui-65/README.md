@@ -2,10 +2,10 @@
 
 ## Current status
 
-Screenshot capture is pending. Kai paused local browser, dev-server, typecheck and suite work on
-2026-10-12 to give QUI-64 exclusive heavy-work priority on the VPS. No screenshots have been captured.
+Screenshot capture is pending. Kai restricted full browser and screenshot suites to GitHub CI on
+2026-10-12. No local browser or dev-server run is permitted, and no screenshots have been captured.
 The attempted Playwright run found a missing matching Chromium headless-shell executable.
-Install the repository's pinned browser with `bunx playwright install chromium` after Kai clears the host.
+GitHub CI installs the repository's pinned browser with `bunx playwright install --with-deps chromium`.
 Ines must sign off on the completed visual evidence before this draft is ready for Martin.
 
 ## Screenshot matrix
@@ -19,7 +19,7 @@ The test fixture is labeled MOCK and contains synthetic documents and customers 
 It runs against the dedicated disposable database `qui65` on localhost port 55465.
 No mocked data or capture routes are imported into the application.
 
-After the host is available, run from `apps/oss`:
+For the GitHub CI capture runner, run from `apps/oss` against its disposable database:
 
 ```bash
 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55465/qui65 \
@@ -41,3 +41,17 @@ The brief requires `11 Oct 2026`; #127 currently uses `Oct 11, 2026` for English
 `formatShortDate` builds on the existing formatter to honor the quote brief without changing other
 screens. Public issue/decision instants use the document timezone; expiry dates stay calendar dates in UTC.
 QUI-64's public VAT-breakdown markup is untouched.
+
+## CI follow-up
+
+At head `818470e`, the boundary and shared-browser jobs passed. Both verify runs failed only in
+browser smoke. One public quote assertion still expected the previous English date order; the two
+polish fixtures used API sign-in without selecting the organization, unlike the login page.
+The follow-up keeps exact heading assertions, uses the existing UI login helper and asserts that
+the session names the fixture organization. CI now uploads smoke reports and traces on failure.
+
+The 43 targeted date, public quote and app-layout tests passed locally with one worker and a
+worktree-local temp directory. Full browser verification remains in GitHub CI.
+
+Kai owns integration order with #131. Its public quote component/test changes add the opt-in
+separator-aware amount renderer to `/q` totals; this PR does not replace DocumentTotals or its VAT markup.

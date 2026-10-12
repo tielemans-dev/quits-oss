@@ -43,7 +43,7 @@ test("shows the quote and its seller in English for an English seller", async ({
 
   await expect(page.getByText("Quote from E2E Org")).toBeVisible()
   await expect(page.getByText("$100.00").first()).toBeVisible()
-  await expect(page.getByText("Mar 23, 2026")).toBeVisible()
+  await expect(page.getByText("23 Mar 2026", { exact: true })).toBeVisible()
   await expectLogoServedFromRoute(page, "q")
   await expect(page.getByText("Quits")).toHaveCount(0)
 })

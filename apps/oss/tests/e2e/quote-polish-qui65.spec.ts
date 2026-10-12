@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises"
 import { resolve } from "node:path"
 import { expect, test, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
-import { adminCredentials, danishLocale, resetDatabase, seedPublicQuote, usEnglishLocale, waitForClientReady } from "./support"
+import { danishLocale, loginAsAdmin, resetDatabase, seedPublicQuote, usEnglishLocale, waitForClientReady } from "./support"
 
 // MOCK: synthetic quotes, invoices and customers in a disposable test database only.
 // Screenshot mode is test-only and never imported into production code.
@@ -30,9 +30,12 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       const context = await browser.newContext({ locale: "en-US", colorScheme: theme, viewport: { width: 1440, height: 1000 } })
       await context.addInitScript(theme => localStorage.setItem("quits-theme", theme), theme)
       const page = await context.newPage()
-      await page.goto("/login")
-      const signIn = await page.request.post("/api/auth/sign-in/email", { data: { email: adminCredentials.email, password: adminCredentials.password }, headers: { origin: new URL(page.url()).origin } })
-      expect(signIn.ok()).toBe(true)
+      // The login UI selects the admin's organization before loading the app. Signing in
+      // through the API alone leaves activeOrganizationId unset and redirects to onboarding.
+      await loginAsAdmin(page)
+      const session = await page.request.get("/api/auth/get-session")
+      expect(session.ok()).toBe(true)
+      expect(await session.json()).toMatchObject({ session: { activeOrganizationId: quote.organizationId } })
       for (const [viewport, width, height] of [["desktop", 1440, 1000], ["mobile", 390, 844]] as const) {
         await page.setViewportSize({ width, height })
         const suffix = `${locale.locale}-${theme}-${viewport}`
@@ -59,6 +62,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
           await prisma.invoice.update({ where: { id: invoice.id }, data: { number, status: number ? "sent" : "draft" } })
           const response = await page.goto(`/quotes/${quote.id}`)
           await waitForClientReady(page)
+          await expect(page).toHaveURL(new RegExp(`/quotes/${quote.id}$`))
           await expect(page.getByRole("heading", { name: `${da ? "Tilbud" : "Quote"} ${seeded.number}`, exact: true })).toBeVisible()
           if (!before) {
             const banner = number ? (da ? "Faktureret som INV-0002" : "Invoiced as INV-0002") : (da ? "Faktureret som kladde" : "Invoiced as a draft")

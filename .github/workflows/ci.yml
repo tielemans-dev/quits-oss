@@ -126,6 +126,16 @@ jobs:
             apps/oss/test-results/
             apps/oss/playwright-report/
 
+      - name: Upload browser smoke reports and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-smoke-results
+          path: |
+            apps/oss/playwright-report/
+            apps/oss/test-results/
+          retention-days: 7
+
       - name: Verify packed package artifact
         run: node scripts/check-packed-build.mjs
 
