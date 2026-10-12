@@ -10,6 +10,27 @@ const da = (key: Parameters<typeof translate>[0], vars?: Record<string, string |
   translate(key, "da-DK", vars)
 
 describe("activity descriptions", () => {
+  it.each([
+    ["invoice.issued", "Faktura INV-0001 udstedt", "Invoice INV-0001 issued"],
+    ["invoice.credited", "Faktura INV-0001 krediteret med kreditnota CN-0001", "Invoice INV-0001 credited with credit note CN-0001"],
+    ["quote.accepted", "Tilbud INV-0001 accepteret", "Quote INV-0001 accepted"],
+    ["quote.converted", "Tilbud INV-0001 konverteret til faktura INV-0002", "Quote INV-0001 converted to invoice INV-0002"],
+    ["credit_note.issued", "Kreditnota INV-0001 udstedt", "Credit note INV-0001 issued"],
+  ])("localizes %s with payload values", (type, danish, english) => {
+    const event = { type, aggregateType: "document", payload: { number: "INV-0001", creditNoteNumber: "CN-0001", invoiceNumber: "INV-0002" } }
+    expect(describeActivity(event, da)).toBe(danish)
+    expect(describeActivity(event, en)).toBe(english)
+  })
+
+  it("covers every registered quote and credit event in both catalogs without unresolved placeholders", () => {
+    for (const type of Object.keys(eventRegistry).filter(type => /^(quote|credit_note)\./.test(type))) {
+      const event = { type, aggregateType: "document", payload: {} }
+      expect(activityMessageKey(event), type).not.toBeNull()
+      expect(describeActivity(event, da), type).not.toMatch(/[{}]/)
+      expect(describeActivity(event, en), type).not.toMatch(/[{}]/)
+      expect(describeActivity(event, da)).not.toBe(describeActivity(event, en))
+    }
+  })
   it("localizes invoice issuance with its document number", () => {
     const event = { type: "invoice.issued", aggregateType: "invoice", payload: { number: "INV-0002" } }
     expect(describeActivity(event, da)).toBe("Faktura INV-0002 udstedt")

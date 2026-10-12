@@ -1,12 +1,12 @@
 import { useMemo } from "react"
-import { formatCurrency, formatDate, formatNumber } from "../../lib/i18n/format"
+import { formatCurrency, formatDate, formatNumber, formatShortDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 
 /**
  * Money, dates and quantities for a document, in the page's locale and the document's timezone.
  * Dates are written the short way ("Mar 9, 2026", "9. mar. 2026") to fit the page's compact blocks.
  */
-export function useDocumentFormat(timeZone: string) {
+export function useDocumentFormat(timeZone: string, shortDates = false) {
   const { locale } = useI18n()
 
   return useMemo(
@@ -20,15 +20,15 @@ export function useDocumentFormat(timeZone: string) {
         }
       },
       date(value: Date | string) {
-        return formatDate(value, locale, timeZone, { month: "short" })
+        return shortDates ? formatShortDate(value, locale, timeZone) : formatDate(value, locale, timeZone, { month: "short" })
       },
       calendarDate(value: Date | string) {
-        return formatDate(value, locale, "UTC", { month: "short" })
+        return shortDates ? formatShortDate(value, locale, "UTC") : formatDate(value, locale, "UTC", { month: "short" })
       },
       number(value: number) {
         return formatNumber(value, locale)
       },
     }),
-    [locale, timeZone]
+    [locale, timeZone, shortDates]
   )
 }

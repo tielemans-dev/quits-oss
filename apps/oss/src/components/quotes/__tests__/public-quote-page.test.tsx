@@ -111,15 +111,23 @@ describe("PublicQuotePage", () => {
     container.innerHTML = html
     expect(container.querySelectorAll('[data-slot="amount"]')[4]?.textContent).toBe("$1,200.01")
   })
+  it("top-aligns content-sized cards, uses micro labels and right-aligned tabular amounts", () => {
+    const html = page("en-US", <PublicQuotePage token="test" state={{ kind: "ready", decisionState: "pending", seller, quote: baseQuote }} />)
+    expect(html).toContain("items-start")
+    expect(html).not.toContain("flex-col justify-center")
+    expect(html).toMatch(/<h2 class="text-xs font-medium uppercase tracking-wide text-muted-foreground"/)
+    expect(html).toMatch(/<label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"/)
+    expect(html).toContain('class="text-right font-medium tabular-nums"')
+  })
   it.each(["America/New_York", "Pacific/Pago_Pago", "Europe/Copenhagen"])(
     "preserves calendar dates while localizing the issue instant in %s", timezone => {
       const html = page("en-US", <PublicQuotePage token="signed-token" state={{
         kind: "ready", decisionState: "pending", seller,
         quote: { ...baseQuote, timezone },
       }} />)
-      expect(html).toContain("Mar 15, 2026")
-      expect(html).not.toContain("Mar 14, 2026")
-      expect(html).toContain(timezone === "Europe/Copenhagen" ? "Mar 1, 2026" : "Feb 28, 2026")
+      expect(html).toContain("15 Mar 2026")
+      expect(html).not.toContain("14 Mar 2026")
+      expect(html).toContain(timezone === "Europe/Copenhagen" ? "1 Mar 2026" : "28 Feb 2026")
     }
   )
 
@@ -142,7 +150,7 @@ describe("PublicQuotePage", () => {
     expect(html).toContain("QTE-0001")
     expect(html).toContain("Quote from Acme Studio")
     expect(html).toContain("$1,250.00")
-    expect(html).toContain("Mar 15, 2026")
+    expect(html).toContain("15 Mar 2026")
   })
 
   it("renders a read-only accepted state after acceptance", () => {
@@ -164,7 +172,7 @@ describe("PublicQuotePage", () => {
     )
 
     expect(html).toContain("Quote accepted")
-    expect(html).toContain("Decision recorded on Mar 5, 2026.")
+    expect(html).toContain("You accepted the quote on 5 Mar 2026.")
     expect(html).not.toContain("Accept quote")
     expect(html).not.toContain("Reject quote")
   })
@@ -247,7 +255,7 @@ describe("PublicQuotePage", () => {
 
       expect(accepted).toContain("Tilbud accepteret")
       expect(accepted).toContain("Accepteret")
-      expect(accepted).toContain("Dit svar blev registreret den 5. mar. 2026.")
+      expect(accepted).toContain("Du accepterede tilbuddet den 5. mar. 2026.")
       expect(accepted).not.toContain("Acceptér tilbud")
       expect(rejected).toContain("Tilbud afvist")
       expect(rejected).toContain("Afvist")
