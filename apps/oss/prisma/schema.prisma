@@ -168,6 +168,13 @@ model InstallationState {
   @@map("installation_state")
 }
 
+enum StripeAccountStatus {
+  none
+  pending
+  active
+  restricted
+}
+
 model OrgSettings {
   id                                 String       @id @default(cuid())
   organizationId                     String       @unique
@@ -216,6 +223,9 @@ model OrgSettings {
   stripePublishableKey               String?
   stripeSecretKeyEnc                 String?
   stripeWebhookSecretEnc             String?
+  stripeAccountId                    String?              @unique
+  stripeAccountStatus                StripeAccountStatus  @default(none)
+  stripeAccountStatusAt              DateTime?
   documentSendingDomain              String?
   documentSendingDomainProviderId    String?
   documentSendingDomainStatus        String?

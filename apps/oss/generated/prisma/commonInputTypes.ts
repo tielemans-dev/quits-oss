@@ -221,6 +221,13 @@ export type IntNullableFilter<$PrismaModel = never> = {
   not?: Prisma.NestedIntNullableFilter<$PrismaModel> | number | null
 }
 
+export type EnumStripeAccountStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.StripeAccountStatus | Prisma.EnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.StripeAccountStatus[] | Prisma.ListEnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StripeAccountStatus[] | Prisma.ListEnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStripeAccountStatusFilter<$PrismaModel> | $Enums.StripeAccountStatus
+}
+
 export type DecimalNullableWithAggregatesFilter<$PrismaModel = never> = {
   equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel> | null
   in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel> | null
@@ -278,6 +285,16 @@ export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedIntNullableFilter<$PrismaModel>
   _min?: Prisma.NestedIntNullableFilter<$PrismaModel>
   _max?: Prisma.NestedIntNullableFilter<$PrismaModel>
+}
+
+export type EnumStripeAccountStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StripeAccountStatus | Prisma.EnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.StripeAccountStatus[] | Prisma.ListEnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StripeAccountStatus[] | Prisma.ListEnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStripeAccountStatusWithAggregatesFilter<$PrismaModel> | $Enums.StripeAccountStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStripeAccountStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStripeAccountStatusFilter<$PrismaModel>
 }
 
 export type DecimalFilter<$PrismaModel = never> = {
@@ -577,6 +594,13 @@ export type NestedDecimalNullableFilter<$PrismaModel = never> = {
   not?: Prisma.NestedDecimalNullableFilter<$PrismaModel> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
 }
 
+export type NestedEnumStripeAccountStatusFilter<$PrismaModel = never> = {
+  equals?: $Enums.StripeAccountStatus | Prisma.EnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.StripeAccountStatus[] | Prisma.ListEnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StripeAccountStatus[] | Prisma.ListEnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStripeAccountStatusFilter<$PrismaModel> | $Enums.StripeAccountStatus
+}
+
 export type NestedDecimalNullableWithAggregatesFilter<$PrismaModel = never> = {
   equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel> | null
   in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel> | null
@@ -642,6 +666,16 @@ export type NestedFloatNullableFilter<$PrismaModel = never> = {
   gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   not?: Prisma.NestedFloatNullableFilter<$PrismaModel> | number | null
+}
+
+export type NestedEnumStripeAccountStatusWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.StripeAccountStatus | Prisma.EnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  in?: $Enums.StripeAccountStatus[] | Prisma.ListEnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  notIn?: $Enums.StripeAccountStatus[] | Prisma.ListEnumStripeAccountStatusFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumStripeAccountStatusWithAggregatesFilter<$PrismaModel> | $Enums.StripeAccountStatus
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumStripeAccountStatusFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumStripeAccountStatusFilter<$PrismaModel>
 }
 
 export type NestedDecimalFilter<$PrismaModel = never> = {

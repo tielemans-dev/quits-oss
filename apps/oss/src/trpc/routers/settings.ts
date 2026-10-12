@@ -30,6 +30,7 @@ import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode } from "../../lib/compliance/registry"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
+import { orgStripeAccountSchema, type OrgStripeAccount } from "@quits/contracts/payments"
 import {
   normalizeCountryCode,
   validateLocalizedFields,
@@ -183,6 +184,9 @@ const orgSettingsReadSelect = {
   stripePublishableKey: true,
   stripeSecretKeyEnc: true,
   stripeWebhookSecretEnc: true,
+  stripeAccountId: true,
+  stripeAccountStatus: true,
+  stripeAccountStatusAt: true,
   documentSendingDomain: true,
   documentSendingDomainProviderId: true,
   documentSendingDomainStatus: true,
@@ -280,6 +284,12 @@ export const settingsRouter = router({
       aiModel: settings.aiModel,
       stripeByokConfigured: stripeState.configured,
       stripePublishableKey: settings.stripePublishableKey,
+      stripeAccount: readStripeAccount({
+        managed: runtimeCapabilities.payments.managed,
+        accountId: settings.stripeAccountId,
+        status: settings.stripeAccountStatus,
+        statusAt: settings.stripeAccountStatusAt,
+      }),
       primaryTaxId: primaryTaxId?.value ?? null,
       primaryTaxIdScheme: primaryTaxId?.scheme ?? null,
       emailDelivery,
@@ -304,6 +314,13 @@ export const settingsRouter = router({
         ...settingsInput
       } = input
 
+      assertStripeByokWritable({
+        stripePublishableKey,
+        stripeSecretKey,
+        stripeWebhookSecret,
+        clearStripeSecretKey,
+        clearStripeWebhookSecret,
+      })
 
       assertSettingsCurrency(settingsInput.currency)
       assertSettingsCurrency(settingsInput.defaultCurrency)
@@ -578,6 +595,42 @@ export const settingsRouter = router({
       })
     }),
 })
+
+/** Managed payments refuse raw Stripe key writes. Self-hosted installs keep those fields writable. */
+function assertStripeByokWritable(input: {
+  stripePublishableKey?: string
+  stripeSecretKey?: string
+  stripeWebhookSecret?: string
+  clearStripeSecretKey?: boolean
+  clearStripeWebhookSecret?: boolean
+}) {
+  if (!getRuntimeCapabilities().payments.managed) return
+  const writingKeys =
+    input.stripePublishableKey !== undefined ||
+    input.stripeSecretKey !== undefined ||
+    input.stripeWebhookSecret !== undefined ||
+    input.clearStripeSecretKey === true ||
+    input.clearStripeWebhookSecret === true
+  if (!writingKeys) return
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "Stripe keys cannot be saved while card payments are managed",
+  })
+}
+
+function readStripeAccount(input: {
+  managed: boolean
+  accountId: string | null
+  status: OrgStripeAccount["status"]
+  statusAt: Date | null
+}): OrgStripeAccount {
+  return orgStripeAccountSchema.parse({
+    mode: input.managed ? "connect" : "byok",
+    accountId: input.accountId,
+    status: input.status,
+    statusAt: input.statusAt?.toISOString() ?? null,
+  })
+}
 
 function buildDocumentSendingState(input: {
   settings: {
