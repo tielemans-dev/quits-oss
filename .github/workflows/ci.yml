@@ -279,3 +279,142 @@ jobs:
         run: |
           echo "QUI-65 $PHASE evidence: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "A green capture job certifies the manifest has all 56 screenshots and 16 locale files. A failed job may contain partial diagnostics only. Ines visual sign-off remains separate." >> "$GITHUB_STEP_SUMMARY"
+
+  qui56-scope:
+    name: Select PR122 evidence revisions
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 122 && github.event.pull_request.head.ref == 'qui-56-screens'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.revisions.outputs.changed }}
+      baseline: ${{ steps.revisions.outputs.baseline }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Restrict capture to relevant PR122 changes and resolve current main
+        id: revisions
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA" > "$RUNNER_TEMP/qui56-changed.txt"
+          if rg -q '^(\.github/workflows/ci\.yml|scripts/check-qui56-evidence\.mjs|docs/qa/qui-56-screens-integration\.md|apps/oss/(tests/onboarding-v2/|playwright\.runtime-captures\.config\.ts|src/.*onboarding|src/server\.ts)|packages/contracts/src/.*onboarding)' "$RUNNER_TEMP/qui56-changed.txt"; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+          echo "baseline=$(git rev-parse refs/remotes/origin/main^{commit})" >> "$GITHUB_OUTPUT"
+
+  qui56-evidence:
+    name: Authenticated QUI-56 current-main before and PR122 after
+    needs: qui56-scope
+    if: needs.qui56-scope.outputs.changed == 'true'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: qui56_screens_20261012
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qui56_screens_20261012"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/qui56_screens_20261012
+      QUI56_BASELINE_DIR: ${{ github.workspace }}/baseline
+      SCREENSHOT_OUTPUT: ${{ github.workspace }}/artifacts/qui56
+      BASELINE_SHA: ${{ needs.qui56-scope.outputs.baseline }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout immutable PR head and common capture harness
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          path: head
+          persist-credentials: false
+      - name: Checkout independent immutable current-main application
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASELINE_SHA }}
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: head/.bun-version
+      - name: Verify revisions and install frozen dependencies and Prisma clients
+        run: |
+          test "$(git -C head rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git -C baseline rev-parse HEAD)" = "$BASELINE_SHA"
+          for app in baseline head; do
+            (cd "$app" && bun install --frozen-lockfile && bun --filter @quits/oss prisma:generate)
+          done
+      - name: Install lockfile-pinned Chromium for the common head harness
+        working-directory: head/apps/oss
+        run: bunx --no-install playwright install --with-deps chromium
+      - name: Migrate disposable database to exact baseline
+        working-directory: baseline/apps/oss
+        run: bunx --no-install prisma migrate deploy
+      # Common head fixtures select the additive onboarding columns absent from main.
+      # Both exact applications use the same head-migrated disposable schema.
+      - name: Apply head migrations for the common Prisma fixtures
+        working-directory: head/apps/oss
+        run: bunx --no-install prisma migrate deploy
+      - name: Capture baseline with head assertions and real auth
+        working-directory: head
+        env:
+          CAPTURE_PHASES: before
+        run: bash apps/oss/tests/onboarding-v2/capture-runtime.sh
+      - name: Capture head with real auth and one worker
+        working-directory: head
+        env:
+          CAPTURE_PHASES: after
+        run: bash apps/oss/tests/onboarding-v2/capture-runtime.sh
+      - name: Validate complete evidence and write provenance and image hashes
+        id: complete
+        working-directory: head
+        run: node scripts/check-qui56-evidence.mjs "$SCREENSHOT_OUTPUT"
+      - name: Upload successful evidence only
+        id: evidence
+        if: success() && steps.complete.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: qui56-complete-${{ env.HEAD_SHA }}
+          path: artifacts/qui56/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload failed or partial runs as diagnostics only
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qui56-diagnostics-only-${{ env.HEAD_SHA }}
+          path: |
+            artifacts/qui56/
+            head/apps/oss/test-results/
+            head/apps/oss/playwright-report/
+          retention-days: 7
+      - name: Record evidence status and provider limits
+        if: always()
+        env:
+          CAPTURE_STATUS: ${{ steps.complete.outcome }}
+          ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
+        run: |
+          echo "QUI-56 baseline application: $BASELINE_SHA; after application and common harness: $HEAD_SHA" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$CAPTURE_STATUS" = success ] && [ -n "$ARTIFACT_URL" ]; then
+            echo "Complete real-auth evidence, 8 before and 24 after images: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No accepted evidence. Any uploaded partial images are diagnostics only.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo 'Synthetic CVR/billing providers do not prove production registry availability or hosted trial provisioning. Manual captures precede confirmation and do not prove completed save. Ines approval remains required.' >> "$GITHUB_STEP_SUMMARY"

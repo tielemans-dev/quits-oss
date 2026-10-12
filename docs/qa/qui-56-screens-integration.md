@@ -49,8 +49,9 @@ self-hosted installations retain their existing flow without hosted gates.
 `.github/workflows/ci.yml` runs full lint, typecheck, unit/router and integration
 tests, build, one-worker onboarding component acceptance, browser smoke and
 shared product browser scenarios. Its capture jobs cover QUI-64 and the
-PR130-only quote evidence job. There is no authenticated QUI-56 runtime capture
-job. A green ordinary CI run alone cannot satisfy the visual evidence gate.
+PR130-only quote evidence job. The PR122-only authenticated QUI-56 runtime capture job is now included in the
+existing CI workflow, so it can execute before merge. It runs only for relevant
+PR122 changes. A green ordinary CI run alone cannot satisfy the visual evidence gate.
 
 Fresh authenticated current-main before and integrated-head after captures are
 still required in CI, followed by Ines approval. The original mock-auth gallery
@@ -78,8 +79,41 @@ SCREENSHOT_OUTPUT=/absolute/path/to/ci-artifacts/qui56 \
 bash apps/oss/tests/onboarding-v2/capture-runtime.sh
 ```
 
-It runs `bunx playwright test -c playwright.runtime-captures.config.ts --workers=1`
+CI invokes the command separately with `CAPTURE_PHASES=before` and
+`CAPTURE_PHASES=after`, stopping on either failure. It runs
+`bunx playwright test -c playwright.runtime-captures.config.ts --workers=1`
 once per before/after phase. Archive all eight before and 24 after images only
 after successful assertions. Keep a failed or partial run as diagnostics rather
 than accepted visual evidence. This command is recorded for CI and was not run
 locally.
+
+## PR122 CI evidence workflow
+
+The job has only `contents: read`, disables persisted checkout credentials and
+uses no production secrets. It resolves current `origin/main` once in the
+revision-selection job and checks out that immutable SHA independently from the
+immutable pull-request head SHA. The PR base is the stacked parent and is not
+used as the visual baseline. Both checkouts install frozen dependencies and
+generate their own Prisma clients. Chromium comes from the head's frozen
+Playwright dependency. The same head configuration and assertions drive both
+phases, with one worker, without replacing baseline production sources.
+
+Both phases use the same disposable localhost database. Baseline migrations
+are deployed first, then head migrations before capture, because the common
+head fixtures select additive onboarding columns absent from main. This shared
+head-migrated schema is disclosed in the manifest and does not change the
+baseline application or its generated client.
+
+Only after both capture commands exit successfully does
+`scripts/check-qui56-evidence.mjs` verify all eight before and 24 after PNGs and
+write the manifest with application/harness SHAs, run URL, Chromium revision,
+provider and manual-save limits, and SHA-256 image hashes. The successful
+artifact is named `qui56-complete-<head SHA>`. Failures or cancellations upload
+only `qui56-diagnostics-only-<head SHA>`; partial images are not accepted evidence.
+The GitHub run logs retain assertion and server diagnostics.
+
+Static validation for this workflow change passes actionlint, YAML parsing,
+Node syntax, existing runner shell syntax, scoped oxlint and diff whitespace
+checks. No local install, server, browser, build, typecheck or full suite ran.
+No new images were generated locally. CI execution and Ines approval remain
+pending; historical galleries do not satisfy this head's evidence requirement.
