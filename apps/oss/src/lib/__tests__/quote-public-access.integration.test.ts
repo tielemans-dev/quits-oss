@@ -13,6 +13,7 @@ const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 const secret = "quote-public-test-secret"
 
+// MOCK: synthetic organization, contact and financial quote fixture in the test database only.
 async function seedPublicQuote() {
   const orgId = randomUUID()
   const contactId = randomUUID()
@@ -83,6 +84,7 @@ async function seedPublicQuote() {
 describeIfDatabase("quote public access", () => {
   it("returns stored VAT rows before and after a public decision", async () => {
     const quote = await seedPublicQuote()
+    // MOCK: stored 25% VAT amounts for serialization and decision regression coverage.
     await prisma.quote.update({ where: { id: quote.id }, data: { totalTax: "25", totalGross: "125" } })
     await prisma.quoteItem.updateMany({ where: { quoteId: quote.id }, data: {
       taxRate: "25", lineTax: "25", lineGross: "125", unitPriceGross: "125",

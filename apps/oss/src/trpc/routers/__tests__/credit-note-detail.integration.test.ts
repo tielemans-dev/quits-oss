@@ -7,6 +7,7 @@ afterEach(async () => { while (cleanups.length) await cleanups.pop()?.() })
 
 ;(hasTestDatabase ? describe : describe.skip)("issued credit note detail", () => {
   it("loads the issued ID from both lists and preserves tenant isolation", async () => {
+    // MOCK: test-only organization, buyer, invoice and credit note with synthetic amounts.
     const org = await createTestOrganization({ settings: { currency: "DKK" } })
     cleanups.push(org.cleanup)
     const caller = (organizationId: string, userId: string) => appRouter.createCaller({ session: {

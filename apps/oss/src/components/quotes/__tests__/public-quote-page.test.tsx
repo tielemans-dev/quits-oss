@@ -1,9 +1,12 @@
+// @vitest-environment jsdom
+
 import type { ReactNode } from "react"
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { LocalizedDocument } from "../../documents/localized-document"
 import { PublicQuotePage } from "../public-quote-page"
 
+// MOCK: synthetic quote, financial amounts and identities for rendering tests only.
 const baseQuote = {
   id: "quote-1",
   number: "QTE-0001",
@@ -66,7 +69,22 @@ describe("PublicQuotePage", () => {
     expect(html).toContain(subtotal)
     expect(html).toContain(tax)
     expect(html).toContain(total)
-    expect(html).toContain('class="num"')
+    const container = document.createElement("div")
+    container.innerHTML = html
+    const amounts = Array.from(container.querySelectorAll('[data-slot="amount"]'))
+    expect(amounts.map((amount) => amount.textContent)).toEqual(
+      [1000, 250, 1250].map((value) => new Intl.NumberFormat(locale, {
+        style: "currency", currency: "DKK",
+      }).format(value))
+    )
+    expect(amounts.map((amount) => Array.from(amount.querySelectorAll(".tabular-nums"))
+      .map((digits) => digits.textContent))).toEqual([
+      ["1", "000", "00"], ["250", "00"], ["1", "250", "00"],
+    ])
+    for (const amount of amounts) {
+      expect(amount.classList.contains("tabular-nums")).toBe(false)
+      expect(amount.querySelector(".num, svg, [aria-hidden='true']")).toBeNull()
+    }
   })
 
   it("omits VAT for a seller charging no VAT", () => {
@@ -89,7 +107,9 @@ describe("PublicQuotePage", () => {
     expect(html).toContain("Tax 25% of $600.00")
     expect(html).toContain("Tax 12.5% of $400.00")
     expect(html).toContain("Rounding")
-    expect(html).toContain("$1,200.01")
+    const container = document.createElement("div")
+    container.innerHTML = html
+    expect(container.querySelectorAll('[data-slot="amount"]')[4]?.textContent).toBe("$1,200.01")
   })
   it.each(["America/New_York", "Pacific/Pago_Pago", "Europe/Copenhagen"])(
     "preserves calendar dates while localizing the issue instant in %s", timezone => {
