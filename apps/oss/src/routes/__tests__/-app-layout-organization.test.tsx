@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 const state = vi.hoisted(() => ({
   getAppLayoutSession: vi.fn(),
   loadedOrganizationId: "org_a" as string | null,
+  locale: "da-DK" as string | undefined,
   sessionOrganizationId: "org_a" as string | null,
   outletRenders: [] as Array<string | null>,
   reloadPage: vi.fn(),
@@ -26,7 +27,7 @@ vi.mock("@tanstack/react-router", async () => {
         activeOrganizationId: state.loadedOrganizationId,
         runtime: { distribution: "selfhost", billingEnabled: false },
         cloudOnboardingComplete: null,
-        locale: "da-DK",
+        locale: state.locale,
       }),
     }),
     redirect: (payload: unknown) => payload,
@@ -97,6 +98,7 @@ afterEach(() => {
   invalidateAppLayoutSession()
   state.getAppLayoutSession.mockReset()
   resetRequestOrganizationForTesting()
+  state.locale = "da-DK"
   state.loadedOrganizationId = "org_a"
   state.sessionOrganizationId = "org_a"
   state.outletRenders = []
@@ -129,6 +131,25 @@ describe("app layout request organization", () => {
     await act(async () => { await Promise.resolve() })
     expect(state.settingsQuery).not.toHaveBeenCalled()
     expect(screen.getByRole("navigation").textContent).toBe("Fakturaer")
+  })
+
+  it("applies saved English settings after onboarding navigation retains the layout", () => {
+    vi.spyOn(window.navigator, "language", "get").mockReturnValue("da-DK")
+    // MOCK: route context before and after saving onboarding settings and navigating to '/'.
+    // The real app layout and both providers stay mounted across the route update.
+    state.locale = undefined
+    const view = render(<route.component />)
+    const navigation = screen.getByRole("navigation")
+    expect(navigation.textContent).toBe("Fakturaer")
+    expect(document.documentElement.lang).toBe("da")
+
+    state.locale = "en-US"
+    view.rerender(<route.component />)
+
+    expect(screen.getByRole("navigation")).toBe(navigation)
+    expect(navigation.textContent).toBe("Invoices")
+    expect(document.documentElement.lang).toBe("en")
+    expect(state.settingsQuery).not.toHaveBeenCalled()
   })
 
   it("sets the organization of the loaded page once the layout has committed", () => {

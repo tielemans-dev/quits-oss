@@ -48,7 +48,13 @@ export function I18nProvider({
   const isFixed = fixedLocale !== undefined
 
   useEffect(() => {
-    if (isFixed || initialLocale) return
+    if (isFixed) return
+    if (initialLocale) {
+      // Client navigation can retain this provider while loading newly saved organization settings.
+      // Only a changed route locale runs this effect, so manual edits survive ordinary rerenders.
+      setLocale(initialLocale)
+      return
+    }
     // Keep a language that was set meanwhile (the organization's), which wins over the browser's.
     setLocale((current) => (current === SERVER_LOCALE ? detectBrowserLocale() : current))
   }, [isFixed, initialLocale])

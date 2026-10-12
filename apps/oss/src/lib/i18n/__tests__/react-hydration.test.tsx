@@ -85,16 +85,40 @@ describe("nested editable organization locale", () => {
     expect(view.container.textContent).toBe("Fakturaer")
     expect(document.documentElement.lang).toBe("da")
   })
+  it.each([
+    [undefined, "en-US", "Invoices", "en"],
+    ["da-DK", "en-US", "Invoices", "en"],
+    ["en-US", "da-DK", "Fakturaer", "da"],
+  ])("applies a changed route locale from %s to %s without remounting", (before, after, text, language) => {
+    browserLanguage("da-DK")
+    const shell = (locale?: string) => <I18nProvider><I18nProvider initialLocale={locale}><Probe /></I18nProvider></I18nProvider>
+    const view = render(shell(before))
+    view.rerender(shell(after))
+    expect(view.container.textContent).toBe(text)
+    expect(document.documentElement.lang).toBe(language)
+  })
+
+  it("keeps browser fallback when settings remain absent on navigation", () => {
+    browserLanguage("da-DK")
+    const shell = () => <I18nProvider><I18nProvider initialLocale={undefined}><Probe /></I18nProvider></I18nProvider>
+    const view = render(shell())
+    view.rerender(shell())
+    expect(view.container.textContent).toBe("Fakturaer")
+    expect(document.documentElement.lang).toBe("da")
+  })
+
   it("keeps Danish html language in an English browser and follows edits", () => {
     browserLanguage("en-US")
     function Editor() {
       const { setLocale, t } = useI18n()
       return <button onClick={() => setLocale("en-US")}>{t("nav.invoices")}</button>
     }
-    const view = render(<I18nProvider><I18nProvider initialLocale="da-DK"><Editor /></I18nProvider></I18nProvider>)
+    const shell = () => <I18nProvider><I18nProvider initialLocale="da-DK"><Editor /></I18nProvider></I18nProvider>
+    const view = render(shell())
     expect(view.getByRole("button").textContent).toBe("Fakturaer")
     expect(document.documentElement.lang).toBe("da")
     fireEvent.click(view.getByRole("button"))
+    view.rerender(shell())
     expect(document.documentElement.lang).toBe("en")
     expect(view.getByRole("button").textContent).toBe("Invoices")
   })
