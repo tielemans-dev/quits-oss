@@ -1,3 +1,4 @@
+import { quantityDecimalSchema } from "@quits/contracts/invoices"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -356,6 +357,10 @@ function InvoiceDetailPage() {
   async function handleSaveEdit() {
     if (!invoice) return
     setError(null)
+    if (editItems.some((item) => !quantityDecimalSchema.safeParse(item.quantity).success)) {
+      setError(t("docForm.validation.quantityInvalid"))
+      return
+    }
     setActing(true)
     const isCurrent = beginRequest(invoice.id)
     try {
@@ -576,7 +581,7 @@ function InvoiceDetailPage() {
             <div className="grid gap-3">
               <Label>{t("docForm.lineItems")}</Label>
               <div className="rounded-md border">
-                <div className="grid grid-cols-[180px_1fr_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
+                <div className="hidden md:grid md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
                   <span>{t("docForm.column.item")}</span>
                   <span>{t("docForm.column.description")}</span>
                   <span>{t("docForm.column.qty")}</span>
@@ -587,7 +592,7 @@ function InvoiceDetailPage() {
                 {editItems.map((item, index) => (
                   <div
                     key={index}
-                    className="grid grid-cols-[180px_1fr_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
+                    className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
                   >
                     <Select
                       disabled={!!item.deliverableId}
@@ -611,16 +616,19 @@ function InvoiceDetailPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
+                    <Textarea
+                      className="min-w-0 [overflow-wrap:anywhere]"
+                      aria-label={t("docForm.column.description")}
                       placeholder={t("docForm.column.description")}
                       disabled={!!item.deliverableId}
                       value={item.description}
                       onChange={(e) => updateEditItem(index, "description", e.target.value)}
                     />
                     <Input
-                      type="number"
-                      min="0.000001"
-                      step="0.000001"
+                      type="text"
+                      inputMode="decimal"
+                      aria-label={t("docForm.column.qty")}
+                      aria-invalid={!quantityDecimalSchema.safeParse(item.quantity).success}
                       disabled={!!item.deliverableId}
                       value={item.quantity || ""}
                       onChange={(e) =>
