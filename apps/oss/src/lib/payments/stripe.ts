@@ -1,7 +1,11 @@
 import Stripe from "stripe"
 import { prisma } from "../db"
 import { getRuntimeExtensions } from "../runtime/extensions"
-import type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "../runtime/stripe-checkout-target"
+import type {
+  StripeCheckoutTarget,
+  StripeCheckoutTargetContext,
+  StripeConnectCheckoutClient,
+} from "../runtime/stripe-checkout-target"
 import { decryptSecret } from "../secrets"
 import { toStripeMinorUnits } from "./stripe-amounts"
 
@@ -42,6 +46,11 @@ export function getStripePaymentCredentials(
 export function createStripeClient(secretKey: string, options?: { timeoutMs?: number }) {
   return new Stripe(secretKey, options?.timeoutMs ? { timeout: options.timeoutMs } : undefined)
 }
+
+/** A platform Stripe client must be usable as a connect checkout client. */
+type _SdkFitsConnectClient = Stripe extends StripeConnectCheckoutClient ? true : never
+const _sdkFitsConnectClient: _SdkFitsConnectClient = true
+void _sdkFitsConnectClient
 
 /**
  * The first extension that returns a target wins. Otherwise the organization's own
@@ -169,20 +178,9 @@ function requireConnectAccount(target: StripeCheckoutTarget): StripeCheckoutTarg
   return target
 }
 
-function stripeClientFor(target: StripeCheckoutTarget, timeoutMs?: number) {
-  if (target.kind === "connect") return target.client
-  return createStripeClient(target.secretKey, timeoutMs ? { timeoutMs } : undefined)
-}
-
 /** Stripe-Account header for a direct charge. Omitted for BYOK, which uses the org's own key. */
-function connectRequestOptions(
-  target: StripeCheckoutTarget,
-  timeoutMs?: number
-): Stripe.RequestOptions | undefined {
-  if (target.kind !== "connect") return undefined
-  return timeoutMs
-    ? { stripeAccount: target.stripeAccount, timeout: timeoutMs }
-    : { stripeAccount: target.stripeAccount }
+function connectRequestOptions(stripeAccount: string, timeoutMs?: number): { stripeAccount: string; timeout?: number } {
+  return timeoutMs ? { stripeAccount, timeout: timeoutMs } : { stripeAccount }
 }
 
 export async function createStripeInvoiceCheckoutSession(
@@ -192,12 +190,11 @@ export async function createStripeInvoiceCheckoutSession(
   }
 ) {
   const target = targetForCheckout(input)
-  const stripe = stripeClientFor(target)
   const params = invoiceCheckoutSessionParams(input)
-  const options = connectRequestOptions(target)
-  return options
-    ? stripe.checkout.sessions.create(params, options)
-    : stripe.checkout.sessions.create(params)
+  if (target.kind === "connect") {
+    return target.client.checkout.sessions.create(params, connectRequestOptions(target.stripeAccount))
+  }
+  return createStripeClient(target.secretKey).checkout.sessions.create(params)
 }
 
 export type CheckoutSessionExpiry = "expired" | "not_open" | "missing"
@@ -218,12 +215,9 @@ export async function expireOpenStripeCheckoutSession(input: {
   sessionId: string
 }): Promise<CheckoutSessionExpiry> {
   const target = targetForExpiry(input)
-  const stripe = stripeClientFor(target, EXPIRE_TIMEOUT_MS)
-  const options = connectRequestOptions(target, EXPIRE_TIMEOUT_MS)
+  const sessionApi = checkoutSessionApi(target)
   try {
-    await (options
-      ? stripe.checkout.sessions.expire(input.sessionId, options)
-      : stripe.checkout.sessions.expire(input.sessionId))
+    await sessionApi.expire(input.sessionId)
     return "expired"
   } catch (error) {
     if (isMissingResource(error)) {
@@ -233,11 +227,9 @@ export async function expireOpenStripeCheckoutSession(input: {
       throw error
     }
     // Only open sessions can be expired; find out whether this one is no longer open.
-    let session: Stripe.Checkout.Session
+    let session: { status: string | null }
     try {
-      session = await (options
-        ? stripe.checkout.sessions.retrieve(input.sessionId, options)
-        : stripe.checkout.sessions.retrieve(input.sessionId))
+      session = await sessionApi.retrieve(input.sessionId)
     } catch (retrieveError) {
       if (isMissingResource(retrieveError)) {
         return "missing"
@@ -248,6 +240,21 @@ export async function expireOpenStripeCheckoutSession(input: {
       return "not_open"
     }
     throw error
+  }
+}
+
+function checkoutSessionApi(target: StripeCheckoutTarget) {
+  if (target.kind === "connect") {
+    const options = connectRequestOptions(target.stripeAccount, EXPIRE_TIMEOUT_MS)
+    return {
+      expire: (sessionId: string) => target.client.checkout.sessions.expire(sessionId, options),
+      retrieve: (sessionId: string) => target.client.checkout.sessions.retrieve(sessionId, options),
+    }
+  }
+  const stripe = createStripeClient(target.secretKey, { timeoutMs: EXPIRE_TIMEOUT_MS })
+  return {
+    expire: (sessionId: string) => stripe.checkout.sessions.expire(sessionId),
+    retrieve: (sessionId: string) => stripe.checkout.sessions.retrieve(sessionId),
   }
 }
 

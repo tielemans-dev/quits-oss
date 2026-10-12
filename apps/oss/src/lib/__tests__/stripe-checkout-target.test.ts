@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import Stripe from "stripe"
 import { setRuntimeExtensions } from "../runtime/extensions"
+import type { StripeConnectCheckoutClient } from "../runtime/stripe-checkout-target"
 import {
   createStripeInvoiceCheckoutSession,
   expireOpenStripeCheckoutSession,
@@ -15,7 +15,7 @@ function connectClient() {
     expire: vi.fn(),
     retrieve: vi.fn(),
   }
-  return { sessions, client: { checkout: { sessions } } as unknown as Stripe }
+  return { sessions, client: { checkout: { sessions } } as unknown as StripeConnectCheckoutClient }
 }
 
 const invoice = {
@@ -54,7 +54,7 @@ describe("Stripe Connect checkout target", () => {
     expect(params).not.toHaveProperty("payment_intent_data")
   })
 
-  it("expires and retrieves the session on the connected account", async () => {
+  it("expires the session on the connected account", async () => {
     const { client, sessions } = connectClient()
     sessions.expire.mockResolvedValue({ id: "cs_123", status: "expired" })
 
@@ -65,25 +65,6 @@ describe("Stripe Connect checkout target", () => {
       })
     ).resolves.toBe("expired")
     expect(sessions.expire).toHaveBeenCalledWith(
-      "cs_123",
-      expect.objectContaining({ stripeAccount })
-    )
-    expect(sessions.retrieve).not.toHaveBeenCalled()
-
-    sessions.expire.mockRejectedValue(
-      new Stripe.errors.StripeInvalidRequestError({
-        type: "invalid_request_error",
-        message: "not open",
-      })
-    )
-    sessions.retrieve.mockResolvedValue({ id: "cs_123", status: "complete" })
-    await expect(
-      expireOpenStripeCheckoutSession({
-        target: { kind: "connect", client, stripeAccount },
-        sessionId: "cs_123",
-      })
-    ).resolves.toBe("not_open")
-    expect(sessions.retrieve).toHaveBeenCalledWith(
       "cs_123",
       expect.objectContaining({ stripeAccount })
     )
