@@ -30,14 +30,25 @@ for (const locale of [danishLocale, usEnglishLocale]) {
     const invoice = await prisma.invoice.create({ data: { organizationId: quote.organizationId, contactId: quote.contactId, quoteId: quote.id, number: "INV-0002", status: "sent", dueDate: new Date("2026-10-25"), subtotalNet: "1250.00", totalGross: "1250.00", currency: locale.currency, countryCode: locale.countryCode, locale: locale.locale, timezone: locale.timezone } })
     // MOCK: all registered quote/credit events, plus invoice crediting, for localization evidence.
     const activityTypes = ["quote.draft_created", "quote.draft_updated", "quote.draft_deleted", "quote.sent", "quote.email_resent", "quote.accepted", "quote.rejected", "quote.converted", "credit_note.issued", "credit_note.sent", "invoice.credited"]
-    const lastEvent = await prisma.domainEvent.aggregate({ where: { organizationId: quote.organizationId }, _max: { sequence: true } })
-    await prisma.domainEvent.createMany({ data: activityTypes.map((type, index) => ({
-      organizationId: quote.organizationId, sequence: (lastEvent._max.sequence ?? 0) + index + 1,
-      aggregateType: type.startsWith("quote.") ? "quote" : type.startsWith("credit_note.") ? "credit_note" : "invoice",
-      aggregateId: type.startsWith("quote.") ? quote.id : invoice.id, type,
-      payload: { number: type.startsWith("quote.") ? seeded.number : type.startsWith("credit_note.") ? "CN-0001" : "INV-0002", invoiceNumber: "INV-0002", creditNoteNumber: "CN-0001", recipient: "buyer@e2e.example" },
-      actorKind: "system", actorLabel: "MOCK test fixture", occurredAt: new Date("2026-10-11T12:00:00Z"),
-    })) })
+    // Reserve fixture sequences through the same counter as real commands, atomically with
+    // insertion. Raw max(sequence)+1 inserts leave the allocator behind and make acceptance
+    // roll back on the unique organization/sequence constraint in both main and head.
+    await prisma.$transaction(async tx => {
+      const { eventSequence: last } = await tx.orgSettings.update({
+        where: { organizationId: quote.organizationId },
+        data: { eventSequence: { increment: activityTypes.length } },
+        select: { eventSequence: true },
+      })
+      await tx.domainEvent.createMany({ data: activityTypes.map((type, index) => ({
+        organizationId: quote.organizationId, sequence: last - activityTypes.length + index + 1,
+        aggregateType: type.startsWith("quote.") ? "quote" : type.startsWith("credit_note.") ? "credit_note" : "invoice",
+        aggregateId: type.startsWith("quote.") ? quote.id : invoice.id, type,
+        payload: { number: type.startsWith("quote.") ? seeded.number : type.startsWith("credit_note.") ? "CN-0001" : "INV-0002", invoiceNumber: "INV-0002", creditNoteNumber: "CN-0001", recipient: "buyer@e2e.example" },
+        actorKind: "system", actorLabel: "MOCK test fixture", occurredAt: new Date("2026-10-11T12:00:00Z"),
+      })) })
+    })
+    const fixtureSequence = await prisma.domainEvent.aggregate({ where: { organizationId: quote.organizationId }, _max: { sequence: true } })
+    expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: quote.organizationId } })).eventSequence).toBe(fixtureSequence._max.sequence)
     const da = locale.locale === "da-DK"
     for (const theme of ["light", "dark"] as const) {
       const context = await browser.newContext({ locale: "en-US", colorScheme: theme, viewport: { width: 1440, height: 1000 } })
@@ -77,8 +88,17 @@ for (const locale of [danishLocale, usEnglishLocale]) {
           expect(await page.locator("h2, label").evaluateAll(els => els.every(el => getComputedStyle(el).textTransform === "uppercase"))).toBe(true)
         }
         await capture(page, `public-pending-${suffix}`)
+        const sequenceBeforeDecision = (await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: quote.organizationId } })).eventSequence
+        const decisionResponse = page.waitForResponse(response => response.url().includes("/_serverFn/") && response.request().method() === "POST")
         await page.getByRole("button", { name: da ? "Acceptér tilbud" : "Accept quote", exact: true }).click()
+        expect((await decisionResponse).ok()).toBe(true)
         await expect(page.getByText(da ? "Tilbud accepteret" : "Quote accepted", { exact: true })).toBeVisible()
+        const decidedQuote = await prisma.quote.findUniqueOrThrow({ where: { id: quote.id } })
+        expect(decidedQuote.status).toBe("accepted")
+        expect(decidedQuote.publicDecisionAt).not.toBeNull()
+        const decisionEvent = await prisma.domainEvent.findUniqueOrThrow({ where: { organizationId_sequence: { organizationId: quote.organizationId, sequence: sequenceBeforeDecision + 1 } } })
+        expect(decisionEvent).toMatchObject({ type: "quote.accepted", aggregateId: quote.id, payload: { number: seeded.number, source: "customer" } })
+        expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: quote.organizationId } })).eventSequence).toBe(sequenceBeforeDecision + 1)
         if (!before) await expect(page.getByText(da ? /^Du accepterede tilbuddet den/ : /^You accepted the quote on/)).toBeVisible()
         await capture(page, `public-accepted-${suffix}`)
         for (const number of ["INV-0002", null]) {

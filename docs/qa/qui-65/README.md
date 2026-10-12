@@ -37,6 +37,24 @@ are partial diagnostics for that prior head, not final validation or visual appr
 CI at `6c08b81` also does not validate the SSR follow-up. Final-head links and status belong in the PR;
 the parent owns monitoring and Ines owns separate visual sign-off.
 
+## Acceptance fixture repair
+
+Both prior before/after traces show the real accept POST returning HTTP 200 with `kind: invalid`,
+then the invalid-link page. The fixture inserted 11 events using `max(sequence) + 1` but left
+`orgSettings.eventSequence` unchanged. The real customer-decision command appends its accepted
+event through that counter, so its transaction collides with the fixture's unique event sequence.
+PostgreSQL teardown logs confirm `domain_event_organizationId_sequence_key` collisions at sequence
+1 in both phases. Main baseline `4931661dd7e53d83555590e06a2e2cf97448743b` and head use the same
+allocator.
+
+The harness now reserves fixture sequence numbers by advancing that counter within the same
+transaction as the synthetic inserts. Every real accept click still requires the exact DA/EN
+accepted title, and additionally checks HTTP success, persisted accepted state/decision instant,
+the next `quote.accepted` event with customer source, and the advanced counter. This runs in both
+phases without patching baseline production sources. The startup Nitro SSR-environment 503 precedes
+successful login/document requests in both traces; it is distinct from the HTTP 200 invalid decision.
+CI validates the repair; no local browser or server is used.
+
 ## CI-only execution
 
 No local browser, dev server, build, typecheck or full suite is allowed for this task. The authorized

@@ -59,6 +59,7 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   expect(serverHtml).not.toContain(">Fakturaer<")
   await waitForClientReady(page)
   await expect(page.locator("html")).toHaveAttribute("lang", "da")
+  await expect(page.getByText("Opret din organisation", { exact: true })).toBeVisible()
 })
 
 test("shows adaptive cloud onboarding after organization creation", async ({ page }) => {
