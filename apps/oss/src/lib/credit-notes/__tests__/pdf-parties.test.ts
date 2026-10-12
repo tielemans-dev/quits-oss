@@ -66,6 +66,33 @@ describe("credit note PDF parties", () => {
     expect(JSON.stringify(frozen)).toBe(before)
   })
 
+  it("normalizes optional schemes while preserving legal IDs and frozen registration status", () => {
+    const frozen = {
+      ...sellerSnapshot,
+      momsRegistered: false,
+      taxIds: [
+        { scheme: " VAT_ID ", value: "DK12345678" },
+        { scheme: " CVR ", value: "12345678" },
+        { scheme: " lei ", value: "LEGAL-ID" },
+        { value: "UNSPECIFIED-ID" },
+        { scheme: "   ", value: "BLANK-SCHEME-ID" },
+      ],
+    }
+    const before = JSON.stringify(frozen)
+    const current = { momsRegistered: true }
+    const { seller, buyer } = creditNotePdfParties({ ...issued, sellerSnapshot: frozen }, current)
+    expect(seller.taxIds).toEqual([
+      "CVR no.: 12345678",
+      "LEI: LEGAL-ID",
+      "Tax ID: UNSPECIFIED-ID",
+      "Tax ID: BLANK-SCHEME-ID",
+    ])
+    expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
+    expect(JSON.stringify(frozen)).toBe(before)
+    expect(creditNotePdfParties({ ...issued, sellerSnapshot: { ...frozen, momsRegistered: true } }, { momsRegistered: false }).seller.taxIds)
+      .toContain("VAT no.: DK12345678")
+  })
+
   it("translates tax identifier labels", () => {
     const { seller } = creditNotePdfParties({ ...issued, locale: "da" }, {})
     expect(seller.taxIds).toEqual(["Momsnr.: DK12345678", "CVR-nr.: 12345678"])
