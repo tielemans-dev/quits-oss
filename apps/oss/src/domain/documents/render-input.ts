@@ -23,6 +23,7 @@ import { priceCreditNote } from "./credit-pricing"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { issuedNumber } from "./numbering"
+import { translate } from "../../lib/i18n/translate"
 
 type InvoiceForPdf = import("react").ComponentProps<typeof InvoicePdfDocument>["invoice"]
 
@@ -124,7 +125,9 @@ export const prospectiveRenderInput = (input: {
         pricesIncludeTax: invoice.pricesIncludeTax, countryCode: invoice.countryCode,
         taxRegime: invoice.taxRegime, paymentReference: invoice.paymentReference,
         purchaseOrderRef: invoice.purchaseOrderRef },
-      pdf: { invoice: pdfInvoice, org: { ...org, companyName: seller.companyName, companyEmail: seller.companyEmail, companyAddress: seller.companyAddress, taxIds: seller.taxIds, locale: invoice.locale, timezone: invoice.timezone } } }
+      pdf: { invoice: pdfInvoice, org: { ...org, companyName: seller.companyName, companyEmail: seller.companyEmail, companyAddress: seller.companyAddress, taxIds: seller.taxIds, locale: invoice.locale, timezone: invoice.timezone,
+        ...(seller.momsRegistered === false ? { cvrLabel: translate("creditNotes.pdf.cvrNumber", invoice.locale) } : {}),
+      } } }
   }
   if (input.kind === "creditNote") {
     const selection = creditNoteIssueInputSchema.parse(input.commandInput)
