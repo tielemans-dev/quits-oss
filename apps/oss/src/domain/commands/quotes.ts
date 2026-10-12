@@ -328,12 +328,13 @@ export const sendQuote = defineCommand({
         return yield* new InvalidState({ message: "Only draft quotes can be sent", code: "not_draft" })
       }
       yield* refuseWhileSending("quote", found)
-      // The number is taken here, in the issuing transaction: if any later check fails, the
-      // transaction rolls back and the number goes back with it.
-      const quote = { ...found, number: yield* numberForIssuance("quote", found) }
-      yield* requireVatIssuance(quote)
-
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
+      // Accepted quotes supply invoice identities. Validate the identities actually sent,
+      // including registration and tax IDs changed after the draft was created.
+      const identities = { sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds), buyerSnapshot: buildBuyerSnapshot(found.contact) }
+      yield* requireVatIssuance({ ...found, ...identities })
+      // Only allocate a number after validating the refreshed identities.
+      const quote = { ...found, ...identities, number: yield* numberForIssuance("quote", found) }
       const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(quote))
       if (compliance.blocking.length > 0) {
         return yield* new InvalidState({
@@ -350,9 +351,6 @@ export const sendQuote = defineCommand({
         publicAccessIssuedAt,
         publicAccessKeyVersion: quote.publicAccessKeyVersion,
       })
-      // Accepted quotes later supply invoice identities. Freeze the identities actually sent,
-      // including tax IDs added after the draft was created.
-      const identities = { sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds), buyerSnapshot: buildBuyerSnapshot(quote.contact) }
       const emailContext = resolveQuoteEmailContext(settings)
       const recipient = yield* requireRecipientEmail(quote.contact)
 

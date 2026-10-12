@@ -37,7 +37,7 @@ function mergeCapabilities(
       ...base.onboardingAi,
       ...patch.onboardingAi,
     },
-    onboardingV2: { enabled: base.onboardingV2?.enabled ?? false, ...patch.onboardingV2 },
+    onboardingV2: { enabled: false, ...base.onboardingV2, ...patch.onboardingV2 },
     payments: {
       ...base.payments,
       ...patch.payments,

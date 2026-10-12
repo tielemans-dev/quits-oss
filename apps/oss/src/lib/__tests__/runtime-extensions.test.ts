@@ -18,6 +18,22 @@ describe("runtime extension capabilities", () => {
     vi.resetModules()
   })
 
+  it("preserves non-VAT onboarding through unrelated and partial patches, with explicit overrides", async () => {
+    const mod = await import("../runtime/extensions")
+    const optIn = { id: "onboarding", resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true } }) }
+    const unrelated = { id: "email", resolveCapabilities: () => ({ emailDelivery: { managed: true } }) }
+    mod.setRuntimeExtensions([optIn, unrelated])
+    const env = { QUITS_DISTRIBUTION: "cloud" }
+    expect(mod.getRuntimeCapabilities(env)).toMatchObject({ onboardingV2: { enabled: true, nonVatEnabled: true }, emailDelivery: { managed: true } })
+    mod.setRuntimeExtensions([optIn, unrelated, { id: "enabled-only", resolveCapabilities: () => ({ onboardingV2: { enabled: true } }) }])
+    expect(mod.getRuntimeCapabilities(env).onboardingV2).toEqual({ enabled: true, nonVatEnabled: true })
+    mod.setRuntimeExtensions([optIn, { id: "non-vat-off", resolveCapabilities: () => ({ onboardingV2: { nonVatEnabled: false } }) }, unrelated])
+    expect(mod.getRuntimeCapabilities(env).onboardingV2).toEqual({ enabled: true, nonVatEnabled: false })
+    mod.setRuntimeExtensions([optIn, { id: "onboarding-off", resolveCapabilities: () => ({ onboardingV2: { enabled: false } }) }, unrelated])
+    expect(mod.getRuntimeCapabilities(env).onboardingV2).toEqual({ enabled: false, nonVatEnabled: true })
+    expect(mod.getRuntimeCapabilities({}).onboardingV2).toEqual({ enabled: false, nonVatEnabled: false })
+  })
+
   it("keeps deposits enabled by default and lets a runtime extension disable only deposits", async () => {
     const mod = await import("../runtime/extensions")
     const baseline = mod.getRuntimeCapabilities({})
