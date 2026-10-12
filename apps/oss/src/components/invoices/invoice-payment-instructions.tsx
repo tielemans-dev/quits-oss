@@ -33,7 +33,7 @@ export function InvoicePaymentInstructions({ status, sellerSnapshot, number, pay
   const referenceHint = invoicePaymentReferenceHint({ number, paymentReference }, locale)
   const account = seller?.bankAccount
   const note = seller?.paymentNote?.trim()
-  if (status === "draft" || !hasPaymentDetails({ bankAccount: account, note })) return null
+  if (status === "draft" || !(balanceDue > 0) || !hasPaymentDetails({ bankAccount: account, note })) return null
   return (
     <section aria-label={t("email.pay.heading")} className="grid gap-2 text-sm">
       <h3 className="font-medium">{t("email.pay.heading")}</h3>

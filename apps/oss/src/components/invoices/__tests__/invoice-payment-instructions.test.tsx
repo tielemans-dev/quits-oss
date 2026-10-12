@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
+import { computeSettlement } from "../../../domain/documents/settlement"
 import { I18nProvider } from "../../../lib/i18n/react"
 import { InvoiceSellerDetails, InvoicePaymentInstructions } from "../invoice-payment-instructions"
 
@@ -74,9 +75,9 @@ describe("issued payment block regressions", () => {
     expect(html).toContain("DABADKKK")
   })
 
-  it.each([1000, 750, 0])("shows the supplied outstanding amount %s", balanceDue => {
+  it.each([1000, 750])("shows the supplied outstanding amount %s", balanceDue => {
     const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" balanceDue={balanceDue} currency="USD" dueDate="2026-03-23" /></I18nProvider>)
-    expect(html).toContain(balanceDue === 1000 ? "$1,000.00" : balanceDue === 750 ? "$750.00" : "$0.00")
+    expect(html).toContain(balanceDue === 1000 ? "$1,000.00" : "$750.00")
     expect(html).toContain("INV-0042")
   })
 
@@ -84,4 +85,38 @@ describe("issued payment block regressions", () => {
     const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="draft" sellerSnapshot={sellerSnapshot} number={null} balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
     expect(html).toBe("")
   })
+})
+
+// MOCK: synthetic currency-unit amounts processed by the real settlement calculator.
+describe("settled invoice detail payment instructions", () => {
+  for (const locale of ["da-DK", "en-US"]) {
+    it.each([
+      { status: "paid", amountPaid: 1000, amountCredited: 0 },
+      { status: "credited", amountPaid: 0, amountCredited: 1000 },
+      { status: "paid", amountPaid: 750, amountCredited: 250 },
+      { status: "sent", amountPaid: 1000, amountCredited: 0 },
+    ])(`hides payment instructions when nothing remains owed in ${locale}: $status`, ({ status, amountPaid, amountCredited }) => {
+      const settlement = computeSettlement({ totalGross: 1000, amountPaid, amountCredited })
+      const html = renderToStaticMarkup(<I18nProvider locale={locale}>
+        <InvoicePaymentInstructions status={status} sellerSnapshot={sellerSnapshot} number="INV-0042" paymentReference="ORDER-2026-42" balanceDue={settlement.balanceDue.toNumber()} currency="USD" dueDate="2026-03-23" />
+      </I18nProvider>)
+      expect(html).toBe("")
+      const sellerHtml = renderToStaticMarkup(<I18nProvider locale={locale}>
+        <InvoiceSellerDetails status={status} sellerSnapshot={sellerSnapshot} />
+      </I18nProvider>)
+      expect(sellerHtml).toContain("Synthetic Seller ApS")
+    })
+
+    it(`keeps the remaining partial-payment amount and frozen destination/reference in ${locale}`, () => {
+      const settlement = computeSettlement({ totalGross: 1000, amountPaid: 250, amountCredited: 0 })
+      const html = renderToStaticMarkup(<I18nProvider locale={locale}>
+        <InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" paymentReference="ORDER-2026-42" balanceDue={settlement.balanceDue.toNumber()} currency="USD" dueDate="2026-03-23" />
+      </I18nProvider>)
+      expect(html).toContain(locale === "da-DK" ? 'aria-label="Sådan betaler du"' : 'aria-label="How to pay"')
+      expect(html).toContain(locale === "da-DK" ? "750,00" : "$750.00")
+      expect(html).not.toContain(locale === "da-DK" ? "1.000,00" : "$1,000.00")
+      for (const value of ["0040", "0440 116 243", "ORDER-2026-42", "Frozen note"]) expect(html).toContain(value)
+      expect(html).toContain(locale === "da-DK" ? "Skriv ORDER-2026-42 i beskeden, så vi kan finde din betaling." : "Add ORDER-2026-42 to the payment message so we can match your payment.")
+    })
+  }
 })
