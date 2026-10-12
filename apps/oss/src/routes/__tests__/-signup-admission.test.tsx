@@ -144,6 +144,24 @@ describe('signup admission UI', () => {
     expect(json).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: 'Back to log in' }).getAttribute('href')).toBe('/login')
   })
+  it('focuses email before consent when both are invalid, including repeat clicks after blur', async () => {
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher); await blocked()
+    const email = screen.getByLabelText('Email')
+    const submit = screen.getByRole('button', { name: 'Join the waitlist' })
+    fireEvent.change(email, { target: { value: 'person@example.t' } })
+    // jsdom does not perform pointer focus transfer; commit the browser's blur/focus
+    // sequence before clicking the real submit button and dispatching its default submit.
+    await act(async () => { email.focus(); submit.focus() })
+    fireEvent.click(submit)
+    expect(email.getAttribute('aria-invalid')).toBe('true')
+    expect(screen.getByRole('checkbox').getAttribute('aria-invalid')).toBe('true')
+    expect(document.activeElement).toBe(email)
+    await act(async () => { submit.focus() })
+    expect(document.activeElement).toBe(submit)
+    fireEvent.click(submit)
+    expect(document.activeElement).toBe(email)
+    expect(fetcher).not.toHaveBeenCalled()
+  })
   it('keeps an email error until valid and revalidates on blur after submission', async () => {
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher); await blocked()
     const email = screen.getByLabelText('Email')

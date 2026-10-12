@@ -22,6 +22,7 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
   const [emailError, setEmailError] = useState(false)
   const [consentError, setConsentError] = useState(false)
   const [banner, setBanner] = useState<'rate' | 'network' | null>(null)
+  const [focusRequest, setFocusRequest] = useState<{ field: 'email' | 'consent' } | null>(null)
   const emailRef = useRef<HTMLInputElement>(null)
   const consentRef = useRef<HTMLInputElement>(null)
   const honeypotRef = useRef<HTMLInputElement>(null)
@@ -29,9 +30,13 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
   const validated = useRef(false)
 
   useEffect(() => {
-    // Focus only after React commits the enabled checkbox following a rejection.
-    if (consentError && !busy) consentRef.current?.focus()
-  }, [consentError, busy])
+    // Each failed submit requests focus, even if blur already set the same error.
+    // Wait for React to re-enable the checkbox after a server rejection.
+    if (focusRequest && !busy) {
+      const ref = focusRequest.field === 'email' ? emailRef : consentRef
+      ref.current?.focus()
+    }
+  }, [focusRequest, busy])
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -41,8 +46,9 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
     setEmailError(!valid)
     setConsentError(!consent)
     setBanner(null)
-    if (!valid) { emailRef.current?.focus(); return }
-    if (!consent) { consentRef.current?.focus(); return }
+    if (!valid) { setFocusRequest({ field: 'email' }); return }
+    if (!consent) { setFocusRequest({ field: 'consent' }); return }
+    setFocusRequest(null)
     pending.current = true
     setBusy(true)
     const controller = new AbortController()
@@ -58,9 +64,9 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
       if (response.ok) { onJoined(email.trim()); return }
       const body = await response.json().catch(() => null)
       if ((response.status === 400 || response.status === 422) && body?.error === 'consent_required') {
-        setConsent(false); setConsentError(true)
+        setConsent(false); setConsentError(true); setFocusRequest({ field: 'consent' })
       } else if (response.status === 400 || (response.status === 422 && body?.error === 'invalid_email')) {
-        setEmailError(true); emailRef.current?.focus()
+        setEmailError(true); setFocusRequest({ field: 'email' })
       } else setBanner(response.status === 429 ? 'rate' : 'network')
     } catch { setBanner('network') }
     finally { clearTimeout(timer); pending.current = false; setBusy(false) }
