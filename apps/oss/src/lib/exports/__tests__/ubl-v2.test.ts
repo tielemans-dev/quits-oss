@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import type { FrozenVatGroup } from "@quits/contracts/pricing"
-import { buildUblDocument, computeEinvoiceTotals, EinvoiceVatError, type EinvoiceDocument } from "../ubl"
+import { buildUblDocument, computeEinvoiceTotals, validateEinvoice, EinvoiceVatError, type EinvoiceDocument } from "../ubl"
 
 const legacy = JSON.parse(readFileSync(new URL("./fixtures/legacy-ubl-input.json", import.meta.url), "utf8")) as EinvoiceDocument
 function group(treatment: FrozenVatGroup["treatment"], reasonCode: FrozenVatGroup["reasonCode"] = null): FrozenVatGroup {
@@ -22,6 +22,21 @@ const categories = [
 ] as const
 
 describe("versioned UBL", () => {
+  it.each(["zero_rated", "exempt", "out_of_scope"] as const)("requires a seller tax identifier except for frozen category O: %s", treatment => {
+    const doc = document([group(treatment, treatment === "exempt" ? "health" : null)])
+    doc.seller = { ...doc.seller, momsRegistered: false, vatId: null }
+    doc.lines = doc.lines.map(line => ({ ...line, taxRate: 0 }))
+    expect(validateEinvoice(doc).includes("seller.taxId")).toBe(treatment !== "out_of_scope")
+    if (treatment === "out_of_scope") expect(buildUblDocument(doc).split("</cac:AccountingSupplierParty>")[0]).not.toContain("cac:PartyTaxScheme")
+  })
+  it("uses frozen treatments rather than misleading nominal line rates or categories", () => {
+    const doc = document([group("exempt", "health")])
+    doc.seller = { ...doc.seller, momsRegistered: false, vatId: null }
+    doc.lines = doc.lines.map(line => ({ ...line, taxRate: 0, vatTreatment: "out_of_scope" }))
+    expect(validateEinvoice(doc)).toContain("seller.taxId")
+    const legacyZero = { ...legacy, seller: doc.seller, lines: [{ ...legacy.lines[0]!, taxRate: 0 }] }
+    expect(validateEinvoice(legacyZero)).toContain("seller.taxId")
+  })
   it("keeps the captured pre-A2b legacy bytes unchanged", () => {
     expect(buildUblDocument(legacy)).toBe(readFileSync(new URL("./fixtures/legacy-ubl.xml", import.meta.url), "utf8"))
   })
