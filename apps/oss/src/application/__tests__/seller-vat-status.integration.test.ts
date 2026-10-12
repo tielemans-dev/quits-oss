@@ -9,6 +9,8 @@ import { sendAgreement, issueAgreement } from "../../domain/commands/agreement-l
 import { createQuoteDraft, sendQuote } from "../../domain/commands/quotes"
 import { authenticateAgentSecret, createAgentKey } from "../../domain/agent-keys"
 import { decideApproval } from "../../domain/approvals"
+import { formatIsoDate } from "../../lib/exports/format"
+import { postingsFor } from "../../domain/accounting/postings"
 import { createInvoiceDraft } from "../../domain/commands/invoices"
 import { executeCommand } from "../../domain/execute"
 import { issueDocument, reserveDocument, prepareDocument, executeIssuanceCommand } from "../issuance"
@@ -47,6 +49,54 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
 }
 
 ;(hasTestDatabase ? describe : describe.skip)("seller VAT status at invoice issuance", () => {
+  it("issues ordinary domestic form lines as unclassified zero and posts their frozen treatment", async () => {
+    const ctx = await setup(true)
+    await ctx.caller.settings.update({ momsRegistered: false })
+    const settings = await ctx.caller.settings.get()
+    // The normal forms supply the saved rate and no advanced per-line VAT classification.
+    const items = [{ description: "Ordinary domestic service", quantity: 1, unitPrice: 100 }]
+    const invoice = await ctx.caller.invoices.create({ contactId: ctx.invoice.contactId, dueDate: "2099-12-01", supplyDate: formatIsoDate(new Date(), "Europe/Copenhagen"), taxRate: settings.taxRate!, items })
+    const edited = await ctx.caller.invoices.update({ id: invoice.id, taxRate: settings.taxRate!, items })
+    expect(edited.items[0]).toMatchObject({ vatTreatment: "unclassified_zero", vatRateInput: "0" })
+    await completed(issueDocument({ ...ctx.args, commandInput: { id: invoice.id, allowSendWithoutEmail: true } }))
+    const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
+    const snapshot = issuedInvoiceSnapshot(issued.issuanceSnapshot)!
+    expect(snapshot.seller.momsRegistered).toBe(false)
+    expect(snapshot.vatGroups[0]?.treatment).toBe("unclassified_zero")
+    const event = await prisma.domainEvent.findFirstOrThrow({ where: { aggregateId: invoice.id, type: "invoice.issued" } })
+    const postings = postingsFor(event)
+    expect(Array.isArray(postings)).toBe(true)
+    if (!Array.isArray(postings)) throw new Error(JSON.stringify(postings))
+    expect(postings.some(line => line.role === "output_vat")).toBe(false)
+    expect(postings).toContainEqual({ role: "debtor", debitMinor: "10000", creditMinor: "0", currency: "DKK", exponent: 2, vatGroup: null })
+    await completed(issueDocument({ kind: "creditNote", actor: ctx.org.actors.admin, commandInput: { invoiceId: invoice.id, mode: "full", reason: "Synthetic full reversal" } }))
+    const credit = await prisma.creditNote.findFirstOrThrow({ where: { invoiceId: invoice.id } })
+    const creditEvent = await prisma.domainEvent.findFirstOrThrow({ where: { aggregateId: credit.id, type: "credit_note.issued" } })
+    const reversal = postingsFor(creditEvent)
+    expect(reversal).toHaveLength(postings.length)
+    expect(reversal).toEqual(expect.arrayContaining(postings.map(line => ({ ...line, debitMinor: line.creditMinor, creditMinor: line.debitMinor }))))
+    const quote = await ctx.caller.quotes.create({ contactId: ctx.invoice.contactId, expiryDate: "2099-12-01", taxRate: settings.taxRate!, items })
+    const updated = await ctx.caller.quotes.update({ id: quote.id, taxRate: settings.taxRate!, items })
+    expect(updated.items[0]?.vatTreatment).toBe("unclassified_zero")
+    await ctx.caller.quotes.send({ id: quote.id, allowSendWithoutEmail: true })
+    const sent = await prisma.quote.findUniqueOrThrow({ where: { id: quote.id }, include: { items: true } })
+    expect(sent.items[0]?.vatTreatment).toBe("unclassified_zero")
+    expect(parseSellerSnapshot(sent.sellerSnapshot)?.momsRegistered).toBe(false)
+    expect(sent.totalGross.toNumber()).toBe(100)
+  })
+  it.each([true, false])("refreshes draft quote registration %s and freezes it at send", async registered => {
+    const ctx = await setup(registered, 0)
+    const quote = await ctx.caller.quotes.create({ contactId: ctx.invoice.contactId, expiryDate: "2099-12-01", taxRate: 0,
+      items: [{ description: "Explicit out of scope service", quantity: 1, unitPrice: 100, vat: { treatment: "out_of_scope", rate: "0" } }] })
+    await ctx.caller.settings.update({ momsRegistered: !registered })
+    expect((await ctx.caller.quotes.view({ id: quote.id })).view.seller.momsRegistered).toBe(!registered)
+    await ctx.caller.quotes.send({ id: quote.id, allowSendWithoutEmail: true })
+    const frozen = await prisma.quote.findUniqueOrThrow({ where: { id: quote.id } })
+    expect(parseSellerSnapshot(frozen.sellerSnapshot)?.momsRegistered).toBe(!registered)
+    await ctx.caller.settings.update({ momsRegistered: registered })
+    expect((await ctx.caller.quotes.view({ id: quote.id })).view.seller.momsRegistered).toBe(!registered)
+    expect((await prisma.quote.findUniqueOrThrow({ where: { id: quote.id } })).sellerSnapshot).toEqual(frozen.sellerSnapshot)
+  })
   it("blocks an unset status before numbering or preparation", async () => {
     const ctx = await setup(null)
     expect(await issueDocument(ctx.args)).toMatchObject({ status: "failed", error: { code: "seller_vat_status_unset" } })

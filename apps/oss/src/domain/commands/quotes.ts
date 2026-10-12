@@ -100,6 +100,7 @@ export const createQuoteDraft = defineCommand({
       yield* requireDraftCurrency(currency)
       const calculated = yield* priceCurrentDraft({
         items: input.items,
+        vatDefaults: { ...settings, buyerCountry: contact.country },
         vatEvidence: input.vatEvidence,
         taxRate: input.taxRate,
         pricesIncludeTax: settings.pricesIncludeTax,
@@ -199,8 +200,11 @@ export const updateQuoteDraft = defineCommand({
       const pricedItems = input.taxRate === undefined ? items : items.map((item) => ({ ...item, vat: undefined }))
       const storedEvidence = draftVatEvidenceSchema.safeParse(existing.vatEvidence ?? {})
       const evidence = input.vatEvidence ?? (storedEvidence.success ? storedEvidence.data : {})
+      const { settings: currentSettings } = yield* loadDocumentContext
+      const pricingContact = input.contactId ? yield* findContact(input.contactId) : existing.contact
       const priced = yield* priceCurrentDraft({
         items: input.items ?? pricedItems,
+        vatDefaults: { ...currentSettings, taxRegime: existing.taxRegime, countryCode: existing.countryCode, buyerCountry: pricingContact.country },
         taxRate: input.taxRate ?? impliedTaxRate(existing),
         pricesIncludeTax: existing.pricesIncludeTax,
         currency,

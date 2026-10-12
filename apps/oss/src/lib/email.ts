@@ -421,7 +421,7 @@ export function buildQuoteEmailContent({
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <div>
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
-        <div style="font-weight:500;">${escapeHtml(safeFromName)}</div>
+        <div style="font-weight:500;">${escapeHtml(org.companyName === undefined ? safeFromName : org.companyName ?? "")}</div>
         ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div style="text-align:right;">

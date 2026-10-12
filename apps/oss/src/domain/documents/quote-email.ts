@@ -58,9 +58,7 @@ export function composeQuoteEmail(input: {
 }) {
   const { quote } = input
   const seller = parseSellerSnapshot(quote.sellerSnapshot)
-  const { envelope } = resolveQuoteEmailContext({ ...input.settings,
-    ...(seller ? { companyName: seller.companyName ?? null, companyEmail: seller.companyEmail ?? null } : {}),
-  })
+  const { envelope } = resolveQuoteEmailContext(input.settings)
   const vatSummary = documentVatSummary(quote)
   const content = buildQuoteEmailContent({
     fromName: envelope.fromName,

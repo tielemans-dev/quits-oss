@@ -167,7 +167,7 @@ export async function loadDocumentView(actor: Actor, kind: DocumentKind, id: str
     const corrected = kind === "creditNote" && "invoiceId" in document
       ? await db.invoice.findFirst({ where: { id: document.invoiceId, organizationId }, select: { number: true, issuanceSnapshot: true } }) : null
     const correctionDate = correctedIssueDate(corrected?.issuanceSnapshot)
-    const effectiveDraft = isDraft && kind === "invoice" ? { ...document, sellerSnapshot: { ...parseSellerSnapshot(document.sellerSnapshot), momsRegistered: settings?.momsRegistered ?? null } } : document
+    const effectiveDraft = isDraft ? { ...document, sellerSnapshot: { ...parseSellerSnapshot(document.sellerSnapshot), momsRegistered: settings?.momsRegistered ?? null } } : document
     let view = isDraft ? buildDraftView(draftViewInputFromRows(kind === "quote" ? "quote" : "invoice", effectiveDraft, { branding, previewNumber })) : null
     let historical = false
     if (!isDraft && kind !== "quote") {
