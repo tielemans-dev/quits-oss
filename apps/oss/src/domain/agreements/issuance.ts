@@ -10,6 +10,7 @@ import { Command, Db } from "../services"
 import { agreementExpiresAt } from "./expiry"
 import { buildOfferSnapshot, hashOfferSnapshot } from "./snapshot"
 import { requireRecipientEmail } from "../documents/invoice-email"
+import { requireSellerVatRegistration } from "../documents/vat-issuance"
 
 export const agreementInclude = {
   contact: true,
@@ -78,6 +79,7 @@ export const prospectiveIssuance = (
     )
     const { settings, sellerTaxIds } = yield* loadDocumentContext
     const sellerSnapshot = buildSellerSnapshot(settings, sellerTaxIds)
+    yield* requireSellerVatRegistration({ sellerSnapshot, totalTax: draft.totalTax, items: draft.deliverables })
     const buyerSnapshot = buildBuyerSnapshot(contact)
     const snapshot = buildOfferSnapshot({ ...draft, sellerSnapshot, buyerSnapshot })
     const hash = hashOfferSnapshot(snapshot)
