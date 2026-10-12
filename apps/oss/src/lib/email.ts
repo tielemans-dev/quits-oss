@@ -1,7 +1,7 @@
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
 import { invoicePaymentRows } from "./documents/invoice-payment-rows"
 import { buyerAddress, invoiceTaxIds } from "./documents/invoice-identity"
-import type { BankAccountSnapshot } from "@quits/contracts/payment-details"
+import { hasPaymentDetails, type BankAccountSnapshot } from "@quits/contracts/payment-details"
 import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
 import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
@@ -333,6 +333,7 @@ export function buildInvoiceEmailContent({
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
+  const showPaymentInstructions = hasPaymentDetails({ bankAccount: invoice.bankAccount, note: invoice.paymentNote }) || Boolean(publicPaymentUrl)
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:22px;">${t("pdf.invoice", locale)} ${safeInvoiceNumber}</h2>
     <p style="margin:0 0 24px;color:${C.muted};">${t("email.invoice.greeting", locale, { name: safeContactName })}</p>
@@ -358,6 +359,7 @@ export function buildInvoiceEmailContent({
     ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, true)}
     ${totalsBlock(invoice, locale)}
 
+    ${showPaymentInstructions ? `
     <h3 style="margin:24px 0 12px;font-size:16px;">${t("email.pay.heading", locale)}</h3>
     <table aria-label="${t("email.pay.heading", locale)}" style="width:100%;border-collapse:collapse;">
       ${invoicePaymentRows({ ...invoice, total: invoice.balanceDue ?? invoice.total }, locale).map(row => `<tr>
@@ -375,6 +377,7 @@ export function buildInvoiceEmailContent({
           fallbackLabel: t("email.invoice.payFallback", locale),
         })
       : ""}
+    ` : ""}
     ${invoice.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
   `, locale, true)
 

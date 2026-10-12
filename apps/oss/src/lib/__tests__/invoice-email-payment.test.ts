@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { Prisma } from "../../../generated/prisma/client"
-import { buildInvoiceEmailContent } from "../email"
+import { buildInvoiceEmailContent, type SendInvoiceEmailParams } from "../email"
 import { composeInvoiceEmail, type InvoiceForEmail } from "../../domain/documents/invoice-email"
 import fixture from "../../domain/events/__tests__/fixtures/invoice.issued.v1.json"
 
@@ -16,6 +16,55 @@ const copies = [
 
 describe("invoice email payment instructions", () => {
   for (const [locale, heading, reg, account, reference, button] of copies) {
+    // MOCK: synthetic frozen payment details and public checkout URL, confined to tests.
+    it.each([
+      {},
+      { bankAccount: null, paymentNote: null },
+      { bankAccount: {}, paymentNote: "" },
+      { bankAccount: { regNumber: "  ", accountNumber: "\t", iban: "\n" }, paymentNote: "  " },
+    ])(`omits the entire ${locale} payment section when no method is available: %j`, details => {
+      const content = buildInvoiceEmailContent({
+        invoice: { ...invoice, ...details, items: [{ description: "Consulting", quantity: 1, unitPrice: 1000, total: 1000 }] },
+        org: { locale, companyName: "Frozen seller" }, contactName: "Synthetic buyer", publicPaymentUrl: null,
+      })
+      expect(content.html).not.toContain(heading)
+      expect(content.html).not.toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
+      expect(content.html).not.toContain(reference)
+      expect(content.html).not.toContain(button)
+      for (const value of ["Frozen seller", "Synthetic buyer", "Consulting", "INV-0042", "Invoice note"]) {
+        expect(content.html).toContain(value)
+      }
+      const total = locale === "da-DK" ? "1.250,00\u00a0kr." : "DKK\u00a01,250.00"
+      expect(content.html).toContain(total)
+      expect(content.subject).toContain(total)
+    })
+
+    const methods: Array<{ name: string; details: Partial<SendInvoiceEmailParams["invoice"]>; url?: string; value?: string }> = [
+      { name: "bank account only", details: { bankAccount }, value: "0440 116 243" },
+      { name: "IBAN only", details: { bankAccount: { iban: "DK5000400440116243" } }, value: "DK50 0040 0440 1162 43" },
+      { name: "bank name only", details: { bankAccount: { bankName: "Frozen bank" } }, value: "Frozen bank" },
+      { name: "payment note only", details: { paymentNote: "MobilePay Box 12345" }, value: "MobilePay Box 12345" },
+      { name: "public Stripe payment URL only", details: {}, url: "https://app.example.invalid/pay/token" },
+    ]
+    it.each(methods)(`keeps ${locale} instructions for $name and the outstanding balance`, ({ details, url, value }) => {
+      const content = buildInvoiceEmailContent({
+        invoice: { ...invoice, ...details, balanceDue: 750 }, org: { locale }, contactName: "Buyer", publicPaymentUrl: url,
+      })
+      const payment = content.html.match(new RegExp(`<table aria-label="${heading}"[\\s\\S]*?<\/table>`))?.[0]
+      expect(payment).toBeDefined()
+      expect(payment).toContain(locale === "da-DK" ? "750,00\u00a0kr." : "DKK\u00a0750.00")
+      expect(payment).toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
+      expect(payment).toContain("INV-0042")
+      expect(content.html).toContain(reference)
+      if (value) expect(content.html).toContain(value)
+      expect(content.html.includes(button)).toBe(Boolean(url))
+      if (url) expect(content.html).toContain(`href="${url}"`)
+      const total = locale === "da-DK" ? "1.250,00\u00a0kr." : "DKK\u00a01,250.00"
+      expect(content.html.slice(0, content.html.indexOf(`<table aria-label="${heading}"`))).toContain(total)
+      expect(content.subject).toContain(total)
+      expect(content.html).toContain("Invoice note")
+    })
+
     it.each([true, false])(`renders the approved ${locale} copy with bank details: %s`, withBank => {
       const html = buildInvoiceEmailContent({
         invoice: { ...invoice, bankAccount: withBank ? bankAccount : null, paymentNote: "Frozen payment note" },
@@ -89,6 +138,17 @@ describe("frozen invoice email payment details", () => {
   it("keeps an issue-time snapshot sparse instead of filling from the row or settings", () => {
     const html = compose({ ...storedInvoice, issuanceSnapshot: { ...fixture.cases[0]!.payload, seller: {} } })
     expect(html).not.toMatch(/Reg.nr.|Kontonummer|Legacy frozen note|Current payment note/)
+  })
+
+  it.each(copies)("omits payment instructions for a sparse issued %s snapshot despite current payment settings", (locale, heading, _reg, _account, reference, button) => {
+    const document = { ...storedInvoice, locale, issuanceSnapshot: { ...fixture.cases[0]!.payload, seller: { companyName: "Frozen seller" } } }
+    const html = composeInvoiceEmail({ invoice: document, settings, to: "buyer@example.invalid", publicPaymentUrl: null }).message.html
+    expect(html).toContain("Frozen seller")
+    expect(html).toContain("INV-0042")
+    expect(html).toContain("Invoice note")
+    for (const value of [heading, reference, button, "Legacy frozen note", "Current payment note", "9876543", "0040"]) {
+      expect(html).not.toContain(value)
+    }
   })
 
   it("uses legacy issued row snapshots and never invents missing historic bank details", () => {
