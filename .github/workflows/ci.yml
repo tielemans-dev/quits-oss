@@ -8,6 +8,11 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     services:
+      mailpit:
+        image: axllent/mailpit@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
+        ports:
+          - 1025:1025
+          - 8025:8025
       postgres:
         # Docker Official Image mirror; provenance/update procedure: docs/qa/ci-postgres-image.md
         image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
@@ -31,6 +36,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -76,6 +83,48 @@ jobs:
 
       - name: Run browser smoke tests
         run: bun run test:e2e
+
+      - name: Verify credit note email and PDF with Mailpit
+        env:
+          EMAIL_PROVIDER: smtp
+          SMTP_HOST: 127.0.0.1
+          SMTP_PORT: "1025"
+          SMTP_REQUIRE_TLS: "false"
+          FROM_EMAIL: billing@example.test
+          MAILPIT_URL: http://127.0.0.1:8025
+        run: bun run test:e2e credit-note-detail.spec.ts --workers=1
+
+      - name: Capture QUI-64 before and after screenshots
+        env:
+          EMAIL_PROVIDER: smtp
+          SMTP_HOST: 127.0.0.1
+          SMTP_PORT: "1025"
+          SMTP_REQUIRE_TLS: "false"
+          FROM_EMAIL: billing@example.test
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          baseline="${BASE_SHA:-$(git merge-base HEAD origin/main)}"
+          files=(
+            'apps/oss/src/components/quotes/public-quote-page.tsx'
+            'apps/oss/src/components/credit-notes/credit-notes-table.tsx'
+            'apps/oss/src/routes/_app/credit-notes/$creditNoteId.tsx'
+          )
+          restore_sources() { git restore --source=HEAD -- "${files[@]}"; }
+          trap restore_sources EXIT
+          for file in "${files[@]}"; do git show "$baseline:$file" > "$file"; done
+          QUI64_SCREENSHOT_STAGE=before bun run test:e2e qui64-screenshots.spec.ts --workers=1
+          restore_sources
+          QUI64_SCREENSHOT_STAGE=after bun run test:e2e qui64-screenshots.spec.ts --workers=1
+
+      - name: Upload QUI-64 screenshots and browser results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qui64-browser-evidence
+          path: |
+            .github/assets/qui64/
+            apps/oss/test-results/
+            apps/oss/playwright-report/
 
       - name: Verify packed package artifact
         run: node scripts/check-packed-build.mjs

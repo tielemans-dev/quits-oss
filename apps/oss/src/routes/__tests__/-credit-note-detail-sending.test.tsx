@@ -90,6 +90,38 @@ afterEach(() => {
 })
 
 describe("credit note detail while the email is being delivered", () => {
+  // MOCK: request failures below reproduce the loader defect without production access.
+  it("keeps an existing credit note and PDF available when organization settings fail", async () => {
+    api.get.mockResolvedValue(base)
+    api.settings.mockRejectedValue(new Error("Settings unavailable"))
+    render(<RouteComponent />)
+    expect(await screen.findByText("creditNotes.detail.title CN-0001")).toBeTruthy()
+    expect(screen.queryByText("creditNotes.detail.notFound")).toBeNull()
+    expect(screen.getByRole("button", { name: "creditNotes.action.downloadPdf" })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "creditNotes.action.send" })).toBeNull()
+  })
+
+  it("keeps an existing credit note when capability loading fails, without granting send access", async () => {
+    api.get.mockResolvedValue(base)
+    api.capabilities.mockRejectedValue(new Error("Capabilities unavailable"))
+    render(<RouteComponent />)
+    expect(await screen.findByText("creditNotes.detail.title CN-0001")).toBeTruthy()
+    expect(screen.queryByText("creditNotes.detail.notFound")).toBeNull()
+    expect(screen.queryByRole("button", { name: "creditNotes.action.send" })).toBeNull()
+  })
+
+  it("does not report a lookup outage as a missing credit note", async () => {
+    api.get.mockRejectedValue(new Error("Database unavailable"))
+    render(<RouteComponent />)
+    expect(await screen.findByText("creditNotes.error.generic")).toBeTruthy()
+    expect(screen.queryByText("creditNotes.detail.notFound")).toBeNull()
+  })
+
+  it("reports not found only when the lookup actually returns NOT_FOUND", async () => {
+    api.get.mockRejectedValue({ data: { code: "NOT_FOUND" } })
+    render(<RouteComponent />)
+    expect(await screen.findByText("creditNotes.detail.notFound")).toBeTruthy()
+  })
   it("disables resending and reloads until delivery settles", async () => {
     api.get.mockResolvedValueOnce(sending).mockResolvedValueOnce(sending).mockResolvedValue(sent)
     render(<RouteComponent />)
