@@ -85,10 +85,11 @@ export const prospectiveRenderInput = (input: {
     if (!input.preview && invoice.purpose === "prepayment") return yield* new InvalidState({ code: "purpose_issuance_not_supported", message: "Prepayment issuance is not supported yet" })
     // Payment details are always the ones valid now, also for agreement invoices, which keep the
     // agreed seller identity but are paid to the account in force when they are issued.
-    const seller = withInvoicePaymentDetails(
-      withSellerVatStatus((invoice.agreementId || invoice.quoteId) ? parseSellerSnapshot(invoice.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds), settings),
-      settings, invoice.locale
-    )
+    const currentSeller = buildSellerSnapshot(settings, sellerTaxIds)
+    const effectiveSeller = (invoice.agreementId || invoice.quoteId)
+      ? yield* withSellerVatStatus(parseSellerSnapshot(invoice.sellerSnapshot) ?? {}, currentSeller)
+      : currentSeller
+    const seller = withInvoicePaymentDetails(effectiveSeller, settings, invoice.locale)
     const refreshedBuyer = buildBuyerSnapshot(invoice.contact)
     const buyer = (invoice.agreementId || invoice.quoteId) ? parseBuyerSnapshot(invoice.buyerSnapshot) ?? {} : refreshedBuyer
     if (!input.preview && invoice.calculationVersion === "v2" && !invoice.supplyDate && !(input.commandInput as { supplyDate?: string }).supplyDate) return yield* new InvalidState({ code: "supply_date_required", message: "Confirm a supply date before issuing a v2 invoice" })

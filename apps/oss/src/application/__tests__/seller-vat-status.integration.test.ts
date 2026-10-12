@@ -5,13 +5,15 @@ import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { createAgreementDraft } from "../../domain/commands/agreements"
-import { sendAgreement, issueAgreement } from "../../domain/commands/agreement-lifecycle"
-import { createQuoteDraft, sendQuote } from "../../domain/commands/quotes"
+import { sendAgreement, issueAgreement, recordAgreementAcceptance } from "../../domain/commands/agreement-lifecycle"
+import { createQuoteDraft, sendQuote, convertQuoteToInvoice } from "../../domain/commands/quotes"
 import { authenticateAgentSecret, createAgentKey } from "../../domain/agent-keys"
 import { decideApproval } from "../../domain/approvals"
 import { formatIsoDate } from "../../lib/exports/format"
 import { postingsFor } from "../../domain/accounting/postings"
-import { createInvoiceDraft } from "../../domain/commands/invoices"
+import { createInvoiceDraft, sendInvoice } from "../../domain/commands/invoices"
+import { markDeliverableDelivered, acceptDeliverable } from "../../domain/commands/deliverables"
+import { createInvoiceFromDeliverables } from "../../domain/commands/invoices-from-deliverables"
 import { executeCommand } from "../../domain/execute"
 import { issueDocument, reserveDocument, prepareDocument, executeIssuanceCommand } from "../issuance"
 import { appRouter } from "../../trpc/router"
@@ -96,6 +98,71 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     await ctx.caller.settings.update({ momsRegistered: registered })
     expect((await ctx.caller.quotes.view({ id: quote.id })).view.seller.momsRegistered).toBe(!registered)
     expect((await prisma.quote.findUniqueOrThrow({ where: { id: quote.id } })).sellerSnapshot).toEqual(frozen.sellerSnapshot)
+  })
+  it.each([
+    ["quote", true, true], ["quote", false, true],
+    ["agreement", true, true], ["agreement", false, true],
+    ["quote", true, false], ["quote", false, false],
+    ["agreement", true, false], ["agreement", false, false],
+  ] as const)("checks retained %s seller registration %s with changed CVR %s in render and command paths", async (kind, registered, changedCvr) => {
+    const ctx = await setup(registered, registered ? 25 : 0)
+    const actor = ctx.org.actors.admin
+    let invoiceId: string
+    if (kind === "quote") {
+      const quote = await ctx.caller.quotes.create({ contactId: ctx.invoice.contactId, expiryDate: "2099-12-01",
+        taxRate: registered ? 25 : 0, items: [{ description: "Agreed service", quantity: 1, unitPrice: 100 }] })
+      await ctx.caller.quotes.send({ id: quote.id, allowSendWithoutEmail: true })
+      // Fixture: customer acceptance of the sent quote. Conversion uses the real command.
+      await prisma.quote.update({ where: { id: quote.id }, data: { status: "accepted" } })
+      const converted = await completed(executeCommand(convertQuoteToInvoice, { id: quote.id }, { actor }))
+      if (converted.status !== "completed") throw new Error(JSON.stringify(converted))
+      invoiceId = converted.result.id
+    } else {
+      const draft = await completed(executeCommand(createAgreementDraft, {
+        contactId: ctx.invoice.contactId, title: "Agreed service", validUntil: "2099-12-01",
+        billingTrigger: "on_acceptance", taxRate: registered ? 25 : 0,
+        deliverables: [{ title: "Agreed service", description: "Service", quantity: 1, unitPrice: 100,
+          ...(!registered ? { vat: { treatment: "unclassified_zero" as const, rate: "0" } } : {}) }],
+      }, { actor }))
+      if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+      await completed(executeIssuanceCommand(issueAgreement, { id: draft.result.id }, { actor }))
+      await completed(executeIssuanceCommand(recordAgreementAcceptance, {
+        id: draft.result.id, acceptedByName: "Synthetic buyer", evidenceNote: "Written acceptance",
+      }, { actor }))
+      const deliverableId = draft.result.deliverables[0]!.id
+      await completed(executeCommand(markDeliverableDelivered, { agreementId: draft.result.id, id: deliverableId }, { actor }))
+      await completed(executeCommand(acceptDeliverable, { agreementId: draft.result.id, id: deliverableId, evidenceNote: "Signed off" }, { actor }))
+      const converted = await completed(executeCommand(createInvoiceFromDeliverables, {
+        agreementId: draft.result.id, deliverableIds: [deliverableId],
+      }, { actor }))
+      if (converted.status !== "completed" || !converted.result.saleInvoiceId) throw new Error(JSON.stringify(converted))
+      invoiceId = converted.result.saleInvoiceId
+    }
+    const before = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { items: true } })
+    await ctx.caller.settings.update({ momsRegistered: !registered })
+    if (changedCvr) await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "87654321" } })
+    const code = changedCvr ? "seller_identity_changed" : registered ? "seller_not_vat_registered" : "evidence_incomplete"
+    const args = { ...ctx.args, commandInput: { id: invoiceId, supplyDate: "2026-10-11", allowSendWithoutEmail: true } }
+    const render = vi.spyOn(getDocumentRenderer()!, "renderPdf")
+    try {
+      expect(await issueDocument(args)).toMatchObject({ status: "failed", error: { code } })
+      expect(render).not.toHaveBeenCalled()
+      expect(await executeCommand(sendInvoice, args.commandInput, { actor })).toMatchObject({ status: "failed", error: { code } })
+    } finally { render.mockRestore() }
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { items: true } })).toMatchObject({ status: "draft", number: null, sellerSnapshot: before.sellerSnapshot, items: before.items })
+    expect(await prisma.artifactStaging.count({ where: { documentId: invoiceId } })).toBe(0)
+    expect(await prisma.issuanceCandidate.count({ where: { documentId: invoiceId } })).toBe(0)
+    expect((await ctx.caller.settings.get()).invoiceNextNum).toBe(1)
+    // Restore the confirmed seller and issue without rewriting the agreed identity or lines.
+    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "12345678" } })
+    await ctx.caller.settings.update({ momsRegistered: registered })
+    await completed(issueDocument(args))
+    const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { items: true } })
+    expect(parseSellerSnapshot(issued.sellerSnapshot)).toMatchObject({ momsRegistered: registered, taxIds: [{ scheme: "cvr", value: "12345678", countryCode: "DK" }] })
+    expect(issued.items).toEqual(before.items)
+    await ctx.caller.settings.update({ momsRegistered: !registered })
+    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "87654321" } })
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).issuanceSnapshot).toEqual(issued.issuanceSnapshot)
   })
   it("blocks an unset status before numbering or preparation", async () => {
     const ctx = await setup(null)

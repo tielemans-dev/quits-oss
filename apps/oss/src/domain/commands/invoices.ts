@@ -381,7 +381,10 @@ export const sendInvoice = defineCommand({
       yield* requireDepositInvoiceEnabled(found)
       yield* refuseWhileSending("invoice", found)
       const { settings, sellerTaxIds } = yield* loadDocumentContext
-      const seller = withSellerVatStatus((found.agreementId || found.quoteId) ? parseSellerSnapshot(found.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds), settings)
+      const currentSeller = buildSellerSnapshot(settings, sellerTaxIds)
+      const seller = (found.agreementId || found.quoteId)
+        ? yield* withSellerVatStatus(parseSellerSnapshot(found.sellerSnapshot) ?? {}, currentSeller)
+        : currentSeller
       const buyer = (found.agreementId || found.quoteId) ? parseBuyerSnapshot(found.buyerSnapshot) : buildBuyerSnapshot(found.contact)
       const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate }
       yield* requireInvoiceIssuancePolicy(organizationId, effective)
