@@ -20,6 +20,20 @@ Each extension provides a stable `id` and optional `resolveCapabilities(base)` p
 
 The OSS baseline exposes capabilities via `trpc.runtime.capabilities`.
 
+## Stripe Connect webhooks
+
+`RuntimeExtension.resolveStripeConnectWebhook` may return a
+`StripeConnectWebhookVerifier`: one platform webhook secret and
+`resolveOrganizationId(stripeAccountId)`. The first extension that returns a
+verifier with a secret wins. Self-hosted runtimes leave the hook unset.
+
+`processStripeWebhookRequest` tries that verifier before the per-organization
+BYOK secrets. A signature that matches the platform secret is routed with
+`event.account`. The resolved organization must own the invoice. An unknown
+account, a missing account, or an invoice owned by another organization is
+ignored and is not tried against BYOK secrets. A signature that does not match
+falls through to the existing BYOK loop, which is unchanged.
+
 ## Deposit capability
 
 `agreements.depositsEnabled` defaults to `true`. An operator can set
