@@ -1,14 +1,18 @@
 import { hasPaymentDetails } from "@quits/contracts/payment-details"
-import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { issuedSeller } from "../../domain/documents/issued-invoice"
 import { useI18n } from "../../lib/i18n/react"
 import { invoicePaymentReferenceHint, invoicePaymentRows } from "../../lib/documents/invoice-payment-rows"
 import { invoiceTaxIds } from "../../lib/documents/invoice-identity"
 
-export function InvoiceSellerDetails({ status, sellerSnapshot }: { status: string; sellerSnapshot: unknown }) {
+export function InvoiceSellerDetails({ status, sellerSnapshot, issuanceSnapshot }: {
+  status: string
+  sellerSnapshot: unknown
+  issuanceSnapshot?: unknown
+}) {
   const { t } = useI18n()
   // Draft snapshots describe creation-time settings; issuance freezes the actual seller.
   if (status === "draft") return null
-  const seller = parseSellerSnapshot(sellerSnapshot)
+  const seller = issuedSeller(issuanceSnapshot, sellerSnapshot)
   return (
     <section aria-label={t("pdf.from")}>
       <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("pdf.from")}</h3>
@@ -19,9 +23,10 @@ export function InvoiceSellerDetails({ status, sellerSnapshot }: { status: strin
   )
 }
 
-export function InvoicePaymentInstructions({ status, sellerSnapshot, number, paymentReference, balanceDue, currency, dueDate }: {
+export function InvoicePaymentInstructions({ status, sellerSnapshot, issuanceSnapshot, number, paymentReference, balanceDue, currency, dueDate }: {
   status: string
   sellerSnapshot: unknown
+  issuanceSnapshot?: unknown
   number: string | null
   paymentReference?: string | null
   balanceDue: number
@@ -29,7 +34,7 @@ export function InvoicePaymentInstructions({ status, sellerSnapshot, number, pay
   dueDate: Date | string
 }) {
   const { t, locale } = useI18n()
-  const seller = parseSellerSnapshot(sellerSnapshot)
+  const seller = issuedSeller(issuanceSnapshot, sellerSnapshot)
   const referenceHint = invoicePaymentReferenceHint({ number, paymentReference }, locale)
   const account = seller?.bankAccount
   const note = seller?.paymentNote?.trim()

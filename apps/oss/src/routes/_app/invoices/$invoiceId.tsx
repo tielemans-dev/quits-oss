@@ -115,6 +115,7 @@ type InvoiceItem = {
 
 type Invoice = {
   sellerSnapshot?: unknown
+  issuanceSnapshot?: unknown
   disputed?: boolean
   disputedRevision?: number
   purpose?: "sale" | "prepayment"
@@ -1047,7 +1048,7 @@ function InvoiceDetailPage() {
 
             {/* Seller and buyer */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <InvoiceSellerDetails status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} />
+              <InvoiceSellerDetails status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} issuanceSnapshot={invoice.issuanceSnapshot} />
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   {t("pdf.billTo")}
@@ -1122,7 +1123,7 @@ function InvoiceDetailPage() {
               </div>
             </div>
 
-            <InvoicePaymentInstructions status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} number={invoice.number} paymentReference={invoice.paymentReference} balanceDue={invoice.balanceDue} currency={invoice.currency} dueDate={invoice.dueDate} />
+            <InvoicePaymentInstructions status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} issuanceSnapshot={invoice.issuanceSnapshot} number={invoice.number} paymentReference={invoice.paymentReference} balanceDue={invoice.balanceDue} currency={invoice.currency} dueDate={invoice.dueDate} />
 
             {/* Notes */}
             {invoice.notes && (

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { computeSettlement } from "../../../domain/documents/settlement"
+import fixture from "../../../domain/events/__tests__/fixtures/invoice.issued.v1.json"
 import { I18nProvider } from "../../../lib/i18n/react"
 import { InvoiceSellerDetails, InvoicePaymentInstructions } from "../invoice-payment-instructions"
 
@@ -119,4 +120,27 @@ describe("settled invoice detail payment instructions", () => {
       expect(html).toContain(locale === "da-DK" ? "Skriv ORDER-2026-42 i beskeden, så vi kan finde din betaling." : "Add ORDER-2026-42 to the payment message so we can match your payment.")
     })
   }
+
+  it("shows the issued seller and bank details when the row snapshot differs", () => {
+    const issuanceSnapshot = {
+      ...fixture.cases[0]!.payload,
+      seller: {
+        companyName: "Frozen Seller",
+        companyAddress: "Testvej 42\n9000 Aalborg",
+        taxIds: [{ scheme: "cvr", countryCode: "DK", value: "87654321" }],
+        bankAccount: { regNumber: "5678", accountNumber: "0123456789" },
+        paymentNote: "Issue-time note",
+      },
+    }
+    const html = renderToStaticMarkup(<I18nProvider locale="en-US">
+      <InvoiceSellerDetails status="sent" sellerSnapshot={sellerSnapshot} issuanceSnapshot={issuanceSnapshot} />
+      <InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} issuanceSnapshot={issuanceSnapshot} number="INV-0042" balanceDue={1750} currency="DKK" dueDate="2026-03-23" />
+    </I18nProvider>)
+    for (const value of ["Frozen Seller", "Testvej 42", "9000 Aalborg", "CVR-nr.: 87654321", "5678", "0123 456 789", "Issue-time note", "DKK\u00a01,750.00"]) {
+      expect(html).toContain(value)
+    }
+    for (const stale of ["Synthetic Seller ApS", "12345678", "0040", "0440 116 243", "Frozen note"]) {
+      expect(html).not.toContain(stale)
+    }
+  })
 })

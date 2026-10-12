@@ -143,6 +143,32 @@ const storedInvoice: InvoiceForEmail = {
 const compose = (document: InvoiceForEmail, org = settings) => composeInvoiceEmail({ invoice: document, settings: org, to: "buyer@example.invalid", publicPaymentUrl: "https://app.example.invalid/pay/token" }).message.html
 
 describe("frozen invoice email payment details", () => {
+  it("uses the issued gross and bank details, not a different row total or current settings", () => {
+    const document = {
+      ...storedInvoice,
+      totalGross: decimal(9999),
+      subtotalNet: decimal(8000),
+      totalTax: decimal(1999),
+      amountPaid: decimal(500),
+      amountCredited: decimal(250),
+      issuanceSnapshot: {
+        ...fixture.cases[0]!.payload,
+        totals: { ...fixture.cases[0]!.payload.totals, gross: "2500.00" },
+        seller: { bankAccount: { regNumber: "5678", accountNumber: "0123456789" }, paymentNote: "Issue-time note" },
+      },
+    }
+    const html = compose(document, { ...settings, bankRegNumber: "9999", bankAccountNumber: "1111111", paymentNote: "Changed settings note" })
+    const payment = html.match(/<table aria-label="Sådan betaler du"[\s\S]*?<\/table>/)?.[0]
+    expect(payment).toContain("1.750,00\u00a0kr.")
+    expect(payment).toContain("5678")
+    expect(payment).toContain("0123 456 789")
+    expect(html).toContain("2.500,00\u00a0kr.")
+    expect(html).toContain("Issue-time note")
+    for (const stale of ["9.999,00", "0040", "0440 116 243", "Legacy frozen note", "Changed settings note", "1111111", "9999"]) {
+      expect(html).not.toContain(stale)
+    }
+  })
+
   it("prefers the issue-time snapshot over both row snapshots and current settings", () => {
     const document = { ...storedInvoice, issuanceSnapshot: { ...fixture.cases[0]!.payload, seller: { companyName: "Frozen Seller", companyAddress: "Testvej 42\n9000 Aalborg", taxIds: [{ scheme: "cvr", countryCode: "DK", value: "12345678" }], bankAccount: { regNumber: "5678", accountNumber: "0123456789" }, paymentNote: "Issue-time note" } } }
     const before = compose(document)

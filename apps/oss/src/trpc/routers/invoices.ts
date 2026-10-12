@@ -31,7 +31,7 @@ import {
 import { markInvoicePaid, undoInvoiceMarkPaid } from "../../domain/commands/paid-moment"
 import { invoicePaidMomentResultSchema } from "@quits/contracts/invoices"
 import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
-import { computeSettlement } from "../../domain/documents/settlement"
+import { issuedInvoiceSettlement } from "../../domain/documents/issued-settlement"
 import { executeCommand } from "../../domain/execute"
 import { markOrganizationInvoicesOverdue } from "../../domain/features/overdue"
 import { router, authorizedProcedure } from "../init"
@@ -86,14 +86,16 @@ function serializeInvoiceForUi<
 
 /** Paid, credited, and outstanding amounts as plain numbers for the UI. */
 function settlementForUi(invoice: {
+  issuanceSnapshot?: unknown
   totalGross: { toNumber: () => number }
   amountPaid: { toNumber: () => number }
   amountCredited: { toNumber: () => number }
 }) {
-  const settlement = computeSettlement({
-    totalGross: invoice.totalGross.toNumber(),
-    amountPaid: invoice.amountPaid.toNumber(),
-    amountCredited: invoice.amountCredited.toNumber(),
+  const settlement = issuedInvoiceSettlement({
+    issuanceSnapshot: invoice.issuanceSnapshot,
+    totalGross: invoice.totalGross,
+    amountPaid: invoice.amountPaid,
+    amountCredited: invoice.amountCredited,
   })
   return {
     amountPaid: settlement.amountPaid.toNumber(),

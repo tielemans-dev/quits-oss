@@ -1,6 +1,6 @@
-import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
-import { computeSettlement } from "./settlement"
-import { issuedInvoiceSnapshot } from "./issued-invoice"
+import { parseBuyerSnapshot } from "@quits/contracts/documents"
+import { issuedInvoiceSnapshot, issuedSeller } from "./issued-invoice"
+import { issuedInvoiceSettlement } from "./issued-settlement"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { Effect } from "effect"
 import { z } from "zod"
@@ -127,12 +127,13 @@ export function composeInvoiceEmail(input: {
   const { envelope } = resolveInvoiceEmailContext(input.settings)
   const { invoice } = input
   const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
-  const seller = frozen?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot)
+  const seller = issuedSeller(invoice.issuanceSnapshot, invoice.sellerSnapshot)
   const buyer = frozen?.buyer ?? parseBuyerSnapshot(invoice.buyerSnapshot)
-  const settlement = computeSettlement({
-    totalGross: frozen ? frozen.totals.gross : invoice.totalGross.toNumber(),
-    amountPaid: invoice.amountPaid.toNumber(),
-    amountCredited: invoice.amountCredited.toNumber(),
+  const settlement = issuedInvoiceSettlement({
+    issuanceSnapshot: invoice.issuanceSnapshot,
+    totalGross: invoice.totalGross,
+    amountPaid: invoice.amountPaid,
+    amountCredited: invoice.amountCredited,
   })
   const vatSummary = documentVatSummary(invoice, frozen ? vatRowsByRate(frozen.vatGroups, frozen.currency) : undefined)
   const content = buildInvoiceEmailContent({
@@ -144,7 +145,7 @@ export function composeInvoiceEmail(input: {
       subtotal: frozen ? Number(frozen.totals.net) : invoice.subtotalNet.toNumber(),
       taxAmount: frozen ? Number(frozen.totals.tax) : invoice.totalTax.toNumber(),
       balanceDue: settlement.balanceDue.toNumber(),
-      total: frozen ? Number(frozen.totals.gross) : invoice.totalGross.toNumber(),
+      total: settlement.totalGross.toNumber(),
       issueDate: frozen?.occurredAt ?? invoice.issueDate,
       supplyDate: frozen ? frozen.supplyDate : invoice.supplyDate?.toISOString().slice(0, 10),
       buyer,
