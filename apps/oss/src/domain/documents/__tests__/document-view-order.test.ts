@@ -51,11 +51,14 @@ describe("persisted document line order", () => {
         }))
 
         const result = await loadDocumentView({ kind: "system", organizationId: "org", reason: "migration", label: "Test" }, kind, "document")
-        expect(result?.historical).toBe(kind !== "quote")
-        expect(result?.view.lines.map(line => [line.id, line.gross])).toEqual([
+        if (!result || !result.view.totals) {
+          throw new Error("Expected the persisted document view to include totals")
+        }
+        expect(result.historical).toBe(kind !== "quote")
+        expect(result.view.lines.map(line => [line.id, line.gross])).toEqual([
           ["z-first", "12.50"], ["a-tied", "10.00"], ["b-tied", "124.99"],
         ])
-        expect(result?.view.totals.gross).toBe("147.49")
+        expect(result.view.totals.gross).toBe("147.49")
         expect(findFirst).toHaveBeenCalledWith({ where: { id: "document", organizationId: "org" },
           include: { items: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] } },
         })
