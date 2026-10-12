@@ -1,6 +1,11 @@
 import Stripe from "stripe"
+import { prisma } from "../db"
+import { getRuntimeExtensions } from "../runtime/extensions"
+import type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "../runtime/stripe-checkout-target"
 import { decryptSecret } from "../secrets"
 import { toStripeMinorUnits } from "./stripe-amounts"
+
+export type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "../runtime/stripe-checkout-target"
 
 export type StripePaymentConfigurationSnapshot = {
   stripePublishableKey: string | null
@@ -39,13 +44,52 @@ export function createStripeClient(secretKey: string, options?: { timeoutMs?: nu
 }
 
 /**
+ * The first extension that returns a target wins. Otherwise the organization's own
+ * Stripe keys are used, and only when publishable key, secret key and webhook secret
+ * are all stored.
+ */
+export async function resolveStripeCheckoutTarget(
+  context: StripeCheckoutTargetContext
+): Promise<StripeCheckoutTarget | null> {
+  for (const extension of getRuntimeExtensions()) {
+    if (!extension.resolveStripeCheckoutTarget) continue
+    const target = await extension.resolveStripeCheckoutTarget(context)
+    if (target) return target
+  }
+  return defaultByokStripeCheckoutTarget(context.organizationId)
+}
+
+async function defaultByokStripeCheckoutTarget(
+  organizationId: string
+): Promise<StripeCheckoutTarget | null> {
+  const settings = await prisma.orgSettings.findUnique({
+    where: { organizationId },
+    select: {
+      stripePublishableKey: true,
+      stripeSecretKeyEnc: true,
+      stripeWebhookSecretEnc: true,
+    },
+  })
+  const credentials = getStripePaymentCredentials({
+    stripePublishableKey: settings?.stripePublishableKey ?? null,
+    stripeSecretKeyEnc: settings?.stripeSecretKeyEnc ?? null,
+    stripeWebhookSecretEnc: settings?.stripeWebhookSecretEnc ?? null,
+  })
+  if (!credentials) return null
+  return {
+    kind: "byok",
+    secretKey: credentials.secretKey,
+    webhookSecret: credentials.webhookSecret,
+  }
+}
+
+/**
  * Expiring a session runs right after a payment is recorded, before the response is sent; a slow
  * Stripe must not hold that up for long. A timed-out expiry is retried by the job runner.
  */
 const EXPIRE_TIMEOUT_MS = 10_000
 
-export async function createStripeInvoiceCheckoutSession(input: {
-  credentials: ReturnType<typeof getStripePaymentCredentials>
+type InvoiceCheckoutSessionInput = {
   invoice: {
     id: string
     number: string
@@ -56,14 +100,19 @@ export async function createStripeInvoiceCheckoutSession(input: {
   amountDue: number
   successUrl: string
   cancelUrl: string
-}) {
-  if (!input.credentials) {
-    throw new Error("Stripe payment credentials are not configured")
-  }
+}
 
-  const stripe = createStripeClient(input.credentials.secretKey)
+/**
+ * Direct charge on the resolved account. No application fee, and no payment_method_types, so
+ * Stripe keeps dynamic payment methods (including MobilePay where the account has them).
+ */
+type DirectChargeCheckoutParams = Omit<
+  Stripe.Checkout.SessionCreateParams,
+  "payment_method_types" | "payment_intent_data"
+>
 
-  return stripe.checkout.sessions.create({
+function invoiceCheckoutSessionParams(input: InvoiceCheckoutSessionInput): DirectChargeCheckoutParams {
+  return {
     mode: "payment",
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
@@ -84,7 +133,71 @@ export async function createStripeInvoiceCheckoutSession(input: {
         },
       },
     ],
-  })
+  }
+}
+
+function targetForCheckout(input: {
+  credentials?: ReturnType<typeof getStripePaymentCredentials>
+  target?: StripeCheckoutTarget
+}): StripeCheckoutTarget {
+  if (input.target) return requireConnectAccount(input.target)
+  if (!input.credentials) {
+    throw new Error("Stripe payment credentials are not configured")
+  }
+  return {
+    kind: "byok",
+    secretKey: input.credentials.secretKey,
+    webhookSecret: input.credentials.webhookSecret,
+  }
+}
+
+function targetForExpiry(input: {
+  secretKey?: string
+  target?: StripeCheckoutTarget
+}): StripeCheckoutTarget {
+  if (input.target) return requireConnectAccount(input.target)
+  if (!input.secretKey) {
+    throw new Error("Stripe payment credentials are not configured")
+  }
+  return { kind: "byok", secretKey: input.secretKey, webhookSecret: "" }
+}
+
+function requireConnectAccount(target: StripeCheckoutTarget): StripeCheckoutTarget {
+  if (target.kind === "connect" && !target.stripeAccount.trim()) {
+    throw new Error("Stripe Connect checkout requires a connected account")
+  }
+  return target
+}
+
+function stripeClientFor(target: StripeCheckoutTarget, timeoutMs?: number) {
+  if (target.kind === "connect") return target.client
+  return createStripeClient(target.secretKey, timeoutMs ? { timeoutMs } : undefined)
+}
+
+/** Stripe-Account header for a direct charge. Omitted for BYOK, which uses the org's own key. */
+function connectRequestOptions(
+  target: StripeCheckoutTarget,
+  timeoutMs?: number
+): Stripe.RequestOptions | undefined {
+  if (target.kind !== "connect") return undefined
+  return timeoutMs
+    ? { stripeAccount: target.stripeAccount, timeout: timeoutMs }
+    : { stripeAccount: target.stripeAccount }
+}
+
+export async function createStripeInvoiceCheckoutSession(
+  input: InvoiceCheckoutSessionInput & {
+    credentials?: ReturnType<typeof getStripePaymentCredentials>
+    target?: StripeCheckoutTarget
+  }
+) {
+  const target = targetForCheckout(input)
+  const stripe = stripeClientFor(target)
+  const params = invoiceCheckoutSessionParams(input)
+  const options = connectRequestOptions(target)
+  return options
+    ? stripe.checkout.sessions.create(params, options)
+    : stripe.checkout.sessions.create(params)
 }
 
 export type CheckoutSessionExpiry = "expired" | "not_open" | "missing"
@@ -97,14 +210,20 @@ function isMissingResource(error: unknown) {
  * Expires a Checkout session if it can still be paid, so a customer cannot pay an amount that is
  * no longer owed. A session that was completed, already expired, or never existed (e.g. created
  * under a Stripe key that has since been replaced) needs nothing and is reported as such.
+ * A connect target expires the session on that connected account.
  */
 export async function expireOpenStripeCheckoutSession(input: {
-  secretKey: string
+  secretKey?: string
+  target?: StripeCheckoutTarget
   sessionId: string
 }): Promise<CheckoutSessionExpiry> {
-  const stripe = createStripeClient(input.secretKey, { timeoutMs: EXPIRE_TIMEOUT_MS })
+  const target = targetForExpiry(input)
+  const stripe = stripeClientFor(target, EXPIRE_TIMEOUT_MS)
+  const options = connectRequestOptions(target, EXPIRE_TIMEOUT_MS)
   try {
-    await stripe.checkout.sessions.expire(input.sessionId)
+    await (options
+      ? stripe.checkout.sessions.expire(input.sessionId, options)
+      : stripe.checkout.sessions.expire(input.sessionId))
     return "expired"
   } catch (error) {
     if (isMissingResource(error)) {
@@ -116,7 +235,9 @@ export async function expireOpenStripeCheckoutSession(input: {
     // Only open sessions can be expired; find out whether this one is no longer open.
     let session: Stripe.Checkout.Session
     try {
-      session = await stripe.checkout.sessions.retrieve(input.sessionId)
+      session = await (options
+        ? stripe.checkout.sessions.retrieve(input.sessionId, options)
+        : stripe.checkout.sessions.retrieve(input.sessionId))
     } catch (retrieveError) {
       if (isMissingResource(retrieveError)) {
         return "missing"

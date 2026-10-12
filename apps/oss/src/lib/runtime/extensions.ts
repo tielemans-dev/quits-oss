@@ -6,6 +6,8 @@ import type {
 } from "@quits/contracts/runtime"
 import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
 import { getRuntimeEnv, getRuntimePlatform } from "./platform"
+import type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
+export type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
 
 export type RuntimeExtension = {
   id: string
@@ -13,6 +15,13 @@ export type RuntimeExtension = {
   resolveCapabilities?: (
     baseCapabilities: Readonly<RuntimeCapabilities>
   ) => RuntimeCapabilityPatch | void
+  /**
+   * Overrides the default BYOK checkout target. A returned target is used as-is.
+   * Null and undefined leave BYOK in place.
+   */
+  resolveStripeCheckoutTarget?: (
+    context: StripeCheckoutTargetContext
+  ) => StripeCheckoutTarget | null | undefined | Promise<StripeCheckoutTarget | null | undefined>
 }
 
 const DEFAULT_MAX_PROMPT_CHARS = 4000
