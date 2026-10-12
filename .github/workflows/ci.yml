@@ -81,6 +81,10 @@ jobs:
         working-directory: apps/oss
         run: bunx playwright install --with-deps chromium
 
+      - name: Verify onboarding review choices and draft persistence
+        working-directory: apps/oss
+        run: bunx playwright test --config playwright.onboarding-v2.config.ts --workers=1
+
       - name: Run browser smoke tests
         run: bun run test:e2e
 

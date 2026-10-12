@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { DANISH_ONBOARDING_V2_DEFAULTS, confirmOnboardingV2Schema, isValidDanishCvr } from "@quits/contracts/onboarding"
+import { newDraft, confirmationPayload, draftSchema } from "../../components/onboarding-v2/draft"
 import { formatDocumentNumber } from "@quits/shared/documents"
 import { buildDkPresets } from "../onboarding/dk-presets"
 import { nonVatStatement, withNonVatStatement, localizedNonVatPaymentNote } from "../documents/non-vat-note"
@@ -17,9 +18,18 @@ describe("Danish onboarding v2", () => {
       vi.setSystemTime(new Date("2026-12-31T23:00:00Z"))
       expect(DANISH_ONBOARDING_V2_DEFAULTS.invoicePrefix).toBe("2027")
       expect(buildDkPresets(company).invoicePrefix).toBe("2027")
+      expect(newDraft(null, "signup@example.test", false).values.invoicePrefix).toBe("2027")
       vi.setSystemTime(new Date("2028-07-01T12:00:00Z"))
       expect(buildDkPresets(company).invoicePrefix).toBe("2028")
     } finally { vi.useRealTimers() }
+  })
+  it.each([true, false])("keeps registration %s through a serialized draft and validated payload", momsRegistered => {
+    const draft = newDraft(null, "signup@example.test", false)
+    Object.assign(draft.values, { companyName: "Manual company", companyAddress: "Testvej 1", momsRegistered })
+    const restored = draftSchema.parse(JSON.parse(JSON.stringify(draft)))
+    const payload = confirmOnboardingV2Schema.parse(confirmationPayload(restored))
+    expect(payload).toMatchObject({ source: "manual", momsRegistered, settings: { taxRate: momsRegistered ? 25 : 0 } })
+    expect(payload.vatId).toBeUndefined()
   })
   it("sets every Danish default explicitly for CVR and manual summaries", () => {
     const settings = buildDkPresets(company, "signup@example.test")
