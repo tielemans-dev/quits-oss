@@ -64,27 +64,36 @@ function CreditNoteDetailPage() {
   const load = useCallback(async () => {
     const request = ++latestLoad.current
     const isCurrent = beginRequest(creditNoteId)
-    const [data, settings, capabilities] = await Promise.all([
+    const [data, context] = await Promise.all([
       trpc.creditNotes.get.query({ id: creditNoteId }),
-      trpc.settings.get.query(),
-      trpc.creditNotes.capabilities.query(),
+      Promise.allSettled([
+        trpc.settings.get.query(),
+        trpc.creditNotes.capabilities.query(),
+      ]),
     ])
     // A late answer for another credit note, or from before an organization switch, must not
     // replace what is on screen or restore old rights.
     if (request !== latestLoad.current || !isCurrent()) return
     setCreditNote(data)
-    setCanSend(capabilities.canSend)
-    setOrg({
-      companyName: settings.companyName,
-      companyEmail: settings.companyEmail,
-      companyPhone: settings.companyPhone,
-      companyAddress: settings.companyAddress,
-      companyLogo: settings.companyLogo,
-      locale: settings.locale,
-      timezone: settings.timezone,
-      emailAvailable: settings.emailDelivery.available,
-    })
-  }, [beginRequest, creditNoteId])
+    const [settingsResult, capabilitiesResult] = context
+    setCanSend(capabilitiesResult.status === "fulfilled" && capabilitiesResult.value.canSend)
+    if (settingsResult.status === "fulfilled") {
+      const settings = settingsResult.value
+      setOrg({
+        companyName: settings.companyName,
+        companyEmail: settings.companyEmail,
+        companyPhone: settings.companyPhone,
+        companyAddress: settings.companyAddress,
+        companyLogo: settings.companyLogo,
+        locale: settings.locale,
+        timezone: settings.timezone,
+        emailAvailable: settings.emailDelivery.available,
+      })
+    } else {
+      setOrg({ emailAvailable: false })
+    }
+    if (context.some(result => result.status === "rejected")) setError(t("creditNotes.error.generic"))
+  }, [beginRequest, creditNoteId, t])
 
   /** Reloads only the credit note; a full load started meanwhile wins. */
   const refreshCreditNote = useCallback(async () => {
@@ -109,8 +118,11 @@ function CreditNoteDetailPage() {
     if (organizationId === undefined) return
     const isCurrent = beginRequest(creditNoteId)
     load()
-      .catch(() => {
-        if (isCurrent()) setError(t("creditNotes.detail.notFound"))
+      .catch((err: unknown) => {
+        if (!isCurrent()) return
+        const notFound = err !== null && typeof err === "object" && "data" in err &&
+          err.data !== null && typeof err.data === "object" && "code" in err.data && err.data.code === "NOT_FOUND"
+        setError(t(notFound ? "creditNotes.detail.notFound" : "creditNotes.error.generic"))
       })
       .finally(() => {
         if (isCurrent()) setLoading(false)
