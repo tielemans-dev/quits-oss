@@ -17,6 +17,21 @@ for (const locale of [danishLocale, usEnglishLocale]) {
     const da = locale.locale === "da-DK"
     const descriptionLabel = da ? "Beskrivelse" : "Description"
     const quantityLabel = da ? "Antal" : "Qty"
+    const unitPriceLabel = da ? "Enhedspris" : "Unit Price"
+    const assertMobileLabels = async () => {
+      const quantity = page.getByRole("textbox", { name: quantityLabel, exact: true })
+      const price = page.getByRole("spinbutton", { name: unitPriceLabel, exact: true })
+      for (const input of [quantity, price]) {
+        const id = await input.getAttribute("id")
+        expect(id).toBeTruthy()
+        await expect(page.locator(`label[for="${id}"]`)).toBeVisible()
+      }
+      const total = page.getByRole("status", { name: "Total", exact: true })
+      await expect(total).toBeVisible()
+      const labelId = await total.getAttribute("aria-labelledby")
+      expect(labelId).toBeTruthy()
+      await expect(page.locator(`[id="${labelId}"]`)).toBeVisible()
+    }
     const invalidMessage = da ? "Eksponentnotation er ikke tilladt." : "Exponent notation is not allowed."
     const description = "A long consulting description that must wrap inside the invoice line item card. ".repeat(3) + "UnbrokenReference".repeat(12)
     const mutations: string[] = []
@@ -36,6 +51,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await page.getByRole("button", { name: da ? "Rediger" : "Edit", exact: true }).click()
       const descriptionInput = page.getByRole("textbox", { name: descriptionLabel, exact: true })
       const quantity = page.getByRole("textbox", { name: quantityLabel, exact: true })
+      await assertMobileLabels()
       await descriptionInput.fill(description)
       // Test rendered geometry, including one long unbroken token, rather than CSS class names.
       await expect.poll(() => descriptionInput.evaluate((el: HTMLTextAreaElement) => {
@@ -85,6 +101,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await page.locator("button[data-day]").filter({ hasText: /^15$/ }).first().click()
       await page.keyboard.press("Escape")
       await page.getByRole("textbox", { name: descriptionLabel, exact: true }).fill(description)
+      await assertMobileLabels()
       await quantity.fill("1e3")
       await page.getByRole("button", { name: da ? "Gem som kladde" : "Save as Draft", exact: true }).click()
       await expect(page.getByText(invalidMessage, { exact: false })).toBeVisible()

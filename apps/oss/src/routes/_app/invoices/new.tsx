@@ -428,28 +428,39 @@ function NewInvoicePage() {
                     value={item.description}
                     onChange={(e) => updateItem(index, "description", e.target.value)}
                   />
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    aria-label={t("docForm.column.qty")}
-                    aria-invalid={!quantityDecimalSchema.safeParse(item.quantity).success}
-                    value={item.quantity || ""}
-                    onChange={(e) =>
-                      updateItem(index, "quantity", e.target.value)
-                    }
-                  />
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    value={item.unitPrice || ""}
-                    onChange={(e) =>
-                      updateItem(index, "unitPrice", e.target.value)
-                    }
-                  />
-                  <span className="num text-sm text-right pr-2">
-                    {preview.result ? formatCurrencyIntl(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—"}
-                  </span>
+                  <div className="grid min-w-0 gap-1">
+                    <Label htmlFor={`invoice-new-quantity-${index}`} className="md:sr-only">{t("docForm.column.qty")}</Label>
+                    <Input
+                      id={`invoice-new-quantity-${index}`}
+                      type="text"
+                      inputMode="decimal"
+                      aria-label={t("docForm.column.qty")}
+                      aria-invalid={!quantityDecimalSchema.safeParse(item.quantity).success}
+                      value={item.quantity || ""}
+                      onChange={(e) =>
+                        updateItem(index, "quantity", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="grid min-w-0 gap-1">
+                    <Label htmlFor={`invoice-new-unitPrice-${index}`} className="md:sr-only">{t("docForm.column.unitPrice")}</Label>
+                    <Input
+                      id={`invoice-new-unitPrice-${index}`}
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      value={item.unitPrice || ""}
+                      onChange={(e) =>
+                        updateItem(index, "unitPrice", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="grid min-w-0 gap-1">
+                    <span id={`invoice-new-total-${index}`} className="text-sm font-medium md:sr-only">{t("docForm.column.total")}</span>
+                    <output aria-labelledby={`invoice-new-total-${index}`} className="num text-sm text-right pr-2">
+                      {preview.result ? formatCurrencyIntl(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—"}
+                    </output>
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"

@@ -20,7 +20,8 @@ strings make no save request, then verifies `0.123456` survives save/reload and
 This branch starts at fetched OSS main `38a26531`. Main still has inline invoice
 editors. PR #132 introduces `lines-editor.tsx` and replaces those sections.
 After #132 lands, rebase this PR and apply the raw text quantity input,
-quantity-schema validation, textarea wrapping, and VAT-label wrapping to that
+quantity-schema validation, textarea wrapping, mobile-visible accessible quantity,
+unit-price and total labels, and VAT-label wrapping to that
 editor. Do not restore the inline editor or overwrite #132's send-flow changes.
 Rerun the regression and refresh screenshots if that integration changes the UI.
 
@@ -69,3 +70,39 @@ waiting for client readiness on `/invoices/new`. The remaining run was stopped
 when memory pressure rose again. This does not establish a passing create/PDF
 run or a passing pricing browser run. CI must confirm them. Owned servers and
 disposable containers were stopped and Fleet was released after each attempt.
+
+## Mobile-label repair at the reviewed head
+
+The Codex P2 finding on `ef5e2f62540735d5aff105daee00112405556b3f`
+[identified missing mobile labels](https://github.com/tielemans-dev/quits-oss/pull/148#discussion_r4253987992).
+Both existing inline invoice editors now pair quantity and unit price with native
+labels linked by `htmlFor`, and name the computed total output through
+`aria-labelledby`. Labels are visible below `md`; desktop keeps the shared header.
+Copy comes from the existing DA/EN catalog: Antal/Qty, Enhedspris/Unit Price, Total.
+No quantity validation, wrapping, shared selector repair, or other flow changed.
+
+The refreshed DA/EN edit PNGs show all three labels at 390 × 844, with the same
+synthetic fixture and real app paths documented above. They are edit evidence;
+there is no new English-create evidence or desktop evidence. No baseline was
+captured. The regression asserts visible associated labels in both edit and new.
+
+Repair verification:
+
+- Changed-file oxlint, application/quality typecheck, catalog and translation-memory
+  checks passed. Shared pricing tests passed: 37, one worker. Diff check passed.
+- Corrected targeted browser run: Danish passed the full create/edit regression.
+  English passed edit label, wrapping, invalid-input and persistence checks, then
+  Chromium crashed during `/invoices/new` navigation readiness. Result: 1 passed,
+  1 failed. This does not certify English create on the new head.
+- An initial run failed because the new test helper referenced an out-of-scope
+  quantity locator. That helper was corrected before the final run.
+- Runs used one outer Fleet job at a time and one browser/test worker. Memory and
+  I/O pressure rose during browser work. No further cold browser run or local
+  build was attempted. Full lint, unit/integration/browser suites and build are
+  left to CI; the parent owns CI watching and the next review request.
+- The owned Vite server and disposable PostgreSQL container were stopped by the
+  harness `finally`; Fleet was released. No VPS/#132 branch or code was touched.
+
+Keep this PR draft pending current-head CI, Codex review, and Ines approval.
+After #132 integration, preserve these labels alongside the original QUI-35
+wrapping and raw quantity validation, then rerun the regression and evidence.

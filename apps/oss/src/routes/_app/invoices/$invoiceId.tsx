@@ -624,30 +624,41 @@ function InvoiceDetailPage() {
                       value={item.description}
                       onChange={(e) => updateEditItem(index, "description", e.target.value)}
                     />
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      aria-label={t("docForm.column.qty")}
-                      aria-invalid={!quantityDecimalSchema.safeParse(item.quantity).success}
-                      disabled={!!item.deliverableId}
-                      value={item.quantity || ""}
-                      onChange={(e) =>
-                        updateEditItem(index, "quantity", e.target.value)
-                      }
-                    />
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.0001"
-                      disabled={!!item.deliverableId}
-                      value={item.unitPrice || ""}
-                      onChange={(e) =>
-                        updateEditItem(index, "unitPrice", e.target.value)
-                      }
-                    />
-                    <span className="num text-sm text-right pr-2">
-                      {preview.result ? formatCurrency(item.deliverableId ? (invoice.pricesIncludeTax ? item.frozenGross ?? 0 : item.frozenNet ?? 0) : Number(preview.result.lines[editItems.slice(0, index + 1).filter(line => !line.deliverableId).length - 1]?.[invoice.pricesIncludeTax ? "gross" : "net"] ?? "0"), invoice.currency, locale) : "—"}
-                    </span>
+                    <div className="grid min-w-0 gap-1">
+                      <Label htmlFor={`invoice-edit-quantity-${index}`} className="md:sr-only">{t("docForm.column.qty")}</Label>
+                      <Input
+                        id={`invoice-edit-quantity-${index}`}
+                        type="text"
+                        inputMode="decimal"
+                        aria-label={t("docForm.column.qty")}
+                        aria-invalid={!quantityDecimalSchema.safeParse(item.quantity).success}
+                        disabled={!!item.deliverableId}
+                        value={item.quantity || ""}
+                        onChange={(e) =>
+                          updateEditItem(index, "quantity", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="grid min-w-0 gap-1">
+                      <Label htmlFor={`invoice-edit-unitPrice-${index}`} className="md:sr-only">{t("docForm.column.unitPrice")}</Label>
+                      <Input
+                        id={`invoice-edit-unitPrice-${index}`}
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        disabled={!!item.deliverableId}
+                        value={item.unitPrice || ""}
+                        onChange={(e) =>
+                          updateEditItem(index, "unitPrice", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="grid min-w-0 gap-1">
+                      <span id={`invoice-edit-total-${index}`} className="text-sm font-medium md:sr-only">{t("docForm.column.total")}</span>
+                      <output aria-labelledby={`invoice-edit-total-${index}`} className="num text-sm text-right pr-2">
+                        {preview.result ? formatCurrency(item.deliverableId ? (invoice.pricesIncludeTax ? item.frozenGross ?? 0 : item.frozenNet ?? 0) : Number(preview.result.lines[editItems.slice(0, index + 1).filter(line => !line.deliverableId).length - 1]?.[invoice.pricesIncludeTax ? "gross" : "net"] ?? "0"), invoice.currency, locale) : "—"}
+                      </output>
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
