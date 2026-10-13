@@ -11,11 +11,12 @@ There are no UI adapters, intercepted API responses, or DOM substitutions.
 The screenshots retain `1e3` and show its localized rejection, with long prose
 and an unbroken reference wrapping in both the editable line and its VAT card.
 
-The existing quantity contract accepts positive decimal-point strings up to six
-places and at most 1000000. Comma input remains unsupported, with an explicit
-localized explanation. The regression verifies exponent and other invalid
-strings make no save request, then verifies `0.123456` survives save/reload and
-`1.5` creates a draft.
+The API quantity contract accepts positive decimal-point strings up to six
+places and at most 1,000,000. The editor now accepts a decimal comma as well,
+retains raw text while editing, and normalizes valid quantities for previews and
+create/edit requests. Mixed separators and grouping are rejected. The browser
+regression uses `0,123456` for Danish edit/save/reload and `1,5` for Danish create;
+English still exercises decimal-point input. Stored quantities remain canonical.
 
 This branch starts at fetched OSS main `38a26531`. Main still has inline invoice
 editors. PR #132 introduces `lines-editor.tsx` and replaces those sections.
@@ -25,8 +26,33 @@ unit-price and total labels, and VAT-label wrapping to that
 editor. Do not restore the inline editor or overwrite #132's send-flow changes.
 Rerun the regression and refresh screenshots if that integration changes the UI.
 
-Ines approval and Codex review are still required. This PR remains a draft;
-passing local checks alone does not make it ready for Kai.
+PR #148 is open and ready for review. Codex reviewed `cc897343` without major
+findings, but Ines's quantity blocker remains. The repair needs new-head CI and
+review; passing local checks alone does not make it ready for Kai.
+
+## Focused quantity repair, 2026-10-13
+
+This round addresses comma input only. Description wrapping and mobile labels
+were approved by Ines. VAT rate/country labels remain outside this round.
+Fetched main `8a8c7594` has no overlapping invoice-editor changes. PR #132 is
+still open; its new editor must preserve comma normalization on integration.
+
+No Mira-approved replacement quantity error was found in the complete QUI-35
+issue, its comments, PR #148's comments/review threads, or the catalog. The
+existing error text is unchanged pending Kai/Mira's exact DA/EN copy. Ines's
+requested Danish `1.000.000` formatting belongs in that approved copy.
+
+Local verification for this repair passed: 30 quantity normalization, preview,
+create/edit schema tests; 44 focused contract tests; changed-file lint; catalog
+and translation-memory checks; 26 boundary regression cases and the boundary
+check; and diff whitespace checks. Tests ran one at a time through Fleet with
+one worker. The browser spec was updated but not run locally in this round.
+
+The captures above predate comma support. Parent owns the coordinated screenshot
+round and Ines sign-off, including current-main before/after, DA/EN, 390/1440,
+light and requested dark coverage. Refresh the DA captures after #132 integration.
+Full lint, typecheck, unit/integration/browser suites, build, i18n and
+`verify-oss-boundary` must pass in new-head CI before review coordination.
 
 ## Verification
 

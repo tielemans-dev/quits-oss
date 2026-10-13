@@ -65,7 +65,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       const vatDescription = page.locator('[data-slot="label"]').filter({ hasText: description })
       await expect.poll(() => vatDescription.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
       const save = page.getByRole("button", { name: da ? "Gem ændringer" : "Save Changes", exact: true })
-      for (const invalid of ["1e3", "1E+3", "1e", "1,5", "0", "-1", "1000001", "0.1234567"]) {
+      for (const invalid of ["1e3", "1E+3", "1e", "1,5.0", "1.000,5", "1,000,000", "0", "-1", "1000001", "0.1234567", "0,1234567", "1000000,000001"]) {
         await quantity.fill(invalid)
         await save.click()
         await expect(quantity).toHaveValue(invalid)
@@ -80,7 +80,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
         await mkdir(process.env.QUI35_CAPTURE_DIR, { recursive: true })
         await page.screenshot({ path: resolve(process.env.QUI35_CAPTURE_DIR, `invoice-editor-${locale.locale}-390.png`), fullPage: true })
       }
-      await quantity.fill("0.123456")
+      await quantity.fill(da ? "0,123456" : "0.123456")
       await save.click()
       await expect(page.getByRole("button", { name: da ? "Rediger" : "Edit", exact: true })).toBeVisible()
       const stored = await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: seeded.id } })
@@ -107,7 +107,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await expect(page.getByText(invalidMessage, { exact: false })).toBeVisible()
       await expect(quantity).toHaveValue("1e3")
       expect(mutations).toHaveLength(1)
-      await quantity.fill("1.5")
+      await quantity.fill(da ? "1,5" : "1.5")
       await page.getByRole("button", { name: da ? "Gem som kladde" : "Save as Draft", exact: true }).click()
       await expect(page).toHaveURL(/\/invoices\/(?!new)[^/]+$/)
       const createdId = new URL(page.url()).pathname.split("/").at(-1)!

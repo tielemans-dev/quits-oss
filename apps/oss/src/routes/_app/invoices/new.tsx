@@ -1,4 +1,4 @@
-import { quantityDecimalSchema } from "@quits/contracts/invoices"
+import { invoiceQuantityInputSchema, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -139,7 +139,7 @@ function NewInvoicePage() {
     )
   }
 
-  const preview = previewDraft({ items, taxRate: taxRate || "0", pricesIncludeTax, currency })
+  const preview = previewDraft({ items: items.map(normalizeInvoiceQuantity), taxRate: taxRate || "0", pricesIncludeTax, currency })
   const subtotal = Number(preview.result?.net ?? "0")
   const taxAmount = Number(preview.result?.tax ?? "0")
   const total = Number(preview.result?.gross ?? "0")
@@ -245,7 +245,7 @@ function NewInvoicePage() {
       return
     }
 
-    if (items.some((item) => !quantityDecimalSchema.safeParse(item.quantity).success)) {
+    if (items.some((item) => !invoiceQuantityInputSchema.safeParse(item.quantity).success)) {
       setError(t("docForm.validation.quantityInvalid"))
       return
     }
@@ -263,7 +263,7 @@ function NewInvoicePage() {
             taxRate,
             vatEvidence,
             notes: notes || undefined,
-            items: items.map((item) => ({
+            items: items.map(normalizeInvoiceQuantity).map((item) => ({
               description: item.description,
               quantity: String(item.quantity),
               unitPrice: String(item.unitPrice),
@@ -435,7 +435,7 @@ function NewInvoicePage() {
                       type="text"
                       inputMode="decimal"
                       aria-label={t("docForm.column.qty")}
-                      aria-invalid={!quantityDecimalSchema.safeParse(item.quantity).success}
+                      aria-invalid={!invoiceQuantityInputSchema.safeParse(item.quantity).success}
                       value={item.quantity || ""}
                       onChange={(e) =>
                         updateItem(index, "quantity", e.target.value)
