@@ -4,6 +4,7 @@ import { billingProvider } from "../billing"
 import { isNonVatRegistrationAllowed } from "../runtime/extensions"
 import { prisma } from "../db"
 import { buildDkPresets } from "./dk-presets"
+import { isReplacedDanishTaxId } from "./danish-tax-id"
 import { hasIssuedDocuments } from "../../domain/documents/base-currency"
 
 /** One final save. The organization lock also serializes confirms before a settings row exists. */
@@ -74,15 +75,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     const taxIds = await tx.organizationTaxId.findMany({
       where: { organizationId }, select: { id: true, scheme: true, value: true, countryCode: true },
     })
-    const danishIds = taxIds.filter(id => {
-      const scheme = id.scheme.trim().toLowerCase()
-      if (!["cvr", "vat", "dk_cvr", "dk_vat"].includes(scheme)) return false
-      if (id.countryCode) return id.countryCode.toUpperCase() === "DK"
-      const value = id.value.replace(/[\s.\-/]/g, "").toUpperCase()
-      const prefix = value.match(/^[A-Z]{2}/)?.[0]
-      if (prefix) return prefix === "DK"
-      return ["cvr", "dk_cvr", "dk_vat"].includes(scheme) || /^\d{8}$/.test(value)
-    }).map(id => id.id)
+    const danishIds = taxIds.filter(isReplacedDanishTaxId).map(id => id.id)
     await tx.organizationTaxId.updateMany({ where: { organizationId, isPrimary: true }, data: { isPrimary: false } })
     await tx.organizationTaxId.deleteMany({ where: { organizationId, id: { in: danishIds } } })
     await tx.organizationTaxId.createMany({ data: [
