@@ -43,6 +43,17 @@ describe("e-invoice parties", () => {
     })
   })
 
+  it.each([true, false, null, undefined])("uses frozen seller registration %s before current settings", momsRegistered => {
+    const seller = buildSellerParty({
+      snapshot: { momsRegistered, companyName: "Frozen seller", taxIds: [{ scheme: "cvr", value: "24256790" }, { scheme: "vat", value: "DK24256790" }] },
+      settings: { companyName: "Current seller", companyAddress: null, companyEmail: null, countryCode: "DK", momsRegistered: momsRegistered !== true },
+      taxIds: [], documentCountryCode: "DK",
+    })
+    expect(seller.vatId).toBe(momsRegistered === false ? null : "DK24256790")
+    expect(seller.legalId).toEqual({ id: "24256790", scheme: "0184" })
+    expect(seller.electronicAddress).toEqual({ id: "24256790", scheme: "0184" })
+  })
+
   it("prefers the snapshot for the buyer and the contact's explicit endpoint", () => {
     const fromVat = buildBuyerParty({ name: "Hans Müller", company: "Acme Old GmbH" }, contact)
     expect(fromVat).toMatchObject({

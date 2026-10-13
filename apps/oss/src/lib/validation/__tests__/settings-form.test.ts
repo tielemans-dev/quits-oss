@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest"
 import { validateSettingsFormInput } from "../settings-form"
 
 describe("validateSettingsFormInput", () => {
+  it.each(["", "-1", "1.5", "3651", "abc"])("rejects invalid payment terms %s", paymentTermsDaysRaw => {
+    expect(validateSettingsFormInput({ timezone: "UTC", taxRateRaw: "", paymentTermsDaysRaw })).toBe("invalid_payment_terms")
+  })
+  it.each(["0", "14", "3650"])("accepts payment terms %s", paymentTermsDaysRaw => {
+    expect(validateSettingsFormInput({ timezone: "UTC", taxRateRaw: "", paymentTermsDaysRaw })).toBeNull()
+  })
+
   it("accepts valid settings form values", () => {
     expect(
       validateSettingsFormInput({

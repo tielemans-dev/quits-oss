@@ -83,8 +83,8 @@ function getPrimaryTaxIdCopy(countryCode: string): OnboardingPrimaryTaxIdCopy {
 }
 
 export function getOnboardingRules(input: OnboardingRulesInput): OnboardingRules {
-  // No country chosen yet: suggest the US defaults the form starts with.
-  const countryCode = normalizeCountryCode(input.countryCode) ?? "US"
+  // UI language does not choose the business jurisdiction.
+  const countryCode = normalizeCountryCode(input.countryCode) ?? "DK"
   const invoicingIdentity = normalizeInvoicingIdentity(input.invoicingIdentity)
   const defaults = getDefaults(countryCode, invoicingIdentity)
   const taxRegime = (input.taxRegime ?? defaults.taxRegime) as OnboardingTaxRegime

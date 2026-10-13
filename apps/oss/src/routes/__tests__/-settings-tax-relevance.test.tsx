@@ -9,11 +9,15 @@ const {
   settingsGetQuery,
   getFullOrganization,
   settingsUpdate,
+  organizationUpdate,
+  runtimeState,
 } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
   settingsGetQuery: vi.fn(),
   getFullOrganization: vi.fn(),
   settingsUpdate: vi.fn(),
+  organizationUpdate: vi.fn(),
+  runtimeState: { selfhost: true, nonVatEnabled: true },
 }))
 
 vi.mock("@tanstack/react-router", () => ({
@@ -29,7 +33,9 @@ vi.mock("../../components/settings/email-delivery-card", () => ({
 }))
 
 vi.mock("../../lib/i18n/react", () => {
-  const t = (key: string) =>
+  const i18n = {
+    locale: "da-DK",
+    t: (key: string) =>
       (
         {
           "settings.error.loadFailed": "load failed",
@@ -57,14 +63,18 @@ vi.mock("../../lib/i18n/react", () => {
           "settings.currency.label": "Currency",
           "settings.currency.placeholder": "Select currency",
         } as const
-      )[key] ?? key
-  return { useI18n: () => ({ locale: "da-DK", t }) }
+      )[key] ?? key,
+  }
+  return { useI18n: () => i18n }
 })
+
+vi.mock("../../lib/runtime-distribution", () => ({ useRuntimeDistribution: () => ({ isSelfHost: runtimeState.selfhost }) }))
 
 vi.mock("../../lib/auth-client", () => ({
   authClient: {
     organization: {
       getFullOrganization,
+      update: organizationUpdate,
       inviteMember: vi.fn(),
       removeMember: vi.fn(),
       cancelInvitation: vi.fn(),
@@ -105,6 +115,7 @@ vi.mock("../../trpc/client", () => ({
       capabilities: {
         query: vi.fn(() =>
           Promise.resolve({
+            onboardingV2: { enabled: true, nonVatEnabled: runtimeState.nonVatEnabled },
             aiInvoiceDraft: {
               enabled: true,
               byok: true,
@@ -138,6 +149,7 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
     pricesIncludeTax: false,
     currency: "USD",
     taxRate: null,
+    paymentTermsDays: 14,
     companyName: "Acme LLC",
     companyAddress: "Main St 1",
     companyEmail: "billing@acme.example",
@@ -183,10 +195,14 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
 afterEachTest(() => {
   cleanup()
   resetRequestOrganizationForTesting()
+  Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView")
   useSessionMock.mockReset()
   settingsGetQuery.mockReset()
   getFullOrganization.mockReset()
   settingsUpdate.mockReset()
+  organizationUpdate.mockReset()
+  runtimeState.selfhost = true
+  runtimeState.nonVatEnabled = true
 })
 
 describe("Settings tax relevance", () => {
@@ -207,13 +223,15 @@ describe("Settings tax relevance", () => {
     render(<RouteComponent />)
 
     await waitFor(() => {
-      expect(settingsGetQuery).toHaveBeenCalled()
+      expect(screen.getByText("No tax ID required for this tax setup.")).toBeTruthy()
     })
 
+    expect(settingsGetQuery).toHaveBeenCalled()
+    expect(screen.queryByLabelText("settings.vatStatus.registered")).toBeNull()
     expect(screen.queryByLabelText("Primary Seller Tax ID")).toBeNull()
-    expect(screen.getByText("No tax ID required for this tax setup.")).toBeTruthy()
 
     cleanup()
+  resetRequestOrganizationForTesting()
     currentSettingsData = buildSettingsData({
       countryCode: "DK",
       locale: "da-DK",
@@ -229,6 +247,86 @@ describe("Settings tax relevance", () => {
       expect(screen.getByLabelText("VAT/CVR number")).toBeTruthy()
     })
     expect(screen.getByText("Required for Danish registered businesses using EU VAT.")).toBeTruthy()
+  })
+})
+
+async function renderDanishSettings(momsRegistered: boolean | null, paymentTermsDays = 14) {
+  useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
+  getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+  const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, paymentTermsDays, taxRate: momsRegistered === false ? 0 : 25 })
+  settingsGetQuery.mockResolvedValue(data)
+  settingsUpdate.mockResolvedValue(data)
+  render(<RouteComponent />)
+  await screen.findByLabelText("settings.vatStatus.registered")
+}
+
+describe("Settings VAT status", () => {
+  it("loads and submits the organization payment-term default", async () => {
+    await renderDanishSettings(true, 21)
+    const field = screen.getByLabelText("settings.paymentTermsDays.label") as HTMLInputElement
+    expect(field.value).toBe("21")
+    fireEvent.change(field, { target: { value: "30" } })
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].paymentTermsDays).toBe(30)
+  })
+
+  it("keeps the tax-rate control at zero and disabled for a non-VAT seller", async () => {
+    await renderDanishSettings(false)
+    const rate = document.querySelector('input[name="taxRate"]') as HTMLInputElement
+    expect(rate.value).toBe("0")
+    expect(rate.disabled).toBe(true)
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].taxRate).toBe(0)
+    fireEvent.click(screen.getByLabelText("settings.vatStatus.registered"))
+    expect(rate.disabled).toBe(false)
+    expect(rate.value).toBe("25")
+  })
+
+  it.each([true, false, null])("preserves saved status %s without inventing a choice", async status => {
+    await renderDanishSettings(status)
+    expect((screen.getByLabelText("settings.vatStatus.registered") as HTMLInputElement).checked).toBe(status === true)
+    expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(status === false)
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeUndefined()
+  })
+  it.each([true, false])("submits changed status %s and related tax defaults", async status => {
+    await renderDanishSettings(!status)
+    fireEvent.click(screen.getByLabelText(status ? "settings.vatStatus.registered" : "settings.vatStatus.notRegistered"))
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0]).toMatchObject({ momsRegistered: status, taxRate: status ? 25 : 0, pricesIncludeTax: false })
+    if (!status) expect(screen.getByLabelText("settings.vatStatus.cvrLabel")).toBeTruthy()
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledTimes(2))
+    expect(settingsUpdate.mock.calls[1][0].momsRegistered).toBeUndefined()
+  })
+  it("disables hosted non-VAT selection without the capability while retaining saved false", async () => {
+    runtimeState.selfhost = false
+    runtimeState.nonVatEnabled = false
+    await renderDanishSettings(false)
+    expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(true)
+  })
+})
+
+describe("Settings scope departure", () => {
+  it.each(["country", "regime"])("submits null when leaving Danish EU VAT through %s", async field => {
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() })
+    await renderDanishSettings(false)
+    const control = screen.getByRole("combobox", { name: field === "country" ? "Country" : "Tax Regime" })
+    fireEvent.keyDown(control, { key: "ArrowDown" })
+    fireEvent.click(await screen.findByRole("option", { name: field === "country" ? "Germany" : "Custom" }))
+    expect(screen.queryByLabelText("settings.vatStatus.notRegistered")).toBeNull()
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeNull()
+    fireEvent.keyDown(control, { key: "ArrowDown" })
+    fireEvent.click(await screen.findByRole("option", { name: field === "country" ? new Intl.DisplayNames(["de-DE"], { type: "region" }).of("DK")! : "EU VAT" }))
+    await waitFor(() => expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(false))
+    expect((screen.getByLabelText("settings.vatStatus.registered") as HTMLInputElement).checked).toBe(false)
   })
 })
 
@@ -255,6 +353,23 @@ describe("Settings UI extension", () => {
       </form>
     )
   }
+
+  it("saves the URL separately and leaves it unchanged when settings fail", async () => {
+    prepare()
+    getFullOrganization.mockResolvedValue({ data: { slug: "old-slug", members: [], invitations: [] } })
+    settingsUpdate.mockRejectedValue(new Error("Rejected settings"))
+    organizationUpdate.mockResolvedValue({ data: { slug: "new-slug" } })
+    render(<RouteComponent />)
+    const slug = await screen.findByDisplayValue("old-slug")
+    fireEvent.change(slug, { target: { value: "new-slug" } })
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    expect(await screen.findByText("Rejected settings")).toBeTruthy()
+    expect(organizationUpdate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "settings.organizationSlug.save" }))
+    expect(await screen.findByText("settings.organizationSlug.saved")).toBeTruthy()
+    expect(organizationUpdate).toHaveBeenCalledWith({ data: { slug: "new-slug" } })
+    expect(settingsUpdate).toHaveBeenCalledTimes(1)
+  })
 
   it("keeps the default UI empty and company fields attached to the original save form", async () => {
     prepare()

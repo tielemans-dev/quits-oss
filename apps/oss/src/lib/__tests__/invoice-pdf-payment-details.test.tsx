@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { Text, renderToBuffer } from "@react-pdf/renderer"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { InvoicePdfDocument, type InvoiceForPdf } from "../invoice-pdf"
+import { withInvoicePaymentDetails } from "../../domain/documents/snapshots"
 import { buildPaymentDetailsBlock } from "../payment-details-block"
 
 const bankAccount = {
@@ -185,4 +186,41 @@ describe("invoice PDF calendar dates", () => {
       expect(text).toContain(timezone === "Europe/Copenhagen" ? "October 1, 2026" : "September 30, 2026")
     }
   )
+})
+
+
+describe("registration changes in future PDF snapshots", () => {
+  it.each([["da-DK", "CVR-nr."], ["en-US", "CVR no."]])("uses the frozen CVR label in %s and preserves historical inputs", (locale, cvrLabel) => {
+    const org = { locale, taxIds: [{ scheme: "DK_CVR", countryCode: "DK", value: "12345678" }] }
+    const historical = textOf(InvoicePdfDocument({ invoice, org })).join("\n")
+    const future = textOf(InvoicePdfDocument({ invoice, org: { ...org, cvrLabel } })).join("\n")
+    expect(historical).toContain("CVR: 12345678")
+    expect(future).toContain(`${cvrLabel}: 12345678`)
+    expect(future).not.toContain("CVR: 12345678")
+    expect(textOf(InvoicePdfDocument({ invoice, org })).join("\n")).toBe(historical)
+  })
+  it.each(["da-DK", "en-US"])("keeps old PDFs frozen and normalizes future declarations in %s", locale => {
+    const statement = locale === "da-DK" ? "Der er ikke beregnet moms, da sælger ikke er momsregistreret." : "No VAT charged – the seller is not VAT-registered."
+    const seller = { companyName: "Synthetic seller", companyEmail: null, companyAddress: null, taxIds: [], momsRegistered: false }
+    const old = withInvoicePaymentDetails(seller, { paymentNote: "Custom payment instruction" }, locale)
+    const oldPdf = renderedText({ ...invoice, ...old }, locale)
+    expect(oldPdf).toContain(statement)
+    expect(oldPdf).toContain("Custom payment instruction")
+    const registered = withInvoicePaymentDetails({ ...seller, momsRegistered: true }, { paymentNote: parseSellerSnapshot(old)?.paymentNote }, locale)
+    const registeredPdf = renderedText({ ...invoice, ...registered }, locale)
+    expect(registeredPdf).not.toContain(statement)
+    expect(registeredPdf).toContain("Custom payment instruction")
+    const unregistered = withInvoicePaymentDetails(seller, { paymentNote: parseSellerSnapshot(registered)?.paymentNote }, locale)
+    expect(renderedText({ ...invoice, ...unregistered }, locale)).toContain(statement)
+    expect(renderedText({ ...invoice, ...old }, locale)).toBe(oldPdf)
+  })
+})
+
+
+describe("historical generated payment declarations", () => {
+  it.each(["Virksomheden er ikke momsregistreret.", "The company is not VAT registered."])("removes %s only from future registered snapshots", oldNote => {
+    const seller = { companyName: "Synthetic seller", companyEmail: null, companyAddress: null, taxIds: [], momsRegistered: true }
+    const future = withInvoicePaymentDetails(seller, { paymentNote: `${oldNote}\nCustom instruction` }, "en-US")
+    expect(parseSellerSnapshot(future)?.paymentNote).toBe("Custom instruction")
+  })
 })
