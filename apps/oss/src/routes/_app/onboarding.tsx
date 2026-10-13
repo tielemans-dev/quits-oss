@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
 import type { RuntimeCapabilities } from '@quits/contracts/runtime'
 import { useEffect, useState } from 'react'
@@ -78,13 +79,13 @@ const DEFAULT_CLOUD_ONBOARDING_VALUES: CloudOnboardingValues = {
   companyName: '',
   companyAddress: '',
   companyEmail: '',
-  countryCode: 'US',
+  countryCode: DANISH_ONBOARDING_V2_DEFAULTS.countryCode,
   invoicingIdentity: 'registered_business',
-  locale: 'en-US',
-  timezone: 'UTC',
-  defaultCurrency: 'USD',
-  taxRegime: 'us_sales_tax',
-  pricesIncludeTax: false,
+  locale: DANISH_ONBOARDING_V2_DEFAULTS.locale,
+  timezone: DANISH_ONBOARDING_V2_DEFAULTS.timezone,
+  defaultCurrency: DANISH_ONBOARDING_V2_DEFAULTS.defaultCurrency,
+  taxRegime: DANISH_ONBOARDING_V2_DEFAULTS.taxRegime,
+  pricesIncludeTax: DANISH_ONBOARDING_V2_DEFAULTS.pricesIncludeTax,
   primaryTaxId: '',
   primaryTaxIdScheme: 'vat',
   invoicePrefix: 'INV',
@@ -96,14 +97,14 @@ function parseCloudOnboardingValues(values?: Record<string, unknown> | null): Cl
     companyName: String(values?.companyName ?? ''),
     companyAddress: String(values?.companyAddress ?? ''),
     companyEmail: String(values?.companyEmail ?? ''),
-    countryCode: String(values?.countryCode ?? 'US'),
+    countryCode: String(values?.countryCode ?? DANISH_ONBOARDING_V2_DEFAULTS.countryCode),
     invoicingIdentity:
       values?.invoicingIdentity === 'individual' ? 'individual' : 'registered_business',
-    locale: String(values?.locale ?? 'en-US'),
-    timezone: String(values?.timezone ?? 'UTC'),
-    defaultCurrency: String(values?.defaultCurrency ?? 'USD'),
-    taxRegime: (values?.taxRegime as CloudTaxRegime) ?? 'us_sales_tax',
-    pricesIncludeTax: Boolean(values?.pricesIncludeTax),
+    locale: String(values?.locale ?? DANISH_ONBOARDING_V2_DEFAULTS.locale),
+    timezone: String(values?.timezone ?? DANISH_ONBOARDING_V2_DEFAULTS.timezone),
+    defaultCurrency: String(values?.defaultCurrency ?? DANISH_ONBOARDING_V2_DEFAULTS.defaultCurrency),
+    taxRegime: (values?.taxRegime as CloudTaxRegime) ?? DANISH_ONBOARDING_V2_DEFAULTS.taxRegime,
+    pricesIncludeTax: Boolean(values?.pricesIncludeTax ?? DANISH_ONBOARDING_V2_DEFAULTS.pricesIncludeTax),
     primaryTaxId: String(values?.primaryTaxId ?? ''),
     primaryTaxIdScheme: String(values?.primaryTaxIdScheme ?? 'vat'),
     invoicePrefix: String(values?.invoicePrefix ?? 'INV'),
@@ -138,6 +139,7 @@ function OnboardingPageContent() {
   })
   const [orgAccessLoading, setOrgAccessLoading] = useState(false)
   const [method, setMethod] = useState<CloudOnboardingMethod>('manual')
+  const [hasSubmitted, setHasSubmitted] = useState(false)
   const [missingFields, setMissingFields] = useState<OnboardingMissingField[]>([])
   const [runtimeCapabilities, setRuntimeCapabilities] = useState<
     Pick<RuntimeCapabilities, 'onboardingAi'> | null
@@ -153,10 +155,19 @@ function OnboardingPageContent() {
     pricesIncludeTax: false,
   })
 
+  const invalidBusinessBasics = !values.companyName.trim() || !values.companyAddress.trim() ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.companyEmail.trim())
+
   const onboardingRules = getOnboardingRules({
     countryCode: values.countryCode,
     invoicingIdentity: values.invoicingIdentity,
     taxRegime: values.taxRegime,
+  })
+
+  const outstandingFields = missingFields.filter((field) => {
+    if (field === 'primaryTaxId') return onboardingRules.requirePrimaryTaxId && !values.primaryTaxId.trim()
+    if (field === 'invoiceNextNum' || field === 'quoteNextNum') return true
+    return !values[field].trim()
   })
 
   useEffect(() => {
@@ -412,6 +423,8 @@ function OnboardingPageContent() {
   async function handleCompleteCloudOnboarding(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    setHasSubmitted(true)
+    if (invalidBusinessBasics) return
     setSubmitting(true)
 
     try {
@@ -433,6 +446,11 @@ function OnboardingPageContent() {
       })
 
       setMissingFields(Array.isArray(draft.missing) ? draft.missing : [])
+
+      if (draft.missing?.length) {
+        setSubmitting(false)
+        return
+      }
 
       await trpc.onboarding.completeManual.mutate({ method })
       // The layout must see onboarding as complete now, not after its reuse window.
@@ -591,7 +609,7 @@ function OnboardingPageContent() {
             Complete these defaults once so you can immediately create invoices and quotes.
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleCompleteCloudOnboarding}>
+        <form onSubmit={handleCompleteCloudOnboarding} noValidate>
           <CardContent className="space-y-6">
             {error && (
               <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
@@ -645,10 +663,14 @@ function OnboardingPageContent() {
               />
             ) : null}
 
-            {missingFields.length > 0 ? (
-              <div className="rounded-md border border-border p-3 text-sm text-muted-foreground">
-                Missing required fields: {missingFields.join(', ')}
-              </div>
+            {hasSubmitted && invalidBusinessBasics ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
+                {t('auth.onboarding.validation.businessBasics')}
+              </p>
+            ) : hasSubmitted && outstandingFields.length > 0 ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
+                {t('auth.onboarding.validation.required', { fields: outstandingFields.map((field) => t(`auth.onboarding.field.${field}`)).join(', ') })}
+              </p>
             ) : null}
 
             <section className="space-y-4 rounded-lg border border-border p-4">

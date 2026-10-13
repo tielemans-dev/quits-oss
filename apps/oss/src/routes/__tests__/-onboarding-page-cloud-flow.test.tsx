@@ -11,6 +11,7 @@ const {
   isCloudDistributionMock,
   onboardingStatusQuery,
   runtimeCapabilitiesQuery,
+  uiLocale,
 } = vi.hoisted(() => ({
   navigate: vi.fn(),
   invalidate: vi.fn(),
@@ -18,6 +19,7 @@ const {
   isCloudDistributionMock: vi.fn(() => true),
   onboardingStatusQuery: vi.fn(),
   runtimeCapabilitiesQuery: vi.fn(),
+  uiLocale: { value: "en-US" },
 }))
 
 vi.mock("@tanstack/react-router", () => ({
@@ -26,13 +28,10 @@ vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({ invalidate }),
 }))
 
-vi.mock("../../lib/i18n/react", () => ({
-  I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  useI18n: () => ({
-    locale: "en",
-    t: (key: string) => key,
-  }),
-}))
+vi.mock("../../lib/i18n/react", async () => {
+  const { translate } = await import("../../lib/i18n/translate")
+  return { I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>, useI18n: () => ({ locale: uiLocale.value, t: (key: Parameters<typeof translate>[0], vars?: Record<string, string | number>) => translate(key, uiLocale.value, vars) }) }
+})
 
 // The distribution comes from the server's route context; these pages only read the resolved value.
 vi.mock("../../lib/runtime-distribution", () => ({
@@ -86,6 +85,9 @@ import { Route } from "../_app/onboarding"
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
 
 afterEach(() => {
+  uiLocale.value = "en-US"
+  vi.mocked(trpc.onboarding.saveDraft.mutate).mockReset()
+  vi.mocked(trpc.onboarding.completeManual.mutate).mockReset()
   cleanup()
   invalidateAppLayoutSession()
   navigate.mockReset()
@@ -219,5 +221,58 @@ describe("OnboardingPage cloud flow", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }))
     await reuseAppLayoutSession(load)
     expect(load).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe.each([
+  ["da-DK", "Udfyld virksomhedsnavn, adresse og e-mail for at fortsætte."],
+  ["en-US", "Fill in company name, address and email to continue."],
+])("onboarding defaults and submit validation in %s", (locale, message) => {
+  it("starts Danish, waits for submit, and completes after correction", async () => {
+    uiLocale.value = locale
+    useSessionMock.mockReturnValue({ data: { session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { locale }, missing: ["companyName", "companyAddress", "companyEmail"] })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: [] } as never)
+    vi.mocked(trpc.onboarding.completeManual.mutate).mockResolvedValue({ isComplete: true } as never)
+    render(<RouteComponent />)
+    expect(screen.queryByRole("alert")).toBeNull()
+    await waitFor(() => expect((screen.getByLabelText("Locale") as HTMLSelectElement).value).toBe(locale))
+    expect((screen.getByLabelText("Country") as HTMLSelectElement).value).toBe("DK")
+    expect((screen.getByLabelText("Default currency") as HTMLSelectElement).value).toBe("DKK")
+    expect((screen.getByLabelText("Tax setup") as HTMLSelectElement).value).toBe("eu_vat")
+    expect(screen.queryByRole("alert")).toBeNull()
+    expect(screen.queryByText(/Missing required fields/)).toBeNull()
+    fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Edited before submit" } })
+    expect(screen.queryByRole("alert")).toBeNull()
+    fireEvent.submit(screen.getByRole("button", { name: "Finish onboarding" }).closest("form")!)
+    expect(screen.getByRole("alert").textContent).toBe(message)
+    expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
+    expect(trpc.onboarding.completeManual.mutate).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText("Company address"), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText("Billing email"), { target: { value: "billing@example.com" } })
+    fireEvent.change(screen.getByLabelText("VAT/CVR number"), { target: { value: "12345678" } })
+    expect(screen.queryByRole("alert")).toBeNull()
+    fireEvent.submit(screen.getByRole("button", { name: "Finish onboarding" }).closest("form")!)
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }))
+    expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith(expect.objectContaining({ countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", locale }))
+  })
+
+  it("preserves explicit saved and edited jurisdiction/currency/regime choices", async () => {
+    uiLocale.value = locale
+    useSessionMock.mockReturnValue({ data: { session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, missing: [], values: { locale, countryCode: "US", defaultCurrency: "USD", taxRegime: "us_sales_tax" } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    render(<RouteComponent />)
+    await waitFor(() => expect((screen.getByLabelText("Country") as HTMLSelectElement).value).toBe("US"))
+    expect((screen.getByLabelText("Default currency") as HTMLSelectElement).value).toBe("USD")
+    expect((screen.getByLabelText("Tax setup") as HTMLSelectElement).value).toBe("us_sales_tax")
+    fireEvent.change(screen.getByLabelText("Default currency"), { target: { value: "GBP" } })
+    fireEvent.change(screen.getByLabelText("Tax setup"), { target: { value: "custom" } })
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "DK" } })
+    fireEvent.change(screen.getByLabelText("Locale"), { target: { value: "en-US" } })
+    expect((screen.getByLabelText("Default currency") as HTMLSelectElement).value).toBe("GBP")
+    expect((screen.getByLabelText("Tax setup") as HTMLSelectElement).value).toBe("custom")
+    expect((screen.getByLabelText("Country") as HTMLSelectElement).value).toBe("DK")
   })
 })

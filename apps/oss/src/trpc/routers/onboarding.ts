@@ -117,7 +117,7 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
       bankAccountNumber: null,
       bankIban: null,
     }
-    : await db.orgSettings.upsert({ where: { organizationId }, update: {}, create: { organizationId }, select })
+    : await db.orgSettings.upsert({ where: { organizationId }, update: {}, create: { organizationId, ...DANISH_ONBOARDING_V2_DEFAULTS }, select })
 
   const primaryTaxId = await db.organizationTaxId.findFirst({
     where: { organizationId },
@@ -306,6 +306,7 @@ export const onboardingRouter = router({
           update: settingsUpdateData,
           create: {
             organizationId: ctx.organizationId,
+            ...DANISH_ONBOARDING_V2_DEFAULTS,
             ...settingsUpdateData,
           },
         })
@@ -389,7 +390,7 @@ export const onboardingRouter = router({
     return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
       if (snapshot.cloudState.status === "complete") return
 
-      const defaults = getProfileDefaults(input.profile)
+      const defaults = getProfileDefaults(input.profile, new Date(), snapshot.values.countryCode)
 
       await tx.orgSettings.upsert({
         where: { organizationId: ctx.organizationId },
@@ -406,6 +407,7 @@ export const onboardingRouter = router({
         },
         create: {
           organizationId: ctx.organizationId,
+          ...DANISH_ONBOARDING_V2_DEFAULTS,
           taxRegime: defaults.taxRegime,
           pricesIncludeTax: defaults.pricesIncludeTax,
           invoicePrefix: defaults.invoicePrefix,
