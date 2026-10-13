@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { LocalizedDocument } from "../../documents/localized-document"
 import { PublicQuotePage } from "../public-quote-page"
+import { priceDocumentV2 } from "../../../domain/documents/pricing"
+import { serializePublicQuoteSession } from "../../../lib/quotes/public-session"
 
 // MOCK: synthetic quote, financial amounts and identities for rendering tests only.
 const baseQuote = {
@@ -42,6 +44,8 @@ const baseQuote = {
       id: "item-1",
       description: "Consulting",
       quantity: { toNumber: () => 2 },
+      unitPriceNet: { toNumber: () => 500 },
+      lineNet: { toNumber: () => 1000 },
       unitPriceGross: { toNumber: () => 625 },
       lineGross: { toNumber: () => 1250 },
       sortOrder: 0,
@@ -59,6 +63,70 @@ function page(locale: string, children: ReactNode) {
 }
 
 describe("PublicQuotePage", () => {
+  it.each([
+    { name: "inclusive inputs", items: [{ description: "Brand identity", quantity: "1", unitPrice: "22500" }, { description: "Website design", quantity: "1", unitPrice: "5625" }], taxRate: "25" },
+    { name: "zero tax", items: [{ description: "No tax", quantity: "2", unitPrice: "100" }], taxRate: "0" },
+    { name: "mixed rates and allocated rounding", items: [
+      { description: "Tiny taxed line", quantity: "2", unitPrice: "0.01", vat: { treatment: "standard" as const, rate: "0.25" } },
+      { description: "Reduced rate", quantity: "2", unitPrice: "100", vat: { treatment: "standard" as const, rate: "0.125" } },
+      { description: "Zero rate", quantity: "1", unitPrice: "100", vat: { treatment: "unclassified_zero" as const, rate: "0" } },
+    ], taxRate: "25" },
+  ])("uses stored net values from $name without repricing", ({ items, taxRate }) => {
+    const priced = priceDocumentV2({ items, taxRate, pricesIncludeTax: true, currency: "DKK" })
+    const quote = { ...baseQuote, currency: "DKK", pricesIncludeTax: true,
+      vatRows: priced.calculation.groups.map(group => ({ ratePercent: String(Number(group.rate) * 100), net: group.net, tax: group.tax, gross: group.gross })),
+      rounding: priced.calculation.payableRounding,
+      items: priced.itemRows.map((row, index) => ({ ...row, id: String(index),
+        quantity: Number(row.quantity), unitPriceNet: Number(row.unitPriceNet), unitPriceGross: Number(row.unitPriceGross),
+        lineNet: Number(row.lineNet), lineGross: Number(row.lineGross),
+      })), subtotalNet: Number(priced.subtotalNet), totalTax: Number(priced.totalTax), totalGross: Number(priced.totalGross),
+    }
+    const money = (value: number) => new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK" }).format(value)
+    for (const decisionState of ["pending", "accepted"] as const) {
+      const session = serializePublicQuoteSession({ quote, decisionState }, "test")
+      const html = page("da-DK", <PublicQuotePage token="test" state={{ kind: "ready", ...session }} />)
+      const container = document.createElement("div")
+      container.innerHTML = html
+      const lines = container.querySelector("h2")!.nextElementSibling!
+      for (const [index, row] of quote.items.entries()) {
+        expect(lines.children[index]?.textContent).toContain(money(row.unitPriceNet))
+        expect(lines.children[index]?.textContent).toContain(money(row.lineNet))
+        expect(session.quote.items[index]).toMatchObject({ unitPriceNet: row.unitPriceNet, lineNet: row.lineNet })
+      }
+      expect(session.quote.totalGross).toBe(Number(priced.totalGross))
+      expect(Array.from(container.querySelectorAll('[data-slot="amount"]')).at(-1)?.textContent).toBe(money(Number(priced.totalGross)))
+    }
+    if (items[0]?.description === "Brand identity") {
+      expect(quote.items.map(row => row.lineNet)).toEqual([18000, 4500])
+      expect(quote.totalGross).toBe(28125)
+    }
+  })
+
+  it.each(["en-US", "da-DK"])("shows net lines and unit prices before and after acceptance in %s", locale => {
+    const quote = {
+      ...baseQuote, currency: "DKK", subtotalNet: 22500, totalTax: 5625, totalGross: 28125,
+      vatRows: [{ ratePercent: "25", net: "22500.00", tax: "5625.00", gross: "28125.00" }],
+      items: [
+        { id: "brand", description: "Brand identity", quantity: 1, unitPriceNet: 18000, lineNet: 18000, unitPriceGross: 22500, lineGross: 22500, sortOrder: 0 },
+        { id: "web", description: "Website design", quantity: 1, unitPriceNet: 4500, lineNet: 4500, unitPriceGross: 5625, lineGross: 5625, sortOrder: 1 },
+      ],
+    }
+    const money = (value: number) => new Intl.NumberFormat(locale, { style: "currency", currency: "DKK" }).format(value)
+    for (const decisionState of ["pending", "accepted"] as const) {
+      const html = page(locale, <PublicQuotePage token="test" state={{ kind: "ready", decisionState, seller, quote }} />)
+      const container = document.createElement("div")
+      container.innerHTML = html
+      const lines = container.querySelector("h2")!.nextElementSibling!
+      expect(lines.textContent).toContain(money(18000))
+      expect(lines.textContent).toContain(money(4500))
+      expect(lines.textContent).not.toContain(money(22500))
+      expect(lines.textContent).not.toContain(money(5625))
+      expect(lines.textContent).toContain(locale === "da-DK" ? "Enhedspris ekskl. moms" : "Unit Price excl. tax")
+      expect(lines.textContent).toContain(locale === "da-DK" ? "Beløb ekskl. moms" : "Amount excl. tax")
+      expect(container.querySelectorAll('[data-slot="amount"]')[2]?.textContent).toBe(money(28125))
+    }
+  })
+
   it.each([
     ["en-US", "Subtotal excl. tax", "Tax (25%)", "Total incl. tax"],
     ["da-DK", "Subtotal ekskl. moms", "Moms (25 %)", "Total inkl. moms"],
@@ -215,7 +283,7 @@ describe("PublicQuotePage", () => {
       expect(html).toContain("Afvis tilbud")
       expect(html).toContain("Noter")
       expect(html).toContain("1.250,00 kr.")
-      expect(html).toContain("2\u00a0×\u00a0625,00 kr.")
+      expect(html).toContain("2\u00a0×\u00a0500,00 kr.")
       expect(html).toContain("1. mar. 2026")
       expect(html).toContain("15. mar. 2026")
       expect(html).toContain('lang="da-DK"')
