@@ -34,6 +34,28 @@ type CallerLike = {
   }
 }
 
+// Both RPCs expose these settings; only status includes onboardingMethod in values.
+function sharedSettingsValues(values: Record<string, unknown>) {
+  return {
+    companyName: values.companyName,
+    companyAddress: values.companyAddress,
+    companyEmail: values.companyEmail,
+    countryCode: values.countryCode,
+    invoicingIdentity: values.invoicingIdentity,
+    locale: values.locale,
+    timezone: values.timezone,
+    defaultCurrency: values.defaultCurrency,
+    taxRegime: values.taxRegime,
+    pricesIncludeTax: values.pricesIncludeTax,
+    invoicePrefix: values.invoicePrefix,
+    invoiceNextNum: values.invoiceNextNum,
+    quotePrefix: values.quotePrefix,
+    quoteNextNum: values.quoteNextNum,
+    primaryTaxId: values.primaryTaxId,
+    primaryTaxIdScheme: values.primaryTaxIdScheme,
+  }
+}
+
 async function createCloudCaller() {
   vi.resetModules()
   process.env.QUITS_DISTRIBUTION = "cloud"
@@ -87,11 +109,20 @@ describeIfDatabase("onboarding router integration", () => {
     try {
       expect(await prisma.orgSettings.count({ where: { organizationId: orgId } })).toBe(0)
       const [first, second] = await readPair()
-      expect(first.values).toEqual(second.values)
+      expect(sharedSettingsValues(first.values)).toEqual(sharedSettingsValues(second.values))
+      expect(first.values).toHaveProperty("onboardingMethod", null)
+      if (read === "status") expect(second.values).toHaveProperty("onboardingMethod", null)
+      else expect(second.values).not.toHaveProperty("onboardingMethod")
       const numbering = { invoicePrefix: new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Europe/Copenhagen" }).format(new Date()), invoiceNextNum: 1, quotePrefix: "QTE", quoteNextNum: 1 }
       expect(first.values).toMatchObject({ countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", pricesIncludeTax: false, ...numbering })
       expect(await prisma.orgSettings.count({ where: { organizationId: orgId } })).toBe(1)
       const saved = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })
+      expect(sharedSettingsValues(first.values)).toEqual(sharedSettingsValues({
+        ...saved,
+        invoicingIdentity: saved.onboardingInvoicingIdentity,
+        primaryTaxId: null,
+        primaryTaxIdScheme: null,
+      }))
       expect(saved).toMatchObject({ countryCode: "DK", defaultCurrency: "DKK", baseCurrency: "DKK", currency: "DKK", locale: "da-DK", timezone: "Europe/Copenhagen", taxRegime: "eu_vat", pricesIncludeTax: false, momsRegistered: null, ...numbering })
       expect(Number(saved.taxRate)).toBe(25)
 
@@ -100,8 +131,18 @@ describeIfDatabase("onboarding router integration", () => {
         data: { countryCode: "DE", defaultCurrency: "EUR", baseCurrency: "EUR", currency: "EUR", locale: "en-US", invoicePrefix: "BOOK", invoiceNextNum: 42, quotePrefix: "OFF", quoteNextNum: 8, momsRegistered: false, taxRate: 0, pricesIncludeTax: true, paymentNote: "Saved note" },
       })
       const [existingFirst, existingSecond] = await readPair()
-      expect(existingFirst.values).toEqual(existingSecond.values)
+      expect(sharedSettingsValues(existingFirst.values)).toEqual(sharedSettingsValues(existingSecond.values))
+      expect(sharedSettingsValues(existingFirst.values)).toEqual(sharedSettingsValues({
+        ...overridden,
+        invoicingIdentity: overridden.onboardingInvoicingIdentity,
+        primaryTaxId: null,
+        primaryTaxIdScheme: null,
+      }))
+      expect(existingFirst.values).toHaveProperty("onboardingMethod", overridden.onboardingMethod)
+      if (read === "status") expect(existingSecond.values).toHaveProperty("onboardingMethod", overridden.onboardingMethod)
+      else expect(existingSecond.values).not.toHaveProperty("onboardingMethod")
       expect(existingFirst.values).toMatchObject({ countryCode: "DE", defaultCurrency: "EUR", locale: "en-US", invoicePrefix: "BOOK", invoiceNextNum: 42, quotePrefix: "OFF", quoteNextNum: 8, pricesIncludeTax: true })
+      expect(await prisma.orgSettings.count({ where: { organizationId: orgId } })).toBe(1)
       expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })).toEqual(overridden)
     } finally {
       await cleanupTestOrganizations({ where: { id: orgId } })
