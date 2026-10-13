@@ -202,6 +202,19 @@ describe("v2 with onboarding AI Danish defaults", () => {
 const settingsCaller = () => settingsRouter.createCaller({ session: null } satisfies Context)
 describe("atomic Settings Danish VAT repairs", () => {
   beforeEach(() => { mocks.settings = { ...defaults, momsRegistered: false }; mocks.taxIds = []; mocks.creates = []; mocks.baseCurrency = "DKK" })
+  it.each([undefined, false])("normalizes non-VAT tax defaults with registration %s", async momsRegistered => {
+    await settingsCaller().update({ taxRate: 25, ...(momsRegistered === undefined ? {} : { momsRegistered }) })
+    expect(mocks.settings).toMatchObject({ momsRegistered: false, taxRate: 0 })
+    await settingsCaller().update({ companyName: "Edited seller" })
+    expect(mocks.settings).toMatchObject({ momsRegistered: false, taxRate: 0 })
+  })
+  it("preserves chosen tax rates for registered and foreign sellers", async () => {
+    await settingsCaller().update({ momsRegistered: true, taxRate: 25 })
+    expect(mocks.settings).toMatchObject({ momsRegistered: true, taxRate: 25 })
+    await settingsCaller().update({ countryCode: "DE", taxRate: 19 })
+    expect(mocks.settings).toMatchObject({ momsRegistered: null, taxRate: 19 })
+  })
+
   it.each([{ countryCode: "DE" }, { taxRegime: "custom" }, { taxRegime: "us_sales_tax" }] as const)("clears hidden registration on scope departure %o even if a client omits status", async input => {
     await settingsCaller().update(input)
     expect(mocks.settings?.momsRegistered).toBeNull()

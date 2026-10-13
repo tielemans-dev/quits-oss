@@ -271,6 +271,19 @@ describe("Settings VAT status", () => {
     expect(settingsUpdate.mock.calls[0][0].paymentTermsDays).toBe(30)
   })
 
+  it("keeps the tax-rate control at zero and disabled for a non-VAT seller", async () => {
+    await renderDanishSettings(false)
+    const rate = document.querySelector('input[name="taxRate"]') as HTMLInputElement
+    expect(rate.value).toBe("0")
+    expect(rate.disabled).toBe(true)
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].taxRate).toBe(0)
+    fireEvent.click(screen.getByLabelText("settings.vatStatus.registered"))
+    expect(rate.disabled).toBe(false)
+    expect(rate.value).toBe("25")
+  })
+
   it.each([true, false, null])("preserves saved status %s without inventing a choice", async status => {
     await renderDanishSettings(status)
     expect((screen.getByLabelText("settings.vatStatus.registered") as HTMLInputElement).checked).toBe(status === true)

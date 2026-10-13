@@ -445,7 +445,7 @@ function SettingsPage() {
 
     const form = new FormData(e.currentTarget)
     const timezoneInput = ((form.get("timezone") as string) || timezone).trim() || "UTC"
-    const taxRateRaw = ((form.get("taxRate") as string) || "").trim()
+    const taxRateRaw = nonVatDanishSeller ? "0" : ((form.get("taxRate") as string) || "").trim()
     const companyNameInput = ((form.get("companyName") as string) || "").trim()
     const companyAddressInput = ((form.get("companyAddress") as string) || "").trim()
     const companyEmailInput = ((form.get("companyEmail") as string) || "").trim()
@@ -1131,7 +1131,8 @@ function SettingsPage() {
                   min="0"
                   max="100"
                   placeholder="0.00"
-                  value={taxRateInput}
+                  value={nonVatDanishSeller ? "0" : taxRateInput}
+                  disabled={nonVatDanishSeller}
                   onChange={event => setTaxRateInput(event.target.value)}
                 />
               </div>

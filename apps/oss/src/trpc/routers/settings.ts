@@ -338,6 +338,10 @@ export const settingsRouter = router({
         if (settingsInput.momsRegistered === false && !isNonVatRegistrationAllowed()) {
           throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
         }
+        const effectiveRegistration = settingsInput.momsRegistered === undefined
+          ? current?.momsRegistered
+          : settingsInput.momsRegistered
+        if (!clearsRegistration && effectiveRegistration === false) settingsInput.taxRate = 0
         const localizedIssues = validateLocalizedFields(resolvedCountry, {
           phone: settingsInput.companyPhone,
           taxId: primaryTaxId,
