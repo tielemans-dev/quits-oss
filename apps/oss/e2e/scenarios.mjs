@@ -136,8 +136,16 @@ export function registerProductScenarios(test, expect) {
   test.beforeEach(async ({ page, account, entryURL }) => {
     await page.goto(entryURL)
     await expect(page).toHaveURL(/\/login(?:\?|$)/)
-    await page.getByLabel('Email', { exact: true }).fill(account.email)
-    await page.getByLabel('Password', { exact: true }).fill(account.password)
+    // SSR inputs can be filled before React attaches their handlers, then reset
+    // during hydration. Refill and verify both together before submitting.
+    await expect(async () => {
+      const email = page.getByLabel('Email', { exact: true })
+      const password = page.getByLabel('Password', { exact: true })
+      await email.fill(account.email)
+      await password.fill(account.password)
+      await expect(email).toHaveValue(account.email, { timeout: 0 })
+      await expect(password).toHaveValue(account.password, { timeout: 0 })
+    }).toPass({ timeout: 15_000 })
     // Shared loopback clients can hit the auth service's per-IP limit. Retry only
     // an explicit 429; authentication errors still fail immediately.
     for (let attempt = 0; ; attempt++) {
