@@ -1,4 +1,5 @@
 import type { Prisma } from "../../../generated/prisma/client"
+import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
 import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { confirmOnboardingV2 } from "../../lib/onboarding/confirm-v2"
@@ -102,7 +103,7 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
     } as const
   const settings = getRuntimeCapabilities().onboardingV2?.enabled
     ? await db.orgSettings.findUnique({ where: { organizationId }, select }) ?? {
-      ...DANISH_ONBOARDING_V2_DEFAULTS,
+      ...buildDkSettingsDefaults(),
       organizationId,
       onboardingStatus: "not_started",
       onboardingMethod: null,
@@ -117,7 +118,7 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
       bankAccountNumber: null,
       bankIban: null,
     }
-    : await db.orgSettings.upsert({ where: { organizationId }, update: {}, create: { organizationId, ...DANISH_ONBOARDING_V2_DEFAULTS }, select })
+    : await db.orgSettings.upsert({ where: { organizationId }, update: {}, create: { organizationId, ...buildDkSettingsDefaults() }, select })
 
   const primaryTaxId = await db.organizationTaxId.findFirst({
     where: { organizationId },
@@ -306,7 +307,7 @@ export const onboardingRouter = router({
           update: settingsUpdateData,
           create: {
             organizationId: ctx.organizationId,
-            ...DANISH_ONBOARDING_V2_DEFAULTS,
+            ...buildDkSettingsDefaults(),
             ...settingsUpdateData,
           },
         })
@@ -407,7 +408,7 @@ export const onboardingRouter = router({
         },
         create: {
           organizationId: ctx.organizationId,
-          ...DANISH_ONBOARDING_V2_DEFAULTS,
+          ...buildDkSettingsDefaults(),
           taxRegime: defaults.taxRegime,
           pricesIncludeTax: defaults.pricesIncludeTax,
           invoicePrefix: defaults.invoicePrefix,
