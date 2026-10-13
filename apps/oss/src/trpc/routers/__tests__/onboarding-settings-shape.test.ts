@@ -1,12 +1,20 @@
 import { readFileSync } from "node:fs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { Context } from "../../init"
+import type { UserActor } from "../../../domain/actor"
 import { onboardingRouter } from "../onboarding"
 
 const mocks = vi.hoisted(() => ({ settings: null as Record<string, unknown> | null, creates: [] as Array<Record<string, unknown>>, baseCurrency: "DKK" }))
 vi.mock("../../init", async () => {
   const { initTRPC } = await import("@trpc/server")
-  const t = initTRPC.context<{ organizationId: string; user: { email: string }; actor: never }>().create()
-  return { router: t.router, authorizedProcedure: () => t.procedure }
+  const t = initTRPC.context<Context>().create()
+  const actor: UserActor = { kind: "user", organizationId: "org-121", userId: "user-121", roles: ["admin"], label: "Test User" }
+  const procedure = t.procedure.use(({ next }) => next({ ctx: {
+    organizationId: actor.organizationId,
+    user: { id: actor.userId, email: "signup@example.test", name: actor.label },
+    actor,
+  } }))
+  return { router: t.router, authorizedProcedure: () => procedure }
 })
 vi.mock("../../../lib/distribution", () => ({ isCloudDistribution: true }))
 vi.mock("../../../lib/runtime/extensions", () => ({ getRuntimeCapabilities: () => ({ onboardingV2: { enabled: false } }) }))
@@ -29,13 +37,13 @@ vi.mock("../../../lib/db", () => {
         return mocks.settings
       },
     },
-    organizationTaxId: { findFirst: async () => null },
+    organizationTaxId: { findFirst: async () => null, deleteMany: async () => ({ count: 0 }) },
     $queryRaw: async () => [],
     $transaction: async (run: (tx: unknown) => unknown) => run(db),
   }
   return { prisma: db }
 })
-const caller = () => onboardingRouter.createCaller({ organizationId: "org-121", user: { email: "signup@example.test" }, actor: {} as never })
+const caller = () => onboardingRouter.createCaller({ session: null } satisfies Context)
 const defaults = { countryCode: "DK", defaultCurrency: "DKK", baseCurrency: "DKK", currency: "DKK", locale: "da-DK", timezone: "Europe/Copenhagen", taxRegime: "eu_vat", pricesIncludeTax: false, taxRate: 25 }
 
 describe("onboarding Prisma create payloads", () => {
@@ -48,7 +56,7 @@ describe("onboarding Prisma create payloads", () => {
   })
   it("validates draft creates and preserves explicit overrides and resolved non-DK books", async () => {
     mocks.baseCurrency = "EUR"
-    await caller().saveDraft({ countryCode: "DE", locale: "en-US", defaultCurrency: "EUR", pricesIncludeTax: true })
+    await caller().saveDraft({ countryCode: "DE", locale: "en-US", defaultCurrency: "EUR", pricesIncludeTax: true, primaryTaxId: undefined })
     expect(mocks.creates).toHaveLength(3)
     expect(mocks.creates[1]).toMatchObject({ ...defaults, countryCode: "DE", locale: "en-US", defaultCurrency: "EUR", baseCurrency: "EUR", pricesIncludeTax: true })
     expect(mocks.settings).toMatchObject({ countryCode: "DE", baseCurrency: "EUR", defaultCurrency: "EUR", pricesIncludeTax: true })
