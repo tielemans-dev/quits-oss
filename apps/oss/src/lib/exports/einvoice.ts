@@ -202,6 +202,7 @@ async function loadSellerContext(organizationId: string) {
     }),
     prisma.organizationTaxId.findMany({
       where: { organizationId },
+      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
       select: { scheme: true, value: true, countryCode: true, isPrimary: true },
     }),
   ])

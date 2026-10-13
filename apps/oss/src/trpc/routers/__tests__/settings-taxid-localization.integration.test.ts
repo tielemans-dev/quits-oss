@@ -10,6 +10,7 @@ import { confirmOnboardingV2 } from "../../../lib/onboarding/confirm-v2"
 import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
 import { buildSellerSnapshot } from "../../../domain/documents/snapshots"
 import { buildSellerParty } from "../../../lib/exports/einvoice"
+import { vatIdentifier } from "../../../lib/exports/parties"
 import { appRouter } from "../../router"
 import { ensureTestMembership } from "../../../test-utils/membership"
 
@@ -248,6 +249,25 @@ describeIfDatabase("Danish VAT Settings invariants", () => {
       const futureSnapshot = buildSellerSnapshot(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } }), after.filter(id => id.countryCode === "DK"))
       expect(buildSellerParty({ snapshot: futureSnapshot, settings: null, taxIds: [], documentCountryCode: "DK" }).vatId).toBe("DK87654321")
       expect((await prisma.invoice.findUniqueOrThrow({ where: { id: historical.id } })).sellerSnapshot).toEqual(JSON.parse(JSON.stringify(oldSnapshot)))
+    } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
+  })
+  it("synchronizes the paired VAT when the primary scheme switches between cvr and vat", async () => {
+    const { orgId, caller } = await createOrgWithCaller()
+    try {
+      await confirmOnboardingV2(orgId, confirmOnboardingV2Schema.parse({ companyName: "Confirmed ApS", companyAddress: "Testvej 1, 1000 København", companyForm: "ApS", momsRegistered: true, cvr: "24256790", vatId: "DK24256790", idempotencyKey: randomUUID() }), "settings@example.test")
+      await prisma.organizationTaxId.create({ data: { organizationId: orgId, scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false } })
+      await caller.settings.update({ primaryTaxId: "DK87654321", primaryTaxIdScheme: "vat", momsRegistered: true })
+      const switched = await prisma.organizationTaxId.findMany({ where: { organizationId: orgId } })
+      expect(switched.find(id => id.isPrimary)).toMatchObject({ scheme: "vat", value: "DK87654321" })
+      expect(switched.find(id => !id.isPrimary && id.countryCode === "DK")).toMatchObject({ scheme: "vat", value: "DK87654321" })
+      expect(switched.find(id => id.countryCode === "DE")?.value).toBe("DE123456789")
+      await caller.settings.update({ primaryTaxId: "12345678", primaryTaxIdScheme: "cvr", momsRegistered: true })
+      const restored = await prisma.organizationTaxId.findMany({ where: { organizationId: orgId } })
+      expect(restored.find(id => id.isPrimary)).toMatchObject({ scheme: "cvr", value: "12345678" })
+      expect(restored.find(id => id.scheme === "vat" && id.countryCode === "DK")).toMatchObject({ value: "DK12345678", isPrimary: false })
+      expect(restored.find(id => id.countryCode === "DE")?.value).toBe("DE123456789")
+      expect(vatIdentifier([...restored].reverse(), "DK")).toBe("DK12345678")
+      expect(vatIdentifier(restored, "DK")).toBe("DK12345678")
     } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
   })
   it.each([{ countryCode: "DE" }, { taxRegime: "custom" }] as const)("clears registration on scope departure %o", async departure => {
