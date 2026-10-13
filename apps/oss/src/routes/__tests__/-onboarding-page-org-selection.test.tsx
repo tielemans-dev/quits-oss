@@ -20,14 +20,16 @@ const {
 }))
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: unknown) => options,
+  createFileRoute: () => (options: unknown) => ({ ...(options as object), useSearch: () => ({}) }),
   useNavigate: () => navigate,
 }))
 
 vi.mock("../../lib/page-navigation", () => ({ loadPage, reloadPage: vi.fn() }))
 
 vi.mock("../../lib/i18n/react", () => ({
+  I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useI18n: () => ({
+    locale: "en",
     t: (key: string) =>
       (
         {

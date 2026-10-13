@@ -16,14 +16,13 @@ import {
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { z } from 'zod'
-import { useI18n } from '../lib/i18n/react'
+import { I18nProvider, useI18n } from '../lib/i18n/react'
 import { invalidateAppLayoutSession } from '../lib/app-layout-session'
 import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { getOrganizationAccessState } from '../lib/organization-access'
-import { toInternalRedirectPath } from '../lib/redirect-target'
+import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../lib/login-return'
 
-const loginSearchSchema = z.object({
-  redirect: z.string().optional(),
+const loginSearchSchema = loginReturnSearchSchema.extend({
   message: z.string().optional(),
 })
 
@@ -33,9 +32,16 @@ export const Route = createFileRoute('/login')({
 })
 
 function LoginPage() {
+  const { locale } = useI18n()
+  const { lang } = Route.useSearch()
+  return <I18nProvider locale={lang ?? locale}><LoginPageContent /></I18nProvider>
+}
+
+function LoginPageContent() {
   const { t } = useI18n()
   const { isCloud } = useRuntimeDistribution()
-  const { redirect, message } = Route.useSearch()
+  const search = Route.useSearch()
+  const { message, lang } = search
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +69,8 @@ function LoginPage() {
       invalidateAppLayoutSession()
       // Every way out of here is a new page load, so the app layout sets the organization this
       // tab acts for from the new session and nothing of an earlier session survives.
-      const redirectPath = toInternalRedirectPath(redirect) ?? '/'
+      const target = loginReturnTarget(search)
+      const redirectPath = loginReturnDestination(target ?? '/', lang)
       try {
         const organizations = await authClient.organization.list()
         const accessState = getOrganizationAccessState({
@@ -72,13 +79,13 @@ function LoginPage() {
 
         if (accessState.kind === 'auto-select') {
           const switched = await switchActiveOrganization(accessState.organizationId, {
-            destination: isCloud ? '/onboarding' : redirectPath,
+            destination: target ? redirectPath : loginReturnDestination(isCloud ? '/onboarding' : '/', lang),
           })
           if (!switched?.error) return
         }
 
         if (accessState.kind === 'choose' || accessState.kind === 'create') {
-          loadPage('/onboarding')
+          loadPage(loginReturnOnboarding(search))
           return
         }
       } catch {
@@ -90,7 +97,7 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4">
+    <div lang={lang} className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4">
       <QuitsWordmark className="text-[26px]" />
       <Card className="w-full max-w-sm">
         <CardHeader>
