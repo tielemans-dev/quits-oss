@@ -32,6 +32,7 @@ vi.mock("../../components/settings/email-delivery-card", () => ({
 
 vi.mock("../../lib/i18n/react", () => {
   const i18n = {
+    locale: "da-DK",
     t: (key: string) =>
       (
         {
@@ -129,6 +130,8 @@ vi.mock("../../trpc/client", () => ({
 }))
 
 import { Route } from "../_app/settings"
+import { RuntimeUiProvider, type SettingsCompanyDetailsProps } from "../../lib/runtime/ui"
+import { initializeRequestOrganizationId, resetRequestOrganizationForTesting } from "../../lib/active-organization"
 
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
 
@@ -187,6 +190,7 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
 
 afterEachTest(() => {
   cleanup()
+  resetRequestOrganizationForTesting()
   Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView")
   useSessionMock.mockReset()
   settingsGetQuery.mockReset()
@@ -222,6 +226,7 @@ describe("Settings tax relevance", () => {
     expect(screen.getByText("No tax ID required for this tax setup.")).toBeTruthy()
 
     cleanup()
+  resetRequestOrganizationForTesting()
     currentSettingsData = buildSettingsData({
       countryCode: "DK",
       locale: "da-DK",
@@ -255,18 +260,18 @@ describe("Settings VAT status", () => {
     await renderDanishSettings(status)
     expect((screen.getByLabelText("settings.vatStatus.registered") as HTMLInputElement).checked).toBe(status === true)
     expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(status === false)
-    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
     expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeUndefined()
   })
   it.each([true, false])("submits changed status %s and related tax defaults", async status => {
     await renderDanishSettings(!status)
     fireEvent.click(screen.getByLabelText(status ? "settings.vatStatus.registered" : "settings.vatStatus.notRegistered"))
-    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
     expect(settingsUpdate.mock.calls[0][0]).toMatchObject({ momsRegistered: status, taxRate: status ? 25 : 0, pricesIncludeTax: false })
     if (!status) expect(screen.getByLabelText("settings.vatStatus.cvrLabel")).toBeTruthy()
-    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalledTimes(2))
     expect(settingsUpdate.mock.calls[1][0].momsRegistered).toBeUndefined()
   })
@@ -287,12 +292,93 @@ describe("Settings scope departure", () => {
     fireEvent.keyDown(control, { key: "ArrowDown" })
     fireEvent.click(await screen.findByRole("option", { name: field === "country" ? "Germany" : "Custom" }))
     expect(screen.queryByLabelText("settings.vatStatus.notRegistered")).toBeNull()
-    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
     expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeNull()
     fireEvent.keyDown(control, { key: "ArrowDown" })
     fireEvent.click(await screen.findByRole("option", { name: field === "country" ? new Intl.DisplayNames(["de-DE"], { type: "region" }).of("DK")! : "EU VAT" }))
     await waitFor(() => expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(false))
     expect((screen.getByLabelText("settings.vatStatus.registered") as HTMLInputElement).checked).toBe(false)
+  })
+})
+
+describe("Settings UI extension", () => {
+  function prepare(organizationId: string | null = "org_1") {
+    initializeRequestOrganizationId(organizationId)
+    useSessionMock.mockReturnValue({
+      data: {
+        user: { id: "user_1", email: "test@example.com" },
+        session: { activeOrganizationId: organizationId },
+      },
+    })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    settingsGetQuery.mockResolvedValue(buildSettingsData())
+    settingsUpdate.mockResolvedValue(buildSettingsData())
+  }
+
+  // Test-only adopter fixture: its own form must never submit with OSS settings.
+  function CompanyDetails({ organizationId, locale }: SettingsCompanyDetailsProps) {
+    return (
+      <form data-testid="company-extension" onSubmit={(event) => event.preventDefault()}>
+        <input name="adopterField" defaultValue="test-only" />
+        {organizationId}:{locale}
+      </form>
+    )
+  }
+
+  it("keeps the default UI empty and company fields attached to the original save form", async () => {
+    prepare()
+    const { container } = render(<RouteComponent />)
+    await screen.findByText("Company")
+    expect(screen.queryByTestId("company-extension")).toBeNull()
+    const name = container.querySelector<HTMLInputElement>('input[name="companyName"]')!
+    const form = name.form!
+    expect(form).toBeTruthy()
+    expect(name.closest("form")).toBeNull()
+    expect(new FormData(form).get("companyName")).toBe("Acme LLC")
+    fireEvent.change(name, { target: { value: "Updated company" } })
+    fireEvent.submit(form)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      companyName: "Updated company",
+      companyAddress: "Main St 1",
+      companyEmail: "billing@acme.example",
+    })))
+  })
+
+  it("passes the active organization and display locale immediately after company details, outside the save form", async () => {
+    prepare()
+    const { container } = render(
+      <RuntimeUiProvider value={{ settingsCompanyDetails: CompanyDetails }}><RouteComponent /></RuntimeUiProvider>
+    )
+    const extension = await screen.findByTestId("company-extension")
+    expect(extension.textContent).toBe("org_1:da-DK")
+    expect(extension.parentElement?.closest("form")).toBeNull()
+    fireEvent.submit(extension)
+    expect(settingsUpdate).not.toHaveBeenCalled()
+    expect(extension.previousElementSibling?.textContent).toContain("Company description")
+    const saveForm = extension.nextElementSibling as HTMLFormElement
+    expect(saveForm.tagName).toBe("FORM")
+    expect(new FormData(saveForm).has("adopterField")).toBe(false)
+    expect(new FormData(saveForm).get("companyAddress")).toBe("Main St 1")
+    expect(container.querySelector('input[name="companyEmail"]')?.getAttribute("form")).toBe(saveForm.id)
+  })
+
+  it("does not mount the extension without an active organization", async () => {
+    prepare(null)
+    render(<RuntimeUiProvider value={{ settingsCompanyDetails: CompanyDetails }}><RouteComponent /></RuntimeUiProvider>)
+    await screen.findByText("Company")
+    expect(screen.queryByTestId("company-extension")).toBeNull()
+  })
+
+  it("keeps the layout's organization when another tab changes the live session", async () => {
+    prepare()
+    useSessionMock.mockReturnValue({
+      data: {
+        user: { id: "user_1", email: "test@example.com" },
+        session: { activeOrganizationId: "org_other_tab" },
+      },
+    })
+    render(<RuntimeUiProvider value={{ settingsCompanyDetails: CompanyDetails }}><RouteComponent /></RuntimeUiProvider>)
+    expect((await screen.findByTestId("company-extension")).textContent).toBe("org_1:da-DK")
   })
 })
