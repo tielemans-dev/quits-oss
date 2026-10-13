@@ -482,7 +482,7 @@ function SettingsPage() {
       return
     }
 
-    const momsRegisteredUpdate = showVatStatus && momsRegistered !== (settings.momsRegistered ?? null)
+    const momsRegisteredUpdate = showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null)
       ? momsRegistered ?? undefined
       : undefined
     try {
