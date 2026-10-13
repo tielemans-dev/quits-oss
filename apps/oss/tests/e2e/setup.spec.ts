@@ -34,7 +34,7 @@ test("completes the setup wizard and lands on login", async ({ page }) => {
 
   await page.getByLabel("Email").fill(adminEmail)
   await page.getByLabel("Password").fill(adminPassword)
-  await page.getByRole("button", { name: "Sign in" }).click()
+  await page.getByRole("button", { name: "Log in" }).click()
   await page.waitForURL((url) => !url.pathname.startsWith("/login"), {
     timeout: 10_000,
   })
