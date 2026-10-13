@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ComponentType } from "react"
 import { afterEach as afterEachTest, describe, expect, it, vi } from "vitest"
 
@@ -8,10 +8,12 @@ const {
   useSessionMock,
   settingsGetQuery,
   getFullOrganization,
+  settingsUpdate,
 } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
   settingsGetQuery: vi.fn(),
   getFullOrganization: vi.fn(),
+  settingsUpdate: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-router", () => ({
@@ -26,9 +28,8 @@ vi.mock("../../components/settings/email-delivery-card", () => ({
   EmailDeliveryCard: () => <div>email-delivery-card</div>,
 }))
 
-vi.mock("../../lib/i18n/react", () => ({
-  useI18n: () => ({
-    t: (key: string) =>
+vi.mock("../../lib/i18n/react", () => {
+  const t = (key: string) =>
       (
         {
           "settings.error.loadFailed": "load failed",
@@ -56,9 +57,9 @@ vi.mock("../../lib/i18n/react", () => ({
           "settings.currency.label": "Currency",
           "settings.currency.placeholder": "Select currency",
         } as const
-      )[key] ?? key,
-  }),
-}))
+      )[key] ?? key
+  return { useI18n: () => ({ locale: "da-DK", t }) }
+})
 
 vi.mock("../../lib/auth-client", () => ({
   authClient: {
@@ -83,7 +84,7 @@ vi.mock("../../trpc/client", () => ({
         query: settingsGetQuery,
       },
       update: {
-        mutate: vi.fn(),
+        mutate: settingsUpdate,
       },
       configureDocumentSendingDomain: {
         mutate: vi.fn(),
@@ -121,6 +122,8 @@ vi.mock("../../trpc/client", () => ({
 }))
 
 import { Route } from "../_app/settings"
+import { RuntimeUiProvider, type SettingsCompanyDetailsProps } from "../../lib/runtime/ui"
+import { initializeRequestOrganizationId, resetRequestOrganizationForTesting } from "../../lib/active-organization"
 
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
 
@@ -179,9 +182,11 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
 
 afterEachTest(() => {
   cleanup()
+  resetRequestOrganizationForTesting()
   useSessionMock.mockReset()
   settingsGetQuery.mockReset()
   getFullOrganization.mockReset()
+  settingsUpdate.mockReset()
 })
 
 describe("Settings tax relevance", () => {
@@ -224,5 +229,86 @@ describe("Settings tax relevance", () => {
       expect(screen.getByLabelText("VAT/CVR number")).toBeTruthy()
     })
     expect(screen.getByText("Required for Danish registered businesses using EU VAT.")).toBeTruthy()
+  })
+})
+
+describe("Settings UI extension", () => {
+  function prepare(organizationId: string | null = "org_1") {
+    initializeRequestOrganizationId(organizationId)
+    useSessionMock.mockReturnValue({
+      data: {
+        user: { id: "user_1", email: "test@example.com" },
+        session: { activeOrganizationId: organizationId },
+      },
+    })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    settingsGetQuery.mockResolvedValue(buildSettingsData())
+    settingsUpdate.mockResolvedValue(buildSettingsData())
+  }
+
+  // Test-only adopter fixture: its own form must never submit with OSS settings.
+  function CompanyDetails({ organizationId, locale }: SettingsCompanyDetailsProps) {
+    return (
+      <form data-testid="company-extension" onSubmit={(event) => event.preventDefault()}>
+        <input name="adopterField" defaultValue="test-only" />
+        {organizationId}:{locale}
+      </form>
+    )
+  }
+
+  it("keeps the default UI empty and company fields attached to the original save form", async () => {
+    prepare()
+    const { container } = render(<RouteComponent />)
+    await screen.findByText("Company")
+    expect(screen.queryByTestId("company-extension")).toBeNull()
+    const name = container.querySelector<HTMLInputElement>('input[name="companyName"]')!
+    const form = name.form!
+    expect(form).toBeTruthy()
+    expect(name.closest("form")).toBeNull()
+    expect(new FormData(form).get("companyName")).toBe("Acme LLC")
+    fireEvent.change(name, { target: { value: "Updated company" } })
+    fireEvent.submit(form)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      companyName: "Updated company",
+      companyAddress: "Main St 1",
+      companyEmail: "billing@acme.example",
+    })))
+  })
+
+  it("passes the active organization and display locale immediately after company details, outside the save form", async () => {
+    prepare()
+    const { container } = render(
+      <RuntimeUiProvider value={{ settingsCompanyDetails: CompanyDetails }}><RouteComponent /></RuntimeUiProvider>
+    )
+    const extension = await screen.findByTestId("company-extension")
+    expect(extension.textContent).toBe("org_1:da-DK")
+    expect(extension.parentElement?.closest("form")).toBeNull()
+    fireEvent.submit(extension)
+    expect(settingsUpdate).not.toHaveBeenCalled()
+    expect(extension.previousElementSibling?.textContent).toContain("Company description")
+    const saveForm = extension.nextElementSibling as HTMLFormElement
+    expect(saveForm.tagName).toBe("FORM")
+    expect(new FormData(saveForm).has("adopterField")).toBe(false)
+    expect(new FormData(saveForm).get("companyAddress")).toBe("Main St 1")
+    expect(container.querySelector('input[name="companyEmail"]')?.getAttribute("form")).toBe(saveForm.id)
+  })
+
+  it("does not mount the extension without an active organization", async () => {
+    prepare(null)
+    render(<RuntimeUiProvider value={{ settingsCompanyDetails: CompanyDetails }}><RouteComponent /></RuntimeUiProvider>)
+    await screen.findByText("Company")
+    expect(screen.queryByTestId("company-extension")).toBeNull()
+  })
+
+  it("keeps the layout's organization when another tab changes the live session", async () => {
+    prepare()
+    useSessionMock.mockReturnValue({
+      data: {
+        user: { id: "user_1", email: "test@example.com" },
+        session: { activeOrganizationId: "org_other_tab" },
+      },
+    })
+    render(<RuntimeUiProvider value={{ settingsCompanyDetails: CompanyDetails }}><RouteComponent /></RuntimeUiProvider>)
+    expect((await screen.findByTestId("company-extension")).textContent).toBe("org_1:da-DK")
   })
 })

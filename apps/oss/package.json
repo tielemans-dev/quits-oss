@@ -34,6 +34,7 @@
     "./runtime/extensions": "./src/lib/runtime/extensions.ts",
     "./runtime/platform": "./src/lib/runtime/platform.ts",
     "./runtime/services": "./src/lib/runtime/services.ts",
+    "./runtime/ui": "./src/lib/runtime/ui.tsx",
     "./styles.css": "./src/styles.css",
     "./emails/password-reset-email": "./src/lib/emails/password-reset-email.ts",
     "./e2e": "./e2e/scenarios.mjs",
