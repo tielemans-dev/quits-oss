@@ -50,3 +50,12 @@ export async function confirmSellerVatStatus(input: SellerVatConfirmationActor &
   await service.confirm({ ...input, registered: input.registered, token: input.token,
     seller: { companyName: settings.companyName, companyAddress: settings.companyAddress, countryCode: settings.countryCode, taxIds } })
 }
+
+/** Project the primary-ID write performed by settings.update, preserving the other IDs. */
+export function settingsConfirmationTaxIds(
+  orderedTaxIds: NonNullable<SellerSnapshot["taxIds"]>, value: string, scheme: string,
+): NonNullable<SellerSnapshot["taxIds"]> {
+  const primary = { ...orderedTaxIds[0], value: value.trim(), scheme: scheme.trim() || "vat" }
+  // New settings IDs have no countryCode, matching the database's nullable default.
+  return orderedTaxIds.length ? [primary, ...orderedTaxIds.slice(1)] : [{ ...primary, countryCode: null }]
+}

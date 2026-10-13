@@ -228,6 +228,35 @@ describe("Settings tax relevance", () => {
     else expect(prepareConfirmation).not.toHaveBeenCalled()
   })
 
+  it.each(["companyName", "companyAddress", "taxId", "scheme"])("requires a fresh hosted choice after editing %s", async field => {
+    hostedFlag.enabled = true
+    distribution.selfhost = false
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: true, primaryTaxId: "24256790" })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
+    const { container } = render(<RouteComponent />)
+    const radios = await screen.findAllByRole("radio") as HTMLInputElement[]
+    let edits = 0
+    const edit = () => {
+      edits++
+      if (field === "scheme") fireEvent.change(Array.from(container.querySelectorAll("select")).find(select => select.value === (edits === 1 ? "vat" : "cvr"))!, { target: { value: edits === 1 ? "cvr" : "vat" } })
+      else fireEvent.change(field === "taxId" ? screen.getByLabelText("VAT/CVR number") : container.querySelector(`[name="${field}"]`)!, { target: { value: field === "taxId" ? (edits === 1 ? "12345678" : "24256790") : `Changed identity ${edits}` } })
+    }
+    fireEvent.click(radios[1]!)
+    edit()
+    expect(radios.every(radio => !radio.checked)).toBe(true)
+    fireEvent.click(screen.getByRole("button", { name: "vatStatus.withdraw" }))
+    edit()
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    expect(prepareConfirmation).not.toHaveBeenCalled()
+    fireEvent.click(radios[0]!)
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ primaryTaxIdScheme: "vat" })))
+  })
+
   it("preserves the disabled hosted confirmation flag", async () => {
     distribution.selfhost = false
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })

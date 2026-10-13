@@ -1,5 +1,6 @@
 // MOCK: synthetic test organizations, parties, document amounts and rates only.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { TRPCError } from "@trpc/server"
 import { Prisma } from "../../../generated/prisma/client"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { prisma } from "../../lib/db"
@@ -51,6 +52,34 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
 }
 
 ;(hasTestDatabase ? describe : describe.skip)("seller VAT status at invoice issuance", () => {
+  it.each(["vat", "cvr", "DK_CVR"])("binds hosted Settings confirmation to final stored %s IDs", async primaryTaxIdScheme => {
+    const ctx = await setup(true)
+    await prisma.organizationTaxId.deleteMany({ where: { organizationId: ctx.org.organizationId } })
+    await prisma.organizationTaxId.createMany({ data: [
+      { organizationId: ctx.org.organizationId, scheme: "vat", value: "12345678", isPrimary: true },
+      { organizationId: ctx.org.organizationId, scheme: "lei", value: "OTHER-ID", countryCode: "DK" },
+    ] })
+    const identity = (seller: { companyName?: string | null; companyAddress?: string | null; countryCode?: string | null; taxIds?: Array<{ scheme: string; value: string; countryCode?: string | null }> }) => JSON.stringify([
+      seller.companyName, seller.companyAddress, seller.countryCode,
+      seller.taxIds?.map(id => [id.scheme, id.value, id.countryCode ?? null]).sort(),
+    ])
+    vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    setRuntimeExtensions([{ id: "synthetic-identity-binding", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }),
+      sellerVatConfirmation: {
+        prepare: async ({ seller }) => ({ token: identity(seller) }),
+        confirm: async ({ seller, token }) => { if (identity(seller) !== token) throw new TRPCError({ code: "CONFLICT", message: "Identity changed" }) },
+      },
+    }])
+    const input = { companyName: "Reviewed synthetic seller", companyAddress: "Testvej 2", countryCode: "DK" as const, cvr: "24256790", primaryTaxIdScheme }
+    const prepared = await ctx.caller.runtime.prepareSellerVatConfirmation(input)
+    await ctx.caller.settings.update({ companyName: input.companyName, companyAddress: input.companyAddress, countryCode: "DK",
+      primaryTaxId: input.cvr, primaryTaxIdScheme, momsRegistered: false, sellerVatConfirmationToken: prepared.token })
+    expect(await ctx.caller.settings.get()).toMatchObject({ primaryTaxId: input.cvr, primaryTaxIdScheme, momsRegistered: false, taxRate: 0 })
+    expect(await prisma.organizationTaxId.count({ where: { organizationId: ctx.org.organizationId, scheme: "lei", value: "OTHER-ID" } })).toBe(1)
+    await expect(ctx.caller.settings.update({ companyName: "Unreviewed seller", momsRegistered: true, sellerVatConfirmationToken: prepared.token })).rejects.toMatchObject({ code: "CONFLICT" })
+    expect(await ctx.caller.settings.get()).toMatchObject({ companyName: input.companyName, momsRegistered: false })
+  })
+
   it("issues ordinary domestic form lines as unclassified zero and posts their frozen treatment", async () => {
     const ctx = await setup(true)
     await ctx.caller.settings.update({ momsRegistered: false })

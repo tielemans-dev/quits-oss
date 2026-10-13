@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { confirmSellerVatStatus, type SellerVatConfirmationTransaction } from "../runtime/seller-vat-confirmation"
+import { settingsConfirmationTaxIds, confirmSellerVatStatus, type SellerVatConfirmationTransaction } from "../runtime/seller-vat-confirmation"
 import { setRuntimeExtensions } from "../runtime/extensions"
 const confirm = vi.fn(async () => {})
 const actor = { organizationId: "org", userId: "user", sessionId: "session" }
@@ -34,5 +34,18 @@ describe("transactional seller VAT confirmation", () => {
   it("fails closed when the enabled provider is missing", async () => {
     enabled(); setRuntimeExtensions([{ id: "missing", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }) }])
     await expect(confirmSellerVatStatus({ ...actor, tx, registered: true, token: "signed" })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })
+  })
+})
+
+describe("Settings confirmation tax-ID representation", () => {
+  it.each(["vat", "cvr", "DK_CVR"])("preserves the selected %s scheme and other stored IDs", scheme => {
+    const stored = [{ scheme: "vat", value: "12345678", countryCode: null }, { scheme: "lei", value: "OTHER", countryCode: "DK" }]
+    expect(settingsConfirmationTaxIds(stored, " 24256790 ", scheme)).toEqual([
+      { scheme, value: "24256790", countryCode: null }, stored[1],
+    ])
+    expect(stored[0]!.value).toBe("12345678")
+  })
+  it("matches a new primary ID's nullable country instead of inventing a Danish CVR", () => {
+    expect(settingsConfirmationTaxIds([], "24256790", "vat")).toEqual([{ scheme: "vat", value: "24256790", countryCode: null }])
   })
 })

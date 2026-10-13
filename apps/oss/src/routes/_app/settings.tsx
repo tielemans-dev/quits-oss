@@ -330,8 +330,6 @@ function SettingsPage() {
       .finally(() => setLoadingAiCapabilities(false))
   }, [])
 
-  useEffect(() => { setSellerVatChoice(null); setWithdrawSellerVatEvidence(false) }, [countryCode, taxRegime])
-
   // Only providers the server's runtime capabilities allow are offered.
   const aiProviderOptions: Array<{ value: AiProviderId; label: string }> = aiCapabilities?.enabled
     ? [
@@ -422,6 +420,11 @@ function SettingsPage() {
     setInvitations((prev) => prev.filter((i) => i.id !== invitationId))
   }
 
+  function clearSellerVatReview() {
+    setSellerVatChoice(null)
+    setWithdrawSellerVatEvidence(false)
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
@@ -487,7 +490,7 @@ function SettingsPage() {
 
     try {
       const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (sellerVatChoice !== null || withdrawSellerVatEvidence)
-        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim() })).token
+        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim(), primaryTaxIdScheme })).token
         : undefined
       const savedSettings = await trpc.settings.update.mutate({
         countryCode,
@@ -778,6 +781,7 @@ function SettingsPage() {
                 maxLength={120}
                 placeholder={t("settings.companyName.placeholder")}
                 defaultValue={settings.companyName ?? ""}
+                onChange={clearSellerVatReview}
               />
             </div>
 
@@ -790,6 +794,7 @@ function SettingsPage() {
                 rows={3}
                 maxLength={240}
                 defaultValue={settings.companyAddress ?? ""}
+                onChange={clearSellerVatReview}
               />
             </div>
 
@@ -882,6 +887,7 @@ function SettingsPage() {
                   onValueChange={(nextCountry) => {
                     // The Danish choice does not establish registration in a new jurisdiction.
                     if (normalizeCountryCode(countryCode) === "DK" && normalizeCountryCode(nextCountry) !== "DK") setMomsRegistered(null)
+                    clearSellerVatReview()
                     setCountryCode(nextCountry)
                     const preset = COUNTRY_OPTIONS.find((item) => item.code === nextCountry)
                     if (preset) {
@@ -933,7 +939,7 @@ function SettingsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="taxRegime">{t("settings.taxRegime.label")}</Label>
-                <Select value={taxRegime} onValueChange={(value) => setTaxRegime(value as "us_sales_tax" | "eu_vat" | "custom")}>
+                <Select value={taxRegime} onValueChange={(value) => { setTaxRegime(value as "us_sales_tax" | "eu_vat" | "custom"); clearSellerVatReview() }}>
                   <SelectTrigger id="taxRegime">
                     <SelectValue placeholder={t("settings.taxRegime.placeholder")} />
                   </SelectTrigger>
@@ -972,7 +978,7 @@ function SettingsPage() {
                       maxLength={40}
                       placeholder={taxRules.primaryTaxIdCopy.label}
                       value={primaryTaxId}
-                      onChange={(event) => setPrimaryTaxId(event.target.value)}
+                      onChange={(event) => { setPrimaryTaxId(event.target.value); clearSellerVatReview() }}
                     />
                     <p className="text-xs text-muted-foreground">
                       {taxRules.primaryTaxIdCopy.help}
@@ -990,7 +996,7 @@ function SettingsPage() {
               {taxRules.showPrimaryTaxId ? (
                 <div className="grid gap-2">
                   <Label htmlFor="primaryTaxIdScheme">{t("settings.primaryTaxIdScheme.label")}</Label>
-                  <Select value={primaryTaxIdScheme} onValueChange={setPrimaryTaxIdScheme}>
+                  <Select value={primaryTaxIdScheme} onValueChange={value => { setPrimaryTaxIdScheme(value); clearSellerVatReview() }}>
                     <SelectTrigger id="primaryTaxIdScheme">
                       <SelectValue />
                     </SelectTrigger>
