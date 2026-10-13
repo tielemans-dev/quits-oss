@@ -279,6 +279,13 @@ const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
     const found = yield* findQuote(id)
     // Lock the contact before reading the address, so the approved recipient cannot change.
     const quote = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
+    // First sends refresh the seller from Settings; resends retain the issued identity.
+    const sellerSnapshot = action === "send"
+      ? yield* Effect.gen(function* () {
+          const { settings, sellerTaxIds } = yield* loadDocumentContext
+          return buildSellerSnapshot(settings, sellerTaxIds)
+        })
+      : quote.sellerSnapshot
     const recipient = quote.contact.email?.trim() || null
     const total = `${quote.totalGross.toFixed(2)} ${quote.currency}`
     return {
@@ -286,7 +293,7 @@ const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
         action === "send"
           ? `Send ${documentRef("quote", quote.number)} (${total}) to ${recipient ?? quote.contact.name}`
           : `Email ${documentRef("quote", quote.number)} (${total}) to ${recipient ?? quote.contact.name} again`,
-      version: documentFingerprint(quote, recipient, [quote.expiryDate]),
+      version: documentFingerprint({ ...quote, sellerSnapshot }, recipient, [quote.expiryDate]),
       details: {
         number: quote.number,
         purchaseOrderRef: quote.purchaseOrderRef,

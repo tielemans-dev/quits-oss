@@ -13,7 +13,7 @@ import { createTestOrganization, hasTestDatabase } from "../../test-utils/organi
 import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
 import { decideApproval } from "../approvals"
 import { createContact, updateContact } from "../commands/contacts"
-import { createQuoteDraft } from "../commands/quotes"
+import { createQuoteDraft, sendQuote } from "../commands/quotes"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
 
 
@@ -25,6 +25,26 @@ describeIfDatabase("approved sends and recipient changes", () => {
     vi.mocked(deliver).mockReset()
     vi.unstubAllEnvs()
     while (cleanups.length) await cleanups.pop()?.()
+  })
+
+  it.each([true, false])("refuses a quote approval when VAT registration changes from %s", async momsRegistered => {
+    const org = await createTestOrganization({ settings: { countryCode: "DK", taxRegime: "eu_vat", currency: "DKK" } })
+    cleanups.push(org.cleanup)
+    await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { momsRegistered } })
+    await prisma.organizationTaxId.create({ data: { organizationId: org.organizationId, scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true } })
+    const contact = await executeIssuanceCommand(createContact, { name: "Buyer", email: "buyer@example.test", country: "DK" }, { actor: org.actors.admin })
+    if (contact.status !== "completed") throw new Error("contact setup failed")
+    const input = { contactId: contact.result.id, taxRate: 0, items: [{ description: "Design", quantity: 1, unitPrice: 100 }] }
+    const quote = await executeIssuanceCommand(createQuoteDraft, { ...input, expiryDate: "2099-12-01" }, { actor: org.actors.admin })
+    if (quote.status !== "completed") throw new Error(JSON.stringify(quote))
+    const { secret } = await createAgentKey(org.actors.admin, { name: "Sender", mode: "approval_required", scopes: ["quote:send", "quote:read"] })
+    const agent = await authenticateAgentSecret(secret)
+    const queued = await executeIssuanceCommand(sendQuote, { id: quote.result.id }, { actor: agent })
+    if (queued.status !== "awaiting_approval") throw new Error(JSON.stringify(queued))
+    await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { momsRegistered: !momsRegistered } })
+    expect(await decideApproval({ approvalRequestId: queued.approvalRequestId, decider: org.actors.admin, decision: "approve" })).toMatchObject({ status: "failed", error: { code: "changed_since_review" } })
+    expect((await prisma.quote.findUniqueOrThrow({ where: { id: quote.result.id } })).status).toBe("draft")
+    expect(await prisma.organizationTaxId.count({ where: { organizationId: org.organizationId } })).toBe(1)
   })
 
   it.each([true, false])("refuses a linked invoice approval when VAT registration changes from %s", async momsRegistered => {

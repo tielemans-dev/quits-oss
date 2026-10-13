@@ -330,7 +330,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const api = await caller(id)
     const runtime = await import("../../../lib/runtime/extensions")
     runtime.setRuntimeExtensions([])
-    await api.settings.update({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: false, taxRate: 0 })
+    await api.settings.update({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: false, taxRate: 0, primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" })
     await api.settings.update({ momsRegistered: true, taxRate: 17.5 })
     expect(await api.settings.get()).toMatchObject({ momsRegistered: true, taxRate: 17.5 })
   })

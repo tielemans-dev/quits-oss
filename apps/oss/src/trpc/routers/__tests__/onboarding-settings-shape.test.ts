@@ -96,6 +96,7 @@ vi.mock("../../../lib/db", () => {
         }
         return { count: 1 }
       },
+      create: async ({ data }: { data: Omit<typeof mocks.taxIds[number], "id"> }) => { const id = { ...data, id: "tax-new" }; mocks.taxIds.push(id); return id },
       createMany: async ({ data }: { data: Array<Omit<typeof mocks.taxIds[number], "id">> }) => { mocks.taxIds.push(...data.map((id, i) => ({ ...id, id: `tax-${i}` }))); return { count: data.length } },
       update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => { const id = mocks.taxIds.find(id => id.id === where.id)!; Object.assign(id, data); return id },
     },
@@ -203,10 +204,23 @@ const settingsCaller = () => settingsRouter.createCaller({ session: null } satis
 describe("atomic Settings Danish VAT repairs", () => {
   beforeEach(() => { mocks.settings = { ...defaults, momsRegistered: false }; mocks.taxIds = []; mocks.creates = []; mocks.baseCurrency = "DKK" })
   it.each([undefined, false])("normalizes non-VAT tax defaults with registration %s", async momsRegistered => {
+    mocks.taxIds = [{ id: "primary", scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true }]
     await settingsCaller().update({ taxRate: 25, ...(momsRegistered === undefined ? {} : { momsRegistered }) })
     expect(mocks.settings).toMatchObject({ momsRegistered: false, taxRate: 0 })
     await settingsCaller().update({ companyName: "Edited seller" })
     expect(mocks.settings).toMatchObject({ momsRegistered: false, taxRate: 0 })
+  })
+  it.each([undefined, "", "00000000", "12345678", "DE123456789"])("rejects explicit non-VAT status without a valid CVR: %s", async primaryTaxId => {
+    const before = { ...mocks.settings }
+    await expect(settingsCaller().update({ momsRegistered: false, companyName: "Must not save", primaryTaxId, primaryTaxIdScheme: "cvr" })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    expect(mocks.settings).toEqual(before)
+    expect(mocks.taxIds).toEqual([])
+  })
+  it.each([true, false])("accepts a submitted CVR with an existing identifier: %s", async existing => {
+    mocks.taxIds = existing ? [{ id: "primary", scheme: "vat", value: "DK24256790", countryCode: "DK", isPrimary: true }] : []
+    await settingsCaller().update({ momsRegistered: false, primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" })
+    expect(mocks.settings).toMatchObject({ momsRegistered: false, taxRate: 0 })
+    expect(mocks.taxIds[0]).toMatchObject({ scheme: "cvr", value: "24256790" })
   })
   it("preserves chosen tax rates for registered and foreign sellers", async () => {
     await settingsCaller().update({ momsRegistered: true, taxRate: 25 })
@@ -241,7 +255,8 @@ describe("atomic Settings Danish VAT repairs", () => {
   })
   it("leaves an explicitly foreign primary ID unchanged", async () => {
     mocks.taxIds = [{ id: "primary", scheme: "vat", value: "12345678", countryCode: "DE", isPrimary: true }]
-    await settingsCaller().update({ momsRegistered: false })
+    await expect(settingsCaller().update({ momsRegistered: false })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await settingsCaller().update({ companyName: "Edited seller" })
     expect(mocks.taxIds[0]).toMatchObject({ scheme: "vat", countryCode: "DE" })
   })
   it("omits unchanged registration in scope and permits unrelated non-DK saves", async () => {
@@ -252,6 +267,7 @@ describe("atomic Settings Danish VAT repairs", () => {
     expect(mocks.settings?.momsRegistered).toBeNull()
   })
   it.each([true, false, null])("preserves an explicit in-scope status %s", async momsRegistered => {
+    mocks.taxIds = [{ id: "primary", scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true }]
     await settingsCaller().update({ momsRegistered })
     expect(mocks.settings?.momsRegistered).toBe(momsRegistered)
   })

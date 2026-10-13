@@ -1,3 +1,5 @@
+import { translate } from "../../lib/i18n/translate"
+import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
 import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { InvalidState } from "../../domain/errors"
@@ -322,7 +324,7 @@ export const settingsRouter = router({
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
-          select: { countryCode: true, taxRegime: true, momsRegistered: true, paymentNote: true, aiProvider: true, aiBaseUrl: true },
+          select: { countryCode: true, locale: true, taxRegime: true, momsRegistered: true, paymentNote: true, aiProvider: true, aiBaseUrl: true },
         })
         // Re-saving the stored provider is always fine; only switching to a new one is checked, so
         // capability changes on the server never block saving unrelated settings.
@@ -337,6 +339,18 @@ export const settingsRouter = router({
         if (clearsRegistration) settingsInput.momsRegistered = null
         if (settingsInput.momsRegistered === false && !isNonVatRegistrationAllowed()) {
           throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
+        }
+        if (settingsInput.momsRegistered === false) {
+          const primary = primaryTaxId?.trim()
+            ? { scheme: primaryTaxIdScheme?.trim() || "vat", value: primaryTaxId, countryCode: resolvedCountry }
+            : await tx.organizationTaxId.findFirst({ where: { organizationId: ctx.organizationId, isPrimary: true } })
+          const scheme = primary?.scheme.trim().toLowerCase()
+          const value = primary?.value.replace(/[\s.\-/]/g, "").toUpperCase().replace(/^DK/, "")
+          if (!primary || (primary.countryCode && primary.countryCode !== "DK") ||
+              !(isNationalRegistrationScheme(primary.scheme, "DK") || scheme === "vat" || scheme === "dk_vat") ||
+              !value || !isValidDanishCvr(value)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: translate("cvr.invalid", settingsInput.locale ?? current?.locale) })
+          }
         }
         const effectiveRegistration = settingsInput.momsRegistered === undefined
           ? current?.momsRegistered
