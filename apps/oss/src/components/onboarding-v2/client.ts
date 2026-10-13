@@ -1,4 +1,4 @@
-import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
+import { confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import type { CvrCompany, OnboardingSuggestions } from "@quits/contracts/cvr"
 import { trpc } from "../../trpc/client"
 import type { confirmationPayload } from "./draft"
@@ -24,7 +24,7 @@ export function createOnboardingV2Client(suggestions: boolean, confirmationEnabl
         }
       : {}),
     async confirm(input) {
-      const summary = confirmOnboardingV2Schema.parse(input)
+      const summary = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).parse(input)
       const token = confirmationEnabled ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({
         companyName: summary.companyName, companyAddress: summary.companyAddress,
         countryCode: "DK", cvr: summary.cvr,

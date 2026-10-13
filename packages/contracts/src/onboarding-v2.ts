@@ -78,6 +78,11 @@ export const confirmOnboardingV2Schema = z.object({
   }
 })
 
+/** Hosted confirmation currently binds a reviewed Danish CVR, name and postal address. */
+export const confirmOnboardingV2WithVatConfirmationSchema = confirmOnboardingV2Schema.refine(
+  value => isValidDanishCvr(value.cvr), { path: ["cvr"], message: "cvr.invalid" },
+)
+
 export type ConfirmOnboardingV2Input = z.input<typeof confirmOnboardingV2Schema>
 export type ConfirmOnboardingV2 = z.output<typeof confirmOnboardingV2Schema>
 

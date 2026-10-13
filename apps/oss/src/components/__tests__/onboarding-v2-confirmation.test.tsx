@@ -14,6 +14,28 @@ vi.mock("../../trpc/client", () => ({ trpc: {
 afterEach(() => { cleanup(); sessionStorage.clear(); vi.clearAllMocks() })
 
 describe("production v2 seller confirmation", () => {
+  it.each([true, false])("shows a CVR validation error for hosted manual registration %s before preparation", async registered => {
+    const done = vi.fn()
+    render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled client={createOnboardingV2Client(false, true)} onComplete={done} /></I18nProvider>)
+    fireEvent.click(screen.getByRole("button", { name: "Set up manually instead" }))
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
+    fireEvent.click(screen.getAllByRole("radio")[registered ? 0 : 1]!)
+    expect((screen.getByLabelText("CVR number") as HTMLInputElement).required).toBe(true)
+    fireEvent.submit(screen.getByRole("button", { name: "Create company" }).closest("form")!)
+    await screen.findByText("Check the highlighted fields before creating your company.")
+    expect(screen.getByLabelText("CVR number").getAttribute("aria-invalid")).toBe("true")
+    expect(api.prepare).not.toHaveBeenCalled()
+    expect(api.confirm).not.toHaveBeenCalled()
+    expect(done).not.toHaveBeenCalled()
+  })
+  it.each(["", "   ", "12345678"])("rejects unsupported hosted manual CVR %j in the transport before preparation", async cvr => {
+    const draft = newDraft(null, "signup@example.test", false)
+    Object.assign(draft.values, { companyName: "Synthetic Seller", companyAddress: "Testvej 1", momsRegistered: false, cvr })
+    await expect(createOnboardingV2Client(false, true).confirm(confirmationPayload(draft))).rejects.toThrow()
+    expect(api.prepare).not.toHaveBeenCalled()
+    expect(api.confirm).not.toHaveBeenCalled()
+  })
   it.each([true, false])("saves explicit registration %s and prepares the final edited identity", async registered => {
     const done = vi.fn()
     render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled client={createOnboardingV2Client(false, true)} onComplete={done} /></I18nProvider>)

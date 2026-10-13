@@ -72,6 +72,46 @@ const runtime = runtimeRouter.createCaller({ session: null })
 const settings = settingsRouter.createCaller({ session: null })
 const input = { companyName: "Reviewed seller", companyAddress: "Testvej 2", countryCode: "DK" as const, cvr: "24256790" }
 describe("hosted Settings prepare/save capability boundary", () => {
+  it.each([{ taxRegime: "custom" }, { countryCode: "US" }])("rejects an unconfirmed retained choice on Danish VAT entry from %j", async outside => {
+    hosted(true)
+    await settings.update({ ...outside, momsRegistered: false })
+    await expect(settings.update({ countryCode: "DK", taxRegime: "eu_vat" })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    expect(db.settings()).toMatchObject({ ...outside, momsRegistered: false })
+    expect(confirm).not.toHaveBeenCalled()
+  })
+  it.each([true, false])("reconfirms retained %s on context entry without discarding a genuine choice", async registered => {
+    hosted(true)
+    const prepared = await runtime.prepareSellerVatConfirmation({ companyName: db.settings().companyName,
+      companyAddress: db.settings().companyAddress, countryCode: "DK", cvr: db.ids()[0]!.value, primaryTaxIdScheme: "vat" })
+    await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: prepared.token })
+    await settings.update({ taxRegime: "custom" })
+    await expect(settings.update({ taxRegime: "eu_vat" })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    expect(db.settings()).toMatchObject({ taxRegime: "custom", momsRegistered: registered })
+    await expect(settings.update({ taxRegime: "eu_vat", companyName: "Unreviewed identity", sellerVatConfirmationToken: prepared.token })).rejects.toMatchObject({ code: "CONFLICT" })
+    expect(db.settings()).toMatchObject({ taxRegime: "custom", companyName: "Original seller", momsRegistered: registered })
+    await settings.update({ taxRegime: "eu_vat", sellerVatConfirmationToken: prepared.token })
+    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered }))
+    expect(db.settings()).toMatchObject({ taxRegime: "eu_vat", momsRegistered: registered })
+  })
+  it("allows unknown status on entry without granting a confirmed choice", async () => {
+    hosted(true)
+    await settings.update({ taxRegime: "custom", momsRegistered: null })
+    await settings.update({ taxRegime: "eu_vat" })
+    expect(db.settings()).toMatchObject({ taxRegime: "eu_vat", momsRegistered: null })
+    expect(confirm).not.toHaveBeenCalled()
+  })
+  it("does not add a context-entry gate for self-hosted settings", async () => {
+    hosted(true); vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
+    await settings.update({ taxRegime: "custom", momsRegistered: false })
+    await settings.update({ taxRegime: "eu_vat" })
+    expect(db.settings()).toMatchObject({ taxRegime: "eu_vat", momsRegistered: false })
+    expect(confirm).not.toHaveBeenCalled()
+  })
+  it("allows unrelated hosted saves without reconfirmation", async () => {
+    hosted(true)
+    await settings.update({ companyEmail: "seller@example.test" })
+    expect(confirm).not.toHaveBeenCalled()
+  })
   it("rejects non-registration before any write when only confirmation is enabled", async () => {
     hosted(false)
     const prepared = await runtime.prepareSellerVatConfirmation({ ...input, primaryTaxIdScheme: "vat" })

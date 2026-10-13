@@ -383,7 +383,7 @@ export const sendInvoice = defineCommand({
       const { settings, sellerTaxIds } = yield* loadDocumentContext
       const currentSeller = buildSellerSnapshot(settings, sellerTaxIds)
       const seller = (found.agreementId || found.quoteId)
-        ? yield* withSellerVatStatus(parseSellerSnapshot(found.sellerSnapshot) ?? {}, currentSeller)
+        ? yield* withSellerVatStatus(parseSellerSnapshot(found.sellerSnapshot) ?? {}, currentSeller, found.taxRegime)
         : currentSeller
       const buyer = (found.agreementId || found.quoteId) ? parseBuyerSnapshot(found.buyerSnapshot) : buildBuyerSnapshot(found.contact)
       const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate }

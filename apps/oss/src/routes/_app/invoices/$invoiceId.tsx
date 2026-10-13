@@ -816,6 +816,7 @@ function InvoiceDetailPage() {
 
   return (
     <div className="p-6 max-w-3xl">
+      {bankNudge.dialog}
       {depositsEnabled && invoice.purpose === "prepayment" && invoice.status === "draft" && <section className="rounded-md border p-4 grid gap-3">
         <p>{t("agreements.prepaymentNotice")}</p>
         <AlertDialog><AlertDialogTrigger asChild><Button disabled={acting}>{t("agreements.convertSchedule")}</Button></AlertDialogTrigger>

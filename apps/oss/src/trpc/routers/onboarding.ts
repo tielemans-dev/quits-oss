@@ -2,7 +2,7 @@ import type { Prisma } from "../../../generated/prisma/client"
 import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { confirmOnboardingV2 } from "../../lib/onboarding/confirm-v2"
-import { DANISH_ONBOARDING_V2_DEFAULTS, confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
+import { DANISH_ONBOARDING_V2_DEFAULTS, confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
 import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
@@ -234,7 +234,7 @@ export const onboardingRouter = router({
   }),
   confirmV2: authorizedProcedure("settings:update")
     .input(z.preprocess<z.output<typeof confirmOnboardingV2Schema>, typeof confirmOnboardingV2Schema, z.input<typeof confirmOnboardingV2Schema>>((value) => {
-      const result = confirmOnboardingV2Schema.safeParse(value)
+      const result = (getRuntimeCapabilities().sellerVatConfirmation.enabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(value)
       if (!result.success) {
         const key = result.error.issues.some(issue => issue.path[0] === "cvr") ? "cvr.invalid" : "save.failed"
         throw new TRPCError({ code: "BAD_REQUEST", message: key })

@@ -88,7 +88,7 @@ export const prospectiveRenderInput = (input: {
     // agreed seller identity but are paid to the account in force when they are issued.
     const currentSeller = buildSellerSnapshot(settings, sellerTaxIds)
     const effectiveSeller = (invoice.agreementId || invoice.quoteId)
-      ? yield* withSellerVatStatus(parseSellerSnapshot(invoice.sellerSnapshot) ?? {}, currentSeller)
+      ? yield* withSellerVatStatus(parseSellerSnapshot(invoice.sellerSnapshot) ?? {}, currentSeller, invoice.taxRegime)
       : currentSeller
     const seller = withInvoicePaymentDetails(effectiveSeller, settings, invoice.locale)
     const refreshedBuyer = buildBuyerSnapshot(invoice.contact)

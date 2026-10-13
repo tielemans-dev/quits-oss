@@ -85,9 +85,11 @@ export const buyerContactSelect = {
 } as const
 
 /** Current registration confirms only the same seller, never a different agreed legal identity. */
-export function withSellerVatStatus<T extends SellerSnapshot>(seller: T, current: SellerSnapshot) {
+export function withSellerVatStatus<T extends SellerSnapshot>(seller: T, current: SellerSnapshot, taxRegime: string) {
   const country = seller.countryCode?.trim().toUpperCase()
   const currentCountry = current.countryCode?.trim().toUpperCase()
+  // Other regimes retain the agreed legal identity and its frozen registration status.
+  if (taxRegime !== "eu_vat" || (country !== "DK" && currentCountry !== "DK")) return Effect.succeed(seller)
   const cvrIds = (snapshot: SellerSnapshot) => [...new Set((snapshot.taxIds ?? [])
     .filter(id => id.scheme?.toLowerCase() === "cvr" && (id.countryCode ?? snapshot.countryCode)?.toUpperCase() === "DK")
     .map(id => id.value.trim()))].sort()

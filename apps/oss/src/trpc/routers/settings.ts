@@ -441,7 +441,7 @@ export const settingsRouter = router({
           }
         }
 
-        await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken })
+        await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken, previousSettings: current })
         return settings
       })
     }),

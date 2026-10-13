@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Check, LoaderCircle, Search, X } from "lucide-react"
-import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
+import { confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import type { CvrCompany, OnboardingSuggestions } from "@quits/contracts/cvr"
 import { useI18n } from "../../lib/i18n/react"
 import type { TranslationKey } from "../../lib/i18n/messages"
@@ -346,7 +346,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       setBankErrors(true)
       return
     }
-    const validated = confirmOnboardingV2Schema.safeParse(confirmationPayload(draft))
+    const validated = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(confirmationPayload(draft))
     if (!validated.success) {
       setValidationErrors(validated.error.issues.map((issue) => String(issue.path.at(-1))))
       return
@@ -608,7 +608,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
           <SummaryCard title={TT("company")} tag={factsTag}>
             {field("companyName", "field.name", factsTag, { required: true, maxLength: 120 })}
             {field("cvr", "field.cvr", factsTag, {
-              required: draft.source === "cvr",
+              required: confirmationEnabled || draft.source === "cvr",
               maxLength: 8,
               pattern: "[0-9]{8}",
             })}
