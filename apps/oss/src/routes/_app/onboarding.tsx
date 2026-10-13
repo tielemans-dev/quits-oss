@@ -23,7 +23,7 @@ import {
 } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { useI18n } from '../../lib/i18n/react'
+import { I18nProvider, useI18n } from '../../lib/i18n/react'
 import { countryOptionsIncluding, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
 import { loadPage } from '../../lib/page-navigation'
@@ -112,6 +112,12 @@ function parseCloudOnboardingValues(values?: Record<string, unknown> | null): Cl
 }
 
 function OnboardingPage() {
+  const { locale } = useI18n()
+  const { lang } = Route.useSearch()
+  return <I18nProvider locale={lang ?? locale}><OnboardingPageContent /></I18nProvider>
+}
+
+function OnboardingPageContent() {
   const { t } = useI18n()
   const search = Route.useSearch()
   const target = loginReturnTarget(search)

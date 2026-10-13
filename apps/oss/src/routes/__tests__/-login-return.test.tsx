@@ -31,14 +31,14 @@ const Login = asMockedRoute(LoginRoute).component
 const Onboarding = asMockedRoute(OnboardingRoute).component
 const orgs = [{ id: 'org_1', name: 'First org' }, { id: 'org_2', name: 'Second org' }]
 
-function renderPage(Page: React.ComponentType) { return render(<I18nProvider locale="en"><Page /></I18nProvider>) }
+function renderPage(Page: React.ComponentType, locale = "en") { return render(<I18nProvider initialLocale={locale}><Page /></I18nProvider>) }
 function submitLogin(lang = 'en') {
   fireEvent.change(screen.getByLabelText(lang === 'da' ? 'E-mail' : 'Email'), { target: { value: 'user@example.test' } })
   fireEvent.change(screen.getByLabelText(lang === 'da' ? 'Adgangskode' : 'Password'), { target: { value: 'password123' } })
   fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Log ind' : 'Sign in' }).closest('form')!)
 }
 afterEach(() => {
-  cleanup(); vi.resetAllMocks()
+  cleanup(); vi.resetAllMocks(); vi.restoreAllMocks()
   state.search = {}; state.cloud = false; state.active = false
 })
 
@@ -48,6 +48,22 @@ describe('login return contract', () => {
     expect(loginReturnTarget({ next: '/a', redirect: '/b' })).toBe('/a')
     expect(loginReturnTarget({ next: 'https://evil.example', redirect: '/b' })).toBeNull()
     expect(loginReturnSearchSchema.parse({ lang: 'de' }).lang).toBeUndefined()
+  })
+  for (const alias of ['next', 'redirect']) for (const value of ['123', 'true', 'false', 'null', '%5B1%5D', '%7B%7D']) for (const cloud of [false, true]) {
+    it(`renders login and uses the ${cloud ? 'cloud' : 'selfhost'} default for parsed ${alias}=${value}`, async () => {
+      const { defaultParseSearch } = await vi.importActual<typeof import('@tanstack/react-router')>('@tanstack/react-router')
+      const parsed = defaultParseSearch(`?${alias}=${value}`) as Record<string, unknown>
+      expect(typeof parsed[alias]).not.toBe('string')
+      state.search = loginReturnSearchSchema.parse(parsed)
+      expect(loginReturnTarget(state.search)).toBeNull()
+      state.cloud = cloud
+      state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ data: [orgs[0]] }); state.setActive.mockResolvedValue({ data: {} })
+      renderPage(Login); submitLogin()
+      await waitFor(() => expect(state.load).toHaveBeenCalledWith(cloud ? '/onboarding' : '/'))
+    })
+  }
+  it('keeps an invalid non-string next ahead of a valid redirect alias', () => {
+    expect(loginReturnTarget(loginReturnSearchSchema.parse({ next: 123, redirect: '/invoices' }))).toBeNull()
   })
   it('preserves exact query encoding and hash while updating only the language', () => {
     expect(loginReturnDestination('/hosted/account?filter=a%20b&item=x%2Fy&lang=da#vat', 'en'))
@@ -112,6 +128,21 @@ describe('return after required organization flow', () => {
       } else fireEvent.click(await screen.findByText('Second org'))
       await waitFor(() => expect(state.load).toHaveBeenCalledWith(cloud ? loginReturnOnboarding(state.search) : '/hosted/account?tab=vat&lang=en'))
       expect(state.setActive).toHaveBeenCalled()
+    })
+  }
+  for (const cloud of [false, true]) for (const create of [false, true]) for (const lang of ['da', 'en']) {
+    it(`pins ${lang} over browser/org defaults through ${create ? 'create' : 'choose'} in ${cloud ? 'cloud' : 'selfhost'}`, async () => {
+      const fallback = lang === 'da' ? 'en-US' : 'da-DK'
+      vi.spyOn(window.navigator, 'language', 'get').mockReturnValue(fallback)
+      state.cloud = cloud; state.search = { next: '/hosted/account?tab=vat', lang }
+      state.list.mockResolvedValue({ data: create ? [] : orgs }); state.setActive.mockResolvedValue({ data: {} }); state.create.mockResolvedValue({ data: { id: 'org_1' } })
+      renderPage(Onboarding, fallback)
+      expect(await screen.findByText(create ? (lang === 'da' ? 'Opret din organisation' : 'Create your organization') : (lang === 'da' ? 'Vælg din organisation' : 'Choose your organization'))).toBeTruthy()
+      if (create) {
+        fireEvent.change(await screen.findByLabelText(lang === 'da' ? 'Organisationsnavn' : 'Organization name'), { target: { value: 'New org' } })
+        fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Opret organisation' : 'Create organization' }).closest('form')!)
+      } else fireEvent.click(await screen.findByText('Second org'))
+      await waitFor(() => expect(state.load).toHaveBeenCalledWith(cloud ? loginReturnOnboarding(state.search) : `/hosted/account?tab=vat&lang=${lang}`))
     })
   }
   it('resumes after completing required cloud setup', async () => {

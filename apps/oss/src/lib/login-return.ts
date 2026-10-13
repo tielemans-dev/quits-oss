@@ -2,8 +2,10 @@ import { z } from 'zod'
 import { toInternalRedirectPath } from './redirect-target'
 
 export const loginReturnSearchSchema = z.object({
-  next: z.string().optional(),
-  redirect: z.string().optional(),
+  // TanStack's JSON-first search parser can produce non-strings. Keep an invalid supplied
+  // alias as an empty target so `next` still wins over `redirect`, without blocking login.
+  next: z.string().optional().catch(''),
+  redirect: z.string().optional().catch(''),
   lang: z.enum(['da', 'en']).optional().catch(undefined),
 })
 

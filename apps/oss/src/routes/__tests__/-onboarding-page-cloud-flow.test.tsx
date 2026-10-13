@@ -27,7 +27,9 @@ vi.mock("@tanstack/react-router", () => ({
 }))
 
 vi.mock("../../lib/i18n/react", () => ({
+  I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useI18n: () => ({
+    locale: "en",
     t: (key: string) => key,
   }),
 }))
