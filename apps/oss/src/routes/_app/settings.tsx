@@ -526,6 +526,7 @@ function SettingsPage() {
         clearStripeWebhookSecret,
       })
       if (momsRegisteredUpdate !== undefined) {
+        setMomsRegistered(momsRegisteredUpdate)
         setSettings(prev => prev ? { ...prev, momsRegistered: momsRegisteredUpdate } : prev)
       }
       setTimezone(timezoneInput)
