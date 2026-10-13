@@ -422,14 +422,15 @@ export const settingsRouter = router({
 
           if (existing) {
             const nextScheme = primaryTaxIdScheme?.trim() || "vat"
-            // Only the VAT paired with this Danish CVR is derived from its edit. Keep foreign
+            // Only the VAT paired with this Danish identity is derived from its edit. Keep foreign
             // and unrelated secondary identifiers, and never rewrite issued snapshots.
             if (resolvedCountry === "DK" && (!existing.countryCode || existing.countryCode === "DK") &&
-                isNationalRegistrationScheme(existing.scheme, "DK") && isNationalRegistrationScheme(nextScheme, "DK")) {
-              const registration = nationalRegistrationForScheme(existing.scheme)!
+                (isNationalRegistrationScheme(existing.scheme, "DK") || ["vat", "dk_vat"].includes(existing.scheme.toLowerCase())) &&
+                (isNationalRegistrationScheme(nextScheme, "DK") || ["vat", "dk_vat"].includes(nextScheme.toLowerCase()))) {
+              const registration = nationalRegistrationForScheme("cvr")!
               const oldCvr = registration.normalize(existing.value)
               const nextCvr = registration.normalize(primaryTaxId)
-              await tx.organizationTaxId.updateMany({
+              if (/^\d{8}$/.test(oldCvr) && /^\d{8}$/.test(nextCvr)) await tx.organizationTaxId.updateMany({
                 where: { organizationId: ctx.organizationId, value: `DK${oldCvr}`,
                   AND: [
                     { OR: [{ countryCode: "DK" }, { countryCode: null }] },

@@ -69,9 +69,13 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     }
     await tx.organization.update({ where: { id: organizationId }, data: { name: input.companyName } })
     await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...settings }, update: settings })
-    // Replace only registration/VAT IDs; unrelated identifiers remain intact.
+    // Replace the Danish pair, including legacy rows without a country. Foreign
+    // registrations remain available for future documents.
     await tx.organizationTaxId.updateMany({ where: { organizationId, isPrimary: true }, data: { isPrimary: false } })
-    await tx.organizationTaxId.deleteMany({ where: { organizationId, OR: ["cvr", "vat", "dk_cvr", "dk_vat"].map(scheme => ({ scheme: { equals: scheme, mode: "insensitive" as const } })) } })
+    await tx.organizationTaxId.deleteMany({ where: { organizationId,
+      AND: [{ OR: [{ countryCode: "DK" }, { countryCode: null }] }],
+      OR: ["cvr", "vat", "dk_cvr", "dk_vat"].map(scheme => ({ scheme: { equals: scheme, mode: "insensitive" as const } })),
+    } })
     await tx.organizationTaxId.createMany({ data: [
       { organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true },
       ...(input.vatId ? [{ organizationId, scheme: "vat", value: input.vatId, countryCode: "DK", isPrimary: false }] : []),

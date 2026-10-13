@@ -78,9 +78,9 @@ vi.mock("../../../lib/db", () => {
     },
     organizationTaxId: {
       findFirst: async () => mocks.taxIds.find(id => id.isPrimary) ?? mocks.taxIds[0] ?? null,
-      deleteMany: async ({ where }: { where: { OR?: Array<{ scheme: { equals: string } }> } }) => {
+      deleteMany: async ({ where }: { where: { OR?: Array<{ scheme: { equals: string } }>; AND?: unknown } }) => {
         const before = mocks.taxIds.length
-        mocks.taxIds = mocks.taxIds.filter(id => where.OR && !where.OR.some(clause => clause.scheme.equals.toLowerCase() === id.scheme.toLowerCase()))
+        mocks.taxIds = mocks.taxIds.filter(id => (where.AND && id.countryCode != null && id.countryCode !== "DK") || !where.OR?.some(clause => clause.scheme.equals.toLowerCase() === id.scheme.toLowerCase()))
         return { count: before - mocks.taxIds.length }
       },
       updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
@@ -247,7 +247,18 @@ describe("atomic Settings Danish VAT repairs", () => {
     await settingsCaller().update({ countryCode: "DE", momsRegistered: false })
     expect(mocks.settings?.momsRegistered).toBeNull()
   })
-  it.each(["cvr", "DK_CVR"])("updates the paired Danish VAT after registered confirmation and %s edit, preserving other IDs and frozen history", async scheme => {
+  it("preserves foreign VAT registrations while replacing the Danish pair during confirmation", async () => {
+    mocks.settings = null
+    mocks.taxIds = [
+      { id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: true },
+      { id: "old-dk", scheme: "DK_VAT", value: "DK11111111", countryCode: null, isPrimary: false },
+    ]
+    await confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")
+    expect(mocks.taxIds.find(id => id.id === "foreign")).toMatchObject({ value: "DE123456789", countryCode: "DE", isPrimary: false })
+    expect(mocks.taxIds.find(id => id.id === "old-dk")).toBeUndefined()
+    expect(mocks.taxIds.filter(id => id.countryCode === "DK").map(id => id.value)).toEqual(["24256790", "DK24256790"])
+  })
+  it.each(["cvr", "DK_CVR", "vat", "DK_VAT"])("updates the paired Danish VAT after registered confirmation and %s edit, preserving other IDs and frozen history", async scheme => {
     mocks.settings = null
     await confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")
     mocks.taxIds.push({ id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }, { id: "other", scheme: "other", value: "secondary", countryCode: "DK", isPrimary: false })
@@ -258,9 +269,10 @@ describe("atomic Settings Danish VAT repairs", () => {
     const fixture = JSON.parse(readFileSync(new URL("../../../lib/exports/__tests__/fixtures/legacy-ubl-input.json", import.meta.url), "utf8")) as EinvoiceDocument
     const historicalDocument = { ...fixture, seller: buildSellerParty({ snapshot: frozen, settings: null, taxIds: [], documentCountryCode: "DK" }) }
     const historicalUbl = buildUblDocument(historicalDocument)
-    await settingsCaller().update({ primaryTaxId: "87654321", primaryTaxIdScheme: scheme })
+    const value = ["vat", "DK_VAT"].includes(scheme) ? "DK87654321" : "87654321"
+    await settingsCaller().update({ primaryTaxId: value, primaryTaxIdScheme: scheme })
     expect(mocks.taxIds.find(id => id.id === "tax-1")).toMatchObject({ scheme: "vat", value: "DK87654321", countryCode: "DK", isPrimary: false })
-    expect(mocks.taxIds.find(id => id.id === "tax-0")).toMatchObject({ scheme, value: "87654321", isPrimary: true })
+    expect(mocks.taxIds.find(id => id.id === "tax-0")).toMatchObject({ scheme, value, isPrimary: true })
     expect(mocks.taxIds.find(id => id.id === "foreign")?.value).toBe("DE123456789")
     expect(mocks.taxIds.find(id => id.id === "other")?.value).toBe("secondary")
     const future = buildSellerSnapshot(mocks.settings as never, mocks.taxIds)
@@ -272,5 +284,12 @@ describe("atomic Settings Danish VAT repairs", () => {
     expect(JSON.stringify(frozen)).toBe(frozenBefore)
     expect(buildUblDocument(historicalDocument)).toBe(historicalUbl)
     expect(historicalUbl).toContain("DK24256790")
+    // The reverse VAT-to-CVR switch must keep the same pair synchronized too.
+    await settingsCaller().update({ primaryTaxId: "12345678", primaryTaxIdScheme: "cvr" })
+    expect(mocks.taxIds.find(id => id.id === "tax-1")?.value).toBe("DK12345678")
+    expect(mocks.taxIds.find(id => id.id === "foreign")?.value).toBe("DE123456789")
+    const nextSeller = buildSellerSnapshot(mocks.settings as never, mocks.taxIds)
+    expect(buildSellerParty({ snapshot: nextSeller, settings: null, taxIds: [], documentCountryCode: "DK" }).vatId).toBe("DK12345678")
+    expect(buildUblDocument(historicalDocument)).toBe(historicalUbl)
   })
 })
