@@ -614,7 +614,8 @@ function OnboardingPageContent() {
   if (v2Availability?.enabled && session) {
     return <OnboardingV2 key={`${session.user.id}:${session.session.activeOrganizationId}`} userId={session.user.id} organizationId={session.session.activeOrganizationId!} signupEmail={session.user.email} client={v2Client} onComplete={() => {
       invalidateAppLayoutSession()
-      void navigate({ to: '/' })
+      if (target || search.lang) loadPage(returnDestination)
+      else void navigate({ to: '/' })
     }} />
   }
 

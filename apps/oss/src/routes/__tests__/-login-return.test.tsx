@@ -5,7 +5,7 @@ import { I18nProvider } from '../../lib/i18n/react'
 import { loginReturnDestination, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget } from '../../lib/login-return'
 
 const state = vi.hoisted(() => ({
-  search: {} as Record<string, string>, cloud: false, active: false,
+  search: {} as Record<string, string>, cloud: false, active: false, v2: false,
   load: vi.fn(), navigate: vi.fn(), signIn: vi.fn(), list: vi.fn(), setActive: vi.fn(), create: vi.fn(),
   status: vi.fn(), complete: vi.fn(), draft: vi.fn(),
 }))
@@ -18,12 +18,17 @@ vi.mock('../../lib/page-navigation', () => ({ loadPage: state.load }))
 vi.mock('../../lib/runtime-distribution', () => ({ useRuntimeDistribution: () => ({ isCloud: state.cloud }) }))
 vi.mock('../../lib/auth-client', () => ({
   authClient: { signIn: { email: state.signIn }, organization: { list: state.list, setActive: state.setActive, create: state.create } },
-  useSession: () => ({ data: { session: { activeOrganizationId: state.active ? 'org_1' : null } } }),
+  useSession: () => ({ data: { user: { id: 'user_1', email: 'user@example.test' }, session: { activeOrganizationId: state.active ? 'org_1' : null } } }),
 }))
 vi.mock('../../trpc/client', () => ({ trpc: {
   onboarding: { getStatus: { query: state.status }, saveDraft: { mutate: state.draft }, completeManual: { mutate: state.complete } },
+  cvr: { available: { query: async () => ({ enabled: state.v2, suggestions: false }) } },
   runtime: { capabilities: { query: async () => ({ onboardingAi: { enabled: false } }) } },
 } }))
+vi.mock('../../components/onboarding-v2/client', () => ({ createOnboardingV2Client: () => ({}) }))
+vi.mock('../../components/onboarding-v2/onboarding-v2', () => ({
+  OnboardingV2: ({ onComplete }: { onComplete: () => void }) => <button onClick={onComplete}>Complete V2</button>,
+}))
 import { Route as LoginRoute } from '../login'
 import { Route as OnboardingRoute } from '../_app/onboarding'
 import { asMockedRoute } from '../../test-utils/mocked-route'
@@ -39,10 +44,19 @@ function submitLogin(lang = 'en') {
 }
 afterEach(() => {
   cleanup(); vi.resetAllMocks(); vi.restoreAllMocks()
-  state.search = {}; state.cloud = false; state.active = false
+  state.search = {}; state.cloud = false; state.active = false; state.v2 = false
 })
 
 describe('login return contract', () => {
+  it.each(['da', 'en'])('returns from V2 confirmation with the exact target and %s language', async lang => {
+    state.cloud = true; state.active = true; state.v2 = true
+    state.search = { next: '/invoices?filter=a%20b#review', lang }
+    state.status.mockResolvedValue({ isComplete: false, missing: [], values: {} })
+    renderPage(Onboarding)
+    fireEvent.click(await screen.findByRole('button', { name: 'Complete V2' }))
+    expect(state.load).toHaveBeenCalledWith(`/invoices?filter=a%20b&lang=${lang}#review`)
+    expect(state.navigate).not.toHaveBeenCalled()
+  })
   it('validates both aliases and DA/EN with deterministic next precedence', () => {
     expect(loginReturnSearchSchema.parse({ next: '/a', redirect: '/b', lang: 'da' })).toEqual({ next: '/a', redirect: '/b', lang: 'da' })
     expect(loginReturnTarget({ next: '/a', redirect: '/b' })).toBe('/a')
