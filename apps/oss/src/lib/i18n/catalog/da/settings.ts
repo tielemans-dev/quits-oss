@@ -1,5 +1,5 @@
 export const daSettingsMessages = {
-  "settings.vatStatus.cvrLabel": "CVR-nummer",
+  "settings.vatStatus.cvrLabel": "CVR-nr.",
   "settings.vatStatus.cvrHelp": "Din virksomheds danske registreringsnummer.",
 
   "settings.vatStatus.question": "Er du momsregistreret?",

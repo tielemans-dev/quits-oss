@@ -33,6 +33,14 @@ describe("seller registration at financial issuance", () => {
     const document = { ...taxed, quoteId: "quote", countryCode: "DK", sellerSnapshot: { momsRegistered: true, taxIds: [] } }
     expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Left", left: { code: "evidence_incomplete" } })
   })
+  it("rejects a registered linked invoice whose agreed CVR cannot resolve as a VAT id", async () => {
+    const document = { ...taxed, quoteId: "offer", countryCode: "SE", sellerSnapshot: { momsRegistered: true, taxIds: [{ scheme: "cvr", value: "24256790", countryCode: null }] } }
+    expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Left", left: { code: "evidence_incomplete" } })
+  })
+  it("accepts a registered linked invoice when a Danish CVR resolves as the VAT id", async () => {
+    const document = { ...taxed, agreementId: "offer", countryCode: "DK", sellerSnapshot: { momsRegistered: true, taxIds: [{ scheme: "cvr", value: "24256790", countryCode: "DK" }] } }
+    expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Right" })
+  })
   it("accepts zero-tax out-of-scope lines without changing their category", async () => {
     const document = { ...taxed, totalTax: "0", totalGross: "100", items: [{ ...taxed.items[0]!, vatTreatment: "out_of_scope", vatRateInput: "0", taxRate: "0", lineTax: "0", lineGross: "100" }] }
     expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Right" })
