@@ -266,6 +266,7 @@ export async function executeCommand<Input, Result>(
   if (options.expectedApprovalVersion && definition.approvalContext) {
     const reviewed = await readInScope(definition.approvalContext(input), {
       actor, organizationId, commandId: provisionalId, now,
+      expectedApprovalVersion: options.expectedApprovalVersion,
     })
     if (reviewed.kind === "failed") return rejectEarly(reviewed.error)
     if (reviewed.value.version !== options.expectedApprovalVersion) {
@@ -327,7 +328,9 @@ export async function executeCommand<Input, Result>(
       // make the stored lines invalid for the new seller, and that check must not hide the review.
       const reviewedVersion = options.expectedApprovalVersion
       if (reviewedVersion && definition.approvalContext) {
-        const current = await runRead(tx, definition.approvalContext(input), { actor, organizationId, commandId: provisionalId, now })
+        const current = await runRead(tx, definition.approvalContext(input), {
+          actor, organizationId, commandId: provisionalId, now, expectedApprovalVersion: reviewedVersion,
+        })
         if (current.version !== reviewedVersion) {
           throw new HandlerFailed(new InvalidState({
             message: "The document changed after this request was sent for approval. Ask the agent to request approval again.",
@@ -579,7 +582,7 @@ async function recordFailedReceipt<Result>(
   }
 }
 
-type ReadScope = { actor: Actor; organizationId: string; commandId: string; now: Date }
+type ReadScope = { actor: Actor; organizationId: string; commandId: string; now: Date; expectedApprovalVersion?: string }
 
 /**
  * Runs a read-only domain effect (no events, no jobs) in `tx`. A domain failure is thrown as
