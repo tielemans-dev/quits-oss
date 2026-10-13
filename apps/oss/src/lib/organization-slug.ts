@@ -23,14 +23,20 @@ export function organizationSlugFromName(name: string): string {
 }
 
 /** First slug is the name; later ones add a numeric suffix so a taken slug can be retried. */
-export function organizationSlugCandidates(name: string, limit = 12): string[] {
+function* iterateOrganizationSlugs(name: string): Generator<string> {
   const base = organizationSlugFromName(name)
+  for (let index = 1n; ; index += 1n) {
+    const suffix = index === 1n ? "" : `-${index}`
+    const head = base.slice(0, MAX_SLUG_LENGTH - suffix.length).replace(/-+$/g, "") || "organization"
+    yield `${head}${suffix}`
+  }
+}
+
+export function organizationSlugCandidates(name: string, limit = 12): string[] {
   const candidates: string[] = []
-  for (let index = 0; candidates.length < limit; index += 1) {
-    const suffix = index === 0 ? "" : `-${index + 1}`
-    const head = base.slice(0, Math.max(1, MAX_SLUG_LENGTH - suffix.length)).replace(/-+$/g, "") || "organization"
-    const candidate = `${head}${suffix}`
-    if (isOrganizationSlug(candidate) && !candidates.includes(candidate)) candidates.push(candidate)
+  for (const candidate of iterateOrganizationSlugs(name)) {
+    if (candidates.length >= limit) break
+    candidates.push(candidate)
   }
   return candidates
 }
@@ -42,19 +48,17 @@ export async function createNamedOrganization(input: {
 }): Promise<{ ok: true; id: string; slug: string } | { ok: false; message: string }> {
   const name = input.name.trim()
   if (!name) return { ok: false, message: "missing" }
-  let sawTaken = false
-  for (const slug of organizationSlugCandidates(name)) {
+  const candidates = iterateOrganizationSlugs(name)
+  for (;;) {
+    const slug = candidates.next().value as string
     if (!(await input.isSlugAvailable(slug))) {
-      sawTaken = true
       continue
     }
     const created = await input.create({ name, slug })
     if (created.ok) return { ok: true, id: created.id, slug }
     if (/already exists|slug already taken/i.test(created.message)) {
-      sawTaken = true
       continue
     }
     return created
   }
-  return { ok: false, message: sawTaken ? "taken" : "missing" }
 }

@@ -25,9 +25,9 @@ export function stageSelectedCompany(
 }
 
 export function readSelectedCompany(userId: string, organizationId: string): StagedCompany | null {
-  const raw = sessionStorage.getItem(key(userId, organizationId))
-  if (!raw) return null
   try {
+    const raw = sessionStorage.getItem(key(userId, organizationId))
+    if (!raw) return null
     const value = JSON.parse(raw)
     const cvr = typeof value.cvr === 'string' ? value.cvr : ''
     if (typeof value.name === 'string' && value.name.trim() && value.name.length <= 120 &&
@@ -41,5 +41,7 @@ export function readSelectedCompany(userId: string, organizationId: string): Sta
 }
 
 export function clearSelectedCompany(userId: string, organizationId: string) {
-  sessionStorage.removeItem(key(userId, organizationId))
+  try {
+    sessionStorage.removeItem(key(userId, organizationId))
+  } catch { /* Storage is optional; blocked storage must not prevent onboarding. */ }
 }

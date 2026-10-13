@@ -102,6 +102,22 @@ afterEach(() => {
 })
 
 describe("OnboardingPage cloud flow", () => {
+  it("disables setup fields until the initial status response has loaded", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    let resolveStatus!: (value: unknown) => void
+    onboardingStatusQuery.mockImplementationOnce(() => new Promise((resolve) => { resolveStatus = resolve }))
+    render(<RouteComponent />)
+    const companyName = screen.getByLabelText("Company name") as HTMLInputElement
+    expect(companyName.matches(":disabled")).toBe(true)
+    expect((screen.getByLabelText("Locale") as HTMLSelectElement).matches(":disabled")).toBe(true)
+    resolveStatus({ isComplete: false, missing: [], values: { companyName: "Saved company", locale: "en-US" } })
+    await waitFor(() => expect(companyName.matches(":disabled")).toBe(false))
+    expect(companyName.value).toBe("Saved company")
+    fireEvent.change(companyName, { target: { value: "Reviewed company" } })
+    expect(companyName.value).toBe("Reviewed company")
+  })
+
   it("persists the selected CVR company after loading the newly selected organization", async () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
     runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })

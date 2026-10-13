@@ -1,13 +1,21 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { clearSelectedCompany, readSelectedCompany, stageSelectedCompany } from "../selected-company"
 
 afterEach(() => {
+  vi.restoreAllMocks()
   sessionStorage.clear()
 })
 
 describe("selected company handoff", () => {
+  it("continues without a handoff when storage cannot be read or cleared", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError") })
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError") })
+    expect(readSelectedCompany("user", "org")).toBeNull()
+    expect(() => clearSelectedCompany("user", "org")).not.toThrow()
+  })
+
   it("keeps a confirmed CVR company and a typed name", () => {
     stageSelectedCompany("user", "org", { name: "Nordlys Studio ApS", address: "Vestergade 1", cvr: "12345678" })
     expect(readSelectedCompany("user", "org")).toEqual({ name: "Nordlys Studio ApS", address: "Vestergade 1", cvr: "12345678" })

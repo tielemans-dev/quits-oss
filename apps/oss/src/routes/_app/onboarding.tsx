@@ -140,7 +140,7 @@ function OnboardingPageContent() {
   const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
   const [lookupMessage, setLookupMessage] = useState<string | null>(null)
   const [manualName, setManualName] = useState('')
-  const [statusLoading, setStatusLoading] = useState(false)
+  const [statusLoading, setStatusLoading] = useState(isCloud && hasActiveOrg)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [orgAccessState, setOrgAccessState] = useState<OrganizationAccessState>({
@@ -449,9 +449,7 @@ function OnboardingPageContent() {
       try {
         stageSelectedCompany(session.user.id, created.id, company ?? { name, address: '', cvr: '' })
       } catch {
-        setError(t('auth.onboarding.error'))
-        setSubmitting(false)
-        return
+        // Creation already succeeded; storage must not prevent selecting the new organization.
       }
     }
     // Loads a new page acting for the new organization.
@@ -761,6 +759,7 @@ function OnboardingPageContent() {
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleCompleteCloudOnboarding} noValidate>
+          <fieldset disabled={statusLoading || submitting} className="min-w-0 border-0 p-0">
           <CardContent className="space-y-6">
             {error && (
               <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
@@ -1068,6 +1067,7 @@ function OnboardingPageContent() {
               {submitting ? t('auth.onboarding.finish.submitting') : t('auth.onboarding.finish.submit')}
             </Button>
           </CardFooter>
+          </fieldset>
         </form>
       </Card>
     </div>

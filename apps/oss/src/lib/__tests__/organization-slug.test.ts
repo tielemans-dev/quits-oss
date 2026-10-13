@@ -23,6 +23,16 @@ describe("organizationSlugFromName", () => {
 })
 
 describe("createNamedOrganization", () => {
+  it("creates an organization after more than twelve slug collisions", async () => {
+    const isSlugAvailable = vi.fn(async (slug: string) => slug === "acme-14")
+    const create = vi.fn(async () => ({ ok: true as const, id: "org_14" }))
+    await expect(createNamedOrganization({ name: "Acme", isSlugAvailable, create })).resolves.toEqual({
+      ok: true, id: "org_14", slug: "acme-14",
+    })
+    expect(isSlugAvailable).toHaveBeenCalledTimes(14)
+    expect(create).toHaveBeenCalledTimes(1)
+  })
+
   it("uses the first free slug and names the organization after the company", async () => {
     const isSlugAvailable = vi.fn(async (slug: string) => slug !== "nordlys-aps")
     const create = vi.fn(async (body: { name: string; slug: string }) => ({ ok: true as const, id: "org_1", ...body }))
