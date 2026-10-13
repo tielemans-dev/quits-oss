@@ -49,3 +49,23 @@ Early local attempts exposed a temporary Vite module-mode error, a missing Origi
 header in test authentication, an early save-completion assertion, and an invalid
 legacy VAT fixture. The final test uses explicit auth organization selection and
 valid synthetic VAT data. No auth/VAT behavior fixes were added.
+
+## CI locator follow-up
+
+Run `38323120524`, job `115055531422`, built successfully but failed the
+three shared invoice create/edit/PDF scenarios. Their quantity/price locators
+assumed two spinbuttons per line. Quantity is now deliberately a text input.
+The shared scenarios now use the existing `Qty` label and the single unit-price
+spinbutton scoped to its description row. The invoice paths in the pricing
+browser spec use the same selectors; quote and recurring selectors stay unchanged.
+Raw quantity validation and the committed DA/EN screenshots are unchanged.
+
+Changed-file oxlint and `git diff --check` passed. Local browser attempts used
+one outer Fleet job and one worker with the disposable harness. The documented
+production harness build exited with SIGTERM under high memory pressure.
+Dev-server shared scenarios first timed out during login. With a temporary
+navigation-readiness fixture, edit completed successfully, but create timed out
+waiting for client readiness on `/invoices/new`. The remaining run was stopped
+when memory pressure rose again. This does not establish a passing create/PDF
+run or a passing pricing browser run. CI must confirm them. Owned servers and
+disposable containers were stopped and Fleet was released after each attempt.

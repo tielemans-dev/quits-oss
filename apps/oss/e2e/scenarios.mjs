@@ -51,7 +51,7 @@ export function registerProductScenarios(test, expect) {
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toHaveCount(0)
   }
 
-  /** Reads the line-item grid row `index`; the inputs have no labels, so scope by the description box. */
+  /** Reads the line-item grid row `index`, scoped by its description box. */
   const lineRow = (page, index) => page.getByPlaceholder('Description', { exact: true }).nth(index).locator('xpath=..')
 
   /** Summary block under the line items, shared by the new and edit forms. */
@@ -86,8 +86,8 @@ export function registerProductScenarios(test, expect) {
       if (index > 0) await page.getByRole('button', { name: 'Add Item', exact: true }).click()
       const row = lineRow(page, index)
       await row.getByPlaceholder('Description', { exact: true }).fill(line.description)
-      await row.getByRole('spinbutton').nth(0).fill(String(line.quantity))
-      await row.getByRole('spinbutton').nth(1).fill((line.unitPriceCents / 100).toFixed(2))
+      await row.getByLabel('Qty', { exact: true }).fill(String(line.quantity))
+      await row.getByRole('spinbutton').fill((line.unitPriceCents / 100).toFixed(2))
     }
     await summaryOf(page).getByRole('spinbutton').fill(String(taxPercent))
     const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unitPriceCents, 0)
@@ -217,7 +217,7 @@ export function registerProductScenarios(test, expect) {
     await expect(page.getByText('Edit Invoice', { exact: true })).toBeVisible()
     const first = lineRow(page, 0)
     await expect(first.getByPlaceholder('Description', { exact: true })).toHaveValue(input.lines[0].description)
-    await first.getByRole('spinbutton').nth(0).fill('4')
+    await first.getByLabel('Qty', { exact: true }).fill('4')
     // 4 x 150.00 + 1 x 49.50 = 649.50; 10% tax = 64.95; total 714.45.
     const edited = { subtotal: 64950, tax: 6495, total: 71445 }
     await expectSummary(page, edited)
