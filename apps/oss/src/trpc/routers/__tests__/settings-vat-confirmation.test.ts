@@ -72,7 +72,7 @@ const runtime = runtimeRouter.createCaller({ session: null })
 const settings = settingsRouter.createCaller({ session: null })
 const input = { companyName: "Reviewed seller", companyAddress: "Testvej 2", countryCode: "DK" as const, cvr: "24256790" }
 describe("hosted Settings prepare/save capability boundary", () => {
-  it.each([{ taxRegime: "custom" }, { countryCode: "US" }])("rejects an unconfirmed retained choice on Danish VAT entry from %j", async outside => {
+  it.each([{ taxRegime: "custom" as const }, { countryCode: "US" }])("rejects an unconfirmed retained choice on Danish VAT entry from %j", async outside => {
     hosted(true)
     await settings.update({ ...outside, momsRegistered: false })
     await expect(settings.update({ countryCode: "DK", taxRegime: "eu_vat" })).rejects.toMatchObject({ code: "BAD_REQUEST" })
