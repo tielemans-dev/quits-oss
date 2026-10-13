@@ -237,8 +237,8 @@ describe("public session serialization", () => {
         issueDate: new Date("2026-03-09T00:00:00.000Z"),
         expiryDate: new Date("2026-03-23T00:00:00.000Z"),
         totalGross: decimal(100),
-        totalTax: decimal(0),
-        subtotalNet: decimal(100),
+        totalTax: decimal(20),
+        subtotalNet: decimal(80),
         currency: "USD",
         locale: "en-US",
         timezone: "UTC",
@@ -261,6 +261,8 @@ describe("public session serialization", () => {
             id: "item-1",
             description: "Strategy session",
             quantity: decimal(1),
+            unitPriceNet: decimal(80),
+            lineNet: decimal(80),
             unitPriceGross: decimal(100),
             lineGross: decimal(100),
             sortOrder: 0,
@@ -272,7 +274,7 @@ describe("public session serialization", () => {
     }, "tok.en")
 
     expect(session.quote.totalGross).toBe(100)
-    expect(session.quote.items[0]?.lineGross).toBe(100)
+    expect(session.quote.items[0]).toMatchObject({ unitPriceNet: 80, lineNet: 80, unitPriceGross: 100, lineGross: 100 })
     expect(session.locale).toBe("en-US")
     expect(session.seller).toEqual({ name: "E2E Org", logo: null })
   })

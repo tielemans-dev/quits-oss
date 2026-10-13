@@ -21,6 +21,8 @@ type PublicQuoteItem = {
   id: string
   description: string
   quantity: Decimalish
+  unitPriceNet: Decimalish
+  lineNet: Decimalish
   unitPriceGross: Decimalish
   lineGross: Decimalish
   sortOrder: number
@@ -181,11 +183,15 @@ function PublicQuoteDocument({
                         <p className="text-sm text-muted-foreground">
                           {t("public.document.lineQuantity", {
                             quantity: format.number(toNumber(item.quantity)),
-                            price: money(toNumber(item.unitPriceGross)),
+                            price: money(toNumber(item.unitPriceNet)),
                           })}
                         </p>
+                        <p className="text-xs text-muted-foreground">{t("pdf.unitPriceNet")}</p>
                       </div>
-                      <p className="text-right font-medium tabular-nums">{money(toNumber(item.lineGross))}</p>
+                      <div className="text-right">
+                        <p className="text-right font-medium tabular-nums">{money(toNumber(item.lineNet))}</p>
+                        <p className="text-xs text-muted-foreground">{t("pdf.amountNet")}</p>
+                      </div>
                     </div>
                   ))}
               </div>
