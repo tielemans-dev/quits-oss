@@ -11,6 +11,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { useState, useEffect, useRef } from "react"
 import { trpc } from "../../../trpc/client"
+import { retainDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
 import { createThenSend } from "../../../lib/create-and-send"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import { formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
@@ -257,8 +258,8 @@ function NewInvoicePage() {
       // The draft exists once created: whatever happens to the send, show it rather than keep
       // the form, where submitting again would create a second invoice.
       const target = await createThenSend({
-        create: () =>
-          trpc.invoices.createV2.mutate({
+        create: async () => {
+          const draft = await trpc.invoices.createV2.mutate({
             contactId,
             dueDate,
             supplyDate: issuance.supplyDate,
@@ -271,11 +272,18 @@ function NewInvoicePage() {
               unitPrice: String(item.unitPrice),
               vat: item.vat,
             })),
-          }),
+          })
+          retainDraftValuation(draft.id, currency, baseCurrency, issuance)
+          return draft
+        },
         beforeSend: async () => {
           return bankNudge.beforeSend(() => { settingsRequested = true })
         },
-        send: (id) => trpc.invoices.send.mutate({ id, ...issuanceInput(issuance, currency, baseCurrency) }),
+        send: async (id) => {
+          const result = await trpc.invoices.send.mutate({ id, ...issuanceInput(issuance, currency, baseCurrency) })
+          clearDraftValuation(id, currency, baseCurrency)
+          return result
+        },
         sendImmediately,
         sendFailedMessage: t("invoices.detail.error.sendFailed"),
       })

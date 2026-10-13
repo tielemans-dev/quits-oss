@@ -1,3 +1,4 @@
+import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
@@ -263,7 +264,8 @@ function InvoiceDetailPage() {
       .then(([data, settings]) => {
         if (!isCurrent()) return
         setInvoice(data as unknown as Invoice)
-        setIssuance({ ...initialIssuanceValues(), ...(data.supplyDate ? { supplyDate: new Date(data.supplyDate).toISOString().slice(0, 10) } : {}) })
+        if (data.status !== "draft") clearDraftValuation(data.id, data.currency, settings.baseCurrency)
+        setIssuance({ ...initialIssuanceValues(), ...(data.status === "draft" ? readDraftValuation(data.id, data.currency, settings.baseCurrency) : {}), ...(data.supplyDate ? { supplyDate: new Date(data.supplyDate).toISOString().slice(0, 10) } : {}) })
         setPaymentLinkUrl((data as unknown as Invoice).publicPaymentUrl ?? null)
         setOrgSettings({
           companyName: settings.companyName,
@@ -400,6 +402,7 @@ function InvoiceDetailPage() {
     setError(null)
     setActing(true)
     try {
+      retainDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency, issuance)
       if (!await bankNudge.beforeSend()) return
       const result = await trpc.invoices.send.mutate({
         id: invoice.id,
@@ -407,6 +410,7 @@ function InvoiceDetailPage() {
         acknowledgeDisputed,
         ...issuanceInput(issuance, invoice.currency, orgSettings.baseCurrency),
       })
+      clearDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency)
       await reloadInvoice()
       setSendWithoutEmailOpen(false)
       if (result.emailSkipReason) {
