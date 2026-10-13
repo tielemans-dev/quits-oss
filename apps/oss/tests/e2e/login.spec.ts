@@ -18,7 +18,7 @@ test("lets the initial admin sign in to the dashboard", async ({ page }) => {
 
   await loginAsAdmin(page)
 
-  await expect(page).toHaveURL(/\/$/)
+  await expect(page).toHaveURL(new URL("/", page.url()).href)
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible()
 })
 
@@ -43,7 +43,7 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   await page.getByLabel("Name").fill("New Signup User")
   await page.getByLabel("Email").fill(uniqueEmail("signup"))
   await page.getByLabel("Password").fill("SignupSmoke123!")
-  await page.getByRole("button", { name: "Sign up" }).click()
+  await page.getByRole("button", { name: "Create account" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
   await expect(page.getByText("Create your organization")).toBeVisible()
@@ -72,7 +72,7 @@ test("shows adaptive cloud onboarding after organization creation", async ({ pag
   await page.getByLabel("Name").fill("Cloud Signup User")
   await page.getByLabel("Email").fill(uniqueEmail("cloud-signup"))
   await page.getByLabel("Password").fill("SignupSmoke123!")
-  await page.getByRole("button", { name: "Sign up" }).click()
+  await page.getByRole("button", { name: "Create account" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
   await page.getByLabel("Organization name").fill("Nordic Advisory")

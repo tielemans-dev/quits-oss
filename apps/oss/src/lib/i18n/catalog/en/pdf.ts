@@ -28,5 +28,5 @@ export const enPdfMessages = {
   "pdf.bic": "BIC",
   "pdf.accountHolder": "Account holder",
   "pdf.bankName": "Bank",
-  "pdf.paymentReference": "Payment reference",
+  "pdf.paymentReference": "Payment message",
 } as const

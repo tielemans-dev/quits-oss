@@ -20,7 +20,7 @@ English still exercises decimal-point input. Stored quantities remain canonical.
 
 This branch starts at fetched OSS main `38a26531`. Main still has inline invoice
 editors. PR #132 introduces `lines-editor.tsx` and replaces those sections.
-After #132 lands, rebase this PR and apply the raw text quantity input,
+After #132 lands, merge main into this PR and apply the raw text quantity input,
 quantity-schema validation, textarea wrapping, mobile-visible accessible quantity,
 unit-price and total labels, and VAT-label wrapping to that
 editor. Do not restore the inline editor or overwrite #132's send-flow changes.
@@ -30,7 +30,33 @@ PR #148 is open and ready for review. Codex reviewed `cc897343` without major
 findings, but Ines's quantity blocker remains. The repair needs new-head CI and
 review; passing local checks alone does not make it ready for Kai.
 
-## Focused quantity repair, 2026-10-13
+## Main integration, 2026-10-13
+
+Merged main `d700e545c104af06c2ffcea638c8a2cd3a7fcc70` into the existing
+QUI-35 branch with a normal merge. The only conflict was the invoice-detail
+imports. Both the quantity validator/normalizer and main's issued seller/payment
+components are retained. Main's payment, auth, locale and shared-browser changes
+are retained alongside QUI-35 wrapping, visible mobile labels, comma create/edit
+normalization, preview parity and exponent/precision/range rejection.
+
+This main revision still uses the inline editor; it does not contain #132's
+replacement lines editor. That integration remains a later parent task. Existing
+DA/EN quantity error copy is unchanged pending Mira's exact approval. VAT card
+follow-ups remain excluded.
+
+No browser, build or full suite runs in this integration round. Existing captures
+remain historical. Parent must coordinate current-main before/after DA/EN light
+captures at 390/1440, refresh the replacement editor evidence when available, and
+obtain Ines sign-off after approved copy. Parent owns new-head CI and Kai/Codex
+review after green. No new mocks or synthetic production behavior are introduced.
+
+Verification passed in exactly one completed outer Fleet job, with serial tasks
+and one Vitest worker: repository typecheck and lint, 139 app regressions including
+all 30 quantity cases and main's payment components/email/rows, 3 pricing-contract
+regressions, 37 shared pricing/activation regressions, i18n catalog/TM checks,
+26 boundary regressions, the boundary check, and `git diff --check`.
+
+## Prior focused quantity repair, 2026-10-13
 
 This round addresses comma input only. Description wrapping and mobile labels
 were approved by Ines. VAT rate/country labels remain outside this round.

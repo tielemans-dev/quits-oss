@@ -205,10 +205,10 @@ describeIfDatabase("settings/tax-id/localization integration", () => {
     })
 
     expect(emailContent.subject).toMatchInlineSnapshot(
-      '"Faktura INV-2026-001 — 1.250,50\u00a0kr. forfalder 15. marts 2026"'
+      '"Faktura INV-2026-001 — 1.250,50\u00a0kr. forfalder 15. mar. 2026"'
     )
     expect(emailContent.html).toContain("1.250,50\u00a0kr.")
-    expect(emailContent.html).toContain("15. marts 2026")
+    expect(emailContent.html).toContain("15. mar. 2026")
 
     const pdfString = await pdf(
       InvoicePdfDocument({

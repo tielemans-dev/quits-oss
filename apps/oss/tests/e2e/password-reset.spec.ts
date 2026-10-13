@@ -30,7 +30,7 @@ test("recovers a local account through native reset tokens without sending email
     await page.getByLabel("Email").fill(email)
     await expect(page.getByLabel("Email")).toHaveValue(email)
     await page.getByRole("button", { name: "Send reset link" }).click()
-    await expect(page.getByRole("status")).toContainText("If an account exists")
+    await expect(page.getByRole("status")).toContainText(`If ${email} belongs to an account`)
     const verification = await client.query<{ identifier: string }>(
       'SELECT identifier FROM verification WHERE value = $1 AND identifier LIKE \'reset-password:%\' ORDER BY "createdAt" DESC LIMIT 1', [userId],
     )
@@ -43,16 +43,16 @@ test("recovers a local account through native reset tokens without sending email
     await page.goto(`/api/auth/reset-password/${encodeURIComponent(token)}?callbackURL=${encodeURIComponent(`${baseURL}/reset-password`)}`)
     await waitForClientReady(page)
     await page.getByLabel("New password", { exact: true }).fill("new-test-password456")
-    await page.getByLabel("Confirm password").fill("mismatched-test-password")
+    await page.getByLabel("Repeat password").fill("mismatched-test-password")
     await page.getByRole("button", { name: "Save new password" }).click()
-    await expect(page.getByRole("alert")).toHaveText("The passwords do not match.")
-    await page.getByLabel("Confirm password").fill("new-test-password456")
+    await expect(page.getByRole("alert")).toHaveText("The passwords need to match")
+    await page.getByLabel("Repeat password").fill("new-test-password456")
     await page.getByRole("button", { name: "Save new password" }).click()
-    await expect(page.getByRole("status")).toContainText("Your password has been reset")
-    await expect(page).toHaveURL(`${baseURL}/reset-password`)
+    await expect(page.getByRole("status")).toContainText("Your password is changed")
+    await expect(page).toHaveURL(`${baseURL}/reset-password?lang=en`)
     const sessions = await client.query('SELECT id FROM session WHERE "userId" = $1', [userId])
     expect(sessions.rows).toHaveLength(0)
-    await page.getByRole("link", { name: "Back to log in" }).click()
+    await page.getByRole("link", { name: "Go to log in" }).click()
     const oldLogin = await request.post("/api/auth/sign-in/email", {
       data: { email, password: "old-test-password123" }, headers: { origin: baseURL! },
     })
@@ -64,10 +64,10 @@ test("recovers a local account through native reset tokens without sending email
     await page.goto(`/reset-password?token=${encodeURIComponent(token)}`)
     await waitForClientReady(page)
     await page.getByLabel("New password", { exact: true }).fill("third-test-password789")
-    await page.getByLabel("Confirm password").fill("third-test-password789")
+    await page.getByLabel("Repeat password").fill("third-test-password789")
     await page.getByRole("button", { name: "Save new password" }).click()
-    await expect(page.getByRole("alert")).toContainText("invalid or has expired")
-    await expect(page.getByRole("link", { name: "Request a new reset link" })).toHaveAttribute("href", "/forgot-password")
+    await expect(page.getByRole("alert")).toContainText("has expired or was already used")
+    await expect(page.getByRole("link", { name: "Send a new link" })).toHaveAttribute("href", "/forgot-password?lang=en")
   } finally {
     if (userId) {
       await client.query("DELETE FROM verification WHERE value = $1", [userId])

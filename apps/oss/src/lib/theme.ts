@@ -37,6 +37,8 @@ export const THEME_COLORS: Record<ResolvedTheme, string> = {
  */
 const PUBLIC_DOCUMENT_PATH = /^\/(pay|q|a)(\/|$)/
 
+const PUBLIC_SIGNUP_PATH = /^\/signup\/?$/
+
 export function isPublicDocumentPath(pathname: string): boolean {
   return PUBLIC_DOCUMENT_PATH.test(pathname)
 }
@@ -50,7 +52,7 @@ export function resolveTheme(input: {
   systemPrefersDark: boolean
   pathname: string
 }): ResolvedTheme {
-  if (isPublicDocumentPath(input.pathname)) return "light"
+  if (isPublicDocumentPath(input.pathname) || PUBLIC_SIGNUP_PATH.test(input.pathname)) return "light"
   if (input.preference === "system") return input.systemPrefersDark ? "dark" : "light"
   return input.preference
 }
@@ -62,7 +64,7 @@ export function resolveTheme(input: {
  */
 export const themeInitScript = `(function(){var s=null;try{s=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY
-)})}catch(e){}var p=${PUBLIC_DOCUMENT_PATH.toString()}.test(location.pathname),d=!p&&(s==="dark"||(s!=="light"&&typeof matchMedia==="function"&&matchMedia(${JSON.stringify(
+)})}catch(e){}var p=${PUBLIC_DOCUMENT_PATH.toString()}.test(location.pathname),f=p||${PUBLIC_SIGNUP_PATH.toString()}.test(location.pathname),d=!f&&(s==="dark"||(s!=="light"&&typeof matchMedia==="function"&&matchMedia(${JSON.stringify(
   DARK_QUERY
 )}).matches));document.documentElement.classList.toggle("dark",d);document.documentElement.toggleAttribute("data-document",p);var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement("meta");m.name="theme-color";document.head.appendChild(m)}m.content=d?${JSON.stringify(
   THEME_COLORS.dark
