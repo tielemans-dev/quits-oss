@@ -3,7 +3,7 @@ import { z } from "zod"
 import { lookupOnboardingCompany } from "../../lib/runtime/company-lookup"
 import { TRPCError } from "@trpc/server"
 import { prisma } from "../../lib/db"
-import { onboardingConfirmationTaxIds, settingsConfirmationTaxIds, getSellerVatConfirmationService } from "../../lib/runtime/seller-vat-confirmation"
+import { sellerConfirmationTaxIds, onboardingConfirmationTaxIds, settingsConfirmationTaxIds, getSellerVatConfirmationService } from "../../lib/runtime/seller-vat-confirmation"
 import { authorizedProcedure, publicProcedure, router } from "../init"
 
 export const runtimeRouter = router({
@@ -27,7 +27,7 @@ export const runtimeRouter = router({
         ? onboardingConfirmationTaxIds(orderedTaxIds, input.cvr, input.vatId)
         : settingsConfirmationTaxIds(orderedTaxIds, input.cvr, input.primaryTaxIdScheme)
       return service.prepare({ organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request,
-        seller: { companyName: input.companyName, companyAddress: input.companyAddress, countryCode: input.countryCode, taxIds } })
+        seller: { companyName: input.companyName, companyAddress: input.companyAddress, countryCode: input.countryCode, taxIds: sellerConfirmationTaxIds(taxIds) } })
     }),
   capabilities: publicProcedure.query(() => getRuntimeCapabilities()),
 })

@@ -47,7 +47,7 @@ export async function confirmSellerVatStatus(input: SellerVatConfirmationActor &
     settings.countryCode === "DK" && settings.taxRegime === "eu_vat" &&
     (input.previousSettings?.countryCode !== "DK" || input.previousSettings?.taxRegime !== "eu_vat")
   const taxIds = await input.tx.organizationTaxId.findMany({ where: { organizationId: input.organizationId }, orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }], select: { scheme: true, value: true, countryCode: true } })
-  const seller = { companyName: settings.companyName, companyAddress: settings.companyAddress, countryCode: settings.countryCode, taxIds }
+  const seller = { companyName: settings.companyName, companyAddress: settings.companyAddress, countryCode: settings.countryCode, taxIds: sellerConfirmationTaxIds(taxIds) }
   const identityChanged = input.previousSeller !== undefined && sellerConfirmationIdentity(input.previousSeller) !== sellerConfirmationIdentity(seller)
   const needsReconfirmation = settings.countryCode === "DK" && settings.taxRegime === "eu_vat" && (enteringDanishVat || identityChanged)
   const registered = input.registered === undefined && needsReconfirmation ? settings.momsRegistered : input.registered
@@ -58,6 +58,18 @@ export async function confirmSellerVatStatus(input: SellerVatConfirmationActor &
   if (!input.token && (settings.countryCode !== "DK" || settings.taxRegime !== "eu_vat")) return
   if (!input.token) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose and confirm seller VAT status" })
   await service.confirm({ ...input, registered, token: input.token, seller })
+}
+
+/** Order the final public identity independently of row timestamps, primary flags and DB tie order.
+ * Apply only after projecting writes: Settings must select its existing primary before sorting.
+ */
+export function sellerConfirmationTaxIds(taxIds: NonNullable<SellerSnapshot["taxIds"]>) {
+  const key = (id: typeof taxIds[number]) => JSON.stringify([id.scheme, id.value, id.countryCode])
+  return [...taxIds].sort((a, b) => {
+    const left = key(a)
+    const right = key(b)
+    return left < right ? -1 : left > right ? 1 : 0
+  })
 }
 
 /** Project the primary-ID write performed by settings.update, preserving the other IDs. */

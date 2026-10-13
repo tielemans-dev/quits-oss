@@ -7,7 +7,8 @@ import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
 // onboarding transaction must agree for a provider binding every seller field and ID order.
 const db = vi.hoisted(() => {
   let settings: Record<string, unknown> = {}
-  let ids: Array<{ scheme: string; value: string; countryCode: string | null; isPrimary: boolean }> = []
+  let selectedReads = 0
+  let ids: Array<{ scheme: string; value: string; countryCode: string | null; isPrimary: boolean; createdAt: Date }> = []
   const tx = {
     $queryRaw: vi.fn(async () => []),
     orgSettings: {
@@ -18,19 +19,25 @@ const db = vi.hoisted(() => {
     organization: { update: vi.fn() },
     organizationTaxId: {
       findMany: async ({ select, orderBy }: { select?: object; orderBy?: Array<{ isPrimary?: string }> }) => {
-        const ordered = orderBy?.some(order => order.isPrimary) ? [...ids].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)) : [...ids]
+        // Equal timestamps permit different database tie order on each read.
+        const rows = select && selectedReads++ > 0 ? [...ids].reverse() : [...ids]
+        const ordered = rows.sort((a, b) =>
+          (orderBy?.some(order => order.isPrimary) ? Number(b.isPrimary) - Number(a.isPrimary) : 0) ||
+          a.createdAt.getTime() - b.createdAt.getTime())
         return select ? ordered.map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) : ordered
       },
       updateMany: async () => { ids = ids.map(id => ({ ...id, isPrimary: false })) },
       deleteMany: async () => { ids = ids.filter(id => !["cvr", "vat", "dk_cvr", "dk_vat"].includes(id.scheme.toLowerCase())) },
-      createMany: async ({ data }: { data: typeof ids }) => { ids.push(...data) },
+      createMany: async ({ data }: { data: typeof ids }) => { ids.push(...data.map(id => ({ ...id, createdAt: new Date("2026-02-02") }))) },
     },
     invoice: { count: async () => 0 }, quote: { count: async () => 0 },
   }
   return { tx, reset: () => {
+    selectedReads = 0
     settings = { invoicePrefix: "2026", quotePrefix: "Q", invoiceNextNum: 1, quoteNextNum: 1 }
-    ids = [{ scheme: "lei", value: "RETAINED", countryCode: null, isPrimary: true },
-      { scheme: "DK_VAT", value: "DK12345678", countryCode: "DK", isPrimary: false }]
+    ids = [{ scheme: "lei", value: "RETAINED", countryCode: null, isPrimary: true, createdAt: new Date("2026-01-01") },
+      { scheme: "DK_VAT", value: "DK12345678", countryCode: "DK", isPrimary: false, createdAt: new Date("2026-01-01") },
+      { scheme: "local", value: "SECOND-RETAINED", countryCode: "US", isPrimary: false, createdAt: new Date("2026-01-01") }]
   } }
 })
 vi.mock("../../../lib/db", () => ({ prisma: { ...db.tx, $transaction: async (run: (tx: typeof db.tx) => Promise<unknown>) => run(db.tx) } }))
@@ -63,6 +70,7 @@ describe("onboarding full seller token binding", () => {
       countryCode: "DK", cvr: input.cvr, ...(input.vatId ? { vatId: input.vatId } : {}) })
     expect(prepare).toHaveBeenCalledWith(expect.objectContaining({ seller: { companyName: input.companyName, companyAddress: input.companyAddress, countryCode: "DK",
       taxIds: [{ scheme: "cvr", value: input.cvr, countryCode: "DK" }, { scheme: "lei", value: "RETAINED", countryCode: null },
+        { scheme: "local", value: "SECOND-RETAINED", countryCode: "US" },
         ...(momsRegistered ? [{ scheme: "vat", value: "DK24256790", countryCode: "DK" }] : [])] } }))
     await expect(confirmOnboardingV2("org", { ...input, sellerVatConfirmationToken: token }, "signup@example.test", actor)).resolves.toMatchObject({ status: "complete" })
     expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ registered: momsRegistered, token }))

@@ -47,7 +47,7 @@ describe("transactional seller VAT confirmation", () => {
       await expect(confirmSellerVatStatus({ ...actor, tx: localTx, previousSeller: { ...previousSeller, ...change } })).rejects.toMatchObject({ code: "BAD_REQUEST" })
     }
     await confirmSellerVatStatus({ ...actor, tx: localTx, previousSeller: { ...previousSeller, companyName: "Previous seller" }, registered: null, token: "signed-withdrawal" })
-    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered: null, seller: expect.objectContaining({ companyName: seller.companyName, taxIds: storedIds }) }))
+    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered: null, seller: expect.objectContaining({ companyName: seller.companyName, taxIds: [...storedIds].reverse() }) }))
   })
   it("fails closed when the enabled provider is missing", async () => {
     enabled(); setRuntimeExtensions([{ id: "missing", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }) }])

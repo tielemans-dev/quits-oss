@@ -12,6 +12,7 @@ const db = vi.hoisted(() => {
     { id: "primary", scheme: "vat", value: "12345678", countryCode: null, isPrimary: true },
     { id: "other", scheme: "lei", value: "OTHER-ID", countryCode: "DK", isPrimary: false },
   ]
+  let selectedReads = 0
   let settings = { ...initialSettings }
   let ids = structuredClone(initialIds)
   const tx = {
@@ -22,7 +23,12 @@ const db = vi.hoisted(() => {
       upsert: async ({ update }: { update: Partial<typeof settings> }) => (settings = { ...settings, ...update }),
     },
     organizationTaxId: {
-      findMany: async ({ select }: { select?: object }) => select ? ids.map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) : ids,
+      findMany: async ({ select }: { select?: object }) => {
+        // Equal createdAt ties can arrive in different order on preparation and confirmation.
+        const rows = select && selectedReads++ % 2 ? [...ids].reverse() : [...ids]
+        const ordered = rows.sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))
+        return select ? ordered.map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) : ordered
+      },
       findFirst: async () => ids[0],
       update: async ({ where, data }: { where: { id: string }; data: Partial<typeof ids[number]> }) => {
         ids = ids.map(id => id.id === where.id ? { ...id, ...data } : id)
@@ -31,9 +37,10 @@ const db = vi.hoisted(() => {
   }
   return {
     tx,
-    reset: () => { settings = { ...initialSettings }; ids = structuredClone(initialIds) },
+    reset: () => { selectedReads = 0; settings = { ...initialSettings }; ids = structuredClone(initialIds) },
     settings: () => settings,
     ids: () => ids,
+    addRetained: () => { ids.push({ id: "second", scheme: "cvr", value: "RETAINED-CVR", countryCode: "US", isPrimary: false }) },
     transaction: vi.fn(async (run: (client: typeof tx) => Promise<unknown>) => {
       const previousSettings = structuredClone(settings)
       const previousIds = structuredClone(ids)
@@ -56,7 +63,7 @@ import { runtimeRouter } from "../runtime"
 import { settingsRouter } from "../settings"
 
 const identity = (seller: SellerSnapshot) => JSON.stringify([seller.companyName, seller.companyAddress, seller.countryCode,
-  seller.taxIds?.map(id => [id.scheme, id.value, id.countryCode ?? null]).sort()])
+  seller.taxIds?.map(id => [id.scheme, id.value, id.countryCode ?? null])])
 const confirm = vi.fn(async ({ seller, token }: { seller: SellerSnapshot; token: string }) => {
   if (identity(seller) !== token) throw new TRPCError({ code: "CONFLICT", message: "Identity changed" })
 })
@@ -72,6 +79,21 @@ const runtime = runtimeRouter.createCaller({ session: null })
 const settings = settingsRouter.createCaller({ session: null })
 const input = { companyName: "Reviewed seller", companyAddress: "Testvej 2", countryCode: "DK" as const, cvr: "24256790" }
 describe("hosted Settings prepare/save capability boundary", () => {
+  it.each([true, false])("binds ordered retained IDs while editing the original primary for registration %s", async registered => {
+    db.addRetained()
+    hosted(true)
+    const prepared = await runtime.prepareSellerVatConfirmation({ ...input, primaryTaxIdScheme: "vat" })
+    await settings.update({ companyName: input.companyName, companyAddress: input.companyAddress,
+      primaryTaxId: input.cvr, primaryTaxIdScheme: "vat", momsRegistered: registered, sellerVatConfirmationToken: prepared.token })
+    expect(db.ids()[0]).toMatchObject({ id: "primary", scheme: "vat", value: input.cvr, countryCode: null })
+    expect(db.ids()[2]).toMatchObject({ id: "second", scheme: "cvr", value: "RETAINED-CVR", countryCode: "US", isPrimary: false })
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ taxIds: [
+      { scheme: "cvr", value: "RETAINED-CVR", countryCode: "US" },
+      { scheme: "lei", value: "OTHER-ID", countryCode: "DK" },
+      { scheme: "vat", value: input.cvr, countryCode: null },
+    ] }) }))
+  })
+
   it.each([true, false])("rejects partial identity edits with retained registration %s and accepts final-identity reconfirmation", async registered => {
     hosted(true)
     const prepare = () => runtime.prepareSellerVatConfirmation({ companyName: db.settings().companyName,
@@ -91,7 +113,7 @@ describe("hosted Settings prepare/save capability boundary", () => {
     expect(confirm).not.toHaveBeenCalled()
     const prepared = await runtime.prepareSellerVatConfirmation({ companyName: "Changed seller", companyAddress: "Testvej 1", countryCode: "DK", cvr: "12345678", primaryTaxIdScheme: "vat" })
     await settings.update({ companyName: "Changed seller", sellerVatConfirmationToken: prepared.token })
-    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ taxIds: db.ids().map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) }) }))
+    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ taxIds: [...db.ids()].sort((a, b) => a.scheme < b.scheme ? -1 : a.scheme > b.scheme ? 1 : 0).map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) }) }))
     expect(db.settings()).toMatchObject({ companyName: "Changed seller", momsRegistered: registered })
   })
 
