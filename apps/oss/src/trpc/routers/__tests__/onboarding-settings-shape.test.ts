@@ -210,6 +210,14 @@ describe("atomic Settings Danish VAT repairs", () => {
     await settingsCaller().update(input)
     expect(mocks.settings).toMatchObject({ momsRegistered: null, paymentNote: "Custom bank instructions" })
   })
+  it.each(["da", "en"] as const)("preserves deliberately saved %s declarations on unrelated saves outside VAT scope", async language => {
+    mocks.settings = { ...defaults, countryCode: "DE", momsRegistered: null, paymentNote: `Custom instructions\n${nonVatStatement(language)}` }
+    const note = mocks.settings.paymentNote
+    await settingsCaller().update({ companyName: "Edited GmbH" })
+    expect(mocks.settings?.paymentNote).toBe(note)
+    await settingsCaller().update({ companyName: "Edited again" })
+    expect(mocks.settings?.paymentNote).toBe(note)
+  })
   it.each(["vat", "DK_VAT"])("normalizes a legacy Danish %s primary ID for non-VAT output", async scheme => {
     mocks.taxIds = [{ id: "primary", scheme, value: "24256790", countryCode: null, isPrimary: true }, { id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }]
     await settingsCaller().update({ momsRegistered: false, taxRate: 0 })

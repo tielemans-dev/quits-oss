@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import { Prisma } from "../../../../generated/prisma/client"
 import { Db, Command, type CommandScope } from "../../services"
 import { sendInvoice } from "../invoices"
+import { requireVatIssuance } from "../../documents/vat-issuance"
 import { buildInvoiceSellerSnapshot } from "../../documents/snapshots"
 import { sendQuote } from "../quotes"
 import { issuanceApproval, issueAgreementOffer } from "../../agreements/issuance"
@@ -145,6 +146,32 @@ describe("linked invoice rechecks registration after offer issuance", () => {
     expect(await h.run(prospectiveRenderInput({ kind: "invoice", documentId: "document", commandInput: {}, number: "INV-1", issuedAt: h.command.now }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
     expectNoIssuanceEffects(h)
     expect(h.document.sellerSnapshot).toEqual(frozen)
+  })
+  it.each(["quoteId", "agreementId"] as const)("rejects VAT-bearing %s conversion with a retained CVR-only identity before effects", async link => {
+    const h = harness({ registered: true })
+    h.document[link] = "issued-offer"
+    h.document.countryCode = "SE"
+    h.document.sellerSnapshot = { momsRegistered: false, taxIds: [{ scheme: "cvr", value: "24256790", countryCode: null }] }
+    const frozen = structuredClone(h.document.sellerSnapshot)
+    // Current IDs contain VAT, but silently substituting them would change agreed identity.
+    expect(await h.run(sendInvoice.handle({ id: "document" }))).toMatchObject({ _tag: "Left", left: { code: "evidence_incomplete" } })
+    expect(await h.run(prospectiveRenderInput({ kind: "invoice", documentId: "document", commandInput: {}, number: "INV-1", issuedAt: h.command.now }))).toMatchObject({ _tag: "Left", left: { code: "evidence_incomplete" } })
+    expectNoIssuanceEffects(h)
+    expect(h.document.sellerSnapshot).toEqual(frozen)
+  })
+  it.each(["quoteId", "agreementId"] as const)("allows zero-tax %s conversion with a retained CVR-only identity", async link => {
+    const h = harness({ registered: true, rate: "0" })
+    h.document[link] = "issued-offer"
+    h.document.sellerSnapshot = { momsRegistered: false, taxIds: [sellerTaxIds[1]!] }
+    const seller = buildInvoiceSellerSnapshot(h.document, { companyName: null, companyEmail: null, companyAddress: null, momsRegistered: true }, sellerTaxIds)
+    expect(await h.run(requireVatIssuance({ ...h.document, sellerSnapshot: seller }))).toMatchObject({ _tag: "Right" })
+  })
+  it("accepts a Danish CVR that the electronic invoice renderer can resolve as VAT", async () => {
+    const h = harness({ registered: true })
+    h.document.quoteId = "issued-offer"
+    h.document.sellerSnapshot = { momsRegistered: false, taxIds: [sellerTaxIds[1]!] }
+    const seller = buildInvoiceSellerSnapshot(h.document, { companyName: null, companyEmail: null, companyAddress: null, momsRegistered: true }, sellerTaxIds)
+    expect(await h.run(requireVatIssuance({ ...h.document, sellerSnapshot: seller }))).toMatchObject({ _tag: "Right" })
   })
   it("retains agreed identity while applying current registration without mutating history", () => {
     const saved = { companyName: "Agreed Seller", companyAddress: "Agreed address", taxIds: sellerTaxIds, momsRegistered: true }

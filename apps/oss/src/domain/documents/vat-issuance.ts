@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { validateVatIssuance, percentageToFraction, assertStoredDocumentEquation } from "@quits/shared/pricing"
+import { vatIdentifier } from "../../lib/exports/parties"
 import { isVatNumberScheme } from "../../lib/compliance"
 import { InvalidState } from "../errors"
 
@@ -32,6 +33,9 @@ export function requireSellerVatRegistration(document: {
 
 /** Shared by issuance entry commands. Resends and issued-document operations never reprice. */
 export function requireVatIssuance(document: {
+  countryCode?: string | null
+  quoteId?: string | null
+  agreementId?: string | null
   currency: string
   pricesIncludeTax: boolean
   subtotalNet: { toString(): string }
@@ -67,6 +71,19 @@ export function requireVatIssuance(document: {
       sellerVatId: seller?.taxIds?.find((id) => isVatNumberScheme(id.scheme))?.value,
       buyerCountry: buyer?.country,
     })
+    // Linked invoices retain the agreed identity. A later registration cannot create a
+    // VAT-bearing electronic invoice from a frozen CVR-only seller snapshot.
+    const linkedVatInvoice = (document.quoteId || document.agreementId) && (
+      Number(document.totalTax.toString()) !== 0 || document.items.some(item =>
+        Number(item.taxRate.toString()) !== 0 ||
+        (item.vatRateInput != null && Number(item.vatRateInput) !== 0) ||
+        Number(item.lineTax.toString()) !== 0 ||
+        !["standard", "out_of_scope"].includes(item.vatTreatment)
+      )
+    )
+    if (linkedVatInvoice && !vatIdentifier(seller?.taxIds ?? [], document.countryCode ?? null)) {
+      issues.push("A VAT-bearing linked invoice requires a VAT identifier in its agreed seller identity")
+    }
     const evidence = document.vatEvidence as { buyerVatId?: string } | null
     if (document.items.some(item => item.vatTreatment === "intra_community") &&
         !buyer?.taxIds?.some(id => id.value === evidence?.buyerVatId)) issues.push("Buyer VAT evidence must match the buyer tax id refreshed at issuance")
