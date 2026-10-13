@@ -21,3 +21,17 @@ for (const alias of ['next', 'redirect']) {
     })
   }
 }
+
+for (const lang of ['da', 'en']) {
+  test(`login keeps explicit ${lang} on the default destination`, async ({ page }) => {
+    test.skip(process.env.QUITS_DISTRIBUTION === 'cloud', 'Dashboard default is selfhost-only')
+    await page.goto(`/login?lang=${lang}`)
+    await waitForClientReady(page)
+    await page.getByLabel(lang === 'da' ? 'E-mail' : 'Email').fill(adminCredentials.email)
+    await page.getByLabel(lang === 'da' ? 'Adgangskode' : 'Password').fill(adminCredentials.password)
+    await page.getByRole('button', { name: lang === 'da' ? 'Log ind' : 'Log in', exact: true }).click()
+    await expect(page).toHaveURL(new URL(`/?lang=${lang}`, page.url()).href)
+    // The destination retains lang; the dashboard's copy follows the saved organization locale.
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+  })
+}

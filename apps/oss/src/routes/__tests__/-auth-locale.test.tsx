@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nProvider } from '../../lib/i18n/react'
+import { loadPage } from '../../lib/page-navigation'
 
 const { state, signUp, requestReset, resetPassword } = vi.hoisted(() => ({
   state: { search: {} as Record<string, string> }, signUp: vi.fn(), requestReset: vi.fn(), resetPassword: vi.fn(),
@@ -29,9 +30,20 @@ import { asMockedRoute } from '../../test-utils/mocked-route'
 const ForgotPage = asMockedRoute(ForgotRoute).component
 const ResetPage = asMockedRoute(ResetRoute).component
 
-afterEach(() => { cleanup(); state.search = {}; signUp.mockReset(); requestReset.mockReset(); resetPassword.mockReset(); vi.restoreAllMocks() })
+afterEach(() => { cleanup(); state.search = {}; signUp.mockReset(); requestReset.mockReset(); resetPassword.mockReset(); vi.mocked(loadPage).mockReset(); vi.restoreAllMocks() })
 
 describe('auth locale rendering and admission', () => {
+  it.each([undefined, 'da', 'en'] as const)('carries only an explicit signup language %s to onboarding', async (lang) => {
+    state.search = lang ? { lang } : {}
+    signUp.mockResolvedValue({ data: { user: {} } })
+    render(<I18nProvider locale={lang === 'en' ? 'da' : 'en'}><SignupPage /></I18nProvider>)
+    const danish = lang === 'da'
+    fireEvent.change(screen.getByLabelText(danish ? 'Navn' : 'Name'), { target: { value: 'Synthetic Person' } })
+    fireEvent.change(screen.getByLabelText(danish ? 'E-mail' : 'Email'), { target: { value: 'allowed@example.test' } })
+    fireEvent.change(screen.getByLabelText(danish ? 'Adgangskode' : 'Password'), { target: { value: '12345678' } })
+    fireEvent.submit(screen.getByRole('button', { name: danish ? 'Opret konto' : 'Create account' }).closest('form')!)
+    await waitFor(() => expect(loadPage).toHaveBeenCalledWith(lang ? `/onboarding?lang=${lang}` : '/onboarding'))
+  })
   it('uses the browser default and lets carried language override it', async () => {
     vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('da-DK')
     const first = render(<I18nProvider><SignupPage /></I18nProvider>)

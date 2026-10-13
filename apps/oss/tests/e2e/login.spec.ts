@@ -18,7 +18,7 @@ test("lets the initial admin sign in to the dashboard", async ({ page }) => {
 
   await loginAsAdmin(page)
 
-  await expect(page).toHaveURL(/\/\?lang=en$/)
+  await expect(page).toHaveURL(new URL("/", page.url()).href)
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible()
 })
 

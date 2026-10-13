@@ -88,7 +88,8 @@ function SignupFormContent({ configuration: { signupMode, waitlist }, invite, se
         else if (result.error.code === 'not_invited') setView('blocked')
         else setError(t(result.error.code === 'rate_limited' || result.error.status === 429 ? 'auth.error.rateLimited' : 'auth.signup.error'))
       }
-      if (result.data) loadPage(authDestination('/onboarding', search.lang))
+      // An inferred auth language must not pin onboarding's browser/organization default.
+      if (result.data) loadPage(authDestination('/onboarding', suppliedSearch.lang))
     } catch { setError(t('auth.error.network')) }
     finally { pending.current = false; setLoading(false) }
   }
