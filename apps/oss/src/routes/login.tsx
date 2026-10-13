@@ -1,9 +1,12 @@
+import { authFieldError } from '../lib/auth/form-validation'
+import { z } from 'zod'
+import { AuthPage } from '../components/auth/auth-page'
+import { authLinkSearch } from '../lib/auth/navigation'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { authClient } from '../lib/auth-client'
 import { switchActiveOrganization } from '../lib/active-organization'
 import { loadPage } from '../lib/page-navigation'
-import { QuitsWordmark } from '../components/brand/quits-wordmark'
 import { Button } from '../components/ui/button'
 import {
   Card,
@@ -15,8 +18,7 @@ import {
 } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { z } from 'zod'
-import { I18nProvider, useI18n } from '../lib/i18n/react'
+import { useI18n } from '../lib/i18n/react'
 import { invalidateAppLayoutSession } from '../lib/app-layout-session'
 import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { getOrganizationAccessState } from '../lib/organization-access'
@@ -32,16 +34,15 @@ export const Route = createFileRoute('/login')({
 })
 
 function LoginPage() {
-  const { locale } = useI18n()
-  const { lang } = Route.useSearch()
-  return <I18nProvider locale={lang ?? locale}><LoginPageContent /></I18nProvider>
+  return <AuthPage path="/login" search={Route.useSearch()}><LoginPageContent /></AuthPage>
 }
 
 function LoginPageContent() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { isCloud } = useRuntimeDistribution()
   const search = Route.useSearch()
   const { message, lang } = search
+  const linkSearch = authLinkSearch(search, locale)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -49,20 +50,28 @@ function LoginPageContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (loading) return
+    const fieldError = authFieldError({ email, password })
+    if (fieldError) { setError(t(fieldError)); return }
     setError(null)
     setLoading(true)
 
-    const result = await authClient.signIn.email(
-      { email, password },
-      {
-        onError: (ctx) => {
-          setError(ctx.error.message ?? t('auth.login.error'))
+    let result
+    try {
+      result = await authClient.signIn.email(
+        { email: email.trim(), password },
+        {
+          onError: (ctx) => {
+            setError(t(ctx.error.status === 429 ? 'auth.error.rateLimited' : 'auth.login.error'))
+          },
         },
-      },
-    )
+      )
+    } catch {
+      setError(t('auth.error.network'))
+      return
+    } finally { setLoading(false) }
 
-    setLoading(false)
-
+    if (result.error) setError(t(result.error.status === 429 ? 'auth.error.rateLimited' : 'auth.login.error'))
     if (result.data) {
       // The next page load must not reuse an answer given before signing in. (Mainly matters for a
       // back/forward-cache restore; see `invalidateAppLayoutSession`.)
@@ -97,8 +106,7 @@ function LoginPageContent() {
   }
 
   return (
-    <div lang={lang} className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4">
-      <QuitsWordmark className="text-[26px]" />
+    <>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">{t('auth.login.title')}</CardTitle>
@@ -106,7 +114,7 @@ function LoginPageContent() {
             {t('auth.login.description')}
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <CardContent className="flex flex-col gap-4 pb-4">
             {message && (
               <p className="text-sm text-muted-foreground" role="status">
@@ -133,7 +141,7 @@ function LoginPageContent() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="password">{t('auth.password')}</Label>
-                <Link to="/forgot-password" className="text-sm text-brand-text underline underline-offset-4">
+                <Link to="/forgot-password" search={linkSearch} className="text-sm text-brand-text underline underline-offset-4">
                   {t('auth.login.forgotPassword')}
                 </Link>
               </div>
@@ -153,13 +161,13 @@ function LoginPageContent() {
             </Button>
             <p className="text-sm text-muted-foreground">
               {t('auth.login.noAccount')}{' '}
-              <Link to="/signup" className="text-brand-text underline">
+              <Link to="/signup" search={linkSearch} className="text-brand-text underline">
                 {t('auth.login.toSignup')}
               </Link>
             </p>
           </CardFooter>
         </form>
       </Card>
-    </div>
+    </>
   )
 }

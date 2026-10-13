@@ -81,6 +81,18 @@ describe("theme preference", () => {
   })
 })
 
+describe("signup public theme", () => {
+  it.each(["/signup", "/signup/"])("stays light on %s without changing document classification", (pathname) => {
+    expect(isPublicDocumentPath(pathname)).toBe(false)
+    expect(resolveTheme({ preference: "dark", systemPrefersDark: true, pathname })).toBe("light")
+    window.history.pushState({}, "", pathname)
+    window.localStorage.setItem(THEME_STORAGE_KEY, "dark")
+    new Function(themeInitScript)()
+    expect(isDark()).toBe(false)
+    expect(document.documentElement.hasAttribute("data-document")).toBe(false)
+  })
+})
+
 describe("themeInitScript", () => {
   function runInitScript() {
     new Function(themeInitScript)()

@@ -296,7 +296,7 @@ export async function loginAsAdmin(page: Page) {
   await waitForClientReady(page)
   await page.getByLabel("Email").fill(adminCredentials.email)
   await page.getByLabel("Password").fill(adminCredentials.password)
-  await page.getByRole("button", { name: "Sign in" }).click()
+  await page.getByRole("button", { name: "Log in" }).click()
   await page.waitForURL(
     (url) => !url.pathname.startsWith("/login"),
     { timeout: 10_000 }

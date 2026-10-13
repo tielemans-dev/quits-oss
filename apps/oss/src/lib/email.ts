@@ -1,5 +1,7 @@
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
+import { invoicePaymentReferenceHint, invoicePaymentRows } from "./documents/invoice-payment-rows"
 import { buyerAddress, invoiceTaxIds } from "./documents/invoice-identity"
+import { hasPaymentDetails, type BankAccountSnapshot } from "@quits/contracts/payment-details"
 import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
 import { Resend } from "resend"
 import { formatCurrency, formatDate } from "./i18n/format"
@@ -147,19 +149,20 @@ export function itemsTable(
   items: { description: string; quantity: number; unitPrice: number; total: number }[],
   currency: string,
   locale?: string | null,
-  basis?: PriceBasis
+  basis?: PriceBasis,
+  mobileCards = false
 ) {
   const columns = lineColumnKeys(basis)
   const rows = items.map((item) => `
     <tr>
       <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};">${escapeHtml(item.description)}</td>
-      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${item.quantity}</td>
-      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.unitPrice, currency, locale)}</td>
-      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.total, currency, locale)}</td>
+      <td data-label="${t("pdf.qty", locale)}" style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${item.quantity}</td>
+      <td data-label="${t(columns.unitPrice, locale)}" style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.unitPrice, currency, locale)}</td>
+      <td data-label="${t(columns.amount, locale)}" style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.total, currency, locale)}</td>
     </tr>`).join("")
 
   return `
-    <table style="width:100%;border-collapse:collapse;margin:24px 0;">
+    <table class="${mobileCards ? "invoice-items" : ""}" style="width:100%;border-collapse:collapse;margin:24px 0;">
       <thead>
         <tr style="border-bottom:2px solid ${C.hairline};">
           <th style="padding:8px 0;text-align:left;color:${C.muted};font-size:12px;text-transform:uppercase;">${t("pdf.description", locale)}</th>
@@ -211,16 +214,38 @@ export function emailButtonStyle() {
   return `display:inline-block;background:${C.ink};color:${C.paper};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:500;`
 }
 
-export function layout(content: string, locale?: string | null) {
+export function layout(content: string, locale?: string | null, invoicePresentation = false) {
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:${C.paper};font-family:${EMAIL_FONT_STACK};color:${C.ink};">
-  <div style="max-width:600px;margin:40px auto;background:${C.panel};border:1px solid ${C.hairline};border-radius:10px;overflow:hidden;">
-    <div style="padding:24px 32px;border-bottom:1px solid ${C.hairline};">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+${invoicePresentation ? `<meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark">
+<style>
+  @media (max-width:480px) {
+    .email-panel { margin:16px auto !important; }
+    .email-content, .email-brand { padding:24px !important; }
+    .invoice-parties { display:block !important; }
+    .invoice-dates { margin-top:20px; text-align:left !important; }
+    .invoice-items thead { display:none; }
+    .invoice-items, .invoice-items tbody, .invoice-items tr, .invoice-items td { display:block; width:100%; box-sizing:border-box; }
+    .invoice-items tr { margin-bottom:16px; }
+    .invoice-items td[data-label]::before { content:attr(data-label); float:left; font-size:12px; color:${C.muted}; }
+  }
+  @media (prefers-color-scheme:dark) {
+    body { background:#111112 !important; color:#f2f2f0 !important; }
+    .email-panel { background:#1a1b1e !important; }
+    .invoice-email [style*="background:${C.paper}"] { background:#111112 !important; }
+    .invoice-email [style*="color:${C.ink}"] { color:#f2f2f0 !important; }
+    .invoice-email [style*="color:${C.muted}"], .invoice-items td[data-label]::before { color:#a6abb2 !important; }
+    .invoice-email [style*="${C.hairline}"] { border-color:#36383d !important; }
+    .invoice-email .email-button { background:#f2f2f0 !important; color:#111112 !important; }
+  }
+</style>` : ""}</head>
+<body class="${invoicePresentation ? "invoice-email" : ""}" style="margin:0;padding:0;background:${C.paper};font-family:${EMAIL_FONT_STACK};color:${C.ink};">
+  <div class="email-panel" style="max-width:600px;margin:40px auto;background:${C.panel};border:1px solid ${C.hairline};border-radius:10px;overflow:hidden;">
+    <div class="email-brand" style="padding:24px 32px;border-bottom:1px solid ${C.hairline};">
       ${emailWordmark()}
     </div>
-    <div style="padding:32px;">
+    <div class="email-content" style="padding:32px;">
       ${content}
     </div>
     <div style="padding:16px 32px;background:${C.paper};border-top:1px solid ${C.hairline};font-size:12px;color:${C.muted};text-align:center;">
@@ -235,18 +260,20 @@ export function actionBlock(input: {
   href: string
   label: string
   fallbackLabel: string
+  linkLabel?: string
+  inlineFallback?: boolean
 }) {
   const safeHref = escapeAttribute(input.href)
   return `
     <div style="margin-top:24px;padding-top:24px;border-top:1px solid ${C.hairline};">
-      <a href="${safeHref}"
+      <a class="email-button" href="${safeHref}"
          style="${emailButtonStyle()}">
         ${escapeHtml(input.label)}
       </a>
-      <p style="margin:16px 0 0;color:${C.muted};font-size:14px;">${escapeHtml(input.fallbackLabel)}</p>
+      ${input.inlineFallback ? `<p style="margin:16px 0 0;color:${C.muted};font-size:14px;">${escapeHtml(input.fallbackLabel)} <a href="${safeHref}" style="color:${C.ink};">${escapeHtml(input.linkLabel ?? input.href)}</a></p>` : `<p style="margin:16px 0 0;color:${C.muted};font-size:14px;">${escapeHtml(input.fallbackLabel)}</p>
       <p style="margin:8px 0 0;font-size:14px;word-break:break-all;">
-        <a href="${safeHref}" style="color:${C.ink};">${escapeHtml(input.href)}</a>
-      </p>
+        <a href="${safeHref}" style="color:${C.ink};">${escapeHtml(input.linkLabel ?? input.href)}</a>
+      </p>`}
     </div>`
 }
 
@@ -259,6 +286,7 @@ export type SendInvoiceEmailParams = {
   replyTo?: string | null
   invoice: {
     number: string
+    paymentReference?: string | null
     issueDate: Date | string
     supplyDate?: string | null
     buyer?: BuyerSnapshot | null
@@ -268,6 +296,11 @@ export type SendInvoiceEmailParams = {
     total: number
     currency: string
     notes?: string | null
+    /** Current outstanding amount; original totals above remain the issued invoice amounts. */
+    balanceDue?: number
+    /** Issue-time seller payment details. Never substitute current organization settings. */
+    bankAccount?: BankAccountSnapshot | null
+    paymentNote?: string | null
     /** The basis `items` state their amounts on. Absent, the headers stay plain. */
     priceBasis?: PriceBasis
     /** VAT by rate and the rounding between net plus tax and the total; absent, the single tax amount is printed. */
@@ -302,45 +335,63 @@ export function buildInvoiceEmailContent({
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
+  const referenceHint = invoicePaymentReferenceHint(invoice, locale)
+  const balanceDue = invoice.balanceDue ?? invoice.total
+  const hasTransferDetails = hasPaymentDetails({ bankAccount: invoice.bankAccount, note: invoice.paymentNote })
+  const showPaymentInstructions = balanceDue > 0 && (hasTransferDetails || Boolean(publicPaymentUrl))
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:22px;">${t("pdf.invoice", locale)} ${safeInvoiceNumber}</h2>
     <p style="margin:0 0 24px;color:${C.muted};">${t("email.invoice.greeting", locale, { name: safeContactName })}</p>
 
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+    <div class="invoice-parties" style="display:flex;gap:24px;justify-content:space-between;margin-bottom:8px;">
       <div>
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
         <div style="font-weight:500;">${escapeHtml(org.companyName ?? "")}</div>
         ${org.companyAddress ? `<div>${formatMultilineHtml(org.companyAddress)}</div>` : ""}
-        ${invoiceTaxIds(org.taxIds).map(id => `<div>${escapeHtml(id)}</div>`).join("")}
+        ${invoiceTaxIds(org.taxIds, "CVR-nr.").map(id => `<div>${escapeHtml(id)}</div>`).join("")}
         ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
-      <div style="text-align:right;">
-        <div>${t("pdf.issueDate", locale)}: ${formatDate(invoice.issueDate, locale, org.timezone, { month: "long" })}</div>
-        ${invoice.supplyDate ? `<div>${t("pdf.supplyDate", locale)}: ${formatDate(invoice.supplyDate, locale, "UTC", { month: "long" })}</div>` : ""}
+      <div class="invoice-dates" style="text-align:right;flex-shrink:0;">
+        <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.issueDate", locale)}</div>
+        <div style="font-weight:500;margin-bottom:12px;">${formatDate(invoice.issueDate, locale, org.timezone, { month: "short", dayFirst: true })}</div>
+        ${invoice.supplyDate ? `<div style="font-size:12px;color:${C.muted};text-transform:uppercase;">${t("pdf.supplyDate", locale)}</div><div style="margin-bottom:12px;">${formatDate(invoice.supplyDate, locale, "UTC", { month: "short", dayFirst: true })}</div>` : ""}
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.dueDate", locale)}</div>
-        <div style="font-weight:500;">${formatDate(invoice.dueDate, locale, "UTC", { month: "long" })}</div>
+        <div style="font-weight:500;">${formatDate(invoice.dueDate, locale, "UTC", { month: "short", dayFirst: true })}</div>
       </div>
     </div>
 
     ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[invoice.buyer.company, ...buyerAddress(invoice.buyer)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
-    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis)}
+    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, true)}
     ${totalsBlock(invoice, locale)}
 
-    ${invoice.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
+    ${showPaymentInstructions ? `
+    <h3 style="margin:24px 0 12px;font-size:16px;">${t("email.pay.heading", locale)}</h3>
+    <table aria-label="${t("email.pay.heading", locale)}" style="width:100%;border-collapse:collapse;">
+      ${invoicePaymentRows({ ...invoice, total: balanceDue }, locale).filter(row => hasTransferDetails || row.key !== "email.pay.referenceLabel").map(row => `<tr>
+        <th scope="row" style="padding:10px 0;border-bottom:1px solid ${C.hairline};text-align:left;font-size:12px;font-weight:400;text-transform:uppercase;letter-spacing:0.06em;color:${C.muted};">${escapeHtml(row.label)}</th>
+        <td style="padding:10px 0;border-bottom:1px solid ${C.hairline};text-align:right;font-family:'Geist Mono',Consolas,monospace;overflow-wrap:anywhere;">${escapeHtml(row.value)}</td>
+      </tr>`).join("")}
+    </table>
+    ${hasTransferDetails && referenceHint ? `<p style="margin:12px 0;color:${C.muted};font-size:14px;">${escapeHtml(referenceHint)}</p>` : ""}
+    ${invoice.paymentNote?.trim() ? `<p style="margin:12px 0;font-size:14px;">${formatMultilineHtml(invoice.paymentNote)}</p>` : ""}
     ${publicPaymentUrl
       ? actionBlock({
           href: publicPaymentUrl,
-          label: t("email.invoice.payCta", locale),
+          label: t("email.pay.button", locale),
+          linkLabel: t("email.invoice.payFallbackLink", locale),
+          inlineFallback: true,
           fallbackLabel: t("email.invoice.payFallback", locale),
         })
       : ""}
-  `, locale)
+    ` : ""}
+    ${invoice.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
+  `, locale, true)
 
   const subject = sanitizeHeader(
     t("email.invoice.subject", locale, {
       number: invoice.number,
       total: formatCurrency(invoice.total, invoice.currency, locale),
-      dueDate: formatDate(invoice.dueDate, locale, "UTC", { month: "long" }),
+      dueDate: formatDate(invoice.dueDate, locale, "UTC", { month: "short", dayFirst: true }),
     })
   )
   const fromAddressValue = formatSenderAddress(safeFromName, safeFromEmail)

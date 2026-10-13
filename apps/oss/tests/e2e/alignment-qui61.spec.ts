@@ -51,7 +51,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
     for (const route of ["login", "signup"]) {
       await page.goto(`/${route}`)
       await waitForClientReady(page)
-      await expect(page.getByRole("button", { name: da ? (route === "login" ? "Log ind" : "Opret konto") : (route === "login" ? "Sign in" : "Sign up"), exact: true })).toBeVisible()
+      await expect(page.getByRole("button", { name: da ? (route === "login" ? "Log ind" : "Opret konto") : (route === "login" ? "Log in" : "Create account"), exact: true })).toBeVisible()
     }
     const response = await page.request.post("/api/auth/sign-in/email", { data: { email: adminCredentials.email, password: adminCredentials.password }, headers: { origin: new URL(page.url()).origin } })
     expect(response.ok()).toBe(true)

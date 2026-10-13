@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { translate } from "../../lib/i18n/translate"
+import type { TranslationKey } from "../../lib/i18n/messages"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 const {
@@ -30,24 +32,8 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("../../lib/page-navigation", () => ({ loadPage, reloadPage: vi.fn() }))
 
 vi.mock("../../lib/i18n/react", () => ({
-  I18nProvider: ({ children }: { children: React.ReactNode }) => children,
-  useI18n: () => ({
-    t: (key: string) =>
-      (
-        {
-          "auth.email": "Email",
-          "auth.password": "Password",
-          "auth.placeholder.email": "you@example.com",
-          "auth.login.title": "Log in",
-          "auth.login.description": "Enter your credentials to access your account",
-          "auth.login.submit": "Sign in",
-          "auth.login.submitting": "Signing in...",
-          "auth.login.error": "Login failed",
-          "auth.login.noAccount": "Don't have an account?",
-          "auth.login.toSignup": "Sign up",
-        } as const
-      )[key] ?? key,
-  }),
+  I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useI18n: () => ({ locale: "en", t: (key: TranslationKey) => translate(key, "en") }),
 }))
 
 // The distribution comes from the server's route context; these pages only read the resolved value.
@@ -118,7 +104,7 @@ describe("LoginPage", () => {
     fireEvent.change(screen.getByLabelText("Password"), {
       target: { value: "password123" },
     })
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }))
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }))
 
     await waitFor(() => {
       expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_1" })
@@ -141,7 +127,7 @@ describe("LoginPage", () => {
     render(<RoutePage />)
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } })
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } })
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }))
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }))
 
     await waitFor(() => {
       expect(loadPage).toHaveBeenCalledWith("/invoices/inv_1")
@@ -177,7 +163,7 @@ describe("LoginPage", () => {
     fireEvent.change(screen.getByLabelText("Password"), {
       target: { value: "password123" },
     })
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }))
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }))
 
     await waitFor(() => {
       expect(listOrganizations).toHaveBeenCalled()
@@ -199,7 +185,7 @@ describe("LoginPage", () => {
     render(<RoutePage />)
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } })
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } })
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }))
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }))
     await waitFor(() => {
       expect(signInEmail).toHaveBeenCalled()
     })
@@ -210,4 +196,15 @@ describe("LoginPage", () => {
     await reuseAppLayoutSession(load)
     expect(load).toHaveBeenCalledTimes(2)
   })
+  it.each(["USER_NOT_FOUND", "INVALID_PASSWORD", "OTHER"])("never displays server account details for %s", async (code) => {
+    signInEmail.mockResolvedValue({ error: { code, message: "PRIVATE ACCOUNT DETAIL" } })
+    render(<RoutePage />)
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } })
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } })
+    fireEvent.submit(screen.getByRole("button", { name: "Log in" }).closest("form")!)
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("That email and password don't match. Try again or reset your password."))
+    expect(screen.queryByText("PRIVATE ACCOUNT DETAIL")).toBeNull()
+    expect(loadPage).not.toHaveBeenCalled()
+  })
+
 })
