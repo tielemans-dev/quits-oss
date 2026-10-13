@@ -125,9 +125,9 @@ describe("zero-tax exemption cannot bypass nonregistered issuance", () => {
   })
   it("refuses agreement approval, issuance and artifact preparation before effects", async () => {
     const h = harness({ rate: "0", exempt: true })
-    for (const effect of [issuanceApproval({ id: "document" }, "manual"), issueAgreementOffer({ id: "document" }, "manual"), prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" })]) {
-      expect(await h.run(effect)).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
-    }
+    expect(await h.run(issuanceApproval({ id: "document" }, "manual"))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
+    expect(await h.run(issueAgreementOffer({ id: "document" }, "manual"))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
+    expect(await h.run(prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
     expectNoIssuanceEffects(h)
   })
 })

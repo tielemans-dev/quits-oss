@@ -199,7 +199,7 @@ describe("v2 with onboarding AI Danish defaults", () => {
 const settingsCaller = () => settingsRouter.createCaller({ session: null } satisfies Context)
 describe("atomic Settings Danish VAT repairs", () => {
   beforeEach(() => { mocks.settings = { ...defaults, momsRegistered: false }; mocks.taxIds = []; mocks.creates = []; mocks.baseCurrency = "DKK" })
-  it.each([{ countryCode: "DE" }, { taxRegime: "custom" }, { taxRegime: "us_sales_tax" }])("clears hidden registration on scope departure %o even if a client omits status", async input => {
+  it.each([{ countryCode: "DE" }, { taxRegime: "custom" }, { taxRegime: "us_sales_tax" }] as const)("clears hidden registration on scope departure %o even if a client omits status", async input => {
     await settingsCaller().update(input)
     expect(mocks.settings?.momsRegistered).toBeNull()
   })
