@@ -30,3 +30,11 @@ The shared `pdf.paymentReference` catalog seam now says Betalingsbesked / Paymen
 The small QUI-5 signup-light and uppercase-code follow-ups are included. VPS QUI-5 work remains with its existing owner. Seller VAT confirmation belongs in authenticated onboarding/Settings through the separately owned OSS extension and release; this PR does not implement that flow or change a Cloud dependency.
 
 The owned Fleet/Vite evidence server was stopped with SIGINT after captures. Ines approval and new-head CI are required before READY-FOR-KAI. Kai owns the Codex request. No new issue, schedule, merge, deployment or release is part of this task.
+
+## Maintenance against merged login return contract
+
+On 2026-10-13, main at `f610c11f06d97c8291e818596592275280aae222` was integrated into the published branch with a merge, preserving its history. Login retains AuthPage, its header and approved copy. The auth navigation helper now delegates validation and destination construction to `login-return.ts`, so recovery/signup links honor `next` precedence and retain exact query encoding. Login and onboarding retain the merged explicit return/language contract and the existing defaults when no target or language is supplied.
+
+The 21 screenshots and capture metrics above are historical evidence from the original #142 implementation, included at `4da65c06528d6f737acbdf55bd7a8b22786971d8`. They were not refreshed for this maintenance because the AuthPage layout and approved copy did not materially change. They do not establish current-head browser or onboarding behavior.
+
+Maintenance validation passed with one Vitest worker through Fleet: 241 tests in the initial 13-file auth/login/onboarding/redirect/copy run, then 108 tests in six files including the final 76-case login-return suite and session/SSR locale regressions. These runs cover 274 distinct tests in 18 files. Application typecheck and scoped lint passed. All eight targeted login-return/auth-locale Playwright scenarios collected successfully. Full repository lint/typecheck, suites, build and actual browser execution remain current-head CI gates. No disposable database or browser base URL was configured locally. Ines approval remains required, and Kai owns the exact-head Codex request after CI is green. This maintenance does not establish READY.

@@ -111,7 +111,7 @@ describe("LoginPage", () => {
     })
 
     await waitFor(() => {
-      expect(loadPage).toHaveBeenCalledWith("/onboarding?lang=en")
+      expect(loadPage).toHaveBeenCalledWith("/onboarding")
     })
     expect(loadPage).toHaveBeenCalledTimes(1)
   })
@@ -130,7 +130,7 @@ describe("LoginPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Log in" }))
 
     await waitFor(() => {
-      expect(loadPage).toHaveBeenCalledWith("/invoices/inv_1?lang=en")
+      expect(loadPage).toHaveBeenCalledWith("/invoices/inv_1")
     })
     expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_1" })
     expect(loadPage).toHaveBeenCalledTimes(1)
@@ -171,7 +171,7 @@ describe("LoginPage", () => {
 
     expect(setActiveOrganization).not.toHaveBeenCalled()
     await waitFor(() => {
-      expect(loadPage).toHaveBeenCalledWith("/onboarding?lang=en")
+      expect(loadPage).toHaveBeenCalledWith("/onboarding")
     })
   })
 

@@ -1,7 +1,7 @@
 import { authFieldError } from '../lib/auth/form-validation'
 import { z } from 'zod'
 import { AuthPage } from '../components/auth/auth-page'
-import { authSearchSchema, authLinkSearch, authDestination } from '../lib/auth/navigation'
+import { authLinkSearch } from '../lib/auth/navigation'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { authClient } from '../lib/auth-client'
@@ -22,9 +22,11 @@ import { useI18n } from '../lib/i18n/react'
 import { invalidateAppLayoutSession } from '../lib/app-layout-session'
 import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { getOrganizationAccessState } from '../lib/organization-access'
-import { toInternalRedirectPath } from '../lib/redirect-target'
+import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../lib/login-return'
 
-const loginSearchSchema = authSearchSchema.extend({ message: z.string().optional() })
+const loginSearchSchema = loginReturnSearchSchema.extend({
+  message: z.string().optional(),
+})
 
 export const Route = createFileRoute('/login')({
   validateSearch: loginSearchSchema,
@@ -37,9 +39,10 @@ function LoginPage() {
 
 function LoginPageContent() {
   const { t, locale } = useI18n()
-  const search = authLinkSearch(Route.useSearch(), locale)
   const { isCloud } = useRuntimeDistribution()
-  const { redirect, message } = Route.useSearch()
+  const search = Route.useSearch()
+  const { message, lang } = search
+  const linkSearch = authLinkSearch(search, locale)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +78,8 @@ function LoginPageContent() {
       invalidateAppLayoutSession()
       // Every way out of here is a new page load, so the app layout sets the organization this
       // tab acts for from the new session and nothing of an earlier session survives.
-      const redirectPath = authDestination(toInternalRedirectPath(redirect) ?? '/', search.lang)
+      const target = loginReturnTarget(search)
+      const redirectPath = loginReturnDestination(target ?? '/', lang)
       try {
         const organizations = await authClient.organization.list()
         const accessState = getOrganizationAccessState({
@@ -84,13 +88,13 @@ function LoginPageContent() {
 
         if (accessState.kind === 'auto-select') {
           const switched = await switchActiveOrganization(accessState.organizationId, {
-            destination: isCloud ? authDestination('/onboarding', search.lang) : redirectPath,
+            destination: target ? redirectPath : loginReturnDestination(isCloud ? '/onboarding' : '/', lang),
           })
           if (!switched?.error) return
         }
 
         if (accessState.kind === 'choose' || accessState.kind === 'create') {
-          loadPage(authDestination('/onboarding', search.lang))
+          loadPage(loginReturnOnboarding(search))
           return
         }
       } catch {
@@ -137,7 +141,7 @@ function LoginPageContent() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="password">{t('auth.password')}</Label>
-                <Link to="/forgot-password" search={search} className="text-sm text-brand-text underline underline-offset-4">
+                <Link to="/forgot-password" search={linkSearch} className="text-sm text-brand-text underline underline-offset-4">
                   {t('auth.login.forgotPassword')}
                 </Link>
               </div>
@@ -157,7 +161,7 @@ function LoginPageContent() {
             </Button>
             <p className="text-sm text-muted-foreground">
               {t('auth.login.noAccount')}{' '}
-              <Link to="/signup" search={search} className="text-brand-text underline">
+              <Link to="/signup" search={linkSearch} className="text-brand-text underline">
                 {t('auth.login.toSignup')}
               </Link>
             </p>
