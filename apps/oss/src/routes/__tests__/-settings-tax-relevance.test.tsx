@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ComponentType } from "react"
 import { afterEach as afterEachTest, describe, expect, it, vi } from "vitest"
 
@@ -8,10 +8,14 @@ const {
   useSessionMock,
   settingsGetQuery,
   getFullOrganization,
+  settingsUpdate,
+  runtimeState,
 } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
   settingsGetQuery: vi.fn(),
   getFullOrganization: vi.fn(),
+  settingsUpdate: vi.fn(),
+  runtimeState: { selfhost: true, nonVatEnabled: true },
 }))
 
 vi.mock("@tanstack/react-router", () => ({
@@ -26,8 +30,8 @@ vi.mock("../../components/settings/email-delivery-card", () => ({
   EmailDeliveryCard: () => <div>email-delivery-card</div>,
 }))
 
-vi.mock("../../lib/i18n/react", () => ({
-  useI18n: () => ({
+vi.mock("../../lib/i18n/react", () => {
+  const i18n = {
     t: (key: string) =>
       (
         {
@@ -57,8 +61,11 @@ vi.mock("../../lib/i18n/react", () => ({
           "settings.currency.placeholder": "Select currency",
         } as const
       )[key] ?? key,
-  }),
-}))
+  }
+  return { useI18n: () => i18n }
+})
+
+vi.mock("../../lib/runtime-distribution", () => ({ useRuntimeDistribution: () => ({ isSelfHost: runtimeState.selfhost }) }))
 
 vi.mock("../../lib/auth-client", () => ({
   authClient: {
@@ -83,7 +90,7 @@ vi.mock("../../trpc/client", () => ({
         query: settingsGetQuery,
       },
       update: {
-        mutate: vi.fn(),
+        mutate: settingsUpdate,
       },
       configureDocumentSendingDomain: {
         mutate: vi.fn(),
@@ -104,6 +111,7 @@ vi.mock("../../trpc/client", () => ({
       capabilities: {
         query: vi.fn(() =>
           Promise.resolve({
+            onboardingV2: { enabled: true, nonVatEnabled: runtimeState.nonVatEnabled },
             aiInvoiceDraft: {
               enabled: true,
               byok: true,
@@ -182,6 +190,9 @@ afterEachTest(() => {
   useSessionMock.mockReset()
   settingsGetQuery.mockReset()
   getFullOrganization.mockReset()
+  settingsUpdate.mockReset()
+  runtimeState.selfhost = true
+  runtimeState.nonVatEnabled = true
 })
 
 describe("Settings tax relevance", () => {
@@ -205,6 +216,7 @@ describe("Settings tax relevance", () => {
       expect(settingsGetQuery).toHaveBeenCalled()
     })
 
+    expect(screen.queryByLabelText("settings.vatStatus.registered")).toBeNull()
     expect(screen.queryByLabelText("Primary Seller Tax ID")).toBeNull()
     expect(screen.getByText("No tax ID required for this tax setup.")).toBeTruthy()
 
@@ -224,5 +236,44 @@ describe("Settings tax relevance", () => {
       expect(screen.getByLabelText("VAT/CVR number")).toBeTruthy()
     })
     expect(screen.getByText("Required for Danish registered businesses using EU VAT.")).toBeTruthy()
+  })
+})
+
+async function renderDanishSettings(momsRegistered: boolean | null) {
+  useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
+  getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+  const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, taxRate: momsRegistered === false ? 0 : 25 })
+  settingsGetQuery.mockResolvedValue(data)
+  settingsUpdate.mockResolvedValue(data)
+  render(<RouteComponent />)
+  await screen.findByLabelText("settings.vatStatus.registered")
+}
+
+describe("Settings VAT status", () => {
+  it.each([true, false, null])("preserves saved status %s without inventing a choice", async status => {
+    await renderDanishSettings(status)
+    expect((screen.getByLabelText("settings.vatStatus.registered") as HTMLInputElement).checked).toBe(status === true)
+    expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(status === false)
+    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeUndefined()
+  })
+  it.each([true, false])("submits changed status %s and related tax defaults", async status => {
+    await renderDanishSettings(!status)
+    fireEvent.click(screen.getByLabelText(status ? "settings.vatStatus.registered" : "settings.vatStatus.notRegistered"))
+    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0]).toMatchObject({ momsRegistered: status, taxRate: status ? 25 : 0, pricesIncludeTax: false })
+    if (!status) expect(screen.getByLabelText("settings.vatStatus.cvrLabel")).toBeTruthy()
+    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledTimes(2))
+    expect(settingsUpdate.mock.calls[1][0].momsRegistered).toBeUndefined()
+  })
+  it("disables hosted non-VAT selection without the capability while retaining saved false", async () => {
+    runtimeState.selfhost = false
+    runtimeState.nonVatEnabled = false
+    await renderDanishSettings(false)
+    expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(true)
   })
 })
