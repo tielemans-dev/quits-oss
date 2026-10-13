@@ -7,8 +7,8 @@ assert(dir, "Capture directory is required")
 const manifest = JSON.parse(readFileSync(resolve(dir, "manifest.json"), "utf8"))
 assert.equal(manifest.applicationSha, process.env.ONB121_HEAD, "Evidence must match exact PR head")
 assert.equal(manifest.onboardingMode, "legacy-manual-v2-off")
-assert.equal(manifest.initialSettingsPersisted, false, "First-read UI defaults are not persisted settings")
-assert.equal(manifest.localeFixture, "explicit-danish-profile-after-absent-settings-assertions")
+assert.equal(manifest.initialSettingsPersisted, true, "The first legacy RPC read must persist Danish settings")
+assert.equal(manifest.localeFixture, "locale-only-override-after-first-read-persistence")
 assert.equal(manifest.images.length, 8, "Expected four initial and four post-submit screenshots")
 for (const locale of ["da-DK", "en-US"]) {
   for (const width of [390, 1440]) {

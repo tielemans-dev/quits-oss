@@ -6,7 +6,7 @@ import { loginAsAdmin, resetDatabase, seedCompletedSetup, waitForClientReady } f
 
 // Actual application, real authentication and RPCs. Synthetic account in disposable CI PostgreSQL.
 // No mocked DOM, server responses, or production data. Locale is set explicitly after verifying
-// the absent-settings onboarding path, to capture both supported UI languages independently.
+// the first-read persistence of Danish defaults, to capture both supported UI languages independently.
 const captureDir = process.env.ONB121_CAPTURE_DIR
 const images: Array<Record<string, unknown>> = []
 test.skip(!captureDir, "PR 121 evidence is an explicit CI-only capture")
@@ -21,10 +21,10 @@ test.afterAll(async () => {
   await writeFile(resolve(captureDir, "manifest.json"), JSON.stringify({
     applicationSha: process.env.ONB121_HEAD,
     run: process.env.ONB121_RUN_URL,
-    provenance: "Real OSS app in cloud distribution, disposable CI PostgreSQL, synthetic setup admin, real login and onboarding RPCs. Danish UI defaults verified while settings are absent; explicit Danish settings fixture then created for each locale capture. Defaults are not claimed to be persisted by the first read. V2 capability disabled; legacy manual onboarding shown. Completion persisted values verified through real RPCs.",
+    provenance: "Real OSS app in cloud distribution, disposable CI PostgreSQL, synthetic setup admin, real login and onboarding RPCs. First legacy onboarding status RPC read persists Danish defaults, verified before any fixture override. Only the saved locale is then explicitly updated for each language capture. V2 capability disabled; legacy manual onboarding shown. Completion persisted values verified through real RPCs.",
     onboardingMode: "legacy-manual-v2-off",
-    initialSettingsPersisted: false,
-    localeFixture: "explicit-danish-profile-after-absent-settings-assertions",
+    initialSettingsPersisted: true,
+    localeFixture: "locale-only-override-after-first-read-persistence",
     images,
   }, null, 2))
 })
@@ -35,15 +35,16 @@ for (const locale of ["da-DK", "en-US"]) {
       await resetDatabase()
       const setup = await seedCompletedSetup()
       await prisma.organization.update({ where: { id: setup.organizationId }, data: { subscriptionStatus: "pro" } })
-      // Remove installation defaults: verify the UI's absent-settings defaults without
-      // assuming that reading the onboarding screen creates a settings record.
+      // Remove installation defaults: the first real legacy status read must persist DK defaults.
       await prisma.orgSettings.delete({ where: { organizationId: setup.organizationId } })
       // The shared login helper uses English labels. The authenticated app's saved locale
       // controls each capture, as in the existing quote evidence harness.
       const context = await browser.newContext({ locale: "en-US", viewport: { width, height: 1000 } })
       try {
         const page = await context.newPage()
+        const firstStatusRead = page.waitForResponse(response => response.url().includes("onboarding.getStatus") && response.request().method() === "GET")
         await loginAsAdmin(page)
+        expect((await firstStatusRead).ok()).toBe(true)
         await expect(page).toHaveURL(/\/onboarding/)
         // These IDs are linked to the actual labels in the legacy form. Several labels
         // remain English even with html lang="da"; do not invent localized label text.
@@ -54,25 +55,18 @@ for (const locale of ["da-DK", "en-US"]) {
         }
         await assertDanishDefaults()
         await expect(page.getByRole("alert")).toHaveCount(0)
-        expect(await prisma.orgSettings.findUnique({ where: { organizationId: setup.organizationId } })).toBeNull()
-        // Locale capture needs a saved locale. Seed all Danish profile fields explicitly
-        // instead of inheriting the schema's US/USD defaults or claiming app persistence.
-        await prisma.orgSettings.create({ data: {
-          organizationId: setup.organizationId,
-          countryCode: "DK",
-          locale,
-          timezone: "Europe/Copenhagen",
-          defaultCurrency: "DKK",
-          baseCurrency: "DKK",
-          currency: "DKK",
-          taxRegime: "eu_vat",
-          taxRate: 25,
-          pricesIncludeTax: false,
-          paymentTermsDays: 14,
-          invoicePrefix: "INV",
-          quotePrefix: "QTE",
-          onboardingInvoicingIdentity: "registered_business",
-        } })
+        // Await the actual RPC and its committed row before changing only the UI language.
+        await expect.poll(async () => {
+          const settings = await prisma.orgSettings.findUnique({ where: { organizationId: setup.organizationId } })
+          return settings && { ...settings, taxRate: Number(settings.taxRate) }
+        }).toMatchObject({
+          countryCode: "DK", locale: "da-DK", timezone: "Europe/Copenhagen",
+          defaultCurrency: "DKK", baseCurrency: "DKK", currency: "DKK",
+          taxRegime: "eu_vat", taxRate: 25, pricesIncludeTax: false, paymentTermsDays: 14,
+          invoiceNextNum: 1, quotePrefix: "QTE", quoteNextNum: 1,
+          onboardingStatus: "not_started",
+        })
+        await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { locale } })
         await page.reload()
         await waitForClientReady(page)
         await expect(page.locator("html")).toHaveAttribute("lang", locale.startsWith("da") ? "da" : "en")
