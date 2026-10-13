@@ -36,6 +36,7 @@ test("blocks organization deletion through the authenticated browser API and kee
 })
 
 test("lets a new user sign up and continue to onboarding", async ({ page }) => {
+  const cloud = process.env.QUITS_DISTRIBUTION === "cloud"
   await seedCompletedSetup()
 
   await page.goto("/signup")
@@ -46,7 +47,7 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   await page.getByRole("button", { name: "Create account" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("Look up your own CVR")).toBeVisible()
+  await expect(page.getByText(cloud ? "Look up your own CVR" : "Enter your company name")).toBeVisible()
   await expect(page.getByLabel("Slug")).toHaveCount(0)
 
   // No organization yet: the sidebar and its switcher stay off the page. The raw response
@@ -56,15 +57,16 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   expect(response!.ok()).toBe(true)
   const serverHtml = await response!.text()
   expect(serverHtml).toMatch(/<html\b[^>]*\blang="en"/)
-  expect(serverHtml).toContain("Look up your own CVR")
+  expect(serverHtml).toContain(cloud ? "Look up your own CVR" : "Enter your company name")
   expect(serverHtml).not.toContain(">Invoices<")
   expect(serverHtml).not.toContain(">Fakturaer<")
   expect(serverHtml).not.toContain("Switch organization")
   expect(serverHtml).not.toContain("Skift organisation")
   await waitForClientReady(page)
   await expect(page.locator("html")).toHaveAttribute("lang", "da")
-  await expect(page.getByText("Slå dit eget CVR op", { exact: true })).toBeVisible()
-  await expect(page.getByRole("button", { name: "Indtast manuelt" })).toBeVisible()
+  await expect(page.getByText(cloud ? "Slå dit eget CVR op" : "Indtast virksomhedsnavnet", { exact: true })).toBeVisible()
+  if (cloud) await expect(page.getByRole("button", { name: "Indtast manuelt" })).toBeVisible()
+  else await expect(page.getByRole("button", { name: "Indtast manuelt" })).toHaveCount(0)
 })
 
 test("shows adaptive cloud onboarding after organization creation", async ({ page }) => {
