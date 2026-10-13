@@ -32,7 +32,7 @@ for (const locale of ['da-DK', 'en-US']) {
           },
         } })
         const setup = await seedCompletedSetup({ ...danishLocale, locale })
-        await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { companyName: 'Synthetic Seller ApS', companyAddress: 'Testvej 1\n1000 København' } })
+        await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { companyName: 'Synthetic Seller ApS', companyAddress: 'Testvej 1\n1000 København', momsRegistered: true } })
         await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: 'DK_CVR', value: '12345678', countryCode: 'DK', isPrimary: true } })
         const caller = appRouter.createCaller({ session: {
           user: { id: setup.adminUserId, email: 'admin@e2e.example', name: 'E2E Admin' },

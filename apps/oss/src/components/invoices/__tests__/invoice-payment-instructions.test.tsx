@@ -35,6 +35,17 @@ describe("invoice detail seller and payment blocks", () => {
     expect(html).toBe("")
   })
 
+  it("shows a custom payment note once and drops a note that only repeats the non-VAT statement", () => {
+    const statement = "No VAT charged – the seller is not VAT-registered."
+    const seller = { ...sellerSnapshot, momsRegistered: false as const, paymentNote: `Pay by transfer\n${statement}` }
+    const mixed = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={seller} number="INV-0042" balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
+    expect(mixed).toContain("Pay by transfer")
+    expect(mixed).not.toContain(statement)
+    const onlyStatement = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={{ ...seller, paymentNote: statement }} number="INV-0042" balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
+    expect(onlyStatement).toContain("0040")
+    expect(onlyStatement).not.toContain(statement)
+  })
+
   it("shows a payment note without bank rows and never assigns a draft number", () => {
     const html = renderToStaticMarkup(<I18nProvider locale="en-US"><InvoicePaymentInstructions status="sent" sellerSnapshot={{ paymentNote: "Pay on delivery" }} number={null} balanceDue={250} currency="DKK" dueDate="2026-03-23" /></I18nProvider>)
     expect(html).toContain("Pay on delivery")

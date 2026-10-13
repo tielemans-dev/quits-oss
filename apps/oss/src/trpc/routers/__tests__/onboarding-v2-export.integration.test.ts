@@ -68,30 +68,36 @@ let artifactDirectory: string
       const api = appRouter.createCaller({ session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
       await api.settings.update({ momsRegistered: false, taxRate: 25 })
       expect(await api.settings.get()).toMatchObject({ momsRegistered: false, taxRate: 0 })
-      // Explicit document and line VAT still produce taxable drafts despite the zero default.
-      // Exercise both overrides through real issuance and refuse them before artifacts/numbering.
-      for (const { taxRate, vat } of [
-        { taxRate: 25, vat: undefined },
-        { taxRate: undefined, vat: { treatment: "standard" as const, rate: "0.25", country: "DK" } },
-      ]) {
-        const taxed = await executeIssuanceCommand(createInvoiceDraft, {
-          contactId: contact.result.id, dueDate: "2026-12-01", taxRate,
-          items: [{ description: "VAT-bearing work", quantity: 1, unitPrice: 100, ...(vat ? { vat } : {}) }],
-        }, { actor })
-        if (taxed.status !== "completed") throw new Error(JSON.stringify(taxed))
-        const taxedDraft = await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id }, include: { items: true } })
-        expect(parseSellerSnapshot(taxedDraft.sellerSnapshot)?.momsRegistered).toBe(false)
-        expect(taxedDraft.totalTax.toNumber()).toBe(25)
-        expect(taxedDraft.items).toHaveLength(1)
-        expect(taxedDraft.items[0]!.taxRate.toNumber()).toBe(25)
-        expect(taxedDraft.items[0]!.lineTax.toNumber()).toBe(25)
-        const rejected = await executeIssuanceCommand(sendInvoice, { id: taxed.result.id, allowSendWithoutEmail: true }, { actor })
-        expect(rejected.status).not.toBe("completed")
-        expect(JSON.stringify(rejected)).toContain("seller_not_vat_registered")
-        expect(await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id } })).toMatchObject({ status: "draft", number: null, artifactPdfRef: null, artifactUblRef: null })
-        expect(await prisma.artifactStaging.count({ where: { organizationId: id } })).toBe(0)
-        expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ invoiceNextNum: 1 })
-      }
+      // An omitted line classification follows the 0% default even when the document rate is still 25%.
+      const implicit = await executeIssuanceCommand(createInvoiceDraft, {
+        contactId: contact.result.id, dueDate: "2026-12-01", taxRate: 25,
+        items: [{ description: "Ordinary non-registered work", quantity: 1, unitPrice: 100 }],
+      }, { actor })
+      if (implicit.status !== "completed") throw new Error(JSON.stringify(implicit))
+      const implicitDraft = await prisma.invoice.findUniqueOrThrow({ where: { id: implicit.result.id }, include: { items: true } })
+      expect(parseSellerSnapshot(implicitDraft.sellerSnapshot)?.momsRegistered).toBe(false)
+      expect(implicitDraft.totalTax.toNumber()).toBe(0)
+      expect(implicitDraft.items[0]).toMatchObject({ vatTreatment: "unclassified_zero" })
+      expect(implicitDraft.items[0]!.taxRate.toNumber()).toBe(0)
+      expect(implicitDraft.items[0]!.lineTax.toNumber()).toBe(0)
+      // An explicit standard classification still stores charged VAT and is refused before numbering.
+      const taxed = await executeIssuanceCommand(createInvoiceDraft, {
+        contactId: contact.result.id, dueDate: "2026-12-01",
+        items: [{ description: "VAT-bearing work", quantity: 1, unitPrice: 100, vat: { treatment: "standard" as const, rate: "0.25", country: "DK" } }],
+      }, { actor })
+      if (taxed.status !== "completed") throw new Error(JSON.stringify(taxed))
+      const taxedDraft = await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id }, include: { items: true } })
+      expect(parseSellerSnapshot(taxedDraft.sellerSnapshot)?.momsRegistered).toBe(false)
+      expect(taxedDraft.totalTax.toNumber()).toBe(25)
+      expect(taxedDraft.items).toHaveLength(1)
+      expect(taxedDraft.items[0]!.taxRate.toNumber()).toBe(25)
+      expect(taxedDraft.items[0]!.lineTax.toNumber()).toBe(25)
+      const rejected = await executeIssuanceCommand(sendInvoice, { id: taxed.result.id, allowSendWithoutEmail: true }, { actor })
+      expect(rejected.status).not.toBe("completed")
+      expect(JSON.stringify(rejected)).toContain("seller_not_vat_registered")
+      expect(await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id } })).toMatchObject({ status: "draft", number: null, artifactPdfRef: null, artifactUblRef: null })
+      expect(await prisma.artifactStaging.count({ where: { organizationId: id } })).toBe(0)
+      expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ invoiceNextNum: 1 })
       vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
     }
     // This fixture exercises stored UBL for an explicitly classified supply. Registration alone

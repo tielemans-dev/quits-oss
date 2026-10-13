@@ -25,6 +25,9 @@ test('shared login retains the email when hydration occurs after the first fill'
           values[label] = value
           if (hydrated) attributes[label] = value
         },
+        async inputValue() {
+          return values[label]
+        },
         async getAttribute() {
           hydrate()
           return attributes[label]
@@ -46,9 +49,24 @@ test('shared login retains the email when hydration occurs after the first fill'
       return { status: () => 200, ok: () => true }
     },
   }
-  const browserExpect = (target, message) => target === page
-    ? { async toHaveURL() {} }
-    : target.toBeVisible ? target : expect(target, message)
+  const browserExpect = (target, message) => {
+    if (target === page) return { async toHaveURL() {} }
+    if (typeof target === 'function') return {
+      async toPass() {
+        let error
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          try {
+            await target()
+            return
+          } catch (caught) {
+            error = caught
+          }
+        }
+        throw error
+      },
+    }
+    return target.toBeVisible ? target : expect(target, message)
+  }
   browserExpect.poll = expect.poll
   registerProductScenarios(register, browserExpect)
   await beforeEach({ page, account, entryURL: 'https://example.invalid/' })
