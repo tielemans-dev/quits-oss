@@ -64,7 +64,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
       seller.taxIds?.map(id => [id.scheme, id.value, id.countryCode ?? null]).sort(),
     ])
     vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
-    setRuntimeExtensions([{ id: "synthetic-identity-binding", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }),
+    setRuntimeExtensions([{ id: "synthetic-identity-binding", resolveCapabilities: () => ({ onboardingV2: { nonVatEnabled: true }, sellerVatConfirmation: { enabled: true } }),
       sellerVatConfirmation: {
         prepare: async ({ seller }) => ({ token: identity(seller) }),
         confirm: async ({ seller, token }) => { if (identity(seller) !== token) throw new TRPCError({ code: "CONFLICT", message: "Identity changed" }) },
