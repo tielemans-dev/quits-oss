@@ -141,7 +141,7 @@ describe('return after required organization flow', () => {
       state.checkSlug.mockResolvedValue({ data: { status: true } })
       renderPage(Onboarding)
       if (create) {
-        fireEvent.click(await screen.findByRole('button', { name: 'Enter manually' }))
+        if (cloud) fireEvent.click(await screen.findByRole('button', { name: 'Enter manually' }))
         const input = await screen.findByLabelText('Company name')
         fireEvent.change(input, { target: { value: 'New org' } })
         fireEvent.submit(screen.getByRole('button', { name: 'Create organization' }).closest('form')!)
@@ -158,9 +158,12 @@ describe('return after required organization flow', () => {
       state.list.mockResolvedValue({ data: create ? [] : orgs }); state.setActive.mockResolvedValue({ data: {} }); state.create.mockResolvedValue({ data: { id: 'org_1' } })
       state.checkSlug.mockResolvedValue({ data: { status: true } })
       renderPage(Onboarding, fallback)
-      expect(await screen.findByText(create ? (lang === 'da' ? 'Slå dit eget CVR op' : 'Look up your own CVR') : (lang === 'da' ? 'Vælg din organisation' : 'Choose your organization'))).toBeTruthy()
+      const creationTitle = cloud
+        ? (lang === 'da' ? 'Slå dit eget CVR op' : 'Look up your own CVR')
+        : (lang === 'da' ? 'Indtast virksomhedsnavnet' : 'Enter your company name')
+      expect(await screen.findByText(create ? creationTitle : (lang === 'da' ? 'Vælg din organisation' : 'Choose your organization'))).toBeTruthy()
       if (create) {
-        fireEvent.click(screen.getByRole('button', { name: lang === 'da' ? 'Indtast manuelt' : 'Enter manually' }))
+        if (cloud) fireEvent.click(screen.getByRole('button', { name: lang === 'da' ? 'Indtast manuelt' : 'Enter manually' }))
         fireEvent.change(await screen.findByLabelText(lang === 'da' ? 'Virksomhedsnavn' : 'Company name'), { target: { value: 'New org' } })
         fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Opret organisation' : 'Create organization' }).closest('form')!)
       } else fireEvent.click(await screen.findByText('Second org'))
