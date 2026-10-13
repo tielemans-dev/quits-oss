@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
+import { isOrganizationSlug } from "../../lib/organization-slug"
 import {
   type SettingsFormValidationError,
   validateSettingsFormInput,
@@ -63,6 +65,7 @@ import { useRequestOrganizationId } from "../../lib/active-organization"
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
   invalid_tax_rate: "settings.validation.invalidTaxRate",
+  invalid_payment_terms: "settings.validation.invalidPaymentTerms",
   invalid_company_email: "settings.validation.invalidCompanyEmail",
   invalid_company_phone: "settings.validation.invalidCompanyPhone",
   invalid_invoice_prefix: "settings.validation.invalidInvoicePrefix",
@@ -123,6 +126,8 @@ type SettingsData = {
   taxRegime: "us_sales_tax" | "eu_vat" | "custom"
   pricesIncludeTax: boolean
   currency: string
+  momsRegistered?: boolean | null
+  paymentTermsDays?: number
   taxRate: number | null
   companyName: string | null
   companyAddress: string | null
@@ -194,6 +199,7 @@ function SettingsPage() {
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
   const settingsFormId = useId()
+  const { isSelfHost } = useRuntimeDistribution()
   const { data: session } = useSession()
   const [settings, setSettings] = useState<SettingsData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -207,6 +213,10 @@ function SettingsPage() {
   const [defaultCurrency, setDefaultCurrency] = useState("USD")
   const [invoicingIdentity, setInvoicingIdentity] = useState<OnboardingInvoicingIdentity>("registered_business")
   const [taxRegime, setTaxRegime] = useState<"us_sales_tax" | "eu_vat" | "custom">("us_sales_tax")
+  const [momsRegistered, setMomsRegistered] = useState<boolean | null>(null)
+  const [taxRateInput, setTaxRateInput] = useState("")
+  const [paymentTermsDaysInput, setPaymentTermsDaysInput] = useState("14")
+  const [nonVatEnabled, setNonVatEnabled] = useState(false)
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
   const [primaryTaxId, setPrimaryTaxId] = useState("")
   const [primaryTaxIdScheme, setPrimaryTaxIdScheme] = useState("vat")
@@ -238,6 +248,11 @@ function SettingsPage() {
   const [documentSendingSuccess, setDocumentSendingSuccess] = useState<string | null>(null)
 
   // Team members state
+  const [organizationSlug, setOrganizationSlug] = useState("")
+  const [savedOrganizationSlug, setSavedOrganizationSlug] = useState<string | null>(null)
+  const [slugSaving, setSlugSaving] = useState(false)
+  const [slugSaved, setSlugSaved] = useState(false)
+  const [slugError, setSlugError] = useState<string | null>(null)
   const [members, setMembers] = useState<OrgMember[]>([])
   const [invitations, setInvitations] = useState<OrgInvitation[]>([])
   const [teamLoading, setTeamLoading] = useState(true)
@@ -257,6 +272,8 @@ function SettingsPage() {
     () => new Intl.DisplayNames([locale || "en-US"], { type: "language" }),
     [locale]
   )
+  const showVatStatus = countryCode.trim().toUpperCase() === "DK" && taxRegime === "eu_vat"
+  const nonVatDanishSeller = showVatStatus && momsRegistered === false
   const taxRules = getOnboardingRules({
     countryCode,
     invoicingIdentity,
@@ -278,6 +295,9 @@ function SettingsPage() {
         setInvoicingIdentity(
           nextSettings.onboardingInvoicingIdentity ?? "registered_business"
         )
+        setMomsRegistered(nextSettings.momsRegistered ?? null)
+        setPaymentTermsDaysInput(String(nextSettings.paymentTermsDays ?? 14))
+        setTaxRateInput(nextSettings.taxRate == null ? "" : String(nextSettings.taxRate))
         setTaxRegime(nextSettings.taxRegime)
         setPricesIncludeTax(nextSettings.pricesIncludeTax)
         setPrimaryTaxId(nextSettings.primaryTaxId ?? "")
@@ -316,9 +336,10 @@ function SettingsPage() {
   useEffect(() => {
     trpc.runtime.capabilities
       .query()
-      .then((data) =>
+      .then((data) => {
         setAiCapabilities((data as Pick<RuntimeCapabilities, "aiInvoiceDraft">).aiInvoiceDraft)
-      )
+        setNonVatEnabled(data.onboardingV2?.nonVatEnabled === true)
+      })
       .catch(() => {})
       .finally(() => setLoadingAiCapabilities(false))
   }, [])
@@ -371,6 +392,9 @@ function SettingsPage() {
     async function loadTeam() {
       const org = await authClient.organization.getFullOrganization()
       if (org.data) {
+        const slug = typeof org.data.slug === "string" ? org.data.slug : ""
+        setOrganizationSlug(slug)
+        setSavedOrganizationSlug(slug)
         setMembers((org.data.members ?? []) as OrgMember[])
         setInvitations(
           ((org.data.invitations ?? []) as OrgInvitation[]).filter(
@@ -421,7 +445,7 @@ function SettingsPage() {
 
     const form = new FormData(e.currentTarget)
     const timezoneInput = ((form.get("timezone") as string) || timezone).trim() || "UTC"
-    const taxRateRaw = ((form.get("taxRate") as string) || "").trim()
+    const taxRateRaw = nonVatDanishSeller ? "0" : ((form.get("taxRate") as string) || "").trim()
     const companyNameInput = ((form.get("companyName") as string) || "").trim()
     const companyAddressInput = ((form.get("companyAddress") as string) || "").trim()
     const companyEmailInput = ((form.get("companyEmail") as string) || "").trim()
@@ -463,6 +487,7 @@ function SettingsPage() {
     const formValidationError = validateSettingsFormInput({
       timezone: timezoneInput,
       taxRateRaw,
+      paymentTermsDaysRaw: paymentTermsDaysInput,
       companyEmail: companyEmailInput,
       companyPhone: companyPhoneInput,
       invoicePrefix: invoicePrefixInput,
@@ -476,6 +501,11 @@ function SettingsPage() {
       return
     }
 
+    const momsRegisteredUpdate = !showVatStatus && settings?.momsRegistered != null
+      ? null
+      : showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null)
+        ? momsRegistered
+        : undefined
     try {
       await trpc.settings.update.mutate({
         countryCode,
@@ -485,10 +515,12 @@ function SettingsPage() {
         baseCurrency,
         taxRegime,
         pricesIncludeTax,
+        momsRegistered: momsRegisteredUpdate,
         primaryTaxId: primaryTaxId || undefined,
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
+        paymentTermsDays: Number(paymentTermsDaysInput),
         companyName: companyNameInput || undefined,
         companyAddress: companyAddressInput || undefined,
         companyEmail: companyEmailInput || undefined,
@@ -513,6 +545,10 @@ function SettingsPage() {
         clearStripeSecretKey,
         clearStripeWebhookSecret,
       })
+      if (momsRegisteredUpdate !== undefined) {
+        setMomsRegistered(momsRegisteredUpdate)
+        setSettings(prev => prev ? { ...prev, momsRegistered: momsRegisteredUpdate } : prev)
+      }
       setTimezone(timezoneInput)
       const savedBaseUrl = aiProvider === "openai_compatible" ? aiBaseUrlInput || null : settings?.aiBaseUrl ?? null
       // The server drops the saved key when the provider or endpoint changes without a new key.
@@ -555,6 +591,27 @@ function SettingsPage() {
       )
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function saveOrganizationSlug() {
+    const slug = organizationSlug.trim()
+    setSlugSaved(false)
+    setSlugError(null)
+    if (!isOrganizationSlug(slug)) {
+      setSlugError(t("settings.organizationSlug.invalid"))
+      return
+    }
+    setSlugSaving(true)
+    try {
+      const updated = await authClient.organization.update({ data: { slug } })
+      if (updated.error) throw new Error(updated.error.message ?? t("settings.error.saveFailed"))
+      setSavedOrganizationSlug(slug)
+      setSlugSaved(true)
+    } catch (err) {
+      setSlugError(err instanceof Error ? err.message : t("settings.error.saveFailed"))
+    } finally {
+      setSlugSaving(false)
     }
   }
 
@@ -752,6 +809,19 @@ function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
+            {showVatStatus ? (
+              <fieldset className="grid gap-2" disabled={saving}>
+                <legend className="text-sm font-medium">{t("settings.vatStatus.question")}</legend>
+                {[true, false].map(value => (
+                  <label key={String(value)} className="flex items-center gap-2">
+                    <input type="radio" form={settingsFormId} name="momsRegistered" checked={momsRegistered === value}
+                      disabled={!value && !isSelfHost && !nonVatEnabled}
+                      onChange={() => { setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false) }} />
+                    {t(value ? "settings.vatStatus.registered" : "settings.vatStatus.notRegistered")}
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="companyName">{t("settings.companyName.label")}</Label>
               <Input
@@ -762,6 +832,25 @@ function SettingsPage() {
                 placeholder={t("settings.companyName.placeholder")}
                 defaultValue={settings.companyName ?? ""}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="organizationSlug">{t("settings.organizationSlug.label")}</Label>
+              <Input
+                id="organizationSlug"
+                name="organizationSlug"
+                value={organizationSlug}
+                maxLength={48}
+                spellCheck={false}
+                placeholder={t("settings.organizationSlug.placeholder")}
+                onChange={(event) => { setOrganizationSlug(event.target.value); setSlugSaved(false); setSlugError(null) }}
+              />
+              <p className="text-xs text-muted-foreground">{t("settings.organizationSlug.help")}</p>
+              <Button type="button" variant="outline" disabled={slugSaving || savedOrganizationSlug === null || organizationSlug.trim() === savedOrganizationSlug} onClick={() => void saveOrganizationSlug()}>
+                {t("settings.organizationSlug.save")}
+              </Button>
+              {slugSaved && <p role="status">{t("settings.organizationSlug.saved")}</p>}
+              {slugError && <p role="alert" className="text-sm text-destructive">{slugError}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -952,17 +1041,17 @@ function SettingsPage() {
               <div className="grid gap-2">
                 {taxRules.showPrimaryTaxId ? (
                   <>
-                    <Label htmlFor="primaryTaxId">{taxRules.primaryTaxIdCopy.label}</Label>
+                    <Label htmlFor="primaryTaxId">{nonVatDanishSeller ? t("settings.vatStatus.cvrLabel") : taxRules.primaryTaxIdCopy.label}</Label>
                     <Input
                       id="primaryTaxId"
                       name="primaryTaxId"
                       maxLength={40}
-                      placeholder={taxRules.primaryTaxIdCopy.label}
+                      placeholder={nonVatDanishSeller ? t("settings.vatStatus.cvrLabel") : taxRules.primaryTaxIdCopy.label}
                       value={primaryTaxId}
                       onChange={(event) => setPrimaryTaxId(event.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      {taxRules.primaryTaxIdCopy.help}
+                      {nonVatDanishSeller ? t("settings.vatStatus.cvrHelp") : taxRules.primaryTaxIdCopy.help}
                     </p>
                   </>
                 ) : (
@@ -1027,6 +1116,12 @@ function SettingsPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
+                <Label htmlFor="paymentTermsDays">{t("settings.paymentTermsDays.label")}</Label>
+                <Input id="paymentTermsDays" name="paymentTermsDays" type="number" min="0" max="3650" step="1"
+                  value={paymentTermsDaysInput} onChange={event => setPaymentTermsDaysInput(event.target.value)} />
+                <p className="text-sm text-muted-foreground">{t("settings.paymentTermsDays.hint")}</p>
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="taxRate">{t("settings.taxRate.label")}</Label>
                 <Input
                   id="taxRate"
@@ -1036,7 +1131,9 @@ function SettingsPage() {
                   min="0"
                   max="100"
                   placeholder="0.00"
-                  defaultValue={settings.taxRate ?? ""}
+                  value={nonVatDanishSeller ? "0" : taxRateInput}
+                  disabled={nonVatDanishSeller}
+                  onChange={event => setTaxRateInput(event.target.value)}
                 />
               </div>
             </div>

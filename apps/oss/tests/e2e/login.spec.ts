@@ -36,6 +36,7 @@ test("blocks organization deletion through the authenticated browser API and kee
 })
 
 test("lets a new user sign up and continue to onboarding", async ({ page }) => {
+  const cloud = process.env.QUITS_DISTRIBUTION === "cloud"
   await seedCompletedSetup()
 
   await page.goto("/signup")
@@ -46,20 +47,26 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   await page.getByRole("button", { name: "Create account" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("Create your organization")).toBeVisible()
+  await waitForClientReady(page)
+  await expect(page.getByText(cloud ? "Look up your own CVR" : "Enter your company name")).toBeVisible()
+  await expect(page.getByLabel("Slug")).toHaveCount(0)
 
-  // No organization has supplied a locale. The raw response stays English, then the sole
-  // language owner detects this browser's Danish preference after hydration.
+  // No organization yet: the sidebar and its switcher stay off the page. The raw response
+  // stays English with a pending app placeholder; the rendered page detects Danish.
   await page.addInitScript(() => Object.defineProperty(navigator, "language", { get: () => "da-DK" }))
   const response = await page.reload()
   expect(response!.ok()).toBe(true)
   const serverHtml = await response!.text()
   expect(serverHtml).toMatch(/<html\b[^>]*\blang="en"/)
-  expect(serverHtml).toContain(">Invoices<")
+  expect(serverHtml).not.toContain(">Invoices<")
   expect(serverHtml).not.toContain(">Fakturaer<")
+  expect(serverHtml).not.toContain("Switch organization")
+  expect(serverHtml).not.toContain("Skift organisation")
   await waitForClientReady(page)
   await expect(page.locator("html")).toHaveAttribute("lang", "da")
-  await expect(page.getByText("Opret din organisation", { exact: true })).toBeVisible()
+  await expect(page.getByText(cloud ? "Slå dit eget CVR op" : "Indtast virksomhedsnavnet", { exact: true })).toBeVisible()
+  if (cloud) await expect(page.getByRole("button", { name: "Indtast manuelt" })).toBeVisible()
+  else await expect(page.getByRole("button", { name: "Indtast manuelt" })).toHaveCount(0)
 })
 
 test("shows adaptive cloud onboarding after organization creation", async ({ page }) => {
@@ -75,8 +82,8 @@ test("shows adaptive cloud onboarding after organization creation", async ({ pag
   await page.getByRole("button", { name: "Create account" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await page.getByLabel("Organization name").fill("Nordic Advisory")
-  await page.getByLabel("Slug").fill("nordic-advisory")
+  await page.getByRole("button", { name: "Enter manually" }).click()
+  await page.getByLabel("Company name").fill("Nordic Advisory")
   await page.getByRole("button", { name: "Create organization" }).click()
 
   await expect(page.getByText("Finish organization setup")).toBeVisible()

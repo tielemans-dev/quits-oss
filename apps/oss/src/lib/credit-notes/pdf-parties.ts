@@ -52,14 +52,18 @@ export type CreditNotePdfBuyer = {
   taxIds: string[]
 }
 
-const VAT_SCHEMES = new Set(["vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
+const VAT_SCHEMES = new Set(["vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
+
+function normalizeTaxIdScheme(scheme: DocumentTaxId["scheme"]) {
+  return scheme?.trim().toLowerCase() ?? ""
+}
 
 function formatTaxIds(taxIds: readonly DocumentTaxId[] | undefined, locale: string | null | undefined) {
   return (taxIds ?? []).flatMap((taxId) => {
     const value = taxId.value.trim()
     if (!value) return []
     const scheme = taxId.scheme?.trim() ?? ""
-    const normalized = scheme.toLowerCase()
+    const normalized = normalizeTaxIdScheme(taxId.scheme)
     const label = VAT_SCHEMES.has(normalized)
       ? translate("creditNotes.pdf.vatNumber", locale)
       : normalized === "cvr"
@@ -84,7 +88,9 @@ export function creditNotePdfParties(
         name: sellerSnapshot.companyName || org.companyName || "Quits",
         email: sellerSnapshot.companyEmail ?? null,
         address: sellerSnapshot.companyAddress ?? null,
-        taxIds: formatTaxIds(sellerSnapshot.taxIds, locale),
+        taxIds: formatTaxIds(sellerSnapshot.momsRegistered === false
+          ? sellerSnapshot.taxIds?.filter(id => !VAT_SCHEMES.has(normalizeTaxIdScheme(id.scheme)))
+          : sellerSnapshot.taxIds, locale),
         phone: org.companyPhone ?? null,
         logo: canRenderLogo(org.companyLogo) ? org.companyLogo : null,
       }

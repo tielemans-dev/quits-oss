@@ -5,7 +5,8 @@ import { vatRowsByRate } from "./frozen-vat-groups"
 import { documentVatSummary } from "./vat-summary"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { formatIsoDate } from "../../lib/exports/format"
-import { requireVatIssuance } from "./vat-issuance"
+import { withNonVatStatement } from "../../lib/documents/non-vat-note"
+import { requireSellerVatRegistration, requireVatIssuance } from "./vat-issuance"
 import { toDecimal } from "../../lib/exports/format"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { invoiceMoneySnapshot, creditMoneySnapshot, type InvoiceMoneySnapshot } from "./money-snapshot"
@@ -17,12 +18,13 @@ import type { CreditNoteForPdf } from "../../lib/credit-note-pdf"
 import type { AgreementPdfInput } from "../../lib/agreement-pdf"
 import { buildOfferSnapshot, canonicalizeOffer, hashOfferSnapshot } from "../agreements/snapshot"
 import { creditNoteIssueInputSchema } from "@quits/contracts/credit-notes"
-import { buildBuyerSnapshot, buildSellerSnapshot, withInvoicePaymentDetails, withoutPaymentDetails } from "./snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, buildInvoiceSellerSnapshot, withInvoicePaymentDetails, withoutPaymentDetails } from "./snapshots"
 import { loadDocumentContext } from "./context"
 import { priceCreditNote } from "./credit-pricing"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { issuedNumber } from "./numbering"
+import { translate } from "../../lib/i18n/translate"
 
 type InvoiceForPdf = import("react").ComponentProps<typeof InvoicePdfDocument>["invoice"]
 
@@ -85,8 +87,8 @@ export const prospectiveRenderInput = (input: {
     // Payment details are always the ones valid now, also for agreement invoices, which keep the
     // agreed seller identity but are paid to the account in force when they are issued.
     const seller = withInvoicePaymentDetails(
-      (invoice.agreementId || invoice.quoteId) ? parseSellerSnapshot(invoice.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds),
-      settings
+      buildInvoiceSellerSnapshot(invoice, settings, sellerTaxIds),
+      settings, invoice.locale
     )
     const refreshedBuyer = buildBuyerSnapshot(invoice.contact)
     const buyer = (invoice.agreementId || invoice.quoteId) ? parseBuyerSnapshot(invoice.buyerSnapshot) ?? {} : refreshedBuyer
@@ -118,13 +120,15 @@ export const prospectiveRenderInput = (input: {
         return { description: line.description, quantity: num(line.quantity), unitPrice: num(shown.unitPrice), total: num(shown.amount) } }),
     }
     return { ...base, kind: "invoice" as const, recipient: invoice.contact.email?.trim() || null,
-      ...(money ? { ubl: frozenEinvoiceInput({ kind: "invoice", money, contact: invoice.contact, countryCode: invoice.countryCode, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
+      ...(money ? { ubl: frozenEinvoiceInput({ kind: "invoice", money, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
       snapshot: { ...(money ? { money } : {}), purpose: invoice.purpose, agreementId: invoice.agreementId, seller, buyer: pdfInvoice.contact,
         invoice: pdfInvoice, items: invoice.items, supplyDate: invoice.supplyDate,
         pricesIncludeTax: invoice.pricesIncludeTax, countryCode: invoice.countryCode,
         taxRegime: invoice.taxRegime, paymentReference: invoice.paymentReference,
         purchaseOrderRef: invoice.purchaseOrderRef },
-      pdf: { invoice: pdfInvoice, org: { ...org, companyName: seller.companyName, companyEmail: seller.companyEmail, companyAddress: seller.companyAddress, taxIds: seller.taxIds, locale: invoice.locale, timezone: invoice.timezone } } }
+      pdf: { invoice: pdfInvoice, org: { ...org, companyName: seller.companyName, companyEmail: seller.companyEmail, companyAddress: seller.companyAddress, taxIds: seller.taxIds, locale: invoice.locale, timezone: invoice.timezone,
+        ...(seller.momsRegistered === false ? { cvrLabel: translate("creditNotes.pdf.cvrNumber", invoice.locale) } : {}),
+      } } }
   }
   if (input.kind === "creditNote") {
     const selection = creditNoteIssueInputSchema.parse(input.commandInput)
@@ -145,7 +149,7 @@ export const prospectiveRenderInput = (input: {
       vatRowsByRate((built.creditedGroups ?? []).map(group => ({ rate: group.original.rate, net: group.creditedNet, tax: group.creditedTax, gross: group.creditedGross })), invoice.currency))
     const creditVatSummary = { ...(creditSummary.vatRows ? { vatRows: creditSummary.vatRows } : {}), rounding: creditSummary.rounding }
     const creditNote: CreditNoteForPdf = {
-      number: input.number, issueDate: base.issuedAt, reason: selection.reason,
+      number: input.number, issueDate: base.issuedAt, reason: withNonVatStatement(selection.reason, money.seller.momsRegistered, invoice.locale) ?? selection.reason,
       subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
       currency: invoice.currency, locale: invoice.locale, timezone: invoice.timezone,
       sellerSnapshot, buyerSnapshot, contact: { ...buildBuyerSnapshot(invoice.contact), name: invoice.contact.name },
@@ -158,7 +162,7 @@ export const prospectiveRenderInput = (input: {
     }
     return { ...base, kind: "creditNote" as const, recipient: null,
       selectionFingerprint: createHash("sha256").update(canonicalizeOffer(selection)).digest("hex"),
-      ubl: frozenEinvoiceInput({ kind: "creditNote", money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) }),
+      ubl: frozenEinvoiceInput({ kind: "creditNote", money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) }),
       snapshot: { money, sellerSnapshot, buyerSnapshot, built, invoiceId: invoice.id,
         currency: invoice.currency, countryCode: invoice.countryCode, locale: invoice.locale,
         timezone: invoice.timezone, taxRegime: invoice.taxRegime, pricesIncludeTax: invoice.pricesIncludeTax },
@@ -172,8 +176,10 @@ export const prospectiveRenderInput = (input: {
   if (!input.preview) yield* requireDepositsEnabled(agreement.deliverables)
   const commandInput = input.commandInput as { recipient?: string }
   const recipient = input.method === "manual" ? commandInput.recipient ?? null : agreement.contact.email?.trim() || null
+  const sellerSnapshot = buildSellerSnapshot(settings, sellerTaxIds)
+  if (!input.preview) yield* requireSellerVatRegistration({ sellerSnapshot, totalTax: agreement.totalTax, items: agreement.deliverables })
   const snapshot = buildOfferSnapshot({ ...agreement,
-    sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds), buyerSnapshot: buildBuyerSnapshot(agreement.contact) })
+    sellerSnapshot, buyerSnapshot: buildBuyerSnapshot(agreement.contact) })
   // The offer's issuance date remains unchanged on an unchanged retry, just as before A3a.
   const issuedAt = agreement.offerSnapshotHash === hashOfferSnapshot(snapshot) && agreement.issuedToEmail === recipient
     ? agreement.issueDate?.toISOString() ?? base.issuedAt : base.issuedAt

@@ -1,18 +1,30 @@
-import type { BuyerSnapshot, SellerSnapshot } from "@quits/contracts/documents"
+import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
+import { parseSellerSnapshot, type BuyerSnapshot, type SellerSnapshot } from "@quits/contracts/documents"
 import type { TaxId } from "../../lib/compliance"
 import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../../lib/payment-details"
 
 export function buildSellerSnapshot(
-  settings: { countryCode?: string | null; companyName: string | null; companyEmail: string | null; companyAddress: string | null },
+  settings: { momsRegistered?: boolean | null; countryCode?: string | null; companyName: string | null; companyEmail: string | null; companyAddress: string | null },
   taxIds: TaxId[]
 ): SellerSnapshot {
   return {
+    ...(settings.momsRegistered != null ? { momsRegistered: settings.momsRegistered } : {}),
     ...(settings.countryCode ? { countryCode: settings.countryCode } : {}),
     companyName: settings.companyName ?? null,
     companyEmail: settings.companyEmail ?? null,
     companyAddress: settings.companyAddress ?? null,
     taxIds,
   }
+}
+
+/** A linked draft retains agreed identity, but registration is rechecked at invoice issuance. */
+export function buildInvoiceSellerSnapshot(
+  invoice: { agreementId?: string | null; quoteId?: string | null; sellerSnapshot: unknown },
+  settings: Parameters<typeof buildSellerSnapshot>[0],
+  taxIds: TaxId[]
+): SellerSnapshot {
+  if (!invoice.agreementId && !invoice.quoteId) return buildSellerSnapshot(settings, taxIds)
+  return { ...parseSellerSnapshot(invoice.sellerSnapshot), momsRegistered: settings.momsRegistered ?? null }
 }
 
 /**
@@ -23,10 +35,11 @@ export function buildSellerSnapshot(
  */
 export function withInvoicePaymentDetails<T extends SellerSnapshot>(
   seller: T,
-  settings: Partial<PaymentDetailsColumns>
+  settings: Partial<PaymentDetailsColumns>,
+  locale?: string | null
 ): T {
   const { bankAccount: _account, paymentNote: _note, ...rest } = seller
-  return { ...rest, ...paymentSnapshotFromColumns(settings) } as T
+  return { ...rest, ...paymentSnapshotFromColumns({ ...settings, paymentNote: localizedNonVatPaymentNote(settings.paymentNote, seller.momsRegistered, locale) ?? null }) } as T
 }
 
 /**

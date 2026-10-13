@@ -13,6 +13,8 @@ import { NoopBillingProvider } from "../billing/noop-provider"
 import type { BillingProvider } from "../billing/types"
 import type { DocumentSendingDomainRecord, DocumentSendingDomainStatus } from "../document-email-sending"
 import { suggestOnboardingPatchHeuristically } from "../onboarding/ai-fallback"
+import type { CvrLookupProvider } from "../onboarding/search-cvr"
+export type { CvrLookupCompany, CvrLookupContext, CvrLookupProvider } from "../onboarding/search-cvr"
 
 export type OnboardingAiSuggestInput = {
   userMessage: string
@@ -63,6 +65,8 @@ export type DocumentArtifactStore = {
 }
 
 export type RuntimeServices = {
+  /** Hosted CVR lookup. Absent in self-hosted installs and until the hosted runtime registers one. */
+  cvrLookupProvider?: CvrLookupProvider
   operationPolicy?: OperationPolicy
   documentRenderer?: DocumentRenderer
   documentArtifactStore?: DocumentArtifactStore
@@ -122,4 +126,8 @@ export function getDocumentArtifactStore() { return runtimeServices.documentArti
 
 export function getManagedAiProvider(): AiProvider | undefined {
   return runtimeServices.managedAiProvider
+}
+
+export function getCvrLookupProvider(): CvrLookupProvider | undefined {
+  return runtimeServices.cvrLookupProvider
 }

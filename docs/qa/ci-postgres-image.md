@@ -8,8 +8,9 @@ The ordinary browser smoke job uses verify's service database.
 
 Anonymous Docker Hub pulls returned `toomanyrequests` before tests. This correction removes that
 Docker Hub quota dependency without credentials or a harness API change. ECR Public has its own
-availability and anonymous quotas; acquisition failure still fails CI. No database assertion or
-browser scenario is skipped. Development and production Docker configuration remain unchanged.
+availability and anonymous quotas. The shared browser job retries the same pinned pull when that
+quota rejects it, and acquisition failure still fails CI after those retries. No database assertion
+or browser scenario is skipped. Development and production Docker configuration remain unchanged.
 
 ## Provenance and pin
 

@@ -7,6 +7,7 @@ import { loginReturnDestination, loginReturnOnboarding, loginReturnSearchSchema,
 const state = vi.hoisted(() => ({
   search: {} as Record<string, string>, cloud: false, active: false,
   load: vi.fn(), navigate: vi.fn(), signIn: vi.fn(), list: vi.fn(), setActive: vi.fn(), create: vi.fn(),
+  checkSlug: vi.fn(), searchCvr: vi.fn(),
   status: vi.fn(), complete: vi.fn(), draft: vi.fn(),
 }))
 vi.mock('@tanstack/react-router', () => ({
@@ -20,11 +21,11 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('../../lib/page-navigation', () => ({ loadPage: state.load }))
 vi.mock('../../lib/runtime-distribution', () => ({ useRuntimeDistribution: () => ({ isCloud: state.cloud }) }))
 vi.mock('../../lib/auth-client', () => ({
-  authClient: { signIn: { email: state.signIn }, organization: { list: state.list, setActive: state.setActive, create: state.create } },
+  authClient: { signIn: { email: state.signIn }, organization: { list: state.list, setActive: state.setActive, create: state.create, checkSlug: state.checkSlug } },
   useSession: () => ({ data: { session: { activeOrganizationId: state.active ? 'org_1' : null } } }),
 }))
 vi.mock('../../trpc/client', () => ({ trpc: {
-  onboarding: { getStatus: { query: state.status }, saveDraft: { mutate: state.draft }, completeManual: { mutate: state.complete } },
+  onboarding: { getStatus: { query: state.status }, saveDraft: { mutate: state.draft }, completeManual: { mutate: state.complete }, searchCvr: { query: state.searchCvr } },
   runtime: { capabilities: { query: async () => ({ onboardingAi: { enabled: false } }) } },
 } }))
 import { Route as LoginRoute } from '../login'
@@ -137,9 +138,11 @@ describe('return after required organization flow', () => {
     it(`returns after ${create ? 'create' : 'choose'} in ${cloud ? 'cloud' : 'selfhost'}, retaining cloud setup`, async () => {
       state.cloud = cloud; state.search = { next: '/hosted/account?tab=vat', lang: 'en' }
       state.list.mockResolvedValue({ data: create ? [] : orgs }); state.setActive.mockResolvedValue({ data: {} }); state.create.mockResolvedValue({ data: { id: 'org_1' } })
+      state.checkSlug.mockResolvedValue({ data: { status: true } })
       renderPage(Onboarding)
       if (create) {
-        const input = await screen.findByLabelText('Organization name')
+        if (cloud) fireEvent.click(await screen.findByRole('button', { name: 'Enter manually' }))
+        const input = await screen.findByLabelText('Company name')
         fireEvent.change(input, { target: { value: 'New org' } })
         fireEvent.submit(screen.getByRole('button', { name: 'Create organization' }).closest('form')!)
       } else fireEvent.click(await screen.findByText('Second org'))
@@ -153,21 +156,54 @@ describe('return after required organization flow', () => {
       vi.spyOn(window.navigator, 'language', 'get').mockReturnValue(fallback)
       state.cloud = cloud; state.search = { next: '/hosted/account?tab=vat', lang }
       state.list.mockResolvedValue({ data: create ? [] : orgs }); state.setActive.mockResolvedValue({ data: {} }); state.create.mockResolvedValue({ data: { id: 'org_1' } })
+      state.checkSlug.mockResolvedValue({ data: { status: true } })
       renderPage(Onboarding, fallback)
-      expect(await screen.findByText(create ? (lang === 'da' ? 'Opret din organisation' : 'Create your organization') : (lang === 'da' ? 'Vælg din organisation' : 'Choose your organization'))).toBeTruthy()
+      const creationTitle = cloud
+        ? (lang === 'da' ? 'Slå dit eget CVR op' : 'Look up your own CVR')
+        : (lang === 'da' ? 'Indtast virksomhedsnavnet' : 'Enter your company name')
+      expect(await screen.findByText(create ? creationTitle : (lang === 'da' ? 'Vælg din organisation' : 'Choose your organization'))).toBeTruthy()
       if (create) {
-        fireEvent.change(await screen.findByLabelText(lang === 'da' ? 'Organisationsnavn' : 'Organization name'), { target: { value: 'New org' } })
+        if (cloud) fireEvent.click(screen.getByRole('button', { name: lang === 'da' ? 'Indtast manuelt' : 'Enter manually' }))
+        fireEvent.change(await screen.findByLabelText(lang === 'da' ? 'Virksomhedsnavn' : 'Company name'), { target: { value: 'New org' } })
         fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Opret organisation' : 'Create organization' }).closest('form')!)
       } else fireEvent.click(await screen.findByText('Second org'))
       await waitFor(() => expect(state.load).toHaveBeenCalledWith(cloud ? loginReturnOnboarding(state.search) : `/hosted/account?tab=vat&lang=${lang}`))
     })
   }
+  it('creates the organization from the confirmed CVR company and skips people who already have one', async () => {
+    state.cloud = true
+    state.list.mockResolvedValue({ data: [] })
+    state.checkSlug.mockImplementation(async ({ slug }: { slug: string }) => ({ data: { status: slug !== 'nordlys-studio-aps' } }))
+    state.create.mockResolvedValue({ data: { id: 'org_1' } })
+    state.setActive.mockResolvedValue({ data: {} })
+    state.searchCvr.mockResolvedValue({
+      available: true,
+      companies: [{ cvr: '12345678', name: 'Nordlys Studio ApS', address: 'Vestergade 1' }],
+    })
+    renderPage(Onboarding)
+    expect(screen.queryByLabelText('Slug')).toBeNull()
+    fireEvent.change(await screen.findByLabelText('Company name or CVR'), { target: { value: 'Nordlys' } })
+    expect(screen.getByRole('button', { name: 'Look up' }).closest('form')?.className).toContain('gap-6')
+    fireEvent.click(screen.getByRole('button', { name: 'Look up' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Use Nordlys Studio ApS/ }))
+    await waitFor(() => expect(state.create).toHaveBeenCalledWith({ name: 'Nordlys Studio ApS', slug: 'nordlys-studio-aps-2' }))
+    expect(state.load).toHaveBeenCalledWith('/')
+
+    cleanup()
+    state.list.mockResolvedValue({ data: orgs })
+    renderPage(Onboarding)
+    expect(await screen.findByText('Choose your organization')).toBeTruthy()
+    expect(screen.queryByText('Look up your own CVR')).toBeNull()
+  })
   it('resumes after completing required cloud setup', async () => {
     state.cloud = true; state.active = true; state.search = { next: '/hosted/account?tab=vat', lang: 'da' }
     state.status.mockResolvedValue({ isComplete: false, missing: [] }); state.draft.mockResolvedValue({ missing: [] }); state.complete.mockResolvedValue({})
     renderPage(Onboarding)
-    await waitFor(() => expect(screen.queryByText('Loading onboarding state…')).toBeNull())
-    fireEvent.submit(screen.getByRole('button', { name: 'Finish onboarding' }).closest('form')!)
+    await waitFor(() => expect(screen.queryByText('Indlæser opsætning…')).toBeNull())
+    fireEvent.change(screen.getByLabelText('Virksomhedsnavn'), { target: { value: 'Return target ApS' } })
+    fireEvent.change(screen.getByLabelText('Adresse'), { target: { value: 'Testvej 1, 2100 København' } })
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'billing@example.test' } })
+    fireEvent.submit(screen.getByRole('button', { name: 'Afslut opsætning' }).closest('form')!)
     await waitFor(() => expect(state.load).toHaveBeenCalledWith('/hosted/account?tab=vat&lang=da'))
     expect(state.complete).toHaveBeenCalledWith({ method: 'manual' })
   })

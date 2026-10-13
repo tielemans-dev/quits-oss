@@ -211,6 +211,13 @@ describe("party normalization", () => {
     expect(vatIdentifier([{ scheme: "vat", value: "123456789" }], "GR")).toBe("EL123456789")
     expect(vatIdentifier([{ scheme: "ein", value: "12-3456789" }], "US")).toBeNull()
     expect(vatIdentifier([{ scheme: "vat", value: "12345678" }], null)).toBeNull()
+    const primary = { scheme: "cvr", value: "87654321", countryCode: "DK", isPrimary: true }
+    const obsolete = { scheme: "vat", value: "DK24256790", countryCode: "DK", isPrimary: false }
+    const foreign = { scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }
+    expect(vatIdentifier([foreign, obsolete, primary], "DK")).toBe("DK87654321")
+    expect(vatIdentifier([primary, foreign, obsolete], "DK")).toBe("DK87654321")
+    expect(vatIdentifier([{ scheme: "DK_VAT", value: "DK87654321", countryCode: "DK", isPrimary: true }, foreign], "DK")).toBe("DK87654321")
+    expect(vatIdentifier([{ scheme: "DK_VAT", value: "24256790", countryCode: null }], "DE")).toBe("DK24256790")
   })
 
   it("derives Peppol electronic addresses", () => {
