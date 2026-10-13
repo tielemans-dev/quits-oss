@@ -21,7 +21,10 @@ test.afterAll(async () => {
   await writeFile(resolve(captureDir, "manifest.json"), JSON.stringify({
     applicationSha: process.env.ONB121_HEAD,
     run: process.env.ONB121_RUN_URL,
-    provenance: "Real OSS app in cloud distribution, disposable CI PostgreSQL, synthetic setup admin, real login and onboarding RPCs. Saved locale override only after asserting fresh Danish defaults. V2 capability disabled; legacy manual onboarding shown.",
+    provenance: "Real OSS app in cloud distribution, disposable CI PostgreSQL, synthetic setup admin, real login and onboarding RPCs. Danish UI defaults verified while settings are absent; explicit Danish settings fixture then created for each locale capture. Defaults are not claimed to be persisted by the first read. V2 capability disabled; legacy manual onboarding shown. Completion persisted values verified through real RPCs.",
+    onboardingMode: "legacy-manual-v2-off",
+    initialSettingsPersisted: false,
+    localeFixture: "explicit-danish-profile-after-absent-settings-assertions",
     images,
   }, null, 2))
 })
@@ -32,7 +35,8 @@ for (const locale of ["da-DK", "en-US"]) {
       await resetDatabase()
       const setup = await seedCompletedSetup()
       await prisma.organization.update({ where: { id: setup.organizationId }, data: { subscriptionStatus: "pro" } })
-      // Remove installation defaults: exercise onboarding's actual first-read creation.
+      // Remove installation defaults: verify the UI's absent-settings defaults without
+      // assuming that reading the onboarding screen creates a settings record.
       await prisma.orgSettings.delete({ where: { organizationId: setup.organizationId } })
       // The shared login helper uses English labels. The authenticated app's saved locale
       // controls each capture, as in the existing quote evidence harness.
@@ -41,18 +45,42 @@ for (const locale of ["da-DK", "en-US"]) {
         const page = await context.newPage()
         await loginAsAdmin(page)
         await expect(page).toHaveURL(/\/onboarding/)
-        await expect(page.getByLabel("Country", { exact: true })).toHaveValue("DK")
-        await expect(page.getByLabel("Default currency")).toHaveValue("DKK")
-        await expect(page.getByLabel("Tax setup")).toHaveValue("eu_vat")
-        const initial = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: setup.organizationId } })
-        expect(initial).toMatchObject({ countryCode: "DK", defaultCurrency: "DKK", baseCurrency: "DKK", currency: "DKK", taxRegime: "eu_vat" })
-        await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { locale } })
+        // These IDs are linked to the actual labels in the legacy form. Several labels
+        // remain English even with html lang="da"; do not invent localized label text.
+        const assertDanishDefaults = async () => {
+          await expect(page.locator("#countryCode")).toHaveValue("DK")
+          await expect(page.locator("#defaultCurrency")).toHaveValue("DKK")
+          await expect(page.locator("#taxRegime")).toHaveValue("eu_vat")
+        }
+        await assertDanishDefaults()
+        await expect(page.getByRole("alert")).toHaveCount(0)
+        expect(await prisma.orgSettings.findUnique({ where: { organizationId: setup.organizationId } })).toBeNull()
+        // Locale capture needs a saved locale. Seed all Danish profile fields explicitly
+        // instead of inheriting the schema's US/USD defaults or claiming app persistence.
+        await prisma.orgSettings.create({ data: {
+          organizationId: setup.organizationId,
+          countryCode: "DK",
+          locale,
+          timezone: "Europe/Copenhagen",
+          defaultCurrency: "DKK",
+          baseCurrency: "DKK",
+          currency: "DKK",
+          taxRegime: "eu_vat",
+          taxRate: 25,
+          pricesIncludeTax: false,
+          paymentTermsDays: 14,
+          invoicePrefix: "INV",
+          quotePrefix: "QTE",
+          onboardingInvoicingIdentity: "registered_business",
+        } })
         await page.reload()
         await waitForClientReady(page)
         await expect(page.locator("html")).toHaveAttribute("lang", locale.startsWith("da") ? "da" : "en")
-        await expect(page.getByLabel("Country", { exact: true })).toHaveValue("DK")
-        await expect(page.getByLabel("Default currency")).toHaveValue("DKK")
-        await expect(page.getByLabel("Tax setup")).toHaveValue("eu_vat")
+        await assertDanishDefaults()
+        await expect(page.locator("#locale")).toHaveValue(locale)
+        const finish = page.locator('form button[type="submit"]')
+        await expect(finish).toHaveAccessibleName("Finish onboarding")
+        await expect(finish).toBeEnabled()
         await expect(page.getByRole("alert")).toHaveCount(0)
         const capture = async (state: string) => {
           const file = `${locale}-${width}-${state}.png`
@@ -64,19 +92,24 @@ for (const locale of ["da-DK", "en-US"]) {
           ? "Udfyld virksomhedsnavn, adresse og e-mail for at fortsætte."
           : "Fill in company name, address and email to continue."
         await capture("fresh-initial")
-        await page.getByLabel("Company name").fill("Synthetic Onboarding ApS")
+        await page.locator("#companyName").fill("Synthetic Onboarding ApS")
         await expect(page.getByRole("alert")).toHaveCount(0)
-        await page.getByRole("button", { name: "Finish onboarding", exact: true }).click()
+        await finish.click()
         await expect(page.getByRole("alert")).toHaveText(message)
         await capture("invalid-submit")
-        await page.getByLabel("Company address").fill("Example street 1, 1000 Copenhagen")
-        await page.getByLabel("Billing email").fill("billing@example.test")
-        await page.getByLabel("VAT/CVR number").fill("24256790")
+        await page.locator("#companyAddress").fill("Example street 1, 1000 Copenhagen")
+        await page.locator("#companyEmail").fill("billing@example.test")
+        await page.locator("#primaryTaxId").fill("24256790")
         await expect(page.getByRole("alert")).toHaveCount(0)
-        await page.getByRole("button", { name: "Finish onboarding", exact: true }).click()
+        await finish.click()
         await page.waitForURL(url => url.pathname === "/")
         const completed = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: setup.organizationId } })
-        expect(completed).toMatchObject({ onboardingStatus: "complete", countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", locale })
+        expect(completed).toMatchObject({
+          onboardingStatus: "complete", onboardingMethod: "manual", countryCode: "DK",
+          defaultCurrency: "DKK", baseCurrency: "DKK", currency: "DKK", taxRegime: "eu_vat", locale,
+          companyName: "Synthetic Onboarding ApS", companyAddress: "Example street 1, 1000 Copenhagen",
+          companyEmail: "billing@example.test",
+        })
       } finally {
         await context.close()
       }
