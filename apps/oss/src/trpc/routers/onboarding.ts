@@ -1,5 +1,6 @@
 import type { Prisma } from "../../../generated/prisma/client"
 import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
+import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
 import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { confirmOnboardingV2 } from "../../lib/onboarding/confirm-v2"
@@ -101,7 +102,9 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
       bankAccountNumber: true,
       bankIban: true,
     } as const
-  const settings = getRuntimeCapabilities().onboardingV2?.enabled
+  const v2Enabled = getRuntimeCapabilities().onboardingV2?.enabled
+  if (!v2Enabled) await initializeDkSettings(organizationId, db)
+  const settings = v2Enabled
     ? await db.orgSettings.findUnique({ where: { organizationId }, select }) ?? {
       ...buildDkSettingsDefaults(),
       organizationId,
@@ -118,7 +121,7 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
       bankAccountNumber: null,
       bankIban: null,
     }
-    : await db.orgSettings.upsert({ where: { organizationId }, update: {}, create: { organizationId, ...buildDkSettingsDefaults() }, select })
+    : await db.orgSettings.findUniqueOrThrow({ where: { organizationId }, select })
 
   const primaryTaxId = await db.organizationTaxId.findFirst({
     where: { organizationId },

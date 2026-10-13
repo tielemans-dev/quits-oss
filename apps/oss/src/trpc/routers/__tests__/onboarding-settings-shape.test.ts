@@ -7,7 +7,7 @@ import { onboardingAiRouter } from "../onboarding-ai"
 import { confirmOnboardingV2 } from "../../../lib/onboarding/confirm-v2"
 import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
 
-const mocks = vi.hoisted(() => ({ settings: null as Record<string, unknown> | null, creates: [] as Array<Record<string, unknown>>, baseCurrency: "DKK", v2: false, suggestedValues: {} as Record<string, unknown> }))
+const mocks = vi.hoisted(() => ({ settings: null as Record<string, unknown> | null, creates: [] as Array<Record<string, unknown>>, baseCurrency: "DKK", v2: false, suggestedValues: {} as Record<string, unknown>, barrier: null as null | { arrivals: number; ready: Promise<void>; release: () => void }, databaseError: null as Error | null }))
 vi.mock("../../init", async () => {
   const { initTRPC } = await import("@trpc/server")
   const t = initTRPC.context<Context>().create()
@@ -29,6 +29,18 @@ vi.mock("../../../lib/db", () => {
   const schema = readFileSync(new URL("../../../../prisma/schema.prisma", import.meta.url), "utf8")
   const model = schema.match(/model OrgSettings \{([\s\S]*?)\n\}/)![1]!
   const scalarKeys = new Set([...model.matchAll(/^\s+(\w+)\s+(?:String|Int|Float|Decimal|Boolean|DateTime|Json)\??\s/gm)].map(match => match[1]))
+  const rendezvous = async () => {
+    if (!mocks.barrier) return
+    const barrier = mocks.barrier
+    if (++barrier.arrivals === 2) { mocks.barrier = null; barrier.release() }
+    await barrier.ready
+  }
+  const validateCreate = (create: Record<string, unknown>) => {
+    for (const key of Object.keys(create)) {
+      if (!scalarKeys.has(key)) throw new Error(`Unknown argument ${key} in OrgSettings.create`)
+    }
+    mocks.creates.push(create)
+  }
   const db = {
     organization: { update: async () => ({}) },
     invoice: { count: async () => 0 },
@@ -37,12 +49,25 @@ vi.mock("../../../lib/db", () => {
       findUnique: async () => mocks.settings,
       findUniqueOrThrow: async () => mocks.settings,
       upsert: async ({ create, update }: { create: Record<string, unknown>; update: Record<string, unknown> }) => {
-        for (const key of Object.keys(create)) {
-          if (!scalarKeys.has(key)) throw new Error(`Unknown argument ${key} in OrgSettings.create`)
-        }
-        mocks.creates.push(create)
+        if (mocks.databaseError) throw mocks.databaseError
+        validateCreate(create)
+        // Model Prisma's client upsert: both callers observe absence before either inserts.
+        const missing = !mocks.settings
+        await rendezvous()
+        if (missing && mocks.settings) throw new Error('Unique constraint failed on the fields: (`"organizationId"`)')
         mocks.settings = mocks.settings ? { ...mocks.settings, ...update } : { countryCode: "US", defaultCurrency: "USD", baseCurrency: "USD", currency: "USD", locale: "en-US", timezone: "UTC", invoicePrefix: "INV", invoiceNextNum: 1, quotePrefix: "QTE", quoteNextNum: 1, ...create }
         return mocks.settings
+      },
+      createMany: async ({ data, skipDuplicates }: { data: Record<string, unknown>; skipDuplicates: boolean }) => {
+        if (mocks.databaseError) throw mocks.databaseError
+        validateCreate(data)
+        await rendezvous()
+        if (mocks.settings) {
+          if (!skipDuplicates) throw new Error('Unique constraint failed on the fields: (`"organizationId"`)')
+          return { count: 0 }
+        }
+        mocks.settings = { ...data }
+        return { count: 1 }
       },
     },
     organizationTaxId: { findFirst: async () => null, deleteMany: async () => ({ count: 0 }), updateMany: async () => ({}), createMany: async () => ({}) },
@@ -53,6 +78,42 @@ vi.mock("../../../lib/db", () => {
 })
 const caller = () => onboardingRouter.createCaller({ session: null } satisfies Context)
 const defaults = { countryCode: "DK", defaultCurrency: "DKK", baseCurrency: "DKK", currency: "DKK", locale: "da-DK", timezone: "Europe/Copenhagen", taxRegime: "eu_vat", pricesIncludeTax: false, taxRate: 25 }
+
+function overlapInitializations() {
+  let release!: () => void
+  const ready = new Promise<void>(resolve => { release = resolve })
+  mocks.barrier = { arrivals: 0, ready, release }
+}
+
+beforeEach(() => { mocks.barrier = null; mocks.databaseError = null })
+
+describe("concurrent onboarding settings initialization", () => {
+  beforeEach(() => { mocks.settings = null; mocks.creates = []; mocks.v2 = false; mocks.barrier = null; mocks.databaseError = null })
+  it.each(["status", "ai"])("returns the same saved Danish defaults to overlapping status and %s reads", async read => {
+    overlapInitializations()
+    const [first, second] = await Promise.all([
+      caller().getStatus(),
+      read === "status" ? caller().getStatus() : aiCaller().getOnboardingState(),
+    ])
+    expect(first.values).toEqual(second.values)
+    const numbering = { invoicePrefix: new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Europe/Copenhagen" }).format(new Date()), invoiceNextNum: 1, quotePrefix: "QTE", quoteNextNum: 1 }
+    expect(first.values).toMatchObject({ countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", pricesIncludeTax: false, ...numbering })
+    expect(mocks.settings).toMatchObject({ ...defaults, ...numbering })
+  })
+  it("leaves saved overrides, books and moms untouched on overlapping reads", async () => {
+    const saved = { ...defaults, countryCode: "DE", locale: "en-US", baseCurrency: "EUR", currency: "EUR", defaultCurrency: "EUR", invoicePrefix: "BOOK", invoiceNextNum: 42, quotePrefix: "OFF", quoteNextNum: 8, momsRegistered: false, taxRate: 0, pricesIncludeTax: true, paymentNote: "Saved note" }
+    mocks.settings = { ...saved }
+    overlapInitializations()
+    await Promise.all([caller().getStatus(), aiCaller().getOnboardingState()])
+    expect(mocks.settings).toEqual(saved)
+  })
+  it.each(["status", "ai"])("propagates unrelated database errors from %s reads", async read => {
+    const error = new Error("Database connection unavailable")
+    mocks.databaseError = error
+    await expect(read === "status" ? caller().getStatus() : aiCaller().getOnboardingState()).rejects.toMatchObject({ cause: error })
+    expect(mocks.settings).toBeNull()
+  })
+})
 
 describe("onboarding Prisma create payloads", () => {
   beforeEach(() => { mocks.settings = null; mocks.creates = []; mocks.baseCurrency = "DKK"; mocks.v2 = false })
