@@ -21,6 +21,7 @@ const db = vi.hoisted(() => {
       findUnique: async () => settings,
       findUniqueOrThrow: async () => settings,
       upsert: async ({ update }: { update: Partial<typeof settings> }) => (settings = { ...settings, ...update }),
+      update: async ({ data }: { data: Partial<typeof settings> }) => (settings = { ...settings, ...data }),
     },
     organizationTaxId: {
       findMany: async ({ select }: { select?: object }) => {
@@ -94,26 +95,31 @@ describe("hosted Settings prepare/save capability boundary", () => {
     ] }) }))
   })
 
-  it.each([true, false])("rejects partial identity edits with retained registration %s and accepts final-identity reconfirmation", async registered => {
+  it.each([true, false])("clears registration %s when the identity changes and accepts an explicit reconfirmation", async registered => {
     hosted(true)
-    const prepare = () => runtime.prepareSellerVatConfirmation({ companyName: db.settings().companyName,
+    const prepareCurrent = () => runtime.prepareSellerVatConfirmation({ companyName: db.settings().companyName,
       companyAddress: db.settings().companyAddress, countryCode: "DK", cvr: db.ids()[0]!.value, primaryTaxIdScheme: db.ids()[0]!.scheme })
-    const original = await prepare()
-    await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: original.token })
+    await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: (await prepareCurrent()).token })
     const edits = [{ companyName: "Changed seller" }, { companyAddress: "Changed address" },
       { primaryTaxId: "24256790" }, { primaryTaxId: "12345678", primaryTaxIdScheme: "cvr" }]
     for (const edit of edits) {
-      await expect(settings.update(edit)).rejects.toMatchObject({ code: "BAD_REQUEST" })
-      expect(db.settings()).toMatchObject({ companyName: "Original seller", companyAddress: "Testvej 1", momsRegistered: registered })
-      expect(db.ids()[0]).toMatchObject({ scheme: "vat", value: "12345678", countryCode: null })
-      await expect(settings.update({ ...edit, sellerVatConfirmationToken: original.token })).rejects.toMatchObject({ code: "CONFLICT" })
+      confirm.mockClear()
+      const prepared = await prepareCurrent()
+      await settings.update(edit)
+      expect(db.settings().momsRegistered).toBeNull()
+      expect(confirm).not.toHaveBeenCalled()
+      await expect(settings.update({ ...edit, momsRegistered: registered, sellerVatConfirmationToken: prepared.token })).rejects.toMatchObject({ code: "CONFLICT" })
+      expect(db.settings().momsRegistered).toBeNull()
+      db.reset()
+      await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: (await prepareCurrent()).token })
     }
     confirm.mockClear()
     await settings.update({ companyName: "Original seller", companyAddress: "Testvej 1", primaryTaxId: " 12345678 ", primaryTaxIdScheme: "vat" })
     expect(confirm).not.toHaveBeenCalled()
+    expect(db.settings()).toMatchObject({ momsRegistered: registered })
     const prepared = await runtime.prepareSellerVatConfirmation({ companyName: "Changed seller", companyAddress: "Testvej 1", countryCode: "DK", cvr: "12345678", primaryTaxIdScheme: "vat" })
-    await settings.update({ companyName: "Changed seller", sellerVatConfirmationToken: prepared.token })
-    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ taxIds: [...db.ids()].sort((a, b) => a.scheme < b.scheme ? -1 : a.scheme > b.scheme ? 1 : 0).map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) }) }))
+    await settings.update({ companyName: "Changed seller", momsRegistered: registered, sellerVatConfirmationToken: prepared.token })
+    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ companyName: "Changed seller" }) }))
     expect(db.settings()).toMatchObject({ companyName: "Changed seller", momsRegistered: registered })
   })
 
@@ -131,24 +137,27 @@ describe("hosted Settings prepare/save capability boundary", () => {
     expect(db.settings()).toMatchObject({ companyName: "Self-host seller", momsRegistered: false })
     expect(confirm).not.toHaveBeenCalled()
   })
-  it.each([{ taxRegime: "custom" as const }, { countryCode: "US" }])("rejects an unconfirmed retained choice on Danish VAT entry from %j", async outside => {
+  it.each([{ taxRegime: "custom" as const }, { countryCode: "US" }])("clears an unconfirmed choice when re-entering Danish VAT from %j", async outside => {
     hosted(true)
     await settings.update({ ...outside, momsRegistered: false })
-    await expect(settings.update({ countryCode: "DK", taxRegime: "eu_vat" })).rejects.toMatchObject({ code: "BAD_REQUEST" })
-    expect(db.settings()).toMatchObject({ ...outside, momsRegistered: false })
+    await settings.update({ countryCode: "DK", taxRegime: "eu_vat" })
+    expect(db.settings()).toMatchObject({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: null })
     expect(confirm).not.toHaveBeenCalled()
   })
-  it.each([true, false])("reconfirms retained %s on context entry without discarding a genuine choice", async registered => {
+  it.each([true, false])("clears retained %s on Danish VAT entry unless the choice is sent again", async registered => {
     hosted(true)
-    const prepared = await runtime.prepareSellerVatConfirmation({ companyName: db.settings().companyName,
-      companyAddress: db.settings().companyAddress, countryCode: "DK", cvr: db.ids()[0]!.value, primaryTaxIdScheme: "vat" })
-    await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: prepared.token })
+    const prepareCurrent = () => runtime.prepareSellerVatConfirmation({ companyName: db.settings().companyName,
+      companyAddress: db.settings().companyAddress, countryCode: "DK", cvr: db.ids()[0]!.value, primaryTaxIdScheme: db.ids()[0]!.scheme })
+    await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: (await prepareCurrent()).token })
     await settings.update({ taxRegime: "custom" })
-    await expect(settings.update({ taxRegime: "eu_vat" })).rejects.toMatchObject({ code: "BAD_REQUEST" })
-    expect(db.settings()).toMatchObject({ taxRegime: "custom", momsRegistered: registered })
-    await expect(settings.update({ taxRegime: "eu_vat", companyName: "Unreviewed identity", sellerVatConfirmationToken: prepared.token })).rejects.toMatchObject({ code: "CONFLICT" })
-    expect(db.settings()).toMatchObject({ taxRegime: "custom", companyName: "Original seller", momsRegistered: registered })
-    await settings.update({ taxRegime: "eu_vat", sellerVatConfirmationToken: prepared.token })
+    confirm.mockClear()
+    await settings.update({ taxRegime: "eu_vat" })
+    expect(db.settings()).toMatchObject({ taxRegime: "eu_vat", momsRegistered: null })
+    expect(confirm).not.toHaveBeenCalled()
+    const stale = await prepareCurrent()
+    await expect(settings.update({ companyName: "Unreviewed identity", momsRegistered: registered, sellerVatConfirmationToken: stale.token })).rejects.toMatchObject({ code: "CONFLICT" })
+    expect(db.settings()).toMatchObject({ taxRegime: "eu_vat", companyName: "Original seller", momsRegistered: null })
+    await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: (await prepareCurrent()).token })
     expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered }))
     expect(db.settings()).toMatchObject({ taxRegime: "eu_vat", momsRegistered: registered })
   })

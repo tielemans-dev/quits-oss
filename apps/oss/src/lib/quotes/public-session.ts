@@ -68,6 +68,8 @@ export function serializePublicQuoteSession(session: {
       id: string
       description: string
       quantity: Decimalish
+      unitPriceNet: Decimalish
+      lineNet: Decimalish
       unitPriceGross: Decimalish
       lineGross: Decimalish
       taxRate?: Decimalish
@@ -119,6 +121,8 @@ export function serializePublicQuoteSession(session: {
         id: item.id,
         description: item.description,
         quantity: toNumber(item.quantity),
+        unitPriceNet: toNumber(item.unitPriceNet),
+        lineNet: toNumber(item.lineNet),
         unitPriceGross: toNumber(item.unitPriceGross),
         lineGross: toNumber(item.lineGross),
         taxRate: item.taxRate == null ? undefined : toNumber(item.taxRate),

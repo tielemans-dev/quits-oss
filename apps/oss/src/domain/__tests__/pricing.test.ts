@@ -49,8 +49,11 @@ describe("non-registered document defaults", () => {
   it("uses domestic defaults when the buyer country is omitted", () => {
     expect(priceDocumentV2({ ...input, vatDefaults: { ...vatDefaults, buyerCountry: null } }).itemRows[0]?.vatTreatment).toBe("unclassified_zero")
   })
-  it("retains explicit classification and positive custom rates", () => {
+  it("defaults implicit non-registered lines to 0% and keeps explicit or other-regime rates", () => {
     expect(priceDocumentV2({ ...input, vatDefaults, items: [{ ...input.items[0]!, vat: { treatment: "out_of_scope", rate: "0" } }] }).itemRows[0]?.vatTreatment).toBe("out_of_scope")
-    expect(priceDocumentV2({ ...input, vatDefaults, taxRate: 25 }).itemRows[0]).toMatchObject({ vatTreatment: "standard", vatRateInput: "0.25", lineTax: "25.00" })
+    expect(priceDocumentV2({ ...input, vatDefaults, taxRate: 25 }).itemRows[0]).toMatchObject({ vatTreatment: "unclassified_zero", vatRateInput: "0", lineTax: "0.00", lineGross: "100.00" })
+    expect(priceDocumentV2({ ...input, vatDefaults: { ...vatDefaults, buyerCountry: "DE" }, taxRate: 25 }).itemRows[0]).toMatchObject({ vatTreatment: "out_of_scope", vatRateInput: "0", lineTax: "0.00" })
+    expect(priceDocumentV2({ ...input, vatDefaults: { ...vatDefaults, taxRegime: "custom" }, taxRate: 25 }).itemRows[0]).toMatchObject({ vatTreatment: "standard", vatRateInput: "0.25", lineTax: "25.00" })
+    expect(priceDocumentV2({ ...input, vatDefaults, taxRate: 25, items: [{ ...input.items[0]!, vat: { treatment: "standard", rate: "0.25" } }] }).itemRows[0]).toMatchObject({ vatTreatment: "standard", vatRateInput: "0.25", lineTax: "25.00" })
   })
 })

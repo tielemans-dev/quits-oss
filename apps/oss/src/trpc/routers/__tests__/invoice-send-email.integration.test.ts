@@ -126,6 +126,42 @@ async function createInvoiceFixture(options?: {
 }
 
 describeIfDatabase("invoice send email delivery", () => {
+  // MOCK: synthetic invoice/account and provider response; real send/resend/payment/credit commands.
+  it.each(["payment", "credit"] as const)("resends an IBAN-only invoice after partial %s using current outstanding and preserving the artifact", async kind => {
+    const previous = Object.fromEntries(["RESEND_API_KEY", "FROM_EMAIL", "QUITS_APP_ORIGIN", "QUITS_PUBLIC_PAYMENT_SECRET"].map(key => [key, process.env[key]]))
+    process.env.RESEND_API_KEY = "resend_test_key"
+    process.env.FROM_EMAIL = "billing@example.invalid"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "synthetic-payment-regression-secret"
+    const { orgId, caller, invoice } = await createInvoiceFixture()
+    try {
+      await caller.paymentDetails.update({ bankAccount: { iban: "DK5000400440116243", bic: "DABADKKK" }, note: null })
+      await caller.invoices.send({ id: invoice.id })
+      const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
+      expect(vi.mocked(deliver).mock.calls.at(-1)?.[0].html).toContain("DK50 0040 0440 1162 43")
+      if (kind === "payment") await caller.payments.record({ invoiceId: invoice.id, amount: 500, paidAt: new Date().toISOString(), method: "bank_transfer" })
+      else await caller.creditNotes.issue({ invoiceId: invoice.id, mode: "amount", amount: 500, reason: "MOCK regression credit" })
+      await caller.paymentDetails.update({ bankAccount: { regNumber: "1234", accountNumber: "9876543" }, note: "Changed current note" })
+      await caller.invoices.resendEmail({ id: invoice.id })
+      const html = vi.mocked(deliver).mock.calls.at(-1)?.[0].html
+      expect(html).toContain("DK50 0040 0440 1162 43")
+      expect(html).toContain("DABADKKK")
+      expect(html).not.toMatch(/Changed current note|9876543|@font-face|cdn\.jsdelivr\.net/)
+      const payment = html?.match(/<table aria-label="Sådan betaler du"[\s\S]*?<\/table>/)?.[0]
+      expect(payment).toContain("2.000,00\u00a0kr.")
+      expect(html?.slice(0, html.indexOf('<table aria-label="Sådan betaler du"'))).toContain("2.500,00\u00a0kr.")
+      const current = await caller.invoices.get({ id: invoice.id })
+      expect(current.balanceDue).toBe(2000)
+      expect(current.total).toBe(2500)
+      expect(current.issuanceSnapshot).toEqual(issued.issuanceSnapshot)
+      expect(current.artifactPdfHash).toBe(issued.artifactPdfHash)
+      expect(current.artifactPdfRef).toBe(issued.artifactPdfRef)
+    } finally {
+      restoreEnv(previous)
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
   afterEach(() => {
     vi.mocked(deliver).mockReset()
     vi.mocked(deliver).mockResolvedValue({ id: "email_123" })

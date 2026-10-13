@@ -70,12 +70,15 @@ export function priceDocumentV2(input: {
   vatDefaults?: { momsRegistered: boolean | null; taxRegime: string; countryCode: string | null; buyerCountry: string | null }
 }) {
   const defaults = input.vatDefaults
-  // Missing buyer country uses the domestic default; known foreign buyers need explicit VAT.
-  const nonRegisteredDomestic = defaults?.momsRegistered === false && defaults.taxRegime === "eu_vat"
-    && findTaxRegime(defaults.countryCode)?.id === "eu_vat" && (!defaults.buyerCountry || defaults.buyerCountry === defaults.countryCode)
-    && Number(input.taxRate) === 0
-  const calculation = calculateDraft({ ...input, items: nonRegisteredDomestic
-    ? input.items.map(line => line.vat ? line : { ...line, vat: { treatment: "unclassified_zero" as const, rate: "0" } })
+  // A non-registered EU seller's ordinary lines are 0% even when a caller still sends the old 25% default.
+  // Missing buyer country stays domestic; a known foreign buyer is outside scope at the same zero rate.
+  const nonRegisteredEu = defaults?.momsRegistered === false && defaults.taxRegime === "eu_vat"
+    && findTaxRegime(defaults.countryCode)?.id === "eu_vat"
+  const domestic = !defaults?.buyerCountry || defaults.buyerCountry === defaults?.countryCode
+  const calculation = calculateDraft({ ...input, items: nonRegisteredEu
+    ? input.items.map(line => line.vat ? line : { ...line, vat: domestic
+      ? { treatment: "unclassified_zero" as const, rate: "0" }
+      : { treatment: "out_of_scope" as const, rate: "0" } })
     : input.items })
   return {
     calculation,

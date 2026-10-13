@@ -49,7 +49,10 @@ describe("seller VAT presentation", () => {
       expect(output).toContain(nonVatStatement(locale))
       expect(output).not.toContain("VAT: 12345678")
     }
-    for (const output of outputs(locale, false, {}, taxIds)) expect(output).toContain("CVR: 24256790")
+    const [pdf, email, pay] = outputs(locale, false, {}, taxIds)
+    expect(pdf).toContain("CVR: 24256790")
+    expect(pay).toContain("CVR: 24256790")
+    expect(email).toContain("CVR-nr.: 24256790")
     for (const status of [true, null, undefined]) {
       for (const output of outputs(locale, status, {}, [taxIds[0]!])) expect(output).toContain("VAT: 12345678")
     }

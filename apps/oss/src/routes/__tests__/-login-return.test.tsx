@@ -11,7 +11,10 @@ const state = vi.hoisted(() => ({
 }))
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: object) => ({ ...options, useSearch: () => state.search }),
-  Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Link: ({ children, to, search, ...props }: { children: React.ReactNode; to: string; search?: Record<string, string | undefined> }) => {
+    const query = new URLSearchParams(Object.entries(search ?? {}).filter((entry): entry is [string, string] => entry[1] !== undefined))
+    return <a {...props} href={to + (query.size ? '?' + query : '')}>{children}</a>
+  },
   useNavigate: () => state.navigate,
 }))
 vi.mock('../../lib/page-navigation', () => ({ loadPage: state.load }))
@@ -40,7 +43,7 @@ function renderPage(Page: React.ComponentType, locale = "en") { return render(<I
 function submitLogin(lang = 'en') {
   fireEvent.change(screen.getByLabelText(lang === 'da' ? 'E-mail' : 'Email'), { target: { value: 'user@example.test' } })
   fireEvent.change(screen.getByLabelText(lang === 'da' ? 'Adgangskode' : 'Password'), { target: { value: 'password123' } })
-  fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Log ind' : 'Sign in' }).closest('form')!)
+  fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Log ind' : 'Log in' }).closest('form')!)
 }
 afterEach(() => {
   cleanup(); vi.resetAllMocks(); vi.restoreAllMocks()
@@ -56,6 +59,20 @@ describe('login return contract', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Complete V2' }))
     expect(state.load).toHaveBeenCalledWith(`/invoices?filter=a%20b&lang=${lang}#review`)
     expect(state.navigate).not.toHaveBeenCalled()
+  })
+  it('keeps the preferred alias through language switching and recovery/signup links', () => {
+    const target = '/invoices?filter=a%20b&item=x%2Fy#details'
+    state.search = { next: target, redirect: '/ignored', lang: 'en' }
+    renderPage(Login)
+    const language = new URL(screen.getByRole('link', { name: 'Dansk' }).getAttribute('href')!, window.location.origin)
+    expect(language.searchParams.get('next')).toBe(target)
+    expect(language.searchParams.get('lang')).toBe('da')
+    for (const name of ['Forgot password?', 'Sign up']) {
+      const link = new URL(screen.getByRole('link', { name }).getAttribute('href')!, window.location.origin)
+      expect(link.searchParams.get('redirect')).toBe(target)
+      expect(link.searchParams.get('next')).toBeNull()
+      expect(link.searchParams.get('lang')).toBe('en')
+    }
   })
   it('validates both aliases and DA/EN with deterministic next precedence', () => {
     expect(loginReturnSearchSchema.parse({ next: '/a', redirect: '/b', lang: 'da' })).toEqual({ next: '/a', redirect: '/b', lang: 'da' })

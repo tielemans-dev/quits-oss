@@ -411,7 +411,7 @@ export const settingsRouter = router({
           ...(clearStripeWebhookSecret ? { stripeWebhookSecretEnc: null } : {}),
         }
 
-        const settings = await tx.orgSettings.upsert({
+        await tx.orgSettings.upsert({
           where: { organizationId: ctx.organizationId },
           update: settingsUpdateData,
           create: { organizationId: ctx.organizationId, ...settingsUpdateData },
@@ -446,7 +446,7 @@ export const settingsRouter = router({
         }
 
         await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken, previousSettings: current, previousSeller })
-        return settings
+        return tx.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.organizationId } })
       })
     }),
 

@@ -30,5 +30,5 @@ export const daPdfMessages = {
   "pdf.bic": "BIC",
   "pdf.accountHolder": "Kontohaver",
   "pdf.bankName": "Bank",
-  "pdf.paymentReference": "Betalingsreference",
+  "pdf.paymentReference": "Betalingsbesked",
 } as const

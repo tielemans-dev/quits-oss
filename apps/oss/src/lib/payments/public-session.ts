@@ -80,6 +80,7 @@ export function serializePublicInvoiceSession(session: {
   stripeEnabled: boolean
 }, token: string) {
   const { invoice } = session
+  // Amounts come from the invoice row, the single source of truth (immutable after issue).
   const totalGross = toNumber(invoice.totalGross)
   const amountPaid = toNumber(invoice.amountPaid)
   const amountCredited = toNumber(invoice.amountCredited)

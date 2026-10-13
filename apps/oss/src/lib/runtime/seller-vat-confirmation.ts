@@ -50,9 +50,16 @@ export async function confirmSellerVatStatus(input: SellerVatConfirmationActor &
   const seller = { companyName: settings.companyName, companyAddress: settings.companyAddress, countryCode: settings.countryCode, taxIds: sellerConfirmationTaxIds(taxIds) }
   const identityChanged = input.previousSeller !== undefined && sellerConfirmationIdentity(input.previousSeller) !== sellerConfirmationIdentity(seller)
   const needsReconfirmation = settings.countryCode === "DK" && settings.taxRegime === "eu_vat" && (enteringDanishVat || identityChanged)
-  const registered = input.registered === undefined && needsReconfirmation ? settings.momsRegistered : input.registered
+  // A choice confirmed for the previous identity or jurisdiction is not evidence for the new one.
+  if (needsReconfirmation && input.registered === undefined) {
+    if (settings.momsRegistered !== null) {
+      await input.tx.orgSettings.update({ where: { organizationId: input.organizationId }, data: { momsRegistered: null } })
+    }
+    return
+  }
+  const registered = input.registered
   // Unknown status remains fail-closed at issuance. Same-identity saves retain confirmed status.
-  if (registered === undefined || (input.registered === undefined && registered === null)) return
+  if (registered === undefined) return
   // A jurisdiction/tax-regime transition retains general financial settings behavior.
   // It cannot create evidence for another identity or grant issuance permission.
   if (!input.token && (settings.countryCode !== "DK" || settings.taxRegime !== "eu_vat")) return

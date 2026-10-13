@@ -371,13 +371,13 @@ describe("frozen public bank details", () => {
         const html = page(locale, <PublicInvoicePaymentPage token="test" state={{ kind: "ready", paymentState: "unpaid", stripeEnabled, seller, invoice: { ...baseInvoice, currency: "DKK", sellerSnapshot: { bankAccount, paymentNote: "Frozen note" }, paymentReference: "REF-42" } }} />)
         for (const value of ["0040", "0440116243", "DK50 0040 0440 1162 43", "DABADKKK", "REF-42", "Frozen note"]) expect(html).toContain(value)
         expect(html.includes(locale === "da-DK" ? "Betal nu" : "Pay now")).toBe(stripeEnabled)
-        expect(html).toContain(locale === "da-DK" ? "Betalingsreference" : "Payment reference")
+        expect(html).toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
       })
     }
   }
   it("omits unset IBAN/BIC and uses the invoice number as reference", () => {
     const html = page("en-US", <PublicInvoicePaymentPage token="test" state={{ kind: "ready", paymentState: "unpaid", stripeEnabled: false, seller, invoice: { ...baseInvoice, sellerSnapshot: { bankAccount: { regNumber: "0040", accountNumber: "0440116243" } } } }} />)
-    expect(html).toContain("Payment reference")
+    expect(html).toContain("Payment message")
     expect(html).not.toContain("IBAN")
     expect(html).not.toContain("BIC")
   })

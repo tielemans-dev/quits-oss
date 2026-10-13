@@ -31,20 +31,30 @@ describe("transactional seller VAT confirmation", () => {
     confirm.mockRejectedValueOnce(new Error("identity changed"))
     await expect(confirmSellerVatStatus({ ...actor, tx, registered: true, token: "signed" })).rejects.toThrow("identity changed")
   })
-  it.each([true, false])("compares only stored identity fields for retained registration %s", async registered => {
+  it.each([true, false])("clears stored registration %s when the compared identity changes", async registered => {
     enabled()
     const storedIds = [{ scheme: "vat", value: "12345678", countryCode: null }, { scheme: "lei", value: "SECONDARY", countryCode: "DK" }]
-    const finalSeller = { ...seller, momsRegistered: registered }
-    const localTx = { orgSettings: { findUniqueOrThrow: async () => finalSeller }, organizationTaxId: { findMany: async () => storedIds } } as unknown as SellerVatConfirmationTransaction
+    let current = { ...seller, momsRegistered: registered as boolean | null }
+    const localTx = {
+      orgSettings: {
+        findUniqueOrThrow: async () => current,
+        update: async ({ data }: { data: { momsRegistered: null } }) => { current = { ...current, ...data } },
+      },
+      organizationTaxId: { findMany: async () => storedIds },
+    } as unknown as SellerVatConfirmationTransaction
     const previousSeller = { ...seller, taxIds: [...storedIds].reverse() }
     await confirmSellerVatStatus({ ...actor, tx: localTx, previousSeller })
     expect(confirm).not.toHaveBeenCalled()
+    expect(current.momsRegistered).toBe(registered)
     for (const change of [
       { taxIds: [{ ...storedIds[0]!, countryCode: "DK" }, storedIds[1]!] },
       { taxIds: [storedIds[0]!, { ...storedIds[1]!, value: "OLD-SECONDARY" }] },
       { companyName: "Previous seller" }, { companyAddress: "Previous address" },
     ]) {
-      await expect(confirmSellerVatStatus({ ...actor, tx: localTx, previousSeller: { ...previousSeller, ...change } })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+      current = { ...seller, momsRegistered: registered }
+      await confirmSellerVatStatus({ ...actor, tx: localTx, previousSeller: { ...previousSeller, ...change } })
+      expect(current.momsRegistered).toBeNull()
+      expect(confirm).not.toHaveBeenCalled()
     }
     await confirmSellerVatStatus({ ...actor, tx: localTx, previousSeller: { ...previousSeller, companyName: "Previous seller" }, registered: null, token: "signed-withdrawal" })
     expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered: null, seller: expect.objectContaining({ companyName: seller.companyName, taxIds: [...storedIds].reverse() }) }))
