@@ -297,6 +297,23 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete" })
     expect(await api.settings.update({ momsRegistered: false })).toBeDefined()
   })
+  it("clears generated non-VAT declarations with registration when leaving Denmark", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.confirmV2({ ...summary(), source: "manual", momsRegistered: false, vatId: undefined })
+    const { nonVatStatement } = await import("../../../lib/documents/non-vat-note")
+    await prisma.orgSettings.update({ where: { organizationId: id }, data: { paymentNote: `Custom payment instructions\n${nonVatStatement("da")}\n${nonVatStatement("en")}` } })
+    await api.settings.update({ countryCode: "DE" })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ momsRegistered: null, paymentNote: "Custom payment instructions" })
+  })
+  it("reclassifies a Danish self-hosted legacy VAT primary when selecting non-VAT", async () => {
+    const id = await organization()
+    vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
+    const api = await caller(id)
+    await api.settings.update({ countryCode: "DK", taxRegime: "eu_vat", primaryTaxId: "24256790", primaryTaxIdScheme: "vat" })
+    await api.settings.update({ momsRegistered: false, taxRate: 0 })
+    expect(await prisma.organizationTaxId.findFirstOrThrow({ where: { organizationId: id, isPrimary: true } })).toMatchObject({ scheme: "cvr", value: "24256790", countryCode: "DK" })
+  })
   it("allows self-hosted registration and custom VAT rates without a hosted opt-in", async () => {
     const id = await organization()
     vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")

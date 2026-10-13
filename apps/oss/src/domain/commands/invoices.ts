@@ -2,7 +2,7 @@ import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { resolveCountryProfile } from "../../lib/compliance"
 import { requireInvoiceIssuancePolicy } from "../documents/issuance-policy"
-import { parseSellerSnapshot, parseBuyerSnapshot } from "@quits/contracts/documents"
+import { parseBuyerSnapshot } from "@quits/contracts/documents"
 import type { RenderInput } from "../documents/render-input"
 import { formatIsoDate } from "../../lib/exports/format"
 import { invoiceDeliverableCommands } from "./invoices-from-deliverables"
@@ -36,7 +36,7 @@ import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { asIssued, numberForIssuance, numberVoidedByDraftDeletion, documentRef } from "../documents/numbering"
 import { requireDraftCurrency } from "../documents/currency"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
-import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, buildInvoiceSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
 import { requireVatIssuance } from "../documents/vat-issuance"
 import { draftVatEvidenceSchema } from "@quits/contracts/vat"
 import { InvalidState, NotFound } from "../errors"
@@ -377,7 +377,7 @@ export const sendInvoice = defineCommand({
       yield* requireDepositInvoiceEnabled(found)
       yield* refuseWhileSending("invoice", found)
       const { settings, sellerTaxIds } = yield* loadDocumentContext
-      const seller = (found.agreementId || found.quoteId) ? parseSellerSnapshot(found.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds)
+      const seller = buildInvoiceSellerSnapshot(found, settings, sellerTaxIds)
       const buyer = (found.agreementId || found.quoteId) ? parseBuyerSnapshot(found.buyerSnapshot) : buildBuyerSnapshot(found.contact)
       const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate }
       yield* requireInvoiceIssuancePolicy(organizationId, effective)

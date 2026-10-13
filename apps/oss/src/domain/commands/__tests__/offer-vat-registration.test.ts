@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Effect } from "effect"
 import { Prisma } from "../../../../generated/prisma/client"
 import { Db, Command, type CommandScope } from "../../services"
+import { sendInvoice } from "../invoices"
+import { buildInvoiceSellerSnapshot } from "../../documents/snapshots"
 import { sendQuote } from "../quotes"
 import { issuanceApproval, issueAgreementOffer } from "../../agreements/issuance"
 import { prospectiveRenderInput } from "../../documents/render-input"
@@ -40,6 +42,7 @@ function harness({ registered = false, rate = "25", isDeposit = false, tiny = fa
   }))
   const document = {
     id: "document", contactId: contact.id, contact, status: "draft", number: null,
+    quoteId: null as string | null, agreementId: null as string | null, purpose: "standard", supplyDate: new Date("2026-10-12"),
     title: "Work agreement", summary: null, termsMarkdown: "Work", validUntil: new Date("2099-01-01"), expiryDate: new Date("2099-01-01"),
     timezone: "Europe/Copenhagen", locale: "en-US", countryCode: "DK", currency: "DKK", taxRegime: "eu_vat", taxRate: decimal(rate),
     pricesIncludeTax: false, dueInDays: 30, billingTrigger: "on_acceptance", offerFormatVersion: 2, calculationVersion: "v2",
@@ -50,7 +53,7 @@ function harness({ registered = false, rate = "25", isDeposit = false, tiny = fa
   const settings = { momsRegistered: registered, countryCode: "DK", companyName: "Current Seller", companyEmail: "seller@example.test", companyAddress: "Testvej 1" }
   const update = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ ...document, ...data }))
   const db = {
-    $queryRaw: vi.fn(async () => []), quote: { findFirst: vi.fn(async () => document), update }, agreement: { findFirst: vi.fn(async () => document), update },
+    $queryRaw: vi.fn(async () => []), invoice: { findFirst: vi.fn(async () => document), update }, quote: { findFirst: vi.fn(async () => document), update }, agreement: { findFirst: vi.fn(async () => document), update },
     contact: { findFirstOrThrow: vi.fn(async () => contact) },
     orgSettings: { upsert: vi.fn(async () => settings) }, organizationTaxId: { findMany: vi.fn(async () => sellerTaxIds) },
   }
@@ -129,5 +132,24 @@ describe("zero-tax exemption cannot bypass nonregistered issuance", () => {
     expect(await h.run(issueAgreementOffer({ id: "document" }, "manual"))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
     expect(await h.run(prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
     expectNoIssuanceEffects(h)
+  })
+})
+
+
+describe("linked invoice rechecks registration after offer issuance", () => {
+  it.each(["quoteId", "agreementId"] as const)("refuses deregistered %s conversion before numbering or delivery", async link => {
+    const h = harness()
+    h.document[link] = "issued-offer"
+    const frozen = structuredClone(h.document.sellerSnapshot)
+    expect(await h.run(sendInvoice.handle({ id: "document" }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
+    expect(await h.run(prospectiveRenderInput({ kind: "invoice", documentId: "document", commandInput: {}, number: "INV-1", issuedAt: h.command.now }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
+    expectNoIssuanceEffects(h)
+    expect(h.document.sellerSnapshot).toEqual(frozen)
+  })
+  it("retains agreed identity while applying current registration without mutating history", () => {
+    const saved = { companyName: "Agreed Seller", companyAddress: "Agreed address", taxIds: sellerTaxIds, momsRegistered: true }
+    const settings = { companyName: "Changed Seller", companyAddress: "Changed address", companyEmail: null, momsRegistered: false }
+    expect(buildInvoiceSellerSnapshot({ quoteId: "offer", sellerSnapshot: saved }, settings, [])).toEqual({ ...saved, momsRegistered: false })
+    expect(saved.momsRegistered).toBe(true)
   })
 })

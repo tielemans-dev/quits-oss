@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Context } from "../../init"
 import type { UserActor } from "../../../domain/actor"
+import { nonVatStatement } from "../../../lib/documents/non-vat-note"
+import { invoiceTaxIds } from "../../../lib/documents/invoice-identity"
 import { settingsRouter } from "../settings"
 import { buildSellerSnapshot } from "../../../domain/documents/snapshots"
 import { buildUblDocument, validateEinvoice, type EinvoiceDocument } from "../../../lib/exports/ubl"
@@ -202,6 +204,23 @@ describe("atomic Settings Danish VAT repairs", () => {
   it.each([{ countryCode: "DE" }, { taxRegime: "custom" }, { taxRegime: "us_sales_tax" }] as const)("clears hidden registration on scope departure %o even if a client omits status", async input => {
     await settingsCaller().update(input)
     expect(mocks.settings?.momsRegistered).toBeNull()
+  })
+  it.each([{ countryCode: "DE" }, { taxRegime: "custom" }] as const)("removes only generated declarations on scope departure %o", async input => {
+    mocks.settings = { ...defaults, momsRegistered: false, paymentNote: `Custom bank instructions\n${nonVatStatement("da")}\n${nonVatStatement("en")}` }
+    await settingsCaller().update(input)
+    expect(mocks.settings).toMatchObject({ momsRegistered: null, paymentNote: "Custom bank instructions" })
+  })
+  it.each(["vat", "DK_VAT"])("normalizes a legacy Danish %s primary ID for non-VAT output", async scheme => {
+    mocks.taxIds = [{ id: "primary", scheme, value: "24256790", countryCode: null, isPrimary: true }, { id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }]
+    await settingsCaller().update({ momsRegistered: false, taxRate: 0 })
+    expect(mocks.taxIds[0]).toMatchObject({ scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true })
+    expect(invoiceTaxIds(mocks.taxIds)).toEqual(["CVR: 24256790"])
+    expect(mocks.taxIds[1]).toMatchObject({ scheme: "vat", value: "DE123456789", countryCode: "DE" })
+  })
+  it("leaves an explicitly foreign primary ID unchanged", async () => {
+    mocks.taxIds = [{ id: "primary", scheme: "vat", value: "12345678", countryCode: "DE", isPrimary: true }]
+    await settingsCaller().update({ momsRegistered: false })
+    expect(mocks.taxIds[0]).toMatchObject({ scheme: "vat", countryCode: "DE" })
   })
   it("omits unchanged registration in scope and permits unrelated non-DK saves", async () => {
     await settingsCaller().update({ companyName: "Edited ApS" })

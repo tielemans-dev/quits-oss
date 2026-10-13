@@ -1,5 +1,5 @@
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
-import type { BuyerSnapshot, SellerSnapshot } from "@quits/contracts/documents"
+import { parseSellerSnapshot, type BuyerSnapshot, type SellerSnapshot } from "@quits/contracts/documents"
 import type { TaxId } from "../../lib/compliance"
 import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../../lib/payment-details"
 
@@ -15,6 +15,16 @@ export function buildSellerSnapshot(
     companyAddress: settings.companyAddress ?? null,
     taxIds,
   }
+}
+
+/** A linked draft retains agreed identity, but registration is rechecked at invoice issuance. */
+export function buildInvoiceSellerSnapshot(
+  invoice: { agreementId?: string | null; quoteId?: string | null; sellerSnapshot: unknown },
+  settings: Parameters<typeof buildSellerSnapshot>[0],
+  taxIds: TaxId[]
+): SellerSnapshot {
+  if (!invoice.agreementId && !invoice.quoteId) return buildSellerSnapshot(settings, taxIds)
+  return { ...parseSellerSnapshot(invoice.sellerSnapshot), momsRegistered: settings.momsRegistered ?? null }
 }
 
 /**

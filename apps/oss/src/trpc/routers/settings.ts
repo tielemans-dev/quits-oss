@@ -1,3 +1,4 @@
+import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
 import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { InvalidState } from "../../domain/errors"
 import { isUniqueViolation } from "../../domain/execute"
@@ -321,7 +322,7 @@ export const settingsRouter = router({
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
-          select: { countryCode: true, taxRegime: true, aiProvider: true, aiBaseUrl: true },
+          select: { countryCode: true, taxRegime: true, paymentNote: true, aiProvider: true, aiBaseUrl: true },
         })
         // Re-saving the stored provider is always fine; only switching to a new one is checked, so
         // capability changes on the server never block saving unrelated settings.
@@ -332,9 +333,8 @@ export const settingsRouter = router({
           settingsInput.countryCode ?? current?.countryCode
         )
         // Registration describes the Danish EU VAT setup, not a hidden cross-jurisdiction flag.
-        if (resolvedCountry !== "DK" || (settingsInput.taxRegime ?? current?.taxRegime) !== "eu_vat") {
-          settingsInput.momsRegistered = null
-        }
+        const clearsRegistration = resolvedCountry !== "DK" || (settingsInput.taxRegime ?? current?.taxRegime) !== "eu_vat"
+        if (clearsRegistration) settingsInput.momsRegistered = null
         if (settingsInput.momsRegistered === false && !isNonVatRegistrationAllowed()) {
           throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
         }
@@ -389,6 +389,7 @@ export const settingsRouter = router({
 
         const settingsUpdateData = {
           ...settingsInput,
+          ...(clearsRegistration ? { paymentNote: localizedNonVatPaymentNote(current?.paymentNote, true) ?? null } : {}),
           baseCurrency,
           ...(aiBaseUrl !== undefined ? { aiBaseUrl: aiBaseUrl || null } : {}),
           ...(aiApiKey ? { aiApiKeyEnc: encryptSecret(aiApiKey) } : {}),
@@ -454,6 +455,21 @@ export const settingsRouter = router({
                 scheme: primaryTaxIdScheme?.trim() || "vat",
                 isPrimary: true,
               },
+            })
+          }
+        }
+
+        if (resolvedCountry === "DK" && settings.momsRegistered === false) {
+          const primary = await tx.organizationTaxId.findFirst({
+            where: { organizationId: ctx.organizationId, isPrimary: true },
+          })
+          const value = primary?.value.replace(/[\s.\-/]/g, "").toUpperCase()
+          // Only a Danish eight-digit primary VAT identity can be reclassified as a CVR.
+          if (primary && (!primary.countryCode || primary.countryCode === "DK") &&
+              ["vat", "dk_vat"].includes(primary.scheme.toLowerCase()) && value && /^(DK)?\d{8}$/.test(value)) {
+            await tx.organizationTaxId.update({
+              where: { id: primary.id },
+              data: { scheme: "cvr", value: value.replace(/^DK/, ""), countryCode: "DK" },
             })
           }
         }
