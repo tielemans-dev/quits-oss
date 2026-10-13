@@ -45,7 +45,8 @@ describe('signup admission UI', () => {
     expect((screen.getByLabelText(/Invite code/) as HTMLInputElement).value).toBe(state.invite)
     expect(signUp).not.toHaveBeenCalled()
     submitSignup()
-    await waitFor(() => expect(loadPage).toHaveBeenCalledWith('/onboarding?lang=en'))
+    // No explicit search.lang was supplied, so the provider locale must not pin onboarding.
+    await waitFor(() => expect(loadPage).toHaveBeenCalledWith('/onboarding'))
     expect(signUp.mock.calls[0]![1].body).toEqual({ inviteCode: 'QUITS-7K4M-2P9X' })
   })
   it('keeps values and focuses the code on invalid admission without showing server messages', async () => {
