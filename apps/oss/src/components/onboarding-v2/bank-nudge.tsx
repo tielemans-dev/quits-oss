@@ -16,6 +16,7 @@ import {
 export function useFirstInvoiceBankNudge() {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
+  const onSettings = useRef<(() => void) | undefined>(undefined)
   const pending = useRef<((proceed: boolean) => void) | null>(null)
   useEffect(
     () => () => {
@@ -28,7 +29,8 @@ export function useFirstInvoiceBankNudge() {
     pending.current = null
     setOpen(false)
   }
-  async function beforeSend(): Promise<boolean> {
+  async function beforeSend(settingsAction?: () => void): Promise<boolean> {
+    onSettings.current = settingsAction
     const readiness = await trpc.paymentDetails.firstSendReadiness.query()
     if (!readiness.bankMissing) return true
     return new Promise((resolve) => {
@@ -55,7 +57,7 @@ export function useFirstInvoiceBankNudge() {
               {t("onboardingV2.bankNudge.continue")}
             </Button>
             <Button asChild>
-              <Link to="/settings" onClick={() => finish(false)}>
+              <Link to="/settings" onClick={() => { onSettings.current?.(); finish(false) }}>
                 {t("onboardingV2.bankNudge.settings")}
               </Link>
             </Button>

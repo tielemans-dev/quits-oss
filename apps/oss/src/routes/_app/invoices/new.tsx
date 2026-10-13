@@ -9,7 +9,7 @@ import { useDocumentTaxRate } from "../../../hooks/use-document-tax-rate"
 import { useOrgPricingSettings } from "../../../hooks/use-org-pricing-settings"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { trpc } from "../../../trpc/client"
 import { createThenSend } from "../../../lib/create-and-send"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
@@ -71,6 +71,7 @@ function NewInvoicePage() {
     { description: "", quantity: "1", unitPrice: "0", catalogItemId: undefined },
   ])
   const [saving, setSaving] = useState(false)
+  const submitPending = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingContacts, setLoadingContacts] = useState(true)
   const [loadingCatalog, setLoadingCatalog] = useState(true)
@@ -233,6 +234,7 @@ function NewInvoicePage() {
   }
 
   async function handleSubmit(sendImmediately: boolean) {
+    if (submitPending.current) return
     setError(null)
 
     if (!contactId) {
@@ -248,9 +250,10 @@ function NewInvoicePage() {
       return
     }
 
+    submitPending.current = true
     setSaving(true)
     try {
-      if (sendImmediately && !await bankNudge.beforeSend()) { setSaving(false); return }
+      let settingsRequested = false
       // The draft exists once created: whatever happens to the send, show it rather than keep
       // the form, where submitting again would create a second invoice.
       const target = await createThenSend({
@@ -269,11 +272,15 @@ function NewInvoicePage() {
               vat: item.vat,
             })),
           }),
+        beforeSend: async () => {
+          return bankNudge.beforeSend(() => { settingsRequested = true })
+        },
         send: (id) => trpc.invoices.send.mutate({ id, ...issuanceInput(issuance, currency, baseCurrency) }),
         sendImmediately,
         sendFailedMessage: t("invoices.detail.error.sendFailed"),
       })
 
+      if (settingsRequested) return
       navigate({
         to: "/invoices/$invoiceId",
         params: { invoiceId: target.id },
@@ -285,6 +292,7 @@ function NewInvoicePage() {
           ? err.message
           : t("invoices.new.error.createFailed")
       )
+      submitPending.current = false
       setSaving(false)
     }
   }
