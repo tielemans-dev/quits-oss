@@ -1,3 +1,5 @@
+import { isReplacedDanishTaxId } from "../onboarding/danish-tax-id"
+import { isNationalRegistrationScheme, nationalRegistrationForScheme } from "../compliance/registry"
 import type { SellerSnapshot } from "@quits/contracts/documents"
 import type { Prisma } from "../../../generated/prisma/client"
 import { TRPCError } from "@trpc/server"
@@ -23,7 +25,7 @@ export type SellerVatConfirmationService = {
 }
 
 export function getSellerVatConfirmationService() {
-  if (!getRuntimeCapabilities().sellerVatConfirmation.enabled) return undefined
+  if (!getRuntimeCapabilities().sellerVatConfirmation?.enabled) return undefined
   const providers = getRuntimeExtensions().flatMap(extension => extension.sellerVatConfirmation ? [extension.sellerVatConfirmation] : [])
   if (providers.length !== 1) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Seller VAT confirmation is unavailable" })
   return providers[0]!
@@ -82,10 +84,26 @@ export function sellerConfirmationTaxIds(taxIds: NonNullable<SellerSnapshot["tax
 /** Project the primary-ID write performed by settings.update, preserving the other IDs. */
 export function settingsConfirmationTaxIds(
   orderedTaxIds: NonNullable<SellerSnapshot["taxIds"]>, value: string, scheme: string,
+  registered?: boolean | null,
 ): NonNullable<SellerSnapshot["taxIds"]> {
-  const primary = { ...orderedTaxIds[0], value: value.trim(), scheme: scheme.trim() || "vat" }
-  // New settings IDs have no countryCode, matching the database's nullable default.
-  return orderedTaxIds.length ? [primary, ...orderedTaxIds.slice(1)] : [{ ...primary, countryCode: null }]
+  const registration = nationalRegistrationForScheme("cvr")!
+  const nextScheme = scheme.trim() || "vat"
+  const eligible = (id: typeof orderedTaxIds[number]) =>
+    (!id.countryCode || id.countryCode === "DK") &&
+    (isNationalRegistrationScheme(id.scheme, "DK") || ["vat", "dk_vat"].includes(id.scheme?.toLowerCase() ?? ""))
+  const oldPrimary = orderedTaxIds[0]
+  const primary = { ...oldPrimary, value: value.trim(), scheme: nextScheme, countryCode: "DK" }
+  const oldCvr = oldPrimary ? registration.normalize(oldPrimary.value) : ""
+  const nextCvr = registration.normalize(value)
+  const refreshPair = oldPrimary && eligible(oldPrimary) && eligible(primary) && /^\d{8}$/.test(oldCvr) && /^\d{8}$/.test(nextCvr)
+  const rest = orderedTaxIds.slice(1).map(id => refreshPair && (!id.countryCode || id.countryCode === "DK") &&
+    ["vat", "dk_vat"].includes(id.scheme?.toLowerCase() ?? "") && id.value === `DK${oldCvr}`
+      ? { ...id, value: `DK${nextCvr}` } : id)
+  if (registered === false && ["vat", "dk_vat"].includes(nextScheme.toLowerCase()) && /^(DK)?\d{8}$/.test(value.replace(/[\s.\-/]/g, "").toUpperCase())) {
+    primary.scheme = "cvr"
+    primary.value = nextCvr
+  }
+  return [primary, ...rest]
 }
 
 /** Compare only token-bound stored fields. Tax-ID row order and database metadata are immaterial. */
@@ -105,6 +123,6 @@ export function onboardingRegistrationTaxIds(cvr: string, vatId?: string) {
 /** Onboarding replaces registration IDs and demotes retained IDs before adding its new CVR. */
 export function onboardingConfirmationTaxIds(orderedTaxIds: NonNullable<SellerSnapshot["taxIds"]>, cvr: string, vatId?: string) {
   const registration = onboardingRegistrationTaxIds(cvr, vatId)
-  const retained = orderedTaxIds.filter(id => !["cvr", "vat", "dk_cvr", "dk_vat"].includes(id.scheme?.toLowerCase() ?? ""))
+  const retained = orderedTaxIds.filter(id => !isReplacedDanishTaxId({ scheme: id.scheme ?? "", value: id.value, countryCode: id.countryCode ?? null }))
   return [...registration.filter(id => id.scheme === "cvr"), ...retained, ...registration.filter(id => id.scheme === "vat")]
 }

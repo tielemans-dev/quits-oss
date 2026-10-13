@@ -12,7 +12,7 @@ export function sellerCvr(ids: readonly DocumentTaxId[] | undefined): string | n
   return null
 }
 
-const VAT_SCHEMES = new Set(["vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
+const VAT_SCHEMES = new Set(["vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
 
 /** Explicit non-registration cannot claim a VAT identifier, including migrated bare VAT IDs. */
 export function sellerPresentationTaxIds(ids: readonly DocumentTaxId[] | undefined, momsRegistered?: boolean | null) {

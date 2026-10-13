@@ -14,6 +14,7 @@ import { NoopBillingProvider } from "../billing/noop-provider"
 import type { BillingProvider } from "../billing/types"
 import type { DocumentSendingDomainRecord, DocumentSendingDomainStatus } from "../document-email-sending"
 import { suggestOnboardingPatchHeuristically } from "../onboarding/ai-fallback"
+export type { CvrLookupCompany } from "../onboarding/search-cvr"
 
 export type OnboardingAiSuggestInput = {
   userMessage: string

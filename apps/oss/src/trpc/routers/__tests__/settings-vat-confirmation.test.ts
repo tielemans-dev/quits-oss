@@ -9,7 +9,7 @@ const db = vi.hoisted(() => {
   const initialSettings = { companyName: "Original seller", companyAddress: "Testvej 1", countryCode: "DK",
     taxRegime: "eu_vat", momsRegistered: true, taxRate: 25, baseCurrency: "DKK", aiProvider: "openrouter", aiBaseUrl: null }
   const initialIds = [
-    { id: "primary", scheme: "vat", value: "12345678", countryCode: null, isPrimary: true },
+    { id: "primary", scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true },
     { id: "other", scheme: "lei", value: "OTHER-ID", countryCode: "DK", isPrimary: false },
   ]
   let selectedReads = 0
@@ -31,6 +31,7 @@ const db = vi.hoisted(() => {
         return select ? ordered.map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) : ordered
       },
       findFirst: async () => ids[0],
+      updateMany: async () => ({ count: 0 }),
       update: async ({ where, data }: { where: { id: string }; data: Partial<typeof ids[number]> }) => {
         ids = ids.map(id => id.id === where.id ? { ...id, ...data } : id)
       },
@@ -83,16 +84,16 @@ describe("hosted Settings prepare/save capability boundary", () => {
   it.each([true, false])("binds ordered retained IDs while editing the original primary for registration %s", async registered => {
     db.addRetained()
     hosted(true)
-    const prepared = await runtime.prepareSellerVatConfirmation({ ...input, primaryTaxIdScheme: "vat" })
+    const prepared = await runtime.prepareSellerVatConfirmation({ ...input, primaryTaxIdScheme: "vat", registered })
     await settings.update({ companyName: input.companyName, companyAddress: input.companyAddress,
       primaryTaxId: input.cvr, primaryTaxIdScheme: "vat", momsRegistered: registered, sellerVatConfirmationToken: prepared.token })
-    expect(db.ids()[0]).toMatchObject({ id: "primary", scheme: "vat", value: input.cvr, countryCode: null })
+    expect(db.ids()[0]).toMatchObject({ id: "primary", scheme: registered ? "vat" : "cvr", value: input.cvr, countryCode: "DK" })
     expect(db.ids()[2]).toMatchObject({ id: "second", scheme: "cvr", value: "RETAINED-CVR", countryCode: "US", isPrimary: false })
-    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ taxIds: [
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ taxIds: expect.arrayContaining([
       { scheme: "cvr", value: "RETAINED-CVR", countryCode: "US" },
       { scheme: "lei", value: "OTHER-ID", countryCode: "DK" },
-      { scheme: "vat", value: input.cvr, countryCode: null },
-    ] }) }))
+      { scheme: registered ? "vat" : "cvr", value: input.cvr, countryCode: "DK" },
+    ]) }) }))
   })
 
   it.each([true, false])("clears registration %s when the identity changes and accepts an explicit reconfirmation", async registered => {
@@ -101,7 +102,7 @@ describe("hosted Settings prepare/save capability boundary", () => {
       companyAddress: db.settings().companyAddress, countryCode: "DK", cvr: db.ids()[0]!.value, primaryTaxIdScheme: db.ids()[0]!.scheme })
     await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: (await prepareCurrent()).token })
     const edits = [{ companyName: "Changed seller" }, { companyAddress: "Changed address" },
-      { primaryTaxId: "24256790" }, { primaryTaxId: "12345678", primaryTaxIdScheme: "cvr" }]
+      { primaryTaxId: "12345674" }, { primaryTaxId: "12345674", primaryTaxIdScheme: "cvr" }]
     for (const edit of edits) {
       confirm.mockClear()
       const prepared = await prepareCurrent()
@@ -114,10 +115,10 @@ describe("hosted Settings prepare/save capability boundary", () => {
       await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: (await prepareCurrent()).token })
     }
     confirm.mockClear()
-    await settings.update({ companyName: "Original seller", companyAddress: "Testvej 1", primaryTaxId: " 12345678 ", primaryTaxIdScheme: "vat" })
+    await settings.update({ companyName: "Original seller", companyAddress: "Testvej 1", primaryTaxId: " 24256790 ", primaryTaxIdScheme: "cvr" })
     expect(confirm).not.toHaveBeenCalled()
     expect(db.settings()).toMatchObject({ momsRegistered: registered })
-    const prepared = await runtime.prepareSellerVatConfirmation({ companyName: "Changed seller", companyAddress: "Testvej 1", countryCode: "DK", cvr: "12345678", primaryTaxIdScheme: "vat" })
+    const prepared = await runtime.prepareSellerVatConfirmation({ companyName: "Changed seller", companyAddress: "Testvej 1", countryCode: "DK", cvr: "24256790", primaryTaxIdScheme: "cvr" })
     await settings.update({ companyName: "Changed seller", momsRegistered: registered, sellerVatConfirmationToken: prepared.token })
     expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ companyName: "Changed seller" }) }))
     expect(db.settings()).toMatchObject({ companyName: "Changed seller", momsRegistered: registered })
@@ -126,7 +127,7 @@ describe("hosted Settings prepare/save capability boundary", () => {
   it("allows unknown-status identity edits and self-hosted edits without a confirmation gate", async () => {
     hosted(true)
     const prepared = await runtime.prepareSellerVatConfirmation({ companyName: db.settings().companyName,
-      companyAddress: db.settings().companyAddress, countryCode: "DK", cvr: db.ids()[0]!.value, primaryTaxIdScheme: "vat" })
+      companyAddress: db.settings().companyAddress, countryCode: "DK", cvr: db.ids()[0]!.value, primaryTaxIdScheme: db.ids()[0]!.scheme })
     await settings.update({ momsRegistered: null, sellerVatConfirmationToken: prepared.token })
     confirm.mockClear()
     await settings.update({ companyName: "Unknown seller" })
@@ -172,7 +173,7 @@ describe("hosted Settings prepare/save capability boundary", () => {
     hosted(true); vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
     await settings.update({ taxRegime: "custom", momsRegistered: false })
     await settings.update({ taxRegime: "eu_vat" })
-    expect(db.settings()).toMatchObject({ taxRegime: "eu_vat", momsRegistered: false })
+    expect(db.settings()).toMatchObject({ taxRegime: "eu_vat", momsRegistered: null })
     expect(confirm).not.toHaveBeenCalled()
   })
   it("allows unrelated hosted saves without reconfirmation", async () => {
@@ -184,17 +185,17 @@ describe("hosted Settings prepare/save capability boundary", () => {
     hosted(false)
     const prepared = await runtime.prepareSellerVatConfirmation({ ...input, primaryTaxIdScheme: "vat" })
     await expect(settings.update({ momsRegistered: false, sellerVatConfirmationToken: prepared.token })).rejects.toMatchObject({ code: "FORBIDDEN", message: "save.failed" })
-    expect(db.transaction).not.toHaveBeenCalled()
+    expect(db.settings()).toMatchObject({ momsRegistered: true, taxRate: 25 })
     expect(confirm).not.toHaveBeenCalled()
   })
   it.each(["vat", "cvr", "DK_CVR"])("saves the prepared %s identity and rolls back stale-token edits", async primaryTaxIdScheme => {
     hosted(true)
-    const prepared = await runtime.prepareSellerVatConfirmation({ ...input, primaryTaxIdScheme })
+    const prepared = await runtime.prepareSellerVatConfirmation({ ...input, primaryTaxIdScheme, registered: false })
     await settings.update({ companyName: input.companyName, companyAddress: input.companyAddress, countryCode: input.countryCode,
       primaryTaxId: input.cvr, primaryTaxIdScheme, momsRegistered: false, sellerVatConfirmationToken: prepared.token })
     expect(db.settings()).toMatchObject({ companyName: input.companyName, momsRegistered: false, taxRate: 0 })
     expect(db.ids()).toEqual([
-      { id: "primary", scheme: primaryTaxIdScheme, value: input.cvr, countryCode: null, isPrimary: true },
+      { id: "primary", scheme: primaryTaxIdScheme === "vat" ? "cvr" : primaryTaxIdScheme, value: input.cvr, countryCode: "DK", isPrimary: true },
       { id: "other", scheme: "lei", value: "OTHER-ID", countryCode: "DK", isPrimary: false },
     ])
     expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ organizationId: "org", userId: "user", sessionId: "session", registered: false, token: prepared.token }))

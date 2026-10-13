@@ -13,6 +13,8 @@ const {
   settingsGetQuery,
   settingsUpdate,
   getFullOrganization,
+  organizationUpdate,
+  runtimeState,
 } = vi.hoisted(() => ({
   capabilitiesQuery: vi.fn(),
   hostedFlag: { enabled: false, nonVatEnabled: true },
@@ -22,6 +24,8 @@ const {
   settingsGetQuery: vi.fn(),
   settingsUpdate: vi.fn(),
   getFullOrganization: vi.fn(),
+  organizationUpdate: vi.fn(),
+  runtimeState: { selfhost: true, nonVatEnabled: true },
 }))
 
 vi.mock("../../lib/distribution", () => ({ get isSelfHostDistribution() { return distribution.selfhost } }))
@@ -48,7 +52,9 @@ vi.mock("../../components/settings/email-delivery-card", () => ({
 }))
 
 vi.mock("../../lib/i18n/react", () => {
-  const t = (key: string) =>
+  const i18n = {
+    locale: "da-DK",
+    t: (key: string) =>
       (
         {
           "settings.error.loadFailed": "load failed",
@@ -76,14 +82,18 @@ vi.mock("../../lib/i18n/react", () => {
           "settings.currency.label": "Currency",
           "settings.currency.placeholder": "Select currency",
         } as const
-      )[key] ?? key
-  return { useI18n: () => ({ locale: "da-DK", t }) }
+      )[key] ?? key,
+  }
+  return { useI18n: () => i18n }
 })
+
+vi.mock("../../lib/runtime-distribution", () => ({ useRuntimeDistribution: () => ({ isSelfHost: runtimeState.selfhost }) }))
 
 vi.mock("../../lib/auth-client", () => ({
   authClient: {
     organization: {
       getFullOrganization,
+      update: organizationUpdate,
       inviteMember: vi.fn(),
       removeMember: vi.fn(),
       cancelInvitation: vi.fn(),
@@ -159,6 +169,7 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
     pricesIncludeTax: false,
     currency: "USD",
     taxRate: null,
+    paymentTermsDays: 14,
     companyName: "Acme LLC",
     companyAddress: "Main St 1",
     companyEmail: "billing@acme.example",
@@ -209,11 +220,15 @@ afterEachTest(() => {
   distribution.selfhost = true
   prepareConfirmation.mockClear()
   resetRequestOrganizationForTesting()
+  Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView")
   useSessionMock.mockReset()
   settingsGetQuery.mockReset()
   settingsUpdate.mockReset()
   getFullOrganization.mockReset()
   settingsUpdate.mockReset()
+  organizationUpdate.mockReset()
+  runtimeState.selfhost = true
+  runtimeState.nonVatEnabled = true
 })
 
 describe("Settings tax relevance", () => {
@@ -389,13 +404,15 @@ describe("Settings tax relevance", () => {
     render(<RouteComponent />)
 
     await waitFor(() => {
-      expect(settingsGetQuery).toHaveBeenCalled()
+      expect(screen.getByText("No tax ID required for this tax setup.")).toBeTruthy()
     })
 
+    expect(settingsGetQuery).toHaveBeenCalled()
+    expect(screen.queryByLabelText("settings.vatStatus.registered")).toBeNull()
     expect(screen.queryByLabelText("Primary Seller Tax ID")).toBeNull()
-    expect(screen.getByText("No tax ID required for this tax setup.")).toBeTruthy()
 
     cleanup()
+  resetRequestOrganizationForTesting()
     currentSettingsData = buildSettingsData({
       countryCode: "DK",
       locale: "da-DK",
@@ -489,6 +506,23 @@ describe("Settings UI extension", () => {
       </form>
     )
   }
+
+  it("saves the URL separately and leaves it unchanged when settings fail", async () => {
+    prepare()
+    getFullOrganization.mockResolvedValue({ data: { slug: "old-slug", members: [], invitations: [] } })
+    settingsUpdate.mockRejectedValue(new Error("Rejected settings"))
+    organizationUpdate.mockResolvedValue({ data: { slug: "new-slug" } })
+    render(<RouteComponent />)
+    const slug = await screen.findByDisplayValue("old-slug")
+    fireEvent.change(slug, { target: { value: "new-slug" } })
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    expect(await screen.findByText("Rejected settings")).toBeTruthy()
+    expect(organizationUpdate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "settings.organizationSlug.save" }))
+    expect(await screen.findByText("settings.organizationSlug.saved")).toBeTruthy()
+    expect(organizationUpdate).toHaveBeenCalledWith({ data: { slug: "new-slug" } })
+    expect(settingsUpdate).toHaveBeenCalledTimes(1)
+  })
 
   it("keeps the default UI empty and company fields attached to the original save form", async () => {
     prepare()

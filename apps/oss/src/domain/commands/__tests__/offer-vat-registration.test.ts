@@ -32,8 +32,8 @@ const decimal = (value: string | number) => new Prisma.Decimal(value)
 const contact = { id: "buyer", name: "Buyer", email: "buyer@example.test", company: "Buyer ApS", address: "Testvej 2", city: "Copenhagen", zip: "1000", state: null, country: "DK", taxIds: [{ scheme: "vat", value: "DK12345678", countryCode: "DK" }] }
 const sellerTaxIds = [{ scheme: "vat", value: "DK24256790", countryCode: "DK" }, { scheme: "cvr", value: "24256790", countryCode: "DK" }]
 
-function harness({ registered = false, rate = "25", isDeposit = false, tiny = false } = {}) {
-  const priced = priceAgreementV2({ currency: "DKK", pricesIncludeTax: false, taxRate: rate, deliverables: [{ title: "Work", description: "Work", quantity: "1", unitPrice: tiny ? "0.01" : "100", isDeposit, vat: { treatment: rate === "0" ? "out_of_scope" : "standard", rate: rate === "0" ? "0" : "0.25", country: "DK" } }] })
+function harness({ registered = false, rate = "25", isDeposit = false, tiny = false, exempt = false } = {}) {
+  const priced = priceAgreementV2({ currency: "DKK", pricesIncludeTax: false, taxRate: rate, deliverables: [{ title: "Work", description: "Work", quantity: "1", unitPrice: tiny ? "0.01" : "100", isDeposit, vat: { treatment: exempt ? "exempt" : rate === "0" ? "out_of_scope" : "standard", reasonCode: exempt ? "health" : null, rate: rate === "0" ? "0" : "0.25", country: "DK" } }] })
   const items = priced.deliverableRows.map(row => ({ ...row, id: "line", status: "planned", taxCode: null,
     quantity: decimal(row.quantity), unitPriceNet: decimal(row.unitPriceNet), unitPriceGross: decimal(row.unitPriceGross), taxRate: decimal(row.taxRate),
     lineNet: decimal(row.lineNet), lineTax: decimal(row.lineTax), lineGross: decimal(row.lineGross),
@@ -44,7 +44,7 @@ function harness({ registered = false, rate = "25", isDeposit = false, tiny = fa
     timezone: "Europe/Copenhagen", locale: "en-US", countryCode: "DK", currency: "DKK", taxRegime: "eu_vat", taxRate: decimal(rate),
     pricesIncludeTax: false, dueInDays: 30, billingTrigger: "on_acceptance", offerFormatVersion: 2, calculationVersion: "v2",
     subtotalNet: decimal(priced.subtotalNet), totalTax: decimal(priced.totalTax), totalGross: decimal(priced.totalGross),
-    sellerSnapshot: { momsRegistered: !registered, taxIds: sellerTaxIds }, buyerSnapshot: { country: "SE", taxIds: [] }, vatEvidence: {},
+    sellerSnapshot: { momsRegistered: !registered, taxIds: sellerTaxIds }, buyerSnapshot: { country: "SE", taxIds: [] }, vatEvidence: exempt ? { statementText: "Health exemption" } : {},
     items, deliverables: items, publicAccessIssuedAt: null, publicAccessKeyVersion: 1,
   }
   const settings = { momsRegistered: registered, countryCode: "DK", companyName: "Current Seller", companyEmail: "seller@example.test", companyAddress: "Testvej 1" }
@@ -131,5 +131,20 @@ describe("agreement offers validate current registration before issuance and pre
     expect(await h.run(prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" }))).toMatchObject({ _tag: "Right", right: { snapshot: { sellerSnapshot: { momsRegistered: options.registered ?? false } } } })
     expect(await h.run(issueAgreementOffer({ id: "document" }, "manual"))).toMatchObject({ _tag: "Right" })
     expect(h.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ sellerSnapshot: expect.objectContaining({ momsRegistered: options.registered ?? false, taxIds: sellerTaxIds }) }) }))
+  })
+})
+
+describe("zero-tax exemption cannot bypass nonregistered issuance", () => {
+  it("refuses a quote with complete exemption evidence before numbering and delivery", async () => {
+    const h = harness({ rate: "0", exempt: true })
+    expect(await h.run(sendQuote.handle({ id: "document" }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
+    expectNoIssuanceEffects(h)
+  })
+  it("refuses agreement approval, issuance and artifact preparation before effects", async () => {
+    const h = harness({ rate: "0", exempt: true })
+    expect(await h.run(issuanceApproval({ id: "document" }, "manual"))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
+    expect(await h.run(issueAgreementOffer({ id: "document" }, "manual"))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
+    expect(await h.run(prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
+    expectNoIssuanceEffects(h)
   })
 })

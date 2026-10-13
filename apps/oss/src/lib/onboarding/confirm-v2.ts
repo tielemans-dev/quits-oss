@@ -1,4 +1,5 @@
-import { onboardingRegistrationTaxIds, confirmSellerVatStatus, getSellerVatConfirmationService, type SellerVatConfirmationActor } from "../runtime/seller-vat-confirmation"
+import { isReplacedDanishTaxId } from "./danish-tax-id"
+import { confirmSellerVatStatus, getSellerVatConfirmationService, type SellerVatConfirmationActor } from "../runtime/seller-vat-confirmation"
 import { TRPCError } from "@trpc/server"
 import { onboardingV2ConfirmationResultSchema, type ConfirmOnboardingV2 } from "@quits/contracts/onboarding"
 import { billingProvider } from "../billing"
@@ -82,11 +83,18 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     }
     await tx.organization.update({ where: { id: organizationId }, data: { name: input.companyName } })
     await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...settings }, update: settings })
-    // Replace only registration/VAT IDs; unrelated identifiers remain intact.
+    // Identify Danish rows before replacing the pair. Countryless foreign VAT IDs
+    // can come from legacy Settings writes and must survive confirmation.
+    const taxIds = await tx.organizationTaxId.findMany({
+      where: { organizationId }, select: { id: true, scheme: true, value: true, countryCode: true },
+    })
+    const danishIds = taxIds.filter(isReplacedDanishTaxId).map(id => id.id)
     await tx.organizationTaxId.updateMany({ where: { organizationId, isPrimary: true }, data: { isPrimary: false } })
-    await tx.organizationTaxId.deleteMany({ where: { organizationId, OR: ["cvr", "vat", "dk_cvr", "dk_vat"].map(scheme => ({ scheme: { equals: scheme, mode: "insensitive" as const } })) } })
-    await tx.organizationTaxId.createMany({ data: onboardingRegistrationTaxIds(input.cvr, input.vatId)
-      .map(id => ({ ...id, organizationId, isPrimary: id.scheme === "cvr" })) })
+    await tx.organizationTaxId.deleteMany({ where: { organizationId, id: { in: danishIds } } })
+    await tx.organizationTaxId.createMany({ data: [
+      ...(input.cvr ? [{ organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true }] : []),
+      ...(input.vatId ? [{ organizationId, scheme: "vat", value: input.vatId, countryCode: "DK", isPrimary: false }] : []),
+    ] })
     if (actor) await confirmSellerVatStatus({ ...actor, tx, registered: input.momsRegistered, token: input.sellerVatConfirmationToken })
     if (input.catalogSuggestions.length) {
       await tx.catalogItem.createMany({ data: input.catalogSuggestions.map(item => ({

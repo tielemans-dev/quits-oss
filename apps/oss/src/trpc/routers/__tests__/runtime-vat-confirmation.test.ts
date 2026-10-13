@@ -22,7 +22,7 @@ describe("hosted confirmation preparation", () => {
     const stored = [{ scheme: "vat", value: "12345678", countryCode: null }, { scheme: "lei", value: "OTHER-ID", countryCode: "DK" }]
     findMany.mockResolvedValue(stored)
     const finalSeller = { companyName: "Synthetic seller", companyAddress: "Testvej 1", countryCode: "DK",
-      taxIds: [{ ...stored[0]!, scheme, value: "24256790" }, stored[1]!].sort((a, b) => a.scheme < b.scheme ? -1 : a.scheme > b.scheme ? 1 : 0) }
+      taxIds: [{ ...stored[0]!, scheme, value: "24256790", countryCode: "DK" }, stored[1]!].sort((a, b) => a.scheme < b.scheme ? -1 : a.scheme > b.scheme ? 1 : 0) }
     const identity = (seller: SellerSnapshot) => JSON.stringify([seller.companyName, seller.companyAddress, seller.countryCode,
       seller.taxIds?.map(id => [id.scheme, id.value, id.countryCode ?? null])])
     prepare.mockImplementation(async ({ seller }) => ({ token: identity(seller) }))

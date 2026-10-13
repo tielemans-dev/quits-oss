@@ -26,7 +26,7 @@ const buyerSnapshot = {
 
 const contact = { name: "Renamed Contact", email: "new@buyer.example", company: "Renamed GmbH" }
 
-const issued = { sellerSnapshot, buyerSnapshot, contact, locale: "en" }
+const issued = { taxRegime: "eu_vat", sellerSnapshot, buyerSnapshot, contact, locale: "en" }
 
 describe("credit note PDF parties", () => {
   it("renders the seller from the issued snapshot, not current settings", () => {
@@ -73,6 +73,7 @@ describe("credit note PDF parties", () => {
       momsRegistered: false,
       taxIds: [
         { scheme: " VAT_ID ", value: "DK12345678" },
+        { scheme: " DK_VAT ", value: "DK24256790" },
         { scheme: " CVR ", value: "12345678" },
         { scheme: " lei ", value: "LEGAL-ID" },
         { value: "UNSPECIFIED-ID" },
@@ -98,7 +99,7 @@ describe("credit note PDF parties", () => {
       momsRegistered: false,
     }
     expect(creditNotePdfParties({ ...issued, sellerSnapshot: { ...frozen, momsRegistered: true } }, currentNonregistered).seller.taxIds)
-      .toContain("VAT no.: DK12345678")
+      .toEqual(expect.arrayContaining(["VAT no.: DK12345678", "VAT no.: DK24256790"]))
   })
 
   it("translates tax identifier labels", () => {

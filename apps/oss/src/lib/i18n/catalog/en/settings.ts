@@ -1,4 +1,10 @@
 export const enSettingsMessages = {
+  "settings.validation.invalidPaymentTerms": "Payment terms must be a whole number between 0 and 3650.",
+
+  "settings.paymentTermsDays.hint": "Default number of days until a new invoice is due. Existing invoices keep their due dates.",
+
+  "settings.paymentTermsDays.label": "Payment terms (days)",
+
   "settings.vatStatus.cvrLabel": "CVR number",
   "settings.vatStatus.cvrHelp": "Your Danish business registration number.",
 
@@ -42,6 +48,12 @@ export const enSettingsMessages = {
     "Your company details appear on invoices and quotes.",
   "settings.companyName.label": "Company Name",
   "settings.companyName.placeholder": "Acme Inc.",
+  "settings.organizationSlug.label": "URL name",
+  "settings.organizationSlug.placeholder": "acme-inc",
+  "settings.organizationSlug.save": "Save URL",
+  "settings.organizationSlug.saved": "URL saved.",
+  "settings.organizationSlug.help": "Letters, numbers, and hyphens. Used in URLs.",
+  "settings.organizationSlug.invalid": "Use a short URL name with letters, numbers, and hyphens.",
   "settings.companyAddress.label": "Company Address",
   "settings.companyAddress.placeholder": "123 Main St&#10;City, State 12345",
   "settings.companyEmail.label": "Company Email",

@@ -66,6 +66,7 @@ vi.mock("../../lib/auth-client", () => ({
       list: listOrganizations,
       setActive: setActiveOrganization,
       create: vi.fn(),
+      checkSlug: vi.fn(),
     },
   },
   useSession: useSessionMock,
@@ -93,6 +94,8 @@ vi.mock("../../trpc/client", () => ({
   },
 }))
 
+import { authClient } from "../../lib/auth-client"
+
 import { Route } from "../_app/onboarding"
 import { asMockedRoute } from "../../test-utils/mocked-route"
 
@@ -100,6 +103,7 @@ const route = asMockedRoute(Route)
 const RoutePage = route.component
 
 afterEach(() => {
+  vi.restoreAllMocks()
   cleanup()
   navigate.mockReset()
   loadPage.mockReset()
@@ -111,6 +115,23 @@ afterEach(() => {
 })
 
 describe("OnboardingPage org selection", () => {
+  it("selects the created organization even when tab-local storage is blocked", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(authClient.organization.checkSlug).mockResolvedValue({ data: { status: true }, error: null } as never)
+    vi.mocked(authClient.organization.create).mockResolvedValue({ data: { id: "org_created" }, error: null } as never)
+    setActiveOrganization.mockResolvedValue({ data: { id: "org_created" } })
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError") })
+    render(<RoutePage />)
+    const name = await screen.findByLabelText("auth.onboarding.field.companyName")
+    fireEvent.change(name, { target: { value: "Acme" } })
+    fireEvent.submit(name.closest("form")!)
+    await waitFor(() => expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_created" }))
+    expect(loadPage).toHaveBeenCalledWith("/")
+    expect(screen.queryByText("Failed to create organization")).toBeNull()
+    expect(authClient.organization.create).toHaveBeenCalledTimes(1)
+  })
+
   it("keeps cloud users on onboarding after auto-selecting their only org", async () => {
     isCloudDistributionMock.mockReturnValue(true)
     useSessionMock.mockReturnValue({
@@ -177,6 +198,33 @@ describe("OnboardingPage org selection", () => {
     expect(screen.getByText("Northwind")).toBeTruthy()
     expect(screen.getByText("Contoso")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Create organization" })).toBeTruthy()
+    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+  })
+
+  it("starts a hosted organization from CVR lookup instead of a name and slug form", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({
+      data: {
+        user: { id: "user_1", email: "test@example.com" },
+        session: { activeOrganizationId: null },
+      },
+    })
+    listOrganizations.mockResolvedValue({ data: [] })
+
+    render(<RoutePage />)
+
+    expect(await screen.findByText("auth.onboarding.lookup.title")).toBeTruthy()
+    expect(screen.queryByLabelText("Slug")).toBeNull()
+    expect(screen.getByRole("button", { name: "auth.onboarding.lookup.manual" })).toBeTruthy()
+  })
+
+  it("starts self-hosted organization creation manually with no lookup detour", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    render(<RoutePage />)
+    expect(await screen.findByLabelText("auth.onboarding.field.companyName")).toBeTruthy()
+    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+    expect(screen.queryByText("auth.onboarding.lookup.manualBack")).toBeNull()
   })
 
   it("loads a new page acting for the organization the user chooses", async () => {

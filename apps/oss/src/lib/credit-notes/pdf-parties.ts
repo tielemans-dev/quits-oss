@@ -55,7 +55,7 @@ export type CreditNotePdfBuyer = {
   taxIds: string[]
 }
 
-const VAT_SCHEMES = new Set(["vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
+const VAT_SCHEMES = new Set(["vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
 
 function normalizeTaxIdScheme(scheme: DocumentTaxId["scheme"]) {
   return scheme?.trim().toLowerCase() ?? ""

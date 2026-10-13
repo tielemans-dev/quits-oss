@@ -11,7 +11,7 @@ export const runtimeRouter = router({
     .input(z.object({ query: z.string().trim().min(3).max(160) }).strict())
     .mutation(({ ctx, input }) => lookupOnboardingCompany({ ...input, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request })),
   prepareSellerVatConfirmation: authorizedProcedure("settings:update")
-    .input(z.object({ companyName: z.string().trim().min(1).max(120), companyAddress: z.string().trim().min(1).max(240), countryCode: z.literal("DK"), cvr: z.string().regex(/^(DK)?\d{8}$/), vatId: z.string().regex(/^DK\d{8}$/).optional(), primaryTaxIdScheme: z.string().trim().min(1).max(40).optional() }).strict())
+    .input(z.object({ companyName: z.string().trim().min(1).max(120), companyAddress: z.string().trim().min(1).max(240), countryCode: z.literal("DK"), cvr: z.string().regex(/^(DK)?\d{8}$/), vatId: z.string().regex(/^DK\d{8}$/).optional(), primaryTaxIdScheme: z.string().trim().min(1).max(40).optional(), registered: z.boolean().nullable().optional() }).strict())
     .mutation(async ({ ctx, input }) => {
       const service = getSellerVatConfirmationService()
       if (!service) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation is disabled" })
@@ -25,7 +25,7 @@ export const runtimeRouter = router({
       })
       const taxIds = input.primaryTaxIdScheme === undefined
         ? onboardingConfirmationTaxIds(orderedTaxIds, input.cvr, input.vatId)
-        : settingsConfirmationTaxIds(orderedTaxIds, input.cvr, input.primaryTaxIdScheme)
+        : settingsConfirmationTaxIds(orderedTaxIds, input.cvr, input.primaryTaxIdScheme, input.registered)
       return service.prepare({ organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request,
         seller: { companyName: input.companyName, companyAddress: input.companyAddress, countryCode: input.countryCode, taxIds: sellerConfirmationTaxIds(taxIds) } })
     }),

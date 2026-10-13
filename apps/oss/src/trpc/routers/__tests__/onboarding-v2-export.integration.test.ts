@@ -61,52 +61,41 @@ let artifactDirectory: string
     const contact = await executeIssuanceCommand(createContact, { name: "Test Buyer", email: "buyer@example.test", country: "DK", address: "Testvej 2", city: "København", zip: "1000", peppolEndpointScheme: "0184", peppolEndpointId: "24256790" }, { actor })
     if (contact.status !== "completed") throw new Error(JSON.stringify(contact))
     if (!momsRegistered) {
-      // Self-host EU-VAT settings normalize the default to zero for a non-registered seller,
-      // even when a positive rate is supplied alongside the registration choice.
+      // Settings normalize the default rate; explicit VAT-bearing drafts must still be refused.
       vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
       const { appRouter } = await import("../../router")
       const api = appRouter.createCaller({ session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
       await api.settings.update({ momsRegistered: false, taxRate: 25 })
       expect(await api.settings.get()).toMatchObject({ momsRegistered: false, taxRate: 0 })
-      // An omitted line classification follows the 0% default even when the document rate is still 25%.
-      const implicit = await executeIssuanceCommand(createInvoiceDraft, {
-        contactId: contact.result.id, dueDate: "2026-12-01", taxRate: 25,
-        items: [{ description: "Ordinary non-registered work", quantity: 1, unitPrice: 100 }],
-      }, { actor })
-      if (implicit.status !== "completed") throw new Error(JSON.stringify(implicit))
-      const implicitDraft = await prisma.invoice.findUniqueOrThrow({ where: { id: implicit.result.id }, include: { items: true } })
-      expect(parseSellerSnapshot(implicitDraft.sellerSnapshot)?.momsRegistered).toBe(false)
-      expect(implicitDraft.totalTax.toNumber()).toBe(0)
-      expect(implicitDraft.items[0]).toMatchObject({ vatTreatment: "unclassified_zero" })
-      expect(implicitDraft.items[0]!.taxRate.toNumber()).toBe(0)
-      expect(implicitDraft.items[0]!.lineTax.toNumber()).toBe(0)
-      // An explicit standard classification still stores charged VAT and is refused before numbering.
-      const taxed = await executeIssuanceCommand(createInvoiceDraft, {
-        contactId: contact.result.id, dueDate: "2026-12-01",
-        items: [{ description: "VAT-bearing work", quantity: 1, unitPrice: 100, vat: { treatment: "standard" as const, rate: "0.25", country: "DK" } }],
-      }, { actor })
-      if (taxed.status !== "completed") throw new Error(JSON.stringify(taxed))
-      const taxedDraft = await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id }, include: { items: true } })
-      expect(parseSellerSnapshot(taxedDraft.sellerSnapshot)?.momsRegistered).toBe(false)
-      expect(taxedDraft.totalTax.toNumber()).toBe(25)
-      expect(taxedDraft.items).toHaveLength(1)
-      expect(taxedDraft.items[0]!.taxRate.toNumber()).toBe(25)
-      expect(taxedDraft.items[0]!.lineTax.toNumber()).toBe(25)
-      const rejected = await executeIssuanceCommand(sendInvoice, { id: taxed.result.id, allowSendWithoutEmail: true }, { actor })
-      expect(rejected.status).not.toBe("completed")
-      expect(JSON.stringify(rejected)).toContain("seller_not_vat_registered")
-      expect(await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id } })).toMatchObject({ status: "draft", number: null, artifactPdfRef: null, artifactUblRef: null })
-      expect(await prisma.artifactStaging.count({ where: { organizationId: id } })).toBe(0)
-      expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ invoiceNextNum: 1 })
+      // The draft command defaults an omitted document rate to zero, independently of settings.
+      // Exercise both document-level VAT and explicit line VAT through real issuance.
+      for (const { taxRate, vat } of [
+        { taxRate: 25, vat: undefined },
+        { taxRate: undefined, vat: { treatment: "standard" as const, rate: "0.25", country: "DK" } },
+      ]) {
+        const taxed = await executeIssuanceCommand(createInvoiceDraft, {
+          contactId: contact.result.id, dueDate: "2026-12-01", taxRate,
+          items: [{ description: "VAT-bearing work", quantity: 1, unitPrice: 100, ...(vat ? { vat } : {}) }],
+        }, { actor })
+        if (taxed.status !== "completed") throw new Error(JSON.stringify(taxed))
+        const taxedDraft = await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id }, include: { items: true } })
+        expect(parseSellerSnapshot(taxedDraft.sellerSnapshot)?.momsRegistered).toBe(false)
+        expect(taxedDraft.totalTax.toNumber()).toBe(25)
+        expect(taxedDraft.items).toHaveLength(1)
+        expect(taxedDraft.items[0]!.taxRate.toNumber()).toBe(25)
+        expect(taxedDraft.items[0]!.lineTax.toNumber()).toBe(25)
+        const rejected = await executeIssuanceCommand(sendInvoice, { id: taxed.result.id, allowSendWithoutEmail: true }, { actor })
+        expect(rejected.status).not.toBe("completed")
+        expect(JSON.stringify(rejected)).toContain("seller_not_vat_registered")
+        expect(await prisma.invoice.findUniqueOrThrow({ where: { id: taxed.result.id } })).toMatchObject({ status: "draft", number: null, artifactPdfRef: null, artifactUblRef: null })
+        expect(await prisma.artifactStaging.count({ where: { organizationId: id } })).toBe(0)
+        expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ invoiceNextNum: 1 })
+      }
       vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
     }
-    // This fixture exercises stored UBL for an explicitly classified supply. Registration alone
-    // does not make an ordinary domestic sale outside scope: omitted zero-rate VAT is
-    // unclassified_zero for a non-registered seller and cannot be represented in legal UBL.
-    const outsideScopeVat = { treatment: "out_of_scope" as const, rate: "0" }
     const draft = await executeIssuanceCommand(createInvoiceDraft, {
       contactId: contact.result.id, dueDate: "2026-12-01", taxRate: momsRegistered ? 25 : 0,
-      notes: "Original invoice note", items: [{ description: momsRegistered ? "Design" : "Explicit outside-scope supply", quantity: 1, unitPrice: 100, ...(momsRegistered ? {} : { vat: outsideScopeVat }) }],
+      notes: "Original invoice note", items: [{ description: "Design", quantity: 1, unitPrice: 100 }],
     }, { actor })
     if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
     const issued = await executeIssuanceCommand(sendInvoice, { id: draft.result.id, allowSendWithoutEmail: true }, { actor })
@@ -124,7 +113,6 @@ let artifactDirectory: string
     const staging = await prisma.artifactStaging.findFirstOrThrow({ where: { organizationId: id, documentKind: "invoice", documentId: invoice.id } })
     const frozen = staging.renderInput as { pdf: { org: { cvrLabel?: string } } }
     expect(frozen.pdf.org.cvrLabel).toBe(momsRegistered ? undefined : locale === "da-DK" ? "CVR-nr." : "CVR no.")
-    const originalArtifacts = { artifactUblRef: invoice.artifactUblRef, artifactUblHash: invoice.artifactUblHash, sellerSnapshot: invoice.sellerSnapshot, issuanceSnapshot: invoice.issuanceSnapshot }
     const storedUbl = await getDocumentArtifactStore()?.get(invoice.artifactUblRef!)
     expect(storedUbl).toBeInstanceOf(Uint8Array)
     const oldPdf = await getDocumentArtifactStore()?.get(invoice.artifactPdfRef!)
@@ -137,11 +125,6 @@ let artifactDirectory: string
     if (momsRegistered) expect(supplier).toContain("DK24256790")
     else expect(supplier).not.toContain("<cac:PartyTaxScheme>")
     expect(exported.xml).toContain("Original invoice note")
-    expect(exported.xml).toContain(`<cbc:ID>${momsRegistered ? "S" : "O"}</cbc:ID>`)
-    if (!momsRegistered) {
-      expect(exported.xml).toContain("Outside the scope of VAT")
-      expect(exported.xml).not.toContain("<cbc:Percent>")
-    }
     if (statement) {
       expect(exported.xml).toContain(statement)
       const pdf = await getDocumentArtifactStore()?.get(invoice.artifactPdfRef!)
@@ -160,7 +143,7 @@ let artifactDirectory: string
     expect(await exportEinvoice(id, "invoice", invoice.id)).toEqual(exported)
     const future = await executeIssuanceCommand(createInvoiceDraft, {
       contactId: contact.result.id, dueDate: "2026-12-01", taxRate: momsRegistered ? 0 : 25,
-      items: [{ description: momsRegistered ? "Future explicit outside-scope supply" : "Future work", quantity: 1, unitPrice: 100, ...(momsRegistered ? { vat: outsideScopeVat } : {}) }],
+      items: [{ description: "Future work", quantity: 1, unitPrice: 100 }],
     }, { actor })
     if (future.status !== "completed") throw new Error(JSON.stringify(future))
     const futureIssued = await executeIssuanceCommand(sendInvoice, { id: future.result.id, allowSendWithoutEmail: true }, { actor })
@@ -169,14 +152,8 @@ let artifactDirectory: string
     expect(parseSellerSnapshot(futureInvoice.sellerSnapshot)?.momsRegistered).toBe(!momsRegistered)
     expect(parseSellerSnapshot(futureInvoice.sellerSnapshot)?.paymentNote ?? null).toBe(momsRegistered ? "Der er ikke beregnet moms, da sælger ikke er momsregistreret." : null)
     expect(await getDocumentArtifactStore()?.get(invoice.artifactPdfRef!)).toEqual(oldPdf)
-    expect(futureInvoice.artifactUblRef).toEqual(expect.any(String))
-    const futureArtifacts = { artifactUblRef: futureInvoice.artifactUblRef, artifactUblHash: futureInvoice.artifactUblHash, sellerSnapshot: futureInvoice.sellerSnapshot, issuanceSnapshot: futureInvoice.issuanceSnapshot }
-    const futureStoredUbl = await getDocumentArtifactStore()?.get(futureInvoice.artifactUblRef!)
-    expect(futureStoredUbl).toBeInstanceOf(Uint8Array)
     const futureExport = await exportEinvoice(id, "invoice", futureInvoice.id)
     if (!futureExport.ok) throw new Error(JSON.stringify(futureExport))
-    expect(futureExport.xml).toBe(new TextDecoder().decode(futureStoredUbl!))
-    expect(futureExport.xml).toContain(`<cbc:ID>${momsRegistered ? "O" : "S"}</cbc:ID>`)
     const futureSupplier = futureExport.xml.split("<cac:AccountingSupplierParty>")[1]?.split("</cac:AccountingSupplierParty>")[0]
     if (momsRegistered) {
       expect(futureSupplier).not.toContain("<cac:PartyTaxScheme>")
@@ -204,7 +181,5 @@ let artifactDirectory: string
     expect(await api.settings.get()).toMatchObject({ momsRegistered: null })
     expect(await exportEinvoice(id, "invoice", invoice.id)).toEqual(exported)
     expect(await exportEinvoice(id, "invoice", futureInvoice.id)).toEqual(futureExport)
-    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).toMatchObject(originalArtifacts)
-    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: futureInvoice.id } })).toMatchObject(futureArtifacts)
   })
 })

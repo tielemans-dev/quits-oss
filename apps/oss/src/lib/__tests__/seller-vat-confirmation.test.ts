@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { settingsConfirmationTaxIds, confirmSellerVatStatus, type SellerVatConfirmationTransaction } from "../runtime/seller-vat-confirmation"
+import { onboardingConfirmationTaxIds, settingsConfirmationTaxIds, confirmSellerVatStatus, type SellerVatConfirmationTransaction } from "../runtime/seller-vat-confirmation"
 import { setRuntimeExtensions } from "../runtime/extensions"
 const confirm = vi.fn(async () => {})
 const actor = { organizationId: "org", userId: "user", sessionId: "session" }
@@ -69,11 +69,28 @@ describe("Settings confirmation tax-ID representation", () => {
   it.each(["vat", "cvr", "DK_CVR"])("preserves the selected %s scheme and other stored IDs", scheme => {
     const stored = [{ scheme: "vat", value: "12345678", countryCode: null }, { scheme: "lei", value: "OTHER", countryCode: "DK" }]
     expect(settingsConfirmationTaxIds(stored, " 24256790 ", scheme)).toEqual([
-      { scheme, value: "24256790", countryCode: null }, stored[1],
+      { scheme, value: "24256790", countryCode: "DK" }, stored[1],
     ])
     expect(stored[0]!.value).toBe("12345678")
   })
-  it("matches a new primary ID's nullable country instead of inventing a Danish CVR", () => {
-    expect(settingsConfirmationTaxIds([], "24256790", "vat")).toEqual([{ scheme: "vat", value: "24256790", countryCode: null }])
+  it("matches the Danish country stored for a newly saved primary ID", () => {
+    expect(settingsConfirmationTaxIds([], "24256790", "vat")).toEqual([{ scheme: "vat", value: "24256790", countryCode: "DK" }])
+  })
+})
+
+
+describe("confirmation identity after merging Danish tax-ID repairs", () => {
+  it("retains foreign VAT IDs while replacing only the Danish onboarding pair", () => {
+    const foreign = [{ scheme: "vat", value: "DE123456789", countryCode: "DE" }, { scheme: "vat", value: "SE123456789", countryCode: null }]
+    expect(onboardingConfirmationTaxIds([...foreign, { scheme: "DK_VAT", value: "DK12345674", countryCode: null }], "24256790", "DK24256790"))
+      .toEqual([{ scheme: "cvr", value: "24256790", countryCode: "DK" }, ...foreign, { scheme: "vat", value: "DK24256790", countryCode: "DK" }])
+  })
+  it("projects non-VAT CVR classification and paired VAT refresh without changing foreign IDs", () => {
+    const foreign = { scheme: "vat", value: "DE123456789", countryCode: "DE" }
+    const stored = [{ scheme: "vat", value: "DK24256790", countryCode: null }, { scheme: "DK_VAT", value: "DK24256790", countryCode: "DK" }, foreign]
+    expect(settingsConfirmationTaxIds(stored, "12345674", "vat", false)).toEqual([
+      { scheme: "cvr", value: "12345674", countryCode: "DK" }, { scheme: "DK_VAT", value: "DK12345674", countryCode: "DK" }, foreign,
+    ])
+    expect(stored[0]!.value).toBe("DK24256790")
   })
 })

@@ -1,3 +1,6 @@
+import { translate } from "../../lib/i18n/translate"
+import { isValidDanishCvr } from "@quits/contracts/onboarding"
+import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
 import { confirmSellerVatStatus } from "../../lib/runtime/seller-vat-confirmation"
 import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { InvalidState } from "../../domain/errors"
@@ -29,7 +32,7 @@ import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/r
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
 import { localeSchema } from "../../lib/compliance/countries"
-import { isCountryCode } from "../../lib/compliance/registry"
+import { isCountryCode, isNationalRegistrationScheme, nationalRegistrationForScheme } from "../../lib/compliance/registry"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import {
   normalizeCountryCode,
@@ -314,9 +317,6 @@ export const settingsRouter = router({
       } = input
 
 
-      if (settingsInput.momsRegistered === false && !isNonVatRegistrationAllowed()) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
-      }
       assertSettingsCurrency(settingsInput.currency)
       assertSettingsCurrency(settingsInput.defaultCurrency)
       assertSettingsCurrency(settingsInput.baseCurrency)
@@ -327,9 +327,9 @@ export const settingsRouter = router({
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
-          select: { countryCode: true, taxRegime: true, momsRegistered: true, aiProvider: true, aiBaseUrl: true, companyName: true, companyAddress: true },
+          select: { countryCode: true, locale: true, paymentNote: true, taxRegime: true, momsRegistered: true, aiProvider: true, aiBaseUrl: true, companyName: true, companyAddress: true },
         })
-        const previousSeller = getRuntimeCapabilities().sellerVatConfirmation.enabled
+        const previousSeller = getRuntimeCapabilities().sellerVatConfirmation?.enabled
           ? { companyName: current?.companyName, companyAddress: current?.companyAddress, countryCode: current?.countryCode,
               taxIds: await tx.organizationTaxId.findMany({ where: { organizationId: ctx.organizationId } }) }
           : undefined
@@ -341,6 +341,28 @@ export const settingsRouter = router({
         const resolvedCountry = normalizeCountryCode(
           settingsInput.countryCode ?? current?.countryCode
         )
+        // Registration describes the Danish EU VAT setup, not a hidden cross-jurisdiction flag.
+        const clearsRegistration = resolvedCountry !== "DK" || (settingsInput.taxRegime ?? current?.taxRegime) !== "eu_vat"
+        if (clearsRegistration) settingsInput.momsRegistered = null
+        if (settingsInput.momsRegistered === false && !isNonVatRegistrationAllowed()) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
+        }
+        if (settingsInput.momsRegistered === false) {
+          const primary = primaryTaxId?.trim()
+            ? { scheme: primaryTaxIdScheme?.trim() || "vat", value: primaryTaxId, countryCode: resolvedCountry }
+            : await tx.organizationTaxId.findFirst({ where: { organizationId: ctx.organizationId, isPrimary: true } })
+          const scheme = primary?.scheme.trim().toLowerCase()
+          const value = primary?.value.replace(/[\s.\-/]/g, "").toUpperCase().replace(/^DK/, "")
+          if (!primary || (primary.countryCode && primary.countryCode !== "DK") ||
+              !(isNationalRegistrationScheme(primary.scheme, "DK") || scheme === "vat" || scheme === "dk_vat") ||
+              !value || !isValidDanishCvr(value)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: translate("cvr.invalid", settingsInput.locale ?? current?.locale) })
+          }
+        }
+        const effectiveRegistration = settingsInput.momsRegistered === undefined
+          ? current?.momsRegistered
+          : settingsInput.momsRegistered
+        if (!clearsRegistration && effectiveRegistration === false) settingsInput.taxRate = 0
         const localizedIssues = validateLocalizedFields(resolvedCountry, {
           phone: settingsInput.companyPhone,
           taxId: primaryTaxId,
@@ -392,8 +414,7 @@ export const settingsRouter = router({
 
         const settingsUpdateData = {
           ...settingsInput,
-          ...((settingsInput.momsRegistered === undefined ? current?.momsRegistered : settingsInput.momsRegistered) === false
-            && (settingsInput.taxRegime ?? current?.taxRegime) === "eu_vat" ? { taxRate: 0 } : {}),
+          ...(clearsRegistration && current?.momsRegistered != null ? { paymentNote: localizedNonVatPaymentNote(current?.paymentNote, true) ?? null } : {}),
           baseCurrency,
           ...(aiBaseUrl !== undefined ? { aiBaseUrl: aiBaseUrl || null } : {}),
           ...(aiApiKey ? { aiApiKeyEnc: encryptSecret(aiApiKey) } : {}),
@@ -421,15 +442,35 @@ export const settingsRouter = router({
           const existing = await tx.organizationTaxId.findFirst({
             where: { organizationId: ctx.organizationId },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-            select: { id: true },
+            select: { id: true, scheme: true, value: true, countryCode: true },
           })
 
           if (existing) {
+            const nextScheme = primaryTaxIdScheme?.trim() || "vat"
+            // Only the VAT paired with this Danish identity is derived from its edit. Keep foreign
+            // and unrelated secondary identifiers, and never rewrite issued snapshots.
+            if (resolvedCountry === "DK" && (!existing.countryCode || existing.countryCode === "DK") &&
+                (isNationalRegistrationScheme(existing.scheme, "DK") || ["vat", "dk_vat"].includes(existing.scheme.toLowerCase())) &&
+                (isNationalRegistrationScheme(nextScheme, "DK") || ["vat", "dk_vat"].includes(nextScheme.toLowerCase()))) {
+              const registration = nationalRegistrationForScheme("cvr")!
+              const oldCvr = registration.normalize(existing.value)
+              const nextCvr = registration.normalize(primaryTaxId)
+              if (/^\d{8}$/.test(oldCvr) && /^\d{8}$/.test(nextCvr)) await tx.organizationTaxId.updateMany({
+                where: { organizationId: ctx.organizationId, value: `DK${oldCvr}`,
+                  AND: [
+                    { OR: [{ countryCode: "DK" }, { countryCode: null }] },
+                    { OR: ["vat", "dk_vat"].map(scheme => ({ scheme: { equals: scheme, mode: "insensitive" as const } })) },
+                  ],
+                },
+                data: { value: `DK${nextCvr}` },
+              })
+            }
             await tx.organizationTaxId.update({
               where: { id: existing.id },
               data: {
                 value: primaryTaxId.trim(),
                 scheme: primaryTaxIdScheme?.trim() || "vat",
+                countryCode: nextScheme.toLowerCase() === "dk_vat" ? "DK" : resolvedCountry,
                 isPrimary: true,
               },
             })
@@ -439,8 +480,24 @@ export const settingsRouter = router({
                 organizationId: ctx.organizationId,
                 value: primaryTaxId.trim(),
                 scheme: primaryTaxIdScheme?.trim() || "vat",
+                countryCode: primaryTaxIdScheme?.trim().toLowerCase() === "dk_vat" ? "DK" : resolvedCountry,
                 isPrimary: true,
               },
+            })
+          }
+        }
+
+        if (resolvedCountry === "DK" && (await tx.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.organizationId } })).momsRegistered === false) {
+          const primary = await tx.organizationTaxId.findFirst({
+            where: { organizationId: ctx.organizationId, isPrimary: true },
+          })
+          const value = primary?.value.replace(/[\s.\-/]/g, "").toUpperCase()
+          // Only a Danish eight-digit primary VAT identity can be reclassified as a CVR.
+          if (primary && (!primary.countryCode || primary.countryCode === "DK") &&
+              ["vat", "dk_vat"].includes(primary.scheme.toLowerCase()) && value && /^(DK)?\d{8}$/.test(value)) {
+            await tx.organizationTaxId.update({
+              where: { id: primary.id },
+              data: { scheme: "cvr", value: value.replace(/^DK/, ""), countryCode: "DK" },
             })
           }
         }

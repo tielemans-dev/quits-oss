@@ -1,4 +1,10 @@
 export const daSettingsMessages = {
+  "settings.validation.invalidPaymentTerms": "Betalingsfristen skal være et helt tal mellem 0 og 3650.",
+
+  "settings.paymentTermsDays.hint": "Standardantal dage til en ny fakturas forfaldsdato. Eksisterende fakturaer beholder deres forfaldsdato.",
+
+  "settings.paymentTermsDays.label": "Betalingsfrist (dage)",
+
   "settings.vatStatus.cvrLabel": "CVR-nummer",
   "settings.vatStatus.cvrHelp": "Din virksomheds danske registreringsnummer.",
 
@@ -42,6 +48,12 @@ export const daSettingsMessages = {
     "Dine virksomhedsoplysninger vises på fakturaer og tilbud.",
   "settings.companyName.label": "Virksomhedsnavn",
   "settings.companyName.placeholder": "Acme ApS",
+  "settings.organizationSlug.label": "URL-navn",
+  "settings.organizationSlug.placeholder": "acme-aps",
+  "settings.organizationSlug.save": "Gem URL",
+  "settings.organizationSlug.saved": "URL gemt.",
+  "settings.organizationSlug.help": "Bogstaver, tal og bindestreger. Bruges i URL'er.",
+  "settings.organizationSlug.invalid": "Brug et kort URL-navn med bogstaver, tal og bindestreger.",
   "settings.companyAddress.label": "Virksomhedsadresse",
   "settings.companyAddress.placeholder": "Hovedgade 123&#10;By, Region 1234",
   "settings.companyEmail.label": "Virksomheds-e-mail",

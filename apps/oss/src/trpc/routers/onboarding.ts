@@ -21,7 +21,9 @@ import { evaluateOnboardingReadiness } from "../../lib/onboarding/readiness"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode } from "../../lib/compliance/registry"
-import { authorizedProcedure, router } from "../init"
+import { searchOwnCvr } from "../../lib/onboarding/search-cvr"
+import { getCvrLookupProvider } from "../../lib/runtime/services"
+import { authorizedProcedure, protectedProcedure, router } from "../init"
 import { billingProvider } from "../../lib/billing"
 
 const onboardingInputSchema = z.object({
@@ -238,7 +240,7 @@ export const onboardingRouter = router({
   }),
   confirmV2: authorizedProcedure("settings:update")
     .input(z.preprocess<z.output<typeof confirmOnboardingV2Schema>, typeof confirmOnboardingV2Schema, z.input<typeof confirmOnboardingV2Schema>>((value) => {
-      const result = (getRuntimeCapabilities().sellerVatConfirmation.enabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(value)
+      const result = (getRuntimeCapabilities().sellerVatConfirmation?.enabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(value)
       if (!result.success) {
         const key = result.error.issues.some(issue => issue.path[0] === "cvr") ? "cvr.invalid" : "save.failed"
         throw new TRPCError({ code: "BAD_REQUEST", message: key })
@@ -253,6 +255,17 @@ export const onboardingRouter = router({
       return confirmOnboardingV2(ctx.organizationId, input, ctx.user.email, { organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request })
     }),
 
+  // Lookup runs before an organization exists. The hosted runtime supplies the provider.
+  searchCvr: protectedProcedure
+    .input(z.object({ q: z.string().trim().min(3).max(120) }))
+    .query(({ ctx, input }) =>
+      searchOwnCvr({
+        query: input.q,
+        cloud: isCloudDistribution,
+        userId: ctx.user.id,
+        lookup: getCvrLookupProvider(),
+      }),
+    ),
   getStatus: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     if (!isCloudDistribution) {
       throw new TRPCError({
@@ -303,7 +316,10 @@ export const onboardingRouter = router({
       if ("quotePrefix" in input) settingsUpdateData.quotePrefix = input.quotePrefix
       if ("quoteNextNum" in input) settingsUpdateData.quoteNextNum = input.quoteNextNum
 
-      return legacyOnboardingWrite(ctx.organizationId, async tx => {
+      return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
+        if (input.countryCode && input.countryCode !== snapshot.values.countryCode) {
+          settingsUpdateData.taxRate = input.countryCode === "DK" ? 25 : null
+        }
         settingsUpdateData.baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, { countryCode: settingsUpdateData.countryCode as string | undefined })
         await tx.orgSettings.upsert({
           where: { organizationId: ctx.organizationId },
