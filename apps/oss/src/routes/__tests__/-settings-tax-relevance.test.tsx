@@ -415,7 +415,7 @@ async function renderDanishSettings(momsRegistered: boolean | null) {
   getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
   const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, taxRate: momsRegistered === false ? 0 : 25 })
   settingsGetQuery.mockResolvedValue(data)
-  settingsUpdate.mockImplementation(async input => ({ ...data, ...input, momsRegistered: input.momsRegistered === undefined ? data.momsRegistered : input.momsRegistered }))
+  settingsUpdate.mockImplementation(async input => ({ ...data, ...input, momsRegistered: input.momsRegistered === undefined ? momsRegistered : input.momsRegistered }))
   render(<RouteComponent />)
   await screen.findByRole("radio", { name: "vatStatus.yes" })
 }
