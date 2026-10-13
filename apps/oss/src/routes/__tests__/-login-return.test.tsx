@@ -183,6 +183,7 @@ describe('return after required organization flow', () => {
     renderPage(Onboarding)
     expect(screen.queryByLabelText('Slug')).toBeNull()
     fireEvent.change(await screen.findByLabelText('Company name or CVR'), { target: { value: 'Nordlys' } })
+    expect(screen.getByRole('button', { name: 'Look up' }).closest('form')?.className).toContain('gap-6')
     fireEvent.click(screen.getByRole('button', { name: 'Look up' }))
     fireEvent.click(await screen.findByRole('button', { name: /Use Nordlys Studio ApS/ }))
     await waitFor(() => expect(state.create).toHaveBeenCalledWith({ name: 'Nordlys Studio ApS', slug: 'nordlys-studio-aps-2' }))

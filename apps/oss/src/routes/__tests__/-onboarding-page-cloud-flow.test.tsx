@@ -109,10 +109,36 @@ describe("OnboardingPage cloud flow", () => {
     stageSelectedCompany("user_1", "org_1", { name: "Selected ApS", address: "Selected street 1", cvr: "24256790" })
     vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ isComplete: false, values: { companyName: "Selected ApS", companyAddress: "Selected street 1", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" }, missing: [] } as never)
     render(<RouteComponent />)
-    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Selected ApS", companyAddress: "Selected street 1", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" }))
+    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Selected ApS", companyAddress: "Selected street 1", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr", locale: "en-US" }))
     expect(await screen.findByDisplayValue("Selected ApS")).toBeTruthy()
     expect(screen.getByDisplayValue("Selected street 1")).toBeTruthy()
     expect(screen.getByDisplayValue("24256790")).toBeTruthy()
+    expect((screen.getByLabelText("Locale") as HTMLSelectElement).value).toBe("en-US")
+    expect(screen.getByText("Finish organization setup")).toBeTruthy()
+  })
+
+  it("prefills a manually typed name and keeps the English UI locale", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "owner@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: null, locale: "da-DK", countryCode: "DK" }, missing: ["companyName"] })
+    stageSelectedCompany("user_1", "org_1", { name: "Nordic Advisory" })
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ isComplete: false, values: { companyName: "Nordic Advisory", locale: "en-US", countryCode: "DK" }, missing: ["companyAddress"] } as never)
+    render(<RouteComponent />)
+    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Nordic Advisory", primaryTaxId: null, locale: "en-US" }))
+    expect(await screen.findByDisplayValue("Nordic Advisory")).toBeTruthy()
+    expect((screen.getByLabelText("Locale") as HTMLSelectElement).value).toBe("en-US")
+    expect(screen.getByText("Finish organization setup")).toBeTruthy()
+  })
+
+  it("stores the current UI locale when a new organization still has the Danish default", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: "", locale: "da-DK", countryCode: "DK" }, missing: ["companyName"] })
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ isComplete: false, missing: ["companyName"], values: { locale: "en-US" } } as never)
+    render(<RouteComponent />)
+    await waitFor(() => expect((screen.getByLabelText("Locale") as HTMLSelectElement).value).toBe("en-US"))
+    expect(screen.getByText("Finish organization setup")).toBeTruthy()
+    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ locale: "en-US", primaryTaxId: null }))
   })
 
   it("prefills localized defaults and hides irrelevant tax fields", async () => {

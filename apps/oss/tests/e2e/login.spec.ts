@@ -49,15 +49,18 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   await expect(page.getByText("Look up your own CVR")).toBeVisible()
   await expect(page.getByLabel("Slug")).toHaveCount(0)
 
-  // No organization has supplied a locale. The raw response stays English, then the sole
-  // language owner detects this browser's Danish preference after hydration.
+  // No organization yet: the sidebar and its switcher stay off the page. The raw response
+  // stays English, then the sole language owner detects this browser's Danish preference.
   await page.addInitScript(() => Object.defineProperty(navigator, "language", { get: () => "da-DK" }))
   const response = await page.reload()
   expect(response!.ok()).toBe(true)
   const serverHtml = await response!.text()
   expect(serverHtml).toMatch(/<html\b[^>]*\blang="en"/)
-  expect(serverHtml).toContain(">Invoices<")
+  expect(serverHtml).toContain("Look up your own CVR")
+  expect(serverHtml).not.toContain(">Invoices<")
   expect(serverHtml).not.toContain(">Fakturaer<")
+  expect(serverHtml).not.toContain("Switch organization")
+  expect(serverHtml).not.toContain("Skift organisation")
   await waitForClientReady(page)
   await expect(page.locator("html")).toHaveAttribute("lang", "da")
   await expect(page.getByText("Slå dit eget CVR op", { exact: true })).toBeVisible()

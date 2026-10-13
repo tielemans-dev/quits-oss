@@ -15,7 +15,7 @@ import { isReadOnly, useTrialAccess } from '../billing/trial-access'
  * palette, and the one content container every page renders in. Pages bring their own markup;
  * the container sets the width and the padding (see `[data-slot='app-content']` in styles.css).
  */
-export function AppMain({ banner, children }: { banner?: ReactNode; children: ReactNode }) {
+export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNode; children: ReactNode; sidebar?: boolean }) {
   const { billingEnabled } = useRuntimeDistribution()
   const trial = useTrialAccess()
   const readOnly = isReadOnly(trial?.subscription ?? null)
@@ -48,7 +48,7 @@ export function AppMain({ banner, children }: { banner?: ReactNode; children: Re
       <header className="sticky top-0 z-20 border-b border-hairline bg-background">
         <div className="relative mx-auto flex h-14 w-full max-w-[1280px] items-center gap-2 px-4 md:gap-3 md:px-8">
           <SearchField onOpen={openPalette} className="max-w-[560px]" />
-          <SidebarTrigger className="size-8 shrink-0 md:absolute md:left-0" />
+          {sidebar ? <SidebarTrigger className="size-8 shrink-0 md:absolute md:left-0" /> : null}
           <div className="flex-1 max-md:hidden" />
           <NewMenu open={newMenuOpen} onOpenChange={setNewMenuOpen} can={can} ready={ready} readOnly={readOnly} />
         </div>

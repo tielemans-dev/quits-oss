@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
 import type { RuntimeCapabilities } from '@quits/contracts/runtime'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { authClient, useSession } from '../../lib/auth-client'
 import { switchActiveOrganization } from '../../lib/active-organization'
 import { invalidateAppLayoutSession } from '../../lib/app-layout-session'
@@ -25,7 +25,7 @@ import {
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { I18nProvider, useI18n } from '../../lib/i18n/react'
-import { countryOptionsIncluding, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
+import { canonicalLocale, countryOptionsIncluding, LOCALE_OPTIONS, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
 import { loadPage } from '../../lib/page-navigation'
 import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../../lib/login-return'
@@ -106,6 +106,18 @@ function parseCloudOnboardingValues(values?: Record<string, unknown> | null): Cl
   }
 }
 
+function organizationLocaleForUi(uiLocale: string): string {
+  const canonical = canonicalLocale(uiLocale)
+  if (canonical && (LOCALE_OPTIONS as readonly string[]).includes(canonical)) return canonical
+  const language = (canonical ?? uiLocale).split('-')[0]?.toLowerCase() ?? ''
+  if (language === 'da') return 'da-DK'
+  if (language === 'de') return 'de-DE'
+  if (language === 'fr') return 'fr-FR'
+  if (language === 'nl') return 'nl-NL'
+  if (language === 'es') return 'es-ES'
+  return 'en-US'
+}
+
 function OnboardingPage() {
   const { locale } = useI18n()
   const { lang } = Route.useSearch()
@@ -141,9 +153,12 @@ function OnboardingPageContent() {
   const [runtimeCapabilities, setRuntimeCapabilities] = useState<
     Pick<RuntimeCapabilities, 'onboardingAi'> | null
   >(null)
-  const [values, setValues] = useState<CloudOnboardingValues>(
-    DEFAULT_CLOUD_ONBOARDING_VALUES
-  )
+  const [values, setValues] = useState<CloudOnboardingValues>(() => ({
+    ...DEFAULT_CLOUD_ONBOARDING_VALUES,
+    locale: organizationLocaleForUi(uiLocale),
+  }))
+  // A country or locale edit before status loads must survive that response.
+  const localeChoice = useRef<string | null>(null)
   const [manualOverrides, setManualOverrides] = useState<Record<AutoFillField, boolean>>({
     locale: false,
     timezone: false,
@@ -237,17 +252,41 @@ function OnboardingPageContent() {
         const selected = !status.isComplete && session?.user?.id && session.session.activeOrganizationId
           ? readSelectedCompany(session.user.id, session.session.activeOrganizationId)
           : null
+        const uiOrganizationLocale = localeChoice.current ?? organizationLocaleForUi(uiLocale)
         if (selected) {
-          const draft = await trpc.onboarding.saveDraft.mutate({
-            companyName: selected.name, companyAddress: selected.address,
-            countryCode: 'DK', primaryTaxId: selected.cvr, primaryTaxIdScheme: 'cvr',
-          })
+          const draft = await trpc.onboarding.saveDraft.mutate(selected.cvr
+            ? {
+                companyName: selected.name,
+                companyAddress: selected.address,
+                countryCode: 'DK',
+                primaryTaxId: selected.cvr,
+                primaryTaxIdScheme: 'cvr',
+                locale: uiOrganizationLocale,
+              }
+            : {
+                companyName: selected.name,
+                primaryTaxId: null,
+                locale: uiOrganizationLocale,
+              })
           if (cancelled) return
           clearSelectedCompany(session!.user.id, session!.session.activeOrganizationId!)
           status = draft
         }
         if (status.values) {
-          setValues(parseCloudOnboardingValues(status.values))
+          const parsed = parseCloudOnboardingValues(status.values)
+          if (localeChoice.current) parsed.locale = localeChoice.current
+          else if (selected || (!parsed.companyName.trim() && parsed.locale === 'da-DK')) {
+            parsed.locale = organizationLocaleForUi(uiLocale)
+          }
+          if (!selected && !localeChoice.current && !parsed.companyName.trim() &&
+            parsed.locale !== String(status.values.locale ?? '') && parsed.locale !== 'da-DK') {
+            try {
+              await trpc.onboarding.saveDraft.mutate({ locale: parsed.locale, primaryTaxId: null })
+            } catch {
+              // The field already shows the current language. The next visit can store it.
+            }
+          }
+          setValues(parsed)
           setManualOverrides({
             locale: false,
             timezone: false,
@@ -341,6 +380,7 @@ function OnboardingPageContent() {
         key === 'pricesIncludeTax')
 
     if (shouldTrackManual) {
+      if (key === 'locale') localeChoice.current = String(value)
       setManualOverrides((current) => ({
         ...current,
         [key]: true,
@@ -357,6 +397,7 @@ function OnboardingPageContent() {
       invoicingIdentity,
     }).defaults
 
+    if (!manualOverrides.locale) localeChoice.current = defaults.locale
     setValues((current) => ({
       ...current,
       countryCode,
@@ -404,9 +445,9 @@ function OnboardingPageContent() {
     }
 
     // The next page acts for the new organization; this page's requests still name the old one.
-    if (company && session?.user?.id) {
+    if (session?.user?.id) {
       try {
-        stageSelectedCompany(session.user.id, created.id, company)
+        stageSelectedCompany(session.user.id, created.id, company ?? { name, address: '', cvr: '' })
       } catch {
         setError(t('auth.onboarding.error'))
         setSubmitting(false)
@@ -625,7 +666,7 @@ function OnboardingPageContent() {
               </CardFooter>
             </form>
           ) : (
-            <form onSubmit={(e) => void handleLookup(e)}>
+            <form className="flex flex-col gap-6" onSubmit={(e) => void handleLookup(e)}>
               <CardContent className="flex flex-col gap-4">
                 {error && (
                   <p className="text-sm text-destructive" role="alert">
