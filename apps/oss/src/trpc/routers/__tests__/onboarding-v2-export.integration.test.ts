@@ -93,9 +93,10 @@ let artifactDirectory: string
       }
       vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
     }
+    const outsideScopeVat = { treatment: "out_of_scope" as const, rate: "0" }
     const draft = await executeIssuanceCommand(createInvoiceDraft, {
       contactId: contact.result.id, dueDate: "2026-12-01", taxRate: momsRegistered ? 25 : 0,
-      notes: "Original invoice note", items: [{ description: "Design", quantity: 1, unitPrice: 100 }],
+      notes: "Original invoice note", items: [{ description: "Design", quantity: 1, unitPrice: 100, ...(momsRegistered ? {} : { vat: outsideScopeVat }) }],
     }, { actor })
     if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
     const issued = await executeIssuanceCommand(sendInvoice, { id: draft.result.id, allowSendWithoutEmail: true }, { actor })
@@ -143,7 +144,7 @@ let artifactDirectory: string
     expect(await exportEinvoice(id, "invoice", invoice.id)).toEqual(exported)
     const future = await executeIssuanceCommand(createInvoiceDraft, {
       contactId: contact.result.id, dueDate: "2026-12-01", taxRate: momsRegistered ? 0 : 25,
-      items: [{ description: "Future work", quantity: 1, unitPrice: 100 }],
+      items: [{ description: "Future work", quantity: 1, unitPrice: 100, ...(momsRegistered ? { vat: outsideScopeVat } : {}) }],
     }, { actor })
     if (future.status !== "completed") throw new Error(JSON.stringify(future))
     const futureIssued = await executeIssuanceCommand(sendInvoice, { id: future.result.id, allowSendWithoutEmail: true }, { actor })

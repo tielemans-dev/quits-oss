@@ -9,7 +9,7 @@ vi.mock("../../../lib/onboarding/confirm-v2", () => ({ confirmOnboardingV2: save
 vi.mock("../../init", async () => {
   const { initTRPC } = await import("@trpc/server")
   const t = initTRPC.create()
-  return { router: t.router, authorizedProcedure: () => t.procedure }
+  return { router: t.router, authorizedProcedure: () => t.procedure, protectedProcedure: t.procedure }
 })
 import { onboardingRouter } from "../onboarding"
 const actor = { organizationId: "org", user: { id: "user", email: "signup@example.test" }, session: { session: { id: "session" } } }

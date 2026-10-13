@@ -22,10 +22,11 @@ vi.mock('../../lib/page-navigation', () => ({ loadPage: state.load }))
 vi.mock('../../lib/runtime-distribution', () => ({ useRuntimeDistribution: () => ({ isCloud: state.cloud }) }))
 vi.mock('../../lib/auth-client', () => ({
   authClient: { signIn: { email: state.signIn }, organization: { list: state.list, setActive: state.setActive, create: state.create, checkSlug: state.checkSlug } },
-  useSession: () => ({ data: { session: { activeOrganizationId: state.active ? 'org_1' : null } } }),
+  useSession: () => ({ data: { user: { id: 'user_1', email: 'user@example.test' }, session: { activeOrganizationId: state.active ? 'org_1' : null } } }),
 }))
 vi.mock('../../trpc/client', () => ({ trpc: {
   onboarding: { getStatus: { query: state.status }, saveDraft: { mutate: state.draft }, completeManual: { mutate: state.complete }, searchCvr: { query: state.searchCvr } },
+  cvr: { available: { query: async () => ({ enabled: false, suggestions: false }) } },
   runtime: { capabilities: { query: async () => ({ onboardingAi: { enabled: false } }) } },
 } }))
 import { Route as LoginRoute } from '../login'
