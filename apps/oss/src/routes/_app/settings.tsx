@@ -247,6 +247,9 @@ function SettingsPage() {
   // Team members state
   const [organizationSlug, setOrganizationSlug] = useState("")
   const [savedOrganizationSlug, setSavedOrganizationSlug] = useState<string | null>(null)
+  const [slugSaving, setSlugSaving] = useState(false)
+  const [slugSaved, setSlugSaved] = useState(false)
+  const [slugError, setSlugError] = useState<string | null>(null)
   const [members, setMembers] = useState<OrgMember[]>([])
   const [invitations, setInvitations] = useState<OrgInvitation[]>([])
   const [teamLoading, setTeamLoading] = useState(true)
@@ -493,33 +496,12 @@ function SettingsPage() {
       return
     }
 
-    const nextOrganizationSlug = organizationSlug.trim()
-    if (
-      savedOrganizationSlug !== null &&
-      nextOrganizationSlug !== savedOrganizationSlug &&
-      !isOrganizationSlug(nextOrganizationSlug)
-    ) {
-      setSaving(false)
-      setError(t("settings.organizationSlug.invalid"))
-      return
-    }
-
     const momsRegisteredUpdate = !showVatStatus && settings?.momsRegistered != null
       ? null
       : showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null)
         ? momsRegistered
         : undefined
     try {
-      if (savedOrganizationSlug !== null && nextOrganizationSlug !== savedOrganizationSlug) {
-        const updated = await authClient.organization.update({ data: { slug: nextOrganizationSlug } })
-        if (updated.error) {
-          setSaving(false)
-          setError(updated.error.message ?? t("settings.error.saveFailed"))
-          return
-        }
-        setSavedOrganizationSlug(nextOrganizationSlug)
-      }
-
       await trpc.settings.update.mutate({
         countryCode,
         locale,
@@ -603,6 +585,27 @@ function SettingsPage() {
       )
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function saveOrganizationSlug() {
+    const slug = organizationSlug.trim()
+    setSlugSaved(false)
+    setSlugError(null)
+    if (!isOrganizationSlug(slug)) {
+      setSlugError(t("settings.organizationSlug.invalid"))
+      return
+    }
+    setSlugSaving(true)
+    try {
+      const updated = await authClient.organization.update({ data: { slug } })
+      if (updated.error) throw new Error(updated.error.message ?? t("settings.error.saveFailed"))
+      setSavedOrganizationSlug(slug)
+      setSlugSaved(true)
+    } catch (err) {
+      setSlugError(err instanceof Error ? err.message : t("settings.error.saveFailed"))
+    } finally {
+      setSlugSaving(false)
     }
   }
 
@@ -834,9 +837,14 @@ function SettingsPage() {
                 maxLength={48}
                 spellCheck={false}
                 placeholder={t("settings.organizationSlug.placeholder")}
-                onChange={(event) => setOrganizationSlug(event.target.value)}
+                onChange={(event) => { setOrganizationSlug(event.target.value); setSlugSaved(false); setSlugError(null) }}
               />
               <p className="text-xs text-muted-foreground">{t("settings.organizationSlug.help")}</p>
+              <Button type="button" variant="outline" disabled={slugSaving || savedOrganizationSlug === null || organizationSlug.trim() === savedOrganizationSlug} onClick={() => void saveOrganizationSlug()}>
+                {t("settings.organizationSlug.save")}
+              </Button>
+              {slugSaved && <p role="status">{t("settings.organizationSlug.saved")}</p>}
+              {slugError && <p role="alert" className="text-sm text-destructive">{slugError}</p>}
             </div>
 
             <div className="grid gap-2">

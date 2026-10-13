@@ -42,6 +42,8 @@ export const enSettingsMessages = {
   "settings.companyName.placeholder": "Acme Inc.",
   "settings.organizationSlug.label": "URL name",
   "settings.organizationSlug.placeholder": "acme-inc",
+  "settings.organizationSlug.save": "Save URL",
+  "settings.organizationSlug.saved": "URL saved.",
   "settings.organizationSlug.help": "Letters, numbers, and hyphens. Used in URLs.",
   "settings.organizationSlug.invalid": "Use a short URL name with letters, numbers, and hyphens.",
   "settings.companyAddress.label": "Company Address",

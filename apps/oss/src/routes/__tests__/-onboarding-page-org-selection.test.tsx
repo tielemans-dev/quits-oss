@@ -179,7 +179,8 @@ describe("OnboardingPage org selection", () => {
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
   })
 
-  it("starts a new organization from CVR lookup instead of a name and slug form", async () => {
+  it("starts a hosted organization from CVR lookup instead of a name and slug form", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
     useSessionMock.mockReturnValue({
       data: {
         user: { id: "user_1", email: "test@example.com" },
@@ -193,6 +194,15 @@ describe("OnboardingPage org selection", () => {
     expect(await screen.findByText("auth.onboarding.lookup.title")).toBeTruthy()
     expect(screen.queryByLabelText("Slug")).toBeNull()
     expect(screen.getByRole("button", { name: "auth.onboarding.lookup.manual" })).toBeTruthy()
+  })
+
+  it("starts self-hosted organization creation manually with no lookup detour", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    render(<RoutePage />)
+    expect(await screen.findByLabelText("auth.onboarding.field.companyName")).toBeTruthy()
+    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+    expect(screen.queryByText("auth.onboarding.lookup.manualBack")).toBeNull()
   })
 
   it("loads a new page acting for the organization the user chooses", async () => {

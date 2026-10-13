@@ -32,6 +32,7 @@ import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, log
 import { AiAssistantPanel } from '../../components/onboarding/ai-assistant-panel'
 import { createNamedOrganization } from '../../lib/organization-slug'
 import type { CvrLookupCompany } from '../../lib/onboarding/search-cvr'
+import { stageSelectedCompany, readSelectedCompany, clearSelectedCompany } from '../../lib/onboarding/selected-company'
 
 export const Route = createFileRoute('/_app/onboarding')({
   validateSearch: loginReturnSearchSchema,
@@ -122,7 +123,7 @@ function OnboardingPageContent() {
   const { data: session } = useSession()
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
-  const [entryMode, setEntryMode] = useState<'lookup' | 'manual'>('lookup')
+  const [entryMode, setEntryMode] = useState<'lookup' | 'manual'>(isCloud ? 'lookup' : 'manual')
   const [lookupQuery, setLookupQuery] = useState('')
   const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
   const [lookupMessage, setLookupMessage] = useState<string | null>(null)
@@ -228,11 +229,23 @@ function OnboardingPageContent() {
 
     trpc.onboarding.getStatus
       .query()
-      .then((status) => {
+      .then(async (status) => {
         if (cancelled) {
           return
         }
 
+        const selected = !status.isComplete && session?.user?.id && session.session.activeOrganizationId
+          ? readSelectedCompany(session.user.id, session.session.activeOrganizationId)
+          : null
+        if (selected) {
+          const draft = await trpc.onboarding.saveDraft.mutate({
+            companyName: selected.name, companyAddress: selected.address,
+            countryCode: 'DK', primaryTaxId: selected.cvr, primaryTaxIdScheme: 'cvr',
+          })
+          if (cancelled) return
+          clearSelectedCompany(session!.user.id, session!.session.activeOrganizationId!)
+          status = draft
+        }
         if (status.values) {
           setValues(parseCloudOnboardingValues(status.values))
           setManualOverrides({
@@ -360,7 +373,7 @@ function OnboardingPageContent() {
     }))
   }
 
-  async function createOrganizationFromCompanyName(name: string) {
+  async function createOrganizationFromCompanyName(name: string, company?: CvrLookupCompany) {
     setError(null)
     setSubmitting(true)
     let created: Awaited<ReturnType<typeof createNamedOrganization>>
@@ -390,6 +403,16 @@ function OnboardingPageContent() {
       return
     }
 
+    // The next page acts for the new organization; this page's requests still name the old one.
+    if (company && session?.user?.id) {
+      try {
+        stageSelectedCompany(session.user.id, created.id, company)
+      } catch {
+        setError(t('auth.onboarding.error'))
+        setSubmitting(false)
+        return
+      }
+    }
     // Loads a new page acting for the new organization.
     const switched = await switchActiveOrganization(created.id, {
       destination: isCloud && target ? loginReturnOnboarding(search) : returnDestination,
@@ -587,7 +610,7 @@ function OnboardingPageContent() {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? t('auth.onboarding.submitting') : t('auth.onboarding.submit')}
                 </Button>
-                <Button
+                {isCloud && <Button
                   type="button"
                   variant="link"
                   className="w-full"
@@ -598,7 +621,7 @@ function OnboardingPageContent() {
                   }}
                 >
                   {t('auth.onboarding.lookup.manualBack')}
-                </Button>
+                </Button>}
               </CardFooter>
             </form>
           ) : (
@@ -634,7 +657,7 @@ function OnboardingPageContent() {
                     variant="outline"
                     className="h-auto w-full flex-col items-start gap-1 py-3"
                     disabled={submitting}
-                    onClick={() => void createOrganizationFromCompanyName(company.name)}
+                    onClick={() => void createOrganizationFromCompanyName(company.name, company)}
                   >
                     <span>{t('auth.onboarding.lookup.confirm', { company: company.name })}</span>
                     <span className="text-xs font-normal text-muted-foreground">

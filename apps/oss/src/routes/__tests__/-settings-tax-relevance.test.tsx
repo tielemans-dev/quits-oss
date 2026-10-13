@@ -9,12 +9,14 @@ const {
   settingsGetQuery,
   getFullOrganization,
   settingsUpdate,
+  organizationUpdate,
   runtimeState,
 } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
   settingsGetQuery: vi.fn(),
   getFullOrganization: vi.fn(),
   settingsUpdate: vi.fn(),
+  organizationUpdate: vi.fn(),
   runtimeState: { selfhost: true, nonVatEnabled: true },
 }))
 
@@ -72,6 +74,7 @@ vi.mock("../../lib/auth-client", () => ({
   authClient: {
     organization: {
       getFullOrganization,
+      update: organizationUpdate,
       inviteMember: vi.fn(),
       removeMember: vi.fn(),
       cancelInvitation: vi.fn(),
@@ -196,6 +199,7 @@ afterEachTest(() => {
   settingsGetQuery.mockReset()
   getFullOrganization.mockReset()
   settingsUpdate.mockReset()
+  organizationUpdate.mockReset()
   runtimeState.selfhost = true
   runtimeState.nonVatEnabled = true
 })
@@ -325,6 +329,23 @@ describe("Settings UI extension", () => {
       </form>
     )
   }
+
+  it("saves the URL separately and leaves it unchanged when settings fail", async () => {
+    prepare()
+    getFullOrganization.mockResolvedValue({ data: { slug: "old-slug", members: [], invitations: [] } })
+    settingsUpdate.mockRejectedValue(new Error("Rejected settings"))
+    organizationUpdate.mockResolvedValue({ data: { slug: "new-slug" } })
+    render(<RouteComponent />)
+    const slug = await screen.findByDisplayValue("old-slug")
+    fireEvent.change(slug, { target: { value: "new-slug" } })
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    expect(await screen.findByText("Rejected settings")).toBeTruthy()
+    expect(organizationUpdate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "settings.organizationSlug.save" }))
+    expect(await screen.findByText("settings.organizationSlug.saved")).toBeTruthy()
+    expect(organizationUpdate).toHaveBeenCalledWith({ data: { slug: "new-slug" } })
+    expect(settingsUpdate).toHaveBeenCalledTimes(1)
+  })
 
   it("keeps the default UI empty and company fields attached to the original save form", async () => {
     prepare()

@@ -42,6 +42,8 @@ export const daSettingsMessages = {
   "settings.companyName.placeholder": "Acme ApS",
   "settings.organizationSlug.label": "URL-navn",
   "settings.organizationSlug.placeholder": "acme-aps",
+  "settings.organizationSlug.save": "Gem URL",
+  "settings.organizationSlug.saved": "URL gemt.",
   "settings.organizationSlug.help": "Bogstaver, tal og bindestreger. Bruges i URL'er.",
   "settings.organizationSlug.invalid": "Brug et kort URL-navn med bogstaver, tal og bindestreger.",
   "settings.companyAddress.label": "Virksomhedsadresse",

@@ -81,6 +81,7 @@ vi.mock("../../trpc/client", () => ({
 import { invalidateAppLayoutSession, reuseAppLayoutSession } from "../../lib/app-layout-session"
 import { trpc } from "../../trpc/client"
 import { Route } from "../_app/onboarding"
+import { stageSelectedCompany } from "../../lib/onboarding/selected-company"
 
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
 
@@ -88,6 +89,7 @@ afterEach(() => {
   uiLocale.value = "en-US"
   vi.mocked(trpc.onboarding.saveDraft.mutate).mockReset()
   vi.mocked(trpc.onboarding.completeManual.mutate).mockReset()
+  sessionStorage.clear()
   cleanup()
   invalidateAppLayoutSession()
   navigate.mockReset()
@@ -100,6 +102,19 @@ afterEach(() => {
 })
 
 describe("OnboardingPage cloud flow", () => {
+  it("persists the selected CVR company after loading the newly selected organization", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: null, companyAddress: null }, missing: [] })
+    stageSelectedCompany("user_1", "org_1", { name: "Selected ApS", address: "Selected street 1", cvr: "24256790" })
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ isComplete: false, values: { companyName: "Selected ApS", companyAddress: "Selected street 1", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" }, missing: [] } as never)
+    render(<RouteComponent />)
+    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Selected ApS", companyAddress: "Selected street 1", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" }))
+    expect(await screen.findByDisplayValue("Selected ApS")).toBeTruthy()
+    expect(screen.getByDisplayValue("Selected street 1")).toBeTruthy()
+    expect(screen.getByDisplayValue("24256790")).toBeTruthy()
+  })
+
   it("prefills localized defaults and hides irrelevant tax fields", async () => {
     useSessionMock.mockReturnValue({
       data: {
