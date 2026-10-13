@@ -320,13 +320,16 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
     const invoice = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
     const recipient = invoice.contact.email?.trim() || null
     const { settings, sellerTaxIds } = yield* loadDocumentContext
+    const seller = action === "send"
+      ? buildInvoiceSellerSnapshot(invoice, settings, sellerTaxIds)
+      : { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds }
     const total = `${invoice.totalGross.toFixed(2)} ${invoice.currency}`
     return {
       summary:
         action === "send"
           ? `Send ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name}`
           : `Email ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name} again`,
-      version: `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}`,
+      version: `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...seller, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}`,
       details: {
         disputed: String(invoice.disputed),
         acknowledgeDisputed: String(acknowledgeDisputed),

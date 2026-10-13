@@ -5,6 +5,7 @@ const PREFIX_REGEX = /^[A-Z0-9-]{1,10}$/
 export type SettingsFormValidationError =
   | "invalid_timezone"
   | "invalid_tax_rate"
+  | "invalid_payment_terms"
   | "invalid_company_email"
   | "invalid_company_phone"
   | "invalid_invoice_prefix"
@@ -14,6 +15,7 @@ export type SettingsFormValidationError =
 export type SettingsFormValidationInput = {
   timezone: string
   taxRateRaw: string
+  paymentTermsDaysRaw?: string
   companyEmail?: string
   companyPhone?: string
   invoicePrefix?: string
@@ -44,6 +46,12 @@ export function validateSettingsFormInput(
     if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
       return "invalid_tax_rate"
     }
+  }
+
+  if (input.paymentTermsDaysRaw !== undefined) {
+    const raw = input.paymentTermsDaysRaw.trim()
+    const days = Number(raw)
+    if (!raw || !Number.isInteger(days) || days < 0 || days > 3650) return "invalid_payment_terms"
   }
 
   const companyEmail = input.companyEmail?.trim()

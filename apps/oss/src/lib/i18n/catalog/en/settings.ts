@@ -1,4 +1,7 @@
 export const enSettingsMessages = {
+  "settings.paymentTermsDays.label": "Payment terms (days)",
+  "settings.paymentTermsDays.hint": "Default number of days until a new invoice is due. Existing invoices keep their due dates.",
+  "settings.validation.invalidPaymentTerms": "Payment terms must be a whole number between 0 and 3650.",
   "settings.vatStatus.cvrLabel": "CVR number",
   "settings.vatStatus.cvrHelp": "Your Danish business registration number.",
 

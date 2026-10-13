@@ -149,6 +149,7 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
     pricesIncludeTax: false,
     currency: "USD",
     taxRate: null,
+    paymentTermsDays: 14,
     companyName: "Acme LLC",
     companyAddress: "Main St 1",
     companyEmail: "billing@acme.example",
@@ -249,10 +250,10 @@ describe("Settings tax relevance", () => {
   })
 })
 
-async function renderDanishSettings(momsRegistered: boolean | null) {
+async function renderDanishSettings(momsRegistered: boolean | null, paymentTermsDays = 14) {
   useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
   getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
-  const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, taxRate: momsRegistered === false ? 0 : 25 })
+  const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, paymentTermsDays, taxRate: momsRegistered === false ? 0 : 25 })
   settingsGetQuery.mockResolvedValue(data)
   settingsUpdate.mockResolvedValue(data)
   render(<RouteComponent />)
@@ -260,6 +261,16 @@ async function renderDanishSettings(momsRegistered: boolean | null) {
 }
 
 describe("Settings VAT status", () => {
+  it("loads and submits the organization payment-term default", async () => {
+    await renderDanishSettings(true, 21)
+    const field = screen.getByLabelText("settings.paymentTermsDays.label") as HTMLInputElement
+    expect(field.value).toBe("21")
+    fireEvent.change(field, { target: { value: "30" } })
+    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].paymentTermsDays).toBe(30)
+  })
+
   it.each([true, false, null])("preserves saved status %s without inventing a choice", async status => {
     await renderDanishSettings(status)
     expect((screen.getByLabelText("settings.vatStatus.registered") as HTMLInputElement).checked).toBe(status === true)

@@ -1,4 +1,7 @@
 export const daSettingsMessages = {
+  "settings.paymentTermsDays.label": "Betalingsfrist (dage)",
+  "settings.paymentTermsDays.hint": "Standardantal dage til en ny fakturas forfaldsdato. Eksisterende fakturaer beholder deres forfaldsdato.",
+  "settings.validation.invalidPaymentTerms": "Betalingsfristen skal være et helt tal mellem 0 og 3650.",
   "settings.vatStatus.cvrLabel": "CVR-nr.",
   "settings.vatStatus.cvrHelp": "Din virksomheds danske registreringsnummer.",
 

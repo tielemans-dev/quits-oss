@@ -316,7 +316,11 @@ export const onboardingRouter = router({
       if ("quotePrefix" in input) settingsUpdateData.quotePrefix = input.quotePrefix
       if ("quoteNextNum" in input) settingsUpdateData.quoteNextNum = input.quoteNextNum
 
-      return legacyOnboardingWrite(ctx.organizationId, async tx => {
+      return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
+        if (input.countryCode && input.countryCode !== snapshot.values.countryCode) {
+          // Generic onboarding must not carry Denmark's 25% rate into another jurisdiction.
+          settingsUpdateData.taxRate = input.countryCode === "DK" ? 25 : null
+        }
         settingsUpdateData.baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, { countryCode: settingsUpdateData.countryCode as string | undefined })
         await tx.orgSettings.upsert({
           where: { organizationId: ctx.organizationId },

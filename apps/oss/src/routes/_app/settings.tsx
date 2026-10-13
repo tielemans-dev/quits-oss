@@ -65,6 +65,7 @@ import { useRequestOrganizationId } from "../../lib/active-organization"
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
   invalid_tax_rate: "settings.validation.invalidTaxRate",
+  invalid_payment_terms: "settings.validation.invalidPaymentTerms",
   invalid_company_email: "settings.validation.invalidCompanyEmail",
   invalid_company_phone: "settings.validation.invalidCompanyPhone",
   invalid_invoice_prefix: "settings.validation.invalidInvoicePrefix",
@@ -126,6 +127,7 @@ type SettingsData = {
   pricesIncludeTax: boolean
   currency: string
   momsRegistered?: boolean | null
+  paymentTermsDays?: number
   taxRate: number | null
   companyName: string | null
   companyAddress: string | null
@@ -213,6 +215,7 @@ function SettingsPage() {
   const [taxRegime, setTaxRegime] = useState<"us_sales_tax" | "eu_vat" | "custom">("us_sales_tax")
   const [momsRegistered, setMomsRegistered] = useState<boolean | null>(null)
   const [taxRateInput, setTaxRateInput] = useState("")
+  const [paymentTermsDaysInput, setPaymentTermsDaysInput] = useState("14")
   const [nonVatEnabled, setNonVatEnabled] = useState(false)
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
   const [primaryTaxId, setPrimaryTaxId] = useState("")
@@ -293,6 +296,7 @@ function SettingsPage() {
           nextSettings.onboardingInvoicingIdentity ?? "registered_business"
         )
         setMomsRegistered(nextSettings.momsRegistered ?? null)
+        setPaymentTermsDaysInput(String(nextSettings.paymentTermsDays ?? 14))
         setTaxRateInput(nextSettings.taxRate == null ? "" : String(nextSettings.taxRate))
         setTaxRegime(nextSettings.taxRegime)
         setPricesIncludeTax(nextSettings.pricesIncludeTax)
@@ -483,6 +487,7 @@ function SettingsPage() {
     const formValidationError = validateSettingsFormInput({
       timezone: timezoneInput,
       taxRateRaw,
+      paymentTermsDaysRaw: paymentTermsDaysInput,
       companyEmail: companyEmailInput,
       companyPhone: companyPhoneInput,
       invoicePrefix: invoicePrefixInput,
@@ -515,6 +520,7 @@ function SettingsPage() {
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
+        paymentTermsDays: Number(paymentTermsDaysInput),
         companyName: companyNameInput || undefined,
         companyAddress: companyAddressInput || undefined,
         companyEmail: companyEmailInput || undefined,
@@ -1108,6 +1114,12 @@ function SettingsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="paymentTermsDays">{t("settings.paymentTermsDays.label")}</Label>
+                <Input id="paymentTermsDays" name="paymentTermsDays" type="number" min="0" max="3650" step="1"
+                  value={paymentTermsDaysInput} onChange={event => setPaymentTermsDaysInput(event.target.value)} />
+                <p className="text-sm text-muted-foreground">{t("settings.paymentTermsDays.hint")}</p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="taxRate">{t("settings.taxRate.label")}</Label>

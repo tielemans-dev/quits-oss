@@ -100,6 +100,23 @@ describeIfDatabase("onboarding router integration", () => {
     process.env.QUITS_DISTRIBUTION = "selfhost"
   })
 
+  it.each(["US", "DE"])("clears the Danish rate when generic onboarding moves to %s", async countryCode => {
+    const { orgId, caller } = await createCloudCaller()
+    try {
+      await caller.onboarding.getStatus()
+      expect(Number((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })).taxRate)).toBe(25)
+      await caller.onboarding.saveDraft({ countryCode, taxRegime: countryCode === "US" ? "us_sales_tax" : "eu_vat" })
+      expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })).taxRate).toBeNull()
+      await prisma.orgSettings.update({ where: { organizationId: orgId }, data: { taxRate: 19 } })
+      await caller.onboarding.saveDraft({ countryCode, companyName: "Edited company" })
+      expect(Number((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })).taxRate)).toBe(19)
+      await caller.onboarding.saveDraft({ countryCode: "DK", taxRegime: "eu_vat" })
+      expect(Number((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })).taxRate)).toBe(25)
+    } finally {
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
   it.each(["status", "ai"])("initializes one saved Danish row for concurrent status and %s reads", async read => {
     const { orgId, caller } = await createCloudCaller()
     const readPair = () => Promise.all([
