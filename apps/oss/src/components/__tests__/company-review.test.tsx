@@ -58,7 +58,7 @@ describe("onboarding company review after lookup", () => {
     fireEvent.click(radios[registered ? 0 : 1]!)
     fireEvent.click(screen.getByRole("button", { name: "Save Settings" }))
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
-    expect(api.prepare).toHaveBeenCalledWith({ companyName: company.companyName, companyAddress: company.companyAddress, cvr: company.cvr, countryCode: "DK" })
+    expect(api.prepare).toHaveBeenCalledWith({ companyName: company.companyName, companyAddress: company.companyAddress, cvr: company.cvr, vatId: registered ? "DK24256790" : undefined, countryCode: "DK" })
     expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: "signed", source: "cvr", ...(registered ? { vatId: "DK24256790" } : {}) }))
   })
 })

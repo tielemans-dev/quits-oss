@@ -2,6 +2,8 @@ export const enSettingsMessages = {
   "settings.baseCurrency.label": "Base currency",
   "settings.baseCurrency.hint": "Books use this currency. It locks after any document is issued. Draft currency remains independent.",
   "settings.title": "Settings",
+  "settings.capabilities.failed": "Could not load available settings. You can save other changes or try again.",
+  "settings.capabilities.retry": "Try again",
   "settings.loading": "Loading...",
   "settings.success.saved": "Settings saved successfully.",
   "settings.error.loadFailed": "Failed to load settings",

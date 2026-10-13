@@ -13,9 +13,9 @@ vi.mock("../invoice-email", async importOriginal => ({ ...await importOriginal<t
   resolveInvoiceEmailContext: () => ({ emailDelivery: { available: false } }),
 }))
 const zero = new Prisma.Decimal(0)
-function harness(kind: "quote" | "agreement", taxRegime: "custom" | "us_sales_tax" | "eu_vat", address: string | null) {
+function harness(kind: "quote" | "agreement", taxRegime: "custom" | "us_sales_tax" | "eu_vat", address: string | null, retainedScheme = "cvr", currentCvr?: string) {
   const countryCode = taxRegime === "us_sales_tax" ? "US" : "DK"
-  const seller = { companyName: "Agreed seller", companyAddress: address, countryCode, momsRegistered: false, taxIds: [{ scheme: "cvr", value: "24256790", countryCode: "DK" }] }
+  const seller = { companyName: "Agreed seller", companyAddress: address, countryCode, momsRegistered: false, taxIds: [{ scheme: retainedScheme, value: "24256790", countryCode: "DK" }] }
   const line = { id: "line", description: "Synthetic service", quantity: new Prisma.Decimal(1), unitPriceNet: zero, unitPriceGross: zero,
     lineNet: zero, lineTax: zero, lineGross: zero, taxRate: zero, vatRateInput: "0", vatTreatment: "out_of_scope", vatReasonCode: null, vatCountry: null }
   const invoice = { id: "invoice", status: "draft", purpose: "sale", agreementId: kind === "agreement" ? "agreement" : null,
@@ -27,8 +27,8 @@ function harness(kind: "quote" | "agreement", taxRegime: "custom" | "us_sales_ta
   }
   const update = vi.fn(async ({ data }: { data: object }) => ({ ...invoice, ...data }))
   const db = { $queryRaw: async () => [], invoice: { findFirst: async () => invoice, update },
-    orgSettings: { upsert: async () => ({ companyName: "Current seller", companyAddress: "New address", countryCode, momsRegistered: true, baseCurrency: "DKK" }) },
-    organizationTaxId: { findMany: async () => [] },
+    orgSettings: { upsert: async () => ({ companyName: "Current seller", companyAddress: "New address", countryCode, momsRegistered: currentCvr ? false : true, baseCurrency: "DKK" }) },
+    organizationTaxId: { findMany: async () => currentCvr ? [{ scheme: "cvr", value: currentCvr, countryCode: "DK" }] : [] },
   }
   const command = { organizationId: "org", commandId: "command", now: new Date("2026-10-13"), actor: { kind: "user", roles: ["admin"] },
     emit: vi.fn(), enqueue: vi.fn() } as unknown as CommandScope
@@ -38,6 +38,18 @@ function harness(kind: "quote" | "agreement", taxRegime: "custom" | "us_sales_ta
   return { seller, update, run }
 }
 describe("linked invoice VAT identity scope at production boundaries", () => {
+  it.each(["quote", "agreement"] as const)("accepts the supported frozen DK_CVR alias for %s preview and send identity checks after postal edits", async kind => {
+    const h = harness(kind, "eu_vat", "Old address", "DK_CVR", "24256790")
+    expect(await h.run(prospectiveRenderInput({ kind: "invoice", documentId: "invoice", number: "", issuedAt: new Date("2026-10-13"), commandInput: {}, preview: true }))).toMatchObject({ _tag: "Right", right: { snapshot: { seller: h.seller } } })
+    const sent = await h.run(sendInvoice.handle({ id: "invoice", allowSendWithoutEmail: true }))
+    // Agreements require issueDocument after the seller identity check succeeds.
+    expect(sent).toMatchObject(kind === "agreement" ? { _tag: "Left", left: { code: "issuance_required" } } : { _tag: "Right", right: { status: "sent" } })
+    expect(h.update).toHaveBeenCalledTimes(kind === "agreement" ? 0 : 1)
+    const changed = harness(kind, "eu_vat", "Old address", "DK_CVR", "12345678")
+    expect(await changed.run(prospectiveRenderInput({ kind: "invoice", documentId: "invoice", number: "", issuedAt: new Date("2026-10-13"), commandInput: {}, preview: true }))).toMatchObject({ _tag: "Left", left: { code: "seller_identity_changed" } })
+    expect(await changed.run(sendInvoice.handle({ id: "invoice", allowSendWithoutEmail: true }))).toMatchObject({ _tag: "Left", left: { code: "seller_identity_changed" } })
+    expect(changed.update).not.toHaveBeenCalled()
+  })
   it.each([
     ["quote", "us_sales_tax", null], ["agreement", "us_sales_tax", null],
     ["quote", "custom", null], ["agreement", "custom", null],

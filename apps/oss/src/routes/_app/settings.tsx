@@ -203,7 +203,9 @@ function SettingsPage() {
   const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
   const [withdrawSellerVatEvidence, setWithdrawSellerVatEvidence] = useState(false)
   const [nonVatEnabled, setNonVatEnabled] = useState(false)
-  const [sellerVatConfirmationEnabled, setSellerVatConfirmationEnabled] = useState(false)
+  const [sellerVatConfirmationEnabled, setSellerVatConfirmationEnabled] = useState<boolean | null>(null)
+  const [capabilitiesFailed, setCapabilitiesFailed] = useState(false)
+  const [capabilitiesAttempt, setCapabilitiesAttempt] = useState(0)
   const [momsRegistered, setMomsRegistered] = useState<boolean | null>(null)
   const [countryCode, setCountryCode] = useState("US")
   const [locale, setLocale] = useState("en-US")
@@ -321,6 +323,8 @@ function SettingsPage() {
   }, [t])
 
   useEffect(() => {
+    setCapabilitiesFailed(false)
+    setLoadingAiCapabilities(true)
     trpc.runtime.capabilities
       .query()
       .then((data) => {
@@ -328,9 +332,9 @@ function SettingsPage() {
         setSellerVatConfirmationEnabled(data.sellerVatConfirmation?.enabled === true)
         setNonVatEnabled(data.onboardingV2?.nonVatEnabled === true)
       })
-      .catch(() => {})
+      .catch(() => setCapabilitiesFailed(true))
       .finally(() => setLoadingAiCapabilities(false))
-  }, [])
+  }, [capabilitiesAttempt])
 
   // Only providers the server's runtime capabilities allow are offered.
   const aiProviderOptions: Array<{ value: AiProviderId; label: string }> = aiCapabilities?.enabled
@@ -506,7 +510,7 @@ function SettingsPage() {
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
-        momsRegistered: sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : sellerVatChoice ?? undefined : momsRegistered,
+        momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : sellerVatChoice ?? undefined : momsRegistered,
         sellerVatConfirmationToken,
         companyName: companyNameInput || undefined,
         companyAddress: companyAddressInput || undefined,
@@ -754,6 +758,10 @@ function SettingsPage() {
         <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
       </div>
 
+      {!isSelfHostDistribution && capabilitiesFailed && <div role="alert" className="mb-4 grid gap-2">
+        <p className="text-sm text-destructive">{t("settings.capabilities.failed")}</p>
+        <Button type="button" variant="outline" disabled={loadingAiCapabilities} onClick={() => setCapabilitiesAttempt(attempt => attempt + 1)}>{t("settings.capabilities.retry")}</Button>
+      </div>}
       <form onSubmit={handleSubmit} className="grid gap-6">
         {error && (
           <p className="text-sm text-destructive" role="alert">

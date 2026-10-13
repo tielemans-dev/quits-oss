@@ -2,6 +2,7 @@ import { Effect } from "effect"
 import { InvalidState } from "../errors"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
 import type { BuyerSnapshot, SellerSnapshot } from "@quits/contracts/documents"
+import { isNationalRegistrationScheme } from "../../lib/compliance"
 import type { TaxId } from "../../lib/compliance"
 import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../../lib/payment-details"
 
@@ -91,7 +92,7 @@ export function withSellerVatStatus<T extends SellerSnapshot>(seller: T, current
   // Other regimes retain the agreed legal identity and its frozen registration status.
   if (taxRegime !== "eu_vat" || (country !== "DK" && currentCountry !== "DK")) return Effect.succeed(seller)
   const cvrIds = (snapshot: SellerSnapshot) => [...new Set((snapshot.taxIds ?? [])
-    .filter(id => id.scheme?.toLowerCase() === "cvr" && (id.countryCode ?? snapshot.countryCode)?.toUpperCase() === "DK")
+    .filter(id => isNationalRegistrationScheme(id.scheme, "DK") && (id.countryCode ?? snapshot.countryCode)?.toUpperCase() === "DK")
     .map(id => id.value.trim()))].sort()
   const retainedCvr = cvrIds(seller), currentCvr = cvrIds(current)
   const taxIdentity = (snapshot: SellerSnapshot) => JSON.stringify((snapshot.taxIds ?? [])

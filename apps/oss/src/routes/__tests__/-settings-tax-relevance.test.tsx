@@ -5,6 +5,7 @@ import type { ComponentType, ReactNode } from "react"
 import { afterEach as afterEachTest, describe, expect, it, vi } from "vitest"
 
 const {
+  capabilitiesQuery,
   hostedFlag,
   distribution,
   prepareConfirmation,
@@ -13,6 +14,7 @@ const {
   settingsUpdate,
   getFullOrganization,
 } = vi.hoisted(() => ({
+  capabilitiesQuery: vi.fn(),
   hostedFlag: { enabled: false, nonVatEnabled: true },
   distribution: { selfhost: true },
   prepareConfirmation: vi.fn(async () => ({ token: "signed" })),
@@ -121,7 +123,7 @@ vi.mock("../../trpc/client", () => ({
     runtime: {
       prepareSellerVatConfirmation: { mutate: prepareConfirmation },
       capabilities: {
-        query: vi.fn(() =>
+        query: () => capabilitiesQuery() ??
           Promise.resolve({
             sellerVatConfirmation: { enabled: hostedFlag.enabled },
             onboardingV2: { nonVatEnabled: hostedFlag.nonVatEnabled },
@@ -134,8 +136,7 @@ vi.mock("../../trpc/client", () => ({
               localAgent: false,
               maxPromptChars: 4000,
             },
-          })
-        ),
+          }),
       },
     },
   },
@@ -200,6 +201,7 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
 
 afterEachTest(() => {
   cleanup()
+  capabilitiesQuery.mockReset()
   hostedFlag.enabled = false
   hostedFlag.nonVatEnabled = true
   distribution.selfhost = true
@@ -211,6 +213,54 @@ afterEachTest(() => {
 })
 
 describe("Settings tax relevance", () => {
+  it.each(["pending", "failed"])("does not gate self-hosted saves when capabilities are %s", async state => {
+    capabilitiesQuery.mockReturnValueOnce(state === "failed" ? Promise.reject(new Error("unavailable")) : new Promise(() => {}))
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: false })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
+    const { container } = render(<RouteComponent />)
+    await screen.findByRole("radio", { name: "vatStatus.no" })
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: false, sellerVatConfirmationToken: undefined })))
+    expect(screen.queryByRole("button", { name: "settings.capabilities.retry" })).toBeNull()
+    expect(prepareConfirmation).not.toHaveBeenCalled()
+  })
+
+  it.each([true, false, null])("omits stored VAT %s on unrelated saves while hosted capabilities are pending or failed, then retries without losing edits", async stored => {
+    distribution.selfhost = false
+    hostedFlag.enabled = true
+    let reject!: (error: Error) => void
+    capabilitiesQuery.mockReturnValueOnce(new Promise((_resolve, fail) => { reject = fail }))
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: stored, primaryTaxId: "24256790" })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockImplementation(async input => ({ ...current, ...input, momsRegistered: input.momsRegistered ?? stored }))
+    const { container } = render(<RouteComponent />)
+    await screen.findByLabelText("VAT/CVR number")
+    const email = container.querySelector('[name="companyEmail"]')! as HTMLInputElement
+    fireEvent.change(email, { target: { value: "edited@example.test" } })
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ companyEmail: "edited@example.test", momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    reject(new Error("unavailable"))
+    const retry = await screen.findByRole("button", { name: "settings.capabilities.retry" })
+    settingsUpdate.mockClear()
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    fireEvent.click(retry)
+    await screen.findByRole("radio", { name: "vatStatus.yes" })
+    expect(email.value).toBe("edited@example.test")
+    expect(settingsGetQuery).toHaveBeenCalledTimes(1)
+    settingsUpdate.mockClear()
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    fireEvent.click(screen.getByRole("radio", { name: "vatStatus.yes" }))
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true, sellerVatConfirmationToken: "signed" })))
+  })
+
   it.each([[false, true, false], [false, true, true], [true, false, false]])("honors non-VAT capability for selfhost %s, confirmation %s, nonVAT %s", async (selfhost, enabled, nonVatEnabled) => {
     distribution.selfhost = selfhost
     hostedFlag.enabled = enabled

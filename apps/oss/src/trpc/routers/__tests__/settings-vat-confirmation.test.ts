@@ -22,7 +22,7 @@ const db = vi.hoisted(() => {
       upsert: async ({ update }: { update: Partial<typeof settings> }) => (settings = { ...settings, ...update }),
     },
     organizationTaxId: {
-      findMany: async () => ids,
+      findMany: async ({ select }: { select?: object }) => select ? ids.map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) : ids,
       findFirst: async () => ids[0],
       update: async ({ where, data }: { where: { id: string }; data: Partial<typeof ids[number]> }) => {
         ids = ids.map(id => id.id === where.id ? { ...id, ...data } : id)
@@ -91,7 +91,7 @@ describe("hosted Settings prepare/save capability boundary", () => {
     expect(confirm).not.toHaveBeenCalled()
     const prepared = await runtime.prepareSellerVatConfirmation({ companyName: "Changed seller", companyAddress: "Testvej 1", countryCode: "DK", cvr: "12345678", primaryTaxIdScheme: "vat" })
     await settings.update({ companyName: "Changed seller", sellerVatConfirmationToken: prepared.token })
-    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ taxIds: db.ids() }) }))
+    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ taxIds: db.ids().map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) }) }))
     expect(db.settings()).toMatchObject({ companyName: "Changed seller", momsRegistered: registered })
   })
 

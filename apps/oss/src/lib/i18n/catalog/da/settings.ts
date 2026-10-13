@@ -2,6 +2,8 @@ export const daSettingsMessages = {
   "settings.baseCurrency.label": "Basisvaluta",
   "settings.baseCurrency.hint": "Regnskabet bruger denne valuta. Den låses efter udstedelse af et dokument. Kladdevalutaen er uafhængig.",
   "settings.title": "Indstillinger",
+  "settings.capabilities.failed": "Kunne ikke hente tilgængelige indstillinger. Du kan gemme andre ændringer eller prøve igen.",
+  "settings.capabilities.retry": "Prøv igen",
   "settings.loading": "Indlæser...",
   "settings.success.saved": "Indstillinger gemt.",
   "settings.error.loadFailed": "Kunne ikke indlæse indstillinger",

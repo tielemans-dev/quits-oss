@@ -27,7 +27,7 @@ export function createOnboardingV2Client(suggestions: boolean, confirmationEnabl
       const summary = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).parse(input)
       const token = confirmationEnabled ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({
         companyName: summary.companyName, companyAddress: summary.companyAddress,
-        countryCode: "DK", cvr: summary.cvr,
+        countryCode: "DK", cvr: summary.cvr, vatId: summary.vatId,
       })).token : undefined
       return trpc.onboarding.confirmV2.mutate({ ...summary, ...(token ? { sellerVatConfirmationToken: token } : {}) })
     },

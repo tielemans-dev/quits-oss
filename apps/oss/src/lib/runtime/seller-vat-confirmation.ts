@@ -46,7 +46,7 @@ export async function confirmSellerVatStatus(input: SellerVatConfirmationActor &
   const enteringDanishVat = input.previousSettings !== undefined &&
     settings.countryCode === "DK" && settings.taxRegime === "eu_vat" &&
     (input.previousSettings?.countryCode !== "DK" || input.previousSettings?.taxRegime !== "eu_vat")
-  const taxIds = await input.tx.organizationTaxId.findMany({ where: { organizationId: input.organizationId } })
+  const taxIds = await input.tx.organizationTaxId.findMany({ where: { organizationId: input.organizationId }, orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }], select: { scheme: true, value: true, countryCode: true } })
   const seller = { companyName: settings.companyName, companyAddress: settings.companyAddress, countryCode: settings.countryCode, taxIds }
   const identityChanged = input.previousSeller !== undefined && sellerConfirmationIdentity(input.previousSeller) !== sellerConfirmationIdentity(seller)
   const needsReconfirmation = settings.countryCode === "DK" && settings.taxRegime === "eu_vat" && (enteringDanishVat || identityChanged)
@@ -73,4 +73,19 @@ export function settingsConfirmationTaxIds(
 function sellerConfirmationIdentity(seller: SellerSnapshot | null) {
   return JSON.stringify([seller?.companyName ?? null, seller?.companyAddress ?? null, seller?.countryCode ?? null,
     (seller?.taxIds ?? []).map(id => JSON.stringify([id.scheme ?? null, id.value, id.countryCode ?? null])).sort()])
+}
+
+/** The registration IDs written by onboarding, with the same representation and order. */
+export function onboardingRegistrationTaxIds(cvr: string, vatId?: string) {
+  return [
+    ...(cvr ? [{ scheme: "cvr", value: cvr, countryCode: "DK" }] : []),
+    ...(vatId ? [{ scheme: "vat", value: vatId, countryCode: "DK" }] : []),
+  ]
+}
+
+/** Onboarding replaces registration IDs and demotes retained IDs before adding its new CVR. */
+export function onboardingConfirmationTaxIds(orderedTaxIds: NonNullable<SellerSnapshot["taxIds"]>, cvr: string, vatId?: string) {
+  const registration = onboardingRegistrationTaxIds(cvr, vatId)
+  const retained = orderedTaxIds.filter(id => !["cvr", "vat", "dk_cvr", "dk_vat"].includes(id.scheme?.toLowerCase() ?? ""))
+  return [...registration.filter(id => id.scheme === "cvr"), ...retained, ...registration.filter(id => id.scheme === "vat")]
 }

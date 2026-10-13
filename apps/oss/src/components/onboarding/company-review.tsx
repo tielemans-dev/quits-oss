@@ -31,7 +31,7 @@ export function CompanyReview({ company, confirmationEnabled, nonVatEnabled = fa
       const summary = confirmOnboardingV2Schema.parse({ ...values, cvr: cvr.trim(), idempotencyKey: key, source: company ? "cvr" : "manual",
         momsRegistered: registered, ...(registered ? { vatId: `DK${cvr.trim()}` } : {}) })
       const { token } = await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: summary.companyName,
-        companyAddress: summary.companyAddress, countryCode: "DK", cvr: summary.cvr })
+        companyAddress: summary.companyAddress, countryCode: "DK", cvr: summary.cvr, vatId: summary.vatId })
       const result = await trpc.onboarding.confirmV2.mutate({ ...summary, sellerVatConfirmationToken: token })
       if (result.status === "complete" || result.status === "already_complete") onComplete()
     } catch (cause) {

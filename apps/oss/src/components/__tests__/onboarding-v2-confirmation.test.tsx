@@ -80,7 +80,7 @@ describe("production v2 seller confirmation", () => {
     fireEvent.click(radios[registered ? 0 : 1]!)
     fireEvent.click(save)
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
-    expect(api.prepare).toHaveBeenCalledWith({ companyName: "Edited Seller", companyAddress: "Testvej 1", cvr: "24256790", countryCode: "DK" })
+    expect(api.prepare).toHaveBeenCalledWith({ companyName: "Edited Seller", companyAddress: "Testvej 1", cvr: "24256790", vatId: registered ? "DK24256790" : undefined, countryCode: "DK" })
     expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Edited Seller", momsRegistered: registered, sellerVatConfirmationToken: "signed-final-identity", settings: expect.objectContaining({ taxRate: registered ? 25 : 0 }) }))
   })
   it("keeps the disabled extension's existing transport without preparing evidence", async () => {

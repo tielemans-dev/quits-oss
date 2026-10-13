@@ -22,6 +22,13 @@ describe("VAT registration belongs to the effective seller", () => {
     const retained = { countryCode: "DE", companyName: "Agreed seller", companyAddress: null, momsRegistered: true }
     expect(await refresh(retained, { ...retained, companyAddress: "New address", momsRegistered: false })).toBe(retained)
   })
+  it.each(["cvr", "CVR", "dk_cvr", "DK_CVR", " DK_CVR "])("recognizes frozen %s legal identity despite postal edits", async scheme => {
+    const retained = { ...seller, momsRegistered: false, taxIds: [{ scheme, value: "12345678", countryCode: "DK" }] }
+    const current = { ...seller, companyName: "New trading name", companyAddress: "New address", momsRegistered: true }
+    expect(await refresh(retained, current)).toEqual({ ...retained, momsRegistered: true })
+    expect(await refresh(seller, { ...current, taxIds: retained.taxIds })).toEqual({ ...seller, momsRegistered: true })
+    await expect(refresh(retained, { ...current, taxIds: [{ scheme, value: "87654321", countryCode: "DK" }] })).rejects.toThrow("agreed seller")
+  })
   it.each([true, false])("refuses changed CVR when retained registration is %s", async registered => {
     const retained = { ...seller, momsRegistered: registered }
     const current = { ...seller, momsRegistered: !registered, taxIds: [{ scheme: "cvr", value: "87654321", countryCode: "DK" }] }

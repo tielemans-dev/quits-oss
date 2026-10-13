@@ -1,4 +1,4 @@
-import { confirmSellerVatStatus, getSellerVatConfirmationService, type SellerVatConfirmationActor } from "../runtime/seller-vat-confirmation"
+import { onboardingRegistrationTaxIds, confirmSellerVatStatus, getSellerVatConfirmationService, type SellerVatConfirmationActor } from "../runtime/seller-vat-confirmation"
 import { TRPCError } from "@trpc/server"
 import { onboardingV2ConfirmationResultSchema, type ConfirmOnboardingV2 } from "@quits/contracts/onboarding"
 import { billingProvider } from "../billing"
@@ -79,10 +79,8 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     // Replace only registration/VAT IDs; unrelated identifiers remain intact.
     await tx.organizationTaxId.updateMany({ where: { organizationId, isPrimary: true }, data: { isPrimary: false } })
     await tx.organizationTaxId.deleteMany({ where: { organizationId, OR: ["cvr", "vat", "dk_cvr", "dk_vat"].map(scheme => ({ scheme: { equals: scheme, mode: "insensitive" as const } })) } })
-    await tx.organizationTaxId.createMany({ data: [
-      ...(input.cvr ? [{ organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true }] : []),
-      ...(input.vatId ? [{ organizationId, scheme: "vat", value: input.vatId, countryCode: "DK", isPrimary: false }] : []),
-    ] })
+    await tx.organizationTaxId.createMany({ data: onboardingRegistrationTaxIds(input.cvr, input.vatId)
+      .map(id => ({ ...id, organizationId, isPrimary: id.scheme === "cvr" })) })
     if (actor) await confirmSellerVatStatus({ ...actor, tx, registered: input.momsRegistered, token: input.sellerVatConfirmationToken })
     if (input.catalogSuggestions.length) {
       await tx.catalogItem.createMany({ data: input.catalogSuggestions.map(item => ({
