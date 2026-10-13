@@ -78,9 +78,10 @@ vi.mock("../../../lib/db", () => {
     },
     organizationTaxId: {
       findFirst: async () => mocks.taxIds.find(id => id.isPrimary) ?? mocks.taxIds[0] ?? null,
-      deleteMany: async ({ where }: { where: { OR?: Array<{ scheme: { equals: string } }>; AND?: unknown } }) => {
+      findMany: async () => mocks.taxIds,
+      deleteMany: async ({ where }: { where: { id?: { in: string[] }; OR?: Array<{ scheme: { equals: string } }>; AND?: unknown } }) => {
         const before = mocks.taxIds.length
-        mocks.taxIds = mocks.taxIds.filter(id => (where.AND && id.countryCode != null && id.countryCode !== "DK") || !where.OR?.some(clause => clause.scheme.equals.toLowerCase() === id.scheme.toLowerCase()))
+        mocks.taxIds = mocks.taxIds.filter(id => where.id ? !where.id.in.includes(id.id) : (where.AND && id.countryCode != null && id.countryCode !== "DK") || !where.OR?.some(clause => clause.scheme.equals.toLowerCase() === id.scheme.toLowerCase()))
         return { count: before - mocks.taxIds.length }
       },
       updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
@@ -247,16 +248,24 @@ describe("atomic Settings Danish VAT repairs", () => {
     await settingsCaller().update({ countryCode: "DE", momsRegistered: false })
     expect(mocks.settings?.momsRegistered).toBeNull()
   })
-  it("preserves foreign VAT registrations while replacing the Danish pair during confirmation", async () => {
+  it.each(["DE", null])("preserves foreign VAT registrations with country %s while replacing the Danish pair during confirmation", async countryCode => {
     mocks.settings = null
     mocks.taxIds = [
-      { id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: true },
+      { id: "foreign", scheme: "vat", value: "DE123456789", countryCode, isPrimary: true },
       { id: "old-dk", scheme: "DK_VAT", value: "DK11111111", countryCode: null, isPrimary: false },
     ]
     await confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")
-    expect(mocks.taxIds.find(id => id.id === "foreign")).toMatchObject({ value: "DE123456789", countryCode: "DE", isPrimary: false })
+    expect(mocks.taxIds.find(id => id.id === "foreign")).toMatchObject({ value: "DE123456789", countryCode, isPrimary: false })
     expect(mocks.taxIds.find(id => id.id === "old-dk")).toBeUndefined()
     expect(mocks.taxIds.filter(id => id.countryCode === "DK").map(id => id.value)).toEqual(["24256790", "DK24256790"])
+  })
+  it("updates a replaced primary identity's country when moving the organization", async () => {
+    mocks.settings = null
+    await confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")
+    await settingsCaller().update({ countryCode: "DE", primaryTaxIdScheme: "vat", primaryTaxId: "123456789" })
+    expect(mocks.taxIds.find(id => id.isPrimary)).toMatchObject({ countryCode: "DE", scheme: "vat", value: "123456789" })
+    const seller = buildSellerSnapshot(mocks.settings as never, mocks.taxIds)
+    expect(buildSellerParty({ snapshot: seller, settings: null, taxIds: [], documentCountryCode: "DE" }).vatId).toBe("DE123456789")
   })
   it.each(["cvr", "DK_CVR", "vat", "DK_VAT"])("updates the paired Danish VAT after registered confirmation and %s edit, preserving other IDs and frozen history", async scheme => {
     mocks.settings = null

@@ -69,13 +69,22 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     }
     await tx.organization.update({ where: { id: organizationId }, data: { name: input.companyName } })
     await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...settings }, update: settings })
-    // Replace the Danish pair, including legacy rows without a country. Foreign
-    // registrations remain available for future documents.
+    // Identify Danish rows before replacing the pair. Countryless foreign VAT IDs
+    // can come from legacy Settings writes and must survive confirmation.
+    const taxIds = await tx.organizationTaxId.findMany({
+      where: { organizationId }, select: { id: true, scheme: true, value: true, countryCode: true },
+    })
+    const danishIds = taxIds.filter(id => {
+      const scheme = id.scheme.trim().toLowerCase()
+      if (!["cvr", "vat", "dk_cvr", "dk_vat"].includes(scheme)) return false
+      if (id.countryCode) return id.countryCode.toUpperCase() === "DK"
+      const value = id.value.replace(/[\s.\-/]/g, "").toUpperCase()
+      const prefix = value.match(/^[A-Z]{2}/)?.[0]
+      if (prefix) return prefix === "DK"
+      return ["cvr", "dk_cvr", "dk_vat"].includes(scheme) || /^\d{8}$/.test(value)
+    }).map(id => id.id)
     await tx.organizationTaxId.updateMany({ where: { organizationId, isPrimary: true }, data: { isPrimary: false } })
-    await tx.organizationTaxId.deleteMany({ where: { organizationId,
-      AND: [{ OR: [{ countryCode: "DK" }, { countryCode: null }] }],
-      OR: ["cvr", "vat", "dk_cvr", "dk_vat"].map(scheme => ({ scheme: { equals: scheme, mode: "insensitive" as const } })),
-    } })
+    await tx.organizationTaxId.deleteMany({ where: { organizationId, id: { in: danishIds } } })
     await tx.organizationTaxId.createMany({ data: [
       { organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true },
       ...(input.vatId ? [{ organizationId, scheme: "vat", value: input.vatId, countryCode: "DK", isPrimary: false }] : []),

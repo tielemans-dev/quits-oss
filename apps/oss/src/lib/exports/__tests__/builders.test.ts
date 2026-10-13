@@ -217,6 +217,7 @@ describe("party normalization", () => {
     expect(vatIdentifier([foreign, obsolete, primary], "DK")).toBe("DK87654321")
     expect(vatIdentifier([primary, foreign, obsolete], "DK")).toBe("DK87654321")
     expect(vatIdentifier([{ scheme: "DK_VAT", value: "DK87654321", countryCode: "DK", isPrimary: true }, foreign], "DK")).toBe("DK87654321")
+    expect(vatIdentifier([{ scheme: "DK_VAT", value: "24256790", countryCode: null }], "DE")).toBe("DK24256790")
   })
 
   it("derives Peppol electronic addresses", () => {

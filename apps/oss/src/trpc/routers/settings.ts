@@ -445,6 +445,7 @@ export const settingsRouter = router({
               data: {
                 value: primaryTaxId.trim(),
                 scheme: primaryTaxIdScheme?.trim() || "vat",
+                countryCode: nextScheme.toLowerCase() === "dk_vat" ? "DK" : resolvedCountry,
                 isPrimary: true,
               },
             })
@@ -454,6 +455,7 @@ export const settingsRouter = router({
                 organizationId: ctx.organizationId,
                 value: primaryTaxId.trim(),
                 scheme: primaryTaxIdScheme?.trim() || "vat",
+                countryCode: primaryTaxIdScheme?.trim().toLowerCase() === "dk_vat" ? "DK" : resolvedCountry,
                 isPrimary: true,
               },
             })

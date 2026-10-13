@@ -148,7 +148,7 @@ export function vatIdentifier(taxIds: readonly TaxIdLike[], countryCode: string 
     const scheme = taxId.scheme?.trim().toLowerCase() ?? ""
     const value = compact(taxId.value)
     if (!value) continue
-    const country = (taxId.countryCode?.trim().toUpperCase() || countryCode) ?? null
+    const country = scheme === "dk_vat" ? "DK" : (taxId.countryCode?.trim().toUpperCase() || countryCode) ?? null
     const prefix = country ? (VAT_PREFIX[country] ?? country) : null
     const hasPrefix = /^[A-Z]{2}[0-9A-Z]{2,13}$/.test(value)
 
