@@ -218,12 +218,12 @@ describe("Settings tax relevance", () => {
     render(<RouteComponent />)
 
     await waitFor(() => {
-      expect(settingsGetQuery).toHaveBeenCalled()
+      expect(screen.getByText("No tax ID required for this tax setup.")).toBeTruthy()
     })
 
+    expect(settingsGetQuery).toHaveBeenCalled()
     expect(screen.queryByLabelText("settings.vatStatus.registered")).toBeNull()
     expect(screen.queryByLabelText("Primary Seller Tax ID")).toBeNull()
-    expect(screen.getByText("No tax ID required for this tax setup.")).toBeTruthy()
 
     cleanup()
   resetRequestOrganizationForTesting()
