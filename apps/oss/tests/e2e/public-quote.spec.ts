@@ -43,7 +43,7 @@ test("shows the quote and its seller in English for an English seller", async ({
 
   await expect(page.getByText("Quote from E2E Org")).toBeVisible()
   await expect(page.getByText("$100.00").first()).toBeVisible()
-  await expect(page.getByText("Mar 23, 2026")).toBeVisible()
+  await expect(page.getByText("23 Mar 2026", { exact: true })).toBeVisible()
   await expectLogoServedFromRoute(page, "q")
   await expect(page.getByText("Quits")).toHaveCount(0)
 })
@@ -83,7 +83,7 @@ test("presents the quote in Danish, with kroner, and keeps the seller's identity
   expect(decisionBody).toMatch(/\/q\/[^/]+\/logo/)
 
   await expect(page.getByText("Tilbud accepteret")).toBeVisible()
-  await expect(page.getByText(/^Dit svar blev registreret den \d{1,2}\. \w+\.? \d{4}\.$/)).toBeVisible()
+  await expect(page.getByText(/^Du accepterede tilbuddet den \d{1,2}\. \w+\.? \d{4}\.$/)).toBeVisible()
   await expect(page.getByRole("button", { name: "Acceptér tilbud" })).toHaveCount(0)
   // The decided page still presents the seller.
   await expectLogoServedFromRoute(page, "q")

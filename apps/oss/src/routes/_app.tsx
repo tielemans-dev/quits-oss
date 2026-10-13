@@ -16,15 +16,15 @@ import { shouldRedirectToCloudOnboarding } from '../lib/cloud-onboarding'
 import { SidebarProvider } from '../components/ui/sidebar'
 import { AppSidebar } from '../components/app-sidebar'
 import { AppMain } from '../components/shell/app-main'
-import { useI18n } from '../lib/i18n/react'
-import { loadOrganizationSettings } from '../lib/organization-settings-query'
+import { I18nProvider } from '../lib/i18n/react'
+import { loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, loginReturnDestination } from '../lib/login-return'
 import { TrialAccessProvider, TrialBanner, TrialRouteGate } from '../components/billing/trial-access'
 
 export const Route = createFileRoute('/_app')({
   beforeLoad: async ({ location }) => {
     // One server call answers everything the layout needs, and is reused for a few seconds so
     // switching tabs and hovering links do not repeat it.
-    const { user, activeOrganizationId, runtime, cloudOnboardingComplete } =
+    const { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete } =
       await reuseAppLayoutSession(() => getAppLayoutSession())
     if (!user) {
       throw redirect({ to: '/login' })
@@ -34,7 +34,7 @@ export const Route = createFileRoute('/_app')({
     // preloaded or after another tab switched organization. The layout sets it once per page load.
     const isOnboarding = location.pathname === '/onboarding' || location.pathname.startsWith('/onboarding/')
     if (!hasActiveOrg && !isOnboarding) {
-      throw redirect({ to: '/onboarding' })
+      throw redirect({ href: loginReturnOnboarding({ next: location.href, lang: loginReturnSearchSchema.parse(location.search).lang }) })
     }
 
     // The server decides whether this is cloud: the browser has no runtime environment to ask.
@@ -46,20 +46,33 @@ export const Route = createFileRoute('/_app')({
         hasActiveOrg,
         cloudOnboardingComplete === true
       )
+      if (redirectTo === '/') {
+        const search = loginReturnSearchSchema.parse(location.search)
+        const requestedTarget = loginReturnTarget(search)
+        // Completed onboarding cannot return to itself and repeatedly run this guard.
+        const targetPath = requestedTarget?.split(/[?#]/)[0]
+        const target = targetPath === '/onboarding' || targetPath?.startsWith('/onboarding/') ? null : requestedTarget
+        if (target || search.lang) throw redirect({ href: loginReturnDestination(target ?? '/', search.lang) })
+        throw redirect({ to: '/' })
+      }
       if (redirectTo) {
-        throw redirect({ to: redirectTo })
+        throw redirect({ href: loginReturnOnboarding({ next: location.href, lang: loginReturnSearchSchema.parse(location.search).lang }) })
       }
     }
 
     // Route context is rendered into the server's HTML, so it holds only what the browser uses.
-    return { user, activeOrganizationId, runtime, cloudOnboardingComplete }
+    return { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete }
   },
   component: AppLayout,
 })
 
 function AppLayout() {
+  const { locale } = Route.useRouteContext()
+  return <I18nProvider initialLocale={locale}><AppLayoutContent /></I18nProvider>
+}
+
+function AppLayoutContent() {
   const pathname = useLocation({ select: location => location.pathname })
-  const { setLocale } = useI18n()
   const { data: session, isPending } = useSession()
   const layoutContext = Route.useRouteContext()
   const loadedOrgId = layoutContext.activeOrganizationId ?? null
@@ -87,24 +100,6 @@ function AppLayout() {
   useLayoutEffect(() => {
     initializeRequestOrganizationId(loadedOrgId)
   }, [loadedOrgId])
-
-  useEffect(() => {
-    if (!organizationReady || !loadedOrgId) return
-    let cancelled = false
-    loadOrganizationSettings()
-      .then((settings) => {
-        if (!cancelled && settings.locale) {
-          setLocale(settings.locale)
-        }
-      })
-      .catch(() => {
-        // Keep browser locale when settings are not yet available.
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [setLocale, organizationReady, loadedOrgId])
 
   return (
     <SidebarProvider>
