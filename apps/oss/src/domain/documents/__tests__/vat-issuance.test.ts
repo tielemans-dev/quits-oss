@@ -21,6 +21,18 @@ describe("seller registration at financial issuance", () => {
   it.each([true, null, undefined])("preserves charged VAT when registration is %s", async momsRegistered => {
     expect(await Effect.runPromise(Effect.either(requireVatIssuance({ ...taxed, sellerSnapshot: { ...taxed.sellerSnapshot, momsRegistered } })))).toMatchObject({ _tag: "Right" })
   })
+  it.each([null, undefined])("preserves linked legacy taxation without a VAT ID when registration is %s", async momsRegistered => {
+    for (const countryCode of ["DK", "US"]) {
+      for (const link of [{ quoteId: "quote" }, { agreementId: "agreement" }]) {
+        const document = { ...taxed, ...link, countryCode, currency: countryCode === "US" ? "USD" : "DKK", sellerSnapshot: { momsRegistered, taxIds: [] }, buyerSnapshot: { country: countryCode }, items: [{ ...taxed.items[0]!, vatCountry: countryCode }] }
+        expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Right" })
+      }
+    }
+  })
+  it("requires a VAT ID for explicitly registered linked sellers", async () => {
+    const document = { ...taxed, quoteId: "quote", countryCode: "DK", sellerSnapshot: { momsRegistered: true, taxIds: [] } }
+    expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Left", left: { code: "evidence_incomplete" } })
+  })
   it("accepts zero-tax out-of-scope lines without changing their category", async () => {
     const document = { ...taxed, totalTax: "0", totalGross: "100", items: [{ ...taxed.items[0]!, vatTreatment: "out_of_scope", vatRateInput: "0", taxRate: "0", lineTax: "0", lineGross: "100" }] }
     expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Right" })

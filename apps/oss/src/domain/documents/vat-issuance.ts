@@ -71,9 +71,9 @@ export function requireVatIssuance(document: {
       sellerVatId: seller?.taxIds?.find((id) => isVatNumberScheme(id.scheme))?.value,
       buyerCountry: buyer?.country,
     })
-    // Linked invoices retain the agreed identity. A later registration cannot create a
-    // VAT-bearing electronic invoice from a frozen CVR-only seller snapshot.
-    const linkedVatInvoice = (document.quoteId || document.agreementId) && (
+    // Explicit registration requires the retained identity to support VAT rendering.
+    // Null/absent registration preserves legacy taxation, including US sales tax.
+    const linkedVatInvoice = seller?.momsRegistered === true && (document.quoteId || document.agreementId) && (
       Number(document.totalTax.toString()) !== 0 || document.items.some(item =>
         Number(item.taxRate.toString()) !== 0 ||
         (item.vatRateInput != null && Number(item.vatRateInput) !== 0) ||
