@@ -37,7 +37,7 @@ describe("invoice editor quantities", () => {
   })
 
   it("previews comma and point quantities identically", () => {
-    const item = { quantity: "1,5", unitPrice: "100" }
+    const item = { description: "Synthetic test work", quantity: "1,5", unitPrice: "100" }
     const input = { currency: "DKK", taxRate: "25", pricesIncludeTax: false }
     const comma = previewDraft({ ...input, items: [normalizeInvoiceQuantity(item)] })
     const point = previewDraft({ ...input, items: [{ ...item, quantity: "1.5" }] })
