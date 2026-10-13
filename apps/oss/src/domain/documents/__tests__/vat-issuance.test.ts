@@ -57,3 +57,17 @@ describe("nonregistered zero treatment semantics", () => {
     expect(await Effect.runPromise(Effect.either(requireSellerVatRegistration(document)))).toMatchObject({ _tag: "Right" })
   })
 })
+
+
+describe("linked invoice seller VAT evidence", () => {
+  it("does not require an EU VAT identifier for linked US sales tax", async () => {
+    const document = { ...taxed, countryCode: "US", taxRegime: "us_sales_tax", agreementId: "agreement",
+      sellerSnapshot: { countryCode: "US", momsRegistered: true, taxIds: [] } };
+    expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Right" });
+  });
+  it("still requires a retained VAT identifier for a VAT-bearing linked EU invoice", async () => {
+    const document = { ...taxed, countryCode: "DK", agreementId: "agreement",
+      sellerSnapshot: { countryCode: "DK", momsRegistered: true, taxIds: [] } };
+    expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Left", left: { code: "evidence_incomplete" } });
+  });
+});

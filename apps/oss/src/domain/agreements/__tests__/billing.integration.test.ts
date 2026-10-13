@@ -42,7 +42,10 @@ beforeEach(() => {
 afterEach(async () => { setRuntimeExtensions([]); vi.restoreAllMocks(); while (cleanups.length) await cleanups.pop()?.(); vi.unstubAllEnvs() })
 async function setup(trigger = "on_acceptance", deposit = false, taxRate = "25", danishSeller = false) {
   const org = await createTestOrganization({ settings: danishSeller ? { countryCode: "DK" } : {} }); cleanups.push(org.cleanup)
-  if (danishSeller) await prisma.organizationTaxId.create({ data: { organizationId: org.organizationId, scheme: "cvr", value: "12345678", countryCode: "DK" } })
+  if (danishSeller) await prisma.organizationTaxId.createMany({ data: [
+    { organizationId: org.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK", isPrimary: true },
+    { organizationId: org.organizationId, scheme: "vat", value: "DK12345674", countryCode: "DK" },
+  ] })
   const actor = org.actors.admin
   const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Customer", email: "customer@example.test" } })
   const agreement = completed(await executeIssuanceCommand(createAgreementDraft, {

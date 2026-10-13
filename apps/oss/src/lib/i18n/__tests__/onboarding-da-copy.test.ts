@@ -30,7 +30,7 @@ describe("Danish onboarding copy", () => {
     expect(daMessages["auth.onboarding.regime.euVat"]).toBe("Moms (25 %)")
     expect(daMessages["auth.onboarding.field.taxRegime"]).toBe("Moms")
     expect(daMessages["auth.onboarding.finish.submit"]).toBe("Afslut opsætning")
-    expect(daMessages["settings.vatStatus.cvrLabel"]).toBe("CVR-nr.")
+    expect(daMessages["settings.vatStatus.cvrLabel"]).toBe("CVR-nummer")
     expect(daMessages["settings.vatStatus.question"]).toBe("Er du momsregistreret?")
   })
 })

@@ -43,7 +43,7 @@ async function completed<T extends { status: string }>(promise: Promise<T>): Pro
 async function setup(momsRegistered: boolean | null, taxRate = 25) {
   const org = await createTestOrganization({ settings: { momsRegistered, countryCode: "DK", currency: "DKK", taxRegime: "eu_vat", locale: "da-DK" } })
   cleanups.push(org.cleanup)
-  await prisma.organizationTaxId.create({ data: { organizationId: org.organizationId, scheme: "cvr", value: "12345678", countryCode: "DK" } })
+  await prisma.organizationTaxId.create({ data: { organizationId: org.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK", isPrimary: true } })
   const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Synthetic buyer", email: "buyer@example.test", country: "DK" } })
   const draft = await executeCommand(createInvoiceDraft, { contactId: contact.id, dueDate: "2026-11-09", supplyDate: "2026-10-11", taxRate, items: [{ ...(momsRegistered === false && taxRate === 0 ? { vat: { treatment: "unclassified_zero" as const, rate: "0" } } : {}), description: "Synthetic service", quantity: 1, unitPrice: 100 }] }, { actor: org.actors.admin })
   if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
@@ -56,7 +56,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     const ctx = await setup(true)
     await prisma.organizationTaxId.deleteMany({ where: { organizationId: ctx.org.organizationId } })
     await prisma.organizationTaxId.createMany({ data: [
-      { organizationId: ctx.org.organizationId, scheme: "vat", value: "12345678", isPrimary: true },
+      { organizationId: ctx.org.organizationId, scheme: "vat", value: "12345674", isPrimary: true },
       { organizationId: ctx.org.organizationId, scheme: "lei", value: "OTHER-ID", countryCode: "DK" },
     ] })
     const identity = (seller: SellerSnapshot) => JSON.stringify([
@@ -70,11 +70,11 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
         confirm: async ({ seller, token }) => { if (identity(seller) !== token) throw new TRPCError({ code: "CONFLICT", message: "Identity changed" }) },
       },
     }])
-    const input = { companyName: "Reviewed synthetic seller", companyAddress: "Testvej 2", countryCode: "DK" as const, cvr: "24256790", primaryTaxIdScheme }
+    const input = { companyName: "Reviewed synthetic seller", companyAddress: "Testvej 2", countryCode: "DK" as const, cvr: "24256790", primaryTaxIdScheme, registered: false }
     const prepared = await ctx.caller.runtime.prepareSellerVatConfirmation(input)
     await ctx.caller.settings.update({ companyName: input.companyName, companyAddress: input.companyAddress, countryCode: "DK",
       primaryTaxId: input.cvr, primaryTaxIdScheme, momsRegistered: false, sellerVatConfirmationToken: prepared.token })
-    expect(await ctx.caller.settings.get()).toMatchObject({ primaryTaxId: input.cvr, primaryTaxIdScheme, momsRegistered: false, taxRate: 0 })
+    expect(await ctx.caller.settings.get()).toMatchObject({ primaryTaxId: input.cvr, primaryTaxIdScheme: primaryTaxIdScheme === "vat" ? "cvr" : primaryTaxIdScheme, momsRegistered: false, taxRate: 0 })
     expect(await prisma.organizationTaxId.count({ where: { organizationId: ctx.org.organizationId, scheme: "lei", value: "OTHER-ID" } })).toBe(1)
     await expect(ctx.caller.settings.update({ companyName: "Unreviewed seller", momsRegistered: true, sellerVatConfirmationToken: prepared.token })).rejects.toMatchObject({ code: "CONFLICT" })
     expect(await ctx.caller.settings.get()).toMatchObject({ companyName: input.companyName, momsRegistered: false })
@@ -169,7 +169,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     }
     const before = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { items: true } })
     await ctx.caller.settings.update({ momsRegistered: !registered })
-    if (changedCvr) await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "87654321" } })
+    if (changedCvr) await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "24256790" } })
     const code = changedCvr ? "seller_identity_changed" : registered ? "seller_not_vat_registered" : "evidence_incomplete"
     const args = { ...ctx.args, commandInput: { id: invoiceId, supplyDate: "2026-10-11", allowSendWithoutEmail: true } }
     const render = vi.spyOn(getDocumentRenderer()!, "renderPdf")
@@ -184,27 +184,27 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     expect(await prisma.issuanceCandidate.count({ where: { documentId: invoiceId } })).toBe(0)
     expect((await ctx.caller.settings.get()).invoiceNextNum).toBe(1)
     // Prepare with seller A, then change settings before the actual staged command revalidates.
-    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "12345678" } })
+    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "12345674" } })
     await ctx.caller.settings.update({ momsRegistered: registered })
     const staged = await reserveDocument({ ...args, clientRequestId: "retained-seller-command" })
     await prepareDocument(staged.id)
     const prepared = await prisma.artifactStaging.findUniqueOrThrow({ where: { id: staged.id } })
     await ctx.caller.settings.update({ momsRegistered: !registered })
-    if (changedCvr) await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "87654321" } })
+    if (changedCvr) await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "24256790" } })
     expect(await executeCommand(sendInvoice, args.commandInput, { actor, issuanceStagingId: staged.id })).toMatchObject({ status: "failed", error: { code } })
     expect(await prisma.artifactStaging.findUniqueOrThrow({ where: { id: staged.id } })).toEqual(prepared)
     expect(await prisma.issuanceCandidate.count({ where: { documentId: invoiceId } })).toBe(0)
     expect((await ctx.caller.settings.get()).invoiceNextNum).toBe(1)
     expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { items: true } })).toMatchObject({ status: "draft", number: null, sellerSnapshot: before.sellerSnapshot, items: before.items })
     // Restore the confirmed seller and issue without rewriting the agreed identity or lines.
-    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "12345678" } })
+    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "12345674" } })
     await ctx.caller.settings.update({ momsRegistered: registered })
     await completed(issueDocument(args))
     const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { items: true } })
-    expect(parseSellerSnapshot(issued.sellerSnapshot)).toMatchObject({ momsRegistered: registered, taxIds: [{ scheme: "cvr", value: "12345678", countryCode: "DK" }] })
+    expect(parseSellerSnapshot(issued.sellerSnapshot)).toMatchObject({ momsRegistered: registered, taxIds: [{ scheme: "cvr", value: "12345674", countryCode: "DK" }] })
     expect(issued.items).toEqual(before.items)
     await ctx.caller.settings.update({ momsRegistered: !registered })
-    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "87654321" } })
+    await prisma.organizationTaxId.updateMany({ where: { organizationId: ctx.org.organizationId }, data: { value: "24256790" } })
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).issuanceSnapshot).toEqual(issued.issuanceSnapshot)
   })
   it("blocks an unset status before numbering or preparation", async () => {
@@ -483,7 +483,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     const identity = {
       companyName: "Synthetic legacy seller", companyEmail: "legacy@example.test",
       companyAddress: "Testvej 1, 1000 København",
-      taxIds: [{ scheme: "cvr", value: "12345678", countryCode: "DK" }],
+      taxIds: [{ scheme: "cvr", value: "12345674", countryCode: "DK" }],
     }
     expect(credit.sellerSnapshot).toMatchObject(identity)
     expect(render.pdf.creditNote.sellerSnapshot).toEqual(credit.sellerSnapshot)
@@ -495,7 +495,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     }
     const parties = creditNotePdfParties(render.pdf.creditNote, render.pdf.org)
     expect(parties.seller).toMatchObject({ name: identity.companyName, email: identity.companyEmail, address: identity.companyAddress })
-    expect(parties.seller.taxIds.join(" ")).toContain("12345678")
+    expect(parties.seller.taxIds.join(" ")).toContain("12345674")
     await ctx.caller.settings.update({ momsRegistered: !registered, companyName: "Changed synthetic seller" })
     expect((await prisma.creditNote.findUniqueOrThrow({ where: { id: credit.id } })).sellerSnapshot).toEqual(credit.sellerSnapshot)
   })

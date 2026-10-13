@@ -25,6 +25,7 @@ vi.mock('../../lib/auth-client', () => ({
   useSession: () => ({ data: { session: { activeOrganizationId: state.active ? 'org_1' : null } } }),
 }))
 vi.mock('../../trpc/client', () => ({ trpc: {
+  cvr: { available: { query: async () => ({ enabled: false }) } },
   onboarding: { getStatus: { query: state.status }, saveDraft: { mutate: state.draft }, completeManual: { mutate: state.complete }, searchCvr: { query: state.searchCvr } },
   runtime: { capabilities: { query: async () => ({ onboardingAi: { enabled: false } }) } },
 } }))
