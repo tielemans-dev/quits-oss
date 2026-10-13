@@ -1,9 +1,13 @@
 import { expect, test, vi } from 'vitest'
 import { registerProductScenarios } from './scenarios.mjs'
 
-// MOCK browser protocol: hydration resets the first email entry before password entry.
+// MOCK browser protocol and virtual clock: hydration resets credentials after both fills.
+// Locator assertions poll until their deadline; timeout 0 leaves only the test deadline.
+// The outer retry cannot interrupt an awaited locator assertion.
 // No server, account, database or provider is contacted by these tests.
-function signInFixture(status = 200) {
+function signInFixture(status = 200, reset: 'Email' | 'Password' = 'Email', persistent = false) {
+  let elapsed = 0
+  const testDeadline = 30_000
   let beforeEach: (fixtures: unknown) => Promise<void> = async () => {}
   const register = Object.assign(() => {}, {
     beforeEach: (hook: typeof beforeEach) => { beforeEach = hook },
@@ -18,9 +22,9 @@ function signInFixture(status = 200) {
     getByLabel: (label: keyof typeof values) => ({
       fill: async (value: string) => {
         values[label] = value
-        if (++fills === 2) values.Email = ''
+        if (++fills === 2 || (persistent && fills % 2 === 0)) values[reset] = ''
       },
-      value: () => values[label],
+      inputValue: async () => values[label],
     }),
     getByRole: () => ({ click }),
     waitForResponse: async () => ({ status: () => status, ok: () => status === 200 }),
@@ -29,11 +33,27 @@ function signInFixture(status = 200) {
     toHaveURL: async () => {},
     toBeVisible: async () => {},
     toBeTruthy: () => expect(target, message).toBeTruthy(),
-    toHaveValue: async (value: string) => {
-      expect((target as { value: () => string }).value()).toBe(value)
+    toBe: (value: unknown) => expect(target, message).toBe(value),
+    toHaveValue: async (value: string, options: { timeout?: number } = {}) => {
+      const timeout = options.timeout ?? 5_000
+      const deadline = timeout === 0 ? testDeadline : Math.min(elapsed + timeout, testDeadline)
+      const input = target as { inputValue: () => Promise<string> }
+      while (await input.inputValue() !== value) {
+        if (elapsed >= deadline) throw new Error('Locator assertion deadline reached')
+        elapsed = Math.min(elapsed + 100, deadline)
+      }
     },
     toPass: async (options: { timeout: number }) => {
-      await vi.waitFor(target as () => Promise<void>, { timeout: options.timeout, interval: 1 })
+      const deadline = elapsed + options.timeout
+      for (;;) {
+        try {
+          await (target as () => Promise<void>)()
+          return
+        } catch (error) {
+          if (elapsed >= deadline) throw error
+          elapsed = Math.min(elapsed + 100, deadline)
+        }
+      }
     },
   })
   registerProductScenarios(
@@ -42,18 +62,30 @@ function signInFixture(status = 200) {
   )
   return {
     click,
+    elapsed: () => elapsed,
+    fills: () => fills,
     run: () => beforeEach({ page, account: { email: 'admin@example.invalid', password: 'MOCK password' }, entryURL: 'http://example.invalid/' }),
   }
 }
 
-test('shared sign-in recovers credentials reset during hydration before submitting', async () => {
-  const fixture = signInFixture()
+test.each(['Email', 'Password'] as const)('shared sign-in refills both credentials after hydration resets %s', async (reset) => {
+  const fixture = signInFixture(200, reset)
   await expect(fixture.run()).resolves.toBeUndefined()
   expect(fixture.click).toHaveBeenCalledTimes(1)
+  expect(fixture.fills()).toBe(4)
+  expect(fixture.elapsed()).toBe(100)
 })
 
 test('shared sign-in still fails authentication errors without retrying the submit', async () => {
   const fixture = signInFixture(401)
   await expect(fixture.run()).rejects.toThrow('Browser sign-in returned 401')
   expect(fixture.click).toHaveBeenCalledTimes(1)
+})
+
+test.each(['Email', 'Password'] as const)('shared sign-in stops persistent %s resets after 15 seconds without submitting', async (reset) => {
+  const fixture = signInFixture(200, reset, true)
+  await expect(fixture.run()).rejects.toThrow()
+  expect(fixture.elapsed()).toBe(15_000)
+  expect(fixture.fills()).toBeGreaterThan(2)
+  expect(fixture.click).not.toHaveBeenCalled()
 })

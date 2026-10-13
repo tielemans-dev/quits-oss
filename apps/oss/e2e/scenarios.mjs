@@ -143,8 +143,9 @@ export function registerProductScenarios(test, expect) {
       const password = page.getByLabel('Password', { exact: true })
       await email.fill(account.email)
       await password.fill(account.password)
-      await expect(email).toHaveValue(account.email, { timeout: 0 })
-      await expect(password).toHaveValue(account.password, { timeout: 0 })
+      // One-shot reads let a hydration mismatch return control to the retry.
+      expect(await email.inputValue()).toBe(account.email)
+      expect(await password.inputValue()).toBe(account.password)
     }).toPass({ timeout: 15_000 })
     // Shared loopback clients can hit the auth service's per-IP limit. Retry only
     // an explicit 429; authentication errors still fail immediately.
