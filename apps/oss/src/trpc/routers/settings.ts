@@ -327,8 +327,12 @@ export const settingsRouter = router({
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
-          select: { countryCode: true, taxRegime: true, momsRegistered: true, aiProvider: true, aiBaseUrl: true },
+          select: { countryCode: true, taxRegime: true, momsRegistered: true, aiProvider: true, aiBaseUrl: true, companyName: true, companyAddress: true },
         })
+        const previousSeller = getRuntimeCapabilities().sellerVatConfirmation.enabled
+          ? { companyName: current?.companyName, companyAddress: current?.companyAddress, countryCode: current?.countryCode,
+              taxIds: await tx.organizationTaxId.findMany({ where: { organizationId: ctx.organizationId } }) }
+          : undefined
         // Re-saving the stored provider is always fine; only switching to a new one is checked, so
         // capability changes on the server never block saving unrelated settings.
         if (settingsInput.aiProvider && settingsInput.aiProvider !== current?.aiProvider) {
@@ -441,7 +445,7 @@ export const settingsRouter = router({
           }
         }
 
-        await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken, previousSettings: current })
+        await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken, previousSettings: current, previousSeller })
         return settings
       })
     }),

@@ -1,4 +1,5 @@
 // MOCK: synthetic test organizations, parties, document amounts and rates only.
+import type { DocumentTaxId } from "@quits/contracts/documents"
 import { isValidElement, type ReactNode } from "react"
 import { describe, expect, it } from "vitest"
 import { Text } from "@react-pdf/renderer"
@@ -28,20 +29,35 @@ function pdfText(node: ReactNode): string[] {
   if (isValidElement<{ children?: ReactNode }>(node)) { const children = pdfText(node.props.children); return node.type === Text ? [children.join("")] : children }
   return []
 }
-function outputs(locale: string, momsRegistered?: boolean | null, overrides: Partial<InvoiceForPdf> = {}) {
+function outputs(locale: string, momsRegistered?: boolean | null, overrides: Partial<InvoiceForPdf> = {}, taxIds?: DocumentTaxId[]) {
   const taxRate = momsRegistered ? 25 : 0
   const document = { ...invoice, momsRegistered, taxAmount: taxRate, total: 100 + taxRate, items: [{ ...invoice.items[0]!, taxRate }], ...overrides }
   return [
-    pdfText(InvoicePdfDocument({ invoice: document, org: { locale } })).join(" "),
-    buildInvoiceEmailContent({ invoice: { ...document, priceBasis: "net" }, org: { locale }, contactName: "Synthetic buyer", publicPaymentUrl: "https://example.test/pay/test" }).html,
+    pdfText(InvoicePdfDocument({ invoice: document, org: { locale, taxIds } })).join(" "),
+    buildInvoiceEmailContent({ invoice: { ...document, priceBasis: "net" }, org: { locale, taxIds }, contactName: "Synthetic buyer", publicPaymentUrl: "https://example.test/pay/test" }).html,
     renderToStaticMarkup(<LocalizedDocument locale={locale}><PublicInvoicePaymentPage token="synthetic" state={{ kind: "ready", paymentState: "unpaid", stripeEnabled: false, seller: { name: "Synthetic seller", logo: null }, invoice: {
       ...document, id: "synthetic", timezone: "Europe/Copenhagen", paymentStatus: "unpaid", subtotalNet: document.subtotal, totalTax: document.taxAmount, totalGross: document.total, buyerSnapshot: null,
-      sellerSnapshot: { momsRegistered, bankAccount: invoice.bankAccount, paymentNote: document.paymentNote }, contact: { name: "Synthetic buyer", email: null, company: null },
+      sellerSnapshot: { momsRegistered, taxIds, bankAccount: invoice.bankAccount, paymentNote: document.paymentNote }, contact: { name: "Synthetic buyer", email: null, company: null },
       items: [{ id: "synthetic-line", description: "Synthetic service", quantity: 1, unitPriceNet: 100, unitPriceGross: 100, lineNet: 100, lineGross: 100, sortOrder: 0, taxRate: document.items[0]!.taxRate ?? 0 }],
     } }} /></LocalizedDocument>),
   ]
 }
 describe("seller VAT presentation", () => {
+  it.each(["da-DK", "en-US"])("suppresses legacy VAT claims beside non-registration across PDF/email/public in %s", locale => {
+    const taxIds = [{ scheme: "vat", value: "12345678", countryCode: null }, { scheme: "cvr", value: "24256790", countryCode: "DK" }]
+    for (const output of outputs(locale, false, {}, [taxIds[0]!])) {
+      expect(output).toContain(nonVatStatement(locale))
+      expect(output).not.toContain("VAT: 12345678")
+    }
+    for (const output of outputs(locale, false, {}, taxIds)) expect(output).toContain("CVR: 24256790")
+    for (const status of [true, null, undefined]) {
+      for (const output of outputs(locale, status, {}, [taxIds[0]!])) expect(output).toContain("VAT: 12345678")
+    }
+    for (const taxRegime of ["custom", "us_sales_tax"]) {
+      for (const output of outputs(locale, false, { taxRegime }, [taxIds[0]!])) expect(output).toContain("VAT: 12345678")
+    }
+  })
+
   it.each([
     ["da-DK", "Ingen moms", "Der er ikke beregnet moms, da sælger ikke er momsregistreret.", "Betalingsoplysninger"],
     ["en-US", "No moms", "No VAT charged – the seller is not VAT-registered.", "Payment details"],
@@ -158,6 +174,20 @@ const credit: CreditNoteForPdf = {
   invoice: { number: invoice.number, issueDate: invoice.issueDate }, items: invoice.items,
 }
 describe("credit note registration statement", () => {
+  it.each(["da-DK", "en-US"])("uses frozen registration for legacy credit tax-ID labels in %s", locale => {
+    const taxIds = [{ scheme: "vat", value: "12345678", countryCode: null }]
+    for (const registered of [false, true, null]) {
+      const document = { ...credit, sellerSnapshot: { companyName: "Frozen seller", momsRegistered: registered, taxIds }, taxRegime: "eu_vat" }
+      const pdf = pdfText(CreditNotePdfDocument({ creditNote: document, org: { locale, taxIds: [{ scheme: "cvr", value: "24256790" }] } })).join(" ")
+      expect(pdf.includes(translate("creditNotes.pdf.vatNumber", locale) + ": 12345678")).toBe(registered !== false)
+      expect(pdf).not.toContain("24256790")
+      const email = buildCreditNoteEmailContent({ creditNote: document, invoice: credit.invoice, org: { locale }, contactName: "Synthetic buyer" }).html
+      for (const output of [pdf, email]) expect(output.includes(nonVatStatement(locale))).toBe(registered === false)
+    }
+    const custom = { ...credit, taxRegime: "custom", sellerSnapshot: { momsRegistered: false, taxIds } }
+    expect(pdfText(CreditNotePdfDocument({ creditNote: custom, org: { locale } })).join(" ")).toContain(translate("creditNotes.pdf.vatNumber", locale) + ": 12345678")
+  })
+
   it.each(["da-DK", "en-US"])("prints the issued choice once in PDF and email in %s", locale => {
     const note = nonVatStatement(locale)
     const document = { ...credit, locale, sellerSnapshot: { companyName: "Frozen synthetic seller", momsRegistered: false }, reason: `${credit.reason}\n${nonVatStatement("da")}\n${nonVatStatement("en")}` }

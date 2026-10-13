@@ -31,6 +31,24 @@ describe("transactional seller VAT confirmation", () => {
     confirm.mockRejectedValueOnce(new Error("identity changed"))
     await expect(confirmSellerVatStatus({ ...actor, tx, registered: true, token: "signed" })).rejects.toThrow("identity changed")
   })
+  it.each([true, false])("compares only stored identity fields for retained registration %s", async registered => {
+    enabled()
+    const storedIds = [{ scheme: "vat", value: "12345678", countryCode: null }, { scheme: "lei", value: "SECONDARY", countryCode: "DK" }]
+    const finalSeller = { ...seller, momsRegistered: registered }
+    const localTx = { orgSettings: { findUniqueOrThrow: async () => finalSeller }, organizationTaxId: { findMany: async () => storedIds } } as unknown as SellerVatConfirmationTransaction
+    const previousSeller = { ...seller, taxIds: [...storedIds].reverse() }
+    await confirmSellerVatStatus({ ...actor, tx: localTx, previousSeller })
+    expect(confirm).not.toHaveBeenCalled()
+    for (const change of [
+      { taxIds: [{ ...storedIds[0]!, countryCode: "DK" }, storedIds[1]!] },
+      { taxIds: [storedIds[0]!, { ...storedIds[1]!, value: "OLD-SECONDARY" }] },
+      { companyName: "Previous seller" }, { companyAddress: "Previous address" },
+    ]) {
+      await expect(confirmSellerVatStatus({ ...actor, tx: localTx, previousSeller: { ...previousSeller, ...change } })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    }
+    await confirmSellerVatStatus({ ...actor, tx: localTx, previousSeller: { ...previousSeller, companyName: "Previous seller" }, registered: null, token: "signed-withdrawal" })
+    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered: null, seller: expect.objectContaining({ companyName: seller.companyName, taxIds: storedIds }) }))
+  })
   it("fails closed when the enabled provider is missing", async () => {
     enabled(); setRuntimeExtensions([{ id: "missing", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }) }])
     await expect(confirmSellerVatStatus({ ...actor, tx, registered: true, token: "signed" })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })

@@ -72,6 +72,43 @@ const runtime = runtimeRouter.createCaller({ session: null })
 const settings = settingsRouter.createCaller({ session: null })
 const input = { companyName: "Reviewed seller", companyAddress: "Testvej 2", countryCode: "DK" as const, cvr: "24256790" }
 describe("hosted Settings prepare/save capability boundary", () => {
+  it.each([true, false])("rejects partial identity edits with retained registration %s and accepts final-identity reconfirmation", async registered => {
+    hosted(true)
+    const prepare = () => runtime.prepareSellerVatConfirmation({ companyName: db.settings().companyName,
+      companyAddress: db.settings().companyAddress, countryCode: "DK", cvr: db.ids()[0]!.value, primaryTaxIdScheme: db.ids()[0]!.scheme })
+    const original = await prepare()
+    await settings.update({ momsRegistered: registered, sellerVatConfirmationToken: original.token })
+    const edits = [{ companyName: "Changed seller" }, { companyAddress: "Changed address" },
+      { primaryTaxId: "24256790" }, { primaryTaxId: "12345678", primaryTaxIdScheme: "cvr" }]
+    for (const edit of edits) {
+      await expect(settings.update(edit)).rejects.toMatchObject({ code: "BAD_REQUEST" })
+      expect(db.settings()).toMatchObject({ companyName: "Original seller", companyAddress: "Testvej 1", momsRegistered: registered })
+      expect(db.ids()[0]).toMatchObject({ scheme: "vat", value: "12345678", countryCode: null })
+      await expect(settings.update({ ...edit, sellerVatConfirmationToken: original.token })).rejects.toMatchObject({ code: "CONFLICT" })
+    }
+    confirm.mockClear()
+    await settings.update({ companyName: "Original seller", companyAddress: "Testvej 1", primaryTaxId: " 12345678 ", primaryTaxIdScheme: "vat" })
+    expect(confirm).not.toHaveBeenCalled()
+    const prepared = await runtime.prepareSellerVatConfirmation({ companyName: "Changed seller", companyAddress: "Testvej 1", countryCode: "DK", cvr: "12345678", primaryTaxIdScheme: "vat" })
+    await settings.update({ companyName: "Changed seller", sellerVatConfirmationToken: prepared.token })
+    expect(confirm).toHaveBeenLastCalledWith(expect.objectContaining({ registered, seller: expect.objectContaining({ taxIds: db.ids() }) }))
+    expect(db.settings()).toMatchObject({ companyName: "Changed seller", momsRegistered: registered })
+  })
+
+  it("allows unknown-status identity edits and self-hosted edits without a confirmation gate", async () => {
+    hosted(true)
+    const prepared = await runtime.prepareSellerVatConfirmation({ companyName: db.settings().companyName,
+      companyAddress: db.settings().companyAddress, countryCode: "DK", cvr: db.ids()[0]!.value, primaryTaxIdScheme: "vat" })
+    await settings.update({ momsRegistered: null, sellerVatConfirmationToken: prepared.token })
+    confirm.mockClear()
+    await settings.update({ companyName: "Unknown seller" })
+    expect(db.settings()).toMatchObject({ companyName: "Unknown seller", momsRegistered: null })
+    vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
+    await settings.update({ companyAddress: "Self-host address", momsRegistered: false })
+    await settings.update({ companyName: "Self-host seller" })
+    expect(db.settings()).toMatchObject({ companyName: "Self-host seller", momsRegistered: false })
+    expect(confirm).not.toHaveBeenCalled()
+  })
   it.each([{ taxRegime: "custom" as const }, { countryCode: "US" }])("rejects an unconfirmed retained choice on Danish VAT entry from %j", async outside => {
     hosted(true)
     await settings.update({ ...outside, momsRegistered: false })

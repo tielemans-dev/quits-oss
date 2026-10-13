@@ -319,7 +319,7 @@ export function buildInvoiceEmailContent({
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
         <div style="font-weight:500;">${escapeHtml(org.companyName ?? "")}</div>
         ${org.companyAddress ? `<div>${formatMultilineHtml(org.companyAddress)}</div>` : ""}
-        ${invoiceTaxIds(org.taxIds).map(id => `<div>${escapeHtml(id)}</div>`).join("")}
+        ${invoiceTaxIds(org.taxIds, undefined, momsRegistered).map(id => `<div>${escapeHtml(id)}</div>`).join("")}
         ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div style="text-align:right;">

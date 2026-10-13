@@ -8,13 +8,22 @@ vi.mock("../../trpc/client", () => ({ trpc: { runtime: { prepareSellerVatConfirm
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 const company = { companyName: "Synthetic Seller", companyAddress: "Testvej 1", cvr: "24256790", companyForm: "ApS" }
 describe("onboarding company review after lookup", () => {
+  it.each([true, false])("honors the non-VAT capability %s before preparation", async nonVatEnabled => {
+    const { container } = render(<I18nProvider locale="en-US"><CompanyReview company={company} confirmationEnabled nonVatEnabled={nonVatEnabled} onComplete={() => {}} /></I18nProvider>)
+    expect(screen.getAllByRole("radio")).toHaveLength(nonVatEnabled ? 2 : 1)
+    fireEvent.submit(container.querySelector("form")!)
+    await screen.findByRole("alert")
+    expect(api.prepare).not.toHaveBeenCalled()
+    expect(api.confirm).not.toHaveBeenCalled()
+  })
+
   it("has no hosted confirmation flow with the flag off", () => {
     render(<I18nProvider locale="en-US"><CompanyReview company={company} confirmationEnabled={false} onComplete={() => {}} /></I18nProvider>)
     expect(screen.queryByRole("radio")).toBeNull()
   })
   it.each([undefined, "", "   ", "12345678"])("rejects missing or invalid CVR %s for either VAT choice", async cvr => {
     const done = vi.fn()
-    const { container } = render(<I18nProvider locale="en-US"><CompanyReview company={{ ...company, cvr }} confirmationEnabled onComplete={done} /></I18nProvider>)
+    const { container } = render(<I18nProvider locale="en-US"><CompanyReview company={{ ...company, cvr }} confirmationEnabled nonVatEnabled onComplete={done} /></I18nProvider>)
     for (const radio of screen.getAllByRole("radio")) {
       fireEvent.click(radio)
       // Bypass HTML required validation to exercise the submission boundary itself.
@@ -26,7 +35,7 @@ describe("onboarding company review after lookup", () => {
     }
   })
   it("rejects the empty CVR in the manual fallback before requesting confirmation", async () => {
-    const { container } = render(<I18nProvider locale="en-US"><CompanyReview confirmationEnabled onComplete={() => {}} /></I18nProvider>)
+    const { container } = render(<I18nProvider locale="en-US"><CompanyReview confirmationEnabled nonVatEnabled onComplete={() => {}} /></I18nProvider>)
     fireEvent.click(screen.getAllByRole("radio")[1]!)
     fireEvent.submit(container.querySelector("form")!)
     await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Enter a valid CVR number."))
@@ -34,7 +43,7 @@ describe("onboarding company review after lookup", () => {
     expect(api.confirm).not.toHaveBeenCalled()
   })
   it("invalidates the VAT choice when the reviewed identity changes", () => {
-    render(<I18nProvider locale="en-US"><CompanyReview company={company} confirmationEnabled onComplete={() => {}} /></I18nProvider>)
+    render(<I18nProvider locale="en-US"><CompanyReview company={company} confirmationEnabled nonVatEnabled onComplete={() => {}} /></I18nProvider>)
     fireEvent.click(screen.getAllByRole("radio")[0]!)
     fireEvent.change(screen.getByLabelText("CVR"), { target: { value: "" } })
     expect((screen.getByRole("button", { name: "Save Settings" }) as HTMLButtonElement).disabled).toBe(true)
@@ -42,7 +51,7 @@ describe("onboarding company review after lookup", () => {
   })
   it.each([true, false])("requires an explicit choice %s after CVR and saves it through the extension", async registered => {
     const done = vi.fn()
-    render(<I18nProvider locale="en-US"><CompanyReview company={company} confirmationEnabled onComplete={done} /></I18nProvider>)
+    render(<I18nProvider locale="en-US"><CompanyReview company={company} confirmationEnabled nonVatEnabled onComplete={done} /></I18nProvider>)
     const radios = screen.getAllByRole("radio") as HTMLInputElement[]
     expect(radios.every(radio => !radio.checked && radio.required)).toBe(true)
     expect(screen.getByLabelText("CVR")).toBeTruthy()

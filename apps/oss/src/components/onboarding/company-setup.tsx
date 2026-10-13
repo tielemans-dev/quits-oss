@@ -8,7 +8,7 @@ import { Label } from "../ui/label"
 import { CompanyReview } from "./company-review"
 
 /** Lookup and manual entry converge on the existing review, with a fresh explicit VAT choice. */
-export function CompanySetup({ onComplete }: { onComplete: () => void }) {
+export function CompanySetup({ onComplete, nonVatEnabled = false }: { onComplete: () => void; nonVatEnabled?: boolean }) {
   const { t } = useI18n()
   const [query, setQuery] = useState("")
   const [result, setResult] = useState<CompanyLookupResult | null>(null)
@@ -30,7 +30,7 @@ export function CompanySetup({ onComplete }: { onComplete: () => void }) {
     const company = review.company
     return <div className="grid gap-4">
       <Button variant="outline" onClick={() => { generation.current++; setReview(null) }}>{t("onboardingV2.backToLookup")}</Button>
-      <CompanyReview confirmationEnabled onComplete={onComplete} company={company ? {
+      <CompanyReview nonVatEnabled={nonVatEnabled} confirmationEnabled onComplete={onComplete} company={company ? {
         companyName: company.companyName, companyAddress: company.companyAddress, cvr: company.cvr, companyForm: company.companyForm,
       } : undefined} />
     </div>

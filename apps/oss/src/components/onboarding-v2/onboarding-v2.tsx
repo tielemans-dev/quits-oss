@@ -26,6 +26,7 @@ type Props = {
   organizationId: string
   signupEmail: string
   confirmationEnabled?: boolean
+  nonVatEnabled?: boolean
   client: OnboardingV2Client
   onComplete: () => void
 }
@@ -89,7 +90,7 @@ function SourceField({
 }
 
 /** Reload keeps the tab draft; route changes, explicit cancellation and completion discard it. */
-export function OnboardingV2({ userId, organizationId, signupEmail, client, onComplete, confirmationEnabled = false }: Props) {
+export function OnboardingV2({ userId, organizationId, signupEmail, client, onComplete, confirmationEnabled = false, nonVatEnabled = false }: Props) {
   const { t, locale } = useI18n()
   const storageKey = draftKey(userId, organizationId)
   const [draft, setDraft] = useState<OnboardingDraft | null>(null)
@@ -337,7 +338,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   }
   async function confirm(event: React.FormEvent) {
     event.preventDefault()
-    if (!draft || saving.current || (confirmationEnabled && sellerVatChoice === null)) return
+    if (!draft || saving.current || (confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false)) return
     const v = draft.values
     if (
       (v.bankRegNumber || v.bankAccountNumber) &&
@@ -656,7 +657,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             </SourceField>
             {confirmationEnabled ? <div className="grid gap-3">
               <p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p>
-              <SellerVatStatus value={sellerVatChoice} required disabled={busy} onChange={value => {
+              <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} required disabled={busy} onChange={value => {
                 setSellerVatChoice(value)
                 update("momsRegistered", value)
               }} />
@@ -669,7 +670,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 onChange={(e) => update("momsRegistered", e.target.value === "true")}
               >
                 <option value="true">{TT("yes")}</option>
-                <option value="false">{TT("no")}</option>
+                {nonVatEnabled && <option value="false">{TT("no")}</option>}
               </select>
             </SourceField>
             )}

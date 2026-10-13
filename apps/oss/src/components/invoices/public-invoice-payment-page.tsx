@@ -169,7 +169,7 @@ function PublicInvoiceDocument({
             <div className="grid gap-4 sm:grid-cols-2">
               <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.from")}</h2>
                 <p>{invoice.sellerSnapshot?.companyName}</p><p className="whitespace-pre-line">{invoice.sellerSnapshot?.companyAddress}</p>
-                {invoiceTaxIds(invoice.sellerSnapshot?.taxIds).map(id => <p key={id}>{id}</p>)}
+                {invoiceTaxIds(invoice.sellerSnapshot?.taxIds, undefined, momsRegistered).map(id => <p key={id}>{id}</p>)}
               </div>
               <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.billTo")}</h2>
                 <p>{invoice.buyerSnapshot?.name}</p><p>{invoice.buyerSnapshot?.company}</p>

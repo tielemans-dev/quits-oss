@@ -35,6 +35,7 @@ export async function confirmSellerVatStatus(input: SellerVatConfirmationActor &
   registered?: boolean | null
   token?: string
   previousSettings?: { countryCode: string; taxRegime: string } | null
+  previousSeller?: SellerSnapshot | null
 }) {
   const service = getSellerVatConfirmationService()
   if (!service) {
@@ -45,16 +46,18 @@ export async function confirmSellerVatStatus(input: SellerVatConfirmationActor &
   const enteringDanishVat = input.previousSettings !== undefined &&
     settings.countryCode === "DK" && settings.taxRegime === "eu_vat" &&
     (input.previousSettings?.countryCode !== "DK" || input.previousSettings?.taxRegime !== "eu_vat")
-  const registered = input.registered === undefined && enteringDanishVat ? settings.momsRegistered : input.registered
-  // Unknown status remains fail-closed at issuance. Unrelated saves retain confirmed status.
+  const taxIds = await input.tx.organizationTaxId.findMany({ where: { organizationId: input.organizationId } })
+  const seller = { companyName: settings.companyName, companyAddress: settings.companyAddress, countryCode: settings.countryCode, taxIds }
+  const identityChanged = input.previousSeller !== undefined && sellerConfirmationIdentity(input.previousSeller) !== sellerConfirmationIdentity(seller)
+  const needsReconfirmation = settings.countryCode === "DK" && settings.taxRegime === "eu_vat" && (enteringDanishVat || identityChanged)
+  const registered = input.registered === undefined && needsReconfirmation ? settings.momsRegistered : input.registered
+  // Unknown status remains fail-closed at issuance. Same-identity saves retain confirmed status.
   if (registered === undefined || (input.registered === undefined && registered === null)) return
   // A jurisdiction/tax-regime transition retains general financial settings behavior.
   // It cannot create evidence for another identity or grant issuance permission.
   if (!input.token && (settings.countryCode !== "DK" || settings.taxRegime !== "eu_vat")) return
   if (!input.token) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose and confirm seller VAT status" })
-  const taxIds = await input.tx.organizationTaxId.findMany({ where: { organizationId: input.organizationId } })
-  await service.confirm({ ...input, registered, token: input.token,
-    seller: { companyName: settings.companyName, companyAddress: settings.companyAddress, countryCode: settings.countryCode, taxIds } })
+  await service.confirm({ ...input, registered, token: input.token, seller })
 }
 
 /** Project the primary-ID write performed by settings.update, preserving the other IDs. */
@@ -64,4 +67,10 @@ export function settingsConfirmationTaxIds(
   const primary = { ...orderedTaxIds[0], value: value.trim(), scheme: scheme.trim() || "vat" }
   // New settings IDs have no countryCode, matching the database's nullable default.
   return orderedTaxIds.length ? [primary, ...orderedTaxIds.slice(1)] : [{ ...primary, countryCode: null }]
+}
+
+/** Compare only token-bound stored fields. Tax-ID row order and database metadata are immaterial. */
+function sellerConfirmationIdentity(seller: SellerSnapshot | null) {
+  return JSON.stringify([seller?.companyName ?? null, seller?.companyAddress ?? null, seller?.countryCode ?? null,
+    (seller?.taxIds ?? []).map(id => JSON.stringify([id.scheme ?? null, id.value, id.countryCode ?? null])).sort()])
 }

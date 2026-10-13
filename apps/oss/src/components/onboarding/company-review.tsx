@@ -8,9 +8,10 @@ import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 
 /** A lookup result or manual fallback enters the same review. Lookup never implies VAT status. */
-export function CompanyReview({ company, confirmationEnabled, onComplete }: {
+export function CompanyReview({ company, confirmationEnabled, nonVatEnabled = false, onComplete }: {
   company?: Pick<ConfirmOnboardingV2Input, "companyName" | "companyAddress" | "cvr" | "companyForm">
   confirmationEnabled: boolean
+  nonVatEnabled?: boolean
   onComplete: () => void
 }) {
   const { t } = useI18n()
@@ -24,7 +25,7 @@ export function CompanyReview({ company, confirmationEnabled, onComplete }: {
     setSaving(true)
     setError(null)
     try {
-      if (!confirmationEnabled || registered === null) throw new Error(t("vatStatus.label"))
+      if (!confirmationEnabled || registered === null || (!nonVatEnabled && registered === false)) throw new Error(t("vatStatus.label"))
       const cvr = values.cvr
       if (typeof cvr !== "string" || !isValidDanishCvr(cvr.trim())) throw new Error(t("cvr.invalid"))
       const summary = confirmOnboardingV2Schema.parse({ ...values, cvr: cvr.trim(), idempotencyKey: key, source: company ? "cvr" : "manual",
@@ -49,7 +50,7 @@ export function CompanyReview({ company, confirmationEnabled, onComplete }: {
           maxLength={field === "companyAddress" ? 240 : field === "companyName" ? 120 : field === "companyForm" ? 80 : 8}
           onChange={event => { setValues(current => ({ ...current, [field]: event.target.value })); setRegistered(null) }} /></div>)}
     <p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p>
-    <SellerVatStatus value={registered} onChange={setRegistered} disabled={saving} required />
+    <SellerVatStatus nonVatEnabled={nonVatEnabled} value={registered} onChange={setRegistered} disabled={saving} required />
     <Button type="submit" disabled={saving || registered === null}>{t("settings.action.save")}</Button>
   </form>
 }

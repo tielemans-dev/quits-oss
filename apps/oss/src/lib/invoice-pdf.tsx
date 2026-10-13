@@ -338,7 +338,7 @@ export function InvoicePdfDocument({
             {org.companyEmail && <Text style={styles.contactLine}>{org.companyEmail}</Text>}
             {org.companyPhone && <Text style={styles.contactLine}>{org.companyPhone}</Text>}
             {org.companyAddress && <Text style={styles.contactLine}>{org.companyAddress}</Text>}
-            {invoiceTaxIds(org.taxIds, org.cvrLabel).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
+            {invoiceTaxIds(org.taxIds, org.cvrLabel, momsRegistered).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
           </View>
 
           {/* Bill To */}

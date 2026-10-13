@@ -14,9 +14,35 @@ vi.mock("../../trpc/client", () => ({ trpc: {
 afterEach(() => { cleanup(); sessionStorage.clear(); vi.clearAllMocks() })
 
 describe("production v2 seller confirmation", () => {
-  it.each([true, false])("shows a CVR validation error for hosted manual registration %s before preparation", async registered => {
+  it.each([true, false])("offers only supported registration choices when nonVAT is %s", async nonVatEnabled => {
+    render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled nonVatEnabled={nonVatEnabled} client={createOnboardingV2Client(false, true)} onComplete={() => {}} /></I18nProvider>)
+    fireEvent.click(screen.getByRole("button", { name: "Set up manually instead" }))
+    expect(screen.getAllByRole("radio")).toHaveLength(nonVatEnabled ? 2 : 1)
+    expect(screen.queryByRole("radio", { name: "I'm not VAT-registered" }) !== null).toBe(nonVatEnabled)
+    fireEvent.submit(screen.getByRole("button", { name: "Create company" }).closest("form")!)
+    expect(api.prepare).not.toHaveBeenCalled()
+    expect(api.confirm).not.toHaveBeenCalled()
+  })
+
+  it("keeps default-off non-registration out of the controls while allowing registered preparation", async () => {
     const done = vi.fn()
     render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled client={createOnboardingV2Client(false, true)} onComplete={done} /></I18nProvider>)
+    fireEvent.click(screen.getByRole("button", { name: "Set up manually instead" }))
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
+    fireEvent.change(screen.getByLabelText("CVR number"), { target: { value: "24256790" } })
+    expect(screen.queryByRole("radio", { name: "I'm not VAT-registered" })).toBeNull()
+    const priceChoice = screen.getByRole("combobox", { name: "Prices include VAT" }) as HTMLSelectElement
+    expect(Array.from(priceChoice.options).map(option => option.value)).toEqual(["false", "true"])
+    fireEvent.click(screen.getByRole("radio", { name: "I'm VAT-registered" }))
+    fireEvent.click(screen.getByRole("button", { name: "Create company" }))
+    await waitFor(() => expect(done).toHaveBeenCalledOnce())
+    expect(api.prepare).toHaveBeenCalledOnce()
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }))
+  })
+  it.each([true, false])("shows a CVR validation error for hosted manual registration %s before preparation", async registered => {
+    const done = vi.fn()
+    render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled nonVatEnabled client={createOnboardingV2Client(false, true)} onComplete={done} /></I18nProvider>)
     fireEvent.click(screen.getByRole("button", { name: "Set up manually instead" }))
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
@@ -38,7 +64,7 @@ describe("production v2 seller confirmation", () => {
   })
   it.each([true, false])("saves explicit registration %s and prepares the final edited identity", async registered => {
     const done = vi.fn()
-    render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled client={createOnboardingV2Client(false, true)} onComplete={done} /></I18nProvider>)
+    render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled nonVatEnabled client={createOnboardingV2Client(false, true)} onComplete={done} /></I18nProvider>)
     fireEvent.click(screen.getByRole("button", { name: "Set up manually instead" }))
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })

@@ -202,6 +202,7 @@ function SettingsPage() {
   const [taxRateInput, setTaxRateInput] = useState("")
   const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
   const [withdrawSellerVatEvidence, setWithdrawSellerVatEvidence] = useState(false)
+  const [nonVatEnabled, setNonVatEnabled] = useState(false)
   const [sellerVatConfirmationEnabled, setSellerVatConfirmationEnabled] = useState(false)
   const [momsRegistered, setMomsRegistered] = useState<boolean | null>(null)
   const [countryCode, setCountryCode] = useState("US")
@@ -325,6 +326,7 @@ function SettingsPage() {
       .then((data) => {
         setAiCapabilities((data as Pick<RuntimeCapabilities, "aiInvoiceDraft">).aiInvoiceDraft)
         setSellerVatConfirmationEnabled(data.sellerVatConfirmation?.enabled === true)
+        setNonVatEnabled(data.onboardingV2?.nonVatEnabled === true)
       })
       .catch(() => {})
       .finally(() => setLoadingAiCapabilities(false))
@@ -825,7 +827,7 @@ function SettingsPage() {
             </div>
 
             {(isSelfHostDistribution || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
-              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
                 {sellerVatConfirmationEnabled && <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>}
               </div>
             ) : null}

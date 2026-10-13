@@ -13,7 +13,7 @@ const {
   settingsUpdate,
   getFullOrganization,
 } = vi.hoisted(() => ({
-  hostedFlag: { enabled: false },
+  hostedFlag: { enabled: false, nonVatEnabled: true },
   distribution: { selfhost: true },
   prepareConfirmation: vi.fn(async () => ({ token: "signed" })),
   useSessionMock: vi.fn(),
@@ -124,6 +124,7 @@ vi.mock("../../trpc/client", () => ({
         query: vi.fn(() =>
           Promise.resolve({
             sellerVatConfirmation: { enabled: hostedFlag.enabled },
+            onboardingV2: { nonVatEnabled: hostedFlag.nonVatEnabled },
             aiInvoiceDraft: {
               enabled: true,
               byok: true,
@@ -200,6 +201,7 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
 afterEachTest(() => {
   cleanup()
   hostedFlag.enabled = false
+  hostedFlag.nonVatEnabled = true
   distribution.selfhost = true
   prepareConfirmation.mockClear()
   useSessionMock.mockReset()
@@ -209,6 +211,20 @@ afterEachTest(() => {
 })
 
 describe("Settings tax relevance", () => {
+  it.each([[false, true, false], [false, true, true], [true, false, false]])("honors non-VAT capability for selfhost %s, confirmation %s, nonVAT %s", async (selfhost, enabled, nonVatEnabled) => {
+    distribution.selfhost = selfhost
+    hostedFlag.enabled = enabled
+    hostedFlag.nonVatEnabled = nonVatEnabled
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    settingsGetQuery.mockResolvedValue(buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: null }))
+    render(<RouteComponent />)
+    await screen.findByRole("radio", { name: "vatStatus.yes" })
+    expect(Boolean(screen.queryByRole("radio", { name: "vatStatus.no" }))).toBe(selfhost || nonVatEnabled)
+    expect(prepareConfirmation).not.toHaveBeenCalled()
+    expect(settingsUpdate).not.toHaveBeenCalled()
+  })
+
   it.each([[true, true], [true, false], [false, true], [false, false]])("shows company choice with hosted confirmation %s and saves registration %s", async (confirmationEnabled, registered) => {
     hostedFlag.enabled = confirmationEnabled
     distribution.selfhost = !confirmationEnabled
