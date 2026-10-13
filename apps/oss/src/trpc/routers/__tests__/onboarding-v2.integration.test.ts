@@ -291,7 +291,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     runtime.setRuntimeExtensions([{ id: "v2-only", resolveCapabilities: () => ({ onboardingV2: { enabled: true } }) }])
     const input = { ...summary(), source: "manual" as const, momsRegistered: false, vatId: undefined }
     await expect(api.onboarding.confirmV2(input)).rejects.toMatchObject({ code: "FORBIDDEN", message: "save.failed" })
-    await expect(api.settings.update({ momsRegistered: false })).rejects.toMatchObject({ code: "FORBIDDEN", message: "save.failed" })
+    await expect(api.settings.update({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: false })).rejects.toMatchObject({ code: "FORBIDDEN", message: "save.failed" })
     expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
     runtime.setRuntimeExtensions([{ id: "v2-non-vat", resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true } }) }])
     expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete" })
@@ -303,7 +303,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const api = await caller(id)
     const runtime = await import("../../../lib/runtime/extensions")
     runtime.setRuntimeExtensions([])
-    await api.settings.update({ momsRegistered: false, taxRate: 0 })
+    await api.settings.update({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: false, taxRate: 0 })
     await api.settings.update({ momsRegistered: true, taxRate: 17.5 })
     expect(await api.settings.get()).toMatchObject({ momsRegistered: true, taxRate: 17.5 })
   })

@@ -14,8 +14,8 @@ describe("cloud onboarding layout", () => {
 
   it("organizes cloud onboarding into confirmation and advanced sections", () => {
     const source = readFileSync(onboardingRoutePath, "utf8")
-    expect(source).toContain("Confirm defaults")
-    expect(source).toContain("Advanced defaults")
+    expect(source).toContain("auth.onboarding.defaults.title")
+    expect(source).toContain("auth.onboarding.advanced.title")
   })
 
   it("gates the ai onboarding entry on runtime capabilities", () => {
