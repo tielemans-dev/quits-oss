@@ -9,6 +9,9 @@ const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 
 type CallerLike = {
+  onboardingAi: {
+    getOnboardingState: () => Promise<{ values: Record<string, unknown> }>
+  }
   onboarding: {
     getStatus: () => Promise<{
       status: string
@@ -73,6 +76,36 @@ async function createCloudCaller() {
 describeIfDatabase("onboarding router integration", () => {
   afterEach(async () => {
     process.env.QUITS_DISTRIBUTION = "selfhost"
+  })
+
+  it.each(["status", "ai"])("initializes one saved Danish row for concurrent status and %s reads", async read => {
+    const { orgId, caller } = await createCloudCaller()
+    const readPair = () => Promise.all([
+      caller.onboarding.getStatus(),
+      read === "status" ? caller.onboarding.getStatus() : caller.onboardingAi.getOnboardingState(),
+    ])
+    try {
+      expect(await prisma.orgSettings.count({ where: { organizationId: orgId } })).toBe(0)
+      const [first, second] = await readPair()
+      expect(first.values).toEqual(second.values)
+      const numbering = { invoicePrefix: new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Europe/Copenhagen" }).format(new Date()), invoiceNextNum: 1, quotePrefix: "QTE", quoteNextNum: 1 }
+      expect(first.values).toMatchObject({ countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", pricesIncludeTax: false, ...numbering })
+      expect(await prisma.orgSettings.count({ where: { organizationId: orgId } })).toBe(1)
+      const saved = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })
+      expect(saved).toMatchObject({ countryCode: "DK", defaultCurrency: "DKK", baseCurrency: "DKK", currency: "DKK", locale: "da-DK", timezone: "Europe/Copenhagen", taxRegime: "eu_vat", pricesIncludeTax: false, momsRegistered: null, ...numbering })
+      expect(Number(saved.taxRate)).toBe(25)
+
+      const overridden = await prisma.orgSettings.update({
+        where: { organizationId: orgId },
+        data: { countryCode: "DE", defaultCurrency: "EUR", baseCurrency: "EUR", currency: "EUR", locale: "en-US", invoicePrefix: "BOOK", invoiceNextNum: 42, quotePrefix: "OFF", quoteNextNum: 8, momsRegistered: false, taxRate: 0, pricesIncludeTax: true, paymentNote: "Saved note" },
+      })
+      const [existingFirst, existingSecond] = await readPair()
+      expect(existingFirst.values).toEqual(existingSecond.values)
+      expect(existingFirst.values).toMatchObject({ countryCode: "DE", defaultCurrency: "EUR", locale: "en-US", invoicePrefix: "BOOK", invoiceNextNum: 42, quotePrefix: "OFF", quoteNextNum: 8, pricesIncludeTax: true })
+      expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })).toEqual(overridden)
+    } finally {
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
   })
 
   it("returns status/missing/values and supports draft+complete flow", async () => {
