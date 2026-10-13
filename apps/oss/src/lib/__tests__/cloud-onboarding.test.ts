@@ -10,6 +10,10 @@ import {
 const profiles: CloudOnboardingProfile[] = ["freelancer", "smb", "enterprise"]
 
 describe("cloud onboarding defaults", () => {
+  it("uses moms for the default business profile", () => {
+    expect(getProfileDefaults("smb").taxRegime).toBe("eu_vat")
+    expect(getProfileDefaults("smb", new Date(), "US").taxRegime).toBe("us_sales_tax")
+  })
   it("returns defaults for each supported profile", () => {
     for (const profile of profiles) {
       const defaults = getProfileDefaults(profile)

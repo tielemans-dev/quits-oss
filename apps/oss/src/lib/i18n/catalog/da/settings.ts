@@ -1,4 +1,10 @@
 export const daSettingsMessages = {
+  "settings.vatStatus.cvrLabel": "CVR-nummer",
+  "settings.vatStatus.cvrHelp": "Din virksomheds danske registreringsnummer.",
+
+  "settings.vatStatus.question": "Er du momsregistreret?",
+  "settings.vatStatus.registered": "Jeg er momsregistreret",
+  "settings.vatStatus.notRegistered": "Jeg er ikke momsregistreret",
   "settings.baseCurrency.label": "Basisvaluta",
   "settings.baseCurrency.hint": "Regnskabet bruger denne valuta. Den låses efter udstedelse af et dokument. Kladdevalutaen er uafhængig.",
   "settings.title": "Indstillinger",

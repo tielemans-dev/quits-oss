@@ -1,6 +1,7 @@
 import { OnboardingV2 } from "../../components/onboarding-v2/onboarding-v2"
 import { createOnboardingV2Client } from "../../components/onboarding-v2/client"
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
 import type { RuntimeCapabilities } from '@quits/contracts/runtime'
 import { useEffect, useMemo, useState } from 'react'
@@ -25,13 +26,16 @@ import {
 } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { useI18n } from '../../lib/i18n/react'
+import { I18nProvider, useI18n } from '../../lib/i18n/react'
 import { countryOptionsIncluding, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
 import { CompanySetup } from "../../components/onboarding/company-setup"
+import { loadPage } from '../../lib/page-navigation'
+import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../../lib/login-return'
 import { AiAssistantPanel } from '../../components/onboarding/ai-assistant-panel'
 
 export const Route = createFileRoute('/_app/onboarding')({
+  validateSearch: loginReturnSearchSchema,
   component: OnboardingPage,
 })
 
@@ -78,13 +82,13 @@ const DEFAULT_CLOUD_ONBOARDING_VALUES: CloudOnboardingValues = {
   companyName: '',
   companyAddress: '',
   companyEmail: '',
-  countryCode: 'US',
+  countryCode: DANISH_ONBOARDING_V2_DEFAULTS.countryCode,
   invoicingIdentity: 'registered_business',
-  locale: 'en-US',
-  timezone: 'UTC',
-  defaultCurrency: 'USD',
-  taxRegime: 'us_sales_tax',
-  pricesIncludeTax: false,
+  locale: DANISH_ONBOARDING_V2_DEFAULTS.locale,
+  timezone: DANISH_ONBOARDING_V2_DEFAULTS.timezone,
+  defaultCurrency: DANISH_ONBOARDING_V2_DEFAULTS.defaultCurrency,
+  taxRegime: DANISH_ONBOARDING_V2_DEFAULTS.taxRegime,
+  pricesIncludeTax: DANISH_ONBOARDING_V2_DEFAULTS.pricesIncludeTax,
   primaryTaxId: '',
   primaryTaxIdScheme: 'vat',
   invoicePrefix: 'INV',
@@ -96,14 +100,14 @@ function parseCloudOnboardingValues(values?: Record<string, unknown> | null): Cl
     companyName: String(values?.companyName ?? ''),
     companyAddress: String(values?.companyAddress ?? ''),
     companyEmail: String(values?.companyEmail ?? ''),
-    countryCode: String(values?.countryCode ?? 'US'),
+    countryCode: String(values?.countryCode ?? DANISH_ONBOARDING_V2_DEFAULTS.countryCode),
     invoicingIdentity:
       values?.invoicingIdentity === 'individual' ? 'individual' : 'registered_business',
-    locale: String(values?.locale ?? 'en-US'),
-    timezone: String(values?.timezone ?? 'UTC'),
-    defaultCurrency: String(values?.defaultCurrency ?? 'USD'),
-    taxRegime: (values?.taxRegime as CloudTaxRegime) ?? 'us_sales_tax',
-    pricesIncludeTax: Boolean(values?.pricesIncludeTax),
+    locale: String(values?.locale ?? DANISH_ONBOARDING_V2_DEFAULTS.locale),
+    timezone: String(values?.timezone ?? DANISH_ONBOARDING_V2_DEFAULTS.timezone),
+    defaultCurrency: String(values?.defaultCurrency ?? DANISH_ONBOARDING_V2_DEFAULTS.defaultCurrency),
+    taxRegime: (values?.taxRegime as CloudTaxRegime) ?? DANISH_ONBOARDING_V2_DEFAULTS.taxRegime,
+    pricesIncludeTax: Boolean(values?.pricesIncludeTax ?? DANISH_ONBOARDING_V2_DEFAULTS.pricesIncludeTax),
     primaryTaxId: String(values?.primaryTaxId ?? ''),
     primaryTaxIdScheme: String(values?.primaryTaxIdScheme ?? 'vat'),
     invoicePrefix: String(values?.invoicePrefix ?? 'INV'),
@@ -112,7 +116,16 @@ function parseCloudOnboardingValues(values?: Record<string, unknown> | null): Cl
 }
 
 function OnboardingPage() {
+  const { locale } = useI18n()
+  const { lang } = Route.useSearch()
+  return <I18nProvider locale={lang ?? locale}><OnboardingPageContent /></I18nProvider>
+}
+
+function OnboardingPageContent() {
   const { t } = useI18n()
+  const search = Route.useSearch()
+  const target = loginReturnTarget(search)
+  const returnDestination = loginReturnDestination(target ?? '/', search.lang)
   const navigate = useNavigate()
   const { isCloud } = useRuntimeDistribution()
   const { data: session } = useSession()
@@ -137,6 +150,7 @@ function OnboardingPage() {
   })
   const [orgAccessLoading, setOrgAccessLoading] = useState(false)
   const [method, setMethod] = useState<CloudOnboardingMethod>('manual')
+  const [hasSubmitted, setHasSubmitted] = useState(false)
   const [missingFields, setMissingFields] = useState<OnboardingMissingField[]>([])
   const [runtimeCapabilities, setRuntimeCapabilities] = useState<
     Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'> | null
@@ -153,10 +167,19 @@ function OnboardingPage() {
     pricesIncludeTax: false,
   })
 
+  const invalidBusinessBasics = !values.companyName.trim() || !values.companyAddress.trim() ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.companyEmail.trim())
+
   const onboardingRules = getOnboardingRules({
     countryCode: values.countryCode,
     invoicingIdentity: values.invoicingIdentity,
     taxRegime: values.taxRegime,
+  })
+
+  const outstandingFields = missingFields.filter((field) => {
+    if (field === 'primaryTaxId') return onboardingRules.requirePrimaryTaxId && !values.primaryTaxId.trim()
+    if (field === 'invoiceNextNum' || field === 'quoteNextNum') return true
+    return !values[field].trim()
   })
 
   useEffect(() => {
@@ -182,7 +205,7 @@ function OnboardingPage() {
         if (accessState.kind === 'auto-select') {
           // Loads a new page acting for the organization: onboarding continues there in cloud.
           const switched = await switchActiveOrganization(accessState.organizationId, {
-            destination: isCloud ? '/onboarding' : '/',
+            destination: isCloud ? loginReturnOnboarding(search) : returnDestination,
             isCancelled: () => cancelled,
           })
           if (!switched?.error || cancelled) {
@@ -209,7 +232,7 @@ function OnboardingPage() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud])
+  }, [hasActiveOrg, isCloud, returnDestination, target, search.lang])
 
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) {
@@ -247,7 +270,8 @@ function OnboardingPage() {
         if (status.isComplete) {
           // The layout may still hold an earlier "incomplete" answer, which would send us back here.
           invalidateAppLayoutSession()
-          navigate({ to: '/' })
+          if (target || search.lang) loadPage(returnDestination)
+          else navigate({ to: '/' })
         }
       })
       .catch(() => {
@@ -264,7 +288,7 @@ function OnboardingPage() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud, navigate])
+  }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang])
 
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) {
@@ -379,7 +403,9 @@ function OnboardingPage() {
     }
 
     // Loads a new page acting for the new organization.
-    const switched = await switchActiveOrganization(result.data.id)
+    const switched = await switchActiveOrganization(result.data.id, {
+      destination: isCloud && target ? loginReturnOnboarding(search) : returnDestination,
+    })
     if (switched?.error) {
       setError(switched.error.message ?? t('auth.onboarding.error'))
       setSubmitting(false)
@@ -392,7 +418,9 @@ function OnboardingPage() {
 
     try {
       // Loads a new page acting for the selected organization.
-      const switched = await switchActiveOrganization(organizationId)
+      const switched = await switchActiveOrganization(organizationId, {
+        destination: isCloud && target ? loginReturnOnboarding(search) : returnDestination,
+      })
       if (switched?.error) {
         setError(switched.error.message ?? t('auth.onboarding.error'))
         setSubmitting(false)
@@ -407,6 +435,8 @@ function OnboardingPage() {
   async function handleCompleteCloudOnboarding(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    setHasSubmitted(true)
+    if (invalidBusinessBasics) return
     setSubmitting(true)
 
     try {
@@ -429,10 +459,16 @@ function OnboardingPage() {
 
       setMissingFields(Array.isArray(draft.missing) ? draft.missing : [])
 
+      if (draft.missing?.length) {
+        setSubmitting(false)
+        return
+      }
+
       await trpc.onboarding.completeManual.mutate({ method })
       // The layout must see onboarding as complete now, not after its reuse window.
       invalidateAppLayoutSession()
-      navigate({ to: '/' })
+      if (target || search.lang) loadPage(returnDestination)
+      else navigate({ to: '/' })
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Unable to complete onboarding'
       setError(message)
@@ -567,7 +603,7 @@ function OnboardingPage() {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button type="button" className="w-full" onClick={() => navigate({ to: '/' })}>
+            <Button type="button" className="w-full" onClick={() => target || search.lang ? loadPage(returnDestination) : navigate({ to: '/' })}>
               {t('auth.onboarding.configured.continue')}
             </Button>
           </CardFooter>
@@ -583,7 +619,8 @@ function OnboardingPage() {
   if (v2Availability?.enabled && session) {
     return <OnboardingV2 key={`${session.user.id}:${session.session.activeOrganizationId}`} userId={session.user.id} organizationId={session.session.activeOrganizationId!} signupEmail={session.user.email} client={v2Client} nonVatEnabled={runtimeCapabilities?.onboardingV2?.nonVatEnabled === true} confirmationEnabled={runtimeCapabilities?.sellerVatConfirmation?.enabled === true} onComplete={() => {
       invalidateAppLayoutSession()
-      void navigate({ to: '/' })
+      if (target || search.lang) loadPage(returnDestination)
+      else void navigate({ to: '/' })
     }} />
   }
 
@@ -596,7 +633,7 @@ function OnboardingPage() {
             Complete these defaults once so you can immediately create invoices and quotes.
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleCompleteCloudOnboarding}>
+        <form onSubmit={handleCompleteCloudOnboarding} noValidate>
           <CardContent className="space-y-6">
             {error && (
               <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
@@ -650,10 +687,14 @@ function OnboardingPage() {
               />
             ) : null}
 
-            {missingFields.length > 0 ? (
-              <div className="rounded-md border border-border p-3 text-sm text-muted-foreground">
-                Missing required fields: {missingFields.join(', ')}
-              </div>
+            {hasSubmitted && invalidBusinessBasics ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
+                {t('auth.onboarding.validation.businessBasics')}
+              </p>
+            ) : hasSubmitted && outstandingFields.length > 0 ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
+                {t('auth.onboarding.validation.required', { fields: outstandingFields.map((field) => t(`auth.onboarding.field.${field}`)).join(', ') })}
+              </p>
             ) : null}
 
             <section className="space-y-4 rounded-lg border border-border p-4">

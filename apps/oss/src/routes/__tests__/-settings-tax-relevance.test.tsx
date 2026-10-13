@@ -223,7 +223,7 @@ describe("Settings tax relevance", () => {
     const { container } = render(<RouteComponent />)
     await screen.findByRole("radio", { name: "vatStatus.no" })
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: false, sellerVatConfirmationToken: undefined })))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
     expect(screen.queryByRole("button", { name: "settings.capabilities.retry" })).toBeNull()
     expect(prepareConfirmation).not.toHaveBeenCalled()
   })
@@ -239,7 +239,7 @@ describe("Settings tax relevance", () => {
     settingsGetQuery.mockResolvedValue(current)
     settingsUpdate.mockImplementation(async input => ({ ...current, ...input, momsRegistered: input.momsRegistered ?? stored }))
     const { container } = render(<RouteComponent />)
-    await screen.findByLabelText("VAT/CVR number")
+    await screen.findByLabelText(stored === false ? "settings.vatStatus.cvrLabel" : "VAT/CVR number")
     const email = container.querySelector('[name="companyEmail"]')! as HTMLInputElement
     fireEvent.change(email, { target: { value: "edited@example.test" } })
     fireEvent.submit(container.querySelector("form")!)
@@ -308,7 +308,7 @@ describe("Settings tax relevance", () => {
     const edit = () => {
       edits++
       if (field === "scheme") fireEvent.change(Array.from(container.querySelectorAll("select")).find(select => select.value === (edits === 1 ? "vat" : "cvr"))!, { target: { value: edits === 1 ? "cvr" : "vat" } })
-      else fireEvent.change(field === "taxId" ? screen.getByLabelText("VAT/CVR number") : container.querySelector(`[name="${field}"]`)!, { target: { value: field === "taxId" ? (edits === 1 ? "12345678" : "24256790") : `Changed identity ${edits}` } })
+      else fireEvent.change(field === "taxId" ? container.querySelector('[name="primaryTaxId"]')! : container.querySelector(`[name="${field}"]`)!, { target: { value: field === "taxId" ? (edits === 1 ? "12345678" : "24256790") : `Changed identity ${edits}` } })
     }
     fireEvent.click(radios[1]!)
     edit()
@@ -407,5 +407,51 @@ describe("Settings tax relevance", () => {
       expect(screen.getByLabelText("VAT/CVR number")).toBeTruthy()
     })
     expect(screen.getByText("Required for Danish registered businesses using EU VAT.")).toBeTruthy()
+  })
+})
+
+async function renderDanishSettings(momsRegistered: boolean | null) {
+  useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
+  getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+  const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, taxRate: momsRegistered === false ? 0 : 25 })
+  settingsGetQuery.mockResolvedValue(data)
+  settingsUpdate.mockImplementation(async input => ({ ...data, ...input, momsRegistered: input.momsRegistered === undefined ? data.momsRegistered : input.momsRegistered }))
+  render(<RouteComponent />)
+  await screen.findByRole("radio", { name: "vatStatus.yes" })
+}
+
+describe("Settings VAT status after upstream integration", () => {
+  it.each([true, false, null])("preserves saved status %s without inventing a choice", async status => {
+    await renderDanishSettings(status)
+    expect((screen.getByRole("radio", { name: "vatStatus.yes" }) as HTMLInputElement).checked).toBe(status === true)
+    expect((screen.getByRole("radio", { name: "vatStatus.no" }) as HTMLInputElement).checked).toBe(status === false)
+    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeUndefined()
+  })
+  it.each([true, false])("submits changed status %s and related tax defaults only once", async status => {
+    await renderDanishSettings(!status)
+    fireEvent.click(screen.getByRole("checkbox", { name: "Prices include tax" }))
+    fireEvent.click(screen.getByRole("radio", { name: status ? "vatStatus.yes" : "vatStatus.no" }))
+    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0]).toMatchObject({ momsRegistered: status, taxRate: status ? 25 : 0, pricesIncludeTax: false })
+    if (!status) expect(screen.getByLabelText("settings.vatStatus.cvrLabel")).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole("status")).toBeTruthy())
+    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledTimes(2))
+    expect(settingsUpdate.mock.calls[1][0].momsRegistered).toBeUndefined()
+  })
+  it("hides unsupported hosted non-VAT selection while retaining saved false", async () => {
+    distribution.selfhost = false
+    hostedFlag.enabled = true
+    hostedFlag.nonVatEnabled = false
+    await renderDanishSettings(false)
+    expect(screen.queryByRole("radio", { name: "vatStatus.no" })).toBeNull()
+    expect((screen.getByRole("radio", { name: "vatStatus.yes" }) as HTMLInputElement).checked).toBe(false)
+    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeUndefined()
+    expect(prepareConfirmation).not.toHaveBeenCalled()
   })
 })

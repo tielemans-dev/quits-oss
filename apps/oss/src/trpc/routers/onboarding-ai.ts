@@ -1,3 +1,5 @@
+import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
+import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
 import { assertSettingsCurrency } from "../currency"
 import { TRPCError } from "@trpc/server"
@@ -85,10 +87,9 @@ function assertCloudOnboardingAiEnabled() {
 }
 
 async function loadSnapshot(organizationId: string) {
-  const settings = await prisma.orgSettings.upsert({
+  await initializeDkSettings(organizationId, prisma)
+  const settings = await prisma.orgSettings.findUniqueOrThrow({
     where: { organizationId },
-    update: {},
-    create: { organizationId },
     select: {
       onboardingStatus: true,
       onboardingMethod: true,
@@ -323,12 +324,17 @@ async function applyPatchToOrgSettings(
     if (settings?.onboardingVersion === 2 && (settings.onboardingCompletedAt || ["complete", "completed"].includes(settings.onboardingStatus))) {
       throw new TRPCError({ code: "CONFLICT", message: "Onboarding v2 is already complete" })
     }
+    if (!settings) {
+      // Currency resolution reads the saved book, so initialize it before a sparse first patch.
+      await initializeDkSettings(organizationId, tx)
+    }
     updateData.baseCurrency = await resolveBaseCurrency(tx, organizationId, { countryCode: updateData.countryCode as string | undefined })
     await tx.orgSettings.upsert({
       where: { organizationId },
       update: updateData,
       create: {
         organizationId,
+        ...buildDkSettingsDefaults(),
         ...updateData,
       },
     })

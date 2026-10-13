@@ -1,4 +1,6 @@
 import type { Prisma } from "../../../generated/prisma/client"
+import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
+import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
 import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { confirmOnboardingV2 } from "../../lib/onboarding/confirm-v2"
@@ -100,9 +102,11 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
       bankAccountNumber: true,
       bankIban: true,
     } as const
-  const settings = getRuntimeCapabilities().onboardingV2?.enabled
+  const v2Enabled = getRuntimeCapabilities().onboardingV2?.enabled
+  if (!v2Enabled) await initializeDkSettings(organizationId, db)
+  const settings = v2Enabled
     ? await db.orgSettings.findUnique({ where: { organizationId }, select }) ?? {
-      ...DANISH_ONBOARDING_V2_DEFAULTS,
+      ...buildDkSettingsDefaults(),
       organizationId,
       onboardingStatus: "not_started",
       onboardingMethod: null,
@@ -117,7 +121,7 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
       bankAccountNumber: null,
       bankIban: null,
     }
-    : await db.orgSettings.upsert({ where: { organizationId }, update: {}, create: { organizationId }, select })
+    : await db.orgSettings.findUniqueOrThrow({ where: { organizationId }, select })
 
   const primaryTaxId = await db.organizationTaxId.findFirst({
     where: { organizationId },
@@ -306,6 +310,7 @@ export const onboardingRouter = router({
           update: settingsUpdateData,
           create: {
             organizationId: ctx.organizationId,
+            ...buildDkSettingsDefaults(),
             ...settingsUpdateData,
           },
         })
@@ -389,7 +394,7 @@ export const onboardingRouter = router({
     return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
       if (snapshot.cloudState.status === "complete") return
 
-      const defaults = getProfileDefaults(input.profile)
+      const defaults = getProfileDefaults(input.profile, new Date(), snapshot.values.countryCode)
 
       await tx.orgSettings.upsert({
         where: { organizationId: ctx.organizationId },
@@ -406,6 +411,7 @@ export const onboardingRouter = router({
         },
         create: {
           organizationId: ctx.organizationId,
+          ...buildDkSettingsDefaults(),
           taxRegime: defaults.taxRegime,
           pricesIncludeTax: defaults.pricesIncludeTax,
           invoicePrefix: defaults.invoicePrefix,

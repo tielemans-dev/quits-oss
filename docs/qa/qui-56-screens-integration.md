@@ -1,4 +1,54 @@
-# PR122 exact PR121 propagation, 2026-10-13
+# PR122 repair onto rebased PR121, 2026-10-13
+
+PR122 remains draft on `qui-56-screens`, with base `qui-56-confirm-v2` at
+`74fdf0addb5686cac51c77bcc05ba6f2fff79bc7`. That exact parent includes main
+`f610c11f06d97c8291e818596592275280aae222` and has seven successful CI checks.
+Those results validate the parent only.
+
+The repair uses an interactive `rebase --onto` from old parent
+`ca4752ab5b6fca163e8a08e479308b57b4ea5352` onto the exact new parent.
+Nine patch-equivalent old parent commits were omitted. Ten exclusive PR122
+commits were selected; the portable shell-filter commit became empty because its
+final workflow was retained during conflict resolution. The backup is
+`refs/backup/pr122-before-rebase-20261013-a4c418e2`, at old remote head
+`a4c418e2d4332f2816a00375a9794f5450bd39f4`.
+
+Conflict resolution retains locked invoice/quote numbering, mixed-case identifier
+replacement, localized validation messages, manual empty-CVR fallback, edited
+review defaults and registration choices. The invoice due-date hook and optional
+bank nudge both remain. The confirmation integration tests retain both parent
+and screen behavior. Both PR-scoped evidence jobs remain byte-identical to the
+old PR122 workflow. The omitted merge-only draft-year regression is restored.
+V2 completion now uses main's return-target helper, preserving encoded query,
+hash and DA/EN language. Two focused regressions cover this combined behavior.
+
+Settings, Danish AI initialization, conflict-safe first settings creation,
+sparse patches, capability gates and all other parent-only files match the new
+parent exactly. Screen draft/token/context handling is retained. Shared email
+login still waits for React's controlled email value before filling the password;
+auth response checks and timeouts are unchanged. No application auth change is
+introduced by the repair.
+
+Local verification passed: 194 focused tests in 14 files with one worker, scoped
+lint on 14 files with one thread and zero warnings/errors, whitespace and
+tree/ancestry checks. Full verification and authenticated
+captures belong to new-head CI. No local install, full suite, typecheck, build,
+Prisma generation, database, migration, browser or server run is authorized.
+
+Fresh evidence must name the new exact head and independently resolved current
+main baseline. Require a successful complete eight-before/24-after manifest,
+application/harness provenance and image hashes. Old green capture run
+`38360426321` does not validate this repair. Synthetic CVR/billing providers do
+not prove production adapter availability or hosted trial provisioning. Manual
+captures precede confirmation and do not prove completed save/reload. Human
+visual approval and fresh review remain separate gates; this PR stays draft.
+
+## Historical propagation record
+
+The sections below describe earlier heads and their original evidence limits.
+They do not validate the repaired head.
+
+## Earlier PR121 propagation, 2026-10-13
 
 PR122 remains draft on `qui-56-screens`, based on `qui-56-confirm-v2`.
 This normal merge preserves both parents:
