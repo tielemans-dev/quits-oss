@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RemindersUnsubscribeRouteImport } from './routes/reminders.unsubscribe'
+import { Route as ApiRemindersUnsubscribeRouteImport } from './routes/api/reminders/unsubscribe'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -58,6 +60,16 @@ import { Route as ApiAgreementsAgreementIdPdfRouteImport } from './routes/api/ag
 import { Route as AppAgreementsAgreementIdEditRouteImport } from './routes/_app/agreements/$agreementId_.edit'
 import { Route as ApiDocumentsKindDocumentIdPdfRouteImport } from './routes/api/documents/$kind/$documentId.pdf'
 
+const RemindersUnsubscribeRoute = RemindersUnsubscribeRouteImport.update({
+  id: '/reminders/unsubscribe',
+  path: '/reminders/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRemindersUnsubscribeRoute = ApiRemindersUnsubscribeRouteImport.update({
+  id: '/api/reminders/unsubscribe',
+  path: '/api/reminders/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -312,6 +324,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
+  '/reminders/unsubscribe': typeof RemindersUnsubscribeRoute
+  '/api/reminders/unsubscribe': typeof ApiRemindersUnsubscribeRoute
   '/signup': typeof SignupRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
@@ -360,6 +374,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
+  '/reminders/unsubscribe': typeof RemindersUnsubscribeRoute
+  '/api/reminders/unsubscribe': typeof ApiRemindersUnsubscribeRoute
   '/signup': typeof SignupRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
@@ -411,6 +427,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
+  '/reminders/unsubscribe': typeof RemindersUnsubscribeRoute
+  '/api/reminders/unsubscribe': typeof ApiRemindersUnsubscribeRoute
   '/signup': typeof SignupRoute
   '/_app/activity': typeof AppActivityRoute
   '/_app/approvals': typeof AppApprovalsRoute
@@ -463,6 +481,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/setup'
+    | '/reminders/unsubscribe'
+    | '/api/reminders/unsubscribe'
     | '/signup'
     | '/activity'
     | '/approvals'
@@ -511,6 +531,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/setup'
+    | '/reminders/unsubscribe'
+    | '/api/reminders/unsubscribe'
     | '/signup'
     | '/activity'
     | '/approvals'
@@ -561,6 +583,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/setup'
+    | '/reminders/unsubscribe'
+    | '/api/reminders/unsubscribe'
     | '/signup'
     | '/_app/activity'
     | '/_app/approvals'
@@ -612,6 +636,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SetupRoute: typeof SetupRoute
+  RemindersUnsubscribeRoute: typeof RemindersUnsubscribeRoute
+  ApiRemindersUnsubscribeRoute: typeof ApiRemindersUnsubscribeRoute
   SignupRoute: typeof SignupRoute
   ATokenRoute: typeof ATokenRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
@@ -635,6 +661,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reminders/unsubscribe': {
+      id: '/reminders/unsubscribe'
+      path: '/reminders/unsubscribe'
+      fullPath: '/reminders/unsubscribe'
+      preLoaderRoute: typeof RemindersUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reminders/unsubscribe': {
+      id: '/api/reminders/unsubscribe'
+      path: '/api/reminders/unsubscribe'
+      fullPath: '/api/reminders/unsubscribe'
+      preLoaderRoute: typeof ApiRemindersUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -1036,6 +1076,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SetupRoute: SetupRoute,
+  RemindersUnsubscribeRoute: RemindersUnsubscribeRoute,
+  ApiRemindersUnsubscribeRoute: ApiRemindersUnsubscribeRoute,
   SignupRoute: SignupRoute,
   ATokenRoute: ATokenRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,

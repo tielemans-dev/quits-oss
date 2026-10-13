@@ -99,6 +99,7 @@ model Organization {
   subscriptionStatus      String?                 @default("free")
   members                 Member[]
   invitations             Invitation[]
+  recipientReminderPreferences RecipientReminderPreference[]
   contacts                Contact[]
   catalogItems            CatalogItem[]
   taxIds                  OrganizationTaxId[]
@@ -1129,4 +1130,18 @@ model IssuanceCandidate {
   @@index([organizationId, documentKind, documentId])
   @@index([stagingId, status, createdAt])
   @@map("issuance_candidate")
+}
+
+// A recipient may stop automatic reminders from one organization. Direct sends remain available.
+model RecipientReminderPreference {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recipient      String
+  locale         String
+  unsubscribedAt DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, recipient])
+  @@map("recipient_reminder_preference")
 }

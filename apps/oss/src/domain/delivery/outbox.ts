@@ -10,7 +10,8 @@ import { appendEvents } from "../events"
 import { registerJobHandler, StaleJobClaimError, TerminalJobError } from "../jobs"
 import { registerTickTask, type TickOptions } from "../scheduler"
 import { lockArtifactOrganization } from "../documents/artifacts"
-import { Command, type PendingEvent } from "../services"
+import { addReminderUnsubscribe } from "../../lib/reminders/unsubscribe"
+import { Command, Db, type PendingEvent } from "../services"
 import { NEVER_SENT_MESSAGE, NOT_CONFIGURED_MESSAGE, emailProviderFailureCodeSchema, emailProviderFailureMessage, type EmailProviderFailureCode } from "./provider-failure"
 
 /**
@@ -92,6 +93,7 @@ const storedMessageSchema = z.object({
   subject: z.string(),
   html: z.string(),
   replyTo: z.string().optional(),
+  headers: z.record(z.string(), z.string()).optional(),
 })
 export type StoredEmailMessage = z.infer<typeof storedMessageSchema>
 
@@ -172,17 +174,24 @@ export function deliveryKey(idempotencyKey: string) {
 export const enqueueEmailDelivery = (input: {
   message: EmailMessage & StoredEmailMessage
   idempotencyKey: string
+  reminderUnsubscribeLocale?: string
   completion: { kind: string; target: Record<string, string> }
 }) =>
   Effect.gen(function* () {
     const command = yield* Command
-    const message: StoredEmailMessage = {
+    const stored: StoredEmailMessage = {
       from: input.message.from,
       to: input.message.to,
       subject: input.message.subject,
       html: input.message.html,
       ...(input.message.replyTo ? { replyTo: input.message.replyTo } : {}),
+      ...(input.message.headers ? { headers: input.message.headers } : {}),
     }
+    const db = yield* Db
+    const locale = input.reminderUnsubscribeLocale
+    const message = locale === undefined
+      ? stored
+      : yield* Effect.promise(() => addReminderUnsubscribe({ db, organizationId: command.organizationId, locale, message: stored }))
     const payload: DeliveryPayload = {
       message,
       idempotencyKey: input.idempotencyKey,
@@ -377,6 +386,19 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   // Checked again after the writes above, which can stall: no request once the key may have lapsed.
   if (possiblyDelivered && Date.now() - job.createdAt.getTime() >= IDEMPOTENCY_WINDOW_MS) {
     return settleDecision(job, requested, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
+  }
+  // Bookkeeping above can stall. Re-check immediately before submission so a preference
+  // changed while the job was being written also stops the queued automatic reminder.
+  const finalWithdrawal = await completion.withdrawalReason?.(prisma, payload.completion.target)
+  if (finalWithdrawal) {
+    return settleDecision(
+      job,
+      requested,
+      completion,
+      possiblyDelivered
+        ? { reason: "unconfirmed", message: `${UNCONFIRMED_MESSAGE} Further attempts were stopped: ${finalWithdrawal}` }
+        : { reason: "withdrawn", message: finalWithdrawal }
+    )
   }
   let accepted: { id: string }
   try {
