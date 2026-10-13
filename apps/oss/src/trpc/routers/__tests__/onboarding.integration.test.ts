@@ -80,6 +80,9 @@ describeIfDatabase("onboarding router integration", () => {
 
     try {
       const initial = await caller.onboarding.getStatus()
+      expect(initial.values).toMatchObject({ countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", locale: "da-DK", timezone: "Europe/Copenhagen" })
+      const storedDefaults = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })
+      expect(storedDefaults).toMatchObject({ baseCurrency: "DKK", currency: "DKK", taxRate: 25 })
       expect(initial.status).toBe("not_started")
       expect(initial.isComplete).toBe(false)
       expect(initial.missing).toEqual(

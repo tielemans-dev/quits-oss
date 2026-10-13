@@ -275,3 +275,74 @@ jobs:
         run: |
           echo "QUI-65 $PHASE evidence: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "A green capture job certifies the manifest has all 56 screenshots and 16 locale files. A failed job may contain partial diagnostics only. Ines visual sign-off remains separate." >> "$GITHUB_STEP_SUMMARY"
+
+  onboarding-pr121-evidence:
+    name: PR 121 onboarding evidence
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 121
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: onb121
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d onb121"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/onb121?schema=public
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      BETTER_AUTH_SECRET: ci-onboarding-example-secret-over-32-characters
+      PLAYWRIGHT_QUITS_DISTRIBUTION: cloud
+      QUITS_DISTRIBUTION: cloud
+      QUITS_BILLING_ENABLED: "false"
+      SIGNUP_MODE: open
+      ONB121_HEAD: ${{ github.event.pull_request.head.sha }}
+      ONB121_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - name: Record exact source and capture directory
+        run: |
+          test "$(git rev-parse HEAD)" = "$ONB121_HEAD"
+          echo "ONB121_CAPTURE_DIR=$GITHUB_WORKSPACE/evidence/onb-121" >> "$GITHUB_ENV"
+      - run: bun install --frozen-lockfile
+      - name: Generate client for test fixture
+        working-directory: apps/oss
+        run: bunx prisma generate
+      - name: Install pinned Chromium
+        working-directory: apps/oss
+        run: bunx playwright install --with-deps chromium
+      - name: Capture actual onboarding in Danish and English with one worker
+        working-directory: apps/oss
+        run: bunx playwright test onboarding-pr121.spec.ts --workers=1
+      - name: Validate screenshot matrix and PNG dimensions
+        run: node scripts/check-onboarding-pr121-evidence.mjs "$ONB121_CAPTURE_DIR"
+      - uses: actions/upload-artifact@v4
+        id: evidence
+        if: always()
+        with:
+          name: onb-121-${{ github.event.pull_request.head.sha }}
+          if-no-files-found: error
+          path: |
+            evidence/onb-121/
+            apps/oss/playwright-report/
+            apps/oss/test-results/
+          retention-days: 30
+      - name: Link capture artifact
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
+        run: |
+          echo "PR 121 onboarding evidence: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Only a green capture job certifies all eight screenshots. Synthetic authenticated account, disposable CI database, actual application at $ONB121_HEAD. Human visual review remains separate." >> "$GITHUB_STEP_SUMMARY"
