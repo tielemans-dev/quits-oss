@@ -1,3 +1,4 @@
+import { appRouter } from "../../router"
 import { randomUUID } from "node:crypto"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -14,6 +15,7 @@ import type { CreditNoteForPdf } from "../../../lib/credit-note-pdf"
 import { resolveUserActor } from "../../../domain/user-actor"
 import { prisma } from "../../../lib/db"
 import { selfhostDocumentRenderer, localDiskArtifactStore } from "../../../selfhost/runtime"
+import { validateEinvoice } from "../../../lib/exports/ubl"
 import { exportEinvoice } from "../../../lib/exports/einvoice"
 import { confirmOnboardingV2 } from "../../../lib/onboarding/confirm-v2"
 import { cleanupTestOrganizations, hasTestDatabase } from "../../../test-utils/organization"
@@ -31,7 +33,11 @@ let artifactDirectory: string
     vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
     artifactDirectory = await mkdtemp(join(tmpdir(), "qui56-ubl-"))
     setRuntimeServices({
-      documentRenderer: selfhostDocumentRenderer,
+      documentRenderer: { ...selfhostDocumentRenderer, async renderUbl(input) {
+        expect(input.ubl).toBeDefined()
+        expect(validateEinvoice(input.ubl!)).toEqual([])
+        return selfhostDocumentRenderer.renderUbl!(input)
+      } },
       documentArtifactStore: localDiskArtifactStore(artifactDirectory),
     })
   })
@@ -63,14 +69,13 @@ let artifactDirectory: string
     if (!momsRegistered) {
       // Settings normalize the default rate; explicit VAT-bearing drafts must still be refused.
       vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
-      const { appRouter } = await import("../../router")
       const api = appRouter.createCaller({ session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)
       await api.settings.update({ momsRegistered: false, taxRate: 25 })
       expect(await api.settings.get()).toMatchObject({ momsRegistered: false, taxRate: 0 })
       // The draft command defaults an omitted document rate to zero, independently of settings.
       // Exercise both document-level VAT and explicit line VAT through real issuance.
       for (const { taxRate, vat } of [
-        { taxRate: 25, vat: undefined },
+        { taxRate: 25, vat: { treatment: "standard" as const, rate: "0.25", country: "DK" } },
         { taxRate: undefined, vat: { treatment: "standard" as const, rate: "0.25", country: "DK" } },
       ]) {
         const taxed = await executeIssuanceCommand(createInvoiceDraft, {
@@ -133,8 +138,6 @@ let artifactDirectory: string
       if (locale === "en-US") expect(exported.xml).not.toContain("Der er ikke beregnet moms, da sælger ikke er momsregistreret.")
     } else expect(exported.xml).not.toContain("No VAT charged – the seller is not VAT-registered.")
     // Current settings cannot change an issued invoice's registration or language.
-    vi.resetModules()
-    const { appRouter } = await import("../../router")
     const runtime = await import("../../../lib/runtime/extensions")
     runtime.setRuntimeExtensions([{ id: "non-vat-test", resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true } }) }])
     const api = appRouter.createCaller({ session: { user: { id: `qui56-${id}`, name: "Test User", email: "signup@example.test" }, session: { activeOrganizationId: id } } } as never)

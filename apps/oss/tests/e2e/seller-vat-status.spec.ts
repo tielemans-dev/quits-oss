@@ -46,7 +46,7 @@ for (const locale of ["da-DK", "en-US"]) {
       bankRegNumber: "0040", bankAccountNumber: "0440116243",
       ...(hosted ? { onboardingStatus: "complete", onboardingVersion: 2, onboardingCompletedAt: new Date(), onboardingInvoicingIdentity: "registered_business" } : {}),
     } })
-    await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345678", countryCode: "DK" } })
+    await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK" } })
     await loginAsAdmin(page)
     await page.goto("/settings/organization")
     await expect(page).toHaveURL(/\/settings$/)

@@ -80,7 +80,7 @@ export function requireVatIssuance(document: {
     })
     // Explicit registration requires the retained identity to support VAT rendering.
     // Null/absent registration preserves legacy taxation, including US sales tax.
-    const linkedVatInvoice = seller?.momsRegistered === true && (document.quoteId || document.agreementId) && (
+    const linkedVatInvoice = document.taxRegime === "eu_vat" && seller?.momsRegistered === true && (document.quoteId || document.agreementId) && (
       Number(document.totalTax.toString()) !== 0 || document.items.some(item =>
         Number(item.taxRate.toString()) !== 0 ||
         (item.vatRateInput != null && Number(item.vatRateInput) !== 0) ||
