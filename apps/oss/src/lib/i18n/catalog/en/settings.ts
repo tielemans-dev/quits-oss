@@ -1,4 +1,10 @@
 export const enSettingsMessages = {
+  "settings.vatStatus.cvrLabel": "CVR number",
+  "settings.vatStatus.cvrHelp": "Your Danish business registration number.",
+
+  "settings.vatStatus.question": "Are you VAT-registered?",
+  "settings.vatStatus.registered": "I'm VAT-registered",
+  "settings.vatStatus.notRegistered": "I'm not VAT-registered",
   "settings.baseCurrency.label": "Base currency",
   "settings.baseCurrency.hint": "Books use this currency. It locks after any document is issued. Draft currency remains independent.",
   "settings.title": "Settings",
