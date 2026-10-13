@@ -138,21 +138,21 @@ async function caller(id: string, requestedOrganizationId?: string) {
   })
   it("replaces mixed-case and duplicate registration IDs while preserving unrelated schemes", async () => {
     const id = await organization()
-    await prisma.organizationTaxId.createMany({ data: ["CVR", "cVr", "VAT", "vAt", "Dk_CvR", "dK_VaT", "customer_ref"].map(scheme => ({ organizationId: id, scheme, value: "old", isPrimary: true })) })
+    await prisma.organizationTaxId.createMany({ data: ["CVR", "cVr", "VAT", "vAt", "Dk_CvR", "dK_VaT", "customer_ref"].map(scheme => ({ organizationId: id, scheme, value: scheme === "customer_ref" ? "old" : scheme.toLowerCase().includes("vat") ? "DK87654321" : "87654321", isPrimary: true })) })
     await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(summary()), "signup@example.test")
     const identifiers = await prisma.organizationTaxId.findMany({ where: { organizationId: id }, orderBy: { scheme: "asc" } })
     expect(identifiers.map(({ scheme, value }) => ({ scheme, value }))).toEqual([
       { scheme: "customer_ref", value: "old" }, { scheme: "cvr", value: "24256790" }, { scheme: "vat", value: "DK24256790" },
     ])
   })
-  it("keeps a foreign VAT registration when replacing the Danish CVR and VAT pair", async () => {
+  it.each(["DE", null])("keeps a foreign VAT registration with country %s when replacing the Danish CVR and VAT pair", async countryCode => {
     const id = await organization()
-    await prisma.organizationTaxId.create({ data: { organizationId: id, scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: true } })
+    await prisma.organizationTaxId.create({ data: { organizationId: id, scheme: "vat", value: "DE123456789", countryCode, isPrimary: true } })
     await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(summary()), "signup@example.test")
     const identifiers = await prisma.organizationTaxId.findMany({ where: { organizationId: id } })
     expect(identifiers).toHaveLength(3)
     expect(identifiers.find(row => row.scheme === "cvr")).toMatchObject({ value: "24256790", countryCode: "DK", isPrimary: true })
-    expect(identifiers.find(row => row.countryCode === "DE")).toMatchObject({ scheme: "vat", value: "DE123456789", isPrimary: false })
+    expect(identifiers.find(row => row.value === "DE123456789")).toMatchObject({ scheme: "vat", countryCode, isPrimary: false })
     expect(identifiers.find(row => row.value === "DK24256790")).toMatchObject({ scheme: "vat", countryCode: "DK", isPrimary: false })
   })
   it.each([["failure", false], ["failure", true], ["timeout", false], ["timeout", true]] as const)("leaves trial %s incomplete with existing settings %s, provisions on retry, and skips completed retries", async (failure, existing) => {
@@ -374,7 +374,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   it.each([false, true])("serializes AI patches after confirmation with existing settings %s", async existing => {
     const id = await organization()
     const api = await caller(id)
-    if (existing) await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "Original ID" })
+    if (existing) await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "DK87654321" })
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
     let entered!: () => void
     let release!: () => void
@@ -418,7 +418,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
       entered(); await blocked
     }, { timeout: 60_000 })
     await started
-    const ai = api.onboardingAi.applyOnboardingPatch({ source: "ai", patch: { companyName: "AI draft", primaryTaxId: "AI draft ID" } })
+    const ai = api.onboardingAi.applyOnboardingPatch({ source: "ai", patch: { companyName: "AI draft", primaryTaxId: "DK87654321" } })
     let v2: ReturnType<typeof api.onboarding.confirmV2> | undefined
     try {
       await vi.waitFor(async () => {
