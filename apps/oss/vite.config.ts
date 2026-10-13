@@ -48,6 +48,9 @@ const config = defineConfig({
   plugins: [
     devtools({
       eventBusConfig: {
+        // Playwright sets this to "off". The bus listens with no error handler, so
+        // EADDRINUSE on the hashed port exits the dev server before the app binds.
+        enabled: process.env.QUITS_DEVTOOLS_EVENT_BUS !== "off",
         port: devtoolsEventBusPort,
       },
     }),

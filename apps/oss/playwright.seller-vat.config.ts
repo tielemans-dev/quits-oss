@@ -27,6 +27,12 @@ export default defineConfig({
       QUITS_DISTRIBUTION: hosted ? "cloud" : "selfhost", VITE_QUITS_DISTRIBUTION: hosted ? "cloud" : "selfhost",
       QUI62_HOSTED_FIXTURE: hosted ? "true" : "false",
       QUITS_PUBLIC_PAYMENT_SECRET: "qui62-browser-payment-test-secret",
+      // This server does not use TanStack devtools. The bus binds a hashed port in
+      // the ephemeral range and crashes vite on EADDRINUSE. "off" skips it on this
+      // branch. The before job still runs main's vite, which ignores that switch
+      // and needs a port outside the ephemeral range.
+      QUITS_DEVTOOLS_EVENT_BUS: "off",
+      QUITS_DEVTOOLS_EVENT_BUS_PORT: "3041",
       RESEND_API_KEY: "", EMAIL_PROVIDER: "", SMTP_HOST: "",
     },
   },
