@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import {
@@ -57,6 +57,8 @@ import { AgentKeysCard } from "../../components/settings/agent-keys-card"
 import { AuditLogCard } from "../../components/settings/audit-log-card"
 import { PaymentDetailsCard } from "../../components/settings/payment-details-card"
 import { ReminderPolicyCard } from "../../components/settings/reminder-policy-card"
+import { useRuntimeUi } from "../../lib/runtime/ui"
+import { useRequestOrganizationId } from "../../lib/active-organization"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -188,7 +190,10 @@ function isHttpLogoUrl(value: string) {
 }
 
 function SettingsPage() {
-  const { t } = useI18n()
+  const { t, locale: displayLocale } = useI18n()
+  const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
+  const organizationId = useRequestOrganizationId()
+  const settingsFormId = useId()
   const { data: session } = useSession()
   const [settings, setSettings] = useState<SettingsData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -726,7 +731,7 @@ function SettingsPage() {
         <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-6">
+      <div className="grid gap-6">
         {error && (
           <p className="text-sm text-destructive" role="alert">
             {error}
@@ -752,6 +757,7 @@ function SettingsPage() {
               <Input
                 id="companyName"
                 name="companyName"
+                form={settingsFormId}
                 maxLength={120}
                 placeholder={t("settings.companyName.placeholder")}
                 defaultValue={settings.companyName ?? ""}
@@ -763,6 +769,7 @@ function SettingsPage() {
               <Textarea
                 id="companyAddress"
                 name="companyAddress"
+                form={settingsFormId}
                 placeholder={t("settings.companyAddress.placeholder")}
                 rows={3}
                 maxLength={240}
@@ -776,6 +783,7 @@ function SettingsPage() {
                 <Input
                   id="companyEmail"
                   name="companyEmail"
+                  form={settingsFormId}
                   type="email"
                   maxLength={254}
                   placeholder={t("settings.companyEmail.placeholder")}
@@ -787,6 +795,7 @@ function SettingsPage() {
                 <Input
                   id="companyPhone"
                   name="companyPhone"
+                  form={settingsFormId}
                   maxLength={40}
                   pattern="^\+?[0-9()\-\s.]{6,20}$"
                   title={t("settings.companyPhone.title")}
@@ -800,6 +809,7 @@ function SettingsPage() {
               <Label htmlFor="companyLogoUrl">{t("settings.companyLogo.label")}</Label>
               <Input
                 id="companyLogoUrl"
+                form={settingsFormId}
                 type="url"
                 maxLength={2000}
                 placeholder={t("settings.companyLogo.placeholder")}
@@ -836,6 +846,14 @@ function SettingsPage() {
           </CardContent>
         </Card>
 
+        {CompanyDetails && organizationId && (
+          <CompanyDetails
+            organizationId={organizationId}
+            locale={displayLocale}
+          />
+        )}
+
+        <form id={settingsFormId} onSubmit={handleSubmit} className="grid gap-6">
         {/* Billing Defaults */}
         <Card>
           <CardHeader>
@@ -1425,7 +1443,8 @@ function SettingsPage() {
             {saving ? t("settings.action.saving") : t("settings.action.save")}
           </Button>
         </div>
-      </form>
+        </form>
+      </div>
 
       {/* Team Members — outside the settings form */}
       <Card className="mt-6">

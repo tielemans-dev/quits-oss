@@ -1,0 +1,133 @@
+{
+  "issue": "QUI-52 rework",
+  "codeHead": "4b47188a96620b248dbd5ddcdeeb7af059f5daf6",
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "viewports": {
+    "desktop": {
+      "width": 1440,
+      "height": 1000
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  "fullPage": true,
+  "fixture": {
+    "number": "INV-0042",
+    "sellerSnapshot": "Issue-time Seller ApS, Testvej 42, 9000 Aalborg, CVR 12345678, reg 0040, account 0440116243",
+    "liveOrg": "Changed live seller/address/note, reg 9999, account 99999999",
+    "paymentNote": "Synthetic issue-time payment note",
+    "amount": "250.00",
+    "locales": [
+      "da-DK / DKK",
+      "en-US / USD"
+    ],
+    "issueAndSupplyDate": "2026-03-09",
+    "dueDate": "2026-03-23"
+  },
+  "emailSource": "Actual UI resend over SMTP to dedicated disposable local Mailpit; received HTML rendered in Chromium.",
+  "browser": "Installed Chromium headless shell 1234, Playwright 1.58.2, one worker.",
+  "verification": "Both locale capture tests passed; all visible invoice buttons fit at 390px.",
+  "screenshots": [
+    {
+      "path": "after/dark/email-da-desktop.png",
+      "width": 1440,
+      "height": 1231,
+      "sha256": "b7e3125fe85e902136230ff54aa617af18dcd88ccadcd5edca25462f39e8e49b"
+    },
+    {
+      "path": "after/dark/email-da-mobile.png",
+      "width": 390,
+      "height": 1370,
+      "sha256": "270289c7eac898f3aada15ea9ca7b21a9ecc75f6da34c9d18b1a0075fcb6e879"
+    },
+    {
+      "path": "after/dark/email-en-desktop.png",
+      "width": 1440,
+      "height": 1214,
+      "sha256": "5e74a2ee5e6261d0a93f49a4175e3dbf6eaf98f4d98bd388b1236beaf1853f64"
+    },
+    {
+      "path": "after/dark/email-en-mobile.png",
+      "width": 390,
+      "height": 1389,
+      "sha256": "e94cb1bbcbc6fc1d2916a70adf0fc37c4ae826a9b1da7055d469e0a1cf14eccd"
+    },
+    {
+      "path": "after/dark/invoice-da-desktop.png",
+      "width": 1440,
+      "height": 2707,
+      "sha256": "886c4a20f6265af40b98cf1234173bac2aca88b1fe789541d6dc8dfb1c5c9691"
+    },
+    {
+      "path": "after/dark/invoice-da-mobile.png",
+      "width": 390,
+      "height": 3606,
+      "sha256": "571cb69a757b20e189594231e0611a079a3112110533e92f2e13ee6c616e99c1"
+    },
+    {
+      "path": "after/dark/invoice-en-desktop.png",
+      "width": 1440,
+      "height": 2707,
+      "sha256": "e49b26411dbe107ceddaf7a7d7d9b804f8357d1de066689a9b1abba3d01e152c"
+    },
+    {
+      "path": "after/dark/invoice-en-mobile.png",
+      "width": 390,
+      "height": 3534,
+      "sha256": "55ce300432b20fa75183d2279297e36985e3b5a6e633b2d0806deefe13b06caf"
+    },
+    {
+      "path": "after/light/email-da-desktop.png",
+      "width": 1440,
+      "height": 1231,
+      "sha256": "15b8ff60798285d292db0b7c71f45ecf773ab6783bd1c2a7dcce05f7d4fe7c73"
+    },
+    {
+      "path": "after/light/email-da-mobile.png",
+      "width": 390,
+      "height": 1370,
+      "sha256": "86fc2f8761e56716c2a2b7e76b03ff8835845af2b69ab542dec5f6d7e72dcb19"
+    },
+    {
+      "path": "after/light/email-en-desktop.png",
+      "width": 1440,
+      "height": 1214,
+      "sha256": "d9830b536e5fb4f784ef03f0325999843ad98779b448c61fe429a8514834e265"
+    },
+    {
+      "path": "after/light/email-en-mobile.png",
+      "width": 390,
+      "height": 1389,
+      "sha256": "7413af1739ba59c686783ff8ca594c26e4a62660988184bd409f04e7380884c9"
+    },
+    {
+      "path": "after/light/invoice-da-desktop.png",
+      "width": 1440,
+      "height": 2271,
+      "sha256": "0173f1dafdece14742e247bc0688d417cbd1440bbab2ada2e3bc3f7b5903e8b3"
+    },
+    {
+      "path": "after/light/invoice-da-mobile.png",
+      "width": 390,
+      "height": 3606,
+      "sha256": "0883a628432906c127dd4d7b95ef81b127d26b1991e4fd30c2a308be7ce4d1d6"
+    },
+    {
+      "path": "after/light/invoice-en-desktop.png",
+      "width": 1440,
+      "height": 2271,
+      "sha256": "1a0b091f49b62dfbbee44ee0bc90dc643fcd482cc386f621e8f3f3f809fb82af"
+    },
+    {
+      "path": "after/light/invoice-en-mobile.png",
+      "width": 390,
+      "height": 3534,
+      "sha256": "74916dee6109dd1c6dad4900fa120ee4594310a2defddfbd9c3201a310997f89"
+    }
+  ]
+}

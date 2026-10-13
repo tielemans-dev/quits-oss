@@ -60,7 +60,7 @@ describe("payment details block", () => {
         { label: "Bank", value: "Danske Bank" },
       ],
       note: "MobilePay Box 12345",
-      reference: { label: "Payment reference", value: "INV-0042" },
+      reference: { label: "Payment message", value: "INV-0042" },
     })
   })
 
@@ -75,7 +75,7 @@ describe("payment details block", () => {
         { label: "Kontohaver", value: "Nordic Design ApS" },
         { label: "Bank", value: "Danske Bank" },
       ],
-      reference: { label: "Betalingsreference", value: "INV-0042" },
+      reference: { label: "Betalingsbesked", value: "INV-0042" },
     })
   })
 
@@ -102,14 +102,14 @@ describe("payment details block reference", () => {
   it("has no reference row for a null or blank reference", () => {
     expect(buildPaymentDetailsBlock(details, null, "en")?.reference).toBeNull()
     expect(buildPaymentDetailsBlock(details, "  ", "en")?.reference).toBeNull()
-    expect(buildPaymentDetailsBlock(details, " KID 123 ", "en")?.reference).toEqual({ label: "Payment reference", value: "KID 123" })
+    expect(buildPaymentDetailsBlock(details, " KID 123 ", "en")?.reference).toEqual({ label: "Payment message", value: "KID 123" })
   })
 })
 
 describe("invoice PDF payment details", () => {
   it("shows the block after the totals and before the notes", () => {
     const text = renderedText({ ...invoice, notes: "Thank you", ...payment }, "en-US")
-    const order = ["Subtotal", "Payment details", "Payment reference: INV-0042", "Notes", "Thank you"].map((needle) =>
+    const order = ["Subtotal", "Payment details", "Payment message: INV-0042", "Notes", "Thank you"].map((needle) =>
       text.lastIndexOf(needle)
     )
     expect(order.every((index) => index >= 0)).toBe(true)
@@ -119,20 +119,20 @@ describe("invoice PDF payment details", () => {
   })
 
   it("prints the payment reference as one line", () => {
-    expect(renderedText({ ...invoice, ...payment }, "en-US").split("\n")).toContain("Payment reference: INV-0042")
-    expect(renderedText({ ...invoice, ...payment }, "da-DK").split("\n")).toContain("Betalingsreference: INV-0042")
+    expect(renderedText({ ...invoice, ...payment }, "en-US").split("\n")).toContain("Payment message: INV-0042")
+    expect(renderedText({ ...invoice, ...payment }, "da-DK").split("\n")).toContain("Betalingsbesked: INV-0042")
   })
 
   it("prints the invoice's own payment reference instead of the number", () => {
     const text = renderedText({ ...invoice, ...payment, paymentReference: "+71 1234 5678" }, "en-US")
-    expect(text.split("\n")).toContain("Payment reference: +71 1234 5678")
-    expect(text).not.toContain("Payment reference: INV-0042")
+    expect(text.split("\n")).toContain("Payment message: +71 1234 5678")
+    expect(text).not.toContain("Payment message: INV-0042")
   })
 
   it("leaves the reference row out of a draft, which has no reference yet", () => {
     const text = renderedText({ ...invoice, number: "draft", status: "draft", ...payment, paymentReference: null }, "en-US")
     expect(text).toContain("Payment details")
-    expect(text).not.toContain("Payment reference")
+    expect(text).not.toContain("Payment message")
     expect(text).not.toContain(": draft")
   })
 
@@ -141,7 +141,7 @@ describe("invoice PDF payment details", () => {
     expect(text).toContain("Betalingsoplysninger")
     expect(text).toContain("Reg.nr.")
     expect(text).toContain("Kontonr.")
-    expect(text).toContain("Betalingsreference")
+    expect(text).toContain("Betalingsbesked")
     expect(text).not.toContain("Payment details")
   })
 
@@ -149,7 +149,7 @@ describe("invoice PDF payment details", () => {
     for (const empty of [{}, { bankAccount: null, paymentNote: null }, { bankAccount: {} }] as const) {
       const text = renderedText({ ...invoice, ...empty }, "en-US")
       expect(text).not.toContain("Payment details")
-      expect(text).not.toContain("Payment reference")
+      expect(text).not.toContain("Payment message")
     }
   })
 

@@ -71,7 +71,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     const email = composeInvoiceEmail({ invoice: { ...changed, number: changed.number! }, settings, to: "buyer@example.test", publicPaymentUrl: null }).message.html
     expect(email).toContain("Synthetic Seller ApS")
     expect(email).toContain("Synthetic Buyer")
-    expect(email).toContain("CVR: 12345678")
+    expect(email).toContain("CVR-nr.: 12345678")
     expect(email).not.toMatch(/Changed Seller|Changed Buyer|Changed address/)
     const session = serializePublicInvoiceSession({ invoice: changed, stripeEnabled: false, paymentState: "unpaid" }, "synthetic")
     expect(session.seller.name).toBe("Synthetic Seller ApS")
