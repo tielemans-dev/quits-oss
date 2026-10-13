@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { TRPCError } from "@trpc/server"
 import { Prisma } from "../../../generated/prisma/client"
-import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { parseSellerSnapshot, type SellerSnapshot } from "@quits/contracts/documents"
 import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { createAgreementDraft } from "../../domain/commands/agreements"
@@ -59,7 +59,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
       { organizationId: ctx.org.organizationId, scheme: "vat", value: "12345678", isPrimary: true },
       { organizationId: ctx.org.organizationId, scheme: "lei", value: "OTHER-ID", countryCode: "DK" },
     ] })
-    const identity = (seller: { companyName?: string | null; companyAddress?: string | null; countryCode?: string | null; taxIds?: Array<{ scheme: string; value: string; countryCode?: string | null }> }) => JSON.stringify([
+    const identity = (seller: SellerSnapshot) => JSON.stringify([
       seller.companyName, seller.companyAddress, seller.countryCode,
       seller.taxIds?.map(id => [id.scheme, id.value, id.countryCode ?? null]).sort(),
     ])
