@@ -47,17 +47,17 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   await page.getByRole("button", { name: "Create account" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
+  await waitForClientReady(page)
   await expect(page.getByText(cloud ? "Look up your own CVR" : "Enter your company name")).toBeVisible()
   await expect(page.getByLabel("Slug")).toHaveCount(0)
 
   // No organization yet: the sidebar and its switcher stay off the page. The raw response
-  // stays English, then the sole language owner detects this browser's Danish preference.
+  // stays English with a pending app placeholder; the rendered page detects Danish.
   await page.addInitScript(() => Object.defineProperty(navigator, "language", { get: () => "da-DK" }))
   const response = await page.reload()
   expect(response!.ok()).toBe(true)
   const serverHtml = await response!.text()
   expect(serverHtml).toMatch(/<html\b[^>]*\blang="en"/)
-  expect(serverHtml).toContain(cloud ? "Look up your own CVR" : "Enter your company name")
   expect(serverHtml).not.toContain(">Invoices<")
   expect(serverHtml).not.toContain(">Fakturaer<")
   expect(serverHtml).not.toContain("Switch organization")
