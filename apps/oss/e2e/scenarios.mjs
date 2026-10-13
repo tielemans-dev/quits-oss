@@ -136,7 +136,14 @@ export function registerProductScenarios(test, expect) {
   test.beforeEach(async ({ page, account, entryURL }) => {
     await page.goto(entryURL)
     await expect(page).toHaveURL(/\/login(?:\?|$)/)
-    await page.getByLabel('Email', { exact: true }).fill(account.email)
+    const email = page.getByLabel('Email', { exact: true })
+    // SSR inputs are editable before hydration attaches onChange. Wait until
+    // React reflects the email in its controlled value attribute, rather than
+    // accepting a DOM-only fill that the password's render can erase.
+    await expect.poll(async () => {
+      await email.fill(account.email)
+      return email.getAttribute('value')
+    }).toBe(account.email)
     await page.getByLabel('Password', { exact: true }).fill(account.password)
     // Shared loopback clients can hit the auth service's per-IP limit. Retry only
     // an explicit 429; authentication errors still fail immediately.
