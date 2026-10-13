@@ -17,7 +17,7 @@ const lines = [
 const document = {
   id: "d1", number: "F-0007", locale: "da-DK", timezone: "Europe/Copenhagen", currency: "DKK", notes: null,
   issueDate: new Date("2026-10-05T10:00:00Z"), dueDate: new Date("2026-11-04T10:00:00Z"), expiryDate: new Date("2026-11-04T10:00:00Z"),
-  subtotalNet: new D("14500"), totalTax: new D("3625"), totalGross: new D("18125"),
+  subtotalNet: new D("14500"), totalTax: new D("3625"), totalGross: new D("18125"), amountPaid: new D(0), amountCredited: new D(0),
   contact: { name: "Kunde", email: "kunde@example.test" }, items: lines,
 }
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/[  ]/g, " ").replace(/\s+/g, " ")
