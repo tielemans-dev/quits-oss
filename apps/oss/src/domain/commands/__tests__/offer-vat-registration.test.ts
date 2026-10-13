@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Effect } from "effect"
+import type { TaxId } from "../../../lib/compliance"
 import { Prisma } from "../../../../generated/prisma/client"
 import { Db, Command, type CommandScope } from "../../services"
 import { sendInvoice } from "../invoices"
@@ -33,7 +34,7 @@ import { composeQuoteEmail } from "../../documents/quote-email"
 
 const decimal = (value: string | number) => new Prisma.Decimal(value)
 const contact = { id: "buyer", name: "Buyer", email: "buyer@example.test", company: "Buyer ApS", address: "Testvej 2", city: "Copenhagen", zip: "1000", state: null, country: "DK", taxIds: [{ scheme: "vat", value: "DK12345678", countryCode: "DK" }] }
-const sellerTaxIds = [{ scheme: "vat", value: "DK24256790", countryCode: "DK" }, { scheme: "cvr", value: "24256790", countryCode: "DK" }]
+const sellerTaxIds: TaxId[] = [{ scheme: "vat", value: "DK24256790", countryCode: "DK" }, { scheme: "cvr", value: "24256790", countryCode: "DK" }]
 
 function harness({ registered = false, rate = "25", isDeposit = false, tiny = false, exempt = false } = {}) {
   const priced = priceAgreementV2({ currency: "DKK", pricesIncludeTax: false, taxRate: rate, deliverables: [{ title: "Work", description: "Work", quantity: "1", unitPrice: tiny ? "0.01" : "100", isDeposit, vat: { treatment: exempt ? "exempt" : rate === "0" ? "out_of_scope" : "standard", reasonCode: exempt ? "health" : null, rate: rate === "0" ? "0" : "0.25", country: "DK" } }] })
