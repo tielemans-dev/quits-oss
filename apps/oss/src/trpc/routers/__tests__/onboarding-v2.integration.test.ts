@@ -1,6 +1,7 @@
 import { newDraft, confirmationPayload } from "../../../components/onboarding-v2/draft"
 import { randomUUID } from "node:crypto"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { TRPCError } from "@trpc/server"
 import { confirmOnboardingV2Schema, type ConfirmOnboardingV2Input } from "@quits/contracts/onboarding"
 import { prisma } from "../../../lib/db"
 import { confirmOnboardingV2 } from "../../../lib/onboarding/confirm-v2"
@@ -8,6 +9,7 @@ import { cleanupTestOrganizations, hasTestDatabase } from "../../../test-utils/o
 import { ensureTestMembership } from "../../../test-utils/membership"
 import { bootstrapQuitsRuntime } from "../../../lib/runtime/bootstrap"
 import { setRuntimeExtensions, getRuntimeCapabilities } from "../../../lib/runtime/extensions"
+import { setRuntimeServices } from "../../../lib/runtime/services"
 
 const ids: string[] = []
 const summary = (): ConfirmOnboardingV2Input => ({ idempotencyKey: randomUUID(), companyName: "Synthetic Test ApS", companyAddress: "Testvej 1, 2. th.\n1000 København", cvr: "24256790", companyForm: "ApS", reklamebeskyttet: false, momsRegistered: true, vatId: "DK24256790" })
@@ -232,11 +234,73 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await api.onboarding.confirmV2({ ...input, idempotencyKey: randomUUID() })).toEqual({ status: "already_complete" })
     expect(startTrial).toHaveBeenCalledTimes(2)
   })
-  it("reuses provider-owned provisioning after a confirmation write rolls back", async () => {
+  it("keeps stored bank details when confirmation omits them", async () => {
+    const id = await organization()
+    await prisma.orgSettings.create({ data: {
+      organizationId: id, bankAccountHolder: "Existing Holder", bankName: "Existing Bank",
+      bankRegNumber: "1234", bankAccountNumber: "0001234567", bankIban: "DK5000400440116243", bankBic: "DABADKKK",
+    } })
+    const result = await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(summary()), "signup@example.test")
+    expect(result).toMatchObject({ status: "complete", bankMissing: false })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({
+      bankAccountHolder: "Existing Holder", bankName: "Existing Bank", bankRegNumber: "1234",
+      bankAccountNumber: "0001234567", bankIban: "DK5000400440116243", bankBic: "DABADKKK", onboardingStatus: "complete",
+    })
+  })
+  it.each([
+    ["missing", undefined],
+    ["empty", ""],
+    ["invalid", "invalid"],
+    ["expired", "expired"],
+  ] as const)("does not start a trial for a %s confirmation token and leaves onboarding incomplete", async (kind, token) => {
+    const id = await organization()
+    const startTrial = vi.fn()
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeExtensions([{ id: "reject-token", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }), sellerVatConfirmation: {
+      prepare: async () => ({ token: "signed" }),
+      confirm: async () => { throw new TRPCError({ code: "BAD_REQUEST", message: kind }) },
+    } }])
+    const parsed = confirmOnboardingV2Schema.parse(summary())
+    const input = token === undefined ? parsed : { ...parsed, sellerVatConfirmationToken: token }
+    const actor = { organizationId: id, userId: `qui56-${id}`, sessionId: "session" }
+    await expect(confirmOnboardingV2(id, input, "signup@example.test", actor)).rejects.toMatchObject({ code: "BAD_REQUEST", message: kind === "invalid" || kind === "expired" ? kind : "save.failed" })
+    expect(startTrial).not.toHaveBeenCalled()
+    expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
+  })
+  it("does not start a trial when accepted suggestions fail to save", async () => {
+    const id = await organization()
+    await prisma.catalogItem.create({ data: { organizationId: id, name: "Designarbejde", defaultUnitPrice: 1 } })
+    const startTrial = vi.fn()
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    const input = confirmOnboardingV2Schema.parse({ ...summary(), catalogSuggestions: [{ name: "Designarbejde", defaultUnitPrice: 850 }] })
+    await expect(confirmOnboardingV2(id, input, "signup@example.test")).rejects.toMatchObject({ code: "P2002" })
+    expect(startTrial).not.toHaveBeenCalled()
+    expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
+    expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(1)
+  })
+  it("starts the hosted trial once after confirmation succeeds", async () => {
+    const id = await organization()
+    const startTrial = vi.fn()
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeExtensions([{ id: "accept-token", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }), sellerVatConfirmation: {
+      prepare: async () => ({ token: "signed" }), confirm: async () => {},
+    } }])
+    const input = confirmOnboardingV2Schema.parse({ ...summary(), sellerVatConfirmationToken: "signed", catalogSuggestions: [{ name: "Designarbejde", defaultUnitPrice: 850 }] })
+    const actor = { organizationId: id, userId: `qui56-${id}`, sessionId: "session" }
+    await expect(confirmOnboardingV2(id, input, "signup@example.test", actor)).resolves.toMatchObject({ status: "complete" })
+    expect(startTrial).toHaveBeenCalledTimes(1)
+    expect(startTrial).toHaveBeenCalledWith(id)
+    expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(1)
+    await confirmOnboardingV2(id, input, "signup@example.test", actor)
+    expect(startTrial).toHaveBeenCalledTimes(1)
+  })
+  it("does not start a trial when an identity write rolls back, then provisions once on retry", async () => {
     const id = await organization()
     const api = await caller(id)
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
-    // MOCK: provider contract fixture retains durable provisioning across OSS rollbacks.
+    // MOCK: the failed identity write never reaches the hook. The retry provisions once.
     const provisioned = new Set<string>()
     const provision = vi.fn()
     const startTrial = vi.fn(async (organizationId: string) => {
@@ -249,8 +313,9 @@ async function caller(id: string, requestedOrganizationId?: string) {
     try { await expect(api.onboarding.confirmV2(input)).rejects.toThrow() }
     finally { await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id DROP CONSTRAINT "${constraint}"`) }
     expect(await prisma.orgSettings.findUnique({ where: { organizationId: id } })).toBeNull()
+    expect(startTrial).not.toHaveBeenCalled()
     expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete" })
-    expect(startTrial).toHaveBeenCalledTimes(2)
+    expect(startTrial).toHaveBeenCalledTimes(1)
     expect(provision).toHaveBeenCalledTimes(1)
   })
   it("rolls back an expired confirmation transaction and reuses provisioning on retry", async () => {

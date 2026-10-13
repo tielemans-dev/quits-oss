@@ -9,7 +9,10 @@ import { hasIssuedDocuments } from "../../domain/documents/base-currency"
 
 /** One final save. The organization lock also serializes confirms before a settings row exists. */
 export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string, actor?: SellerVatConfirmationActor) {
-  if (getSellerVatConfirmationService() && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
+  const sellerVatConfirmation = getSellerVatConfirmationService()
+  if (sellerVatConfirmation && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
+  // Hosted confirmation must present a token before any settings, identity, or trial write.
+  if (actor && sellerVatConfirmation && !input.sellerVatConfirmationToken) throw new TRPCError({ code: "BAD_REQUEST", message: "save.failed" })
   // Client-supplied protection metadata cannot attest to a trusted registry lookup.
   // Until a server lookup supplies that trust, scrub all registry-sourced contacts.
   input = { ...input, reklamebeskyttet: input.source === "cvr" || input.reklamebeskyttet === true }
@@ -49,11 +52,11 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     if (numberedDrafts > 0 || await hasIssuedDocuments(tx, organizationId)) {
       throw new TRPCError({ code: "CONFLICT", message: "save.failed" })
     }
-    // The provider owns durable provisioning retries if the following writes roll back.
-    // A failed hook must leave the confirmation incomplete. Completed retries return above.
-    await billingProvider.startTrial?.(organizationId)
     const completedAt = new Date()
-    const result = { status: "complete" as const, version: 2 as const, completedAt: completedAt.toISOString(), bankMissing: !input.bank }
+    const result = {
+      status: "complete" as const, version: 2 as const, completedAt: completedAt.toISOString(),
+      bankMissing: !input.bank && !existing.bankRegNumber && !existing.bankAccountNumber && !existing.bankIban,
+    }
     const settings = {
       ...presets,
       // Preserve the book re-read under the lock, including a concurrently created row.
@@ -61,12 +64,15 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
       invoiceNextNum: Math.max(existing.invoiceNextNum, input.invoiceNextNum),
       quotePrefix: existing.quotePrefix,
       quoteNextNum: existing.quoteNextNum,
-      bankAccountHolder: input.bank ? input.companyName : null,
-      bankName: null,
-      bankRegNumber: input.bank?.regNumber ?? null,
-      bankAccountNumber: input.bank?.accountNumber ?? null,
-      bankIban: null,
-      bankBic: null,
+      // An omitted bank input is not a clear. Submitted details still replace the stored ones.
+      ...(input.bank ? {
+        bankAccountHolder: input.companyName,
+        bankName: null,
+        bankRegNumber: input.bank.regNumber,
+        bankAccountNumber: input.bank.accountNumber,
+        bankIban: null,
+        bankBic: null,
+      } : {}),
       onboardingStatus: "complete",
       onboardingMethod: input.source,
       onboardingVersion: 2,
@@ -87,6 +93,8 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
         organizationId, name: item.name, description: item.description ?? null, defaultUnitPrice: item.defaultUnitPrice,
       })) })
     }
+    // Confirmation and catalog writes are done. A failed hook still rolls the transaction back.
+    await billingProvider.startTrial?.(organizationId)
     return result
   }, { timeout: 60_000 })
 }
