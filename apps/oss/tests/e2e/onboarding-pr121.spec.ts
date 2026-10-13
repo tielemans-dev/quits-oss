@@ -34,7 +34,9 @@ for (const locale of ["da-DK", "en-US"]) {
       await prisma.organization.update({ where: { id: setup.organizationId }, data: { subscriptionStatus: "pro" } })
       // Remove installation defaults: exercise onboarding's actual first-read creation.
       await prisma.orgSettings.delete({ where: { organizationId: setup.organizationId } })
-      const context = await browser.newContext({ locale, viewport: { width, height: 1000 } })
+      // The shared login helper uses English labels. The authenticated app's saved locale
+      // controls each capture, as in the existing quote evidence harness.
+      const context = await browser.newContext({ locale: "en-US", viewport: { width, height: 1000 } })
       try {
         const page = await context.newPage()
         await loginAsAdmin(page)
