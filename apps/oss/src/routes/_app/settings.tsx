@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
+import { isOrganizationSlug } from "../../lib/organization-slug"
 import {
   type SettingsFormValidationError,
   validateSettingsFormInput,
@@ -244,6 +245,8 @@ function SettingsPage() {
   const [documentSendingSuccess, setDocumentSendingSuccess] = useState<string | null>(null)
 
   // Team members state
+  const [organizationSlug, setOrganizationSlug] = useState("")
+  const [savedOrganizationSlug, setSavedOrganizationSlug] = useState<string | null>(null)
   const [members, setMembers] = useState<OrgMember[]>([])
   const [invitations, setInvitations] = useState<OrgInvitation[]>([])
   const [teamLoading, setTeamLoading] = useState(true)
@@ -382,6 +385,9 @@ function SettingsPage() {
     async function loadTeam() {
       const org = await authClient.organization.getFullOrganization()
       if (org.data) {
+        const slug = typeof org.data.slug === "string" ? org.data.slug : ""
+        setOrganizationSlug(slug)
+        setSavedOrganizationSlug(slug)
         setMembers((org.data.members ?? []) as OrgMember[])
         setInvitations(
           ((org.data.invitations ?? []) as OrgInvitation[]).filter(
@@ -487,12 +493,33 @@ function SettingsPage() {
       return
     }
 
+    const nextOrganizationSlug = organizationSlug.trim()
+    if (
+      savedOrganizationSlug !== null &&
+      nextOrganizationSlug !== savedOrganizationSlug &&
+      !isOrganizationSlug(nextOrganizationSlug)
+    ) {
+      setSaving(false)
+      setError(t("settings.organizationSlug.invalid"))
+      return
+    }
+
     const momsRegisteredUpdate = !showVatStatus && settings?.momsRegistered != null
       ? null
       : showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null)
         ? momsRegistered
         : undefined
     try {
+      if (savedOrganizationSlug !== null && nextOrganizationSlug !== savedOrganizationSlug) {
+        const updated = await authClient.organization.update({ data: { slug: nextOrganizationSlug } })
+        if (updated.error) {
+          setSaving(false)
+          setError(updated.error.message ?? t("settings.error.saveFailed"))
+          return
+        }
+        setSavedOrganizationSlug(nextOrganizationSlug)
+      }
+
       await trpc.settings.update.mutate({
         countryCode,
         locale,
@@ -796,6 +823,20 @@ function SettingsPage() {
                 placeholder={t("settings.companyName.placeholder")}
                 defaultValue={settings.companyName ?? ""}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="organizationSlug">{t("settings.organizationSlug.label")}</Label>
+              <Input
+                id="organizationSlug"
+                name="organizationSlug"
+                value={organizationSlug}
+                maxLength={48}
+                spellCheck={false}
+                placeholder={t("settings.organizationSlug.placeholder")}
+                onChange={(event) => setOrganizationSlug(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t("settings.organizationSlug.help")}</p>
             </div>
 
             <div className="grid gap-2">

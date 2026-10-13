@@ -46,7 +46,8 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   await page.getByRole("button", { name: "Create account" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("Create your organization")).toBeVisible()
+  await expect(page.getByText("Look up your own CVR")).toBeVisible()
+  await expect(page.getByLabel("Slug")).toHaveCount(0)
 
   // No organization has supplied a locale. The raw response stays English, then the sole
   // language owner detects this browser's Danish preference after hydration.
@@ -59,7 +60,8 @@ test("lets a new user sign up and continue to onboarding", async ({ page }) => {
   expect(serverHtml).not.toContain(">Fakturaer<")
   await waitForClientReady(page)
   await expect(page.locator("html")).toHaveAttribute("lang", "da")
-  await expect(page.getByText("Opret din organisation", { exact: true })).toBeVisible()
+  await expect(page.getByText("Slå dit eget CVR op", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Indtast manuelt" })).toBeVisible()
 })
 
 test("shows adaptive cloud onboarding after organization creation", async ({ page }) => {
@@ -75,8 +77,8 @@ test("shows adaptive cloud onboarding after organization creation", async ({ pag
   await page.getByRole("button", { name: "Create account" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await page.getByLabel("Organization name").fill("Nordic Advisory")
-  await page.getByLabel("Slug").fill("nordic-advisory")
+  await page.getByRole("button", { name: "Enter manually" }).click()
+  await page.getByLabel("Company name").fill("Nordic Advisory")
   await page.getByRole("button", { name: "Create organization" }).click()
 
   await expect(page.getByText("Finish organization setup")).toBeVisible()

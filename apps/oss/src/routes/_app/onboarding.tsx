@@ -30,20 +30,13 @@ import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/
 import { loadPage } from '../../lib/page-navigation'
 import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../../lib/login-return'
 import { AiAssistantPanel } from '../../components/onboarding/ai-assistant-panel'
+import { createNamedOrganization } from '../../lib/organization-slug'
+import type { CvrLookupCompany } from '../../lib/onboarding/search-cvr'
 
 export const Route = createFileRoute('/_app/onboarding')({
   validateSearch: loginReturnSearchSchema,
   component: OnboardingPage,
 })
-
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_]+/g, '-')
-    .replace(/-+/g, '-')
-}
 
 type CloudOnboardingMethod = 'manual' | 'ai'
 type CloudTaxRegime = 'us_sales_tax' | 'eu_vat' | 'custom'
@@ -129,9 +122,11 @@ function OnboardingPageContent() {
   const { data: session } = useSession()
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
-  const [name, setName] = useState('')
-  const [slug, setSlug] = useState('')
-  const [slugTouched, setSlugTouched] = useState(false)
+  const [entryMode, setEntryMode] = useState<'lookup' | 'manual'>('lookup')
+  const [lookupQuery, setLookupQuery] = useState('')
+  const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
+  const [lookupMessage, setLookupMessage] = useState<string | null>(null)
+  const [manualName, setManualName] = useState('')
   const [statusLoading, setStatusLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -314,13 +309,6 @@ function OnboardingPageContent() {
     }
   }, [method, runtimeCapabilities])
 
-  function handleNameChange(value: string) {
-    setName(value)
-    if (!slugTouched) {
-      setSlug(slugify(value))
-    }
-  }
-
   function updateValue<Key extends keyof CloudOnboardingValues>(
     key: Key,
     value: CloudOnboardingValues[Key],
@@ -372,33 +360,72 @@ function OnboardingPageContent() {
     }))
   }
 
-  async function handleCreateOrganization(e: React.FormEvent) {
-    e.preventDefault()
+  async function createOrganizationFromCompanyName(name: string) {
     setError(null)
     setSubmitting(true)
-
-    const result = await authClient.organization.create(
-      { name, slug },
-      {
-        onError: (ctx) => {
-          setError(ctx.error.message ?? t('auth.onboarding.error'))
+    let created: Awaited<ReturnType<typeof createNamedOrganization>>
+    try {
+      created = await createNamedOrganization({
+        name,
+        isSlugAvailable: async (slug) => {
+          const checked = await authClient.organization.checkSlug({ slug })
+          if (!checked.error) return checked.data?.status === true
+          if (/slug already taken|already exists/i.test(checked.error.message ?? '')) return false
+          throw new Error(checked.error.message ?? 'slug check failed')
         },
-      }
-    )
-
-    if (!result.data) {
+        create: async (body) => {
+          const result = await authClient.organization.create(body)
+          if (result.data?.id) return { ok: true, id: result.data.id }
+          return { ok: false, message: result.error?.message ?? '' }
+        },
+      })
+    } catch {
+      setError(t('auth.onboarding.error'))
+      setSubmitting(false)
+      return
+    }
+    if (!created.ok) {
+      setError(t('auth.onboarding.error'))
       setSubmitting(false)
       return
     }
 
     // Loads a new page acting for the new organization.
-    const switched = await switchActiveOrganization(result.data.id, {
+    const switched = await switchActiveOrganization(created.id, {
       destination: isCloud && target ? loginReturnOnboarding(search) : returnDestination,
     })
     if (switched?.error) {
       setError(switched.error.message ?? t('auth.onboarding.error'))
       setSubmitting(false)
     }
+  }
+
+  async function handleLookup(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLookupMessage(null)
+    setLookupCompanies([])
+    if (!isCloud) {
+      setLookupMessage(t('auth.onboarding.lookup.unavailable'))
+      return
+    }
+    setSubmitting(true)
+    try {
+      const result = await trpc.onboarding.searchCvr.query({ q: lookupQuery.trim() })
+      setLookupCompanies(result.companies)
+      setLookupMessage(result.available
+        ? (result.companies.length ? null : t('auth.onboarding.lookup.empty'))
+        : t('auth.onboarding.lookup.unavailable'))
+    } catch {
+      setLookupMessage(t('auth.onboarding.lookup.failed'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleManualOrganization(e: React.FormEvent) {
+    e.preventDefault()
+    await createOrganizationFromCompanyName(manualName)
   }
 
   async function handleSelectOrganization(organizationId: string) {
@@ -529,53 +556,112 @@ function OnboardingPageContent() {
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
-            <CardTitle className="text-2xl">{t('auth.onboarding.title')}</CardTitle>
+            <CardTitle className="text-2xl">
+              {t(entryMode === 'manual' ? 'auth.onboarding.lookup.manualTitle' : 'auth.onboarding.lookup.title')}
+            </CardTitle>
             <CardDescription>
-              {t('auth.onboarding.description')}
+              {t(entryMode === 'manual' ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
             </CardDescription>
           </CardHeader>
-          <form onSubmit={handleCreateOrganization}>
-            <CardContent className="flex flex-col gap-4">
-              {error && (
-                <p className="text-sm text-destructive" role="alert">
-                  {error}
-                </p>
-              )}
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="org-name">{t('auth.onboarding.orgName')}</Label>
-                <Input
-                  id="org-name"
-                  type="text"
-                  placeholder={t('auth.onboarding.placeholder.orgName')}
-                  value={name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="org-slug">{t('auth.onboarding.slug')}</Label>
-                <Input
-                  id="org-slug"
-                  type="text"
-                  placeholder={t('auth.onboarding.placeholder.slug')}
-                  value={slug}
-                  onChange={(e) => {
-                    setSlug(e.target.value)
-                    setSlugTouched(true)
+          {entryMode === 'manual' ? (
+            <form onSubmit={(e) => void handleManualOrganization(e)}>
+              <CardContent className="flex flex-col gap-4">
+                {error && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {error}
+                  </p>
+                )}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="company-name">{t('auth.onboarding.field.companyName')}</Label>
+                  <Input
+                    id="company-name"
+                    type="text"
+                    placeholder={t('auth.onboarding.placeholder.orgName')}
+                    value={manualName}
+                    onChange={(e) => setManualName(e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col gap-2">
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? t('auth.onboarding.submitting') : t('auth.onboarding.submit')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full"
+                  disabled={submitting}
+                  onClick={() => {
+                    setEntryMode('lookup')
+                    setError(null)
                   }}
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t('auth.onboarding.slugHelp')}
-                </p>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? t('auth.onboarding.submitting') : t('auth.onboarding.submit')}
-              </Button>
-            </CardFooter>
-          </form>
+                >
+                  {t('auth.onboarding.lookup.manualBack')}
+                </Button>
+              </CardFooter>
+            </form>
+          ) : (
+            <form onSubmit={(e) => void handleLookup(e)}>
+              <CardContent className="flex flex-col gap-4">
+                {error && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {error}
+                  </p>
+                )}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="cvr-query">{t('auth.onboarding.lookup.query')}</Label>
+                  <Input
+                    id="cvr-query"
+                    type="text"
+                    placeholder={t('auth.onboarding.lookup.placeholder')}
+                    value={lookupQuery}
+                    maxLength={120}
+                    onChange={(e) => setLookupQuery(e.target.value)}
+                    required
+                    minLength={3}
+                  />
+                </div>
+                {lookupMessage && (
+                  <p className="text-sm text-muted-foreground" role="status">
+                    {lookupMessage}
+                  </p>
+                )}
+                {lookupCompanies.map((company) => (
+                  <Button
+                    key={company.cvr}
+                    type="button"
+                    variant="outline"
+                    className="h-auto w-full flex-col items-start gap-1 py-3"
+                    disabled={submitting}
+                    onClick={() => void createOrganizationFromCompanyName(company.name)}
+                  >
+                    <span>{t('auth.onboarding.lookup.confirm', { company: company.name })}</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {company.cvr} · {company.address}
+                    </span>
+                  </Button>
+                ))}
+              </CardContent>
+              <CardFooter className="flex flex-col gap-2">
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? t('auth.onboarding.lookup.searching') : t('auth.onboarding.lookup.submit')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full"
+                  disabled={submitting}
+                  onClick={() => {
+                    setEntryMode('manual')
+                    setError(null)
+                  }}
+                >
+                  {t('auth.onboarding.lookup.manual')}
+                </Button>
+              </CardFooter>
+            </form>
+          )}
         </Card>
       </div>
     )

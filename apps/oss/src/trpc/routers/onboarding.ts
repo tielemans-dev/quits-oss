@@ -21,7 +21,9 @@ import { evaluateOnboardingReadiness } from "../../lib/onboarding/readiness"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode } from "../../lib/compliance/registry"
-import { authorizedProcedure, router } from "../init"
+import { searchOwnCvr } from "../../lib/onboarding/search-cvr"
+import { getCvrLookupProvider } from "../../lib/runtime/services"
+import { authorizedProcedure, protectedProcedure, router } from "../init"
 import { billingProvider } from "../../lib/billing"
 
 const onboardingInputSchema = z.object({
@@ -231,6 +233,17 @@ async function legacyOnboardingWrite(organizationId: string, write: (tx: Prisma.
 }
 
 export const onboardingRouter = router({
+  // Lookup runs before an organization exists. The hosted runtime supplies the provider.
+  searchCvr: protectedProcedure
+    .input(z.object({ q: z.string().trim().min(3).max(120) }))
+    .query(({ ctx, input }) =>
+      searchOwnCvr({
+        query: input.q,
+        cloud: isCloudDistribution,
+        userId: ctx.user.id,
+        lookup: getCvrLookupProvider(),
+      }),
+    ),
   // Reading v2 defaults never creates settings or saves a draft.
   getDefaultsV2: authorizedProcedure("settings:read").query(() => {
     assertOnboardingV2Enabled()
