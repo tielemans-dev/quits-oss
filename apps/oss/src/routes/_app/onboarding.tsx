@@ -26,9 +26,12 @@ import { Label } from '../../components/ui/label'
 import { useI18n } from '../../lib/i18n/react'
 import { countryOptionsIncluding, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
+import { loadPage } from '../../lib/page-navigation'
+import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../../lib/login-return'
 import { AiAssistantPanel } from '../../components/onboarding/ai-assistant-panel'
 
 export const Route = createFileRoute('/_app/onboarding')({
+  validateSearch: loginReturnSearchSchema,
   component: OnboardingPage,
 })
 
@@ -110,6 +113,9 @@ function parseCloudOnboardingValues(values?: Record<string, unknown> | null): Cl
 
 function OnboardingPage() {
   const { t } = useI18n()
+  const search = Route.useSearch()
+  const target = loginReturnTarget(search)
+  const returnDestination = loginReturnDestination(target ?? '/', search.lang)
   const navigate = useNavigate()
   const { isCloud } = useRuntimeDistribution()
   const { data: session } = useSession()
@@ -170,7 +176,7 @@ function OnboardingPage() {
         if (accessState.kind === 'auto-select') {
           // Loads a new page acting for the organization: onboarding continues there in cloud.
           const switched = await switchActiveOrganization(accessState.organizationId, {
-            destination: isCloud ? '/onboarding' : '/',
+            destination: isCloud ? loginReturnOnboarding(search) : returnDestination,
             isCancelled: () => cancelled,
           })
           if (!switched?.error || cancelled) {
@@ -197,7 +203,7 @@ function OnboardingPage() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud])
+  }, [hasActiveOrg, isCloud, returnDestination, target, search.lang])
 
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) {
@@ -235,7 +241,8 @@ function OnboardingPage() {
         if (status.isComplete) {
           // The layout may still hold an earlier "incomplete" answer, which would send us back here.
           invalidateAppLayoutSession()
-          navigate({ to: '/' })
+          if (target || search.lang) loadPage(returnDestination)
+          else navigate({ to: '/' })
         }
       })
       .catch(() => {
@@ -252,7 +259,7 @@ function OnboardingPage() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud, navigate])
+  }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang])
 
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) {
@@ -367,7 +374,9 @@ function OnboardingPage() {
     }
 
     // Loads a new page acting for the new organization.
-    const switched = await switchActiveOrganization(result.data.id)
+    const switched = await switchActiveOrganization(result.data.id, {
+      destination: isCloud && target ? loginReturnOnboarding(search) : returnDestination,
+    })
     if (switched?.error) {
       setError(switched.error.message ?? t('auth.onboarding.error'))
       setSubmitting(false)
@@ -380,7 +389,9 @@ function OnboardingPage() {
 
     try {
       // Loads a new page acting for the selected organization.
-      const switched = await switchActiveOrganization(organizationId)
+      const switched = await switchActiveOrganization(organizationId, {
+        destination: isCloud && target ? loginReturnOnboarding(search) : returnDestination,
+      })
       if (switched?.error) {
         setError(switched.error.message ?? t('auth.onboarding.error'))
         setSubmitting(false)
@@ -420,7 +431,8 @@ function OnboardingPage() {
       await trpc.onboarding.completeManual.mutate({ method })
       // The layout must see onboarding as complete now, not after its reuse window.
       invalidateAppLayoutSession()
-      navigate({ to: '/' })
+      if (target || search.lang) loadPage(returnDestination)
+      else navigate({ to: '/' })
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Unable to complete onboarding'
       setError(message)
@@ -555,7 +567,7 @@ function OnboardingPage() {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button type="button" className="w-full" onClick={() => navigate({ to: '/' })}>
+            <Button type="button" className="w-full" onClick={() => target || search.lang ? loadPage(returnDestination) : navigate({ to: '/' })}>
               {t('auth.onboarding.configured.continue')}
             </Button>
           </CardFooter>

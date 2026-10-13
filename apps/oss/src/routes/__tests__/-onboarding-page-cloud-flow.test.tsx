@@ -21,7 +21,7 @@ const {
 }))
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ ...options }),
+  createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useSearch: () => ({}) }),
   useNavigate: () => navigate,
   useRouter: () => ({ invalidate }),
 }))
