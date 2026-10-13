@@ -8,6 +8,9 @@ import "./fixture.css"
 
 const params = new URLSearchParams(location.search)
 const scenario = params.get("scenario")
+// Self-hosted supports non-VAT sellers; hosted fixtures must opt into the capability.
+const profile = params.get("profile") ?? "selfhost"
+const nonVatEnabled = profile === "selfhost" || profile === "hosted-non-vat"
 const company: CvrCompany = {
   cvr: "24256790",
   name: "Nordlys Studio ApS",
@@ -86,6 +89,7 @@ function Fixture() {
           userId="fixture-user"
           organizationId="fixture-org"
           signupEmail="billing@example.com"
+          nonVatEnabled={nonVatEnabled}
           client={client}
           onComplete={() => setDone(true)}
         />
