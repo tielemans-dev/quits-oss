@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
-import { requireVatIssuance } from "../vat-issuance"
+import { requireSellerVatRegistration, requireVatIssuance } from "../vat-issuance"
 
 const taxed = {
   currency: "DKK", pricesIncludeTax: false,
@@ -25,5 +25,18 @@ describe("seller registration at financial issuance", () => {
     const document = { ...taxed, totalTax: "0", totalGross: "100", items: [{ ...taxed.items[0]!, vatTreatment: "out_of_scope", vatRateInput: "0", taxRate: "0", lineTax: "0", lineGross: "100" }] }
     expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Right" })
     expect(document.items[0]!.vatTreatment).toBe("out_of_scope")
+  })
+})
+
+describe("nonregistered zero treatment semantics", () => {
+  it.each(["exempt", "intra_community", "export", "zero_rated", "reverse_charge_domestic"])("rejects %s before invoice/quote or agreement issuance", async vatTreatment => {
+    const document = { ...taxed, vatEvidence: { statementText: "Health exemption" }, totalTax: "0", totalGross: "100", items: [{ ...taxed.items[0]!, vatTreatment, vatReasonCode: "health", vatRateInput: "0", taxRate: "0", lineTax: "0", lineGross: "100" }] }
+    for (const check of [requireSellerVatRegistration, requireVatIssuance]) {
+      expect(await Effect.runPromise(Effect.either(check(document)))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
+    }
+  })
+  it("preserves ordinary domestic zero agreement lines", async () => {
+    const document = { ...taxed, totalTax: "0", items: [{ ...taxed.items[0]!, vatTreatment: "standard", vatRateInput: "0", taxRate: "0", lineTax: "0" }] }
+    expect(await Effect.runPromise(Effect.either(requireSellerVatRegistration(document)))).toMatchObject({ _tag: "Right" })
   })
 })

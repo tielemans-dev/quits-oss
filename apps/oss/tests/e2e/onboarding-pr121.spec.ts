@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { mkdir, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { expect, test } from "@playwright/test"
@@ -9,6 +10,7 @@ import { loginAsAdmin, resetDatabase, seedCompletedSetup, waitForClientReady } f
 // the first-read persistence of Danish defaults, to capture both supported UI languages independently.
 const captureDir = process.env.ONB121_CAPTURE_DIR
 const images: Array<Record<string, unknown>> = []
+const viewports: Array<Record<string, unknown>> = []
 test.skip(!captureDir, "PR 121 evidence is an explicit CI-only capture")
 test.beforeAll(() => {
   if (captureDir && (!process.env.CI || !process.env.ONB121_HEAD)) {
@@ -26,6 +28,7 @@ test.afterAll(async () => {
     initialSettingsPersisted: true,
     localeFixture: "locale-only-override-after-first-read-persistence",
     images,
+    viewports,
   }, null, 2))
 })
 
@@ -46,8 +49,7 @@ for (const locale of ["da-DK", "en-US"]) {
         await loginAsAdmin(page)
         expect((await firstStatusRead).ok()).toBe(true)
         await expect(page).toHaveURL(/\/onboarding/)
-        // These IDs are linked to the actual labels in the legacy form. Several labels
-        // remain English even with html lang="da"; do not invent localized label text.
+        // IDs remain stable while the complete legacy form follows the saved UI language.
         const assertDanishDefaults = async () => {
           await expect(page.locator("#countryCode")).toHaveValue("DK")
           await expect(page.locator("#defaultCurrency")).toHaveValue("DKK")
@@ -73,23 +75,48 @@ for (const locale of ["da-DK", "en-US"]) {
         await assertDanishDefaults()
         await expect(page.locator("#locale")).toHaveValue(locale)
         const finish = page.locator('form button[type="submit"]')
-        await expect(finish).toHaveAccessibleName("Finish onboarding")
+        await expect(finish).toHaveAccessibleName(locale === "da-DK" ? "Afslut opsætning" : "Finish onboarding")
+        await expect(page.getByText(locale === "da-DK" ? "Afslut opsætning af virksomheden" : "Finish organization setup", { exact: true })).toBeVisible()
+        await expect(page.locator('label[for="primaryTaxId"]')).toHaveText(locale === "da-DK" ? "CVR-nr." : "VAT/CVR number")
+        await expect(page.locator('#taxRegime option[value="eu_vat"]')).toHaveText(locale === "da-DK" ? "Moms (25 %)" : "EU VAT")
+        await expect(page.locator('#companyAddress')).toHaveAttribute("aria-invalid", "false")
         await expect(finish).toBeEnabled()
         await expect(page.getByRole("alert")).toHaveCount(0)
         const capture = async (state: string) => {
           const file = `${locale}-${width}-${state}.png`
           await mkdir(captureDir!, { recursive: true })
-          await page.screenshot({ path: resolve(captureDir!, file), fullPage: true })
-          images.push({ file, locale, width, state, url: page.url(), countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", validation: state === "invalid-submit" ? message : null })
+          const bytes = await page.screenshot({ path: resolve(captureDir!, file), fullPage: true })
+          images.push({ file, sha256: createHash("sha256").update(bytes).digest("hex"), locale, width, state, url: page.url(), countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", validation: state === "invalid-submit" ? message : null })
         }
         const message = locale.startsWith("da")
           ? "Udfyld virksomhedsnavn, adresse og e-mail for at fortsætte."
           : "Fill in company name, address and email to continue."
         await capture("fresh-initial")
+        // A fixed viewport at the top distinguishes sticky-header placement from full-page
+        // screenshot scrolling. Record geometry rather than changing production layout.
+        await page.evaluate(() => { window.scrollTo(0, 0); document.querySelector("main")?.scrollTo(0, 0) })
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+        const headerBox = await page.locator("header.sticky").boundingBox()
+        expect(headerBox).not.toBeNull()
+        expect(headerBox!.y).toBeGreaterThanOrEqual(0)
+        expect(headerBox!.y).toBeLessThan(100)
+        const viewportFile = `${locale}-${width}-top-viewport.png`
+        const geometry = await page.evaluate(() => ({ scrollY: window.scrollY,
+          headers: Array.from(document.querySelectorAll("header")).map(header => {
+            const rect = header.getBoundingClientRect()
+            return { top: rect.top, height: rect.height, position: getComputedStyle(header).position }
+          }),
+        }))
+        const viewportBytes = await page.screenshot({ path: resolve(captureDir!, viewportFile), fullPage: false })
+        viewports.push({ file: viewportFile, locale, width, height: 1000, state: "top-viewport", ...geometry,
+          sha256: createHash("sha256").update(viewportBytes).digest("hex") })
         await page.locator("#companyName").fill("Synthetic Onboarding ApS")
         await expect(page.getByRole("alert")).toHaveCount(0)
         await finish.click()
         await expect(page.getByRole("alert")).toHaveText(message)
+        await expect(page.locator("#companyAddress")).toHaveAttribute("aria-invalid", "true")
+        await expect(page.locator("#companyEmail")).toHaveAttribute("aria-invalid", "true")
+        await expect(page.locator("#companyName")).toHaveAttribute("aria-invalid", "false")
         await capture("invalid-submit")
         await page.locator("#companyAddress").fill("Example street 1, 1000 Copenhagen")
         await page.locator("#companyEmail").fill("billing@example.test")

@@ -28,7 +28,7 @@ import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/r
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
 import { localeSchema } from "../../lib/compliance/countries"
-import { isCountryCode } from "../../lib/compliance/registry"
+import { isCountryCode, isNationalRegistrationScheme, nationalRegistrationForScheme } from "../../lib/compliance/registry"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import {
   normalizeCountryCode,
@@ -311,9 +311,6 @@ export const settingsRouter = router({
       } = input
 
 
-      if (settingsInput.momsRegistered === false && !isNonVatRegistrationAllowed()) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
-      }
       assertSettingsCurrency(settingsInput.currency)
       assertSettingsCurrency(settingsInput.defaultCurrency)
       assertSettingsCurrency(settingsInput.baseCurrency)
@@ -324,7 +321,7 @@ export const settingsRouter = router({
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
-          select: { countryCode: true, aiProvider: true, aiBaseUrl: true },
+          select: { countryCode: true, taxRegime: true, aiProvider: true, aiBaseUrl: true },
         })
         // Re-saving the stored provider is always fine; only switching to a new one is checked, so
         // capability changes on the server never block saving unrelated settings.
@@ -334,6 +331,13 @@ export const settingsRouter = router({
         const resolvedCountry = normalizeCountryCode(
           settingsInput.countryCode ?? current?.countryCode
         )
+        // Registration describes the Danish EU VAT setup, not a hidden cross-jurisdiction flag.
+        if (resolvedCountry !== "DK" || (settingsInput.taxRegime ?? current?.taxRegime) !== "eu_vat") {
+          settingsInput.momsRegistered = null
+        }
+        if (settingsInput.momsRegistered === false && !isNonVatRegistrationAllowed()) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
+        }
         const localizedIssues = validateLocalizedFields(resolvedCountry, {
           phone: settingsInput.companyPhone,
           taxId: primaryTaxId,
@@ -412,10 +416,28 @@ export const settingsRouter = router({
           const existing = await tx.organizationTaxId.findFirst({
             where: { organizationId: ctx.organizationId },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-            select: { id: true },
+            select: { id: true, scheme: true, value: true, countryCode: true },
           })
 
           if (existing) {
+            const nextScheme = primaryTaxIdScheme?.trim() || "vat"
+            // Only the VAT paired with this Danish CVR is derived from its edit. Keep foreign
+            // and unrelated secondary identifiers, and never rewrite issued snapshots.
+            if (resolvedCountry === "DK" && (!existing.countryCode || existing.countryCode === "DK") &&
+                isNationalRegistrationScheme(existing.scheme, "DK") && isNationalRegistrationScheme(nextScheme, "DK")) {
+              const registration = nationalRegistrationForScheme(existing.scheme)!
+              const oldCvr = registration.normalize(existing.value)
+              const nextCvr = registration.normalize(primaryTaxId)
+              await tx.organizationTaxId.updateMany({
+                where: { organizationId: ctx.organizationId, value: `DK${oldCvr}`,
+                  AND: [
+                    { OR: [{ countryCode: "DK" }, { countryCode: null }] },
+                    { OR: ["vat", "dk_vat"].map(scheme => ({ scheme: { equals: scheme, mode: "insensitive" as const } })) },
+                  ],
+                },
+                data: { value: `DK${nextCvr}` },
+              })
+            }
             await tx.organizationTaxId.update({
               where: { id: existing.id },
               data: {

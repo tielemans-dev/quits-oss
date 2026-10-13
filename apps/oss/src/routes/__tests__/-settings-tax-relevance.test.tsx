@@ -187,6 +187,7 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
 
 afterEachTest(() => {
   cleanup()
+  Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView")
   useSessionMock.mockReset()
   settingsGetQuery.mockReset()
   getFullOrganization.mockReset()
@@ -275,5 +276,19 @@ describe("Settings VAT status", () => {
     await renderDanishSettings(false)
     expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).disabled).toBe(true)
     expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(true)
+  })
+})
+
+describe("Settings scope departure", () => {
+  it.each(["country", "regime"])("submits null when leaving Danish EU VAT through %s", async field => {
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() })
+    await renderDanishSettings(false)
+    const control = screen.getByRole("combobox", { name: field === "country" ? "Country" : "Tax Regime" })
+    fireEvent.keyDown(control, { key: "ArrowDown" })
+    fireEvent.click(await screen.findByRole("option", { name: field === "country" ? "Germany" : "Custom" }))
+    expect(screen.queryByLabelText("settings.vatStatus.notRegistered")).toBeNull()
+    fireEvent.submit(screen.getByLabelText("settings.companyName.label").closest("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeNull()
   })
 })

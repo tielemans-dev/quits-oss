@@ -326,7 +326,7 @@ jobs:
       - name: Capture actual onboarding in Danish and English with one worker
         working-directory: apps/oss
         run: bunx playwright test onboarding-pr121.spec.ts --workers=1
-      - name: Validate screenshot matrix and PNG dimensions
+      - name: Validate screenshot matrix, viewport geometry and hashes
         run: node scripts/check-onboarding-pr121-evidence.mjs "$ONB121_CAPTURE_DIR"
       - uses: actions/upload-artifact@v4
         id: evidence
@@ -345,4 +345,4 @@ jobs:
           ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
         run: |
           echo "PR 121 onboarding evidence: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "Only a green capture job certifies all eight screenshots. Synthetic authenticated account, disposable CI database, actual application at $ONB121_HEAD. Human visual review remains separate." >> "$GITHUB_STEP_SUMMARY"
+          echo "Only a green capture job certifies eight full-page screenshots and four focused top viewport screenshots with verified hashes. Synthetic authenticated account, disposable CI database, actual application at $ONB121_HEAD. Human visual review remains separate." >> "$GITHUB_STEP_SUMMARY"

@@ -10,6 +10,7 @@ export function requireSellerVatRegistration(document: {
   totalTax: { toString(): string }
   items: ReadonlyArray<{
     vatRateInput: string | null
+    vatTreatment: string
     taxRate: { toString(): string }
     lineTax: { toString(): string }
   }>
@@ -20,10 +21,12 @@ export function requireSellerVatRegistration(document: {
     Number(document.totalTax.toString()) !== 0 || document.items.some(item =>
       Number(item.taxRate.toString()) !== 0 ||
       (item.vatRateInput != null && Number(item.vatRateInput) !== 0) ||
-      Number(item.lineTax.toString()) !== 0
+      Number(item.lineTax.toString()) !== 0 ||
+      // Ordinary zero domestic offer lines remain valid; VAT exemptions/supplies do not.
+      !["standard", "out_of_scope"].includes(item.vatTreatment)
     )
   )
-    ? Effect.fail(new InvalidState({ code: "seller_not_vat_registered", message: "A seller who is not VAT-registered cannot charge VAT." }))
+    ? Effect.fail(new InvalidState({ code: "seller_not_vat_registered", message: "A seller who is not VAT-registered cannot charge VAT or use a VAT-specific treatment. Use out-of-scope for nonregistered supplies." }))
     : Effect.void
 }
 

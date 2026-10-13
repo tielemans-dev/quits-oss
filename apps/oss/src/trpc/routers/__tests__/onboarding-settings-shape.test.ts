@@ -2,12 +2,16 @@ import { readFileSync } from "node:fs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Context } from "../../init"
 import type { UserActor } from "../../../domain/actor"
+import { settingsRouter } from "../settings"
+import { buildSellerSnapshot } from "../../../domain/documents/snapshots"
+import { buildUblDocument, validateEinvoice, type EinvoiceDocument } from "../../../lib/exports/ubl"
+import { buildSellerParty } from "../../../lib/exports/einvoice"
 import { onboardingRouter } from "../onboarding"
 import { onboardingAiRouter } from "../onboarding-ai"
 import { confirmOnboardingV2 } from "../../../lib/onboarding/confirm-v2"
 import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
 
-const mocks = vi.hoisted(() => ({ settings: null as Record<string, unknown> | null, creates: [] as Array<Record<string, unknown>>, baseCurrency: "DKK", v2: false, suggestedValues: {} as Record<string, unknown>, barrier: null as null | { arrivals: number; ready: Promise<void>; release: () => void }, databaseError: null as Error | null }))
+const mocks = vi.hoisted(() => ({ nonVatAllowed: true, taxIds: [] as Array<{ id: string; scheme: string; value: string; countryCode: string | null; isPrimary: boolean }>, settings: null as Record<string, unknown> | null, creates: [] as Array<Record<string, unknown>>, baseCurrency: "DKK", v2: false, suggestedValues: {} as Record<string, unknown>, barrier: null as null | { arrivals: number; ready: Promise<void>; release: () => void }, databaseError: null as Error | null }))
 vi.mock("../../init", async () => {
   const { initTRPC } = await import("@trpc/server")
   const t = initTRPC.context<Context>().create()
@@ -20,7 +24,7 @@ vi.mock("../../init", async () => {
   return { router: t.router, authorizedProcedure: () => procedure }
 })
 vi.mock("../../../lib/distribution", () => ({ isCloudDistribution: true }))
-vi.mock("../../../lib/runtime/extensions", () => ({ getRuntimeCapabilities: () => ({ onboardingV2: { enabled: mocks.v2 }, onboardingAi: { enabled: true } }) }))
+vi.mock("../../../lib/runtime/extensions", () => ({ isNonVatRegistrationAllowed: () => mocks.nonVatAllowed, getRuntimeCapabilities: () => ({ onboardingV2: { enabled: mocks.v2 }, onboardingAi: { enabled: true } }) }))
 vi.mock("../../../lib/runtime/services", () => ({ getOnboardingAiService: () => ({ suggestPatch: async (input: { currentValues: Record<string, unknown> }) => { mocks.suggestedValues = input.currentValues; return { patch: { companyName: "Suggested ApS" }, rationale: "Company name only", confidence: 0.9, followupQuestions: [] } } }) }))
 vi.mock("../../../lib/billing", () => ({ billingProvider: {} }))
 vi.mock("../../../domain/documents/base-currency", () => ({ resolveBaseCurrency: async () => { if (!mocks.settings) throw new Error("Currency resolution needs a saved settings row"); return mocks.baseCurrency }, hasIssuedDocuments: async () => false }))
@@ -70,7 +74,28 @@ vi.mock("../../../lib/db", () => {
         return { count: 1 }
       },
     },
-    organizationTaxId: { findFirst: async () => null, deleteMany: async () => ({ count: 0 }), updateMany: async () => ({}), createMany: async () => ({}) },
+    organizationTaxId: {
+      findFirst: async () => mocks.taxIds.find(id => id.isPrimary) ?? mocks.taxIds[0] ?? null,
+      deleteMany: async ({ where }: { where: { OR?: Array<{ scheme: { equals: string } }> } }) => {
+        const before = mocks.taxIds.length
+        mocks.taxIds = mocks.taxIds.filter(id => where.OR && !where.OR.some(clause => clause.scheme.equals.toLowerCase() === id.scheme.toLowerCase()))
+        return { count: before - mocks.taxIds.length }
+      },
+      updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        for (const id of mocks.taxIds) {
+          if (where.isPrimary === true && !id.isPrimary) continue
+          if (typeof where.value === "string" && id.value !== where.value) continue
+          if (where.countryCode && id.countryCode !== where.countryCode) continue
+          if (where.AND && !(id.countryCode == null || id.countryCode === "DK")) continue
+          if (where.AND && !["vat", "dk_vat"].includes(id.scheme.toLowerCase())) continue
+          if (Array.isArray(where.OR) && !where.OR.some((clause: { scheme: { equals: string } }) => clause.scheme.equals.toLowerCase() === id.scheme.toLowerCase())) continue
+          Object.assign(id, data)
+        }
+        return { count: 1 }
+      },
+      createMany: async ({ data }: { data: Array<Omit<typeof mocks.taxIds[number], "id">> }) => { mocks.taxIds.push(...data.map((id, i) => ({ ...id, id: `tax-${i}` }))); return { count: data.length } },
+      update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => { const id = mocks.taxIds.find(id => id.id === where.id)!; Object.assign(id, data); return id },
+    },
     $queryRaw: async () => [],
     $transaction: async (run: (tx: unknown) => unknown) => run(db),
   }
@@ -85,7 +110,7 @@ function overlapInitializations() {
   mocks.barrier = { arrivals: 0, ready, release }
 }
 
-beforeEach(() => { mocks.barrier = null; mocks.databaseError = null })
+beforeEach(() => { mocks.barrier = null; mocks.databaseError = null; mocks.nonVatAllowed = true })
 
 describe("concurrent onboarding settings initialization", () => {
   beforeEach(() => { mocks.settings = null; mocks.creates = []; mocks.v2 = false; mocks.barrier = null; mocks.databaseError = null })
@@ -168,5 +193,57 @@ describe("v2 with onboarding AI Danish defaults", () => {
     expect(mocks.settings).toMatchObject({ invoicePrefix: "BOOK", invoiceNextNum: 42, locale: "en-US", pricesIncludeTax: true })
     await confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")
     expect(mocks.settings).toMatchObject({ invoicePrefix: "BOOK", invoiceNextNum: 42, quotePrefix: "OFF", quoteNextNum: 8 })
+  })
+})
+
+const settingsCaller = () => settingsRouter.createCaller({ session: null } satisfies Context)
+describe("atomic Settings Danish VAT repairs", () => {
+  beforeEach(() => { mocks.settings = { ...defaults, momsRegistered: false }; mocks.taxIds = []; mocks.creates = []; mocks.baseCurrency = "DKK" })
+  it.each([{ countryCode: "DE" }, { taxRegime: "custom" }, { taxRegime: "us_sales_tax" }])("clears hidden registration on scope departure %o even if a client omits status", async input => {
+    await settingsCaller().update(input)
+    expect(mocks.settings?.momsRegistered).toBeNull()
+  })
+  it("omits unchanged registration in scope and permits unrelated non-DK saves", async () => {
+    await settingsCaller().update({ companyName: "Edited ApS" })
+    expect(mocks.settings?.momsRegistered).toBe(false)
+    mocks.settings = { ...defaults, countryCode: "DE", momsRegistered: null }
+    await settingsCaller().update({ companyName: "Edited GmbH" })
+    expect(mocks.settings?.momsRegistered).toBeNull()
+  })
+  it.each([true, false, null])("preserves an explicit in-scope status %s", async momsRegistered => {
+    await settingsCaller().update({ momsRegistered })
+    expect(mocks.settings?.momsRegistered).toBe(momsRegistered)
+  })
+  it("keeps unsupported hosted non-VAT choices gated, while non-DK saves clear status", async () => {
+    mocks.nonVatAllowed = false
+    await expect(settingsCaller().update({ momsRegistered: false })).rejects.toMatchObject({ code: "FORBIDDEN" })
+    await settingsCaller().update({ countryCode: "DE", momsRegistered: false })
+    expect(mocks.settings?.momsRegistered).toBeNull()
+  })
+  it.each(["cvr", "DK_CVR"])("updates the paired Danish VAT after registered confirmation and %s edit, preserving other IDs and frozen history", async scheme => {
+    mocks.settings = null
+    await confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")
+    mocks.taxIds.push({ id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }, { id: "other", scheme: "other", value: "secondary", countryCode: "DK", isPrimary: false })
+    // Make the historical VAT row precede CVR, reproducing unordered VAT resolution.
+    mocks.taxIds.unshift(mocks.taxIds.splice(1, 1)[0]!)
+    const frozen = buildSellerSnapshot(mocks.settings as never, structuredClone(mocks.taxIds))
+    const frozenBefore = JSON.stringify(frozen)
+    const fixture = JSON.parse(readFileSync(new URL("../../../lib/exports/__tests__/fixtures/legacy-ubl-input.json", import.meta.url), "utf8")) as EinvoiceDocument
+    const historicalDocument = { ...fixture, seller: buildSellerParty({ snapshot: frozen, settings: null, taxIds: [], documentCountryCode: "DK" }) }
+    const historicalUbl = buildUblDocument(historicalDocument)
+    await settingsCaller().update({ primaryTaxId: "87654321", primaryTaxIdScheme: scheme })
+    expect(mocks.taxIds.find(id => id.id === "tax-1")).toMatchObject({ scheme: "vat", value: "DK87654321", countryCode: "DK", isPrimary: false })
+    expect(mocks.taxIds.find(id => id.id === "tax-0")).toMatchObject({ scheme, value: "87654321", isPrimary: true })
+    expect(mocks.taxIds.find(id => id.id === "foreign")?.value).toBe("DE123456789")
+    expect(mocks.taxIds.find(id => id.id === "other")?.value).toBe("secondary")
+    const future = buildSellerSnapshot(mocks.settings as never, mocks.taxIds)
+    expect(buildSellerParty({ snapshot: future, settings: null, taxIds: [], documentCountryCode: "DK" }).vatId).toBe("DK87654321")
+    const futureDocument = { ...fixture, seller: buildSellerParty({ snapshot: future, settings: null, taxIds: [], documentCountryCode: "DK" }) }
+    expect(validateEinvoice(futureDocument)).toEqual([])
+    expect(buildUblDocument(futureDocument)).toContain("DK87654321")
+    expect(buildUblDocument(futureDocument)).not.toContain("DK24256790")
+    expect(JSON.stringify(frozen)).toBe(frozenBefore)
+    expect(buildUblDocument(historicalDocument)).toBe(historicalUbl)
+    expect(historicalUbl).toContain("DK24256790")
   })
 })

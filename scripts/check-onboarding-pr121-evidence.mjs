@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import assert from "node:assert/strict"
@@ -28,6 +29,7 @@ for (const locale of ["da-DK", "en-US"]) {
         ? "Udfyld virksomhedsnavn, adresse og e-mail for at fortsætte."
         : "Fill in company name, address and email to continue.")
       const png = readFileSync(resolve(dir, file))
+      assert.equal(entry.sha256, createHash("sha256").update(png).digest("hex"), `Hash mismatch: ${file}`)
       assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a")
       assert.equal(png.readUInt32BE(16), width, `Wrong width: ${file}`)
       assert(png.readUInt32BE(20) >= 1000, `Truncated full-page capture: ${file}`)
@@ -35,4 +37,25 @@ for (const locale of ["da-DK", "en-US"]) {
     }
   }
 }
-console.log(`Verified eight actual-app captures for ${manifest.applicationSha}`)
+assert.equal(manifest.viewports.length, 4, "Expected focused top viewport captures in both languages and widths")
+for (const locale of ["da-DK", "en-US"]) {
+  for (const width of [390, 1440]) {
+    const file = `${locale}-${width}-top-viewport.png`
+    const entries = manifest.viewports.filter(entry => entry.file === file)
+    assert.equal(entries.length, 1, `Missing or duplicate ${file}`)
+    const entry = entries[0]
+    assert.equal(entry.locale, locale)
+    assert.equal(entry.width, width)
+    assert.equal(entry.scrollY, 0)
+    assert.equal(entry.height, 1000)
+    assert.equal(entry.state, "top-viewport")
+    const png = readFileSync(resolve(dir, file))
+    assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a")
+    assert.equal(png.readUInt32BE(16), width)
+    assert.equal(png.readUInt32BE(20), 1000)
+    assert.equal(entry.sha256, createHash("sha256").update(png).digest("hex"))
+    assert(Array.isArray(entry.headers), "Header viewport geometry must be recorded")
+    assert(entry.headers.some(header => header.position === "sticky" && header.top >= 0 && header.top < 100), "Sticky header must be at the top of the focused viewport")
+  }
+}
+console.log(`Verified eight full-page and four focused viewport actual-app captures for ${manifest.applicationSha}`)

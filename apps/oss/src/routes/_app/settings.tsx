@@ -482,9 +482,11 @@ function SettingsPage() {
       return
     }
 
-    const momsRegisteredUpdate = showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null)
-      ? momsRegistered ?? undefined
-      : undefined
+    const momsRegisteredUpdate = !showVatStatus && settings?.momsRegistered != null
+      ? null
+      : showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null)
+        ? momsRegistered
+        : undefined
     try {
       await trpc.settings.update.mutate({
         countryCode,

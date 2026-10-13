@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
 import type { RuntimeCapabilities } from '@quits/contracts/runtime'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { authClient, useSession } from '../../lib/auth-client'
 import { switchActiveOrganization } from '../../lib/active-organization'
 import { invalidateAppLayoutSession } from '../../lib/app-layout-session'
@@ -73,7 +73,7 @@ const CURRENCIES = [
   { value: 'GBP', label: 'GBP' },
   { value: 'CAD', label: 'CAD' },
   { value: 'AUD', label: 'AUD' },
-]
+] as const
 
 const DEFAULT_CLOUD_ONBOARDING_VALUES: CloudOnboardingValues = {
   companyName: '',
@@ -119,7 +119,8 @@ function OnboardingPage() {
 }
 
 function OnboardingPageContent() {
-  const { t } = useI18n()
+  const { t, locale: uiLocale = 'en-US' } = useI18n()
+  const countryNames = useMemo(() => new Intl.DisplayNames([uiLocale], { type: 'region' }), [uiLocale])
   const search = Route.useSearch()
   const target = loginReturnTarget(search)
   const returnDestination = loginReturnDestination(target ?? '/', search.lang)
@@ -264,7 +265,7 @@ function OnboardingPageContent() {
       })
       .catch(() => {
         if (!cancelled) {
-          setError('Unable to load onboarding status')
+          setError(t('auth.onboarding.loadError'))
         }
       })
       .finally(() => {
@@ -276,7 +277,7 @@ function OnboardingPageContent() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang])
+  }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang, uiLocale])
 
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) {
@@ -458,7 +459,7 @@ function OnboardingPageContent() {
       if (target || search.lang) loadPage(returnDestination)
       else navigate({ to: '/' })
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'Unable to complete onboarding'
+      const message = cause instanceof Error ? cause.message : t('auth.onboarding.finish.error')
       setError(message)
       setSubmitting(false)
     }
@@ -604,9 +605,9 @@ function OnboardingPageContent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
       <Card className="w-full max-w-4xl">
         <CardHeader>
-          <CardTitle className="text-2xl">Finish organization setup</CardTitle>
+          <CardTitle className="text-2xl">{t('auth.onboarding.finish.title')}</CardTitle>
           <CardDescription>
-            Complete these defaults once so you can immediately create invoices and quotes.
+            {t('auth.onboarding.finish.description')}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleCompleteCloudOnboarding} noValidate>
@@ -618,7 +619,7 @@ function OnboardingPageContent() {
             )}
 
             {statusLoading && (
-              <p className="text-sm text-muted-foreground">Loading onboarding state…</p>
+              <p className="text-sm text-muted-foreground">{t('auth.onboarding.loading')}</p>
             )}
 
             <div className={`grid gap-3 ${runtimeCapabilities?.onboardingAi.enabled ? 'md:grid-cols-2' : ''}`}>
@@ -627,8 +628,8 @@ function OnboardingPageContent() {
                 onClick={() => setMethod('manual')}
                 className={`rounded-lg border p-4 text-left ${method === 'manual' ? 'border-primary bg-primary/5' : 'border-border'}`}
               >
-                <p className="text-sm font-semibold">Manual setup</p>
-                <p className="mt-1 text-xs text-muted-foreground">Fill all required fields directly.</p>
+                <p className="text-sm font-semibold">{t('auth.onboarding.manual.title')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t('auth.onboarding.manual.help')}</p>
               </button>
               {runtimeCapabilities?.onboardingAi.enabled ? (
                 <button
@@ -636,9 +637,9 @@ function OnboardingPageContent() {
                   onClick={() => setMethod('ai')}
                   className={`rounded-lg border p-4 text-left ${method === 'ai' ? 'border-primary bg-primary/5' : 'border-border'}`}
                 >
-                  <p className="text-sm font-semibold">AI setup assistant (cloud only)</p>
+                  <p className="text-sm font-semibold">{t('auth.onboarding.ai.cardTitle')}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    AI mode uses managed cloud credits. You can switch to manual at any time.
+                    {t('auth.onboarding.ai.help')}
                   </p>
                 </button>
               ) : null}
@@ -675,27 +676,28 @@ function OnboardingPageContent() {
 
             <section className="space-y-4 rounded-lg border border-border p-4">
               <div className="space-y-1">
-                <h2 className="text-lg font-semibold">Business basics</h2>
+                <h2 className="text-lg font-semibold">{t('auth.onboarding.basics.title')}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Start with the minimum details that determine which defaults and tax
-                  requirements apply.
+                  {t('auth.onboarding.basics.help')}
                 </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="companyName">Company name</Label>
+                  <Label htmlFor="companyName">{t('auth.onboarding.field.companyName')}</Label>
                   <Input
                     id="companyName"
+                    aria-invalid={hasSubmitted && (!values.companyName.trim())}
                     value={values.companyName}
                     onChange={(e) => updateValue('companyName', e.target.value)}
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="companyEmail">Billing email</Label>
+                  <Label htmlFor="companyEmail">{t('auth.onboarding.field.companyEmail')}</Label>
                   <Input
                     id="companyEmail"
+                    aria-invalid={hasSubmitted && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.companyEmail.trim()))}
                     type="email"
                     value={values.companyEmail}
                     onChange={(e) => updateValue('companyEmail', e.target.value)}
@@ -703,16 +705,17 @@ function OnboardingPageContent() {
                   />
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2">
-                  <Label htmlFor="companyAddress">Company address</Label>
+                  <Label htmlFor="companyAddress">{t('auth.onboarding.field.companyAddress')}</Label>
                   <Input
                     id="companyAddress"
+                    aria-invalid={hasSubmitted && (!values.companyAddress.trim())}
                     value={values.companyAddress}
                     onChange={(e) => updateValue('companyAddress', e.target.value)}
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="countryCode">Country</Label>
+                  <Label htmlFor="countryCode">{t('auth.onboarding.field.countryCode')}</Label>
                   <select
                     id="countryCode"
                     className="h-9 rounded-md border bg-background px-3 text-sm"
@@ -723,7 +726,7 @@ function OnboardingPageContent() {
                   >
                     {countryOptionsIncluding(values.countryCode).map((country) => (
                       <option key={country.code} value={country.code}>
-                        {country.label}
+                        {countryNames.of(country.code) ?? country.label}
                       </option>
                     ))}
                   </select>
@@ -731,7 +734,7 @@ function OnboardingPageContent() {
               </div>
 
               <div className="space-y-2">
-                <Label>How do you invoice?</Label>
+                <Label>{t('auth.onboarding.identity.label')}</Label>
                 <div className="grid gap-3 md:grid-cols-2">
                   <button
                     type="button"
@@ -743,9 +746,9 @@ function OnboardingPageContent() {
                     }`}
                     onClick={() => applySuggestedDefaults(values.countryCode, 'individual')}
                   >
-                    <p className="text-sm font-semibold">I invoice as an individual</p>
+                    <p className="text-sm font-semibold">{t('auth.onboarding.identity.individual')}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Use this when you do not invoice through a registered company.
+                      {t('auth.onboarding.identity.individualHelp')}
                     </p>
                   </button>
                   <button
@@ -761,11 +764,10 @@ function OnboardingPageContent() {
                     }
                   >
                     <p className="text-sm font-semibold">
-                      I invoice through a registered business
+                      {t('auth.onboarding.identity.business')}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Use your company defaults and any tax identity the selected setup
-                      requires.
+                      {t('auth.onboarding.identity.businessHelp')}
                     </p>
                   </button>
                 </div>
@@ -774,17 +776,15 @@ function OnboardingPageContent() {
 
             <section className="space-y-4 rounded-lg border border-border p-4">
               <div className="space-y-1">
-                <h2 className="text-lg font-semibold">Confirm defaults</h2>
+                <h2 className="text-lg font-semibold">{t('auth.onboarding.defaults.title')}</h2>
                 <p className="text-sm text-muted-foreground">
-                  We suggested these defaults from your country and business type. Review
-                  them now and adjust anything that should work differently for your
-                  invoices.
+                  {t('auth.onboarding.defaults.help')}
                 </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="locale">Locale</Label>
+                  <Label htmlFor="locale">{t('auth.onboarding.field.locale')}</Label>
                   <select
                     id="locale"
                     className="h-9 rounded-md border bg-background px-3 text-sm"
@@ -793,22 +793,24 @@ function OnboardingPageContent() {
                   >
                     {localeOptionsIncluding(values.locale).map((locale) => (
                       <option key={locale} value={locale}>
-                        {locale}
+                        {locale === 'da-DK' ? t('auth.onboarding.locale.da') : locale === 'en-US' ? t('auth.onboarding.locale.en') : locale}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="timezone">Timezone</Label>
+                  <Label htmlFor="timezone">{t('auth.onboarding.field.timezone')}</Label>
                   <Input
                     id="timezone"
+                    aria-invalid={hasSubmitted && (!values.timezone.trim())}
                     value={values.timezone}
                     onChange={(e) => updateValue('timezone', e.target.value)}
                     required
                   />
+                  {values.timezone === 'Europe/Copenhagen' && <p className="text-xs text-muted-foreground">{t('auth.onboarding.city.copenhagen')}</p>}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="defaultCurrency">Default currency</Label>
+                  <Label htmlFor="defaultCurrency">{t('auth.onboarding.field.defaultCurrency')}</Label>
                   <select
                     id="defaultCurrency"
                     className="h-9 rounded-md border bg-background px-3 text-sm"
@@ -817,13 +819,13 @@ function OnboardingPageContent() {
                   >
                     {CURRENCIES.map((currency) => (
                       <option key={currency.value} value={currency.value}>
-                        {currency.label}
+                        {t(`auth.onboarding.currency.${currency.value}`)}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="taxRegime">Tax setup</Label>
+                  <Label htmlFor="taxRegime">{t('auth.onboarding.field.taxRegime')}</Label>
                   <select
                     id="taxRegime"
                     className="h-9 rounded-md border bg-background px-3 text-sm"
@@ -832,7 +834,7 @@ function OnboardingPageContent() {
                   >
                     {TAX_REGIMES.map((regime) => (
                       <option key={regime.value} value={regime.value}>
-                        {regime.label}
+                        {regime.value === 'eu_vat' ? t(values.countryCode === 'DK' ? 'auth.onboarding.regime.euVat' : 'auth.onboarding.regime.euVatGeneric') : regime.value === 'us_sales_tax' ? t('auth.onboarding.regime.usSalesTax') : t('auth.onboarding.regime.custom')}
                       </option>
                     ))}
                   </select>
@@ -842,10 +844,9 @@ function OnboardingPageContent() {
 
             <section className="space-y-4 rounded-lg border border-border p-4">
               <div className="space-y-1">
-                <h2 className="text-lg font-semibold">Relevant compliance details</h2>
+                <h2 className="text-lg font-semibold">{t('auth.onboarding.compliance.title')}</h2>
                 <p className="text-sm text-muted-foreground">
-                  We only ask for extra tax identifiers when the selected setup needs
-                  them.
+                  {t('auth.onboarding.compliance.help')}
                 </p>
               </div>
 
@@ -853,47 +854,49 @@ function OnboardingPageContent() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="primaryTaxId">
-                      {onboardingRules.primaryTaxIdCopy.label}
+                      {uiLocale.startsWith('da') ? values.countryCode === 'DK' ? t('auth.onboarding.primary.dkLabel') : t('auth.onboarding.primary.euLabel') : onboardingRules.primaryTaxIdCopy.label}
                     </Label>
                     <Input
                       id="primaryTaxId"
+                      aria-invalid={hasSubmitted && (onboardingRules.requirePrimaryTaxId && !values.primaryTaxId.trim())}
                       value={values.primaryTaxId}
                       onChange={(e) => updateValue('primaryTaxId', e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      {onboardingRules.primaryTaxIdCopy.help}
+                      {uiLocale.startsWith('da') ? values.countryCode === 'DK' ? t('auth.onboarding.primary.dkHelp') : t('auth.onboarding.primary.euHelp') : onboardingRules.primaryTaxIdCopy.help}
                     </p>
                   </div>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  No additional tax ID is needed for this setup right now.
+                  {t('auth.onboarding.compliance.none')}
                 </p>
               )}
             </section>
 
             <details className="rounded-lg border border-border p-4">
               <summary className="cursor-pointer list-none text-lg font-semibold">
-                Advanced defaults
+                {t('auth.onboarding.advanced.title')}
               </summary>
               <p className="mt-2 text-sm text-muted-foreground">
-                These values are prefilled so you can start immediately, but you can
-                still change them before you finish onboarding.
+                {t('auth.onboarding.advanced.help')}
               </p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="invoicePrefix">Invoice prefix</Label>
+                  <Label htmlFor="invoicePrefix">{t('auth.onboarding.field.invoicePrefix')}</Label>
                   <Input
                     id="invoicePrefix"
+                    aria-invalid={hasSubmitted && (!values.invoicePrefix.trim())}
                     value={values.invoicePrefix}
                     onChange={(e) => updateValue('invoicePrefix', e.target.value.toUpperCase())}
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="quotePrefix">Quote prefix</Label>
+                  <Label htmlFor="quotePrefix">{t('auth.onboarding.field.quotePrefix')}</Label>
                   <Input
                     id="quotePrefix"
+                    aria-invalid={hasSubmitted && (!values.quotePrefix.trim())}
                     value={values.quotePrefix}
                     onChange={(e) => updateValue('quotePrefix', e.target.value.toUpperCase())}
                     required
@@ -905,14 +908,14 @@ function OnboardingPageContent() {
                     checked={values.pricesIncludeTax}
                     onChange={(e) => updateValue('pricesIncludeTax', e.target.checked)}
                   />
-                  Prices include tax
+                  {t('auth.onboarding.pricesIncludeTax')}
                 </label>
               </div>
             </details>
           </CardContent>
           <CardFooter className="pt-3">
             <Button type="submit" className="w-full" disabled={submitting || statusLoading}>
-              {submitting ? 'Finishing onboarding…' : 'Finish onboarding'}
+              {submitting ? t('auth.onboarding.finish.submitting') : t('auth.onboarding.finish.submit')}
             </Button>
           </CardFooter>
         </form>

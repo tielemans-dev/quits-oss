@@ -6,6 +6,10 @@ import { pdf } from "@react-pdf/renderer"
 import { prisma } from "../../../lib/db"
 import { buildInvoiceEmailContent } from "../../../lib/email"
 import { InvoicePdfDocument } from "../../../lib/invoice-pdf"
+import { confirmOnboardingV2 } from "../../../lib/onboarding/confirm-v2"
+import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
+import { buildSellerSnapshot } from "../../../domain/documents/snapshots"
+import { buildSellerParty } from "../../../lib/exports/einvoice"
 import { appRouter } from "../../router"
 import { ensureTestMembership } from "../../../test-utils/membership"
 
@@ -220,5 +224,38 @@ describeIfDatabase("settings/tax-id/localization integration", () => {
     expect(pdfString).toContain("<2d323032362d303031>")
     expect(pdfString).toContain("<6d6172> -40 <74732032303236>")
     expect(pdfString).toContain("<312e3235302c3530a0>")
+  })
+})
+
+describeIfDatabase("Danish VAT Settings invariants", () => {
+  it("keeps confirmed CVR and paired VAT synchronized while retaining historical snapshots and other IDs", async () => {
+    const { orgId, caller } = await createOrgWithCaller()
+    try {
+      await confirmOnboardingV2(orgId, confirmOnboardingV2Schema.parse({ companyName: "Confirmed ApS", companyAddress: "Testvej 1, 1000 København", companyForm: "ApS", momsRegistered: true, cvr: "24256790", vatId: "DK24256790", idempotencyKey: randomUUID() }), "settings@example.test")
+      await prisma.organizationTaxId.createMany({ data: [
+        { organizationId: orgId, scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false },
+        { organizationId: orgId, scheme: "other", value: "other-id", countryCode: "DK", isPrimary: false },
+      ] })
+      const before = await prisma.organizationTaxId.findMany({ where: { organizationId: orgId } })
+      const oldSnapshot = buildSellerSnapshot(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } }), before)
+      const historical = await prisma.invoice.create({ data: { organizationId: orgId, contactId: (await prisma.contact.create({ data: { organizationId: orgId, name: "Buyer" } })).id, status: "sent", number: "INV-HISTORICAL", dueDate: new Date("2026-11-01"), subtotalNet: 100, totalGross: 125, sellerSnapshot: JSON.parse(JSON.stringify(oldSnapshot)) } })
+      await caller.settings.update({ primaryTaxId: "87654321", primaryTaxIdScheme: "DK_CVR" })
+      const after = await prisma.organizationTaxId.findMany({ where: { organizationId: orgId } })
+      expect(after.find(id => id.isPrimary)).toMatchObject({ scheme: "DK_CVR", value: "87654321" })
+      expect(after.find(id => id.scheme === "vat" && id.countryCode === "DK")).toMatchObject({ value: "DK87654321", isPrimary: false })
+      expect(after.find(id => id.countryCode === "DE")?.value).toBe("DE123456789")
+      expect(after.find(id => id.scheme === "other")?.value).toBe("other-id")
+      const futureSnapshot = buildSellerSnapshot(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } }), after.filter(id => id.countryCode === "DK"))
+      expect(buildSellerParty({ snapshot: futureSnapshot, settings: null, taxIds: [], documentCountryCode: "DK" }).vatId).toBe("DK87654321")
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: historical.id } })).sellerSnapshot).toEqual(JSON.parse(JSON.stringify(oldSnapshot)))
+    } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
+  })
+  it.each([{ countryCode: "DE" }, { taxRegime: "custom" }] as const)("clears registration on scope departure %o", async departure => {
+    const { orgId, caller } = await createOrgWithCaller()
+    try {
+      await caller.settings.update({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: true })
+      await caller.settings.update(departure)
+      expect((await caller.settings.get()).momsRegistered).toBeNull()
+    } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
   })
 })
