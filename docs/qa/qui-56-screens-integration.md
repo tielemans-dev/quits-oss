@@ -1,3 +1,55 @@
+# PR122 exact PR121 propagation, 2026-10-13
+
+PR122 remains draft on `qui-56-screens`, based on `qui-56-confirm-v2`.
+This normal merge preserves both parents:
+
+- First parent: PR122 `5731c3fd6e2848ae636df0714808f409f583f1bd`.
+- Second parent: exact PR121 `49915d61904c5662a06eff51d5274b21dbaba75d`.
+- Backup: `refs/backup/pr122-before-exact121-20261013-5731c3fd`, pointing to the first parent.
+
+Local and remote heads matched before mutation, and the worktree was clean.
+The merge had no conflicts. All seven incoming code/test files match PR121 exactly.
+Quotes now validate refreshed actual seller/buyer identities before numbering or
+other issuance effects. Agreements use the shared non-VAT registration guard
+before issuance and render preparation, including totals, deliverables, deposits
+and nominal rates whose tax rounds to zero. Runtime capability patches preserve
+all prior onboarding fields and explicit false overrides.
+
+The existing invoice guard, frozen credit behavior, counter headroom and bounded
+failure-only advisory diagnostics remain in the ancestry. PR122 onboarding screens,
+Ja/Nej persistence, manual CVR fallback, year defaults, final identity binding,
+partial Link mock, SSR shared import promise and capture workflow are unchanged.
+All flows remain in app screens. Hosted behavior uses flags and OSS extensions;
+self-hosted installations have no hosted gates. No private cloud code is included.
+
+Scoped one-thread lint and diff whitespace checks pass. All 91 targeted tests across ten unit/route files pass with one worker,
+including offer guards, runtime extensions, onboarding, Link route defaults,
+frozen credit PDF parties and invoice due-date defaults. No local
+install, typecheck, build, full suite, browser, server, database or migration runs
+are part of this propagation. Full CI and authenticated capture remain CI gates.
+The parent's six green executed CI jobs and clean review of exact `49915d61` are
+parent evidence, not new-head PR122 validation.
+
+The existing PR122-only CI workflow must generate fresh exact-head capture
+evidence after this push. Historical artifact `11777314904` captures before main
+`38a265` and after `5731c3fd`; it contains 32 images with real email authentication.
+It is not evidence for this new merge. Its CVR/billing providers are synthetic,
+manual captures precede confirmation, and it does not prove completed save/reload,
+production registry availability or hosted trial provisioning. Accept fresh
+capture only after assertions and the complete eight-before/24-after manifest
+and image hashes pass. Ines UI approval remains required; the PR stays draft.
+
+The stack remains PR121, PR122, PR129, PR132. PR129's independent writer is
+repairing blocking Codex P1 and money/VAT P2 findings. Do not propagate this head
+to PR129 until that writer completes. The contextual `unclassified_zero` gate
+belongs to PR129. Hosted non-VAT enablement remains gated on QUI-62.
+No merge to main, deployment, release or production mutation is authorized here.
+
+The sections below are historical records of earlier integrations and captures.
+Their validations do not certify the current head.
+
+---
+
 # PR122 validated-parent integration
 
 PR122 remains draft. This integration adds exact validated PR121 commit

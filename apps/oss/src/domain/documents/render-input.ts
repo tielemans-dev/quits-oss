@@ -6,7 +6,7 @@ import { documentVatSummary } from "./vat-summary"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
 import { formatIsoDate } from "../../lib/exports/format"
 import { withNonVatStatement } from "../../lib/documents/non-vat-note"
-import { requireVatIssuance } from "./vat-issuance"
+import { requireSellerVatRegistration, requireVatIssuance } from "./vat-issuance"
 import { toDecimal } from "../../lib/exports/format"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { invoiceMoneySnapshot, creditMoneySnapshot, type InvoiceMoneySnapshot } from "./money-snapshot"
@@ -176,8 +176,10 @@ export const prospectiveRenderInput = (input: {
   if (!input.preview) yield* requireDepositsEnabled(agreement.deliverables)
   const commandInput = input.commandInput as { recipient?: string }
   const recipient = input.method === "manual" ? commandInput.recipient ?? null : agreement.contact.email?.trim() || null
+  const sellerSnapshot = buildSellerSnapshot(settings, sellerTaxIds)
+  if (!input.preview) yield* requireSellerVatRegistration({ sellerSnapshot, totalTax: agreement.totalTax, items: agreement.deliverables })
   const snapshot = buildOfferSnapshot({ ...agreement,
-    sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds), buyerSnapshot: buildBuyerSnapshot(agreement.contact) })
+    sellerSnapshot, buyerSnapshot: buildBuyerSnapshot(agreement.contact) })
   // The offer's issuance date remains unchanged on an unchanged retry, just as before A3a.
   const issuedAt = agreement.offerSnapshotHash === hashOfferSnapshot(snapshot) && agreement.issuedToEmail === recipient
     ? agreement.issueDate?.toISOString() ?? base.issuedAt : base.issuedAt
