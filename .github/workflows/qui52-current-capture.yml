@@ -25,6 +25,9 @@ permissions:
 
 jobs:
   capture:
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -48,9 +51,14 @@ jobs:
         run: bunx playwright install --with-deps chromium
       - name: Prepare disposable PostgreSQL
         env:
-          POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          POSTGRES_IMAGE: ghcr.io/tielemans-dev/ci-postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
         run: |
-          docker pull "$POSTGRES_IMAGE"
+          auth_dir=$(mktemp -d "$RUNNER_TEMP/ghcr-auth.XXXXXX")
+          trap 'rm -rf "$auth_dir"' EXIT
+          printf '%s' "$GHCR_TOKEN" | docker --config "$auth_dir" login ghcr.io --username "$GHCR_USER" --password-stdin
+          docker --config "$auth_dir" pull "$POSTGRES_IMAGE"
           docker tag "$POSTGRES_IMAGE" postgres:16-alpine
       - name: Capture current-head UI with MOCK data, one worker
         working-directory: apps/oss

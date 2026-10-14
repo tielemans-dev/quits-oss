@@ -127,6 +127,53 @@ class CiPathsTest
     assert_equal 'test "$CI_RESULT" = success', verify['run']
   end
 
+  def test_postgres_digest_and_authentication
+    digest = 'sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea'
+    image = "ghcr.io/tielemans-dev/ci-postgres:16.15-alpine3.24@#{digest}"
+    services = 0
+    pulls = 0
+    Dir.glob("#{ROOT}/.github/workflows/*.yml").each do |path|
+      workflow = YAML.load_file(path)
+      workflow.fetch('jobs').each do |id, job|
+        postgres = job.dig('services', 'postgres')
+        preparations = job.fetch('steps').select { |step| step.dig('env', 'POSTGRES_IMAGE') }
+        next unless postgres || !preparations.empty?
+        assert_equal({ 'contents' => 'read', 'packages' => 'read' }, job.fetch('permissions'))
+        if postgres
+          services += 1
+          assert_equal image, postgres.fetch('image')
+          assert_equal({ 'username' => '${{ github.actor }}', 'password' => '${{ secrets.GITHUB_TOKEN }}' },
+                       postgres.fetch('credentials'))
+          database = { 'quote-evidence' => 'qui65', 'qui56-evidence' => 'qui56_screens_20261012',
+                       'onboarding-pr121-evidence' => 'onb121', 'seller-vat-browser' => 'qui62_oss_browser' }.fetch(id, 'yaip')
+          assert_equal({ 'POSTGRES_USER' => 'postgres', 'POSTGRES_PASSWORD' => 'postgres',
+                         'POSTGRES_DB' => database }, postgres.fetch('env'))
+          assert_equal ['5432:5432'], postgres.fetch('ports')
+          assert_equal "--health-cmd \"pg_isready -U postgres -d #{database}\" --health-interval 10s --health-timeout 5s --health-retries 5",
+                       postgres.fetch('options')
+        end
+        preparations.each do |step|
+          pulls += 1
+          assert_equal image, step.fetch('env').fetch('POSTGRES_IMAGE')
+          assert_equal '${{ secrets.GITHUB_TOKEN }}', step.fetch('env').fetch('GHCR_TOKEN')
+          assert_equal '${{ github.actor }}', step.fetch('env').fetch('GHCR_USER')
+          script = step.fetch('run')
+          assert_includes script, '--password-stdin'
+          assert_includes script, "trap 'rm -rf \"$auth_dir\"' EXIT"
+          login = script.index('login ghcr.io')
+          pull = script.index('docker --config "$auth_dir" pull "$POSTGRES_IMAGE"')
+          assert login && pull && login < pull, 'Authenticate before pulling'
+          refute script.include?('public.ecr.aws')
+          refute script.include?('|| true')
+          _, stderr, status = Open3.capture3('bash', '-n', stdin_data: script)
+          assert status.success?, stderr
+        end
+      end
+    end
+    assert_equal 7, services
+    assert_equal 3, pulls
+  end
+
   def classify(workflow, event, paths, diff_failure: false)
     Dir.mktmpdir('ci-paths-') do |dir|
       File.binwrite("#{dir}/fixture", paths.map { |path| "#{path}\0" }.join)
