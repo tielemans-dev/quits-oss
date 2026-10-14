@@ -1,3 +1,10 @@
+import type { Prisma } from "../../../generated/prisma/client"
+import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
+import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
+import { actorCan } from "../../domain/actor"
+import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import { confirmOnboardingV2 } from "../../lib/onboarding/confirm-v2"
+import { DANISH_ONBOARDING_V2_DEFAULTS, confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
 import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
@@ -14,7 +21,9 @@ import { evaluateOnboardingReadiness } from "../../lib/onboarding/readiness"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode } from "../../lib/compliance/registry"
-import { authorizedProcedure, router } from "../init"
+import { searchOwnCvr } from "../../lib/onboarding/search-cvr"
+import { getCvrLookupProvider } from "../../lib/runtime/services"
+import { authorizedProcedure, protectedProcedure, router } from "../init"
 import { billingProvider } from "../../lib/billing"
 
 const onboardingInputSchema = z.object({
@@ -69,12 +78,8 @@ const completeManualInputSchema = z.object({
 
 type OnboardingSnapshot = Awaited<ReturnType<typeof loadOnboardingSnapshot>>
 
-async function loadOnboardingSnapshot(organizationId: string) {
-  const settings = await prisma.orgSettings.upsert({
-    where: { organizationId },
-    update: {},
-    create: { organizationId },
-    select: {
+async function loadOnboardingSnapshot(organizationId: string, db: Prisma.TransactionClient = prisma) {
+  const select = {
       organizationId: true,
       onboardingStatus: true,
       onboardingMethod: true,
@@ -95,16 +100,39 @@ async function loadOnboardingSnapshot(organizationId: string) {
       invoiceNextNum: true,
       quotePrefix: true,
       quoteNextNum: true,
-    },
-  })
+      bankRegNumber: true,
+      bankAccountNumber: true,
+      bankIban: true,
+    } as const
+  const v2Enabled = getRuntimeCapabilities().onboardingV2?.enabled
+  if (!v2Enabled) await initializeDkSettings(organizationId, db)
+  const settings = v2Enabled
+    ? await db.orgSettings.findUnique({ where: { organizationId }, select }) ?? {
+      ...buildDkSettingsDefaults(),
+      organizationId,
+      onboardingStatus: "not_started",
+      onboardingMethod: null,
+      onboardingProfile: null,
+      onboardingInvoicingIdentity: null,
+      onboardingVersion: null,
+      onboardingCompletedAt: null,
+      companyName: null,
+      companyAddress: null,
+      companyEmail: null,
+      bankRegNumber: null,
+      bankAccountNumber: null,
+      bankIban: null,
+    }
+    : await db.orgSettings.findUniqueOrThrow({ where: { organizationId }, select })
 
-  const primaryTaxId = await prisma.organizationTaxId.findFirst({
+  const primaryTaxId = await db.organizationTaxId.findFirst({
     where: { organizationId },
     orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
     select: { value: true, scheme: true },
   })
 
   const readiness = evaluateOnboardingReadiness({
+    onboardingVersion: settings.onboardingVersion,
     countryCode: settings.countryCode,
     invoicingIdentity: settings.onboardingInvoicingIdentity,
     locale: settings.locale,
@@ -148,6 +176,7 @@ async function loadOnboardingSnapshot(organizationId: string) {
   return {
     cloudState,
     readiness,
+    bankMissing: !(settings.bankIban || (settings.bankRegNumber && settings.bankAccountNumber)),
     values: {
       companyName: settings.companyName,
       companyAddress: settings.companyAddress,
@@ -175,6 +204,7 @@ function toOnboardingResponse(snapshot: OnboardingSnapshot) {
     status: snapshot.cloudState.status,
     isComplete: snapshot.cloudState.isComplete,
     missing: snapshot.readiness.missing,
+    bankMissing: snapshot.bankMissing,
     values: snapshot.values,
     profile: snapshot.cloudState.profile,
     version: snapshot.cloudState.version,
@@ -182,7 +212,60 @@ function toOnboardingResponse(snapshot: OnboardingSnapshot) {
   }
 }
 
+function assertOnboardingV2Enabled() {
+  if (!isCloudDistribution || !getRuntimeCapabilities().onboardingV2?.enabled) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Onboarding v2 is disabled" })
+  }
+}
+
+/** Use confirmation's lock order, including organizations without a settings row. */
+async function legacyOnboardingWrite(organizationId: string, write: (tx: Prisma.TransactionClient, snapshot: OnboardingSnapshot) => Promise<void>) {
+  return prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
+    await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
+    const snapshot = await loadOnboardingSnapshot(organizationId, tx)
+    if (snapshot.cloudState.version === 2 && snapshot.cloudState.status === "complete") {
+      return toOnboardingResponse(snapshot)
+    }
+    await write(tx, snapshot)
+    return toOnboardingResponse(await loadOnboardingSnapshot(organizationId, tx))
+  }, { timeout: 60_000 })
+}
+
 export const onboardingRouter = router({
+  // Reading v2 defaults never creates settings or saves a draft.
+  getDefaultsV2: authorizedProcedure("settings:read").query(() => {
+    assertOnboardingV2Enabled()
+    return DANISH_ONBOARDING_V2_DEFAULTS
+  }),
+  confirmV2: authorizedProcedure("settings:update")
+    .input(z.preprocess<z.output<typeof confirmOnboardingV2Schema>, typeof confirmOnboardingV2Schema, z.input<typeof confirmOnboardingV2Schema>>((value) => {
+      const result = (getRuntimeCapabilities().sellerVatConfirmation?.enabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(value)
+      if (!result.success) {
+        const key = result.error.issues.some(issue => issue.path[0] === "cvr") ? "cvr.invalid" : "save.failed"
+        throw new TRPCError({ code: "BAD_REQUEST", message: key })
+      }
+      return result.data
+    }, confirmOnboardingV2Schema))
+    .mutation(({ ctx, input }) => {
+      assertOnboardingV2Enabled()
+      if (input.catalogSuggestions.length && !actorCan(ctx.actor, "catalog:create")) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Your role does not allow catalog:create" })
+      }
+      return confirmOnboardingV2(ctx.organizationId, input, ctx.user.email, { organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request })
+    }),
+
+  // Lookup runs before an organization exists. The hosted runtime supplies the provider.
+  searchCvr: protectedProcedure
+    .input(z.object({ q: z.string().trim().min(3).max(120) }))
+    .query(({ ctx, input }) =>
+      searchOwnCvr({
+        query: input.q,
+        cloud: isCloudDistribution,
+        userId: ctx.user.id,
+        lookup: getCvrLookupProvider(),
+      }),
+    ),
   getStatus: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     if (!isCloudDistribution) {
       throw new TRPCError({
@@ -233,55 +316,56 @@ export const onboardingRouter = router({
       if ("quotePrefix" in input) settingsUpdateData.quotePrefix = input.quotePrefix
       if ("quoteNextNum" in input) settingsUpdateData.quoteNextNum = input.quoteNextNum
 
-      await prisma.$transaction(async tx => {
+      return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
+        if (input.countryCode && input.countryCode !== snapshot.values.countryCode) {
+          settingsUpdateData.taxRate = input.countryCode === "DK" ? 25 : null
+        }
         settingsUpdateData.baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, { countryCode: settingsUpdateData.countryCode as string | undefined })
         await tx.orgSettings.upsert({
-        where: { organizationId: ctx.organizationId },
-        update: settingsUpdateData,
-        create: {
-          organizationId: ctx.organizationId,
-          ...settingsUpdateData,
-        },
-      })
-      })
+          where: { organizationId: ctx.organizationId },
+          update: settingsUpdateData,
+          create: {
+            organizationId: ctx.organizationId,
+            ...buildDkSettingsDefaults(),
+            ...settingsUpdateData,
+          },
+        })
 
-      if ("primaryTaxId" in input) {
-        const trimmedTaxId = input.primaryTaxId?.trim() ?? ""
-        if (!trimmedTaxId) {
-          await prisma.organizationTaxId.deleteMany({
-            where: { organizationId: ctx.organizationId },
-          })
-        } else {
-          const existing = await prisma.organizationTaxId.findFirst({
-            where: { organizationId: ctx.organizationId },
-            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-            select: { id: true },
-          })
-          const scheme = input.primaryTaxIdScheme?.trim() || "vat"
-          if (existing) {
-            await prisma.organizationTaxId.update({
-              where: { id: existing.id },
-              data: {
-                value: trimmedTaxId,
-                scheme,
-                isPrimary: true,
-              },
+        if ("primaryTaxId" in input) {
+          const trimmedTaxId = input.primaryTaxId?.trim() ?? ""
+          if (!trimmedTaxId) {
+            await tx.organizationTaxId.deleteMany({
+              where: { organizationId: ctx.organizationId },
             })
           } else {
-            await prisma.organizationTaxId.create({
-              data: {
-                organizationId: ctx.organizationId,
-                value: trimmedTaxId,
-                scheme,
-                isPrimary: true,
-              },
+            const existing = await tx.organizationTaxId.findFirst({
+              where: { organizationId: ctx.organizationId },
+              orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+              select: { id: true },
             })
+            const scheme = input.primaryTaxIdScheme?.trim() || "vat"
+            if (existing) {
+              await tx.organizationTaxId.update({
+                where: { id: existing.id },
+                data: {
+                  value: trimmedTaxId,
+                  scheme,
+                  isPrimary: true,
+                },
+              })
+            } else {
+              await tx.organizationTaxId.create({
+                data: {
+                  organizationId: ctx.organizationId,
+                  value: trimmedTaxId,
+                  scheme,
+                  isPrimary: true,
+                },
+              })
+            }
           }
         }
-      }
-
-      const snapshot = await loadOnboardingSnapshot(ctx.organizationId)
-      return toOnboardingResponse(snapshot)
+      })
     }),
 
   completeManual: authorizedProcedure("settings:update")
@@ -294,29 +378,25 @@ export const onboardingRouter = router({
         })
       }
 
-      const snapshot = await loadOnboardingSnapshot(ctx.organizationId)
-
-      if (!snapshot.readiness.isComplete) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `Onboarding is incomplete. Missing: ${snapshot.readiness.missing.join(", ")}`,
+      return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
+        if (!snapshot.readiness.isComplete) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `Onboarding is incomplete. Missing: ${snapshot.readiness.missing.join(", ")}`,
+          })
+        }
+        // The provider owns durable eligibility and retries across transaction rollback.
+        await billingProvider.startTrial?.(ctx.organizationId)
+        await tx.orgSettings.update({
+          where: { organizationId: ctx.organizationId },
+          data: {
+            onboardingStatus: "complete",
+            onboardingMethod: input.method,
+            onboardingVersion: CLOUD_ONBOARDING_VERSION,
+            onboardingCompletedAt: new Date(),
+          },
         })
-      }
-
-      // Hosted distributions may provision a trial. The provider owns eligibility and retries.
-      await billingProvider.startTrial?.(ctx.organizationId)
-
-      await prisma.orgSettings.update({
-        where: { organizationId: ctx.organizationId },
-        data: {
-          onboardingStatus: "complete",
-          onboardingMethod: input.method,
-          onboardingVersion: CLOUD_ONBOARDING_VERSION,
-          onboardingCompletedAt: new Date(),
-        },
       })
-
-      return toOnboardingResponse(await loadOnboardingSnapshot(ctx.organizationId))
     }),
 
   complete: authorizedProcedure("settings:update").input(onboardingInputSchema).mutation(async ({ ctx, input }) => {
@@ -327,40 +407,38 @@ export const onboardingRouter = router({
       })
     }
 
-    const snapshot = await loadOnboardingSnapshot(ctx.organizationId)
-    if (snapshot.cloudState.status === "complete") {
-      return toOnboardingResponse(snapshot)
-    }
+    return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
+      if (snapshot.cloudState.status === "complete") return
 
-    const defaults = getProfileDefaults(input.profile)
+      const defaults = getProfileDefaults(input.profile, new Date(), snapshot.values.countryCode)
 
-    await prisma.orgSettings.upsert({
-      where: { organizationId: ctx.organizationId },
-      update: {
-        onboardingStatus: "in_progress",
-        onboardingMethod: "manual",
-        onboardingProfile: defaults.onboardingProfile,
-        onboardingVersion: CLOUD_ONBOARDING_VERSION,
-        onboardingCompletedAt: null,
-        taxRegime: defaults.taxRegime,
-        pricesIncludeTax: defaults.pricesIncludeTax,
-        invoicePrefix: defaults.invoicePrefix,
-        quotePrefix: defaults.quotePrefix,
-      },
-      create: {
-        organizationId: ctx.organizationId,
-        taxRegime: defaults.taxRegime,
-        pricesIncludeTax: defaults.pricesIncludeTax,
-        invoicePrefix: defaults.invoicePrefix,
-        quotePrefix: defaults.quotePrefix,
-        onboardingStatus: "in_progress",
-        onboardingMethod: "manual",
-        onboardingProfile: defaults.onboardingProfile,
-        onboardingVersion: CLOUD_ONBOARDING_VERSION,
-        onboardingCompletedAt: null,
-      },
+      await tx.orgSettings.upsert({
+        where: { organizationId: ctx.organizationId },
+        update: {
+          onboardingStatus: "in_progress",
+          onboardingMethod: "manual",
+          onboardingProfile: defaults.onboardingProfile,
+          onboardingVersion: CLOUD_ONBOARDING_VERSION,
+          onboardingCompletedAt: null,
+          taxRegime: defaults.taxRegime,
+          pricesIncludeTax: defaults.pricesIncludeTax,
+          invoicePrefix: defaults.invoicePrefix,
+          quotePrefix: defaults.quotePrefix,
+        },
+        create: {
+          organizationId: ctx.organizationId,
+          ...buildDkSettingsDefaults(),
+          taxRegime: defaults.taxRegime,
+          pricesIncludeTax: defaults.pricesIncludeTax,
+          invoicePrefix: defaults.invoicePrefix,
+          quotePrefix: defaults.quotePrefix,
+          onboardingStatus: "in_progress",
+          onboardingMethod: "manual",
+          onboardingProfile: defaults.onboardingProfile,
+          onboardingVersion: CLOUD_ONBOARDING_VERSION,
+          onboardingCompletedAt: null,
+        },
+      })
     })
-
-    return toOnboardingResponse(await loadOnboardingSnapshot(ctx.organizationId))
   }),
 })

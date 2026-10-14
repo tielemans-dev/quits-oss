@@ -9,6 +9,7 @@ import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { agreementExpiresAt } from "./expiry"
 import { buildOfferSnapshot, hashOfferSnapshot } from "./snapshot"
+import { requireSellerVatIssuance } from "../documents/vat-issuance"
 import { requireRecipientEmail } from "../documents/invoice-email"
 
 export const agreementInclude = {
@@ -78,6 +79,7 @@ export const prospectiveIssuance = (
     )
     const { settings, sellerTaxIds } = yield* loadDocumentContext
     const sellerSnapshot = buildSellerSnapshot(settings, sellerTaxIds)
+    yield* requireSellerVatIssuance({ ...draft, sellerSnapshot, items: draft.deliverables.filter(line => line.status !== "cancelled") })
     const buyerSnapshot = buildBuyerSnapshot(contact)
     const snapshot = buildOfferSnapshot({ ...draft, sellerSnapshot, buyerSnapshot })
     const hash = hashOfferSnapshot(snapshot)

@@ -1,3 +1,6 @@
+import { withoutNonVatStatement } from "../../lib/documents/non-vat-presentation"
+import { nonVatStatement } from "../../lib/documents/non-vat-note"
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../lib/documents/seller-vat"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { buildPaymentDetailsBlock } from "../../lib/payment-details-block"
 import type { SellerSnapshot, BuyerSnapshot } from "@quits/contracts/documents"
@@ -20,6 +23,7 @@ type PublicInvoiceContact = {
 }
 
 type PublicInvoiceItem = {
+  taxRate?: number
   id: string
   description: string
   quantity: Decimalish
@@ -49,6 +53,7 @@ type PublicInvoice = {
   balanceDue?: number
   totalTax: Decimalish
   subtotalNet: Decimalish
+  taxRegime?: string
   currency: string
   /** The timezone the document's dates are shown in, as its PDF does. */
   timezone: string
@@ -114,9 +119,10 @@ function PublicInvoiceDocument({
 }) {
   const { t, locale } = useI18n()
   const { invoice, paymentState, seller } = state
+  const momsRegistered = sellerVatPresentationStatus(invoice.sellerSnapshot?.momsRegistered, invoice.taxRegime)
   const bankTransfer = hasInvoiceBankTransfer(invoice.sellerSnapshot)
   const paymentDetails = buildPaymentDetailsBlock(
-    { bankAccount: invoice.sellerSnapshot?.bankAccount, note: invoice.sellerSnapshot?.paymentNote },
+    { bankAccount: invoice.sellerSnapshot?.bankAccount, note: withoutNonVatStatement(invoice.sellerSnapshot?.paymentNote, momsRegistered, invoice.taxRegime) },
     invoice.paymentReference?.trim() || invoice.number,
     locale
   )
@@ -163,7 +169,7 @@ function PublicInvoiceDocument({
             <div className="grid gap-4 sm:grid-cols-2">
               <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.from")}</h2>
                 <p>{invoice.sellerSnapshot?.companyName}</p><p className="whitespace-pre-line">{invoice.sellerSnapshot?.companyAddress}</p>
-                {invoiceTaxIds(invoice.sellerSnapshot?.taxIds).map(id => <p key={id}>{id}</p>)}
+                {invoiceTaxIds(invoice.sellerSnapshot?.taxIds, undefined, momsRegistered).map(id => <p key={id}>{id}</p>)}
               </div>
               <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.billTo")}</h2>
                 <p>{invoice.buyerSnapshot?.name}</p><p>{invoice.buyerSnapshot?.company}</p>
@@ -191,6 +197,7 @@ function PublicInvoiceDocument({
                             price: money(toNumber(item.unitPriceNet ?? item.unitPriceGross)),
                           })}
                         </p>
+                        {sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}
                         {item.unitPriceNet !== undefined ? <p className="text-xs text-muted-foreground">{t("pdf.unitPriceNet")}</p> : null}
                       </div>
                       <div className="text-right tabular-nums"><p className="font-medium">{money(toNumber(item.lineNet ?? item.lineGross))}</p>
@@ -255,6 +262,8 @@ function PublicInvoiceDocument({
               ) : null}
               </dl>
             </div>
+
+            {momsRegistered === false && <p className="text-sm text-muted-foreground">{nonVatStatement(locale)}</p>}
 
             {paymentState === "unpaid" && balanceDue > 0 && paymentDetails ? (
               <section className="grid min-w-0 gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>

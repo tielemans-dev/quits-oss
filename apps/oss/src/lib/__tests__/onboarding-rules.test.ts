@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest"
 import { getOnboardingRules } from "../onboarding/rules"
 
 describe("getOnboardingRules", () => {
+  it("defaults an absent jurisdiction to Denmark", () => {
+    expect(getOnboardingRules({}).defaults).toMatchObject({ defaultCurrency: "DKK", taxRegime: "eu_vat" })
+  })
   it("suggests danish defaults for registered businesses in denmark", () => {
     const rules = getOnboardingRules({
       countryCode: "DK",

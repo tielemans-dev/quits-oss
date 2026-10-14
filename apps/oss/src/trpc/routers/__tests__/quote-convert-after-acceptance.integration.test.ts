@@ -54,6 +54,7 @@ describeIfDatabase("quote conversion after public acceptance", () => {
           defaultCurrency: "DKK",
           currency: "DKK",
           taxRegime: "eu_vat",
+          momsRegistered: true,
           pricesIncludeTax: false,
           invoicePrefix: "INVACC",
           quotePrefix: "QTEACC",

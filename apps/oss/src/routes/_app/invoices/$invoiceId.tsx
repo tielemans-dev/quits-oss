@@ -1,3 +1,9 @@
+import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
+import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
+import { nonVatStatement } from "../../../lib/documents/non-vat-note"
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
+import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
+import { InvoiceSellerDetails, InvoicePaymentInstructions } from "../../../components/invoices/invoice-payment-instructions"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -113,6 +119,8 @@ type InvoiceItem = {
 }
 
 type Invoice = {
+  sellerSnapshot?: unknown
+  issuanceSnapshot?: unknown
   disputed?: boolean
   disputedRevision?: number
   purpose?: "sale" | "prepayment"
@@ -121,6 +129,7 @@ type Invoice = {
   id: string
   /** Null until the invoice is sent. */
   number: string | null
+  paymentReference: Awaited<ReturnType<typeof trpc.invoices.get.query>>["paymentReference"]
   /** The number a draft would take if sent now; not reserved. */
   nextNumber?: string | null
   status: string
@@ -145,6 +154,8 @@ type Invoice = {
   contact: Contact
   items: InvoiceItem[]
   pricesIncludeTax?: boolean
+  taxRegime?: string
+  momsRegistered?: boolean | null
   priceBasis?: PriceBasis
   vatRows?: VatRow[]
   rounding?: string
@@ -169,7 +180,7 @@ function formatCurrency(amount: number, currency: string, locale?: string | null
 }
 
 function formatDate(dateStr: string, locale?: string | null, timezone?: string | null) {
-  return formatDateIntl(dateStr, locale, timezone)
+  return formatDateIntl(dateStr, locale, timezone, { month: "short", dayFirst: true })
 }
 
 function isValidEmailAddress(email: string | null) {
@@ -188,6 +199,7 @@ async function downloadInvoicePdfFile(invoice: Invoice, _orgSettings: unknown) {
 
 function InvoiceDetailPage() {
   const { t, locale } = useI18n()
+  const bankNudge = useFirstInvoiceBankNudge()
   const trial = useTrialAccess()
   const readOnly = isReadOnly(trial?.subscription ?? null)
   const { invoiceId } = Route.useParams()
@@ -256,7 +268,8 @@ function InvoiceDetailPage() {
       .then(([data, settings]) => {
         if (!isCurrent()) return
         setInvoice(data as unknown as Invoice)
-        setIssuance({ ...initialIssuanceValues(), ...(data.supplyDate ? { supplyDate: new Date(data.supplyDate).toISOString().slice(0, 10) } : {}) })
+        if (data.status !== "draft") clearDraftValuation(data.id, data.currency, settings.baseCurrency)
+        setIssuance({ ...initialIssuanceValues(), ...(data.status === "draft" ? readDraftValuation(data.id, data.currency, settings.baseCurrency) : {}), ...(data.supplyDate ? { supplyDate: new Date(data.supplyDate).toISOString().slice(0, 10) } : {}) })
         setPaymentLinkUrl((data as unknown as Invoice).publicPaymentUrl ?? null)
         setOrgSettings({
           companyName: settings.companyName,
@@ -393,12 +406,15 @@ function InvoiceDetailPage() {
     setError(null)
     setActing(true)
     try {
+      retainDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency, issuance)
+      if (!await bankNudge.beforeSend()) return
       const result = await trpc.invoices.send.mutate({
         id: invoice.id,
         allowSendWithoutEmail,
         acknowledgeDisputed,
         ...issuanceInput(issuance, invoice.currency, orgSettings.baseCurrency),
       })
+      clearDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency)
       await reloadInvoice()
       setSendWithoutEmailOpen(false)
       if (result.emailSkipReason) {
@@ -530,6 +546,7 @@ function InvoiceDetailPage() {
 
     return (
       <div className="p-6 max-w-3xl">
+      {bankNudge.dialog}
         <Card>
           <CardHeader>
             <CardTitle>
@@ -732,6 +749,7 @@ function InvoiceDetailPage() {
   }
 
   // View mode
+  const momsRegistered = sellerVatPresentationStatus(invoice.momsRegistered, invoice.taxRegime)
   const contact = invoice.contact
   const emailAttempt = readEmailDeliveryAttempt({
     lastEmailAttemptAt: invoice.lastEmailAttemptAt
@@ -806,6 +824,7 @@ function InvoiceDetailPage() {
 
   return (
     <div className="p-6 max-w-3xl">
+      {bankNudge.dialog}
       {depositsEnabled && invoice.purpose === "prepayment" && invoice.status === "draft" && <section className="rounded-md border p-4 grid gap-3">
         <p>{t("agreements.prepaymentNotice")}</p>
         <AlertDialog><AlertDialogTrigger asChild><Button disabled={acting}>{t("agreements.convertSchedule")}</Button></AlertDialogTrigger>
@@ -830,12 +849,12 @@ function InvoiceDetailPage() {
       `}</style>
 
       {/* Back button and actions */}
-      <div className="flex items-center justify-between mb-6 no-print">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 no-print">
         <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/invoices" })}>
           <ArrowLeft className="size-4" />
           {t("invoices.detail.action.back")}
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="size-4" />
             {t("invoices.detail.action.print")}
@@ -894,7 +913,7 @@ function InvoiceDetailPage() {
             </>
           )}
           {(invoice.status === "sent" || invoice.status === "overdue") && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {orgSettings.stripeByokConfigured && invoice.paymentStatus !== "paid" && (
                 <Button variant="outline" size="sm" disabled={acting} onClick={handleCreatePaymentLink}>
                   {acting
@@ -992,9 +1011,9 @@ function InvoiceDetailPage() {
         />
 
         <Card>
-          <CardContent className="p-6 grid gap-6">
+          <CardContent className="p-6 grid grid-cols-1 gap-6">
             {/* Header */}
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h1 className="text-2xl font-bold">
                   {invoice.number ? `${t("pdf.invoice")} ${invoice.number}` : t("invoices.number.draftHeading")}
@@ -1007,10 +1026,10 @@ function InvoiceDetailPage() {
                   </p>
                 )}
                 <div className="mt-1">
-                  <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
+                  <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice, orgSettings.timezone)} />
                 </div>
               </div>
-              <div className="text-right text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground grid gap-3 sm:text-right">
                 {orgSettings.companyLogo && (
                   <img
                     src={orgSettings.companyLogo}
@@ -1019,21 +1038,21 @@ function InvoiceDetailPage() {
                   />
                 )}
                 <p>
-                  <span className="font-medium text-foreground">
-                    {t("pdf.issueDate")}:
+                  <span className="block text-xs uppercase tracking-wider">
+                    {t("pdf.issueDate")}
                   </span>{" "}
                   {formatDate(invoice.issueDate, locale, orgSettings.timezone)}
                 </p>
                 <p>
-                  <span className="font-medium text-foreground">
-                    {t("pdf.dueDate")}:
+                  <span className="block text-xs uppercase tracking-wider">
+                    {t("pdf.dueDate")}
                   </span>{" "}
                   {formatDate(invoice.dueDate, locale, "UTC")}
                 </p>
                 {invoice.supplyDate && (
                   <p>
-                    <span className="font-medium text-foreground">
-                      {t("pdf.supplyDate")}:
+                    <span className="block text-xs uppercase tracking-wider">
+                      {t("pdf.supplyDate")}
                     </span>{" "}
                     {/* A calendar date, not an instant: the organization's time zone must not move it a day. */}
                     {formatDate(new Date(invoice.supplyDate).toISOString(), locale, "UTC")}
@@ -1042,23 +1061,26 @@ function InvoiceDetailPage() {
               </div>
             </div>
 
-            {/* Bill To */}
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                {t("pdf.billTo")}
-              </h3>
-              <p className="font-semibold">{contact.name}</p>
-              {contact.company && <p className="text-sm">{contact.company}</p>}
-              {contact.email && (
-                <p className="text-sm text-muted-foreground">{contact.email}</p>
-              )}
-              {contact.address && <p className="text-sm">{contact.address}</p>}
-              {(contact.city || contact.state || contact.zip) && (
-                <p className="text-sm">
-                  {[contact.city, contact.state, contact.zip].filter(Boolean).join(", ")}
-                </p>
-              )}
-              {contact.country && <p className="text-sm">{contact.country}</p>}
+            {/* Seller and buyer */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <InvoiceSellerDetails status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} issuanceSnapshot={invoice.issuanceSnapshot} />
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                  {t("pdf.billTo")}
+                </h3>
+                <p className="font-semibold">{contact.name}</p>
+                {contact.company && <p className="text-sm">{contact.company}</p>}
+                {contact.email && (
+                  <p className="text-sm text-muted-foreground">{contact.email}</p>
+                )}
+                {contact.address && <p className="text-sm">{contact.address}</p>}
+                {(contact.city || contact.state || contact.zip) && (
+                  <p className="text-sm">
+                    {[contact.city, contact.state, contact.zip].filter(Boolean).join(", ")}
+                  </p>
+                )}
+                {contact.country && <p className="text-sm">{contact.country}</p>}
+              </div>
             </div>
 
             {/* Items Table */}
@@ -1075,7 +1097,7 @@ function InvoiceDetailPage() {
                 <TableBody>
                   {invoice.items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>{item.description}</TableCell>
+                      <TableCell>{item.description}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}</TableCell>
                       <TableCell className="text-right num">{item.quantity}</TableCell>
                       <TableCell className="text-right num">
                         {formatCurrency(item.displayUnitPrice ?? item.unitPrice, invoice.currency, locale)}
@@ -1088,6 +1110,8 @@ function InvoiceDetailPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {momsRegistered === false && <p className="text-sm text-muted-foreground">{nonVatStatement(locale)}</p>}
 
             {/* Totals */}
             <div className="flex justify-end">
@@ -1116,13 +1140,15 @@ function InvoiceDetailPage() {
               </div>
             </div>
 
+            <InvoicePaymentInstructions status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} issuanceSnapshot={invoice.issuanceSnapshot} number={invoice.number} paymentReference={invoice.paymentReference} balanceDue={invoice.balanceDue} currency={invoice.currency} dueDate={invoice.dueDate} />
+
             {/* Notes */}
-            {invoice.notes && (
+            {withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime) && (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   {t("pdf.notes")}
                 </h3>
-                <p className="text-sm whitespace-pre-wrap">{invoice.notes}</p>
+                <p className="text-sm whitespace-pre-wrap">{withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime)}</p>
               </div>
             )}
           </CardContent>

@@ -75,7 +75,8 @@ Source-available invoicing for freelancers and small businesses.
    cp .env.example .env
    ```
 
-   Git worktrees also fall back to the main repository's `.env` if the worktree does not have its own copy.
+   Ordinary commands in Git worktrees fall back to the main repository's `.env`.
+   Worktree Dev and Setup below require explicit process environment settings and skip that fallback.
 
    Generate a secure auth secret:
 
@@ -117,6 +118,27 @@ Source-available invoicing for freelancers and small businesses.
    - `http://localhost:3000` and `http://app.localhost:3000` will redirect to the canonical hosts above
 
 7. Open [http://localhost:3000](http://localhost:3000)
+
+### Isolated worktrees in T3 Code
+
+Run `bun install --frozen-lockfile` in each new worktree before Setup Worktree.
+Install Bun and PostgreSQL `psql`, `createdb`, and `dropdb`. Supply
+`QUITS_WORKTREE_POSTGRES_URL` explicitly in the process environment: a loopback
+Postgres URL with a user, `/postgres`, and no query or fragment. Supply the other
+required app settings there too. Setup and Dev never load a workspace `.env`.
+Setup allocates port 3100+N and a database with a random allocation suffix, then
+migrates it. Dev refuses incomplete setup and uses that port and auth origin.
+Setup does not seed data; the Danish fixture is a separate follow-up.
+
+The common Git registry serializes setup, migrations, dev checks, and teardown.
+A timeout means retry after the current operation finishes. A crashed holder's
+lock requires manual recovery only after confirming all setup/dev/teardown
+processes for this clone stopped. Back up the registry before changing it.
+A creation attempt is recorded before `createdb`; only a matching database
+ownership comment permits retry, migration, or manual Teardown Worktree.
+A crash before that comment leaves an unverified database: do not mark it owned.
+Have its owner reconcile the database and registry manually. Legacy allocations
+also require manual recovery. Teardown never adopts an unverified database.
 
 ### Self-Hosting with Docker
 

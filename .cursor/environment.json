@@ -1,0 +1,7 @@
+{
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "install": "bun install --frozen-lockfile && bun run prisma:generate",
+  "start": "sudo service postgresql start"
+}

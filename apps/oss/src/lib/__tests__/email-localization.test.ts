@@ -84,7 +84,7 @@ describe("document email calendar dates", () => {
       const quote = buildQuoteEmailContent({
         quote: { ...document, expiryDate: "2027-03-14T00:00:00.000Z" }, org, contactName: "Buyer",
       })
-      for (const text of [invoice.subject, invoice.html]) expect(text).toContain("February 29, 2028")
+      for (const text of [invoice.subject, invoice.html]) expect(text).toContain("29 Feb 2028")
       for (const text of [quote.subject, quote.html]) expect(text).toContain("March 14, 2027")
     }
   )

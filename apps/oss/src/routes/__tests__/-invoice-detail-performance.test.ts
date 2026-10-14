@@ -19,5 +19,5 @@ describe("invoice detail route performance", () => {
     await import("../_app/invoices/$invoiceId")
 
     expect(invoicePdfModuleLoads).toBe(0)
-  }, 10000)
+  })
 })

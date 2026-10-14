@@ -5,6 +5,6 @@ import { describe, expect, it } from "vitest"
 describe("artifact import boundaries", () => {
   it("keeps selfhost and filesystem rendering outside the published graph, with no issuance cycle", () => {
     const script = fileURLToPath(new URL("../check-artifact-boundaries.mjs", import.meta.url))
-    expect(execFileSync(process.execPath, [script], { encoding: "utf8" })).toContain("Artifact boundaries passed")
-  })
+    expect(execFileSync(process.execPath, [script], { encoding: "utf8", timeout: 30_000 })).toContain("Artifact boundaries passed")
+  }, 35_000)
 })

@@ -4,8 +4,123 @@ on:
   push:
   pull_request:
 
+concurrency:
+  # Unique non-PR groups also prevent replacement of pending push/tag runs.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && startsWith(github.ref, 'refs/pull/') }}
+
 jobs:
-  verify:
+  paths:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      run-expensive: ${{ steps.classify.outputs.run-expensive }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate required-check failure propagation
+        run: node --test .github/scripts/ci-gate.test.mjs
+      - name: Classify documentation-only PRs
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run_expensive=true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            git diff --name-only --no-renames -z "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed-paths"
+            # An empty or unreadable diff must not bypass verification.
+            if [ -s "$RUNNER_TEMP/changed-paths" ]; then
+              run_expensive=false
+              while IFS= read -r -d '' path; do
+                case "$path" in
+                  COPY.md|docs/*.md|docs/*.mdx) ;;
+                  *) run_expensive=true; break ;;
+                esac
+              done < "$RUNNER_TEMP/changed-paths"
+            fi
+          fi
+          echo "run-expensive=$run_expensive" >> "$GITHUB_OUTPUT"
+
+  lint:
+    needs: paths
+    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/yaip?schema=public
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-example-secret-that-is-over-32-characters
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+
+  typecheck:
+    needs: paths
+    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/yaip?schema=public
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-example-secret-that-is-over-32-characters
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun --filter @quits/oss prisma:generate
+      - run: bun run typecheck
+
+  unit:
+    needs: paths
+    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Docker Official Image mirror; provenance/update procedure: docs/qa/ci-postgres-image.md
+        image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: yaip
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d yaip"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/yaip?schema=public
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-example-secret-that-is-over-32-characters
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun --filter @quits/oss prisma:generate
+      - working-directory: apps/oss
+        run: bunx prisma migrate deploy
+      - run: bun run test
+
+  runtime:
+    needs: paths
+    # Run on classification failure unless cancelled; only successful docs-only results may skip.
+    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
     runs-on: ubuntu-latest
     services:
       mailpit:
@@ -47,15 +162,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # The tracked client may predate schema changes in this PR.
       - name: Generate Prisma client
         run: bun --filter @quits/oss prisma:generate
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Typecheck
-        run: bun run typecheck
 
       - name: Apply migrations
         working-directory: apps/oss
@@ -69,9 +177,6 @@ jobs:
         working-directory: apps/oss
         run: bunx prisma migrate status
 
-      - name: Run unit and router tests
-        run: bun run test
-
       - name: Run integration smoke tests
         run: bun run test:integration
 
@@ -81,6 +186,10 @@ jobs:
       - name: Install Playwright browser
         working-directory: apps/oss
         run: bunx playwright install --with-deps chromium
+
+      - name: Verify onboarding review choices and draft persistence
+        working-directory: apps/oss
+        run: bunx playwright test --config playwright.onboarding-v2.config.ts --workers=1
 
       - name: Run browser smoke tests
         run: bun run test:e2e
@@ -140,8 +249,10 @@ jobs:
       - name: Verify packed package artifact
         run: node scripts/check-packed-build.mjs
 
-  shared-browser:
-    name: Shared product browser scenarios
+  shared-browser-worker:
+    name: Shared product browser execution
+    needs: paths
+    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -162,7 +273,20 @@ jobs:
         env:
           POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
         run: |
-          docker pull "$POSTGRES_IMAGE"
+          # Same pinned image only. ECR Public anonymous pulls return toomanyrequests
+          # when push and pull_request jobs acquire it together; retry, then fail.
+          attempt=1
+          max_attempts=5
+          until docker pull "$POSTGRES_IMAGE"; do
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "Failed to pull the pinned PostgreSQL image after $max_attempts attempts" >&2
+              exit 1
+            fi
+            delay=$((attempt * 20))
+            echo "Pinned PostgreSQL pull failed (attempt $attempt/$max_attempts); retrying in ${delay}s" >&2
+            sleep "$delay"
+            attempt=$((attempt + 1))
+          done
           docker tag "$POSTGRES_IMAGE" postgres:16-alpine
           test "$(docker image inspect --format '{{.Id}}' "$POSTGRES_IMAGE")" = "$(docker image inspect --format '{{.Id}}' postgres:16-alpine)"
           test "$(docker run --rm --pull=never postgres:16-alpine postgres --version)" = 'postgres (PostgreSQL) 16.15'
@@ -177,6 +301,42 @@ jobs:
             apps/oss/playwright-report/shared
             apps/oss/test-results
           retention-days: 7
+
+  shared-browser:
+    name: Shared product browser scenarios
+    needs: [paths, shared-browser-worker]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require successful work or confirmed documentation-only PR
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: node .github/scripts/ci-gate.mjs
+
+  ci-ok:
+    name: ci-ok
+    needs: [paths, lint, typecheck, unit, runtime, shared-browser-worker]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require successful work or confirmed documentation-only PR
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: node .github/scripts/ci-gate.mjs
+
+  verify:
+    needs: ci-ok
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preserve the required verify check
+        env:
+          CI_RESULT: ${{ needs.ci-ok.result }}
+        run: test "$CI_RESULT" = success
 
   quote-evidence:
     name: Quote evidence (${{ matrix.phase }})
@@ -276,3 +436,218 @@ jobs:
         run: |
           echo "QUI-65 $PHASE evidence: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "A green capture job certifies the manifest has all 56 screenshots and 16 locale files. A failed job may contain partial diagnostics only. Ines visual sign-off remains separate." >> "$GITHUB_STEP_SUMMARY"
+
+  qui56-scope:
+    name: Select PR122 evidence revisions
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 122 && github.event.pull_request.head.ref == 'qui-56-screens'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.revisions.outputs.changed }}
+      baseline: ${{ steps.revisions.outputs.baseline }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Restrict capture to relevant PR122 changes and resolve current main
+        id: revisions
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA" > "$RUNNER_TEMP/qui56-changed.txt"
+          while IFS= read -r changed_path; do
+            case "$changed_path" in
+              .github/workflows/ci.yml|scripts/check-qui56-evidence.mjs|docs/qa/qui-56-screens-integration.md|apps/oss/tests/onboarding-v2/*|apps/oss/playwright.runtime-captures.config.ts|apps/oss/src/*onboarding*|apps/oss/src/server.ts|packages/contracts/src/*onboarding*)
+                echo 'changed=true' >> "$GITHUB_OUTPUT"
+                break
+                ;;
+            esac
+          done < "$RUNNER_TEMP/qui56-changed.txt"
+          echo "baseline=$(git rev-parse refs/remotes/origin/main^{commit})" >> "$GITHUB_OUTPUT"
+
+  qui56-evidence:
+    name: Authenticated QUI-56 current-main before and PR122 after
+    needs: qui56-scope
+    if: needs.qui56-scope.outputs.changed == 'true'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: qui56_screens_20261012
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qui56_screens_20261012"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/qui56_screens_20261012
+      QUI56_BASELINE_DIR: ${{ github.workspace }}/baseline
+      SCREENSHOT_OUTPUT: ${{ github.workspace }}/artifacts/qui56
+      BASELINE_SHA: ${{ needs.qui56-scope.outputs.baseline }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout immutable PR head and common capture harness
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          path: head
+          persist-credentials: false
+      - name: Checkout independent immutable current-main application
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASELINE_SHA }}
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: head/.bun-version
+      - name: Verify revisions and install frozen dependencies and Prisma clients
+        run: |
+          test "$(git -C head rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git -C baseline rev-parse HEAD)" = "$BASELINE_SHA"
+          for app in baseline head; do
+            (cd "$app" && bun install --frozen-lockfile && bun --filter @quits/oss prisma:generate)
+          done
+      - name: Install lockfile-pinned Chromium for the common head harness
+        working-directory: head/apps/oss
+        run: bunx --no-install playwright install --with-deps chromium
+      - name: Migrate disposable database to exact baseline
+        working-directory: baseline/apps/oss
+        run: bunx --no-install prisma migrate deploy
+      # Common head fixtures select the additive onboarding columns absent from main.
+      # Both exact applications use the same head-migrated disposable schema.
+      - name: Apply head migrations for the common Prisma fixtures
+        working-directory: head/apps/oss
+        run: bunx --no-install prisma migrate deploy
+      - name: Capture baseline with head assertions and real auth
+        working-directory: head
+        env:
+          CAPTURE_PHASES: before
+        run: bash apps/oss/tests/onboarding-v2/capture-runtime.sh
+      - name: Capture head with real auth and one worker
+        working-directory: head
+        env:
+          CAPTURE_PHASES: after
+        run: bash apps/oss/tests/onboarding-v2/capture-runtime.sh
+      - name: Validate complete evidence and write provenance and image hashes
+        id: complete
+        working-directory: head
+        run: node scripts/check-qui56-evidence.mjs "$SCREENSHOT_OUTPUT"
+      - name: Upload successful evidence only
+        id: evidence
+        if: success() && steps.complete.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: qui56-complete-${{ env.HEAD_SHA }}
+          path: artifacts/qui56/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload failed or partial runs as diagnostics only
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qui56-diagnostics-only-${{ env.HEAD_SHA }}
+          path: |
+            artifacts/qui56/
+            head/apps/oss/test-results/
+            head/apps/oss/playwright-report/
+          retention-days: 7
+      - name: Record evidence status and provider limits
+        if: always()
+        env:
+          CAPTURE_STATUS: ${{ steps.complete.outcome }}
+          ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
+        run: |
+          echo "QUI-56 baseline application: $BASELINE_SHA; after application and common harness: $HEAD_SHA" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$CAPTURE_STATUS" = success ] && [ -n "$ARTIFACT_URL" ]; then
+            echo "Complete real-auth evidence, 8 before and 24 after images: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No accepted evidence. Any uploaded partial images are diagnostics only.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo 'Synthetic CVR/billing providers do not prove production registry availability or hosted trial provisioning. Manual captures precede confirmation and do not prove completed save. Ines approval remains required.' >> "$GITHUB_STEP_SUMMARY"
+
+  onboarding-pr121-evidence:
+    name: PR 121 onboarding evidence
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 121
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: onb121
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d onb121"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/onb121?schema=public
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      BETTER_AUTH_SECRET: ci-onboarding-example-secret-over-32-characters
+      PLAYWRIGHT_QUITS_DISTRIBUTION: cloud
+      QUITS_DISTRIBUTION: cloud
+      QUITS_BILLING_ENABLED: "false"
+      SIGNUP_MODE: open
+      ONB121_HEAD: ${{ github.event.pull_request.head.sha }}
+      ONB121_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - name: Record exact source and capture directory
+        run: |
+          test "$(git rev-parse HEAD)" = "$ONB121_HEAD"
+          echo "ONB121_CAPTURE_DIR=$GITHUB_WORKSPACE/evidence/onb-121" >> "$GITHUB_ENV"
+      - run: bun install --frozen-lockfile
+      - name: Generate client for test fixture
+        working-directory: apps/oss
+        run: bunx prisma generate
+      - name: Install pinned Chromium
+        working-directory: apps/oss
+        run: bunx playwright install --with-deps chromium
+      - name: Capture actual onboarding in Danish and English with one worker
+        working-directory: apps/oss
+        run: bunx playwright test onboarding-pr121.spec.ts --workers=1
+      - name: Validate screenshot matrix and PNG dimensions
+        run: node scripts/check-onboarding-pr121-evidence.mjs "$ONB121_CAPTURE_DIR"
+      - uses: actions/upload-artifact@v4
+        id: evidence
+        if: always()
+        with:
+          name: onb-121-${{ github.event.pull_request.head.sha }}
+          if-no-files-found: error
+          path: |
+            evidence/onb-121/
+            apps/oss/playwright-report/
+            apps/oss/test-results/
+          retention-days: 30
+      - name: Link capture artifact
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
+        run: |
+          echo "PR 121 onboarding evidence: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Only a green capture job certifies all eight screenshots. Synthetic authenticated account, disposable CI database, actual application at $ONB121_HEAD. Human visual review remains separate." >> "$GITHUB_STEP_SUMMARY"

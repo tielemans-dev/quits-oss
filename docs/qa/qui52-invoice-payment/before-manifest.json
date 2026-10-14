@@ -1,0 +1,83 @@
+{
+  "issue": "QUI-52",
+  "source": "origin/main",
+  "codeHead": "4931661dd7e53d83555590e06a2e2cf97448743b",
+  "theme": "light",
+  "viewports": {
+    "desktop": {
+      "width": 1440,
+      "height": 1000
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  "fullPage": true,
+  "fixture": {
+    "number": "INV-0042",
+    "sellerSnapshot": "Issue-time Seller ApS, CVR 12345678, reg 0040, account 0440116243",
+    "liveOrg": "Changed live seller, reg 9999, account 99999999",
+    "paymentNote": "Synthetic issue-time payment note",
+    "amount": "250.00",
+    "locales": [
+      "da-DK / DKK",
+      "en-US / USD"
+    ]
+  },
+  "emailSource": "Actual UI resend delivered over SMTP to dedicated local Mailpit. Mailpit-returned HTML rendered in Chromium.",
+  "environment": "Disposable local PostgreSQL and Mailpit; synthetic fixtures only.",
+  "appPort": 3053,
+  "mailpitHttpPort": 18052,
+  "mailpitSmtpPort": 11052,
+  "screenshots": [
+    {
+      "path": "before/email-da-desktop.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "8ff3ff92df0767b890f1b3bff42868d56003b58bd76d53947b7df2704a74f5e1"
+    },
+    {
+      "path": "before/email-da-mobile.png",
+      "width": 390,
+      "height": 921,
+      "sha256": "b7517938530b6fb7cea7bdcbf197fa20aee23d9d4ed401bba16fa5cff30210b9"
+    },
+    {
+      "path": "before/email-en-desktop.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "679cc04f24f227e9f1bc64ec5faca3123a7e7741b277ec339504732de2fdadfa"
+    },
+    {
+      "path": "before/email-en-mobile.png",
+      "width": 390,
+      "height": 925,
+      "sha256": "bf443c6124f231bb3c2859e05bde994dc4db8b23054bdb39fbfe24a1265b6929"
+    },
+    {
+      "path": "before/invoice-da-desktop.png",
+      "width": 1440,
+      "height": 2045,
+      "sha256": "8cc93947ae1f65ff0ab040d0edb446488e26b1841014d47f7641960ec9de92a6"
+    },
+    {
+      "path": "before/invoice-da-mobile.png",
+      "width": 390,
+      "height": 2553,
+      "sha256": "6d0269192876a362d51e1c15353e6246b9969ff5cd4df371a21e5dccb27f9c9d"
+    },
+    {
+      "path": "before/invoice-en-desktop.png",
+      "width": 1440,
+      "height": 2045,
+      "sha256": "0dcaa304b33ab0374724957d6718a890a33b942229c5783e50f413547557b4d9"
+    },
+    {
+      "path": "before/invoice-en-mobile.png",
+      "width": 390,
+      "height": 2461,
+      "sha256": "b4c5b42753b38abdc1c401ba00a5be1510af9bc03ca952c0a2933a5167ac6cb5"
+    }
+  ]
+}

@@ -75,6 +75,7 @@ function taxIdsView(taxIds: readonly DocumentTaxId[] | undefined): DocumentViewT
 
 function sellerView(seller: SellerSnapshot | null | undefined, phone: string | null | undefined, logoUrl: string | null | undefined): DocumentViewSeller {
   return {
+    ...(seller?.momsRegistered !== undefined ? { momsRegistered: seller.momsRegistered } : {}),
     name: seller?.companyName ?? null,
     email: seller?.companyEmail ?? null,
     phone: phone ?? null,

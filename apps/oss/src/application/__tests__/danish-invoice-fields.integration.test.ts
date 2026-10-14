@@ -36,6 +36,16 @@ async function setup() {
 const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.id) => issueDocument({ kind: "invoice", actor: context.org.actors.admin, commandInput: { id, supplyDate: "2026-10-08", allowSendWithoutEmail: true } })
 
 ;(hasTestDatabase ? describe : describe.skip)("Danish full invoice issuance", () => {
+  it("passes the Danish year-prefix number unchanged to the invoice renderer", async () => {
+    const context = await setup()
+    await prisma.orgSettings.update({ where: { organizationId: context.org.organizationId }, data: { invoicePrefix: "2026", invoiceNextNum: 1 } })
+    expect(await issue(context)).toMatchObject({ status: "completed" })
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: context.invoice.id } })
+    const candidate = await prisma.issuanceCandidate.findFirstOrThrow({ where: { documentId: invoice.id } })
+    const render = candidate.renderInput as unknown as Extract<RenderInput, { kind: "invoice" }>
+    expect(invoice.number).toBe("2026-0001")
+    expect(render.pdf.invoice.number).toBe("2026-0001")
+  })
   it.each([false, true])("preserves the applicable rate for an issued DKK 0.01 net sale in policy mode %s", async restricted => {
     const context = await setup()
     await prisma.orgSettings.update({ where: { organizationId: context.org.organizationId }, data: { pricesIncludeTax: false } })
@@ -71,7 +81,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     const email = composeInvoiceEmail({ invoice: { ...changed, number: changed.number! }, settings, to: "buyer@example.test", publicPaymentUrl: null }).message.html
     expect(email).toContain("Synthetic Seller ApS")
     expect(email).toContain("Synthetic Buyer")
-    expect(email).toContain("CVR: 12345678")
+    expect(email).toContain("CVR-nr.: 12345678")
     expect(email).not.toMatch(/Changed Seller|Changed Buyer|Changed address/)
     const session = serializePublicInvoiceSession({ invoice: changed, stripeEnabled: false, paymentState: "unpaid" }, "synthetic")
     expect(session.seller.name).toBe("Synthetic Seller ApS")
@@ -109,7 +119,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     }
     enable()
     await prisma.orgSettings.update({ where: { organizationId: context.org.organizationId }, data: { companyName: "Changed Seller", companyAddress: null } })
-    await prisma.organizationTaxId.deleteMany({ where: { organizationId: context.org.organizationId } })
+    // A changed trading name/address retains the same legal seller identified by its CVR.
     await prisma.contact.update({ where: { id: context.contact.id }, data: { name: "Changed Buyer", address: null } })
     const issued = await issue(context, invoiceId)
     expect(issued, JSON.stringify(issued)).toMatchObject({ status: "completed" })

@@ -17,6 +17,7 @@ import { SidebarProvider } from '../components/ui/sidebar'
 import { AppSidebar } from '../components/app-sidebar'
 import { AppMain } from '../components/shell/app-main'
 import { I18nProvider } from '../lib/i18n/react'
+import { loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, loginReturnDestination } from '../lib/login-return'
 import { TrialAccessProvider, TrialBanner, TrialRouteGate } from '../components/billing/trial-access'
 
 export const Route = createFileRoute('/_app')({
@@ -33,7 +34,7 @@ export const Route = createFileRoute('/_app')({
     // preloaded or after another tab switched organization. The layout sets it once per page load.
     const isOnboarding = location.pathname === '/onboarding' || location.pathname.startsWith('/onboarding/')
     if (!hasActiveOrg && !isOnboarding) {
-      throw redirect({ to: '/onboarding' })
+      throw redirect({ href: loginReturnOnboarding({ next: location.href, lang: loginReturnSearchSchema.parse(location.search).lang }) })
     }
 
     // The server decides whether this is cloud: the browser has no runtime environment to ask.
@@ -45,8 +46,17 @@ export const Route = createFileRoute('/_app')({
         hasActiveOrg,
         cloudOnboardingComplete === true
       )
+      if (redirectTo === '/') {
+        const search = loginReturnSearchSchema.parse(location.search)
+        const requestedTarget = loginReturnTarget(search)
+        // Completed onboarding cannot return to itself and repeatedly run this guard.
+        const targetPath = requestedTarget?.split(/[?#]/)[0]
+        const target = targetPath === '/onboarding' || targetPath?.startsWith('/onboarding/') ? null : requestedTarget
+        if (target || search.lang) throw redirect({ href: loginReturnDestination(target ?? '/', search.lang) })
+        throw redirect({ to: '/' })
+      }
       if (redirectTo) {
-        throw redirect({ to: redirectTo })
+        throw redirect({ href: loginReturnOnboarding({ next: location.href, lang: loginReturnSearchSchema.parse(location.search).lang }) })
       }
     }
 
@@ -91,11 +101,12 @@ function AppLayoutContent() {
     initializeRequestOrganizationId(loadedOrgId)
   }, [loadedOrgId])
 
+  const hasOrganization = Boolean(loadedOrgId)
   return (
     <SidebarProvider>
-      <AppSidebar />
+      {hasOrganization ? <AppSidebar /> : null}
       <TrialAccessProvider>
-        <AppMain banner={<><OrganizationChangedBanner /><TrialBanner /></>}>
+        <AppMain sidebar={hasOrganization} banner={<><OrganizationChangedBanner /><TrialBanner /></>}>
           {organizationReady ? <TrialRouteGate pathname={pathname}><Outlet /></TrialRouteGate> : <div aria-busy="true" className="p-6" />}
         </AppMain>
       </TrialAccessProvider>

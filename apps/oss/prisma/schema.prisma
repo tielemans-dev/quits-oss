@@ -185,6 +185,10 @@ model OrgSettings {
   companyName                        String?
   companyAddress                     String?
   companyEmail                       String?
+  momsRegistered                     Boolean?
+  paymentTermsDays                    Int?
+  onboardingV2Key                    String?
+  onboardingV2Result                 Json?
   companyPhone                       String?
   companyLogo                        String?
   bankAccountHolder                  String?

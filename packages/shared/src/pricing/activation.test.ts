@@ -75,3 +75,13 @@ describe("decimal draft contracts and preview", () => {
     expect(preview.error).not.toBeNull()
   })
 })
+
+describe("non-registered seller VAT issuance", () => {
+  it("accepts unclassified zero only with an explicit non-registered snapshot", () => {
+    const input = { lines: [{ treatment: "unclassified_zero", rate: "0" }], evidence: {} }
+    expect(validateVatIssuance({ ...input, momsRegistered: false })).toEqual([])
+    for (const momsRegistered of [true, null, undefined]) expect(validateVatIssuance({ ...input, momsRegistered }).length).toBeGreaterThan(0)
+    expect(validateVatIssuance({ ...input, momsRegistered: false, lines: [{ treatment: "unclassified_zero", rate: "0.25" }] }).length).toBeGreaterThan(0)
+    expect(validateVatIssuance({ ...input, momsRegistered: false, lines: [{ treatment: "standard", rate: "0.25" }] })).toContain("A non-registered seller cannot charge VAT")
+  })
+})

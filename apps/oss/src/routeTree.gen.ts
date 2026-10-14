@@ -45,6 +45,7 @@ import { Route as ApiCronMarkOverdueRouteImport } from './routes/api/cron/mark-o
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ATokenPdfRouteImport } from './routes/a.$token_.pdf'
 import { Route as ATokenLogoRouteImport } from './routes/a.$token_.logo'
+import { Route as AppSettingsOrganizationRouteImport } from './routes/_app/settings_.organization'
 import { Route as AppRecurringScheduleIdRouteImport } from './routes/_app/recurring/$scheduleId'
 import { Route as AppQuotesNewRouteImport } from './routes/_app/quotes/new'
 import { Route as AppQuotesQuoteIdRouteImport } from './routes/_app/quotes/$quoteId'
@@ -241,6 +242,11 @@ const ATokenLogoRoute = ATokenLogoRouteImport.update({
   path: '/a/$token/logo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSettingsOrganizationRoute = AppSettingsOrganizationRouteImport.update({
+  id: '/settings_/organization',
+  path: '/settings/organization',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRecurringScheduleIdRoute = AppRecurringScheduleIdRouteImport.update({
   id: '/recurring/$scheduleId',
   path: '/recurring/$scheduleId',
@@ -348,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
   '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
+  '/settings/organization': typeof AppSettingsOrganizationRoute
   '/a/$token/logo': typeof ATokenLogoRoute
   '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -399,6 +406,7 @@ export interface FileRoutesByTo {
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
   '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
+  '/settings/organization': typeof AppSettingsOrganizationRoute
   '/a/$token/logo': typeof ATokenLogoRoute
   '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -452,6 +460,7 @@ export interface FileRoutesById {
   '/_app/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/_app/quotes/new': typeof AppQuotesNewRoute
   '/_app/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
+  '/_app/settings_/organization': typeof AppSettingsOrganizationRoute
   '/a/$token_/logo': typeof ATokenLogoRoute
   '/a/$token_/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -505,6 +514,7 @@ export interface FileRouteTypes {
     | '/quotes/$quoteId'
     | '/quotes/new'
     | '/recurring/$scheduleId'
+    | '/settings/organization'
     | '/a/$token/logo'
     | '/a/$token/pdf'
     | '/api/auth/$'
@@ -556,6 +566,7 @@ export interface FileRouteTypes {
     | '/quotes/$quoteId'
     | '/quotes/new'
     | '/recurring/$scheduleId'
+    | '/settings/organization'
     | '/a/$token/logo'
     | '/a/$token/pdf'
     | '/api/auth/$'
@@ -608,6 +619,7 @@ export interface FileRouteTypes {
     | '/_app/quotes/$quoteId'
     | '/_app/quotes/new'
     | '/_app/recurring/$scheduleId'
+    | '/_app/settings_/organization'
     | '/a/$token_/logo'
     | '/a/$token_/pdf'
     | '/api/auth/$'
@@ -913,6 +925,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ATokenLogoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/settings_/organization': {
+      id: '/_app/settings_/organization'
+      path: '/settings/organization'
+      fullPath: '/settings/organization'
+      preLoaderRoute: typeof AppSettingsOrganizationRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/recurring/$scheduleId': {
       id: '/_app/recurring/$scheduleId'
       path: '/recurring/$scheduleId'
@@ -1032,6 +1051,7 @@ interface AppRouteChildren {
   AppQuotesQuoteIdRoute: typeof AppQuotesQuoteIdRoute
   AppQuotesNewRoute: typeof AppQuotesNewRoute
   AppRecurringScheduleIdRoute: typeof AppRecurringScheduleIdRoute
+  AppSettingsOrganizationRoute: typeof AppSettingsOrganizationRoute
   AppAgreementsIndexRoute: typeof AppAgreementsIndexRoute
   AppContactsIndexRoute: typeof AppContactsIndexRoute
   AppCreditNotesIndexRoute: typeof AppCreditNotesIndexRoute
@@ -1059,6 +1079,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppQuotesQuoteIdRoute: AppQuotesQuoteIdRoute,
   AppQuotesNewRoute: AppQuotesNewRoute,
   AppRecurringScheduleIdRoute: AppRecurringScheduleIdRoute,
+  AppSettingsOrganizationRoute: AppSettingsOrganizationRoute,
   AppAgreementsIndexRoute: AppAgreementsIndexRoute,
   AppContactsIndexRoute: AppContactsIndexRoute,
   AppCreditNotesIndexRoute: AppCreditNotesIndexRoute,

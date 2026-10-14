@@ -57,7 +57,14 @@ vi.mock("../../components/ui/sidebar", () => ({
 }))
 vi.mock("../../components/app-sidebar", async () => {
   const { useI18n } = await import("../../lib/i18n/react")
-  return { AppSidebar: () => <nav>{useI18n().t("nav.invoices")}</nav> }
+  return {
+    AppSidebar: () => (
+      <>
+        <nav>{useI18n().t("nav.invoices")}</nav>
+        <button type="button">Switch organization</button>
+      </>
+    ),
+  }
 })
 vi.mock("../../components/shell/app-main", () => ({
   AppMain: ({ banner, children }: { banner?: unknown; children: unknown }) => (
@@ -150,6 +157,16 @@ describe("app layout request organization", () => {
     expect(navigation.textContent).toBe("Invoices")
     expect(document.documentElement.lang).toBe("en")
     expect(state.settingsQuery).not.toHaveBeenCalled()
+  })
+
+  it("hides the sidebar and organization switcher before an organization exists", () => {
+    state.loadedOrganizationId = null
+    state.sessionOrganizationId = null
+    state.locale = undefined
+    render(<route.component />)
+    expect(screen.queryByRole("navigation")).toBeNull()
+    expect(screen.queryByRole("button", { name: "Switch organization" })).toBeNull()
+    expect(screen.getByText("page")).toBeTruthy()
   })
 
   it("sets the organization of the loaded page once the layout has committed", () => {

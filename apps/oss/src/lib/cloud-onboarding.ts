@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { getOnboardingRules } from "./onboarding/rules"
 import {
   evaluateOnboardingReadiness,
   type OnboardingReadinessResult,
@@ -31,7 +32,7 @@ const profileDefaultsMap: Record<CloudOnboardingProfile, CloudProfileDefaults> =
     quotePrefix: "QTE",
   },
   smb: {
-    taxRegime: "us_sales_tax",
+    taxRegime: "eu_vat",
     pricesIncludeTax: false,
     invoicePrefix: "INV",
     quotePrefix: "QTE",
@@ -88,9 +89,10 @@ export function mapPersistedOnboardingStatus(
   return parsed.success ? parsed.data : "not_started"
 }
 
-export function getProfileDefaults(profile: CloudOnboardingProfile, now = new Date()) {
+export function getProfileDefaults(profile: CloudOnboardingProfile, now = new Date(), countryCode = "DK") {
   return {
     ...profileDefaultsMap[profile],
+    ...(profile === "smb" ? { taxRegime: getOnboardingRules({ countryCode }).defaults.taxRegime } : {}),
     onboardingProfile: profile,
     onboardingVersion: CLOUD_ONBOARDING_VERSION,
     onboardingCompletedAt: now,
@@ -116,6 +118,7 @@ export function getCloudOnboardingState(
       "companyEmail" in settings)
   const readiness = hasReadinessFields
       ? evaluateOnboardingReadiness({
+        onboardingVersion: settings.onboardingVersion,
         countryCode: settings.countryCode ?? null,
         invoicingIdentity: settings.onboardingInvoicingIdentity ?? null,
         locale: settings.locale ?? null,

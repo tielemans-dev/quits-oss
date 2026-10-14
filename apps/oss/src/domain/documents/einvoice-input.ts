@@ -1,3 +1,6 @@
+import { withoutNonVatStatement } from "../../lib/documents/non-vat-presentation"
+import { sellerVatPresentationStatus } from "../../lib/documents/seller-vat"
+import { withNonVatStatement } from "../../lib/documents/non-vat-note"
 import { vatGroupKey, percentageToFraction } from "@quits/shared/pricing"
 import { buildBuyerParty, buildEinvoicePayment, buildSellerParty } from "../../lib/exports/einvoice"
 import type { EinvoiceDocument } from "../../lib/exports/ubl"
@@ -5,17 +8,17 @@ import type { InvoiceMoneySnapshot } from "./money-snapshot"
 
 /** A complete frozen UBL render input. Publication never consults current party records. */
 export function frozenEinvoiceInput(input: {
-  kind: "invoice" | "creditNote";
+  kind: "invoice" | "creditNote"; taxRegime?: string | null;
   money: Pick<InvoiceMoneySnapshot, "number" | "issueDate" | "supplyDate" | "currency" | "buyer" | "seller" | "calculation" | "vatGroups" | "totals">;
   contact: Parameters<typeof buildBuyerParty>[1];
-  countryCode: string; dueDate: string | null; orderReference: string | null;
+  countryCode: string; locale?: string | null; dueDate: string | null; orderReference: string | null;
   /** The invoice's own payment reference (invoices only); the invoice number when it has none. */
   paymentReference?: string | null;
   billingReference: EinvoiceDocument["billingReference"]; note: string | null;
   lines: Array<{ description: string; quantity: string; unitPriceNet: string; lineNet: string; taxRate: string; taxCategory: string; vatTreatment?: string; vatCountry?: string | null; vatReasonCode?: string | null; vatRateInput?: string | null }>;
 }): EinvoiceDocument {
   const buyer = buildBuyerParty(input.money.buyer, input.contact)
-  const seller = buildSellerParty({ snapshot: input.money.seller, settings: null, taxIds: [], documentCountryCode: input.countryCode })
+  const seller = buildSellerParty({ snapshot: input.money.seller, settings: null, taxIds: [], documentCountryCode: input.countryCode, taxRegime: input.taxRegime })
   const payment = input.kind === "invoice"
     ? buildEinvoicePayment(input.money.seller.bankAccount, {
         reference: input.paymentReference?.trim() || input.money.number,
@@ -27,7 +30,7 @@ export function frozenEinvoiceInput(input: {
     frozenGroups: input.money.vatGroups, number: input.money.number, issueDate: input.money.issueDate,
     dueDate: input.dueDate, deliveryDate: input.money.supplyDate, currency: input.money.currency,
     buyerReference: input.orderReference || buyer.name, orderReference: input.orderReference,
-    billingReference: input.billingReference, note: input.note,
+    billingReference: input.billingReference, note: withNonVatStatement(withoutNonVatStatement(input.note, input.money.seller.momsRegistered, input.taxRegime) ?? null, sellerVatPresentationStatus(input.money.seller.momsRegistered, input.taxRegime), input.locale),
     seller, buyer,
     // The key is absent (never null) without payment means, as in `loadEinvoiceDocument`, so
     // documents of organizations without payment details hash as before.

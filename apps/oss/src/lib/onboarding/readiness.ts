@@ -8,6 +8,7 @@ export type SupportedTaxRegime = OnboardingTaxRegime
 export type { OnboardingMissingField }
 
 export type OnboardingReadinessInput = {
+  onboardingVersion?: number | null
   countryCode: string | null
   invoicingIdentity?: string | null
   locale: string | null
@@ -45,7 +46,7 @@ export function evaluateOnboardingReadiness(
 
   if (!hasText(input.companyName)) missing.push("companyName")
   if (!hasText(input.companyAddress)) missing.push("companyAddress")
-  if (!hasText(input.companyEmail)) missing.push("companyEmail")
+  if (input.onboardingVersion !== 2 && !hasText(input.companyEmail)) missing.push("companyEmail")
   if (!hasText(input.countryCode)) missing.push("countryCode")
   if (!hasText(input.locale)) missing.push("locale")
   if (!hasText(input.timezone)) missing.push("timezone")
@@ -57,6 +58,7 @@ export function evaluateOnboardingReadiness(
   if (!hasPositiveInteger(input.quoteNextNum)) missing.push("quoteNextNum")
 
   if (
+    input.onboardingVersion !== 2 &&
     getOnboardingRules({
       countryCode: input.countryCode,
       invoicingIdentity: input.invoicingIdentity,

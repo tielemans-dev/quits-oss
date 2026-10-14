@@ -19,11 +19,18 @@ else
   fi
 fi
 
+EXPLICIT_DATABASE_URL="${DATABASE_URL:-}"
+
 if [[ -n "$ENV_FILE" ]]; then
   set -a
   # shellcheck disable=SC1091
   source "$ENV_FILE"
   set +a
+fi
+
+# An explicitly exported DATABASE_URL wins over the one in .env.
+if [[ -n "$EXPLICIT_DATABASE_URL" ]]; then
+  DATABASE_URL="$EXPLICIT_DATABASE_URL"
 fi
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
@@ -70,6 +77,32 @@ CONTAINER_NAME="${QUITS_DB_CONTAINER_NAME:-${YAIP_DB_CONTAINER_NAME:-yaip-postgr
 
 if [[ "$DB_HOST" != "localhost" && "$DB_HOST" != "127.0.0.1" ]]; then
   echo "DATABASE_URL host is '$DB_HOST'. db:start only manages local Docker Postgres (localhost)."
+  exit 1
+fi
+
+# Reuse a native Postgres that already accepts connections on the target port.
+pg_isready_bin="$(command -v pg_isready || true)"
+if [[ -z "$pg_isready_bin" ]]; then
+  for candidate in /usr/lib/postgresql/*/bin/pg_isready; do
+    if [[ -x "$candidate" ]]; then
+      pg_isready_bin="$candidate"
+    fi
+  done
+fi
+
+if [[ -n "$pg_isready_bin" ]]; then
+  if "$pg_isready_bin" -q -h "$DB_HOST" -p "$DB_PORT"; then
+    echo "Postgres is already accepting connections on $DB_HOST:$DB_PORT; reusing it."
+    exit 0
+  fi
+elif (exec 3<>"/dev/tcp/$DB_HOST/$DB_PORT") 2>/dev/null; then
+  echo "Something is already listening on $DB_HOST:$DB_PORT; reusing it."
+  exit 0
+fi
+
+if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
+  echo "No Postgres is accepting connections on $DB_HOST:$DB_PORT and Docker is not available." >&2
+  echo "Start Postgres on that port, or start Docker and retry." >&2
   exit 1
 fi
 

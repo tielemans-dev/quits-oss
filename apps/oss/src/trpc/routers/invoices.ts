@@ -1,3 +1,5 @@
+import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { loadDocumentView } from "../../domain/documents/view"
 import { sanitizeDocumentEmailAttempt } from "../../domain/delivery/provider-failure"
@@ -158,7 +160,11 @@ export const invoicesRouter = router({
         },
       })
 
+      const momsRegistered = invoice.status === "draft"
+        ? (await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { momsRegistered: true } }))?.momsRegistered ?? null
+        : (issuedInvoiceSnapshot(invoice.issuanceSnapshot)?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot))?.momsRegistered
       return {
+        momsRegistered,
         ...sanitizeDocumentEmailAttempt(invoice),
         // A draft has no number yet. This is the number it would take if sent now; it is not reserved.
         nextNumber:

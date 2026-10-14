@@ -261,6 +261,22 @@ export async function executeCommand<Input, Result>(
     })
   }
 
+  // Issuance preparation renders the document. A VAT-status change must invalidate the approval
+  // before that render reports the lines as invalid for the new registration.
+  if (options.expectedApprovalVersion && definition.approvalContext) {
+    const reviewed = await readInScope(definition.approvalContext(input), {
+      actor, organizationId, commandId: provisionalId, now,
+      expectedApprovalVersion: options.expectedApprovalVersion,
+    })
+    if (reviewed.kind === "failed") return rejectEarly(reviewed.error)
+    if (reviewed.value.version !== options.expectedApprovalVersion) {
+      return rejectEarly(new InvalidState({
+        message: "The document changed after this request was sent for approval. Ask the agent to request approval again.",
+        code: "changed_since_review",
+      }))
+    }
+  }
+
   let issuanceStagingId = options.issuanceStagingId
   try {
     if (options.prepareIssuance) issuanceStagingId = await options.prepareIssuance(input, now)
@@ -308,6 +324,20 @@ export async function executeCommand<Input, Result>(
         if (!(error instanceof OperationDenied)) throw error
         throw new HandlerFailed(new InvalidState({ code: error.code, message: error.message }))
       }
+      // A stale approval must be reported before issuance rendering. A VAT-status change can also
+      // make the stored lines invalid for the new seller, and that check must not hide the review.
+      const reviewedVersion = options.expectedApprovalVersion
+      if (reviewedVersion && definition.approvalContext) {
+        const current = await runRead(tx, definition.approvalContext(input), {
+          actor, organizationId, commandId: provisionalId, now, expectedApprovalVersion: reviewedVersion,
+        })
+        if (current.version !== reviewedVersion) {
+          throw new HandlerFailed(new InvalidState({
+            message: "The document changed after this request was sent for approval. Ask the agent to request approval again.",
+            code: "changed_since_review",
+          }))
+        }
+      }
       let issuance: import("./services").CommandScope["issuance"]
       if (issuanceStagingId) {
         const staged = await tx.artifactStaging.findUnique({ where: { id: issuanceStagingId } })
@@ -343,7 +373,6 @@ export async function executeCommand<Input, Result>(
         }
       }
 
-      const reviewedVersion = options.expectedApprovalVersion
       const approvalContext = definition.approvalContext
       const verifyReviewed =
         reviewedVersion && approvalContext
@@ -553,7 +582,7 @@ async function recordFailedReceipt<Result>(
   }
 }
 
-type ReadScope = { actor: Actor; organizationId: string; commandId: string; now: Date }
+type ReadScope = { actor: Actor; organizationId: string; commandId: string; now: Date; expectedApprovalVersion?: string }
 
 /**
  * Runs a read-only domain effect (no events, no jobs) in `tx`. A domain failure is thrown as

@@ -17,7 +17,7 @@ const lines = [
 const document = {
   id: "d1", number: "F-0007", locale: "da-DK", timezone: "Europe/Copenhagen", currency: "DKK", notes: null,
   issueDate: new Date("2026-10-05T10:00:00Z"), dueDate: new Date("2026-11-04T10:00:00Z"), expiryDate: new Date("2026-11-04T10:00:00Z"),
-  subtotalNet: new D("14500"), totalTax: new D("3625"), totalGross: new D("18125"),
+  subtotalNet: new D("14500"), totalTax: new D("3625"), totalGross: new D("18125"), amountPaid: new D(0), amountCredited: new D(0),
   contact: { name: "Kunde", email: "kunde@example.test" }, items: lines,
 }
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/[  ]/g, " ").replace(/\s+/g, " ")
@@ -84,4 +84,18 @@ describe("document emails", () => {
     } as never)
     expect(text(net.html)).toContain("Beløb ekskl. moms")
   })
+})
+
+// MOCK: synthetic frozen seller and changed delivery settings.
+it.each([null, "mail.current.test"])("resends quotes with current replyTo and frozen body identity using domain %s", domain => {
+  const message = composeQuoteEmail({ quote: { ...document, pricesIncludeTax: false,
+    sellerSnapshot: { companyName: "Frozen seller", companyEmail: "old@example.test" } },
+    settings: { companyName: "Current seller", companyEmail: "current@example.test", documentSendingDomain: domain, documentSendingDomainStatus: "verified", locale: "da-DK", timezone: "Europe/Copenhagen" } as never,
+    to: "kunde@example.test", publicQuoteUrl: null }).message
+  expect(message.replyTo).toBe("current@example.test")
+  expect(message.from).toContain("Current seller")
+  if (domain) expect(message.from).toContain(domain)
+  expect(message.html).toContain("Frozen seller")
+  expect(message.html).toContain("old@example.test")
+  expect(message.html).not.toContain("Current seller")
 })

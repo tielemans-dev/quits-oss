@@ -4,8 +4,53 @@ on:
   push:
   pull_request:
 
+concurrency:
+  # Unique non-PR groups also prevent replacement of pending push/tag runs.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && startsWith(github.ref, 'refs/pull/') }}
+
 jobs:
-  verify-oss-boundary:
+  paths:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      run-expensive: ${{ steps.classify.outputs.run-expensive }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate required-check failure propagation
+        run: node --test .github/scripts/ci-gate.test.mjs
+      - name: Classify documentation-only PRs
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run_expensive=true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            git diff --name-only --no-renames -z "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed-paths"
+            # An empty or unreadable diff must not bypass verification.
+            if [ -s "$RUNNER_TEMP/changed-paths" ]; then
+              run_expensive=false
+              while IFS= read -r -d '' path; do
+                case "$path" in
+                  COPY.md|docs/*.md|docs/*.mdx) ;;
+                  *) run_expensive=true; break ;;
+                esac
+              done < "$RUNNER_TEMP/changed-paths"
+            fi
+          fi
+          echo "run-expensive=$run_expensive" >> "$GITHUB_OUTPUT"
+
+  boundary-worker:
+    name: OSS boundary execution
+    needs: paths
+    # Run on classification failure unless cancelled; only successful docs-only results may skip.
+    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -69,3 +114,16 @@ jobs:
 
       - name: Build
         run: bun run build
+
+  verify-oss-boundary:
+    name: verify-oss-boundary
+    needs: [paths, boundary-worker]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require successful work or confirmed documentation-only PR
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: node .github/scripts/ci-gate.mjs
