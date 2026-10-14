@@ -32,6 +32,7 @@ vi.mock("../../lib/distribution", () => ({ get isSelfHostDistribution() { return
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ ...options }),
+  useRouter: () => ({ invalidate: vi.fn(async () => {}) }),
 }))
 
 // MOCK: native selects exercise the route's controlled value-change handlers without browser APIs.

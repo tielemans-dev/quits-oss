@@ -1,7 +1,7 @@
 import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { isSelfHostDistribution } from "../../lib/distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
@@ -63,6 +63,7 @@ import { PaymentDetailsCard } from "../../components/settings/payment-details-ca
 import { ReminderPolicyCard } from "../../components/settings/reminder-policy-card"
 import { useRuntimeUi } from "../../lib/runtime/ui"
 import { useRequestOrganizationId } from "../../lib/active-organization"
+import { invalidateAppLayoutSession } from "../../lib/app-layout-session"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -197,6 +198,7 @@ function isHttpLogoUrl(value: string) {
 }
 
 function SettingsPage() {
+  const router = useRouter()
   const { t, locale: displayLocale } = useI18n()
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
@@ -594,6 +596,9 @@ function SettingsPage() {
       setAiApiKeyDraft("")
       setClearStripeSecretKey(false)
       setClearStripeWebhookSecret(false)
+      // The retained app layout reads its locale from route context, including on navigation.
+      invalidateAppLayoutSession()
+      await router.invalidate()
       setSuccess(true)
       if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
       successHideTimeout.current = setTimeout(() => {
