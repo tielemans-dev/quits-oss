@@ -1,3 +1,11 @@
+# PR122 after the onboarding and VAT merges, 2026-10-14
+
+Rebased onto main `9b63fa2407efc5ce29ebe3166da3ad8ed7b7012f` after PR121 and PR129 merged. Main already contains all ten original screen implementation and follow-up commits, including newer confirmation, return-target, VAT and body-size safeguards. Duplicate runtime patches were omitted; the remaining diff contains historical screenshot galleries and QA notes only. Application, contracts, tests and workflow files match main exactly.
+
+The existing captures below are historical evidence of earlier heads, not validation of the current main implementation. PR122 remains draft. Any new visual acceptance must use fresh exact-head CI evidence. No browser/server, full suite, build or deployment ran locally. The focused draft, bank-nudge and login-return checks run against the retained main implementation; CI supplies broader gates.
+
+## Historical integration report
+
 # PR122 repair onto rebased PR121, 2026-10-13
 
 PR122 remains draft on `qui-56-screens`, with base `qui-56-confirm-v2` at
