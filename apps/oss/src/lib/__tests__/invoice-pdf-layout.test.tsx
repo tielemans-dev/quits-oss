@@ -30,7 +30,7 @@ describe("invoice PDF layout", () => {
     expect(lines).toContain("9000 Aalborg")
     expect(lines).toContain(locale === "da-DK" ? "Danmark" : "Denmark")
     expect(lines).toContain(locale === "da-DK" ? "11. okt. 2026" : "Oct 11, 2026")
-    expect(lines).not.toContain("buyer@example.test")
+    expect(lines).toContain("buyer@example.test")
     expect(lines).not.toContain("DK")
     expect(lines).not.toContain(locale === "da-DK" ? "Sendt" : "Sent")
     expect(lines).not.toContain("quits.")

@@ -171,9 +171,9 @@ async function issued(options: { pricesIncludeTax: boolean; currency?: string; i
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })
     const html = composeInvoiceEmail({ invoice: { ...full, number: full.number! }, settings, to: "customer@example.test", publicPaymentUrl: null }).message.html ?? ""
     const text = html.replace(/<[^>]+>/g, " ").replace(/[\u00a0\u202f]/g, " ").replace(/\s+/g, " ")
-    expect(text).toContain("Subtotal DKK 8.10")
+    expect(text).toContain("Subtotal excl. VAT DKK 8.10")
     expect(text).toContain("Rounding -DKK 0.01")
-    expect(text).toContain("Total DKK 10.12")
+    expect(text).toContain("Total incl. VAT DKK 10.12")
   })
 })
 
