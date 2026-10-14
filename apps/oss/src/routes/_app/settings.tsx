@@ -241,6 +241,7 @@ function SettingsPage() {
   // Bumped whenever the AI destination changes, so a model list still loading for the old
   // destination is discarded instead of replacing the new one.
   const aiModelsRequest = useRef(0)
+  const successHideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [aiModel, setAiModel] = useState(DEFAULT_AI_MODEL)
   const [clearAiApiKey, setClearAiApiKey] = useState(false)
   const [clearStripeSecretKey, setClearStripeSecretKey] = useState(false)
@@ -285,6 +286,10 @@ function SettingsPage() {
     invoicingIdentity,
     taxRegime,
   })
+
+  useEffect(() => () => {
+    if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
+  }, [])
 
   useEffect(() => {
     trpc.settings.get
@@ -590,7 +595,11 @@ function SettingsPage() {
       setClearStripeSecretKey(false)
       setClearStripeWebhookSecret(false)
       setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
+      successHideTimeout.current = setTimeout(() => {
+        successHideTimeout.current = null
+        setSuccess(false)
+      }, 3000)
       if (
         shouldAutoLoadAiModels(
           { provider: aiProvider, baseUrl: savedBaseUrl, currentModel: aiModelInput },

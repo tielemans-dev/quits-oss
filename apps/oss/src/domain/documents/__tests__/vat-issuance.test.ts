@@ -38,8 +38,8 @@ describe("seller registration at financial issuance", () => {
       : { _tag: "Left", left: { code: momsRegistered === true ? "evidence_incomplete" : "seller_vat_status_unset" } })
     expect(document.items[0]!.vatTreatment).toBe("unclassified_zero")
   })
-  it("accepts zero-tax out-of-scope lines without changing their category", async () => {
-    const document = { ...taxed, totalTax: "0", totalGross: "100", items: [{ ...taxed.items[0]!, vatTreatment: "out_of_scope", vatRateInput: "0", taxRate: "0", lineTax: "0", lineGross: "100" }] }
+  it.each([true, false])("accepts zero-tax out-of-scope lines when registration is %s", async momsRegistered => {
+    const document = { ...taxed, totalTax: "0", totalGross: "100", sellerSnapshot: { ...taxed.sellerSnapshot, momsRegistered }, items: [{ ...taxed.items[0]!, vatTreatment: "out_of_scope", vatRateInput: "0", taxRate: "0", lineTax: "0", lineGross: "100" }] }
     expect(await Effect.runPromise(Effect.either(requireVatIssuance(document)))).toMatchObject({ _tag: "Right" })
     expect(document.items[0]!.vatTreatment).toBe("out_of_scope")
   })

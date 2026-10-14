@@ -18,6 +18,9 @@ for (const locale of ["da-DK", "en-US"]) {
     const setup = await seedCompletedSetup({ ...danishLocale, locale })
     await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
       companyName: "Synthetic Seller", companyAddress: "Testvej 1, 1000 København", taxRate: 25,
+      // Danish EU VAT issuance refuses an unset seller status. Record a VAT-registered seller
+      // so this out-of-scope zero-VAT baseline can still be issued.
+      momsRegistered: true,
       bankRegNumber: "0040", bankAccountNumber: "0440116243",
     } })
     // MOCK: main's Danish compliance profile requires a seller tax identifier even for zero-VAT issuance.
@@ -26,7 +29,7 @@ for (const locale of ["da-DK", "en-US"]) {
     const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId, role: "admin" } })
     const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: member.userId })
     if (!actor) throw new Error("Synthetic admin is missing")
-    // MOCK: main supports out_of_scope zero VAT, but cannot confirm non-registration.
+    // MOCK: out-of-scope zero VAT is the pre-non-registration baseline. The seller status above is explicit.
     // Use production issuance to freeze and store the real PDF instead of seeding a sent row without an artifact.
     const draft = await executeCommand(createInvoiceDraft, { contactId: contact.id,
       dueDate: "2026-11-09", supplyDate: "2026-10-11", taxRate: 0,
