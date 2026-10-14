@@ -36,7 +36,7 @@ class CiPathsTest
   WORKFLOWS = %w[ci oss-boundary].to_h do |name|
     [name, YAML.load_file("#{ROOT}/.github/workflows/#{name}.yml")]
   end
-  JOBS = { 'ci' => %w[verify shared-browser], 'oss-boundary' => %w[verify-oss-boundary] }
+  JOBS = { 'ci' => %w[lint typecheck unit runtime shared-browser-worker], 'oss-boundary' => %w[boundary-worker] }
 
   # Evaluate the workflow's actual expressions in a bounded context. Explicitly
   # require a status function so GitHub's implicit success() cannot mask failure.
@@ -99,6 +99,32 @@ class CiPathsTest
     JOBS.each do |name, jobs|
       jobs.each { |job| assert_equal 'paths', WORKFLOWS[name]['jobs'][job]['needs'] }
     end
+  end
+
+  def test_required_gates_and_dependency_graph
+    gates = { 'ci' => {
+      'ci-ok' => %w[paths lint typecheck unit runtime shared-browser-worker],
+      'verify' => ['ci-ok'], 'shared-browser' => %w[paths shared-browser-worker],
+    }, 'oss-boundary' => { 'verify-oss-boundary' => %w[paths boundary-worker] } }
+    WORKFLOWS.each do |name, workflow|
+      jobs = workflow.fetch('jobs')
+      gates.fetch(name).each do |id, dependencies|
+        assert_equal 'always()', jobs.fetch(id).fetch('if')
+        assert_equal dependencies.sort, Array(jobs.fetch(id).fetch('needs')).sort
+      end
+      visited = []
+      visit = lambda do |id, trail|
+        refute trail.include?(id)
+        jobs.fetch(id)
+        next if visited.include?(id)
+        Array(jobs.fetch(id)['needs']).each { |dep| visit.call(dep, trail + [id]) }
+        visited << id
+      end
+      jobs.each_key { |id| visit.call(id, []) }
+    end
+    verify = WORKFLOWS['ci']['jobs']['verify']['steps'].first
+    assert_equal '${{ needs.ci-ok.result }}', verify['env']['CI_RESULT']
+    assert_equal 'test "$CI_RESULT" = success', verify['run']
   end
 
   def classify(workflow, event, paths, diff_failure: false)
