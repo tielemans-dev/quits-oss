@@ -95,7 +95,7 @@ describe("invoice PDF lines", () => {
     }, { locale: "da-DK" })
     const labels = text.filter((entry) => entry.startsWith("Moms "))
     expect(labels).toEqual(["Moms 0 % af 500,00 kr.", "Moms 5 % af 201,00 kr.", "Moms 25 % af 1.200,00 kr."])
-    expect(text.indexOf("Moms 25 % af 1.200,00 kr.")).toBeLessThan(text.lastIndexOf("Total"))
+    expect(text.indexOf("Moms 25 % af 1.200,00 kr.")).toBeLessThan(text.lastIndexOf("Total inkl. moms"))
   })
 
   it("falls back to the single tax amount when the rows are empty", () => {

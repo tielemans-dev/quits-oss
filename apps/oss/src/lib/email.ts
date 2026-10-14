@@ -177,7 +177,7 @@ export function itemsTable(
         </tr>
       </thead>
       <tbody>${rows}</tbody>
-    </table>${totals.note ? `<p style="color:${C.muted};">${escapeHtml(totals.note)}</p>` : ""}`
+    </table>`
 }
 
 /** The rows under the items, from the same builder as the PDFs and pages: subtotal, VAT by rate, rounding, total. */
