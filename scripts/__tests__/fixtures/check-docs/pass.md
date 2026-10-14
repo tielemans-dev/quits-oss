@@ -19,3 +19,24 @@ React 19
     bun@1.3.9
 Use `a multiline
 example of Prisma 7` here.
+Use `<!-- check-docs: allow-version example -->` as sample syntax.
+Use Bun>=1.3. <!-- check-docs: allow-version compatibility evidence -->
+Use `<!--` and `Bun>=1.3` as examples.
+```html
+<!-- check-docs: allow-version code example -->
+<!-- unclosed comment in a fence
+```
+<!-- A real multiline comment
+```not-a-fence
+Bun 1.3.9.
+-->
+
+    Bun>=1.3 in indented code
+    <!-- unclosed comment in indented code
+
+<!-- Leading comment -->`Bun 1.3.9` in an example.
+- A list item
+
+      Bun 1.3.9 in list-relative indented code
+Use `multiline <!-- code
+Bun 1.3.9` as an example.

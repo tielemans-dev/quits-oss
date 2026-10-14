@@ -9,3 +9,21 @@ React 19 <!-- check-docs: allow-version -->
 ignored 1.2.3
 ```
 After the fence use PostgreSQL 17.
+Use `<!--` then Bun 1.3.9.
+```html
+<!-- unclosed inside code
+```
+Use Bun 1.3.9.
+<!-- leading comment -->Bun 1.3.9.
+A stray ` in this paragraph.
+
+Use Bun 1.3.9 before a stray ` here.
+
+- Requirements:
+    Bun 1.3.9.
+A normal paragraph continues
+    with Bun 1.3.9.
+Use Bun 1.3.9 `<!-- check-docs: allow-version example -->`.
+Use Bun>=1.3 and Bun≥1.3 and Bun >= 1.3.
+Use ``<!-- check-docs: allow-version example -->`` and React 19.
+Use `an actual code span` Bun 1.3.9.

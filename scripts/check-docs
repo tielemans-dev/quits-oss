@@ -46,35 +46,93 @@ function mask(text) {
 }
 
 function prose(source) {
-  // Preserve offsets and line numbers while removing comments and destinations.
-  const withoutComments = source.replace(/<!--[\s\S]*?(?:-->|$)/g, mask)
+  const original = source.split(/\r?\n/)
+  const allowed = new Set()
   let fence = null
-  const lines = withoutComments.split(/\r?\n/).map(line => {
+  let comment = false
+  let inline = null
+  let paragraph = false
+  let listIndent = 0
+  const lines = original.map((line, lineIndex) => {
+    // Classify blocks using real indentation, never spaces introduced by masking.
     const content = line.replace(/^(?: {0,3}> ?)+/, "")
     const delimiter = content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/)
-    if (fence) {
-      if (delimiter && delimiter[1][0] === fence[0]
-        && delimiter[1].length >= fence.length && !delimiter[2].trim()) fence = null
-      return mask(line)
+    if (!comment && !inline) {
+      if (fence) {
+        if (delimiter && delimiter[1][0] === fence[0]
+          && delimiter[1].length >= fence.length && !delimiter[2].trim()) fence = null
+        paragraph = false
+        return mask(line)
+      }
+      if (delimiter && (delimiter[1][0] !== "`" || !delimiter[2].includes("`"))) {
+        fence = delimiter[1]
+        paragraph = false
+        return mask(line)
+      }
+      const item = content.match(/^ {0,3}(?:[-+*]|\d+[.)]) +/)
+      if (item) listIndent = item[0].length
+      else if (content.trim() && !/^[ \t]/.test(content)) listIndent = 0
+      const indentation = content.match(/^[ \t]*/)[0].replaceAll("\t", "    ").length
+      if (!item && !paragraph && indentation >= listIndent + 4) return mask(line)
     }
-    if (delimiter && (delimiter[1][0] !== "`" || !delimiter[2].includes("`"))) {
-      fence = delimiter[1]
-      return mask(line)
+    let result = ""
+    for (let index = 0; index < line.length;) {
+      if (comment) {
+        const close = line.indexOf("-->", index)
+        const end = close < 0 ? line.length : close + 3
+        result += mask(line.slice(index, end))
+        comment = close < 0
+        index = end
+      } else if (inline) {
+        const run = line.slice(index).match(/^`+/)
+        if (run) {
+          result += mask(run[0])
+          if (run[0] === inline) inline = null
+          index += run[0].length
+        } else {
+          result += " "
+          index++
+        }
+      } else if (line.startsWith("<!--", index)) {
+        const close = line.indexOf("-->", index + 4)
+        const end = close < 0 ? line.length : close + 3
+        const actualComment = line.slice(index, end)
+        if (/^<!--\s*check-docs: allow-version\s+\S[^\n]*?-->$/.test(actualComment)) {
+          allowed.add(lineIndex)
+        }
+        result += mask(actualComment)
+        comment = close < 0
+        index = end
+      } else if (line[index] === "`") {
+        const run = line.slice(index).match(/^`+/)[0]
+        // A code span cannot consume another paragraph or a fenced block.
+        const tail = [line.slice(index + run.length)]
+        for (let next = lineIndex + 1; next < original.length; next++) {
+          if (!original[next].trim() || /^(?: {0,3}> ?)* {0,3}(?:`{3,}|~{3,})/.test(original[next])) break
+          tail.push(original[next])
+        }
+        if (new RegExp("(?<!`)" + run + "(?!`)").test(tail.join("\n"))) {
+          inline = run
+          result += mask(run)
+        } else result += run
+        index += run.length
+      } else {
+        result += line[index++]
+      }
     }
-    if (/^(?: {4}|\t)/.test(content)) return mask(line)
-    return line
+    paragraph = Boolean(result.trim())
+    return result
   }).join("\n")
-  return lines
-    // Backtick runs must match; code spans may cross lines.
-    .replace(/(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, mask)
+  return { allowed, lines: lines
     .replace(/\]\([^\n]*?\)/g, match => "]" + mask(match.slice(1)))
     .replace(/^ {0,3}\[[^\]\n]+\]:[^\n]*$/gm, mask)
     .replace(/(?:https?:\/\/|www\.)[^\s<>]+/g, mask)
+    .split("\n") }
 }
 
 // Bare semver, v-prefixed major/minor, and named software major/minor versions.
 // Boundaries exclude IP addresses, dates and legal identifiers such as A.B.3.3.1.4.
-const version = /(?<![\w.])(?:v\d+(?:\.\d+){0,2}|\d+\.\d+\.\d+)(?:-[\w-]+(?:\.[\w-]+)*)?(?:\+[\w-]+(?:\.[\w-]+)*)?(?!\w|\.\w)|\b(?:Bun|Node(?:\.js)?|React|Prisma|PostgreSQL|Postgres|TypeScript|TanStack(?: Start| Router)?|Better Auth|better-auth|tRPC|Vitest|Playwright|pnpm|npm|Turborepo|Turbo|Alpine|version)\s+v?\d+(?:\.\d+){0,2}(?:\.x|\.\*)?(?!\w|\.\w)/gi
+const version = /(?<![\w.])(?:v\d+(?:\.\d+){0,2}|\d+\.\d+\.\d+)(?:-[\w-]+(?:\.[\w-]+)*)?(?:\+[\w-]+(?:\.[\w-]+)*)?(?!\w|\.\w)|\b(?:Bun|Node(?:\.js)?|React|Prisma|PostgreSQL|Postgres|TypeScript|TanStack(?: Start| Router)?|Better Auth|better-auth|tRPC|Vitest|Playwright|pnpm|npm|Turborepo|Turbo|Alpine|version)(?:\s+(?:[<>]=?|[≥≤=])?\s*|\s*(?:[<>]=?|[≥≤=])\s*)v?\d+(?:\.\d+){0,2}(?:\.x|\.\*)?(?!\w|\.\w)/gi
 
 try {
   if (!lstatSync(root).isDirectory()) throw new Error(`Not a directory: ${root}`)
@@ -90,10 +148,9 @@ try {
   let findings = 0
   for (const file of files.sort()) {
     const source = readFileSync(file, "utf8")
-    const original = source.split(/\r?\n/)
-    const lines = prose(source).split("\n")
+    const { lines, allowed } = prose(source)
     for (const [index, line] of lines.entries()) {
-      if (/<!--\s*check-docs: allow-version\s+\S[^\n]*?-->/.test(original[index])) continue
+      if (allowed.has(index)) continue
       for (const match of line.matchAll(version)) {
         console.error(`${relative(root, file)}:${index + 1}:${match.index + 1}: prose version "${match[0]}"; reference the manifest, use code for an example, or add <!-- check-docs: allow-version REASON -->`)
         findings++

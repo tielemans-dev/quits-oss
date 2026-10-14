@@ -48,13 +48,47 @@ test("findings name the file, original line and version with remediation", t => 
   assert.equal(result.status, 1)
   for (const [line, value] of [[2, "Bun 1.3.9"], [2, "React 19"],
     [3, "1.2.3-beta.1+build.4"], [4, "v2"], [4, "v3.1"], [5, "Prisma 7"],
-    [6, "4.5.6"], [7, "React 19"], [11, "PostgreSQL 17"]]) {
+    [6, "4.5.6"], [7, "React 19"], [11, "PostgreSQL 17"],
+    [12, "Bun 1.3.9"], [16, "Bun 1.3.9"], [17, "Bun 1.3.9"],
+    [20, "Bun 1.3.9"], [23, "Bun 1.3.9"], [25, "Bun 1.3.9"],
+    [26, "Bun 1.3.9"], [27, "Bun>=1.3"], [27, "Bun≥1.3"],
+    [27, "Bun >= 1.3"], [28, "React 19"], [29, "Bun 1.3.9"]]) {
     assert.ok(result.stderr.split("\n").some(message =>
       message.startsWith(`docs/guide.md:${line}:`)
       && message.includes(`prose version "${value}"`)), result.stderr)
   }
-  assert.match(result.stdout, /9 prose version/)
+  assert.match(result.stdout, /21 prose version/)
   assert.match(result.stderr, /reference the manifest/)
+})
+
+test("regression fixtures preserve exact columns with LF and CRLF", t => {
+  const root = fixture(t)
+  const source = content("fail.md")
+  const expected = [[12, "Bun 1.3.9"], [16, "Bun 1.3.9"], [17, "Bun 1.3.9"],
+    [20, "Bun 1.3.9"], [23, "Bun 1.3.9"], [25, "Bun 1.3.9"],
+    [26, "Bun 1.3.9"], [27, "Bun>=1.3"], [27, "Bun≥1.3"],
+    [27, "Bun >= 1.3"], [28, "React 19"], [29, "Bun 1.3.9"]]
+  for (const newline of ["\n", "\r\n"]) {
+    writeFileSync(join(root, "AGENTS.md"), source.replaceAll("\n", newline))
+    const result = run(root)
+    assert.equal(result.status, 1)
+    for (const [line, value] of expected) {
+      const column = source.split("\n")[line - 1].indexOf(value) + 1
+      assert.ok(result.stderr.includes(`AGENTS.md:${line}:${column}: prose version "${value}"`), result.stderr)
+    }
+  }
+})
+
+test("each reported false negative fails independently", t => {
+  const root = fixture(t)
+  const lines = content("fail.md").split("\n")
+  for (const [first, last, count] of [[12, 12, 1], [13, 16, 1], [17, 17, 1],
+    [18, 20, 1], [22, 23, 1], [24, 25, 1], [26, 26, 1], [27, 27, 3], [28, 28, 1]]) {
+    writeFileSync(join(root, "AGENTS.md"), lines.slice(first - 1, last).join("\n"))
+    const result = run(root)
+    assert.equal(result.status, 1, `fixture lines ${first}-${last}: ${result.stderr}`)
+    assert.match(result.stdout, new RegExp(`${count} prose version`))
+  }
 })
 
 test("longer fences, mismatched closers and unclosed fences", t => {
