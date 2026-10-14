@@ -16,8 +16,8 @@ test("database guard rejects remote, inherited, malformed, and ambiguous targets
     assert.throws(() => databaseEnvironment({ slot: 1 }, { QUITS_WORKTREE_POSTGRES_URL: value }))
   }
   const { env, database } = databaseEnvironment({ slot: 7 }, source)
-  assert.equal(env.DATABASE_URL, "postgresql://fixture:fixture@localhost:5432/quits_wt_7")
-  assert.equal(database, "quits_wt_7")
+  assert.equal(env.DATABASE_URL, "postgresql://fixture:fixture@localhost:5432/quits_wt_7_legacy")
+  assert.equal(database, "quits_wt_7_legacy")
   assert.equal(env.PORT, "3107")
   assert.equal(env.BETTER_AUTH_URL, "http://localhost:3107")
   assert.equal(env.PGOPTIONS, undefined)
@@ -37,6 +37,7 @@ test("independent processes allocate unique slots and release without resetting 
     })))
     await withRegistry(common, async (state, save) => {
       assert.equal(new Set(Object.values(state.allocations).map((entry) => entry.slot)).size, 8)
+      assert.equal(new Set(Object.values(state.allocations).map((entry) => entry.owner)).size, 8)
       const slot = allocate(state, "/wt/0").slot
       assert.equal(allocate(state, "/wt/0").slot, slot)
       delete state.allocations["/wt/0"]
@@ -65,28 +66,37 @@ test("setup and teardown only operate on a recorded worktree DB, preserve failed
     await assert.rejects(setup(worktree, source, () => { throw new Error("missing Prisma") }), /missing Prisma/)
     await assert.rejects(read(), { code: "ENOENT" })
     const calls = []
+    let marker = ""
     const execute = (command, args, options) => {
       calls.push([command, args, options.env.DATABASE_URL])
       assert.equal(options.env.QUITS_WORKTREE_ENV, "1")
-      assert.match(options.env.DATABASE_URL, /\/quits_wt_1$/)
+      assert.match(options.env.DATABASE_URL, /\/quits_wt_\d+_[a-f0-9]{32}$/)
+      if (command === "psql" && args.at(-1).startsWith("COMMENT")) marker = args.at(-1).split("'")[1]
+      return command === "psql" ? marker : undefined
     }
     await assert.rejects(setup(worktree, {}, execute), /Set QUITS_WORKTREE_POSTGRES_URL/)
+    // A crash after createdb but before its marker must never adopt or drop that DB.
     await assert.rejects(setup(worktree, source, (command, ...rest) => {
-      execute(command, ...rest)
-      if (command === "createdb") throw new Error("already exists")
-    }), /already exists/)
+      if (command === "psql" && rest[0].at(-1).startsWith("COMMENT")) throw new Error("crash before marker")
+      return execute(command, ...rest)
+    }), /crash before marker/)
     assert.equal((await read()).allocations[worktree].created, false)
-    assert.equal(calls.filter(([command]) => command === "createdb").length, 1)
+    for (const operation of [setup, teardown]) await assert.rejects(operation(worktree, source, execute), /ownership unverified/)
+    assert.equal(calls.filter(([command, args]) => command === "createdb" && args[0] !== "--version").length, 1)
+    assert.equal(calls.filter(([command, args]) => (command === "dropdb" && args[0] !== "--version") || args.includes("migrate")).length, 0)
+    // A persisted matching marker recovers a crash before the ownership flag save.
+    marker = (await read()).allocations[worktree].owner
     await assert.rejects(setup(worktree, source, (command, ...rest) => {
-      execute(command, ...rest)
+      const output = execute(command, ...rest)
       if (command === "bun" && rest[0].includes("migrate")) throw new Error("migration failed")
+      return output
     }), /migration failed/)
     assert.equal((await read()).allocations[worktree].ready, false)
     await assert.rejects(worktreeEnvironment(worktree, source), /setup incomplete/)
     await setup(worktree, source, execute)
-    assert.equal(calls.filter(([command]) => command === "createdb").length, 2)
+    assert.equal(calls.filter(([command, args]) => command === "createdb" && args[0] !== "--version").length, 1)
     assert.equal((await read()).allocations[worktree].ready, true)
-    assert.equal((await worktreeEnvironment(worktree, source)).env.PORT, "3101")
+    assert.equal((await worktreeEnvironment(worktree, source, execute)).env.PORT, "3101")
     const previous = process.env.QUITS_WORKTREE_ENV
     process.env.QUITS_WORKTREE_ENV = "1"
     try {
@@ -95,11 +105,33 @@ test("setup and teardown only operate on a recorded worktree DB, preserve failed
       if (previous === undefined) delete process.env.QUITS_WORKTREE_ENV
       else process.env.QUITS_WORKTREE_ENV = previous
     }
-    await assert.rejects(teardown(worktree, source, () => { throw new Error("DB busy") }), /DB busy/)
+    marker = "unowned replacement"
+    for (const operation of [setup, teardown, worktreeEnvironment]) await assert.rejects(operation(worktree, source, execute), /ownership unverified/)
+    marker = (await read()).allocations[worktree].owner
+    await assert.rejects(teardown(worktree, source, (command, ...rest) => {
+      if (command === "dropdb") throw new Error("DB busy")
+      return execute(command, ...rest)
+    }), /DB busy/)
     assert.equal((await read()).allocations[worktree].created, true)
     await teardown(worktree, source, execute)
-    assert.deepEqual(calls.at(-1).slice(0, 2), ["dropdb", ["--maintenance-db=postgres", "--if-exists", "quits_wt_1"]])
+    assert.deepEqual(calls.at(-1).slice(0, 2), ["dropdb", ["--maintenance-db=postgres", "--if-exists", new URL(calls.at(-1)[2]).pathname.slice(1)]])
     assert.equal((await read()).allocations[worktree], undefined)
     await teardown(worktree, source, () => assert.fail("idempotent teardown"))
+    // Execute the real marker-writing path, then lose the ownership flag save.
+    await assert.rejects(setup(worktree, source, (command, ...rest) => {
+      if (command === "psql" && rest[0].at(-1).startsWith("SELECT")) throw new Error("crash after marker")
+      return execute(command, ...rest)
+    }), /crash after marker/)
+    assert.equal((await read()).allocations[worktree].created, false)
+    await setup(worktree, source, execute)
+    await teardown(worktree, source, execute)
+    marker = "preexisting unowned DB"
+    const before = calls.length
+    await assert.rejects(setup(worktree, source, (command, ...rest) => {
+      if (command === "createdb" && rest[0][0] !== "--version") throw new Error("already exists")
+      return execute(command, ...rest)
+    }), /already exists/)
+    for (const operation of [setup, teardown]) await assert.rejects(operation(worktree, source, execute), /ownership unverified/)
+    assert.equal(calls.slice(before).some(([command, args]) => args.at(-1).startsWith("COMMENT") || (command === "dropdb" && args[0] !== "--version") || args.includes("migrate")), false)
   } finally { await rm(directory, { recursive: true, force: true }) }
 })

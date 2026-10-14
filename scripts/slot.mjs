@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { execFileSync } from "node:child_process"
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
@@ -43,9 +44,10 @@ export async function withRegistry(common, action) {
 export function allocate(state, root) {
   if (!state.allocations[root]) {
     if (state.next > 62435) throw new Error("Worktree port range exhausted")
-    state.allocations[root] = { slot: state.next++, created: false, ready: false }
+    state.allocations[root] = { slot: state.next++, created: false, ready: false, owner: randomUUID() }
   }
   const entry = state.allocations[root]
+  if (!/^[a-f0-9-]{36}$/.test(entry.owner || "")) throw new Error("Legacy allocation requires manual recovery")
   if (!Number.isSafeInteger(entry.slot) || entry.slot < 1 || entry.slot > 62435 ||
       typeof entry.created !== "boolean" || typeof entry.ready !== "boolean" ||
       (entry.created && typeof entry.target !== "string")) throw new Error("Invalid worktree slot")
@@ -64,7 +66,7 @@ export function databaseEnvironment(entry, source = process.env) {
   }
   const target = `${url.hostname}:${url.port || "5432"}/${url.username}`
   if (entry.target && entry.target !== target) throw new Error("Worktree Postgres target changed; restore the original target")
-  const database = `quits_wt_${entry.slot}`
+  const database = `quits_wt_${entry.slot}_${entry.owner?.replaceAll("-", "") || "legacy"}`
   url.pathname = `/${database}`
   // Exclude inherited libpq service/options and passwords from unrelated databases.
   const env = Object.fromEntries(Object.entries(source).filter(([key]) => !key.startsWith("PG")))
@@ -78,7 +80,18 @@ export function databaseEnvironment(entry, source = process.env) {
   } }
 }
 
-export async function worktreeEnvironment(cwd = process.cwd(), source = process.env) {
+export async function verifyOwnership(entry, source, execute, cwd) {
+  if (!/^[a-f0-9-]{36}$/.test(entry.owner || "")) throw new Error("Legacy allocation has no ownership marker; manual recovery required")
+  const { database, env } = databaseEnvironment(entry, source)
+  const marker = await execute("psql", ["-X", "--dbname=postgres", "--tuples-only", "--no-align", "--set=ON_ERROR_STOP=1", "--command",
+    `SELECT shobj_description(oid, 'pg_database') FROM pg_database WHERE datname = '${database}'`], { cwd, env })
+  if (marker !== entry.owner) throw new Error("Database ownership unverified; manual recovery required. No migration or drop permitted")
+}
+
+export async function worktreeEnvironment(cwd = process.cwd(), source = process.env, execute = (command, args, options) => {
+  try { return execFileSync(command, args, { ...options, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() }
+  catch { throw new Error("Database ownership check failed; check local prerequisites") }
+}) {
   let paths
   // Ordinary checkouts keep their existing development behavior.
   try { paths = worktreePaths(cwd) } catch (error) {
@@ -90,6 +103,7 @@ export async function worktreeEnvironment(cwd = process.cwd(), source = process.
     if (!entry) throw new Error("Run node scripts/setup-worktree.mjs before starting worktree dev")
     allocate(state, paths.root)
     if (!entry.ready) throw new Error("Worktree setup incomplete; rerun setup-worktree.mjs")
+    await verifyOwnership(entry, source, execute, paths.root)
     return databaseEnvironment(entry, source)
   })
 }
