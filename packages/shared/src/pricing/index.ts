@@ -204,6 +204,8 @@ const euCountries = new Set(["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI
 
 /** Pure issuance guard. It validates stored classifications/evidence without repricing a document. */
 export function validateVatIssuance(input: {
+  /** Only an explicitly non-registered seller may issue otherwise unclassified zero VAT. */
+  momsRegistered?: boolean | null
   lines: Array<{ treatment: string; rate: string; country?: string | null; reasonCode?: string | null }>
   evidence: unknown
   sellerVatId?: string | null
@@ -213,6 +215,8 @@ export function validateVatIssuance(input: {
   const evidence = vatEvidenceSchema.safeParse(input.evidence ?? {})
   if (!evidence.success) return ["Invalid VAT evidence"]
   const e = evidence.data
+  if (input.momsRegistered === false && input.lines.some(line => /^\d+(?:\.\d+)?$/.test(line.rate) && !new D(line.rate).isZero()))
+    issues.push("A non-registered seller cannot charge VAT")
   const present = (value?: string | null) => Boolean(value?.trim())
   if (input.lines.some((line) => line.treatment === "out_of_scope") && input.lines.some((line) => line.treatment !== "out_of_scope"))
     issues.push("out_of_scope cannot mix with other treatments")
@@ -233,7 +237,11 @@ export function validateVatIssuance(input: {
       case "exempt":
         if (!present(e.statementText)) issues.push("Exemption requires reason text")
         break
-      case "reverse_charge_domestic": case "zero_rated": case "unclassified_zero":
+      case "unclassified_zero":
+        if (input.momsRegistered === false && classification.success) break
+        issues.push(`${line.treatment} is refused in Phase A`)
+        break
+      case "reverse_charge_domestic": case "zero_rated":
         issues.push(`${line.treatment} is refused in Phase A`)
         break
     }

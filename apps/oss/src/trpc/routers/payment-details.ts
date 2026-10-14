@@ -1,3 +1,4 @@
+import { isCloudDistribution } from "../../lib/distribution"
 import { paymentDetailsInputSchema, type PaymentDetailsState } from "@quits/contracts/payment-details"
 import { actorCan } from "../../domain/actor"
 import { updatePaymentDetails } from "../../domain/commands/payment-details"
@@ -14,6 +15,13 @@ import { unwrapOutcome } from "../outcome"
  * affects later ones. Every change is recorded in the audit log and sent to the admins.
  */
 export const paymentDetailsRouter = router({
+  firstSendReadiness: authorizedProcedure("invoice:send").query(async ({ ctx }) => {
+    if (!isCloudDistribution) return { bankMissing: false }
+    const settings = await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { ...paymentDetailsSelect, onboardingVersion: true } })
+    if (settings?.onboardingVersion !== 2 || paymentDetailsFromColumns(settings).bankAccount) return { bankMissing: false }
+    const issued = await prisma.invoice.count({ where: { organizationId: ctx.organizationId, number: { not: null } } })
+    return { bankMissing: issued === 0 }
+  }),
   get: authorizedProcedure("settings:read").query(async ({ ctx }): Promise<PaymentDetailsState> => {
     const settings = await prisma.orgSettings.findUnique({
       where: { organizationId: ctx.organizationId },

@@ -50,6 +50,9 @@ export function postingsFor(event: PostingEvent): Posting[] | PostingRefusal {
   const rawGroups = Array.isArray(raw.vatGroups) ? raw.vatGroups.map(record) : []
   if ((rawGroups.some(g => g.treatment === "out_of_scope") && rawGroups.some(g => g.treatment !== "out_of_scope")) || rawGroups.some(group => validateVatIssuance({
     lines: [{ treatment: String(group.treatment), rate: String(group.rate), country: typeof group.country === "string" ? group.country : null, reasonCode: typeof group.reasonCode === "string" ? group.reasonCode : null }],
+    // Money events have no tax regime: use the frozen choice to authorize unclassified zero,
+    // without treating a remembered Danish choice as a ban on standard custom/sales-tax groups.
+    momsRegistered: group.treatment === "unclassified_zero" && typeof seller.momsRegistered === "boolean" ? seller.momsRegistered : undefined,
     evidence: group.evidence, sellerVatId: typeof sellerVatId === "string" ? sellerVatId : undefined, buyerCountry: typeof buyer.country === "string" ? buyer.country : undefined,
   }).length)) return refuse("unsupported_treatment_combination", "Unsupported classification or incomplete frozen evidence")
 

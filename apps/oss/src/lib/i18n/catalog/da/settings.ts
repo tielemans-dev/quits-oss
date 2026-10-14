@@ -1,7 +1,10 @@
 export const daSettingsMessages = {
-  "settings.paymentTermsDays.label": "Betalingsfrist (dage)",
-  "settings.paymentTermsDays.hint": "Standardantal dage til en ny fakturas forfaldsdato. Eksisterende fakturaer beholder deres forfaldsdato.",
   "settings.validation.invalidPaymentTerms": "Betalingsfristen skal være et helt tal mellem 0 og 3650.",
+
+  "settings.paymentTermsDays.hint": "Standardantal dage til en ny fakturas forfaldsdato. Eksisterende fakturaer beholder deres forfaldsdato.",
+
+  "settings.paymentTermsDays.label": "Betalingsfrist (dage)",
+
   "settings.vatStatus.cvrLabel": "CVR-nr.",
   "settings.vatStatus.cvrHelp": "Din virksomheds danske registreringsnummer.",
 
@@ -11,6 +14,8 @@ export const daSettingsMessages = {
   "settings.baseCurrency.label": "Basisvaluta",
   "settings.baseCurrency.hint": "Regnskabet bruger denne valuta. Den låses efter udstedelse af et dokument. Kladdevalutaen er uafhængig.",
   "settings.title": "Indstillinger",
+  "settings.capabilities.failed": "Kunne ikke hente tilgængelige indstillinger. Du kan gemme andre ændringer eller prøve igen.",
+  "settings.capabilities.retry": "Prøv igen",
   "settings.loading": "Indlæser...",
   "settings.success.saved": "Indstillinger gemt.",
   "settings.error.loadFailed": "Kunne ikke indlæse indstillinger",

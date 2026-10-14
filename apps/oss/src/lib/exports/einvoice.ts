@@ -1,3 +1,5 @@
+import { withoutNonVatStatement } from "../documents/non-vat-presentation"
+import { sellerVatPresentationStatus } from "../documents/seller-vat"
 import { withNonVatStatement } from "../documents/non-vat-note"
 import { getDocumentArtifactStore } from "../runtime/services"
 import { hashBytes } from "../../domain/documents/hash"
@@ -87,6 +89,7 @@ type SellerSource = {
   } | null
   taxIds: TaxIdLike[]
   documentCountryCode: string
+  taxRegime?: string | null
 }
 
 function primaryFirst<T extends { isPrimary: boolean }>(rows: T[]) {
@@ -99,7 +102,7 @@ export function buildSellerParty(source: SellerSource): EinvoiceParty {
     toCountryCode(source.documentCountryCode) ?? toCountryCode(source.settings?.countryCode)
   const addressText = source.snapshot?.companyAddress || source.settings?.companyAddress || null
   const taxIds = source.snapshot?.taxIds?.length ? source.snapshot.taxIds : source.taxIds
-  const momsRegistered = source.snapshot ? source.snapshot.momsRegistered : source.settings?.momsRegistered
+  const momsRegistered = sellerVatPresentationStatus(source.snapshot ? source.snapshot.momsRegistered : source.settings?.momsRegistered, source.taxRegime)
   const vatId = momsRegistered === false ? null : vatIdentifier(taxIds, countryCode)
   const legalId = legalIdentifier(taxIds, countryCode, vatId)
   return {
@@ -230,6 +233,7 @@ export async function loadEinvoiceDocument(
       settings: seller.settings,
       taxIds: seller.taxIds,
       documentCountryCode: invoice.countryCode,
+      taxRegime: invoice.taxRegime,
     })
     // A draft has no number yet. Its export is never produced: `document.notIssued` is reported.
     const number = invoice.number ?? ""
@@ -251,7 +255,7 @@ export async function loadEinvoiceDocument(
       buyerReference: invoice.purchaseOrderRef || buyer.name,
       orderReference: invoice.purchaseOrderRef,
       billingReference: null,
-      note: withNonVatStatement(invoice.notes, sellerSnapshot?.momsRegistered, invoice.locale),
+      note: withNonVatStatement(withoutNonVatStatement(invoice.notes, sellerSnapshot?.momsRegistered, invoice.taxRegime) ?? null, sellerVatPresentationStatus(sellerSnapshot?.momsRegistered, invoice.taxRegime), invoice.locale),
       seller: sellerParty,
       buyer,
       ...(payment ? { payment } : {}),
@@ -291,12 +295,13 @@ export async function loadEinvoiceDocument(
       invoice.status === "draft"
         ? null
         : { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) },
-    note: withNonVatStatement(creditNote.reason, parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.locale),
+    note: withNonVatStatement(withoutNonVatStatement(creditNote.reason, parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime) ?? null, sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime), creditNote.locale),
     seller: buildSellerParty({
       snapshot: parseSellerSnapshot(creditNote.sellerSnapshot),
       settings: seller.settings,
       taxIds: seller.taxIds,
       documentCountryCode: creditNote.countryCode,
+      taxRegime: creditNote.taxRegime,
     }),
     buyer,
     calculationVersion: creditNote.calculationVersion,

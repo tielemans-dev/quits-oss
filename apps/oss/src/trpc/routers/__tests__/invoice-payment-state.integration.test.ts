@@ -49,6 +49,7 @@ describeIfDatabase("invoice payment state", () => {
           baseCurrency: "DKK",
           currency: "DKK",
           taxRegime: "eu_vat",
+          momsRegistered: true,
           pricesIncludeTax: false,
           invoicePrefix: "INVPAY",
           quotePrefix: "QTEPAY",
@@ -112,5 +113,5 @@ describeIfDatabase("invoice payment state", () => {
     } finally {
       await cleanupTestOrganizations({ where: { id: orgId } })
     }
-  }, 10_000)
+  })
 })

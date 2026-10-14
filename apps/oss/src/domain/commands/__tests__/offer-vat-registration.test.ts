@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Effect } from "effect"
-import type { TaxId } from "../../../lib/compliance"
 import { Prisma } from "../../../../generated/prisma/client"
 import { Db, Command, type CommandScope } from "../../services"
-import { sendInvoice } from "../invoices"
-import { requireVatIssuance } from "../../documents/vat-issuance"
-import { buildInvoiceSellerSnapshot } from "../../documents/snapshots"
 import { sendQuote } from "../quotes"
 import { issuanceApproval, issueAgreementOffer } from "../../agreements/issuance"
 import { prospectiveRenderInput } from "../../documents/render-input"
@@ -34,7 +30,7 @@ import { composeQuoteEmail } from "../../documents/quote-email"
 
 const decimal = (value: string | number) => new Prisma.Decimal(value)
 const contact = { id: "buyer", name: "Buyer", email: "buyer@example.test", company: "Buyer ApS", address: "Testvej 2", city: "Copenhagen", zip: "1000", state: null, country: "DK", taxIds: [{ scheme: "vat", value: "DK12345678", countryCode: "DK" }] }
-const sellerTaxIds: TaxId[] = [{ scheme: "vat", value: "DK24256790", countryCode: "DK" }, { scheme: "cvr", value: "24256790", countryCode: "DK" }]
+const sellerTaxIds = [{ scheme: "vat", value: "DK24256790", countryCode: "DK" }, { scheme: "cvr", value: "24256790", countryCode: "DK" }]
 
 function harness({ registered = false, rate = "25", isDeposit = false, tiny = false, exempt = false } = {}) {
   const priced = priceAgreementV2({ currency: "DKK", pricesIncludeTax: false, taxRate: rate, deliverables: [{ title: "Work", description: "Work", quantity: "1", unitPrice: tiny ? "0.01" : "100", isDeposit, vat: { treatment: exempt ? "exempt" : rate === "0" ? "out_of_scope" : "standard", reasonCode: exempt ? "health" : null, rate: rate === "0" ? "0" : "0.25", country: "DK" } }] })
@@ -44,7 +40,6 @@ function harness({ registered = false, rate = "25", isDeposit = false, tiny = fa
   }))
   const document = {
     id: "document", contactId: contact.id, contact, status: "draft", number: null,
-    quoteId: null as string | null, agreementId: null as string | null, purpose: "standard", supplyDate: new Date("2026-10-12"),
     title: "Work agreement", summary: null, termsMarkdown: "Work", validUntil: new Date("2099-01-01"), expiryDate: new Date("2099-01-01"),
     timezone: "Europe/Copenhagen", locale: "en-US", countryCode: "DK", currency: "DKK", taxRegime: "eu_vat", taxRate: decimal(rate),
     pricesIncludeTax: false, dueInDays: 30, billingTrigger: "on_acceptance", offerFormatVersion: 2, calculationVersion: "v2",
@@ -55,7 +50,7 @@ function harness({ registered = false, rate = "25", isDeposit = false, tiny = fa
   const settings = { momsRegistered: registered, countryCode: "DK", companyName: "Current Seller", companyEmail: "seller@example.test", companyAddress: "Testvej 1" }
   const update = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ ...document, ...data }))
   const db = {
-    $queryRaw: vi.fn(async () => []), invoice: { findFirst: vi.fn(async () => document), update }, quote: { findFirst: vi.fn(async () => document), update }, agreement: { findFirst: vi.fn(async () => document), update },
+    $queryRaw: vi.fn(async () => []), quote: { findFirst: vi.fn(async () => document), update }, agreement: { findFirst: vi.fn(async () => document), update },
     contact: { findFirstOrThrow: vi.fn(async () => contact) },
     orgSettings: { upsert: vi.fn(async () => settings) }, organizationTaxId: { findMany: vi.fn(async () => sellerTaxIds) },
   }
@@ -91,6 +86,11 @@ describe("quote issuance uses the identities it sends", () => {
     await queued.markSending(createEmailDeliveryAttempt({ at: h.command.now, outcome: "sending", code: "sending", message: "Sending quote" }))
     expect(h.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ sellerSnapshot: expect.objectContaining({ momsRegistered: true, taxIds: sellerTaxIds }), buyerSnapshot: expect.objectContaining({ country: "DK", taxIds: contact.taxIds }) }) }))
   })
+  it("allows ordinary unclassified zero with refreshed explicit non-registration", async () => {
+    const h = harness({ rate: "0" })
+    h.document.items[0]!.vatTreatment = "unclassified_zero"
+    expect(await h.run(sendQuote.handle({ id: "document" }))).toMatchObject({ _tag: "Right" })
+  })
   it("allows an unregistered seller's zero-tax quote", async () => {
     const h = harness({ rate: "0" })
     expect(await h.run(sendQuote.handle({ id: "document" }))).toMatchObject({ _tag: "Right" })
@@ -114,6 +114,18 @@ describe("agreement offers validate current registration before issuance and pre
     expect(await h.run(prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
     expectNoIssuanceEffects(h)
   })
+  it("allows ordinary unclassified zero at both agreement boundaries", async () => {
+    const h = harness({ rate: "0" })
+    h.document.deliverables[0]!.vatTreatment = "unclassified_zero"
+    expect(await h.run(prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" }))).toMatchObject({ _tag: "Right" })
+    expect(await h.run(issueAgreementOffer({ id: "document" }, "manual"))).toMatchObject({ _tag: "Right" })
+  })
+  it("preserves custom-tax offers despite remembered non-registration", async () => {
+    const h = harness()
+    h.document.taxRegime = "custom"
+    expect(await h.run(prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" }))).toMatchObject({ _tag: "Right" })
+    expect(await h.run(issueAgreementOffer({ id: "document" }, "manual"))).toMatchObject({ _tag: "Right" })
+  })
   it.each([{ registered: true }, { rate: "0" }])("issues valid registered or zero-tax offers: %j", async options => {
     const h = harness(options)
     expect(await h.run(prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" }))).toMatchObject({ _tag: "Right", right: { snapshot: { sellerSnapshot: { momsRegistered: options.registered ?? false } } } })
@@ -134,50 +146,5 @@ describe("zero-tax exemption cannot bypass nonregistered issuance", () => {
     expect(await h.run(issueAgreementOffer({ id: "document" }, "manual"))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
     expect(await h.run(prospectiveRenderInput({ kind: "agreement", documentId: "document", commandInput: {}, number: "AGR-0001", issuedAt: h.command.now, method: "manual" }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
     expectNoIssuanceEffects(h)
-  })
-})
-
-
-describe("linked invoice rechecks registration after offer issuance", () => {
-  it.each(["quoteId", "agreementId"] as const)("refuses deregistered %s conversion before numbering or delivery", async link => {
-    const h = harness()
-    h.document[link] = "issued-offer"
-    const frozen = structuredClone(h.document.sellerSnapshot)
-    expect(await h.run(sendInvoice.handle({ id: "document" }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
-    expect(await h.run(prospectiveRenderInput({ kind: "invoice", documentId: "document", commandInput: {}, number: "INV-1", issuedAt: h.command.now }))).toMatchObject({ _tag: "Left", left: { code: "seller_not_vat_registered" } })
-    expectNoIssuanceEffects(h)
-    expect(h.document.sellerSnapshot).toEqual(frozen)
-  })
-  it.each(["quoteId", "agreementId"] as const)("rejects VAT-bearing %s conversion with a retained CVR-only identity before effects", async link => {
-    const h = harness({ registered: true })
-    h.document[link] = "issued-offer"
-    h.document.countryCode = "SE"
-    h.document.sellerSnapshot = { momsRegistered: false, taxIds: [{ scheme: "cvr", value: "24256790", countryCode: null }] }
-    const frozen = structuredClone(h.document.sellerSnapshot)
-    // Current IDs contain VAT, but silently substituting them would change agreed identity.
-    expect(await h.run(sendInvoice.handle({ id: "document" }))).toMatchObject({ _tag: "Left", left: { code: "evidence_incomplete" } })
-    expect(await h.run(prospectiveRenderInput({ kind: "invoice", documentId: "document", commandInput: {}, number: "INV-1", issuedAt: h.command.now }))).toMatchObject({ _tag: "Left", left: { code: "evidence_incomplete" } })
-    expectNoIssuanceEffects(h)
-    expect(h.document.sellerSnapshot).toEqual(frozen)
-  })
-  it.each(["quoteId", "agreementId"] as const)("allows zero-tax %s conversion with a retained CVR-only identity", async link => {
-    const h = harness({ registered: true, rate: "0" })
-    h.document[link] = "issued-offer"
-    h.document.sellerSnapshot = { momsRegistered: false, taxIds: [sellerTaxIds[1]!] }
-    const seller = buildInvoiceSellerSnapshot(h.document, { companyName: null, companyEmail: null, companyAddress: null, momsRegistered: true }, sellerTaxIds)
-    expect(await h.run(requireVatIssuance({ ...h.document, sellerSnapshot: seller }))).toMatchObject({ _tag: "Right" })
-  })
-  it("accepts a Danish CVR that the electronic invoice renderer can resolve as VAT", async () => {
-    const h = harness({ registered: true })
-    h.document.quoteId = "issued-offer"
-    h.document.sellerSnapshot = { momsRegistered: false, taxIds: [sellerTaxIds[1]!] }
-    const seller = buildInvoiceSellerSnapshot(h.document, { companyName: null, companyEmail: null, companyAddress: null, momsRegistered: true }, sellerTaxIds)
-    expect(await h.run(requireVatIssuance({ ...h.document, sellerSnapshot: seller }))).toMatchObject({ _tag: "Right" })
-  })
-  it("retains agreed identity while applying current registration without mutating history", () => {
-    const saved = { companyName: "Agreed Seller", companyAddress: "Agreed address", taxIds: sellerTaxIds, momsRegistered: true }
-    const settings = { companyName: "Changed Seller", companyAddress: "Changed address", companyEmail: null, momsRegistered: false }
-    expect(buildInvoiceSellerSnapshot({ quoteId: "offer", sellerSnapshot: saved }, settings, [])).toEqual({ ...saved, momsRegistered: false })
-    expect(saved.momsRegistered).toBe(true)
   })
 })

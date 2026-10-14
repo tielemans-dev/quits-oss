@@ -1,3 +1,7 @@
+import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
+import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { nonVatStatement } from "./documents/non-vat-note"
+import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer"
 import { formatCurrency, formatDate } from "./i18n/format"
 import { translate } from "./i18n/translate"
@@ -69,6 +73,7 @@ export type CreditNoteForPdf = {
   subtotal: number
   taxAmount: number
   total: number
+  taxRegime?: string
   currency: string
   locale?: string | null
   timezone?: string | null
@@ -90,7 +95,7 @@ export type CreditNoteForPdf = {
   /** The stored total minus the stored subtotal and tax, as a decimal string; printed when non-zero. */
   rounding?: string
   /** Unit price and total are the stored amounts on the document's price basis. */
-  items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>
+  items: Array<{ description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }>
 }
 
 export function CreditNotePdfDocument({
@@ -104,6 +109,8 @@ export function CreditNotePdfDocument({
   const locale = creditNote.locale ?? org.locale
   const timezone = creditNote.timezone ?? org.timezone
   const { seller, buyer } = creditNotePdfParties(creditNote, org)
+  const momsRegistered = sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime)
+  const reason = withoutNonVatStatement(creditNote.reason, momsRegistered, creditNote.taxRegime)
   const logo = seller.logo
   const money = (amount: number) => formatCurrency(amount, creditNote.currency, locale)
   const columns = lineColumnKeys(creditNote.pricesIncludeTax === undefined ? undefined : priceBasis(creditNote.pricesIncludeTax))
@@ -182,7 +189,7 @@ export function CreditNotePdfDocument({
           </View>
           {creditNote.items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
-              <Text style={styles.colDescription}>{item.description}</Text>
+              <View style={styles.colDescription}><Text>{item.description}</Text>{sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}</View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>{money(item.unitPrice)}</Text>
               <Text style={styles.colTotal}>{money(item.total)}</Text>
@@ -203,9 +210,11 @@ export function CreditNotePdfDocument({
           </View>
         </View>
 
+        {momsRegistered === false && <Text style={[styles.reasonText, { marginTop: 24 }]}>{nonVatStatement(locale)}</Text>}
+
         <View style={styles.reason}>
           <Text style={styles.sectionTitle}>{translate("creditNotes.pdf.reason", locale)}</Text>
-          <Text style={styles.reasonText}>{creditNote.reason}</Text>
+          <Text style={styles.reasonText}>{reason}</Text>
         </View>
       </Page>
     </Document>

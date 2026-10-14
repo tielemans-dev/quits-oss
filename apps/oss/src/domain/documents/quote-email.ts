@@ -1,3 +1,4 @@
+import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { buildQuoteEmailContent, composeMessage } from "../../lib/email"
 import { documentEmailOrg, resolveInvoiceEmailContext } from "./invoice-email"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
@@ -17,8 +18,10 @@ export type QuoteForEmail = {
   timezone: string
   issueDate: Date
   expiryDate: Date
+  taxRegime?: string
   currency: string
   notes: string | null
+  sellerSnapshot?: unknown
   subtotalNet: Decimalish
   totalTax: Decimalish
   totalGross: Decimalish
@@ -53,8 +56,9 @@ export function composeQuoteEmail(input: {
   to: string
   publicQuoteUrl: string | null
 }) {
-  const { envelope } = resolveQuoteEmailContext(input.settings)
   const { quote } = input
+  const seller = parseSellerSnapshot(quote.sellerSnapshot)
+  const { envelope } = resolveQuoteEmailContext(input.settings)
   const vatSummary = documentVatSummary(quote)
   const content = buildQuoteEmailContent({
     fromName: envelope.fromName,
@@ -62,6 +66,7 @@ export function composeQuoteEmail(input: {
     replyTo: envelope.replyTo,
     quote: {
       ...quote,
+      momsRegistered: seller?.momsRegistered,
       subtotal: quote.subtotalNet.toNumber(),
       taxAmount: quote.totalTax.toNumber(),
       total: quote.totalGross.toNumber(),
@@ -71,13 +76,16 @@ export function composeQuoteEmail(input: {
         const shown = lineAmounts(priceBasis(quote.pricesIncludeTax), item)
         return {
           description: item.description,
+          taxRate: item.taxRate.toNumber(),
           quantity: item.quantity.toNumber(),
           unitPrice: shown.unitPrice.toNumber(),
           total: shown.amount.toNumber(),
         }
       }),
     },
-    org: documentEmailOrg(quote, input.settings),
+    org: { ...documentEmailOrg(quote, input.settings),
+      ...(seller ? { companyName: seller.companyName, companyEmail: seller.companyEmail } : {}),
+    },
     contactName: quote.contact.name,
     publicQuoteUrl: input.publicQuoteUrl,
   })

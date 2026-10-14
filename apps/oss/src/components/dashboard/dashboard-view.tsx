@@ -47,10 +47,12 @@ export function DashboardHeader({ subtitle }: { subtitle?: string }) {
  */
 export function DashboardView({
   summary,
+  readyCompany,
   sendReminder,
   onRemindersSettled,
 }: {
   summary: Summary
+  readyCompany?: string
   sendReminder: SendReminder
   onRemindersSettled?: () => void
 }) {
@@ -74,7 +76,7 @@ export function DashboardView({
       {state === "first-run" ? (
         // A wrapper, because the page container strips the padding of its direct children.
         <div>
-          <FirstRun />
+          <FirstRun readyCompany={readyCompany} />
         </div>
       ) : (
         <div className="@container" data-state={state}>

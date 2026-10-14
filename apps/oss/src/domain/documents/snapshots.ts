@@ -1,5 +1,8 @@
+import { Effect } from "effect"
+import { InvalidState } from "../errors"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
 import { parseSellerSnapshot, type BuyerSnapshot, type SellerSnapshot } from "@quits/contracts/documents"
+import { isNationalRegistrationScheme } from "../../lib/compliance"
 import type { TaxId } from "../../lib/compliance"
 import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../../lib/payment-details"
 
@@ -91,3 +94,38 @@ export const buyerContactSelect = {
   taxId: true,
   taxIds: { select: { scheme: true, value: true, countryCode: true } },
 } as const
+
+/** Current registration confirms only the same seller, never a different agreed legal identity. */
+export function withSellerVatStatus<T extends SellerSnapshot>(seller: T, current: SellerSnapshot, taxRegime: string) {
+  const country = seller.countryCode?.trim().toUpperCase()
+  const currentCountry = current.countryCode?.trim().toUpperCase()
+  // Other regimes retain the agreed legal identity and its frozen registration status.
+  if (taxRegime !== "eu_vat" || (country !== "DK" && currentCountry !== "DK")) return Effect.succeed(seller)
+  const cvrIds = (snapshot: SellerSnapshot) => [...new Set((snapshot.taxIds ?? [])
+    .filter(id => isNationalRegistrationScheme(id.scheme, "DK") && (id.countryCode ?? snapshot.countryCode)?.toUpperCase() === "DK")
+    .map(id => id.value.trim()))].sort()
+  const retainedCvr = cvrIds(seller), currentCvr = cvrIds(current)
+  const taxIdentity = (snapshot: SellerSnapshot) => JSON.stringify((snapshot.taxIds ?? [])
+    .map(id => [id.scheme?.toLowerCase() ?? "", id.countryCode?.toUpperCase() ?? "", id.value.trim()])
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
+  // A Danish CVR identifies the legal seller despite trading-name/address changes. Without it,
+  // require the full known postal identity and identifiers, rather than guessing from a name.
+  const sameSeller = country && country === currentCountry && (country === "DK" && (retainedCvr.length || currentCvr.length)
+    ? retainedCvr.length === 1 && currentCvr.length === 1 && /^\d{8}$/.test(retainedCvr[0]!) && retainedCvr[0] === currentCvr[0]
+    : Boolean(seller.companyName?.trim() && seller.companyAddress?.trim()) &&
+      seller.companyName === current.companyName && seller.companyAddress === current.companyAddress &&
+      taxIdentity(seller) === taxIdentity(current))
+  return sameSeller
+    ? Effect.succeed({ ...seller, momsRegistered: current.momsRegistered })
+    : Effect.fail(new InvalidState({ code: "seller_identity_changed", message: "The agreed seller differs from company settings. Restore and confirm VAT registration for the agreed seller, or create a new quote or agreement with the current seller before issuing." }))
+}
+
+/** Historical credits inherit known identity, but never today's VAT registration or payment details. */
+export function creditSellerSnapshot(
+  source: unknown,
+  settings: Parameters<typeof buildSellerSnapshot>[0],
+  taxIds: TaxId[]
+): unknown {
+  if (source !== null && source !== undefined) return withoutPaymentDetails(source)
+  return buildSellerSnapshot({ ...settings, momsRegistered: undefined }, taxIds)
+}

@@ -8,12 +8,12 @@ import { buildCreditNoteEmailContent } from "../../lib/emails/credit-note-email"
 import { appLogger } from "../../lib/observability"
 import type { AnyCommandDefinition } from "../command"
 import { defineCommand } from "../command"
-import { loadDocumentContext } from "../documents/context"
 import { requireRecipientEmail, resolveInvoiceEmailContext } from "../documents/invoice-email"
 import { allocateDocumentNumber, asIssued } from "../documents/numbering"
 import { priceCreditNote } from "../documents/credit-pricing"
 import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
-import { buildBuyerSnapshot, buildSellerSnapshot, withoutPaymentDetails } from "../documents/snapshots"
+import { buildBuyerSnapshot, creditSellerSnapshot } from "../documents/snapshots"
+import { loadDocumentContext } from "../documents/context"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
@@ -101,8 +101,7 @@ export const issueCreditNote = defineCommand({
               payableRounding: built.payableRounding,
               vatEvidence: invoice.vatEvidence ?? undefined,
             } : {}),
-            sellerSnapshot: (withoutPaymentDetails(invoice.sellerSnapshot) ??
-              buildSellerSnapshot(settings, sellerTaxIds)) as Prisma.InputJsonValue,
+            sellerSnapshot: creditSellerSnapshot(invoice.sellerSnapshot, settings, sellerTaxIds) as Prisma.InputJsonValue,
             buyerSnapshot: (invoice.buyerSnapshot ??
               buildBuyerSnapshot(invoice.contact)) as Prisma.InputJsonValue,
             items: {
@@ -175,10 +174,12 @@ export const sendCreditNote = defineCommand({
           number: creditNote.number,
           issueDate: creditNote.issueDate,
           reason: creditNote.reason,
+          sellerSnapshot: creditNote.sellerSnapshot,
           subtotal: num(creditNote.subtotalNet),
           taxAmount: num(creditNote.totalTax),
           total: num(creditNote.totalGross),
           currency: creditNote.currency,
+          taxRegime: creditNote.taxRegime,
           priceBasis: priceBasis(creditNote.pricesIncludeTax),
           ...documentVatSummary(creditNote),
           items: creditNote.items.map((item) => {
@@ -188,6 +189,7 @@ export const sendCreditNote = defineCommand({
               quantity: num(item.quantity),
               unitPrice: num(shown.unitPrice),
               total: num(shown.amount),
+              taxRate: num(item.taxRate),
             }
           }),
         },

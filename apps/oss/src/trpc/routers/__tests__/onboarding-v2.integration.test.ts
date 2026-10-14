@@ -1,5 +1,7 @@
+import { newDraft, confirmationPayload } from "../../../components/onboarding-v2/draft"
 import { randomUUID } from "node:crypto"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { TRPCError } from "@trpc/server"
 import { confirmOnboardingV2Schema, type ConfirmOnboardingV2Input } from "@quits/contracts/onboarding"
 import { prisma } from "../../../lib/db"
 import { confirmOnboardingV2 } from "../../../lib/onboarding/confirm-v2"
@@ -7,6 +9,7 @@ import { cleanupTestOrganizations, hasTestDatabase } from "../../../test-utils/o
 import { ensureTestMembership } from "../../../test-utils/membership"
 import { bootstrapQuitsRuntime } from "../../../lib/runtime/bootstrap"
 import { setRuntimeExtensions, getRuntimeCapabilities } from "../../../lib/runtime/extensions"
+import { setRuntimeServices } from "../../../lib/runtime/services"
 
 const ids: string[] = []
 const summary = (): ConfirmOnboardingV2Input => ({ idempotencyKey: randomUUID(), companyName: "Synthetic Test ApS", companyAddress: "Testvej 1, 2. th.\n1000 København", cvr: "24256790", companyForm: "ApS", reklamebeskyttet: false, momsRegistered: true, vatId: "DK24256790" })
@@ -61,6 +64,28 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await prisma.organizationTaxId.count({ where: { organizationId: id } })).toBe(0)
     expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
   })
+  it.each([true, false])("persists the review registration choice %s for CVR and manual input", async momsRegistered => {
+    for (const source of ["cvr", "manual"] as const) {
+      const id = await organization()
+      const api = await caller(id)
+      const draft = newDraft(null, "signup@example.test", false)
+      draft.source = source
+      Object.assign(draft.values, {
+        companyName: "Edited review", companyAddress: "Testvej 1, København",
+        cvr: source === "cvr" ? "24256790" : "", momsRegistered,
+        invoicePrefix: "REVIEW", defaultCurrency: "EUR", paymentTermsDays: 30,
+      })
+      await api.onboarding.confirmV2(confirmOnboardingV2Schema.parse(confirmationPayload(draft)))
+      expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({
+        momsRegistered, onboardingMethod: source, invoicePrefix: "REVIEW",
+        defaultCurrency: "EUR", currency: "EUR", baseCurrency: "EUR", paymentTermsDays: 30,
+      })
+      const saved = await api.settings.get()
+      expect(saved.momsRegistered).toBe(momsRegistered)
+      expect(Number(saved.taxRate)).toBe(momsRegistered ? 25 : 0)
+      expect(await prisma.organizationTaxId.count({ where: { organizationId: id, scheme: "vat" } })).toBe(source === "cvr" && momsRegistered ? 1 : 0)
+    }
+  })
   it("serializes double submits, returns the original response, and never writes on retry", async () => {
     const id = await organization()
     const input = confirmOnboardingV2Schema.parse(summary())
@@ -110,6 +135,32 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(settings.taxRate?.toString()).toBe("0")
     expect(await api.onboarding.getStatus()).toMatchObject({ isComplete: true, missing: [], bankMissing: true })
   })
+  it("saves edited summary defaults in the confirmation transaction", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    const result = await api.onboarding.confirmV2({ ...summary(), settings: {
+      countryCode: "DK", defaultCurrency: "EUR", locale: "en-GB", timezone: "Europe/London", taxRate: 20,
+      pricesIncludeTax: true, invoicePrefix: "TEST", paymentTermsDays: 30,
+    } })
+    expect(result.status).toBe("complete")
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
+    expect(settings).toMatchObject({ currency: "EUR", baseCurrency: "EUR", defaultCurrency: "EUR", locale: "en-GB", timezone: "Europe/London", pricesIncludeTax: true, invoicePrefix: "TEST", paymentTermsDays: 30 })
+    expect(settings.taxRate?.toString()).toBe("20")
+    expect(await api.paymentDetails.firstSendReadiness()).toEqual({ bankMissing: true })
+  })
+  it("manual fallback can complete without registry facts, including a CVR number", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    expect(await api.onboarding.confirmV2({ ...summary(), source: "manual", cvr: "", vatId: undefined })).toMatchObject({ status: "complete" })
+    expect(await prisma.organizationTaxId.count({ where: { organizationId: id } })).toBe(0)
+    expect(await api.onboarding.getStatus()).toMatchObject({ isComplete: true, missing: [] })
+  })
+  it("does not nudge when the optional bank account is present", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.confirmV2({ ...summary(), bank: { regNumber: "1234", accountNumber: "1" } })
+    expect(await api.paymentDetails.firstSendReadiness()).toEqual({ bankMissing: false })
+  })
   it("rejects invalid payloads before any persistence", async () => {
     const id = await organization()
     const api = await caller(id)
@@ -136,14 +187,52 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
     expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(1)
   })
+  it("injects a read-only CVR provider and hides it without a provider", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    const services = await import("../../../lib/runtime/services")
+    expect(await api.cvr.available()).toEqual({ enabled: false, suggestions: false })
+    const company = { cvr: "24256790", name: "Test ApS", address: "Testvej 1\n1000 København", companyForm: "ApS", momsRegistered: true, status: "active" as const, statusClass: "active" as const }
+    const search = vi.fn(async () => [company])
+    services.setRuntimeServices({ cvrLookupProvider: { search, get: async () => company } })
+    try {
+      expect(await api.cvr.available()).toEqual({ enabled: true, suggestions: false })
+      expect(await api.cvr.search({ q: "Test" })).toEqual([company])
+      expect(await api.cvr.get({ cvr: "24256790" })).toEqual(company)
+      expect(search.mock.calls[0]).toMatchObject(["Test", { userId: `qui56-${id}`, organizationId: id }])
+      expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
+      expect(await prisma.organizationTaxId.count({ where: { organizationId: id } })).toBe(0)
+    } finally { services.resetRuntimeServices() }
+  })
   it("replaces mixed-case and duplicate registration IDs while preserving unrelated schemes", async () => {
     const id = await organization()
-    await prisma.organizationTaxId.createMany({ data: ["CVR", "cVr", "VAT", "vAt", "Dk_CvR", "dK_VaT", "customer_ref"].map(scheme => ({ organizationId: id, scheme, value: scheme === "customer_ref" ? "old" : scheme.toLowerCase().includes("vat") ? "DK87654321" : "87654321", isPrimary: true })) })
+    await prisma.organizationTaxId.createMany({ data: ["CVR", "cVr", "VAT", "vAt", "Dk_CvR", "dK_VaT", "customer_ref"].map(scheme => ({ organizationId: id, scheme, value: "old", isPrimary: true })) })
     await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(summary()), "signup@example.test")
     const identifiers = await prisma.organizationTaxId.findMany({ where: { organizationId: id }, orderBy: { scheme: "asc" } })
     expect(identifiers.map(({ scheme, value }) => ({ scheme, value }))).toEqual([
       { scheme: "customer_ref", value: "old" }, { scheme: "cvr", value: "24256790" }, { scheme: "vat", value: "DK24256790" },
     ])
+  })
+  it.each([["failure", false], ["failure", true], ["timeout", false], ["timeout", true]] as const)("leaves trial %s incomplete with existing settings %s, provisions on retry, and skips completed retries", async (failure, existing) => {
+    const id = await organization()
+    const api = await caller(id)
+    const { setRuntimeServices } = await import("../../../lib/runtime/services")
+    if (existing) await prisma.orgSettings.create({ data: { organizationId: id, companyName: "Original incomplete", onboardingStatus: "in_progress", onboardingVersion: 1 } })
+    const before = await prisma.orgSettings.findUnique({ where: { organizationId: id } })
+    const failureError = failure === "timeout" ? new DOMException("Trial unavailable", "TimeoutError") : new Error("Trial unavailable")
+    const startTrial = vi.fn().mockRejectedValueOnce(failureError).mockResolvedValue(undefined)
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    const input = summary()
+    await expect(api.onboarding.confirmV2(input)).rejects.toThrow("Trial unavailable")
+    expect(await prisma.orgSettings.findUnique({ where: { organizationId: id } })).toEqual(before)
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
+    expect(await api.onboarding.getStatus()).toMatchObject({ isComplete: false })
+    const [result, concurrent] = await Promise.all([api.onboarding.confirmV2(input), api.onboarding.confirmV2(input)])
+    expect(concurrent).toEqual(result)
+    expect(result.status).toBe("complete")
+    expect(await api.onboarding.confirmV2(input)).toEqual(result)
+    expect(await api.onboarding.confirmV2({ ...input, idempotencyKey: randomUUID() })).toEqual({ status: "already_complete" })
+    expect(startTrial).toHaveBeenCalledTimes(2)
   })
   it.each(["DE", null])("keeps a foreign VAT registration with country %s when replacing the Danish CVR and VAT pair", async countryCode => {
     const id = await organization()
@@ -176,11 +265,73 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await api.onboarding.confirmV2({ ...input, idempotencyKey: randomUUID() })).toEqual({ status: "already_complete" })
     expect(startTrial).toHaveBeenCalledTimes(2)
   })
-  it("reuses provider-owned provisioning after a confirmation write rolls back", async () => {
+  it("keeps stored bank details when confirmation omits them", async () => {
+    const id = await organization()
+    await prisma.orgSettings.create({ data: {
+      organizationId: id, bankAccountHolder: "Existing Holder", bankName: "Existing Bank",
+      bankRegNumber: "1234", bankAccountNumber: "0001234567", bankIban: "DK5000400440116243", bankBic: "DABADKKK",
+    } })
+    const result = await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(summary()), "signup@example.test")
+    expect(result).toMatchObject({ status: "complete", bankMissing: false })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({
+      bankAccountHolder: "Existing Holder", bankName: "Existing Bank", bankRegNumber: "1234",
+      bankAccountNumber: "0001234567", bankIban: "DK5000400440116243", bankBic: "DABADKKK", onboardingStatus: "complete",
+    })
+  })
+  it.each([
+    ["missing", undefined],
+    ["empty", ""],
+    ["invalid", "invalid"],
+    ["expired", "expired"],
+  ] as const)("does not start a trial for a %s confirmation token and leaves onboarding incomplete", async (kind, token) => {
+    const id = await organization()
+    const startTrial = vi.fn()
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeExtensions([{ id: "reject-token", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }), sellerVatConfirmation: {
+      prepare: async () => ({ token: "signed" }),
+      confirm: async () => { throw new TRPCError({ code: "BAD_REQUEST", message: kind }) },
+    } }])
+    const parsed = confirmOnboardingV2Schema.parse(summary())
+    const input = token === undefined ? parsed : { ...parsed, sellerVatConfirmationToken: token }
+    const actor = { organizationId: id, userId: `qui56-${id}`, sessionId: "session" }
+    await expect(confirmOnboardingV2(id, input, "signup@example.test", actor)).rejects.toMatchObject({ code: "BAD_REQUEST", message: kind === "invalid" || kind === "expired" ? kind : "save.failed" })
+    expect(startTrial).not.toHaveBeenCalled()
+    expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
+  })
+  it("does not start a trial when accepted suggestions fail to save", async () => {
+    const id = await organization()
+    await prisma.catalogItem.create({ data: { organizationId: id, name: "Designarbejde", defaultUnitPrice: 1 } })
+    const startTrial = vi.fn()
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    const input = confirmOnboardingV2Schema.parse({ ...summary(), catalogSuggestions: [{ name: "Designarbejde", defaultUnitPrice: 850 }] })
+    await expect(confirmOnboardingV2(id, input, "signup@example.test")).rejects.toMatchObject({ code: "P2002" })
+    expect(startTrial).not.toHaveBeenCalled()
+    expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
+    expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(1)
+  })
+  it("starts the hosted trial once after confirmation succeeds", async () => {
+    const id = await organization()
+    const startTrial = vi.fn()
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeExtensions([{ id: "accept-token", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }), sellerVatConfirmation: {
+      prepare: async () => ({ token: "signed" }), confirm: async () => {},
+    } }])
+    const input = confirmOnboardingV2Schema.parse({ ...summary(), sellerVatConfirmationToken: "signed", catalogSuggestions: [{ name: "Designarbejde", defaultUnitPrice: 850 }] })
+    const actor = { organizationId: id, userId: `qui56-${id}`, sessionId: "session" }
+    await expect(confirmOnboardingV2(id, input, "signup@example.test", actor)).resolves.toMatchObject({ status: "complete" })
+    expect(startTrial).toHaveBeenCalledTimes(1)
+    expect(startTrial).toHaveBeenCalledWith(id)
+    expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(1)
+    await confirmOnboardingV2(id, input, "signup@example.test", actor)
+    expect(startTrial).toHaveBeenCalledTimes(1)
+  })
+  it("does not start a trial when an identity write rolls back, then provisions once on retry", async () => {
     const id = await organization()
     const api = await caller(id)
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
-    // MOCK: provider contract fixture retains durable provisioning across OSS rollbacks.
+    // MOCK: the failed identity write never reaches the hook. The retry provisions once.
     const provisioned = new Set<string>()
     const provision = vi.fn()
     const startTrial = vi.fn(async (organizationId: string) => {
@@ -193,8 +344,9 @@ async function caller(id: string, requestedOrganizationId?: string) {
     try { await expect(api.onboarding.confirmV2(input)).rejects.toThrow() }
     finally { await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id DROP CONSTRAINT "${constraint}"`) }
     expect(await prisma.orgSettings.findUnique({ where: { organizationId: id } })).toBeNull()
+    expect(startTrial).not.toHaveBeenCalled()
     expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete" })
-    expect(startTrial).toHaveBeenCalledTimes(2)
+    expect(startTrial).toHaveBeenCalledTimes(1)
     expect(provision).toHaveBeenCalledTimes(1)
   })
   it("rolls back an expired confirmation transaction and reuses provisioning on retry", async () => {
@@ -301,28 +453,11 @@ async function caller(id: string, requestedOrganizationId?: string) {
     runtime.setRuntimeExtensions([{ id: "v2-only", resolveCapabilities: () => ({ onboardingV2: { enabled: true } }) }])
     const input = { ...summary(), source: "manual" as const, momsRegistered: false, vatId: undefined }
     await expect(api.onboarding.confirmV2(input)).rejects.toMatchObject({ code: "FORBIDDEN", message: "save.failed" })
-    await expect(api.settings.update({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: false })).rejects.toMatchObject({ code: "FORBIDDEN", message: "save.failed" })
+    await expect(api.settings.update({ countryCode: "DK", taxRegime: "eu_vat", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr", momsRegistered: false })).rejects.toMatchObject({ code: "FORBIDDEN", message: "save.failed" })
     expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
     runtime.setRuntimeExtensions([{ id: "v2-non-vat", resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true } }) }])
     expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete" })
     expect(await api.settings.update({ momsRegistered: false })).toBeDefined()
-  })
-  it("clears generated non-VAT declarations with registration when leaving Denmark", async () => {
-    const id = await organization()
-    const api = await caller(id)
-    await api.onboarding.confirmV2({ ...summary(), source: "manual", momsRegistered: false, vatId: undefined })
-    const { nonVatStatement } = await import("../../../lib/documents/non-vat-note")
-    await prisma.orgSettings.update({ where: { organizationId: id }, data: { paymentNote: `Custom payment instructions\n${nonVatStatement("da")}\n${nonVatStatement("en")}` } })
-    await api.settings.update({ countryCode: "DE" })
-    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ momsRegistered: null, paymentNote: "Custom payment instructions" })
-  })
-  it("reclassifies a Danish self-hosted legacy VAT primary when selecting non-VAT", async () => {
-    const id = await organization()
-    vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
-    const api = await caller(id)
-    await api.settings.update({ countryCode: "DK", taxRegime: "eu_vat", primaryTaxId: "24256790", primaryTaxIdScheme: "vat" })
-    await api.settings.update({ momsRegistered: false, taxRate: 0 })
-    expect(await prisma.organizationTaxId.findFirstOrThrow({ where: { organizationId: id, isPrimary: true } })).toMatchObject({ scheme: "cvr", value: "24256790", countryCode: "DK" })
   })
   it("allows self-hosted registration and custom VAT rates without a hosted opt-in", async () => {
     const id = await organization()
@@ -368,13 +503,15 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await api.settings.get()).toMatchObject({ invoicePrefix: "2027", invoiceNextNum: 1 })
     const id = await organization()
     await prisma.orgSettings.create({ data: { organizationId: id, invoicePrefix: "CUSTOM", invoiceNextNum: 57, quotePrefix: "OFFER", quoteNextNum: 19 } })
-    await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(summary()), "signup@example.test")
+    const draft = newDraft(null, "signup@example.test", false)
+    Object.assign(draft.values, { companyName: "Edited review", companyAddress: "Testvej 1", invoicePrefix: "RESET", invoiceNextNum: 1 })
+    await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(confirmationPayload(draft)), "signup@example.test")
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ invoicePrefix: "CUSTOM", invoiceNextNum: 57, quotePrefix: "OFFER", quoteNextNum: 19 })
   })
   it.each([false, true])("serializes AI patches after confirmation with existing settings %s", async existing => {
     const id = await organization()
     const api = await caller(id)
-    if (existing) await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "DK87654321" })
+    if (existing) await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "Original ID" })
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
     let entered!: () => void
     let release!: () => void
@@ -418,7 +555,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
       entered(); await blocked
     }, { timeout: 60_000 })
     await started
-    const ai = api.onboardingAi.applyOnboardingPatch({ source: "ai", patch: { companyName: "AI draft", primaryTaxId: "DK87654321" } })
+    const ai = api.onboardingAi.applyOnboardingPatch({ source: "ai", patch: { companyName: "AI draft", primaryTaxId: "AI draft ID" } })
     let v2: ReturnType<typeof api.onboarding.confirmV2> | undefined
     try {
       await vi.waitFor(async () => {

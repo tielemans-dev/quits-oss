@@ -49,7 +49,7 @@ The named cases all have fixtures in `domain/accounting/__tests__/fixtures.ts` a
 | `base_valuation_unknown` | Missing or unknown valuation; unknown frozen base components or debtor carrying value. |
 | `not_postable` | Sparse v1 credit, unsupported version or currency, invalid/incomplete payload, `postable: false`, or any `incompleteReason`. |
 | `tax_point_review_required` | Earlier or null invoice supply date, inherited review, `assessment_required`, `none`, or an `invoice_issued` tax point date different from issue date. |
-| `unsupported_treatment_combination` | Mixed out-of-scope; unclassified zero, zero-rated or domestic reverse charge; standard at rate zero; nonstandard at nonzero rate; missing or invalid evidence, identifiers or statement; invalid/unavailable VIES; export without reference or outside-EU buyer country; exemption without reason text. |
+| `unsupported_treatment_combination` | Mixed out-of-scope; unclassified zero without explicit frozen non-registration, zero-rated or domestic reverse charge; standard at rate zero; nonstandard at nonzero rate; missing or invalid evidence, identifiers or statement; invalid/unavailable VIES; export without reference or outside-EU buyer country; exemption without reason text. |
 | `purpose_not_supported` | Prepayment invoice or a credit correcting a purpose other than sale. |
 | `advances_not_supported` | Covered advance or `advance_received` tax point. |
 | `applications_not_supported` | Deposit application, allocation release or customer-credit creation. |

@@ -26,15 +26,25 @@ export function invoicePolicyIssues(document: InvoicePolicyInput, policy: Invoic
   }
   if (policy.sellerCountry && seller?.countryCode !== policy.sellerCountry) issues.push(`Only sellers in ${policy.sellerCountry} are supported by this issuance policy.`)
   if (policy.requireCvr && !sellerCvr(seller?.taxIds)) issues.push("Set a valid Danish CVR in the seller identity before issuing.")
-  if (policy.sellerVatRegistered !== undefined && !policy.sellerVatRegistered) issues.push("Confirm VAT registration for this seller before issuing. A CVR alone does not establish VAT registration.")
-  // A restricted standard-VAT policy must have affirmative registration evidence.
-  if (policy.standardVatRate && policy.sellerVatRegistered !== true) issues.push("VAT registration confirmation is missing for this seller. Complete the registration settings before issuing.")
+  if ((policy.requireSellerVatStatus || policy.standardVatRate) && seller?.momsRegistered == null)
+    issues.push("Choose whether this seller is VAT-registered before issuing.")
+  if (policy.sellerVatStatus === "unset" || (policy.sellerVatStatus !== undefined && seller?.momsRegistered !== (policy.sellerVatStatus === "registered")))
+    issues.push("Seller VAT registration confirmation is missing or does not match the effective seller.")
+  if (policy.sellerVatRegistered !== undefined && seller?.momsRegistered !== policy.sellerVatRegistered)
+    issues.push("Seller VAT registration confirmation is missing or does not match the effective seller.")
   if (policy.buyerCountries && !policy.buyerCountries.includes(buyer?.country ?? "")) issues.push(`Only customers in ${policy.buyerCountries.join(", ")} are supported. Correct the customer country or use a supported invoicing service.`)
   if (policy.requireBusinessBuyer && !buyer?.company?.trim()) issues.push("This issuance policy supports business customers only. Set the customer's business name.")
   if (policy.currencies && !policy.currencies.includes(document.currency)) issues.push(`Use a supported invoice currency: ${policy.currencies.join(", ")}.`)
   if (policy.requireSupplyDate && !document.supplyDate) issues.push("Confirm the supply date before issuing.")
   if (policy.standardVatRate) {
-    if ((policy.sellerCountry && document.countryCode !== policy.sellerCountry) || document.purpose !== "sale" || !document.items.length || document.items.some(line =>
+    if (seller?.momsRegistered === false) {
+      if ((policy.sellerCountry && document.countryCode !== policy.sellerCountry) || document.purpose !== "sale" || !document.items.length || document.items.some(line =>
+        !["unclassified_zero", "out_of_scope"].includes(line.vatTreatment) ||
+        (line.vatCountry !== null && policy.sellerCountry !== undefined && line.vatCountry !== policy.sellerCountry) ||
+        !toDecimal(line.taxRate.toString()).isZero() ||
+        (line.vatRateInput !== null && !toDecimal(line.vatRateInput).isZero())))
+        issues.push("A non-VAT-registered seller must issue ordinary domestic sales without VAT.")
+    } else if ((policy.sellerCountry && document.countryCode !== policy.sellerCountry) || document.purpose !== "sale" || !document.items.length || document.items.some(line =>
       line.vatTreatment !== "standard" || (line.vatCountry !== null && policy.sellerCountry !== undefined && line.vatCountry !== policy.sellerCountry) ||
       !toDecimal(line.taxRate.toString()).eq(policy.standardVatRate!) ||
       (line.vatRateInput !== null && !toDecimal(line.vatRateInput).times(100).eq(policy.standardVatRate!)))) {

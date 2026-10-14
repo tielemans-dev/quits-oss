@@ -17,12 +17,15 @@ export type CreatedDocumentTarget = {
 export async function createThenSend(input: {
   create: () => Promise<{ id: string }>
   send: (id: string) => Promise<{ emailSkipReason?: string | null }>
+  // Run navigational gates only once the draft is durable. A cancelled gate keeps the draft.
+  beforeSend?: (id: string) => Promise<boolean>
   sendImmediately: boolean
   sendFailedMessage: string
 }): Promise<CreatedDocumentTarget> {
   const { id } = await input.create()
   if (!input.sendImmediately) return { id }
   try {
+    if (input.beforeSend && !await input.beforeSend(id)) return { id }
     const result = await input.send(id)
     return { id, emailWarning: result.emailSkipReason ?? undefined }
   } catch (error) {

@@ -1,3 +1,4 @@
+import { cvrRouter } from "./routers/cvr"
 import { agreementsRouter } from "./routers/agreements"
 import { router } from "./init"
 import { paymentDetailsRouter } from "./routers/payment-details"
@@ -22,6 +23,7 @@ import { setupRouter } from "./routers/setup"
 import { settingsRouter } from "./routers/settings"
 
 export const appRouter = router({
+  cvr: cvrRouter,
   paymentDetails: paymentDetailsRouter,
   payments: paymentsRouter,
   creditNotes: creditNotesRouter,

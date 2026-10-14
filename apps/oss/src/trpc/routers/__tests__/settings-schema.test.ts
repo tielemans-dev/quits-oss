@@ -117,3 +117,13 @@ describe("settingsUpdateSchema", () => {
     )
   })
 })
+
+describe("seller VAT status settings", () => {
+  it.each([null, true, false])("accepts the explicit status %s", momsRegistered => {
+    expect(settingsUpdateSchema.parse({ momsRegistered }).momsRegistered).toBe(momsRegistered)
+  })
+  it("does not infer a status and refuses truthy string coercion", () => {
+    expect(settingsUpdateSchema.parse({}).momsRegistered).toBeUndefined()
+    expect(() => settingsUpdateSchema.parse({ momsRegistered: "false" })).toThrow()
+  })
+})

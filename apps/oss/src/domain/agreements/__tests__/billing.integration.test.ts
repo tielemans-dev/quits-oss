@@ -40,8 +40,12 @@ beforeEach(() => {
   vi.mocked(deliver).mockReset().mockResolvedValue({ id: "synthetic" })
 })
 afterEach(async () => { setRuntimeExtensions([]); vi.restoreAllMocks(); while (cleanups.length) await cleanups.pop()?.(); vi.unstubAllEnvs() })
-async function setup(trigger = "on_acceptance", deposit = false, taxRate = "25") {
-  const org = await createTestOrganization(); cleanups.push(org.cleanup)
+async function setup(trigger = "on_acceptance", deposit = false, taxRate = "25", danishSeller = false) {
+  const org = await createTestOrganization({ settings: danishSeller ? { countryCode: "DK" } : {} }); cleanups.push(org.cleanup)
+  if (danishSeller) await prisma.organizationTaxId.createMany({ data: [
+    { organizationId: org.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK", isPrimary: true },
+    { organizationId: org.organizationId, scheme: "vat", value: "DK12345674", countryCode: "DK" },
+  ] })
   const actor = org.actors.admin
   const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Customer", email: "customer@example.test" } })
   const agreement = completed(await executeIssuanceCommand(createAgreementDraft, {
@@ -181,7 +185,8 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })).invoiceNextNum).toBe(settings.invoiceNextNum)
   })
   it("preserves contact and linked values, uses frozen VAT for expenses, releases omissions and deletions", async () => {
-    const ctx = await setup(); await ctx.ready(); await ctx.ready(1)
+    // Retain one Danish legal seller while changing its trading name/address below.
+    const ctx = await setup("on_acceptance", false, "25", true); await ctx.ready(); await ctx.ready(1)
     const result = await ctx.reserve([ctx.item().id, ctx.item(1).id])
     const id = result.saleInvoiceId!, original = await invoice(id)
     const other = await prisma.contact.create({ data: { organizationId: ctx.org.organizationId, name: "Other" } })

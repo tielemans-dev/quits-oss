@@ -48,6 +48,15 @@ describe("runtime extension capabilities", () => {
     expect(mod.getRuntimeCapabilities({})).toEqual(baseline)
   })
 
+  it("keeps seller VAT confirmation off by default and prevents a self-hosted extension gate", async () => {
+    const mod = await import("../runtime/extensions")
+    expect(mod.getRuntimeCapabilities({ QUITS_DISTRIBUTION: "cloud" }).sellerVatConfirmation.enabled).toBe(false)
+    mod.setRuntimeExtensions([{ id: "seller-confirmation", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }) }])
+    expect(mod.getRuntimeCapabilities({ QUITS_DISTRIBUTION: "cloud" }).sellerVatConfirmation.enabled).toBe(true)
+    expect(mod.getRuntimeCapabilities({ QUITS_DISTRIBUTION: "selfhost" }).sellerVatConfirmation.enabled).toBe(false)
+    expect(mod.getRuntimeCapabilities({}).sellerVatConfirmation.enabled).toBe(false)
+  })
+
   it("defaults to BYOK AI enabled and managed disabled", async () => {
     const mod = await import("../runtime/extensions")
     const caps = mod.getRuntimeCapabilities()

@@ -1,3 +1,6 @@
+import { withoutNonVatStatement } from "./documents/non-vat-presentation"
+import { nonVatStatement } from "./documents/non-vat-note"
+import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
 import { invoicePaymentReferenceHint, invoicePaymentRows } from "./documents/invoice-payment-rows"
 import { buyerAddress, invoiceTaxIds } from "./documents/invoice-identity"
@@ -146,16 +149,17 @@ export function t(
 
 /** Item unit prices and totals are the stored amounts on the document's price basis, named in the headers. */
 export function itemsTable(
-  items: { description: string; quantity: number; unitPrice: number; total: number }[],
+  items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[],
   currency: string,
   locale?: string | null,
   basis?: PriceBasis,
-  mobileCards = false
+  mobileCards = false,
+  momsRegistered?: boolean | null,
 ) {
   const columns = lineColumnKeys(basis)
   const rows = items.map((item) => `
     <tr>
-      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};">${escapeHtml(item.description)}</td>
+      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};">${escapeHtml(item.description)}${sellerVatLineText(momsRegistered, item.taxRate, locale) ? `<div style="font-size:12px;color:${C.muted};">${escapeHtml(sellerVatLineText(momsRegistered, item.taxRate, locale)!)}</div>` : ""}</td>
       <td data-label="${t("pdf.qty", locale)}" style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${item.quantity}</td>
       <td data-label="${t(columns.unitPrice, locale)}" style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.unitPrice, currency, locale)}</td>
       <td data-label="${t(columns.amount, locale)}" style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.total, currency, locale)}</td>
@@ -295,6 +299,8 @@ export type SendInvoiceEmailParams = {
     taxAmount: number
     total: number
     currency: string
+    taxRegime?: string
+    momsRegistered?: boolean | null
     notes?: string | null
     /** Current outstanding amount; original totals above remain the issued invoice amounts. */
     balanceDue?: number
@@ -306,7 +312,7 @@ export type SendInvoiceEmailParams = {
     /** VAT by rate and the rounding between net plus tax and the total; absent, the single tax amount is printed. */
     vatRows?: VatRow[]
     rounding?: string
-    items: { description: string; quantity: number; unitPrice: number; total: number }[]
+    items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[]
   }
   org: {
     companyName?: string | null
@@ -331,6 +337,8 @@ export function buildInvoiceEmailContent({
 }: Omit<SendInvoiceEmailParams, "to">) {
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
+  const momsRegistered = sellerVatPresentationStatus(invoice.momsRegistered, invoice.taxRegime)
+  const notes = withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime)
   const safeInvoiceNumber = escapeHtml(invoice.number)
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
@@ -348,7 +356,7 @@ export function buildInvoiceEmailContent({
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
         <div style="font-weight:500;">${escapeHtml(org.companyName ?? "")}</div>
         ${org.companyAddress ? `<div>${formatMultilineHtml(org.companyAddress)}</div>` : ""}
-        ${invoiceTaxIds(org.taxIds, "CVR-nr.").map(id => `<div>${escapeHtml(id)}</div>`).join("")}
+        ${invoiceTaxIds(org.taxIds, "CVR-nr.", momsRegistered).map(id => `<div>${escapeHtml(id)}</div>`).join("")}
         ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div class="invoice-dates" style="text-align:right;flex-shrink:0;">
@@ -361,8 +369,9 @@ export function buildInvoiceEmailContent({
     </div>
 
     ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[invoice.buyer.company, ...buyerAddress(invoice.buyer)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
-    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, true)}
+    ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, true, momsRegistered)}
     ${totalsBlock(invoice, locale)}
+    ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
 
     ${showPaymentInstructions ? `
     <h3 style="margin:24px 0 12px;font-size:16px;">${t("email.pay.heading", locale)}</h3>
@@ -373,7 +382,7 @@ export function buildInvoiceEmailContent({
       </tr>`).join("")}
     </table>
     ${hasTransferDetails && referenceHint ? `<p style="margin:12px 0;color:${C.muted};font-size:14px;">${escapeHtml(referenceHint)}</p>` : ""}
-    ${invoice.paymentNote?.trim() ? `<p style="margin:12px 0;font-size:14px;">${formatMultilineHtml(invoice.paymentNote)}</p>` : ""}
+    ${withoutNonVatStatement(invoice.paymentNote, momsRegistered, invoice.taxRegime)?.trim() ? `<p style="margin:12px 0;font-size:14px;">${formatMultilineHtml(withoutNonVatStatement(invoice.paymentNote, momsRegistered, invoice.taxRegime)!)}</p>` : ""}
     ${publicPaymentUrl
       ? actionBlock({
           href: publicPaymentUrl,
@@ -384,7 +393,7 @@ export function buildInvoiceEmailContent({
         })
       : ""}
     ` : ""}
-    ${invoice.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(invoice.notes)}</p>` : ""}
+    ${notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(notes)}</p>` : ""}
   `, locale, true)
 
   const subject = sanitizeHeader(
@@ -425,7 +434,9 @@ export type SendQuoteEmailParams = {
     /** VAT by rate and the rounding between net plus tax and the total; absent, the single tax amount is printed. */
     vatRows?: VatRow[]
     rounding?: string
-    items: { description: string; quantity: number; unitPrice: number; total: number }[]
+    taxRegime?: string
+    momsRegistered?: boolean | null
+    items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[]
   }
   org: {
     companyName?: string | null
@@ -449,6 +460,8 @@ export function buildQuoteEmailContent({
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeQuoteNumber = escapeHtml(quote.number)
+  const momsRegistered = sellerVatPresentationStatus(quote.momsRegistered, quote.taxRegime)
+  const notes = withoutNonVatStatement(quote.notes, momsRegistered, quote.taxRegime)
   const safeContactName = escapeHtml(contactName)
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
@@ -459,7 +472,7 @@ export function buildQuoteEmailContent({
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <div>
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
-        <div style="font-weight:500;">${escapeHtml(safeFromName)}</div>
+        <div style="font-weight:500;">${escapeHtml(org.companyName === undefined ? safeFromName : org.companyName ?? "")}</div>
         ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div style="text-align:right;">
@@ -468,10 +481,11 @@ export function buildQuoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(quote.items, quote.currency, locale, quote.priceBasis)}
+    ${itemsTable(quote.items, quote.currency, locale, quote.priceBasis, false, momsRegistered)}
     ${totalsBlock(quote, locale)}
 
-    ${quote.notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(quote.notes)}</p>` : ""}
+    ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
+    ${notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(notes)}</p>` : ""}
     ${publicQuoteUrl
       ? actionBlock({
           href: publicQuoteUrl,
