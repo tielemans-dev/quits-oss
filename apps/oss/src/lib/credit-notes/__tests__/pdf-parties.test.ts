@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { OrgSettings } from "../../../../generated/prisma/client"
+import type { OrgSettingsForPdf } from "../../invoice-pdf"
 import { creditNotePdfParties } from "../pdf-parties"
 
 const sellerSnapshot = {
@@ -65,11 +66,16 @@ describe("credit note PDF parties", () => {
     for (const momsRegistered of [false, true]) {
       for (const country of ["DK", "DE"]) {
         const frozen = { ...sellerSnapshot, momsRegistered }
+        const current: Pick<OrgSettings, "companyName" | "momsRegistered"> & Pick<OrgSettingsForPdf, "taxIds"> = {
+          companyName: "Acme Holding A/S",
+          momsRegistered: !momsRegistered,
+          taxIds: [{ scheme: "vat", value: "DK87654321" }],
+        }
         const { seller } = creditNotePdfParties({
           ...issued, locale, sellerSnapshot: frozen,
           buyerSnapshot: { ...buyerSnapshot, country },
           contact: { ...contact, country: country === "DK" ? "DE" : "DK" },
-        }, { momsRegistered: !momsRegistered, taxIds: [{ scheme: "vat", value: "DK87654321" }] })
+        }, current)
         expect(seller.taxIds).toEqual([country === "DK" || !momsRegistered ? domestic : foreign])
         expect(frozen.taxIds).toEqual(sellerSnapshot.taxIds)
       }
