@@ -272,6 +272,13 @@ Compose forwards these settings to the app.
 
 For a development mail catcher or a trusted local plaintext relay, set its port and
 `SMTP_REQUIRE_TLS=false`. Do not use plaintext for a relay reached over the internet.
+
+For a local catcher such as Mailpit (SMTP on port 1025), use `SMTP_HOST=127.0.0.1`
+(or the Compose service name when the app runs in Docker), not `localhost`. On hosts
+where `localhost` resolves to IPv6 `::1` first while the catcher listens only on IPv4,
+the connection times out. Set `SMTP_SECURE=false` (the default) and
+`SMTP_REQUIRE_TLS=false`; with the default `true`, the app requires STARTTLS, which a
+plaintext catcher does not offer.
 Settings shows missing or invalid SMTP configuration using environment variable names;
 it never returns relay credentials. Configuration readiness does not test relay connectivity.
 
