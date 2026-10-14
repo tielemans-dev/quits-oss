@@ -304,8 +304,10 @@ describe("Settings tax relevance", () => {
     settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
     const { container } = render(<RouteComponent />)
     const radios = await screen.findAllByRole("radio") as HTMLInputElement[]
-    expect(radios.every(radio => !radio.checked)).toBe(true)
+    expect(radios[0]!.checked).toBe(confirmationEnabled)
+    expect(radios[1]!.checked).toBe(false)
     expect(screen.getByText("sellerCard.body")).toBeTruthy()
+    if (confirmationEnabled && registered) fireEvent.click(radios[1]!)
     fireEvent.click(radios[registered ? 0 : 1]!)
     fireEvent.submit(container.querySelector("form")!)
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: confirmationEnabled ? "signed" : undefined, taxRate: registered ? 25 : 0 })))
@@ -460,8 +462,8 @@ function submitSettingsForm() {
 async function renderDanishSettings(momsRegistered: boolean | null) {
   initializeRequestOrganizationId("org_1")
   useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
-  getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
-  const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, taxRate: momsRegistered === false ? 0 : 25 })
+  getFullOrganization.mockResolvedValue({ data: { slug: "old-slug", members: [], invitations: [] } })
+  const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, primaryTaxId: "24256790", taxRate: momsRegistered === false ? 0 : 25 })
   settingsGetQuery.mockResolvedValue(data)
   settingsUpdate.mockImplementation(async input => ({ ...data, ...input, momsRegistered: input.momsRegistered === undefined ? momsRegistered : input.momsRegistered }))
   render(<RouteComponent />)
@@ -501,6 +503,91 @@ describe("Settings VAT status after upstream integration", () => {
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
     expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeUndefined()
     expect(prepareConfirmation).not.toHaveBeenCalled()
+  })
+})
+
+describe("Settings hosted VAT persistence", () => {
+  function enableHostedConfirmation() {
+    distribution.selfhost = false
+    hostedFlag.enabled = true
+  }
+
+  function expectChoice(status: boolean | null) {
+    expect((screen.getByRole("radio", { name: "vatStatus.yes" }) as HTMLInputElement).checked).toBe(status === true)
+    expect((screen.getByRole("radio", { name: "vatStatus.no" }) as HTMLInputElement).checked).toBe(status === false)
+  }
+
+  it.each([true, false, null])("loads stored %s and preserves it on unrelated saves", async status => {
+    enableHostedConfirmation()
+    await renderDanishSettings(status)
+    expectChoice(status)
+    submitSettingsForm()
+    expect((await screen.findByRole("status")).textContent).toBe("settings.success.saved")
+    expectChoice(status)
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined }))
+    expect(prepareConfirmation).not.toHaveBeenCalled()
+  })
+
+  it.each([true, false, null])("keeps the saved %s choice and normal saved message", async status => {
+    enableHostedConfirmation()
+    await renderDanishSettings(status === true ? false : true)
+    if (status === null) fireEvent.click(screen.getByRole("button", { name: "vatStatus.withdraw" }))
+    else fireEvent.click(screen.getByRole("radio", { name: status ? "vatStatus.yes" : "vatStatus.no" }))
+    submitSettingsForm()
+    expect((await screen.findByRole("status")).textContent).toBe("settings.success.saved")
+    expectChoice(status)
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: status, sellerVatConfirmationToken: "signed" }))
+    submitSettingsForm()
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledTimes(2))
+    expect(settingsUpdate.mock.calls[1][0].momsRegistered).toBeUndefined()
+    expect(prepareConfirmation).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["prepare", "save"])("retains the draft and allows retry when %s fails", async failure => {
+    enableHostedConfirmation()
+    await renderDanishSettings(true)
+    fireEvent.click(screen.getByRole("radio", { name: "vatStatus.no" }))
+    if (failure === "prepare") prepareConfirmation.mockRejectedValueOnce(new Error("Confirmation failed"))
+    else settingsUpdate.mockRejectedValueOnce(new Error("Save failed"))
+    submitSettingsForm()
+    await screen.findByRole("alert")
+    expect(screen.queryByRole("status")).toBeNull()
+    expectChoice(false)
+    submitSettingsForm()
+    await screen.findByRole("status")
+    expectChoice(false)
+    expect(settingsUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ momsRegistered: false, sellerVatConfirmationToken: "signed" }))
+  })
+
+  it("renders prefix patterns that enforce HTML Unicode-set validation", async () => {
+    await renderDanishSettings(null)
+    for (const name of ["invoicePrefix", "quotePrefix", "creditNotePrefix"]) {
+      const input = document.querySelector<HTMLInputElement>(`input[name="${name}"]`)!
+      const pattern = new RegExp(input.pattern, "v")
+      for (const value of ["INV", "CN-01", "1234567890"]) {
+        expect(pattern.test(value)).toBe(true)
+        input.value = value
+        expect(input.validity.patternMismatch).toBe(false)
+      }
+      for (const value of ["lower", "INV_1", "A B", "12345678901"]) {
+        expect(pattern.test(value)).toBe(false)
+        input.value = value
+        expect(input.validity.patternMismatch).toBe(true)
+      }
+    }
+  })
+
+  it("does not overwrite a VAT draft after an unrelated organization update", async () => {
+    enableHostedConfirmation()
+    organizationUpdate.mockResolvedValue({ data: { slug: "edited-slug" } })
+    await renderDanishSettings(true)
+    fireEvent.click(screen.getByRole("radio", { name: "vatStatus.no" }))
+    fireEvent.change(screen.getByLabelText("settings.organizationSlug.label"), { target: { value: "edited-slug" } })
+    fireEvent.click(screen.getByRole("button", { name: "settings.organizationSlug.save" }))
+    await screen.findByText("settings.organizationSlug.saved")
+    expectChoice(false)
+    expect(settingsGetQuery).toHaveBeenCalledTimes(1)
+    expect(settingsUpdate).not.toHaveBeenCalled()
   })
 })
 
