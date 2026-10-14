@@ -429,6 +429,27 @@ describe("Settings tax relevance", () => {
     })
     expect(screen.getByText("Required for Danish registered businesses using EU VAT.")).toBeTruthy()
   })
+
+  it("clears the saved banner timer before the page unmounts", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true })
+    try {
+      useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+      getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+      const current = buildSettingsData()
+      settingsGetQuery.mockResolvedValue(current)
+      settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
+      const { container, unmount } = render(<RouteComponent />)
+      await screen.findByText("No tax ID required for this tax setup.")
+      fireEvent.submit(container.querySelector("form")!)
+      await screen.findByRole("status")
+      expect(vi.getTimerCount()).toBeGreaterThan(0)
+      unmount()
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
+  })
 })
 
 function submitSettingsForm() {
