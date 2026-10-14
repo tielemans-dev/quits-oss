@@ -1,0 +1,108 @@
+#!/usr/bin/env node
+// Run: node scripts/check-docs [repository-root]
+// Scope: root AGENTS.md and Markdown under docs/. No manifest/version comparison.
+// Exempt: fenced/indented/inline code, HTML comments, URL/link destinations,
+// docs/releases (historical records), and archive(s)/archived/vendor/.repos trees.
+// Intentional prose: <!-- check-docs: allow-version REASON --> on the same line.
+// This is a small Markdown heuristic, not a complete CommonMark parser.
+import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs"
+import { dirname, join, relative, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const help = `Usage: node scripts/check-docs [repository-root]
+Checks root AGENTS.md and docs/**/*.md (also .mdx) for prose version strings.
+Use manifest references instead of pinned prose. Code/examples and link targets
+are ignored; link labels are checked. Historical docs/releases and directories
+named archive, archives, archived, vendor or .repos are excluded.
+Intentional prose needs a same-line <!-- check-docs: allow-version REASON -->.
+Exit codes: 0 clean, 1 findings, 2 usage or filesystem error.
+`
+const args = process.argv.slice(2)
+if (args.length === 1 && args[0] === "--help") {
+  console.log(help)
+  process.exit(0)
+}
+if (args.length > 1 || args.some(arg => arg.startsWith("-"))) {
+  console.error(help)
+  process.exit(2)
+}
+const root = resolve(args[0] ?? join(dirname(fileURLToPath(import.meta.url)), ".."))
+const excluded = new Set(["archive", "archives", "archived", "vendor", ".repos"])
+
+function documents(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const path = join(directory, entry.name)
+    // Never follow symlinks into vendored trees or outside the selected root.
+    if (entry.isDirectory()) {
+      return excluded.has(entry.name) || relative(root, path) === "docs/releases"
+        ? [] : documents(path)
+    }
+    return entry.isFile() && /\.mdx?$/i.test(entry.name) ? [path] : []
+  })
+}
+
+function mask(text) {
+  return text.replace(/[^\r\n]/g, " ")
+}
+
+function prose(source) {
+  // Preserve offsets and line numbers while removing comments and destinations.
+  const withoutComments = source.replace(/<!--[\s\S]*?(?:-->|$)/g, mask)
+  let fence = null
+  const lines = withoutComments.split(/\r?\n/).map(line => {
+    const content = line.replace(/^(?: {0,3}> ?)+/, "")
+    const delimiter = content.match(/^ {0,3}(`{3,}|~{3,})(.*)$/)
+    if (fence) {
+      if (delimiter && delimiter[1][0] === fence[0]
+        && delimiter[1].length >= fence.length && !delimiter[2].trim()) fence = null
+      return mask(line)
+    }
+    if (delimiter && (delimiter[1][0] !== "`" || !delimiter[2].includes("`"))) {
+      fence = delimiter[1]
+      return mask(line)
+    }
+    if (/^(?: {4}|\t)/.test(content)) return mask(line)
+    return line
+  }).join("\n")
+  return lines
+    // Backtick runs must match; code spans may cross lines.
+    .replace(/(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, mask)
+    .replace(/\]\([^\n]*?\)/g, match => "]" + mask(match.slice(1)))
+    .replace(/^ {0,3}\[[^\]\n]+\]:[^\n]*$/gm, mask)
+    .replace(/(?:https?:\/\/|www\.)[^\s<>]+/g, mask)
+}
+
+// Bare semver, v-prefixed major/minor, and named software major/minor versions.
+// Boundaries exclude IP addresses, dates and legal identifiers such as A.B.3.3.1.4.
+const version = /(?<![\w.])(?:v\d+(?:\.\d+){0,2}|\d+\.\d+\.\d+)(?:-[\w-]+(?:\.[\w-]+)*)?(?:\+[\w-]+(?:\.[\w-]+)*)?(?!\w|\.\w)|\b(?:Bun|Node(?:\.js)?|React|Prisma|PostgreSQL|Postgres|TypeScript|TanStack(?: Start| Router)?|Better Auth|better-auth|tRPC|Vitest|Playwright|pnpm|npm|Turborepo|Turbo|Alpine|version)\s+v?\d+(?:\.\d+){0,2}(?:\.x|\.\*)?(?!\w|\.\w)/gi
+
+try {
+  if (!lstatSync(root).isDirectory()) throw new Error(`Not a directory: ${root}`)
+  const files = []
+  for (const name of ["AGENTS.md", "docs"]) {
+    const path = join(root, name)
+    if (!existsSync(path)) continue
+    const stat = lstatSync(path)
+    if (name === "AGENTS.md" && stat.isFile()) files.push(path)
+    if (name === "docs" && stat.isDirectory()) files.push(...documents(path))
+  }
+  if (!files.length) throw new Error("No AGENTS.md or docs Markdown found")
+  let findings = 0
+  for (const file of files.sort()) {
+    const source = readFileSync(file, "utf8")
+    const original = source.split(/\r?\n/)
+    const lines = prose(source).split("\n")
+    for (const [index, line] of lines.entries()) {
+      if (/<!--\s*check-docs: allow-version\s+\S[^\n]*?-->/.test(original[index])) continue
+      for (const match of line.matchAll(version)) {
+        console.error(`${relative(root, file)}:${index + 1}:${match.index + 1}: prose version "${match[0]}"; reference the manifest, use code for an example, or add <!-- check-docs: allow-version REASON -->`)
+        findings++
+      }
+    }
+  }
+  console.log(`check-docs: ${files.length} files checked, ${findings} prose version(s)`)
+  process.exitCode = findings ? 1 : 0
+} catch (error) {
+  console.error(`check-docs: ${error.message}`)
+  process.exitCode = 2
+}
