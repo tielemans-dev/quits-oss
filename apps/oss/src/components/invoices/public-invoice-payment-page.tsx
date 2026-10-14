@@ -175,7 +175,7 @@ function PublicInvoiceDocument({
                 {formatTaxIds(sellerPresentationTaxIds(invoice.sellerSnapshot?.taxIds, momsRegistered), locale, invoice.buyerSnapshot?.country ?? "DK", momsRegistered).map(id => <p key={id}>{id}</p>)}
               </div>
               <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.billTo")}</h2>
-                <p>{invoice.buyerSnapshot?.name}</p>{distinctCompany(invoice.buyerSnapshot) && <p>{distinctCompany(invoice.buyerSnapshot)}</p>}
+                <p>{invoice.buyerSnapshot?.name || t("public.document.notProvided")}</p>{distinctCompany(invoice.buyerSnapshot) && <p>{distinctCompany(invoice.buyerSnapshot)}</p>}
                 {formatTaxIds(invoice.buyerSnapshot?.taxIds, locale).map(id => <p key={id}>{id}</p>)}
                 {buyerAddress(invoice.buyerSnapshot).map((line, index) => <p key={index}>{line}</p>)}
               </div>
@@ -266,7 +266,7 @@ function PublicInvoiceDocument({
               <section className="grid min-w-0 gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>
                 <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{paymentDetails.title}</h2>
                 {paymentDetails.rows.map((row) => (
-                  <InfoBlock key={row.label} label={row.label + (row.reason ? ` · ${row.reason}` : "")} value={row.value} />
+                  <InfoBlock key={row.label} label={row.label} value={row.value} />
                 ))}
                 {paymentDetails.reference ? (
                   <InfoBlock label={paymentDetails.reference.label} value={paymentDetails.reference.value} />

@@ -7,6 +7,8 @@ import { Text } from "@react-pdf/renderer"
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
+import { agreementOfferSnapshotV2Schema } from "@quits/contracts/agreements"
+import { calculateDraft } from "@quits/shared/pricing"
 import { LocalizedDocument } from "../../documents/localized-document"
 import type { PublicAgreementDto, PublicDeliverableDto } from "../../../lib/agreements/public"
 import type { ComponentProps } from "react"
@@ -212,14 +214,18 @@ function agreementPdfText(node: ReactNode): string[] {
 
 describe("frozen agreement VAT presentation", () => {
   it.each(["da-DK", "en-US"])("shows non-registration once across the public offer, PDF and email in %s", locale => {
-    const offer: AgreementOfferSnapshot = {
+    const vat = { treatment: "out_of_scope" as const, rate: "0", country: null, reasonCode: null }
+    const groups = (amount: string) => calculateDraft({ currency: "DKK", pricesIncludeTax: false, taxRate: "0", items: [{ description: "Synthetic service", quantity: "1", unitPrice: amount, vat }] }).groups
+    const offer = agreementOfferSnapshotV2Schema.parse({
       ...snapshot, locale, sellerSnapshot: { ...snapshot.sellerSnapshot, momsRegistered: false },
       taxRate: "0.00", subtotalNet: "1000.00", totalTax: "0.00", totalGross: "1000.00",
-      deliverables: snapshot.deliverables.map(line => ({ ...line, taxRate: "0.00", lineTax: "0.00", unitPriceGross: line.unitPriceNet, lineGross: line.lineNet })),
+      deliverables: snapshot.deliverables.map(line => ({ ...line, quantity: "1", taxRate: "0.00", lineTax: "0.00", unitPriceNet: "1000.00", unitPriceGross: "1000.00", lineNet: "1000.00", lineGross: "1000.00" })),
       offerFormatVersion: 2, calculationVersion: "v2",
       serviceTotal: { net: "1000.00", tax: "0.00", gross: "1000.00", payableRounding: "0.00", vatBasis: "net" },
-      paymentSchedule: [{ title: "Synthetic advance", sortOrder: 1, amount: "100.00", vatGroupKey: "synthetic-zero", net: "100.00", tax: "0.00", gross: "100.00", vatBasis: "net", trigger: "on_agreement_acceptance" }],
-    }
+      vatGroups: groups("1000"), scheduleVatGroups: groups("100"),
+      originalInputs: [{ sortOrder: 0, quantity: "1", unitPrice: "1000", inputPrecision: "string", vat }],
+      paymentSchedule: [{ title: "Synthetic advance", sortOrder: 1, amount: "100.00", vatGroupKey: groups("100")[0]!.key, net: "100.00", tax: "0.00", gross: "100.00", vatBasis: "net", trigger: "on_agreement_acceptance" }],
+    })
     const before = JSON.stringify(offer)
     const outputs = (value: AgreementOfferSnapshot) => [
       agreementPage(locale, { ...document, snapshot: value }),

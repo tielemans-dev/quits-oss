@@ -26,7 +26,7 @@ describe("QUI-9 frozen legal presentation", () => {
     const result = totals([zero, standard])
     expect(result.lines[0]?.label).toBe("Subtotal ekskl. moms")
     expect(result.total.label).toBe("Total inkl. moms")
-    expect(result.lines[1]).toMatchObject({ label: "Moms 0 % af 100,00 kr.", amount: "0", reason: "Uden for momsens anvendelsesområde" })
+    expect(result.lines[1]).toMatchObject({ label: "Moms 0 % af 100,00\u00a0kr.", amount: "0", reason: "Uden for momsens anvendelsesområde" })
     expect(result.note).toBe("Linjer markeret 0 % moms er uden for momsens anvendelsesområde.")
     expect(deviationVatLabel(0, [zero, standard])).toBe("pdf.lineVatRate")
     expect(deviationVatLabel(25, [zero, standard])).toBeNull()

@@ -109,8 +109,8 @@ export function PublicAgreementPage({
           </div>
         ))}
         {vat.totals ? <>
-            {vat.totals.lines.map((row, i) => <p key={i}>{row.label}: {money(Number(row.amount))}{row.reason ? ` · ${row.reason}` : ""}</p>)}
-            <p>{vat.totals.total.label}: {money(Number(vat.totals.total.amount))}</p>
+            {vat.totals.lines.map((row, i) => <p key={i}>{row.label}: {money(row.amount)}{row.reason ? ` · ${row.reason}` : ""}</p>)}
+            <p>{vat.totals.total.label}: {money(vat.totals.total.amount)}</p>
             {vat.totals.note && <p>{vat.totals.note}</p>}
           </> : <>
         <p>

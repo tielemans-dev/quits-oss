@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { composeAgreementEmail } from "../agreement-email"
 import { documentEmailOrg } from "../invoice-email"
+import fixture from "../../agreements/__tests__/fixtures/offer-v2.json"
+import { agreementOfferSnapshotV2Schema } from "@quits/contracts/agreements"
 
 const settings = {
   companyName: "Acme",
@@ -58,18 +60,15 @@ describe("agreement email language", () => {
 describe("agreement email total", () => {
   // A v2 offer states its own service total, with payable rounding in `gross`: the one the page
   // shows. The flat `totalGross` beside it is not what the customer is told.
-  const v2Snapshot = {
-    ...snapshot,
-    offerFormatVersion: 2,
+  const v2Snapshot = agreementOfferSnapshotV2Schema.parse({
+    ...fixture.snapshot,
+    title: snapshot.title,
     totalGross: "1250.00",
-    subtotalNet: "1000.00",
-    totalTax: "250.00",
-    serviceTotal: { net: "1000.00", tax: "250.00", gross: "1249.99", payableRounding: "-0.01", vatBasis: "gross" },
-  }
+  })
 
   it("shows a v2 offer's service total, as the agreement page does", () => {
     const email = composeAgreementEmail({
-      snapshot: v2Snapshot as never,
+      snapshot: v2Snapshot,
       number: "AGR-1",
       locale: "da-DK",
       settings: settings as never,
@@ -77,7 +76,7 @@ describe("agreement email total", () => {
       url: "https://app.example.test/a/token",
     })
 
-    expect(email.html).toContain("1.249,99\u00a0kr.")
+    expect(email.html).toContain("0,02\u00a0kr.")
     expect(email.html).not.toContain("1.250,00")
   })
 

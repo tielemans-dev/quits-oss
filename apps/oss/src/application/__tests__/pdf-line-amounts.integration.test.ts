@@ -59,7 +59,7 @@ async function issued(options: { pricesIncludeTax: boolean; currency?: string; i
     expect(pdf.items.map((line) => [line.unitPrice, line.total])).toEqual([[4000, 8000], [6500, 6500]])
     expect(sum(pdf.items.map((line) => line.total))).toBe(invoice.subtotalNet.toFixed(2))
     expect(pdf).toMatchObject({ subtotal: 14500, taxAmount: 3625, total: 18125 })
-    expect(pdf.vatRows).toEqual([{ ratePercent: "25", net: "14500.00", tax: "3625.00", gross: "18125.00" }])
+    expect(pdf.vatRows).toEqual([{ ratePercent: "25", net: "14500.00", tax: "3625.00", gross: "18125.00", treatment: "standard", treatments: ["standard"] }])
   })
 
   it("freezes stored net lines that add up to the subtotal when entry prices include VAT", async () => {
@@ -78,8 +78,8 @@ async function issued(options: { pricesIncludeTax: boolean; currency?: string; i
       { description: "Reduced", quantity: "2", unitPrice: "100.50", vat: { treatment: "standard", rate: "0.05" } },
     ] })
     expect(pdf.vatRows).toEqual([
-      { ratePercent: "5", net: "201.00", tax: "10.05", gross: "211.05" },
-      { ratePercent: "25", net: "1000.00", tax: "250.00", gross: "1250.00" },
+      { ratePercent: "5", net: "201.00", tax: "10.05", gross: "211.05", treatment: "standard", treatments: ["standard"] },
+      { ratePercent: "25", net: "1000.00", tax: "250.00", gross: "1250.00", treatment: "standard", treatments: ["standard"] },
     ])
     expect(sum(pdf.items.map((line) => line.total))).toBe(invoice.subtotalNet.toFixed(2))
     expect(sum(pdf.vatRows!.map((row) => Number(row.tax)))).toBe(invoice.totalTax.toFixed(2))
@@ -121,7 +121,7 @@ async function issued(options: { pricesIncludeTax: boolean; currency?: string; i
     expect(pdf.pricesIncludeTax).toBe(false)
     expect(pdf.items.map((line) => line.total)).toEqual([8000, 6500])
     expect(sum(pdf.items.map((line) => line.total))).toBe(note.subtotalNet.toFixed(2))
-    expect(pdf.vatRows).toEqual([{ ratePercent: "25", net: "14500.00", tax: "3625.00", gross: "18125.00" }])
+    expect(pdf.vatRows).toEqual([{ ratePercent: "25", net: "14500.00", tax: "3625.00", gross: "18125.00", treatment: "standard", treatments: ["standard"] }])
   })
 
   it("returns the detail pages' lines on the same basis, beside the unchanged gross fields", async () => {
@@ -142,7 +142,7 @@ async function issued(options: { pricesIncludeTax: boolean; currency?: string; i
       expect(page.items.map((item) => [item.displayUnitPrice, item.displayAmount])).toEqual([[4000, 8000], [6500, 6500]])
       // The long-standing fields stay gross for API callers.
       expect(page.items.map((item) => [item.unitPrice, item.total])).toEqual([[5000, 10000], [8125, 8125]])
-      expect(page.vatRows).toEqual([{ ratePercent: "25", net: "14500.00", tax: "3625.00", gross: "18125.00" }])
+      expect(page.vatRows).toEqual([{ ratePercent: "25", net: "14500.00", tax: "3625.00", gross: "18125.00", treatment: "standard", treatments: ["standard"] }])
       expect(page).toMatchObject({ subtotal: 14500, taxAmount: 3625, total: 18125 })
     }
 

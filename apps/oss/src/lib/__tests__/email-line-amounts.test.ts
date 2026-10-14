@@ -61,7 +61,7 @@ describe("document emails", () => {
     const mixed = { ...document, pricesIncludeTax: false, subtotalNet: new D("16500"), totalTax: new D("2000"), totalGross: new D("18500"),
       items: [lines[0]!, { ...lines[1]!, lineNet: new D("8500"), lineTax: new D("0"), lineGross: new D("8500"), vatTreatment: "exempt", vatReasonCode: "other", taxRate: new D("0"), vatRateInput: "0" }] }
     const html = text(composeInvoiceEmail({ invoice: mixed, settings, to: "kunde@example.test", publicPaymentUrl: null }).message.html ?? "")
-    expect(html).toContain("Moms 0 % af 8.500,00 kr. 0,00 kr. Moms 25 % af 8.000,00 kr. 2.000,00 kr.")
+    expect(html).toContain("Moms 0 % af 8.500,00 kr. · Momsfritaget 0,00 kr. Moms 25 % af 8.000,00 kr. 2.000,00 kr.")
   })
 
   it("do the same for a quote", () => {

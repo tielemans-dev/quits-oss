@@ -2,16 +2,15 @@
 import fixture from "../../../domain/agreements/__tests__/fixtures/offer-v2.json"
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
-import { readAgreementOfferSnapshot } from "@quits/contracts/agreements"
+import { agreementOfferSnapshotV2Schema } from "@quits/contracts/agreements"
 import { agreementVatPresentation } from "../vat-presentation"
 import { AgreementPdf } from "../../agreement-pdf"
 import { I18nProvider } from "../../i18n/react"
 import { PublicAgreementPage } from "../../../components/agreements/public-agreement-page"
 import type { PublicAgreementDto } from "../public"
-const snapshot = readAgreementOfferSnapshot(fixture.snapshot)
+const snapshot = agreementOfferSnapshotV2Schema.parse(fixture.snapshot)
 describe("v2 offer rendering", () => {
   it("uses frozen v2 groups and leaves v1 totals unchanged", () => {
-    if (!("vatGroups" in snapshot)) throw new Error("Expected v2 fixture")
     const { offerFormatVersion: _version, calculationVersion: _calculation, serviceTotal: _total, paymentSchedule: _schedule, originalInputs: _inputs, vatGroups, scheduleVatGroups: _groups, ...v1 } = snapshot
     expect(agreementVatPresentation(v1).totals).toBeNull()
     expect(agreementVatPresentation(snapshot).totals?.lines).toEqual(expect.arrayContaining([expect.objectContaining({ label: "Moms 25 %", amount: "0.01" })]))
