@@ -20,7 +20,8 @@ export const cvrCompanySchema = z
     ]),
     statusClass: z.enum(["active", "warn", "blocked"]),
     statusDate: z.string().optional(),
-    momsRegistered: z.boolean(),
+    /** null: the registry did not say. Onboarding must ask the user, never assume. */
+    momsRegistered: z.boolean().nullable(),
     email: z.string().email().nullish(),
     phone: z.string().nullish(),
     advertisingProtected: z.boolean().optional(),
