@@ -36,7 +36,7 @@ jobs:
               run_expensive=false
               while IFS= read -r -d '' path; do
                 case "$path" in
-                  README.md|COPY.md|CONTRIBUTING.md|docs/*.md|docs/*.mdx) ;;
+                  COPY.md|docs/*.md|docs/*.mdx) ;;
                   *) run_expensive=true; break ;;
                 esac
               done < "$RUNNER_TEMP/changed-paths"
@@ -46,8 +46,8 @@ jobs:
 
   verify-oss-boundary:
     needs: paths
-    # Run on classification failure; only a successful docs-only result may skip.
-    if: always() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')
+    # Run on classification failure unless cancelled; only successful docs-only results may skip.
+    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
     runs-on: ubuntu-latest
     services:
       postgres:
