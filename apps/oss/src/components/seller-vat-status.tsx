@@ -19,10 +19,10 @@ export function SellerVatStatus({ value, onChange, disabled = false, required = 
     </label>
     {nonVatEnabled && <div className="grid gap-1.5">
       <label className="flex items-start gap-3 text-sm">
-        <input type="radio" required={required} name={id} value="not_registered" checked={value === false} onChange={() => onChange(false)} aria-describedby={`${id}-hint`} className="mt-0.5 size-4 accent-primary" />
+        <input type="radio" required={required} name={id} value="not_registered" checked={value === false} onChange={() => onChange(false)} aria-describedby={value === false ? `${id}-hint` : undefined} className="mt-0.5 size-4 accent-primary" />
         <span>{t("vatStatus.no")}</span>
       </label>
-      <p id={`${id}-hint`} className="pl-7 text-sm text-muted-foreground">{t("vatStatus.noHint")}</p>
+      {value === false && <p id={`${id}-hint`} className="pl-7 text-sm text-muted-foreground">{t("vatStatus.noHint")}</p>}
     </div>}
   </fieldset>
 }
