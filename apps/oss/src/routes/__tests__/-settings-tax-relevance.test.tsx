@@ -15,7 +15,9 @@ const {
   getFullOrganization,
   organizationUpdate,
   runtimeState,
+  displayLanguage,
 } = vi.hoisted(() => ({
+  displayLanguage: { locale: "da-DK" },
   capabilitiesQuery: vi.fn(),
   hostedFlag: { enabled: false, nonVatEnabled: true },
   distribution: { selfhost: true },
@@ -51,10 +53,13 @@ vi.mock("../../components/settings/email-delivery-card", () => ({
   EmailDeliveryCard: () => <div>email-delivery-card</div>,
 }))
 
-vi.mock("../../lib/i18n/react", () => {
+vi.mock("../../lib/i18n/react", async () => {
+  const { translate } = await import("../../lib/i18n/translate")
   const i18n = {
-    locale: "da-DK",
-    t: (key: string) =>
+    get locale() { return displayLanguage.locale },
+    t: (key: string) => key === "auth.onboarding.primary.dkLabel"
+      ? translate(key, displayLanguage.locale)
+      :
       (
         {
           "settings.error.loadFailed": "load failed",
@@ -214,6 +219,7 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
 
 afterEachTest(() => {
   cleanup()
+  displayLanguage.locale = "da-DK"
   capabilitiesQuery.mockReset()
   hostedFlag.enabled = false
   hostedFlag.nonVatEnabled = true
@@ -232,6 +238,34 @@ afterEachTest(() => {
 })
 
 describe("Settings tax relevance", () => {
+  it.each([
+    ["da-DK", "en-US", "CVR-nr.", "VAT/CVR number"],
+    ["en-US", "da-DK", "VAT/CVR number", "CVR-nr."],
+  ])("renders the Danish tax ID label in display locale %s, independent of saved locale %s", async (displayLocale, savedLocale, label, otherLabel) => {
+    displayLanguage.locale = displayLocale
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    settingsGetQuery.mockResolvedValue(buildSettingsData({
+      countryCode: "DK",
+      locale: savedLocale,
+      taxRegime: "eu_vat",
+      momsRegistered: true,
+      primaryTaxId: "24256790",
+    }))
+    const { rerender } = render(<RouteComponent />)
+    const input = await screen.findByLabelText(label) as HTMLInputElement
+    expect(input.placeholder).toBe(label)
+    expect(input.value).toBe("24256790")
+    expect(screen.queryByLabelText(otherLabel)).toBeNull()
+
+    displayLanguage.locale = savedLocale
+    rerender(<RouteComponent />)
+    expect(screen.getByLabelText(otherLabel)).toBe(input)
+    expect(input.placeholder).toBe(otherLabel)
+    expect(input.value).toBe("24256790")
+    expect(settingsUpdate).not.toHaveBeenCalled()
+  })
+
   it.each(["pending", "failed"])("does not gate self-hosted saves when capabilities are %s", async state => {
     capabilitiesQuery.mockReturnValueOnce(state === "failed" ? Promise.reject(new Error("unavailable")) : new Promise(() => {}))
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
@@ -258,7 +292,7 @@ describe("Settings tax relevance", () => {
     settingsGetQuery.mockResolvedValue(current)
     settingsUpdate.mockImplementation(async input => ({ ...current, ...input, momsRegistered: input.momsRegistered ?? stored }))
     const { container } = render(<RouteComponent />)
-    await screen.findByLabelText(stored === false ? "settings.vatStatus.cvrLabel" : "VAT/CVR number")
+    await screen.findByLabelText(stored === false ? "settings.vatStatus.cvrLabel" : "CVR-nr.")
     const email = container.querySelector('[name="companyEmail"]')! as HTMLInputElement
     fireEvent.change(email, { target: { value: "edited@example.test" } })
     fireEvent.submit(container.querySelector("form")!)
@@ -425,7 +459,7 @@ describe("Settings tax relevance", () => {
     render(<RouteComponent />)
 
     await waitFor(() => {
-      expect(screen.getByLabelText("VAT/CVR number")).toBeTruthy()
+      expect(screen.getByLabelText("CVR-nr.")).toBeTruthy()
     })
     expect(screen.getByText("Required for Danish registered businesses using EU VAT.")).toBeTruthy()
   })

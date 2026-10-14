@@ -286,6 +286,11 @@ function SettingsPage() {
     invoicingIdentity,
     taxRegime,
   })
+  const primaryTaxIdLabel = nonVatDanishSeller
+    ? t("settings.vatStatus.cvrLabel")
+    : normalizeCountryCode(countryCode) === "DK"
+      ? t("auth.onboarding.primary.dkLabel")
+      : taxRules.primaryTaxIdCopy.label
 
   useEffect(() => () => {
     if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
@@ -1068,12 +1073,12 @@ function SettingsPage() {
               <div className="grid gap-2">
                 {taxRules.showPrimaryTaxId ? (
                   <>
-                    <Label htmlFor="primaryTaxId">{nonVatDanishSeller ? t("settings.vatStatus.cvrLabel") : taxRules.primaryTaxIdCopy.label}</Label>
+                    <Label htmlFor="primaryTaxId">{primaryTaxIdLabel}</Label>
                     <Input
                       id="primaryTaxId"
                       name="primaryTaxId"
                       maxLength={40}
-                      placeholder={nonVatDanishSeller ? t("settings.vatStatus.cvrLabel") : taxRules.primaryTaxIdCopy.label}
+                      placeholder={primaryTaxIdLabel}
                       value={primaryTaxId}
                       onChange={(event) => { setPrimaryTaxId(event.target.value); clearSellerVatReview() }}
                     />
