@@ -7,7 +7,7 @@ ARG NODE_VERSION=22.23.3
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl git sudo unzip xz-utils postgresql-16 \
+      ca-certificates curl git sudo unzip xz-utils postgresql-16 ripgrep \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
@@ -16,10 +16,23 @@ RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-l
 ARG BUN_VERSION=1.3.9
 RUN curl -fsSL https://bun.sh/install | BUN_INSTALL=/usr/local bash -s "bun-v${BUN_VERSION}"
 
+# Chromium for Playwright. Keep PLAYWRIGHT_VERSION equal to the playwright
+# version in bun.lock (checked by scripts/__tests__/cursor-env.test.ts).
+ARG PLAYWRIGHT_VERSION=1.58.2
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+RUN apt-get update \
+    && npx --yes "playwright@${PLAYWRIGHT_VERSION}" install --with-deps chromium \
+    && chmod -R a+rX /opt/ms-playwright \
+    && rm -rf /var/lib/apt/lists/*
+
+# Default dev database, used by bun dev, db:start and Playwright.
+ENV DATABASE_URL=postgresql://postgres:postgres@localhost:5432/yaip
+
 # Local dev database (password is a local-only default, not a secret).
 RUN service postgresql start \
     && su postgres -c "psql -c \"ALTER USER postgres PASSWORD 'postgres';\"" \
     && su postgres -c "createdb quits" \
+    && su postgres -c "createdb yaip" \
     && service postgresql stop
 
 RUN id -u ubuntu >/dev/null 2>&1 || useradd -m -s /bin/bash ubuntu; \
