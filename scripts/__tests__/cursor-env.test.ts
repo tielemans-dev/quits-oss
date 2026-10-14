@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = resolve(__dirname, "../..");
@@ -29,7 +29,7 @@ function run(opts: { pgReady?: 0 | 1; docker?: boolean; url?: string }) {
   );
   const result = spawnSync("/bin/bash", [script], {
     env: {
-      PATH: `${bin}:/usr/bin:/bin`,
+      PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin`,
       DATABASE_URL: opts.url ?? URL_5432,
       HOME: bin,
     },
