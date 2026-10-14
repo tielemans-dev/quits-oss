@@ -1,0 +1,14 @@
+---
+description: Route hosted-only work and preserve the self-hosted runtime
+alwaysApply: true
+---
+
+Read `AGENTS.md` for repository conventions.
+
+This public repository owns the self-hostable runtime and published app contracts.
+Hosted-only billing lifecycle and infrastructure enforcement belong in the hosted
+lane. Stop before writing that code and ask to continue in the appropriate project.
+For work spanning both lanes, implement the general runtime extension or capability
+patch here and hand off hosted wiring after an OSS release. Never include private
+repository names, code, or infrastructure identifiers here. Self-hosters get no
+hosted gates.
