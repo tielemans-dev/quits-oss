@@ -6,11 +6,14 @@ as open source.
 
 ## Non-negotiables
 
-- Preserve self-host viability. Hosted-only billing and infrastructure enforcement
-  belong in the hosted lane. Stop and route that work there before writing code.
-- Keep general features here behind runtime extension interfaces or capability
-  patches; the hosted lane wires them up after an OSS release. Never include
-  private repository names, code, or infrastructure identifiers in this public repo.
+- Preserve self-host viability. Invoicing, quotes, customer payments, contacts,
+  exports, APIs, UI, Settings, and the app schema belong here. Hosted-only plan
+  billing and infrastructure enforcement belong in the hosted lane. Stop before
+  writing that code and ask the maintainer for the appropriate project.
+- For work spanning both lanes, implement the general feature here behind runtime
+  extension interfaces or capability patches and hand off hosted wiring after an
+  OSS release. Never include private repository names, code, or infrastructure
+  identifiers in this public repo.
 - Preserve public exports unless the task explicitly changes the release contract.
   During file moves, preserve behavior first and improve structure second.
 - Keep every user-facing flow inside the app, including onboarding and Settings.
@@ -31,8 +34,9 @@ as open source.
 
 ## Ways to hurt yourself
 
-- Work only in your T3-created worktree on your own branch. Respect the issue's
-  named files and protected work. Do not edit another contributor's checkout.
+- Work in an isolated checkout or worktree on your own branch. In T3 Code, use
+  your T3-created worktree. Respect the issue's named files and protected work.
+  Do not edit another contributor's checkout.
 - Never read `.env` files or print secrets. Do not reset shared databases or run
   migrations against live services. Use an isolated development database.
 - Never merge, deploy, release, tag, enable auto-merge, push to main, or delete
@@ -40,10 +44,9 @@ as open source.
 - Never @-mention Ines, Mira, Noah, Lumi, or Kai on GitHub, regardless of case.
   This includes PR bodies, comments, reviews, and issues. Write their names plainly;
   those handles ping unrelated people and the bots have no GitHub accounts.
-- Read `~/Projects/fleet/dotfiles/projects-AGENTS.md` before tooling or workspace
-  changes. Fleet manages skills, MCP servers, agent config, and dotfiles across
-  machines. Before changing those, read `~/Projects/fleet/AGENTS.md` and use the
-  fleet-managed commands; local config edits can propagate to every machine.
+- On managed maintainer workstations, follow the injected machine instructions
+  before changing agent tools or configuration; those changes can propagate to
+  other machines. External contributors need only this repository's setup.
 
 ## Hit every surface
 
@@ -62,13 +65,18 @@ behavior on those entries. Coverage does not require unrelated tests.
 
 ## Dev
 
-- Read `~/Projects/fleet/docs/PROJECT_TOOLS.md` for setup checks, development
-  commands, logs, and MCP recovery. Read `~/Projects/workspace-AGENTS.md` before
-  naming or registering a Projects entry.
-- Run `bun run dev` from this worktree. It starts the self-hosted app on port 3000;
-  its predev hook generates Prisma and runs bootstrap. Confirm isolation before
-  starting it, and avoid ports used by another task. Stop only processes you started,
-  using the PIDs you tracked.
+- Use `README.md` for prerequisites and environment variable definitions, and
+  `package.json` and `apps/oss/package.json` for available scripts. Install with
+  `bun install` from the repository root. No maintainer home-directory files or
+  hosted checkout are required for self-hosted development.
+- Before running `bun run dev` from the repository root, require an isolated local
+  database configured through `DATABASE_URL`. The predev hook generates Prisma and
+  applies migrations to `DATABASE_URL` via `scripts/predev-bootstrap.mjs` before
+  starting the self-hosted app on port 3000. Worktrees can inherit the main
+  checkout's environment file via `scripts/workspace-env.js`; a separate worktree
+  does not isolate the database. Never start against a shared or live database.
+  Avoid ports used by another task. Stop only processes you started, using the
+  PIDs you tracked.
 - Reuse existing UI components. When a task requires adding a shadcn component,
   follow its current CLI instructions within the authorized dependency scope.
 
@@ -92,9 +100,9 @@ suites. Do not run a full suite or build to prove a small change.
   targeted browser checks when needed to prove the changed flow. On Omarchy,
   ask the parent orchestrator to schedule heavy verification. Launch blockers
   take priority; do not run heavy checks alongside their work.
-- On Omarchy, read `~/Projects/fleet/docs/OMARCHY_LOAD.md` before heavy commands.
-  Wrap only the outermost command with `fleet-heavy --`, use one test worker,
-  and wait for completion. Never nest queue wrappers.
+- On managed maintainer workstations, follow injected resource limits and queue
+  instructions for heavy commands. External contributors use the repo-local
+  commands above; no workstation-specific wrapper is required.
 - For packaging or CI changes, verify the affected local script and workflow
   command paths. Report actual checks, omissions, and CI status separately.
 
