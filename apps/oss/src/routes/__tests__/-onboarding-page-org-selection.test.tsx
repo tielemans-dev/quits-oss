@@ -219,6 +219,24 @@ describe("OnboardingPage org selection", () => {
     await waitFor(() => expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_created" }))
     // The new organization continues in the v2 wizard (lookup, review, confirm), not the app.
     expect(loadPage).toHaveBeenCalledWith("/onboarding")
+    // v2 collects company details itself: no legacy staged company (and draft save) on reload.
+    expect(Object.keys(sessionStorage).some(key => /selected/i.test(key))).toBe(false)
+  })
+
+  it("keeps v2 unknown with a retry instead of falling back to v1 when capabilities fail", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(trpc.runtime.capabilities.query)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ onboardingV2: { enabled: true } } as never)
+    render(<RoutePage />)
+    const retry = await screen.findByRole("button", { name: "onboardingV2.retry" })
+    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+    expect(screen.queryByLabelText("auth.onboarding.field.companyName")).toBeNull()
+    fireEvent.click(retry)
+    expect(await screen.findByLabelText("auth.onboarding.field.companyName")).toBeTruthy()
+    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
   })
 
   it("starts a hosted organization from CVR lookup instead of a name and slug form", async () => {

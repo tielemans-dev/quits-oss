@@ -149,15 +149,19 @@ function OnboardingPageContent() {
   // Before an organization exists, the public runtime capabilities decide whether onboarding v2
   // applies. v2 then only needs a name to create the organization; the CVR lookup, review and
   // confirmation happen in the v2 wizard instead of the v1 card creating a finished organization.
+  // A failed lookup stays unknown (with a retry) rather than falling back to v1.
   const [noOrgV2, setNoOrgV2] = useState<boolean | null>(null)
+  const [noOrgV2Failed, setNoOrgV2Failed] = useState(false)
+  const [noOrgV2Attempt, setNoOrgV2Attempt] = useState(0)
   useEffect(() => {
     if (!isCloud || hasActiveOrg) return
     let cancelled = false
+    setNoOrgV2Failed(false)
     trpc.runtime.capabilities.query()
       .then(capabilities => { if (!cancelled) setNoOrgV2((capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true) })
-      .catch(() => { if (!cancelled) setNoOrgV2(false) })
+      .catch(() => { if (!cancelled) setNoOrgV2Failed(true) })
     return () => { cancelled = true }
-  }, [isCloud, hasActiveOrg])
+  }, [isCloud, hasActiveOrg, noOrgV2Attempt])
 
   const [entryMode, setEntryMode] = useState<'lookup' | 'manual'>(isCloud ? 'lookup' : 'manual')
   const [lookupQuery, setLookupQuery] = useState('')
@@ -466,7 +470,8 @@ function OnboardingPageContent() {
     }
 
     // The next page acts for the new organization; this page's requests still name the old one.
-    if (session?.user?.id) {
+    // v2 collects and confirms company details itself; staging would save a legacy draft first.
+    if (session?.user?.id && !noOrgV2) {
       try {
         stageSelectedCompany(session.user.id, created.id, company ?? { name, address: '', cvr: '' })
       } catch {
@@ -576,6 +581,20 @@ function OnboardingPageContent() {
   }
 
   if (!hasActiveOrg) {
+    if (!orgAccessLoading && isCloud && orgAccessState.kind === 'create' && noOrgV2 === null && noOrgV2Failed) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardDescription role="alert">{t('auth.onboarding.loadError')}</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button type="button" className="w-full" onClick={() => setNoOrgV2Attempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )
+    }
     if (orgAccessLoading || (isCloud && orgAccessState.kind === 'create' && noOrgV2 === null)) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
