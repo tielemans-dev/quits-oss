@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { I18nProvider } from "../../lib/i18n/react"
 import { OnboardingV2 } from "../onboarding-v2/onboarding-v2"
 import { createOnboardingV2Client } from "../onboarding-v2/client"
-import { confirmationPayload, newDraft } from "../onboarding-v2/draft"
+import { confirmationPayload, draftKey, newDraft, storeDraft } from "../onboarding-v2/draft"
 
 const api = vi.hoisted(() => ({ prepare: vi.fn(async () => ({ token: "signed-final-identity" })), confirm: vi.fn(async (_input: unknown) => ({ status: "complete" as const })) }))
 vi.mock("../../trpc/client", () => ({ trpc: {
@@ -90,5 +90,18 @@ describe("production v2 seller confirmation", () => {
     expect(api.prepare).not.toHaveBeenCalled()
     expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: false }))
     expect(api.confirm.mock.calls[0]?.[0]).not.toHaveProperty("sellerVatConfirmationToken")
+  })
+})
+
+describe("CVR VAT notice", () => {
+  const company = { cvr: "24256790", name: "Synthetic Studio ApS", address: "Testvej 1", companyForm: "ApS", status: "active", statusClass: "active" } as const
+  const notice = /According to CVR, the company isn't VAT registered/
+  it.each([[false, true], [null, false]] as const)("registry VAT %s with the user choosing not registered shows the CVR notice: %s", async (fact, shown) => {
+    const draft = newDraft({ ...company, momsRegistered: fact }, "signup@example.test", false)
+    draft.values.momsRegistered = false
+    storeDraft(draftKey("synthetic-user", "synthetic-org"), draft)
+    render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" nonVatEnabled client={createOnboardingV2Client(false)} onComplete={() => {}} /></I18nProvider>)
+    await screen.findByLabelText("Name")
+    expect(screen.queryByText(notice) !== null).toBe(shown)
   })
 })
