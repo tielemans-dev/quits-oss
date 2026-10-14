@@ -28,7 +28,8 @@
     "src/exports.ts",
     "src/einvoice-delivery.ts",
     "src/vat.ts",
-    "src/pricing.ts"
+    "src/pricing.ts",
+    "src/cvr.ts"
   ],
   "exports": {
     ".": "./src/index.ts",
@@ -53,7 +54,8 @@
     "./reminders": "./src/reminders.ts",
     "./runtime": "./src/runtime.ts",
     "./vat": "./src/vat.ts",
-    "./pricing": "./src/pricing.ts"
+    "./pricing": "./src/pricing.ts",
+    "./cvr": "./src/cvr.ts"
   },
   "scripts": {
     "lint": "oxlint --deny-warnings --report-unused-disable-directives src",

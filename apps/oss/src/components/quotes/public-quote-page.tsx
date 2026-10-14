@@ -1,3 +1,6 @@
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../lib/documents/seller-vat"
+import { nonVatStatement } from "../../lib/documents/non-vat-note"
+import { withoutNonVatStatement } from "../../lib/documents/non-vat-presentation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { Textarea } from "../ui/textarea"
@@ -25,6 +28,7 @@ type PublicQuoteItem = {
   lineNet: Decimalish
   unitPriceGross: Decimalish
   lineGross: Decimalish
+  taxRate?: Decimalish
   sortOrder: number
 }
 
@@ -39,11 +43,13 @@ type PublicQuote = {
   subtotalNet: Decimalish
   vatRows?: VatRow[]
   rounding?: string
+  taxRegime?: string
   currency: string
   /** The timezone the document's dates are shown in, as its PDF and email do. */
   timezone: string
   notes: string | null
   sellerSnapshot: {
+    momsRegistered?: boolean | null
     companyName?: string | null
     companyEmail?: string | null
     companyAddress?: string | null
@@ -135,6 +141,8 @@ function PublicQuoteDocument({
 }) {
   const { t, locale } = useI18n()
   const { quote, decisionState, seller } = state
+  const momsRegistered = sellerVatPresentationStatus(quote.sellerSnapshot?.momsRegistered, quote.taxRegime)
+  const notes = withoutNonVatStatement(quote.notes, momsRegistered, quote.taxRegime)
   const format = useDocumentFormat(quote.timezone, true)
   const money = (amount: number) => format.money(amount, quote.currency)
   const decisionAt = quote.publicDecisionAt ? format.date(quote.publicDecisionAt) : null
@@ -180,6 +188,9 @@ function PublicQuoteDocument({
                     >
                       <div>
                         <p className="font-medium">{item.description}</p>
+                        {sellerVatLineText(momsRegistered, item.taxRate == null ? undefined : toNumber(item.taxRate), locale) ? (
+                          <p className="text-sm text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate == null ? undefined : toNumber(item.taxRate), locale)}</p>
+                        ) : null}
                         <p className="text-sm text-muted-foreground">
                           {t("public.document.lineQuantity", {
                             quantity: format.number(toNumber(item.quantity)),
@@ -197,10 +208,11 @@ function PublicQuoteDocument({
               </div>
             </div>
 
-            {quote.notes ? (
+            {momsRegistered === false ? <p className="text-sm text-muted-foreground">{nonVatStatement(locale)}</p> : null}
+            {notes ? (
               <div className="grid gap-2">
                 <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("public.document.notes")}</h2>
-                <p className="whitespace-pre-wrap text-sm">{quote.notes}</p>
+                <p className="whitespace-pre-wrap text-sm">{notes}</p>
               </div>
             ) : null}
           </CardContent>

@@ -26,7 +26,7 @@ const buyerSnapshot = {
 
 const contact = { name: "Renamed Contact", email: "new@buyer.example", company: "Renamed GmbH" }
 
-const issued = { sellerSnapshot, buyerSnapshot, contact, locale: "en" }
+const issued = { taxRegime: "eu_vat", sellerSnapshot, buyerSnapshot, contact, locale: "en" }
 
 describe("credit note PDF parties", () => {
   it("renders the seller from the issued snapshot, not current settings", () => {

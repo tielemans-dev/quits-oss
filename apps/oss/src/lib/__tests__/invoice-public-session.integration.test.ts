@@ -59,6 +59,7 @@ describeIfDatabase("public invoice checkout session", () => {
       baseCurrency: "DKK",
           currency: "DKK",
           taxRegime: "eu_vat",
+          momsRegistered: true,
           pricesIncludeTax: false,
           invoicePrefix: "INVSES",
           quotePrefix: "QTESES",

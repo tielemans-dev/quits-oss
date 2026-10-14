@@ -85,3 +85,17 @@ describe("document emails", () => {
     expect(text(net.html)).toContain("Beløb ekskl. moms")
   })
 })
+
+// MOCK: synthetic frozen seller and changed delivery settings.
+it.each([null, "mail.current.test"])("resends quotes with current replyTo and frozen body identity using domain %s", domain => {
+  const message = composeQuoteEmail({ quote: { ...document, pricesIncludeTax: false,
+    sellerSnapshot: { companyName: "Frozen seller", companyEmail: "old@example.test" } },
+    settings: { companyName: "Current seller", companyEmail: "current@example.test", documentSendingDomain: domain, documentSendingDomainStatus: "verified", locale: "da-DK", timezone: "Europe/Copenhagen" } as never,
+    to: "kunde@example.test", publicQuoteUrl: null }).message
+  expect(message.replyTo).toBe("current@example.test")
+  expect(message.from).toContain("Current seller")
+  if (domain) expect(message.from).toContain(domain)
+  expect(message.html).toContain("Frozen seller")
+  expect(message.html).toContain("old@example.test")
+  expect(message.html).not.toContain("Current seller")
+})

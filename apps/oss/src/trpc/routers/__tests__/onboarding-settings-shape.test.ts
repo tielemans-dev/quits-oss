@@ -21,7 +21,7 @@ vi.mock("../../init", async () => {
   const procedure = t.procedure.use(({ next }) => next({ ctx: {
     organizationId: actor.organizationId,
     user: { id: actor.userId, email: "signup@example.test", name: actor.label },
-    actor,
+    actor, session: { session: { id: "session" } },
   } }))
   return { router: t.router, authorizedProcedure: () => procedure, protectedProcedure: procedure }
 })

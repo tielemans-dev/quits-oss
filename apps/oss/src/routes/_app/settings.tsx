@@ -1,6 +1,8 @@
+import { normalizeCountryCode } from "../../lib/compliance/registry"
+import { isSelfHostDistribution } from "../../lib/distribution"
+import { SellerVatStatus } from "../../components/seller-vat-status"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import { isOrganizationSlug } from "../../lib/organization-slug"
@@ -199,13 +201,20 @@ function SettingsPage() {
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
   const settingsFormId = useId()
-  const { isSelfHost } = useRuntimeDistribution()
   const { data: session } = useSession()
   const [settings, setSettings] = useState<SettingsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [taxRateInput, setTaxRateInput] = useState("")
+  const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
+  const [withdrawSellerVatEvidence, setWithdrawSellerVatEvidence] = useState(false)
+  const [nonVatEnabled, setNonVatEnabled] = useState(false)
+  const [sellerVatConfirmationEnabled, setSellerVatConfirmationEnabled] = useState<boolean | null>(null)
+  const [capabilitiesFailed, setCapabilitiesFailed] = useState(false)
+  const [capabilitiesAttempt, setCapabilitiesAttempt] = useState(0)
+  const [momsRegistered, setMomsRegistered] = useState<boolean | null>(null)
   const [countryCode, setCountryCode] = useState("US")
   const [locale, setLocale] = useState("en-US")
   const [timezone, setTimezone] = useState("UTC")
@@ -213,10 +222,7 @@ function SettingsPage() {
   const [defaultCurrency, setDefaultCurrency] = useState("USD")
   const [invoicingIdentity, setInvoicingIdentity] = useState<OnboardingInvoicingIdentity>("registered_business")
   const [taxRegime, setTaxRegime] = useState<"us_sales_tax" | "eu_vat" | "custom">("us_sales_tax")
-  const [momsRegistered, setMomsRegistered] = useState<boolean | null>(null)
-  const [taxRateInput, setTaxRateInput] = useState("")
   const [paymentTermsDaysInput, setPaymentTermsDaysInput] = useState("14")
-  const [nonVatEnabled, setNonVatEnabled] = useState(false)
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
   const [primaryTaxId, setPrimaryTaxId] = useState("")
   const [primaryTaxIdScheme, setPrimaryTaxIdScheme] = useState("vat")
@@ -272,7 +278,7 @@ function SettingsPage() {
     () => new Intl.DisplayNames([locale || "en-US"], { type: "language" }),
     [locale]
   )
-  const showVatStatus = countryCode.trim().toUpperCase() === "DK" && taxRegime === "eu_vat"
+  const showVatStatus = normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat"
   const nonVatDanishSeller = showVatStatus && momsRegistered === false
   const taxRules = getOnboardingRules({
     countryCode,
@@ -296,7 +302,6 @@ function SettingsPage() {
           nextSettings.onboardingInvoicingIdentity ?? "registered_business"
         )
         setMomsRegistered(nextSettings.momsRegistered ?? null)
-        setPaymentTermsDaysInput(String(nextSettings.paymentTermsDays ?? 14))
         setTaxRateInput(nextSettings.taxRate == null ? "" : String(nextSettings.taxRate))
         setTaxRegime(nextSettings.taxRegime)
         setPricesIncludeTax(nextSettings.pricesIncludeTax)
@@ -334,15 +339,18 @@ function SettingsPage() {
   }, [t])
 
   useEffect(() => {
+    setCapabilitiesFailed(false)
+    setLoadingAiCapabilities(true)
     trpc.runtime.capabilities
       .query()
       .then((data) => {
         setAiCapabilities((data as Pick<RuntimeCapabilities, "aiInvoiceDraft">).aiInvoiceDraft)
+        setSellerVatConfirmationEnabled(data.sellerVatConfirmation?.enabled === true)
         setNonVatEnabled(data.onboardingV2?.nonVatEnabled === true)
       })
-      .catch(() => {})
+      .catch(() => setCapabilitiesFailed(true))
       .finally(() => setLoadingAiCapabilities(false))
-  }, [])
+  }, [capabilitiesAttempt])
 
   // Only providers the server's runtime capabilities allow are offered.
   const aiProviderOptions: Array<{ value: AiProviderId; label: string }> = aiCapabilities?.enabled
@@ -437,6 +445,11 @@ function SettingsPage() {
     setInvitations((prev) => prev.filter((i) => i.id !== invitationId))
   }
 
+  function clearSellerVatReview() {
+    setSellerVatChoice(null)
+    setWithdrawSellerVatEvidence(false)
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
@@ -503,11 +516,12 @@ function SettingsPage() {
 
     const momsRegisteredUpdate = !showVatStatus && settings?.momsRegistered != null
       ? null
-      : showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null)
-        ? momsRegistered
-        : undefined
+      : showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null) ? momsRegistered : undefined
     try {
-      await trpc.settings.update.mutate({
+      const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (sellerVatChoice !== null || withdrawSellerVatEvidence)
+        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim(), primaryTaxIdScheme, registered: withdrawSellerVatEvidence ? null : sellerVatChoice })).token
+        : undefined
+      const savedSettings = await trpc.settings.update.mutate({
         countryCode,
         locale,
         timezone: timezoneInput,
@@ -515,11 +529,12 @@ function SettingsPage() {
         baseCurrency,
         taxRegime,
         pricesIncludeTax,
-        momsRegistered: momsRegisteredUpdate,
         primaryTaxId: primaryTaxId || undefined,
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
+        momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : sellerVatChoice ?? undefined : momsRegisteredUpdate,
+        sellerVatConfirmationToken,
         paymentTermsDays: Number(paymentTermsDaysInput),
         companyName: companyNameInput || undefined,
         companyAddress: companyAddressInput || undefined,
@@ -545,10 +560,10 @@ function SettingsPage() {
         clearStripeSecretKey,
         clearStripeWebhookSecret,
       })
-      if (momsRegisteredUpdate !== undefined) {
-        setMomsRegistered(momsRegisteredUpdate)
-        setSettings(prev => prev ? { ...prev, momsRegistered: momsRegisteredUpdate } : prev)
-      }
+      setTaxRateInput(savedSettings.taxRate == null ? "" : String(savedSettings.taxRate))
+      setMomsRegistered(savedSettings.momsRegistered)
+      setSellerVatChoice(null)
+      setWithdrawSellerVatEvidence(false)
       setTimezone(timezoneInput)
       const savedBaseUrl = aiProvider === "openai_compatible" ? aiBaseUrlInput || null : settings?.aiBaseUrl ?? null
       // The server drops the saved key when the provider or endpoint changes without a new key.
@@ -558,6 +573,7 @@ function SettingsPage() {
         prev && sendAiSettings
           ? {
               ...prev,
+              momsRegistered: savedSettings.momsRegistered,
               aiProvider,
               aiBaseUrl: savedBaseUrl,
               aiModel: aiModelInput || prev.aiModel,
@@ -567,7 +583,7 @@ function SettingsPage() {
                   ? false
                   : prev.aiByokConfigured,
             }
-          : prev
+          : prev ? { ...prev, momsRegistered: savedSettings.momsRegistered } : prev
       )
       setClearAiApiKey(false)
       setAiApiKeyDraft("")
@@ -788,6 +804,10 @@ function SettingsPage() {
         <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
       </div>
 
+      {!isSelfHostDistribution && capabilitiesFailed && <div role="alert" className="mb-4 grid gap-2">
+        <p className="text-sm text-destructive">{t("settings.capabilities.failed")}</p>
+        <Button type="button" variant="outline" disabled={loadingAiCapabilities} onClick={() => setCapabilitiesAttempt(attempt => attempt + 1)}>{t("settings.capabilities.retry")}</Button>
+      </div>}
       <div className="grid gap-6">
         {error && (
           <p className="text-sm text-destructive" role="alert">
@@ -809,19 +829,6 @@ function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            {showVatStatus ? (
-              <fieldset className="grid gap-2" disabled={saving}>
-                <legend className="text-sm font-medium">{t("settings.vatStatus.question")}</legend>
-                {[true, false].map(value => (
-                  <label key={String(value)} className="flex items-center gap-2">
-                    <input type="radio" form={settingsFormId} name="momsRegistered" checked={momsRegistered === value}
-                      disabled={!value && !isSelfHost && !nonVatEnabled}
-                      onChange={() => { setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false) }} />
-                    {t(value ? "settings.vatStatus.registered" : "settings.vatStatus.notRegistered")}
-                  </label>
-                ))}
-              </fieldset>
-            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="companyName">{t("settings.companyName.label")}</Label>
               <Input
@@ -831,6 +838,7 @@ function SettingsPage() {
                 maxLength={120}
                 placeholder={t("settings.companyName.placeholder")}
                 defaultValue={settings.companyName ?? ""}
+                onChange={clearSellerVatReview}
               />
             </div>
 
@@ -863,6 +871,7 @@ function SettingsPage() {
                 rows={3}
                 maxLength={240}
                 defaultValue={settings.companyAddress ?? ""}
+                onChange={clearSellerVatReview}
               />
             </div>
 
@@ -893,6 +902,12 @@ function SettingsPage() {
                 />
               </div>
             </div>
+
+            {(isSelfHostDistribution || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
+              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+                {sellerVatConfirmationEnabled && <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>}
+              </div>
+            ) : null}
 
             <div className="grid gap-2">
               <Label htmlFor="companyLogoUrl">{t("settings.companyLogo.label")}</Label>
@@ -958,6 +973,9 @@ function SettingsPage() {
                 <Select
                   value={countryCode}
                   onValueChange={(nextCountry) => {
+                    // The Danish choice does not establish registration in a new jurisdiction.
+                    if (normalizeCountryCode(countryCode) === "DK" && normalizeCountryCode(nextCountry) !== "DK") setMomsRegistered(null)
+                    clearSellerVatReview()
                     setCountryCode(nextCountry)
                     const preset = COUNTRY_OPTIONS.find((item) => item.code === nextCountry)
                     if (preset) {
@@ -1009,7 +1027,7 @@ function SettingsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="taxRegime">{t("settings.taxRegime.label")}</Label>
-                <Select value={taxRegime} onValueChange={(value) => setTaxRegime(value as "us_sales_tax" | "eu_vat" | "custom")}>
+                <Select value={taxRegime} onValueChange={(value) => { setTaxRegime(value as "us_sales_tax" | "eu_vat" | "custom"); clearSellerVatReview() }}>
                   <SelectTrigger id="taxRegime">
                     <SelectValue placeholder={t("settings.taxRegime.placeholder")} />
                   </SelectTrigger>
@@ -1048,7 +1066,7 @@ function SettingsPage() {
                       maxLength={40}
                       placeholder={nonVatDanishSeller ? t("settings.vatStatus.cvrLabel") : taxRules.primaryTaxIdCopy.label}
                       value={primaryTaxId}
-                      onChange={(event) => setPrimaryTaxId(event.target.value)}
+                      onChange={(event) => { setPrimaryTaxId(event.target.value); clearSellerVatReview() }}
                     />
                     <p className="text-xs text-muted-foreground">
                       {nonVatDanishSeller ? t("settings.vatStatus.cvrHelp") : taxRules.primaryTaxIdCopy.help}
@@ -1066,7 +1084,7 @@ function SettingsPage() {
               {taxRules.showPrimaryTaxId ? (
                 <div className="grid gap-2">
                   <Label htmlFor="primaryTaxIdScheme">{t("settings.primaryTaxIdScheme.label")}</Label>
-                  <Select value={primaryTaxIdScheme} onValueChange={setPrimaryTaxIdScheme}>
+                  <Select value={primaryTaxIdScheme} onValueChange={value => { setPrimaryTaxIdScheme(value); clearSellerVatReview() }}>
                     <SelectTrigger id="primaryTaxIdScheme">
                       <SelectValue />
                     </SelectTrigger>

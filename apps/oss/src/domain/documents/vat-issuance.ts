@@ -3,13 +3,15 @@ import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/docume
 import { validateVatIssuance, percentageToFraction, assertStoredDocumentEquation } from "@quits/shared/pricing"
 import { vatIdentifier } from "../../lib/exports/parties"
 import { isVatNumberScheme } from "../../lib/compliance"
+import { toDecimal } from "../../lib/exports/format"
 import { InvalidState } from "../errors"
 
-/** Registration alone, also used by offers whose service and deposit totals are separate. */
-export function requireSellerVatRegistration(document: {
+/** Registration checks shared by invoices, quotes and agreement offers, without repricing. */
+export function requireSellerVatIssuance(document: {
+  taxRegime?: string
   sellerSnapshot: unknown
-  totalTax: { toString(): string }
-  items: ReadonlyArray<{
+  totalTax?: { toString(): string }
+  items: Array<{
     vatRateInput: string | null
     vatTreatment: string
     taxRate: { toString(): string }
@@ -17,22 +19,26 @@ export function requireSellerVatRegistration(document: {
   }>
 }) {
   const seller = parseSellerSnapshot(document.sellerSnapshot)
-  // Check nominal rates too: small VAT-bearing lines can round their tax amount to zero.
-  return seller?.momsRegistered === false && (
-    Number(document.totalTax.toString()) !== 0 || document.items.some(item =>
-      Number(item.taxRate.toString()) !== 0 ||
-      (item.vatRateInput != null && Number(item.vatRateInput) !== 0) ||
-      Number(item.lineTax.toString()) !== 0 ||
-      // Ordinary zero domestic offer lines remain valid; VAT exemptions/supplies do not.
-      !["standard", "out_of_scope"].includes(item.vatTreatment)
-    )
-  )
-    ? Effect.fail(new InvalidState({ code: "seller_not_vat_registered", message: "A seller who is not VAT-registered cannot charge VAT or use a VAT-specific treatment. Use out-of-scope for nonregistered supplies." }))
-    : Effect.void
+  if (document.taxRegime === "eu_vat" && seller?.countryCode === "DK" && seller.momsRegistered == null)
+    return Effect.fail(new InvalidState({ code: "seller_vat_status_unset", message: "Choose whether the seller is VAT-registered in company settings before sending." }))
+  if (document.taxRegime === "eu_vat" && seller?.momsRegistered === false && (
+    (document.totalTax != null && !toDecimal(document.totalTax.toString()).isZero()) || document.items.some(item =>
+    !toDecimal(item.taxRate.toString()).isZero() ||
+    (item.vatRateInput !== null && !toDecimal(item.vatRateInput).isZero()) ||
+    !toDecimal(item.lineTax.toString()).isZero() ||
+    !["standard", "out_of_scope", "unclassified_zero"].includes(item.vatTreatment))))
+    return Effect.fail(new InvalidState({ code: "seller_not_vat_registered", message: "A seller who is not VAT-registered cannot issue a document with VAT. Set every line to 0% before sending." }))
+  if (document.taxRegime === "eu_vat" && seller?.momsRegistered !== false &&
+      document.items.some(item => item.vatTreatment === "unclassified_zero"))
+    return Effect.fail(new InvalidState({ code: "evidence_incomplete", message: "Unclassified zero VAT requires a non-registered seller. Review the line VAT treatment before issuing." }))
+  return Effect.void
 }
+
+export const requireSellerVatRegistration = requireSellerVatIssuance
 
 /** Shared by issuance entry commands. Resends and issued-document operations never reprice. */
 export function requireVatIssuance(document: {
+  taxRegime?: string
   countryCode?: string | null
   quoteId?: string | null
   agreementId?: string | null
@@ -56,10 +62,11 @@ export function requireVatIssuance(document: {
   }>
 }) {
   return Effect.gen(function* () {
-    yield* requireSellerVatRegistration(document)
     const seller = parseSellerSnapshot(document.sellerSnapshot)
     const buyer = parseBuyerSnapshot(document.buyerSnapshot)
+    yield* requireSellerVatIssuance(document)
     const issues = validateVatIssuance({
+      momsRegistered: document.taxRegime === "eu_vat" ? seller?.momsRegistered : undefined,
       lines: document.items.map((item) => ({
         treatment: item.vatTreatment,
         reasonCode: item.vatReasonCode,
@@ -73,7 +80,7 @@ export function requireVatIssuance(document: {
     })
     // Explicit registration requires the retained identity to support VAT rendering.
     // Null/absent registration preserves legacy taxation, including US sales tax.
-    const linkedVatInvoice = seller?.momsRegistered === true && (document.quoteId || document.agreementId) && (
+    const linkedVatInvoice = document.taxRegime === "eu_vat" && seller?.momsRegistered === true && (document.quoteId || document.agreementId) && (
       Number(document.totalTax.toString()) !== 0 || document.items.some(item =>
         Number(item.taxRate.toString()) !== 0 ||
         (item.vatRateInput != null && Number(item.vatRateInput) !== 0) ||
@@ -87,7 +94,7 @@ export function requireVatIssuance(document: {
     const evidence = document.vatEvidence as { buyerVatId?: string } | null
     if (document.items.some(item => item.vatTreatment === "intra_community") &&
         !buyer?.taxIds?.some(id => id.value === evidence?.buyerVatId)) issues.push("Buyer VAT evidence must match the buyer tax id refreshed at issuance")
-    yield* issues.length
+    return yield* (issues.length
       ? Effect.fail(new InvalidState({ code: "evidence_incomplete", message: issues.join("; ") }))
       : Effect.try({
         try: () => assertStoredDocumentEquation({
@@ -100,6 +107,6 @@ export function requireVatIssuance(document: {
           })),
         }),
         catch: () => new InvalidState({ code: "invalid_document_equation", message: "Stored document amounts do not balance" }),
-      })
+      }))
   })
 }

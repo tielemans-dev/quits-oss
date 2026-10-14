@@ -1,7 +1,10 @@
 export const enSettingsMessages = {
-  "settings.paymentTermsDays.label": "Payment terms (days)",
-  "settings.paymentTermsDays.hint": "Default number of days until a new invoice is due. Existing invoices keep their due dates.",
   "settings.validation.invalidPaymentTerms": "Payment terms must be a whole number between 0 and 3650.",
+
+  "settings.paymentTermsDays.hint": "Default number of days until a new invoice is due. Existing invoices keep their due dates.",
+
+  "settings.paymentTermsDays.label": "Payment terms (days)",
+
   "settings.vatStatus.cvrLabel": "CVR number",
   "settings.vatStatus.cvrHelp": "Your Danish business registration number.",
 
@@ -11,6 +14,8 @@ export const enSettingsMessages = {
   "settings.baseCurrency.label": "Base currency",
   "settings.baseCurrency.hint": "Books use this currency. It locks after any document is issued. Draft currency remains independent.",
   "settings.title": "Settings",
+  "settings.capabilities.failed": "Could not load available settings. You can save other changes or try again.",
+  "settings.capabilities.retry": "Try again",
   "settings.loading": "Loading...",
   "settings.success.saved": "Settings saved successfully.",
   "settings.error.loadFailed": "Failed to load settings",

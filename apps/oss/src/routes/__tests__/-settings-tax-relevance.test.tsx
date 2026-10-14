@@ -1,27 +1,46 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
 import { afterEach as afterEachTest, describe, expect, it, vi } from "vitest"
 
 const {
+  capabilitiesQuery,
+  hostedFlag,
+  distribution,
+  prepareConfirmation,
   useSessionMock,
   settingsGetQuery,
-  getFullOrganization,
   settingsUpdate,
+  getFullOrganization,
   organizationUpdate,
   runtimeState,
 } = vi.hoisted(() => ({
+  capabilitiesQuery: vi.fn(),
+  hostedFlag: { enabled: false, nonVatEnabled: true },
+  distribution: { selfhost: true },
+  prepareConfirmation: vi.fn(async () => ({ token: "signed" })),
   useSessionMock: vi.fn(),
   settingsGetQuery: vi.fn(),
-  getFullOrganization: vi.fn(),
   settingsUpdate: vi.fn(),
+  getFullOrganization: vi.fn(),
   organizationUpdate: vi.fn(),
   runtimeState: { selfhost: true, nonVatEnabled: true },
 }))
 
+vi.mock("../../lib/distribution", () => ({ get isSelfHostDistribution() { return distribution.selfhost } }))
+
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ ...options }),
+}))
+
+// MOCK: native selects exercise the route's controlled value-change handlers without browser APIs.
+vi.mock("../../components/ui/select", () => ({
+  Select: ({ value, onValueChange, children }: { value: string; onValueChange: (value: string) => void; children: ReactNode }) => <select value={value} onChange={event => onValueChange(event.target.value)}>{children}</select>,
+  SelectTrigger: () => null,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectItem: ({ value, children }: { value: string; children: ReactNode }) => <option value={value}>{children}</option>,
 }))
 
 vi.mock("../../components/settings/document-email-sending-card", () => ({
@@ -112,10 +131,12 @@ vi.mock("../../trpc/client", () => ({
       },
     },
     runtime: {
+      prepareSellerVatConfirmation: { mutate: prepareConfirmation },
       capabilities: {
-        query: vi.fn(() =>
+        query: () => capabilitiesQuery() ??
           Promise.resolve({
-            onboardingV2: { enabled: true, nonVatEnabled: runtimeState.nonVatEnabled },
+            sellerVatConfirmation: { enabled: hostedFlag.enabled },
+            onboardingV2: { nonVatEnabled: hostedFlag.nonVatEnabled },
             aiInvoiceDraft: {
               enabled: true,
               byok: true,
@@ -125,8 +146,7 @@ vi.mock("../../trpc/client", () => ({
               localAgent: false,
               maxPromptChars: 4000,
             },
-          })
-        ),
+          }),
       },
     },
   },
@@ -194,10 +214,16 @@ function buildSettingsData(overrides: Record<string, unknown> = {}) {
 
 afterEachTest(() => {
   cleanup()
+  capabilitiesQuery.mockReset()
+  hostedFlag.enabled = false
+  hostedFlag.nonVatEnabled = true
+  distribution.selfhost = true
+  prepareConfirmation.mockClear()
   resetRequestOrganizationForTesting()
   Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView")
   useSessionMock.mockReset()
   settingsGetQuery.mockReset()
+  settingsUpdate.mockReset()
   getFullOrganization.mockReset()
   settingsUpdate.mockReset()
   organizationUpdate.mockReset()
@@ -206,6 +232,161 @@ afterEachTest(() => {
 })
 
 describe("Settings tax relevance", () => {
+  it.each(["pending", "failed"])("does not gate self-hosted saves when capabilities are %s", async state => {
+    capabilitiesQuery.mockReturnValueOnce(state === "failed" ? Promise.reject(new Error("unavailable")) : new Promise(() => {}))
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: false })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
+    const { container } = render(<RouteComponent />)
+    await screen.findByRole("radio", { name: "vatStatus.no" })
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    expect(screen.queryByRole("button", { name: "settings.capabilities.retry" })).toBeNull()
+    expect(prepareConfirmation).not.toHaveBeenCalled()
+  })
+
+  it.each([true, false, null])("omits stored VAT %s on unrelated saves while hosted capabilities are pending or failed, then retries without losing edits", async stored => {
+    distribution.selfhost = false
+    hostedFlag.enabled = true
+    let reject!: (error: Error) => void
+    capabilitiesQuery.mockReturnValueOnce(new Promise((_resolve, fail) => { reject = fail }))
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: stored, primaryTaxId: "24256790" })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockImplementation(async input => ({ ...current, ...input, momsRegistered: input.momsRegistered ?? stored }))
+    const { container } = render(<RouteComponent />)
+    await screen.findByLabelText(stored === false ? "settings.vatStatus.cvrLabel" : "VAT/CVR number")
+    const email = container.querySelector('[name="companyEmail"]')! as HTMLInputElement
+    fireEvent.change(email, { target: { value: "edited@example.test" } })
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ companyEmail: "edited@example.test", momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    reject(new Error("unavailable"))
+    const retry = await screen.findByRole("button", { name: "settings.capabilities.retry" })
+    settingsUpdate.mockClear()
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    fireEvent.click(retry)
+    await screen.findByRole("radio", { name: "vatStatus.yes" })
+    expect(email.value).toBe("edited@example.test")
+    expect(settingsGetQuery).toHaveBeenCalledTimes(1)
+    settingsUpdate.mockClear()
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    fireEvent.click(screen.getByRole("radio", { name: "vatStatus.yes" }))
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true, sellerVatConfirmationToken: "signed" })))
+  })
+
+  it.each([[false, true, false], [false, true, true], [true, false, false]])("honors non-VAT capability for selfhost %s, confirmation %s, nonVAT %s", async (selfhost, enabled, nonVatEnabled) => {
+    distribution.selfhost = selfhost
+    hostedFlag.enabled = enabled
+    hostedFlag.nonVatEnabled = nonVatEnabled
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    settingsGetQuery.mockResolvedValue(buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: null }))
+    render(<RouteComponent />)
+    await screen.findByRole("radio", { name: "vatStatus.yes" })
+    expect(Boolean(screen.queryByRole("radio", { name: "vatStatus.no" }))).toBe(selfhost || nonVatEnabled)
+    expect(prepareConfirmation).not.toHaveBeenCalled()
+    expect(settingsUpdate).not.toHaveBeenCalled()
+  })
+
+  it.each([[true, true], [true, false], [false, true], [false, false]])("shows company choice with hosted confirmation %s and saves registration %s", async (confirmationEnabled, registered) => {
+    hostedFlag.enabled = confirmationEnabled
+    distribution.selfhost = !confirmationEnabled
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: confirmationEnabled ? true : null, primaryTaxId: "24256790" })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
+    const { container } = render(<RouteComponent />)
+    const radios = await screen.findAllByRole("radio") as HTMLInputElement[]
+    expect(radios.every(radio => !radio.checked)).toBe(true)
+    expect(screen.getByText("sellerCard.body")).toBeTruthy()
+    fireEvent.click(radios[registered ? 0 : 1]!)
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: confirmationEnabled ? "signed" : undefined, taxRate: registered ? 25 : 0 })))
+    if (confirmationEnabled) expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Acme LLC", cvr: "24256790", countryCode: "DK" }))
+    else expect(prepareConfirmation).not.toHaveBeenCalled()
+  })
+
+  it.each(["companyName", "companyAddress", "taxId", "scheme"])("requires a fresh hosted choice after editing %s", async field => {
+    hostedFlag.enabled = true
+    distribution.selfhost = false
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: true, primaryTaxId: "24256790" })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
+    const { container } = render(<RouteComponent />)
+    const radios = await screen.findAllByRole("radio") as HTMLInputElement[]
+    let edits = 0
+    const edit = () => {
+      edits++
+      if (field === "scheme") fireEvent.change(Array.from(container.querySelectorAll("select")).find(select => select.value === (edits === 1 ? "vat" : "cvr"))!, { target: { value: edits === 1 ? "cvr" : "vat" } })
+      else fireEvent.change(field === "taxId" ? container.querySelector('[name="primaryTaxId"]')! : container.querySelector(`[name="${field}"]`)!, { target: { value: field === "taxId" ? (edits === 1 ? "12345678" : "24256790") : `Changed identity ${edits}` } })
+    }
+    fireEvent.click(radios[1]!)
+    edit()
+    expect(radios.every(radio => !radio.checked)).toBe(true)
+    fireEvent.click(screen.getByRole("button", { name: "vatStatus.withdraw" }))
+    edit()
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    expect(prepareConfirmation).not.toHaveBeenCalled()
+    fireEvent.click(radios[0]!)
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ primaryTaxIdScheme: "vat" })))
+  })
+
+  it("preserves the disabled hosted confirmation flag", async () => {
+    distribution.selfhost = false
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    settingsGetQuery.mockResolvedValue(buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat" }))
+    render(<RouteComponent />)
+    await screen.findByLabelText("settings.taxRate.label")
+    expect(screen.queryByRole("radio")).toBeNull()
+    expect(prepareConfirmation).not.toHaveBeenCalled()
+  })
+
+  it.each([["DE", "eu_vat", "19"], ["US", "custom", "7.5"]])("clears the Danish choice on departure to %s and permits the %s tax default", async (countryCode, taxRegime, taxRate) => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime, taxRate: 0, momsRegistered: false })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
+    const { container } = render(<RouteComponent />)
+    const taxInput = await screen.findByLabelText("settings.taxRate.label") as HTMLInputElement
+    await waitFor(() => expect(taxInput.value).toBe("0"))
+    expect(Boolean(screen.queryByRole("radio", { name: "vatStatus.no" }))).toBe(taxRegime === "eu_vat")
+    const countrySelect = Array.from(container.querySelectorAll("select")).find(select => select.value === "DK")!
+    fireEvent.change(countrySelect, { target: { value: countryCode } })
+    expect(screen.queryByRole("radio", { name: "vatStatus.no" })).toBeNull()
+    fireEvent.change(taxInput, { target: { value: taxRate } })
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ countryCode, taxRegime, momsRegistered: null, taxRate: Number(taxRate) })))
+    await waitFor(() => expect(taxInput.value).toBe(taxRate))
+  })
+  it.each(["eu_vat", "custom"])("shows the returned %s tax default immediately after saving", async taxRegime => {
+    hostedFlag.enabled = taxRegime === "eu_vat"
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    const current = buildSettingsData({ countryCode: "DK", taxRegime, taxRate: 25, momsRegistered: true })
+    settingsGetQuery.mockResolvedValue(current)
+    settingsUpdate.mockResolvedValue({ ...current, taxRate: taxRegime === "eu_vat" ? 0 : 25, momsRegistered: false })
+    const { container } = render(<RouteComponent />)
+    const input = await screen.findByLabelText("settings.taxRate.label") as HTMLInputElement
+    await waitFor(() => expect(input.value).toBe("25"))
+    if (taxRegime === "eu_vat") fireEvent.click(await screen.findByRole("radio", { name: "vatStatus.no" }))
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
+    await waitFor(() => expect(input.value).toBe(taxRegime === "eu_vat" ? "0" : "25"))
+    expect(settingsGetQuery).toHaveBeenCalledTimes(1)
+  })
   it("hides irrelevant tax id fields and shows danish vat copy when needed", async () => {
     useSessionMock.mockReturnValue({
       data: {
@@ -250,83 +431,55 @@ describe("Settings tax relevance", () => {
   })
 })
 
-async function renderDanishSettings(momsRegistered: boolean | null, paymentTermsDays = 14) {
-  useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
-  getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
-  const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, paymentTermsDays, taxRate: momsRegistered === false ? 0 : 25 })
-  settingsGetQuery.mockResolvedValue(data)
-  settingsUpdate.mockResolvedValue(data)
-  render(<RouteComponent />)
-  await screen.findByLabelText("settings.vatStatus.registered")
+function submitSettingsForm() {
+  const name = screen.getByLabelText("settings.companyName.label") as HTMLInputElement
+  fireEvent.submit(name.form!)
 }
 
-describe("Settings VAT status", () => {
-  it("loads and submits the organization payment-term default", async () => {
-    await renderDanishSettings(true, 21)
-    const field = screen.getByLabelText("settings.paymentTermsDays.label") as HTMLInputElement
-    expect(field.value).toBe("21")
-    fireEvent.change(field, { target: { value: "30" } })
-    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
-    expect(settingsUpdate.mock.calls[0][0].paymentTermsDays).toBe(30)
-  })
+async function renderDanishSettings(momsRegistered: boolean | null) {
+  initializeRequestOrganizationId("org_1")
+  useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
+  getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+  const data = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered, taxRate: momsRegistered === false ? 0 : 25 })
+  settingsGetQuery.mockResolvedValue(data)
+  settingsUpdate.mockImplementation(async input => ({ ...data, ...input, momsRegistered: input.momsRegistered === undefined ? momsRegistered : input.momsRegistered }))
+  render(<RouteComponent />)
+  await screen.findByRole("radio", { name: "vatStatus.yes" })
+}
 
-  it("keeps the tax-rate control at zero and disabled for a non-VAT seller", async () => {
-    await renderDanishSettings(false)
-    const rate = document.querySelector('input[name="taxRate"]') as HTMLInputElement
-    expect(rate.value).toBe("0")
-    expect(rate.disabled).toBe(true)
-    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
-    expect(settingsUpdate.mock.calls[0][0].taxRate).toBe(0)
-    fireEvent.click(screen.getByLabelText("settings.vatStatus.registered"))
-    expect(rate.disabled).toBe(false)
-    expect(rate.value).toBe("25")
-  })
-
+describe("Settings VAT status after upstream integration", () => {
   it.each([true, false, null])("preserves saved status %s without inventing a choice", async status => {
     await renderDanishSettings(status)
-    expect((screen.getByLabelText("settings.vatStatus.registered") as HTMLInputElement).checked).toBe(status === true)
-    expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(status === false)
-    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    expect((screen.getByRole("radio", { name: "vatStatus.yes" }) as HTMLInputElement).checked).toBe(status === true)
+    expect((screen.getByRole("radio", { name: "vatStatus.no" }) as HTMLInputElement).checked).toBe(status === false)
+    submitSettingsForm()
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
     expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeUndefined()
   })
-  it.each([true, false])("submits changed status %s and related tax defaults", async status => {
+  it.each([true, false])("submits changed status %s and related tax defaults only once", async status => {
     await renderDanishSettings(!status)
-    fireEvent.click(screen.getByLabelText(status ? "settings.vatStatus.registered" : "settings.vatStatus.notRegistered"))
-    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    fireEvent.click(screen.getByRole("checkbox", { name: "Prices include tax" }))
+    fireEvent.click(screen.getByRole("radio", { name: status ? "vatStatus.yes" : "vatStatus.no" }))
+    submitSettingsForm()
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
     expect(settingsUpdate.mock.calls[0][0]).toMatchObject({ momsRegistered: status, taxRate: status ? 25 : 0, pricesIncludeTax: false })
     if (!status) expect(screen.getByLabelText("settings.vatStatus.cvrLabel")).toBeTruthy()
-    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    await waitFor(() => expect(screen.getByRole("status")).toBeTruthy())
+    submitSettingsForm()
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalledTimes(2))
     expect(settingsUpdate.mock.calls[1][0].momsRegistered).toBeUndefined()
   })
-  it("disables hosted non-VAT selection without the capability while retaining saved false", async () => {
-    runtimeState.selfhost = false
-    runtimeState.nonVatEnabled = false
+  it("hides unsupported hosted non-VAT selection while retaining saved false", async () => {
+    distribution.selfhost = false
+    hostedFlag.enabled = true
+    hostedFlag.nonVatEnabled = false
     await renderDanishSettings(false)
-    expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).disabled).toBe(true)
-    expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(true)
-  })
-})
-
-describe("Settings scope departure", () => {
-  it.each(["country", "regime"])("submits null when leaving Danish EU VAT through %s", async field => {
-    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() })
-    await renderDanishSettings(false)
-    const control = screen.getByRole("combobox", { name: field === "country" ? "Country" : "Tax Regime" })
-    fireEvent.keyDown(control, { key: "ArrowDown" })
-    fireEvent.click(await screen.findByRole("option", { name: field === "country" ? "Germany" : "Custom" }))
-    expect(screen.queryByLabelText("settings.vatStatus.notRegistered")).toBeNull()
-    fireEvent.submit((screen.getByLabelText("settings.companyName.label") as HTMLInputElement).form!)
+    expect(screen.queryByRole("radio", { name: "vatStatus.no" })).toBeNull()
+    expect((screen.getByRole("radio", { name: "vatStatus.yes" }) as HTMLInputElement).checked).toBe(false)
+    submitSettingsForm()
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
-    expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeNull()
-    fireEvent.keyDown(control, { key: "ArrowDown" })
-    fireEvent.click(await screen.findByRole("option", { name: field === "country" ? new Intl.DisplayNames(["de-DE"], { type: "region" }).of("DK")! : "EU VAT" }))
-    await waitFor(() => expect((screen.getByLabelText("settings.vatStatus.notRegistered") as HTMLInputElement).checked).toBe(false))
-    expect((screen.getByLabelText("settings.vatStatus.registered") as HTMLInputElement).checked).toBe(false)
+    expect(settingsUpdate.mock.calls[0][0].momsRegistered).toBeUndefined()
+    expect(prepareConfirmation).not.toHaveBeenCalled()
   })
 })
 

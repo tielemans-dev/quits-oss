@@ -112,6 +112,7 @@ export type OnboardingApplySource = z.infer<
 export {
   DANISH_ONBOARDING_V2_DEFAULTS,
   confirmOnboardingV2Schema,
+  confirmOnboardingV2WithVatConfirmationSchema,
   onboardingV2ConfirmationResultSchema,
   isValidDanishCvr,
 } from "./onboarding-v2"

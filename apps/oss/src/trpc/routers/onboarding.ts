@@ -4,7 +4,7 @@ import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
 import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { confirmOnboardingV2 } from "../../lib/onboarding/confirm-v2"
-import { DANISH_ONBOARDING_V2_DEFAULTS, confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
+import { DANISH_ONBOARDING_V2_DEFAULTS, confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
 import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
@@ -233,17 +233,6 @@ async function legacyOnboardingWrite(organizationId: string, write: (tx: Prisma.
 }
 
 export const onboardingRouter = router({
-  // Lookup runs before an organization exists. The hosted runtime supplies the provider.
-  searchCvr: protectedProcedure
-    .input(z.object({ q: z.string().trim().min(3).max(120) }))
-    .query(({ ctx, input }) =>
-      searchOwnCvr({
-        query: input.q,
-        cloud: isCloudDistribution,
-        userId: ctx.user.id,
-        lookup: getCvrLookupProvider(),
-      }),
-    ),
   // Reading v2 defaults never creates settings or saves a draft.
   getDefaultsV2: authorizedProcedure("settings:read").query(() => {
     assertOnboardingV2Enabled()
@@ -251,7 +240,7 @@ export const onboardingRouter = router({
   }),
   confirmV2: authorizedProcedure("settings:update")
     .input(z.preprocess<z.output<typeof confirmOnboardingV2Schema>, typeof confirmOnboardingV2Schema, z.input<typeof confirmOnboardingV2Schema>>((value) => {
-      const result = confirmOnboardingV2Schema.safeParse(value)
+      const result = (getRuntimeCapabilities().sellerVatConfirmation?.enabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(value)
       if (!result.success) {
         const key = result.error.issues.some(issue => issue.path[0] === "cvr") ? "cvr.invalid" : "save.failed"
         throw new TRPCError({ code: "BAD_REQUEST", message: key })
@@ -263,9 +252,20 @@ export const onboardingRouter = router({
       if (input.catalogSuggestions.length && !actorCan(ctx.actor, "catalog:create")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Your role does not allow catalog:create" })
       }
-      return confirmOnboardingV2(ctx.organizationId, input, ctx.user.email)
+      return confirmOnboardingV2(ctx.organizationId, input, ctx.user.email, { organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request })
     }),
 
+  // Lookup runs before an organization exists. The hosted runtime supplies the provider.
+  searchCvr: protectedProcedure
+    .input(z.object({ q: z.string().trim().min(3).max(120) }))
+    .query(({ ctx, input }) =>
+      searchOwnCvr({
+        query: input.q,
+        cloud: isCloudDistribution,
+        userId: ctx.user.id,
+        lookup: getCvrLookupProvider(),
+      }),
+    ),
   getStatus: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     if (!isCloudDistribution) {
       throw new TRPCError({
@@ -318,7 +318,6 @@ export const onboardingRouter = router({
 
       return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
         if (input.countryCode && input.countryCode !== snapshot.values.countryCode) {
-          // Generic onboarding must not carry Denmark's 25% rate into another jurisdiction.
           settingsUpdateData.taxRate = input.countryCode === "DK" ? 25 : null
         }
         settingsUpdateData.baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, { countryCode: settingsUpdateData.countryCode as string | undefined })

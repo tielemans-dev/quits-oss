@@ -47,6 +47,7 @@ export type InvoiceForEmail = {
   supplyDate?: Date | null
   issueDate: Date
   dueDate: Date
+  taxRegime?: string
   currency: string
   notes: string | null
   subtotalNet: Decimalish
@@ -147,6 +148,7 @@ export function composeInvoiceEmail(input: {
     replyTo: envelope.replyTo,
     invoice: {
       ...invoice,
+      momsRegistered: seller?.momsRegistered,
       subtotal: invoice.subtotalNet.toNumber(),
       taxAmount: invoice.totalTax.toNumber(),
       balanceDue: settlement.balanceDue.toNumber(),
@@ -162,6 +164,7 @@ export function composeInvoiceEmail(input: {
         const shown = lineAmounts("net", item)
         return {
           description: item.description,
+          taxRate: item.taxRate.toNumber(),
           quantity: item.quantity.toNumber(),
           unitPrice: shown.unitPrice.toNumber(),
           total: shown.amount.toNumber(),

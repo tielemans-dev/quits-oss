@@ -1,3 +1,5 @@
+import { OnboardingV2 } from "../../components/onboarding-v2/onboarding-v2"
+import { createOnboardingV2Client } from "../../components/onboarding-v2/client"
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
@@ -27,6 +29,7 @@ import { Label } from '../../components/ui/label'
 import { I18nProvider, useI18n } from '../../lib/i18n/react'
 import { canonicalLocale, countryOptionsIncluding, LOCALE_OPTIONS, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
+import { CompanySetup } from "../../components/onboarding/company-setup"
 import { loadPage } from '../../lib/page-navigation'
 import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../../lib/login-return'
 import { AiAssistantPanel } from '../../components/onboarding/ai-assistant-panel'
@@ -135,6 +138,14 @@ function OnboardingPageContent() {
   const { data: session } = useSession()
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
+  const [v2Availability, setV2Availability] = useState<{ enabled: boolean; suggestions: boolean } | null>(null)
+  useEffect(() => {
+    if (!isCloud || !hasActiveOrg) return
+    let cancelled = false
+    trpc.cvr.available.query().then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2Availability({ enabled: false, suggestions: false }) })
+    return () => { cancelled = true }
+  }, [isCloud, hasActiveOrg])
+
   const [entryMode, setEntryMode] = useState<'lookup' | 'manual'>(isCloud ? 'lookup' : 'manual')
   const [lookupQuery, setLookupQuery] = useState('')
   const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
@@ -151,13 +162,10 @@ function OnboardingPageContent() {
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [missingFields, setMissingFields] = useState<OnboardingMissingField[]>([])
   const [runtimeCapabilities, setRuntimeCapabilities] = useState<
-    Pick<RuntimeCapabilities, 'onboardingAi'> | null
+    Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'> | null
   >(null)
-  const [values, setValues] = useState<CloudOnboardingValues>(() => ({
-    ...DEFAULT_CLOUD_ONBOARDING_VALUES,
-    locale: organizationLocaleForUi(uiLocale),
-  }))
-  // A country or locale edit before status loads must survive that response.
+  const v2Client = useMemo(() => createOnboardingV2Client(v2Availability?.suggestions ?? false, runtimeCapabilities?.sellerVatConfirmation?.enabled === true), [v2Availability?.suggestions, runtimeCapabilities?.sellerVatConfirmation?.enabled])
+  const [values, setValues] = useState<CloudOnboardingValues>(() => ({ ...DEFAULT_CLOUD_ONBOARDING_VALUES, locale: organizationLocaleForUi(uiLocale) }))
   const localeChoice = useRef<string | null>(null)
   const [manualOverrides, setManualOverrides] = useState<Record<AutoFillField, boolean>>({
     locale: false,
@@ -339,7 +347,7 @@ function OnboardingPageContent() {
       .then((capabilities) => {
         if (!cancelled) {
           setRuntimeCapabilities(
-            capabilities as Pick<RuntimeCapabilities, 'onboardingAi'>
+            capabilities as Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'>
           )
         }
       })
@@ -747,6 +755,18 @@ function OnboardingPageContent() {
         </Card>
       </div>
     )
+  }
+
+  if (!v2Availability?.enabled && runtimeCapabilities?.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled) {
+    return <div className="mx-auto w-full max-w-xl p-6"><CompanySetup nonVatEnabled={runtimeCapabilities.onboardingV2.nonVatEnabled === true} onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
+  }
+
+  if (v2Availability?.enabled && session) {
+    return <OnboardingV2 key={`${session.user.id}:${session.session.activeOrganizationId}`} userId={session.user.id} organizationId={session.session.activeOrganizationId!} signupEmail={session.user.email} client={v2Client} nonVatEnabled={runtimeCapabilities?.onboardingV2?.nonVatEnabled === true} confirmationEnabled={runtimeCapabilities?.sellerVatConfirmation?.enabled === true} onComplete={() => {
+      invalidateAppLayoutSession()
+      if (target || search.lang) loadPage(returnDestination)
+      else void navigate({ to: '/' })
+    }} />
   }
 
   return (

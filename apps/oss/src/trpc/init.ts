@@ -16,6 +16,7 @@ import {
 } from "../lib/organization-request"
 
 export type Context = {
+  request?: { url: string; headers: Headers }
   session: Awaited<ReturnType<typeof auth.api.getSession>> | null
   /**
    * The organization the client says it is acting for (the `x-yaip-organization-id` header), if
@@ -28,8 +29,8 @@ export type Context = {
 
 export { ORGANIZATION_CHANGED_MESSAGE }
 
-export function createRequestContext(session: Context["session"], requestedOrganizationId: string | null): Context {
-  return { session, requestedOrganizationId, queryActors: new Map() }
+export function createRequestContext(session: Context["session"], requestedOrganizationId: string | null, request?: Context["request"]): Context {
+  return { session, requestedOrganizationId, request, queryActors: new Map() }
 }
 
 const t = initTRPC.context<Context>().create({

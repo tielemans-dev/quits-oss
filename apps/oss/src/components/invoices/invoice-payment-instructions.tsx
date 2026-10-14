@@ -3,6 +3,7 @@ import { issuedSeller } from "../../domain/documents/issued-invoice"
 import { useI18n } from "../../lib/i18n/react"
 import { invoicePaymentReferenceHint, invoicePaymentRows } from "../../lib/documents/invoice-payment-rows"
 import { invoiceTaxIds } from "../../lib/documents/invoice-identity"
+import { withoutNonVatStatement } from "../../lib/documents/non-vat-presentation"
 
 export function InvoiceSellerDetails({ status, sellerSnapshot, issuanceSnapshot }: {
   status: string
@@ -37,7 +38,8 @@ export function InvoicePaymentInstructions({ status, sellerSnapshot, issuanceSna
   const seller = issuedSeller(issuanceSnapshot, sellerSnapshot)
   const referenceHint = invoicePaymentReferenceHint({ number, paymentReference }, locale)
   const account = seller?.bankAccount
-  const note = seller?.paymentNote?.trim()
+  // The invoice page states the generated non-VAT sentence once. A frozen note that repeats it is not shown again.
+  const note = withoutNonVatStatement(seller?.paymentNote, seller?.momsRegistered)?.trim() || undefined
   if (status === "draft" || !(balanceDue > 0) || !hasPaymentDetails({ bankAccount: account, note })) return null
   return (
     <section aria-label={t("email.pay.heading")} className="grid gap-2 text-sm">

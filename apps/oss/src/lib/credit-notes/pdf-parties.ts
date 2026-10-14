@@ -10,6 +10,8 @@ import {
   parseSellerSnapshot,
   type DocumentTaxId,
 } from "@quits/contracts/documents"
+import { sellerPresentationTaxIds } from "../documents/invoice-identity"
+import { sellerVatPresentationStatus } from "../documents/seller-vat"
 import { canRenderLogo } from "../documents/logo"
 import { translate } from "../i18n/translate"
 import type { OrgSettingsForPdf } from "../invoice-pdf"
@@ -27,6 +29,7 @@ export type CreditNotePdfContact = {
 
 export type CreditNotePdfPartiesInput = {
   locale?: string | null
+  taxRegime?: string | null
   sellerSnapshot?: unknown
   buyerSnapshot?: unknown
   /** The contact as it is now, used when the credit note has no buyer snapshot. */
@@ -88,9 +91,8 @@ export function creditNotePdfParties(
         name: sellerSnapshot.companyName || org.companyName || "Quits",
         email: sellerSnapshot.companyEmail ?? null,
         address: sellerSnapshot.companyAddress ?? null,
-        taxIds: formatTaxIds(sellerSnapshot.momsRegistered === false
-          ? sellerSnapshot.taxIds?.filter(id => !VAT_SCHEMES.has(normalizeTaxIdScheme(id.scheme)))
-          : sellerSnapshot.taxIds, locale),
+        taxIds: formatTaxIds(sellerPresentationTaxIds(sellerSnapshot.taxIds,
+          sellerVatPresentationStatus(sellerSnapshot.momsRegistered, creditNote.taxRegime)), locale),
         phone: org.companyPhone ?? null,
         logo: canRenderLogo(org.companyLogo) ? org.companyLogo : null,
       }

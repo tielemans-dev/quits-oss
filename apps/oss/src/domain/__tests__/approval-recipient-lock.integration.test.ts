@@ -34,7 +34,7 @@ describeIfDatabase("approved sends and recipient changes", () => {
     await prisma.organizationTaxId.create({ data: { organizationId: org.organizationId, scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true } })
     const contact = await executeIssuanceCommand(createContact, { name: "Buyer", email: "buyer@example.test", country: "DK" }, { actor: org.actors.admin })
     if (contact.status !== "completed") throw new Error("contact setup failed")
-    const input = { contactId: contact.result.id, taxRate: 0, items: [{ description: "Design", quantity: 1, unitPrice: 100 }] }
+    const input = { contactId: contact.result.id, taxRate: 0, items: [{ description: "Design", quantity: 1, unitPrice: 100, vat: { treatment: "out_of_scope" as const, rate: "0" } }] }
     const quote = await executeIssuanceCommand(createQuoteDraft, { ...input, expiryDate: "2099-12-01" }, { actor: org.actors.admin })
     if (quote.status !== "completed") throw new Error(JSON.stringify(quote))
     const { secret } = await createAgentKey(org.actors.admin, { name: "Sender", mode: "approval_required", scopes: ["quote:send", "quote:read"] })
@@ -54,7 +54,7 @@ describeIfDatabase("approved sends and recipient changes", () => {
     await prisma.organizationTaxId.create({ data: { organizationId: org.organizationId, scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true } })
     const contact = await executeIssuanceCommand(createContact, { name: "Buyer", email: "buyer@example.test", country: "DK" }, { actor: org.actors.admin })
     if (contact.status !== "completed") throw new Error("contact setup failed")
-    const input = { contactId: contact.result.id, taxRate: 0, items: [{ description: "Design", quantity: 1, unitPrice: 100 }] }
+    const input = { contactId: contact.result.id, taxRate: 0, items: [{ description: "Design", quantity: 1, unitPrice: 100, vat: { treatment: "out_of_scope" as const, rate: "0" } }] }
     const quote = await executeIssuanceCommand(createQuoteDraft, { ...input, expiryDate: "2099-12-01" }, { actor: org.actors.admin })
     if (quote.status !== "completed") throw new Error(JSON.stringify(quote))
     const draft = await executeIssuanceCommand(createInvoiceDraft, { ...input, dueDate: "2099-12-01" }, { actor: org.actors.admin })

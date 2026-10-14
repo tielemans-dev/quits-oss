@@ -1,14 +1,19 @@
+import { isReplacedDanishTaxId } from "./danish-tax-id"
+import { confirmSellerVatStatus, getSellerVatConfirmationService, type SellerVatConfirmationActor } from "../runtime/seller-vat-confirmation"
 import { TRPCError } from "@trpc/server"
 import { onboardingV2ConfirmationResultSchema, type ConfirmOnboardingV2 } from "@quits/contracts/onboarding"
 import { billingProvider } from "../billing"
 import { isNonVatRegistrationAllowed } from "../runtime/extensions"
 import { prisma } from "../db"
 import { buildDkPresets } from "./dk-presets"
-import { isReplacedDanishTaxId } from "./danish-tax-id"
 import { hasIssuedDocuments } from "../../domain/documents/base-currency"
 
 /** One final save. The organization lock also serializes confirms before a settings row exists. */
-export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string) {
+export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string, actor?: SellerVatConfirmationActor) {
+  const sellerVatConfirmation = getSellerVatConfirmationService()
+  if (sellerVatConfirmation && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
+  // Hosted confirmation must present a token before any settings, identity, or trial write.
+  if (actor && sellerVatConfirmation && !input.sellerVatConfirmationToken) throw new TRPCError({ code: "BAD_REQUEST", message: "save.failed" })
   // Client-supplied protection metadata cannot attest to a trusted registry lookup.
   // Until a server lookup supplies that trust, scrub all registry-sourced contacts.
   input = { ...input, reklamebeskyttet: input.source === "cvr" || input.reklamebeskyttet === true }
@@ -20,7 +25,12 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
     let existing = await tx.orgSettings.findUnique({ where: { organizationId } })
     // Use one set of defaults for the whole confirmation, even across midnight.
-    const presets = buildDkPresets(input, signupEmail)
+    const presets = {
+      ...buildDkPresets(input, signupEmail),
+      ...input.settings,
+      ...(input.settings ? { currency: input.settings.defaultCurrency, baseCurrency: input.settings.defaultCurrency } : {}),
+      taxRate: input.momsRegistered ? input.settings?.taxRate ?? 25 : 0,
+    }
     if (!existing) {
       // Insert inside confirm, then lock before checking issued documents. Another writer may
       // have created settings after the first read, so re-read under the same issuance lock.
@@ -43,11 +53,11 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     if (numberedDrafts > 0 || await hasIssuedDocuments(tx, organizationId)) {
       throw new TRPCError({ code: "CONFLICT", message: "save.failed" })
     }
-    // The provider owns durable provisioning retries if the following writes roll back.
-    // A failed hook must leave the confirmation incomplete. Completed retries return above.
-    await billingProvider.startTrial?.(organizationId)
     const completedAt = new Date()
-    const result = { status: "complete" as const, version: 2 as const, completedAt: completedAt.toISOString(), bankMissing: !input.bank }
+    const result = {
+      status: "complete" as const, version: 2 as const, completedAt: completedAt.toISOString(),
+      bankMissing: !input.bank && !existing.bankRegNumber && !existing.bankAccountNumber && !existing.bankIban,
+    }
     const settings = {
       ...presets,
       // Preserve the book re-read under the lock, including a concurrently created row.
@@ -55,12 +65,15 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
       invoiceNextNum: Math.max(existing.invoiceNextNum, input.invoiceNextNum),
       quotePrefix: existing.quotePrefix,
       quoteNextNum: existing.quoteNextNum,
-      bankAccountHolder: input.bank ? input.companyName : null,
-      bankName: null,
-      bankRegNumber: input.bank?.regNumber ?? null,
-      bankAccountNumber: input.bank?.accountNumber ?? null,
-      bankIban: null,
-      bankBic: null,
+      // An omitted bank input is not a clear. Submitted details still replace the stored ones.
+      ...(input.bank ? {
+        bankAccountHolder: input.companyName,
+        bankName: null,
+        bankRegNumber: input.bank.regNumber,
+        bankAccountNumber: input.bank.accountNumber,
+        bankIban: null,
+        bankBic: null,
+      } : {}),
       onboardingStatus: "complete",
       onboardingMethod: input.source,
       onboardingVersion: 2,
@@ -79,14 +92,17 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     await tx.organizationTaxId.updateMany({ where: { organizationId, isPrimary: true }, data: { isPrimary: false } })
     await tx.organizationTaxId.deleteMany({ where: { organizationId, id: { in: danishIds } } })
     await tx.organizationTaxId.createMany({ data: [
-      { organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true },
+      ...(input.cvr ? [{ organizationId, scheme: "cvr", value: input.cvr, countryCode: "DK", isPrimary: true }] : []),
       ...(input.vatId ? [{ organizationId, scheme: "vat", value: input.vatId, countryCode: "DK", isPrimary: false }] : []),
     ] })
+    if (actor) await confirmSellerVatStatus({ ...actor, tx, registered: input.momsRegistered, token: input.sellerVatConfirmationToken })
     if (input.catalogSuggestions.length) {
       await tx.catalogItem.createMany({ data: input.catalogSuggestions.map(item => ({
         organizationId, name: item.name, description: item.description ?? null, defaultUnitPrice: item.defaultUnitPrice,
       })) })
     }
+    // Confirmation and catalog writes are done. A failed hook still rolls the transaction back.
+    await billingProvider.startTrial?.(organizationId)
     return result
   }, { timeout: 60_000 })
 }

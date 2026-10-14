@@ -108,3 +108,30 @@ setRuntimeExtensions([
 ```
 
 The private cloud repo owns managed AI provider implementation, entitlement checks, and billing coupling.
+
+## Seller VAT confirmation
+
+`sellerVatConfirmation.enabled` defaults to false and remains false for self-hosted distributions,
+including when an extension attempts to enable it. An operator may opt a hosted distribution in
+through a capability patch and exactly one `RuntimeExtension.sellerVatConfirmation` service.
+Missing or competing enabled providers fail closed.
+
+The generic service prepares an opaque, bounded token for the reviewed seller, then confirms the
+explicit registration choice in the Settings/onboarding transaction using the final seller identity.
+The server passes the authenticated organization, user, session and request headers. Distribution
+code must recheck session, role, origin and token binding under the transaction's existing settings
+lock before recording evidence. Null withdraws confirmation; omitted registration leaves evidence
+unchanged. A provider failure rolls back the entire settings save. OSS defines no evidence table.
+Hosted extension requests have a bounded streamed body before tRPC parses JSON.
+
+The app owns the company review and Settings company controls, including the unchanged localized
+`vatStatus.*` and `sellerCard.body` copy. Company review accepts a mapped lookup result or manual
+fallback; lookup never presets registration. Settings starts each confirmation choice unchecked,
+keeps unrelated saves available, and offers withdrawal through its ordinary Save action.
+Self-hosted keeps its existing general VAT validation and settings API, without this confirmation UI,
+evidence, or gate. `onboardingV2` remains a separate hosted opt-in.
+
+An issuance extension may return `sellerVatStatus: registered | not_registered | unset`. Unset
+always refuses new issuance; known evidence must match the effective seller snapshot. Existing
+artifact reads and accounting behavior are unaffected. Ordinary zero-tax sales remain
+`unclassified_zero`; this contract does not invent a legal UBL classification.

@@ -1,6 +1,7 @@
 import { translate } from "../../lib/i18n/translate"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
+import { confirmSellerVatStatus } from "../../lib/runtime/seller-vat-confirmation"
 import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { InvalidState } from "../../domain/errors"
 import { isUniqueViolation } from "../../domain/execute"
@@ -119,6 +120,7 @@ export const settingsUpdateSchema = z.object({
   currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   momsRegistered: z.boolean().nullable().optional(),
   paymentTermsDays: z.number().int().min(0).max(3650).optional(),
+  sellerVatConfirmationToken: z.string().max(2048).optional(),
   taxRate: z.number().min(0).max(100).nullable().optional(),
   companyName: z.string().trim().max(120).optional(),
   companyAddress: z.string().trim().max(240).optional(),
@@ -300,6 +302,7 @@ export const settingsRouter = router({
     .input(settingsUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       const {
+        sellerVatConfirmationToken,
         primaryTaxId,
         primaryTaxIdScheme,
         aiApiKey,
@@ -324,8 +327,12 @@ export const settingsRouter = router({
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
-          select: { countryCode: true, locale: true, taxRegime: true, momsRegistered: true, paymentNote: true, aiProvider: true, aiBaseUrl: true },
+          select: { countryCode: true, locale: true, paymentNote: true, taxRegime: true, momsRegistered: true, aiProvider: true, aiBaseUrl: true, companyName: true, companyAddress: true },
         })
+        const previousSeller = getRuntimeCapabilities().sellerVatConfirmation?.enabled
+          ? { companyName: current?.companyName, companyAddress: current?.companyAddress, countryCode: current?.countryCode,
+              taxIds: await tx.organizationTaxId.findMany({ where: { organizationId: ctx.organizationId } }) }
+          : undefined
         // Re-saving the stored provider is always fine; only switching to a new one is checked, so
         // capability changes on the server never block saving unrelated settings.
         if (settingsInput.aiProvider && settingsInput.aiProvider !== current?.aiProvider) {
@@ -425,7 +432,7 @@ export const settingsRouter = router({
           ...(clearStripeWebhookSecret ? { stripeWebhookSecretEnc: null } : {}),
         }
 
-        const settings = await tx.orgSettings.upsert({
+        await tx.orgSettings.upsert({
           where: { organizationId: ctx.organizationId },
           update: settingsUpdateData,
           create: { organizationId: ctx.organizationId, ...settingsUpdateData },
@@ -480,7 +487,7 @@ export const settingsRouter = router({
           }
         }
 
-        if (resolvedCountry === "DK" && settings.momsRegistered === false) {
+        if (resolvedCountry === "DK" && (await tx.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.organizationId } })).momsRegistered === false) {
           const primary = await tx.organizationTaxId.findFirst({
             where: { organizationId: ctx.organizationId, isPrimary: true },
           })
@@ -495,7 +502,8 @@ export const settingsRouter = router({
           }
         }
 
-        return settings
+        await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken, previousSettings: current, previousSeller })
+        return tx.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.organizationId } })
       })
     }),
 

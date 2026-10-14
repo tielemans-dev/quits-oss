@@ -1,3 +1,4 @@
+import { agreementVatPresentation } from "../../lib/agreements/vat-presentation"
 import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
 import type { z } from "zod"
 import { agreementStatusSchema } from "@quits/contracts/agreements"
@@ -47,6 +48,7 @@ export function PublicAgreementPage({
 }) {
   const { t, locale } = useI18n()
   const { snapshot } = document
+  const vat = agreementVatPresentation(snapshot, locale)
   const canAccept = depositsEnabled || !offerHasDeposits(snapshot)
   const v2 = "offerFormatVersion" in snapshot ? snapshot : null
   const totals = agreementOfferTotals(snapshot)
@@ -89,6 +91,7 @@ export function PublicAgreementPage({
               })}{" "}
               = {money(line.lineGross)}
             </p>
+            {vat.lineLabel(line.taxRate) && <p className="text-sm text-muted-foreground">{vat.lineLabel(line.taxRate)}</p>}
             {line.agreedDate && (
               <p>
                 {t("agreements.agreedDate")}: {calendarDate(line.agreedDate)}
@@ -107,7 +110,7 @@ export function PublicAgreementPage({
           {money(totals.net)}
         </p>
         <p>
-          {t("agreements.tax")}:{" "}
+          {vat.taxLabel}:{" "}
           {money(totals.tax)}
         </p>
         {totals.payableRounding && <p>{t("agreements.payableRounding")}: {money(totals.payableRounding)}</p>}
@@ -119,7 +122,7 @@ export function PublicAgreementPage({
           <h2 className="text-xl font-semibold">{t("agreements.paymentSchedule")}</h2>
           {v2.paymentSchedule.map(line => <div key={line.sortOrder} className="border-b pb-3">
             <h3 className="font-medium">{line.title}</h3>
-            <p>{money(line.amount)} {t(line.vatBasis === "gross" ? "agreements.vatBasis.gross" : "agreements.vatBasis.net")}</p>
+            <p>{money(line.amount)} {vat.scheduleBasis(line.vatBasis)}</p>
             <p>{t("agreements.scheduleTrigger")}</p>
           </div>)}
         </section>}
@@ -133,6 +136,7 @@ export function PublicAgreementPage({
           )}
         </p>
       </section>
+      {vat.statement && <p>{vat.statement}</p>}
       <section className="grid gap-3">
         <h2 className="text-xl font-semibold">{t("agreements.publicTerms")}</h2>
         <div

@@ -1,3 +1,7 @@
+import type { CompanyLookupService } from "./company-lookup"
+export type { CompanyLookupService, CompanyLookupResult } from "./company-lookup"
+import type { SellerVatConfirmationService } from "./seller-vat-confirmation"
+export type { SellerVatConfirmationService, SellerVatConfirmationActor, SellerVatConfirmationTransaction } from "./seller-vat-confirmation"
 import type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
 export type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
 import type {
@@ -7,8 +11,13 @@ import type {
 import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
 import { getRuntimeEnv, getRuntimePlatform } from "./platform"
 
+/** Released distributions can require the factual company lookup/review contract. */
+export const COMPANY_LOOKUP_CONTRACT_VERSION = 1
+
 export type RuntimeExtension = {
   id: string
+  companyLookup?: CompanyLookupService
+  sellerVatConfirmation?: SellerVatConfirmationService
   resolveInvoiceIssuancePolicy?: (context: InvoiceIssuancePolicyContext) => InvoiceIssuancePolicy | undefined | Promise<InvoiceIssuancePolicy | undefined>
   resolveCapabilities?: (
     baseCapabilities: Readonly<RuntimeCapabilities>
@@ -27,6 +36,7 @@ function mergeCapabilities(
   }
 
   return {
+    sellerVatConfirmation: { enabled: base.sellerVatConfirmation?.enabled ?? false, ...patch.sellerVatConfirmation },
     documents: { ...base.documents, ...patch.documents },
     agreements: { ...base.agreements, ...patch.agreements },
     aiInvoiceDraft: {
@@ -37,7 +47,7 @@ function mergeCapabilities(
       ...base.onboardingAi,
       ...patch.onboardingAi,
     },
-    onboardingV2: { enabled: false, ...base.onboardingV2, ...patch.onboardingV2 },
+    onboardingV2: { ...base.onboardingV2, enabled: base.onboardingV2?.enabled ?? false, ...patch.onboardingV2 },
     payments: {
       ...base.payments,
       ...patch.payments,
@@ -77,6 +87,7 @@ function readDefaultCapabilities(
 
   return {
     onboardingV2: { enabled: false, nonVatEnabled: false },
+    sellerVatConfirmation: { enabled: false },
     documents: { artifactsRequired: true },
     agreements: { depositsEnabled: readBooleanEnv(readProductEnv(env, "DEPOSITS_ENABLED"), true) },
     aiInvoiceDraft: {
@@ -152,6 +163,7 @@ export function getRuntimeCapabilities(
     enabled: isHostedRuntime(env) && capabilities.onboardingV2?.enabled === true,
     nonVatEnabled: isHostedRuntime(env) && capabilities.onboardingV2?.nonVatEnabled === true,
   }
+  capabilities.sellerVatConfirmation = { enabled: isHostedRuntime(env) && capabilities.sellerVatConfirmation?.enabled === true }
   // Issuance artifacts are a release invariant; runtime extensions cannot opt out.
   capabilities.documents.artifactsRequired = true
   return capabilities
