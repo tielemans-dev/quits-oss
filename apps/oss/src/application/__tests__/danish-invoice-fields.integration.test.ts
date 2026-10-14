@@ -59,7 +59,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     expect(render.pdf.invoice.vatRows).toEqual([{ ratePercent: "25", net: "0.01", tax: "0.00", gross: "0.01" }])
     for (const locale of ["da-DK", "en-US"]) {
       expect(buildTotals({ ...render.pdf.invoice, basis: "net", locale }).lines.filter(row => row.kind === "tax"))
-        .toEqual([{ kind: "tax", label: locale === "da-DK" ? "Moms (25 %)" : "Tax (25%)", amount: "0.00" }])
+        .toMatchObject([{ kind: "tax", label: locale === "da-DK" ? "Moms 25 %" : "VAT 25%", amount: "0.00" }])
     }
   })
   it.each([false, true])("uses net PDF lines and freezes legal identity in policy mode %s", async restricted => {
@@ -81,7 +81,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     const email = composeInvoiceEmail({ invoice: { ...changed, number: changed.number! }, settings, to: "buyer@example.test", publicPaymentUrl: null }).message.html
     expect(email).toContain("Synthetic Seller ApS")
     expect(email).toContain("Synthetic Buyer")
-    expect(email).toContain("CVR-nr.: 12345678")
+    expect(email).toContain("CVR-nr. 12345678")
     expect(email).not.toMatch(/Changed Seller|Changed Buyer|Changed address/)
     const session = serializePublicInvoiceSession({ invoice: changed, stripeEnabled: false, paymentState: "unpaid" }, "synthetic")
     expect(session.seller.name).toBe("Synthetic Seller ApS")

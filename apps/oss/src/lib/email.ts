@@ -1,9 +1,10 @@
+import { formatTaxIds, distinctCompany } from "./documents/tax-ids"
 import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { nonVatStatement } from "./documents/non-vat-note"
 import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
 import { invoicePaymentReferenceHint, invoicePaymentRows } from "./documents/invoice-payment-rows"
-import { buyerAddress, invoiceTaxIds } from "./documents/invoice-identity"
+import { buyerAddress, sellerPresentationTaxIds } from "./documents/invoice-identity"
 import { hasPaymentDetails, type BankAccountSnapshot } from "@quits/contracts/payment-details"
 import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
 import { Resend } from "resend"
@@ -176,7 +177,7 @@ export function itemsTable(
         </tr>
       </thead>
       <tbody>${rows}</tbody>
-    </table>`
+    </table>${totals.note ? `<p style="color:${C.muted};">${escapeHtml(totals.note)}</p>` : ""}`
 }
 
 /** The rows under the items, from the same builder as the PDFs and pages: subtotal, VAT by rate, rounding, total. */
@@ -200,12 +201,12 @@ export function totalsBlock(
         <td style="padding:4px 0;text-align:right;">${money(amount)}</td>
       </tr>`
   return `
-    <table style="width:100%;border-collapse:collapse;margin-top:8px;">${totals.lines.map((line) => row(line.label, line.amount)).join("")}
+    <table style="width:100%;border-collapse:collapse;margin-top:8px;">${totals.lines.map((line) => row(line.label + (line.reason ? ` · ${line.reason}` : ""), line.amount)).join("")}
       <tr style="border-top:2px solid ${C.hairline};">
         <td style="padding:8px 0;font-weight:bold;">${escapeHtml(totals.total.label)}</td>
         <td style="padding:8px 0;text-align:right;font-weight:bold;font-size:18px;">${money(totals.total.amount)}</td>
       </tr>
-    </table>`
+    </table>${totals.note ? `<p style="color:${C.muted};">${escapeHtml(totals.note)}</p>` : ""}`
 }
 
 /** The quits. wordmark as text: images are often blocked in mail clients. The stop is Settled green. */
@@ -356,7 +357,7 @@ export function buildInvoiceEmailContent({
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
         <div style="font-weight:500;">${escapeHtml(org.companyName ?? "")}</div>
         ${org.companyAddress ? `<div>${formatMultilineHtml(org.companyAddress)}</div>` : ""}
-        ${invoiceTaxIds(org.taxIds, "CVR-nr.", momsRegistered).map(id => `<div>${escapeHtml(id)}</div>`).join("")}
+        ${formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, invoice.buyer?.country ?? "DK", momsRegistered).map(id => `<div>${escapeHtml(id)}</div>`).join("")}
         ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div class="invoice-dates" style="text-align:right;flex-shrink:0;">
@@ -368,7 +369,7 @@ export function buildInvoiceEmailContent({
       </div>
     </div>
 
-    ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[invoice.buyer.company, ...buyerAddress(invoice.buyer)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
+    ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[distinctCompany(invoice.buyer), ...buyerAddress(invoice.buyer), ...formatTaxIds(invoice.buyer.taxIds, locale)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
     ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, true, momsRegistered)}
     ${totalsBlock(invoice, locale)}
     ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}

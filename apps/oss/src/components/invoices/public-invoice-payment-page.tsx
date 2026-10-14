@@ -1,3 +1,5 @@
+import { deviationVatLabel } from "../../lib/documents/line-amounts"
+import { formatTaxIds, distinctCompany } from "../../lib/documents/tax-ids"
 import { withoutNonVatStatement } from "../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../lib/documents/non-vat-note"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../lib/documents/seller-vat"
@@ -6,7 +8,7 @@ import { buildPaymentDetailsBlock } from "../../lib/payment-details-block"
 import type { SellerSnapshot, BuyerSnapshot } from "@quits/contracts/documents"
 import type { VatRow } from "../../lib/documents/line-amounts"
 import { buildTotals } from "../../lib/documents/totals"
-import { buyerAddress, invoiceTaxIds } from "../../lib/documents/invoice-identity"
+import { buyerAddress, sellerPresentationTaxIds } from "../../lib/documents/invoice-identity"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { PublicSellerHeader } from "../documents/public-seller-header"
@@ -41,6 +43,7 @@ type PublicInvoice = {
   paymentStatus: string
   issueDate: Date | string
   supplyDate?: string | null
+  taxRate?: number
   vatRows?: VatRow[]
   rounding?: string
   dueDate: Date | string
@@ -169,10 +172,11 @@ function PublicInvoiceDocument({
             <div className="grid gap-4 sm:grid-cols-2">
               <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.from")}</h2>
                 <p>{invoice.sellerSnapshot?.companyName}</p><p className="whitespace-pre-line">{invoice.sellerSnapshot?.companyAddress}</p>
-                {invoiceTaxIds(invoice.sellerSnapshot?.taxIds, undefined, momsRegistered).map(id => <p key={id}>{id}</p>)}
+                {formatTaxIds(sellerPresentationTaxIds(invoice.sellerSnapshot?.taxIds, momsRegistered), locale, invoice.buyerSnapshot?.country ?? "DK", momsRegistered).map(id => <p key={id}>{id}</p>)}
               </div>
               <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.billTo")}</h2>
-                <p>{invoice.buyerSnapshot?.name}</p><p>{invoice.buyerSnapshot?.company}</p>
+                <p>{invoice.buyerSnapshot?.name}</p>{distinctCompany(invoice.buyerSnapshot) && <p>{distinctCompany(invoice.buyerSnapshot)}</p>}
+                {formatTaxIds(invoice.buyerSnapshot?.taxIds, locale).map(id => <p key={id}>{id}</p>)}
                 {buyerAddress(invoice.buyerSnapshot).map((line, index) => <p key={index}>{line}</p>)}
               </div>
             </div>
@@ -190,7 +194,7 @@ function PublicInvoiceDocument({
                       className="grid grid-cols-[1fr_auto] gap-4 border-b px-4 py-3 last:border-b-0"
                     >
                       <div>
-                        <p className="font-medium">{item.description}</p>
+                        <p className="font-medium">{item.description}</p>{deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), invoice.vatRows, invoice.taxRate) && <p className="mt-1 w-fit rounded bg-muted px-1 font-mono text-xs">{t("pdf.lineVatRate", { rate: toNumber(item.taxRate!) })}</p>}
                         <p className="text-sm text-muted-foreground">
                           {t("public.document.lineQuantity", {
                             quantity: format.number(toNumber(item.quantity)),
@@ -237,16 +241,9 @@ function PublicInvoiceDocument({
             ) : null}
 
             <div className="grid gap-4 rounded-lg border p-4">
-              <InfoBlock label={t("public.document.customer")} value={invoice.buyerSnapshot?.name ?? ""} />
-              <InfoBlock
-                label={t("public.document.company")}
-                value={
-                  invoice.buyerSnapshot?.company ??
-                  t("public.document.notProvided")
-                }
-              />
               <dl data-slot="invoice-totals" className="grid gap-3">
-              {totals.lines.map((row, index) => <AmountRow key={index} label={row.label} value={money(Number(row.amount))} />)}
+              {totals.lines.map((row, index) => <AmountRow key={index} label={row.label + (row.reason ? ` · ${row.reason}` : "")} value={money(Number(row.amount))} />)}
+              {totals.note && <p className="rounded-md border p-3 text-xs text-muted-foreground">{totals.note}</p>}
               <AmountRow label={totals.total.label} value={money(total)} />
               {credited ? (
                 <AmountRow label={t("public.invoice.credited")} value={money(amountCredited)} />
@@ -269,7 +266,7 @@ function PublicInvoiceDocument({
               <section className="grid min-w-0 gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>
                 <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{paymentDetails.title}</h2>
                 {paymentDetails.rows.map((row) => (
-                  <InfoBlock key={row.label} label={row.label} value={row.value} />
+                  <InfoBlock key={row.label} label={row.label + (row.reason ? ` · ${row.reason}` : "")} value={row.value} />
                 ))}
                 {paymentDetails.reference ? (
                   <InfoBlock label={paymentDetails.reference.label} value={paymentDetails.reference.value} />

@@ -42,7 +42,7 @@ describe("document emails", () => {
 
   it("print the VAT row with its rate on a net invoice, and no rounding", () => {
     const html = text(composeInvoiceEmail({ invoice: { ...document, pricesIncludeTax: false }, settings, to: "kunde@example.test", publicPaymentUrl: null }).message.html ?? "")
-    expect(html).toContain("Subtotal 14.500,00 kr. Moms (25 %) 3.625,00 kr. Total 18.125,00 kr.")
+    expect(html).toContain("Subtotal ekskl. moms 14.500,00 kr. Moms 25 % 3.625,00 kr. Total inkl. moms 18.125,00 kr.")
   })
 
   it("print the rounding between the tax and the total of a gross invoice", () => {
@@ -53,7 +53,7 @@ describe("document emails", () => {
       text(composeInvoiceEmail({ invoice: gross, settings, to: "kunde@example.test", publicPaymentUrl: null }).message.html ?? ""),
       text(composeQuoteEmail({ quote: gross, settings, to: "kunde@example.test", publicQuoteUrl: null }).message.html ?? ""),
     ]) {
-      expect(html).toMatch(/Subtotal(?: ekskl. moms)? 8,10 kr. Moms \(25 %\) 2,03 kr. Afrunding -0,01 kr. Total(?: inkl. moms)? 10,12 kr./)
+      expect(html).toMatch(/Subtotal(?: ekskl. moms)? 8,10 kr. Moms 25 % 2,03 kr. Afrunding -0,01 kr. Total(?: inkl. moms)? 10,12 kr./)
     }
   })
 

@@ -37,6 +37,7 @@ export function serializePublicQuoteSession(session: {
     expiryDate: Date | string
     totalGross: Decimalish
     totalTax: Decimalish
+    taxRate?: Decimalish
     subtotalNet: Decimalish
     vatRows?: VatRow[]
     rounding?: string
@@ -72,6 +73,7 @@ export function serializePublicQuoteSession(session: {
       lineNet: Decimalish
       unitPriceGross: Decimalish
       lineGross: Decimalish
+      vatTreatment?: string
       taxRate?: Decimalish
       sortOrder: number
     }>
@@ -105,6 +107,7 @@ export function serializePublicQuoteSession(session: {
       expiryDate: toDateString(quote.expiryDate) ?? quote.expiryDate,
       totalGross: toNumber(quote.totalGross),
       totalTax: toNumber(quote.totalTax),
+      taxRate: quote.taxRate === undefined ? undefined : toNumber(quote.taxRate),
       subtotalNet: toNumber(quote.subtotalNet),
       vatRows: quote.vatRows,
       rounding: quote.rounding,
@@ -120,6 +123,7 @@ export function serializePublicQuoteSession(session: {
       items: quote.items.map((item) => ({
         id: item.id,
         description: item.description,
+        vatTreatment: item.vatTreatment,
         quantity: toNumber(item.quantity),
         unitPriceNet: toNumber(item.unitPriceNet),
         lineNet: toNumber(item.lineNet),

@@ -1,8 +1,8 @@
 import { formatCurrency, formatNumber } from "../i18n/format"
 import { translate } from "../i18n/translate"
-import { printableVatRows, totalsLabelKeys, type PriceBasis, type VatRow } from "./line-amounts"
+import { printableVatRows, totalsLabelKeys, vatReasonKeys, type PriceBasis, type VatRow } from "./line-amounts"
 
-export type TotalsRow = { kind: "subtotal" | "tax" | "rounding" | "total"; label: string; amount: string }
+export type TotalsRow = { kind: "subtotal" | "tax" | "rounding" | "total"; label: string; amount: string; reason?: string }
 
 /**
  * The rows under a document's line table, shared by every surface that prints them: the PDFs, the
@@ -11,7 +11,7 @@ export type TotalsRow = { kind: "subtotal" | "tax" | "rounding" | "total"; label
  * and the rounding is the stored total minus the stored subtotal and tax, so the printed subtotal
  * plus the printed VAT rows plus the rounding is exactly the printed total.
  *
- * With one VAT row it reads "Moms (25 %)"; with several each names its taxable amount, as the VAT
+ * With one VAT row it reads "Moms 25 %"; with several each names its taxable amount, as the VAT
  * directive requires ("Moms 25 % af 8.000,00 kr.").
  */
 export function buildTotals(input: {
@@ -23,9 +23,9 @@ export function buildTotals(input: {
   rounding?: string | null
   currency: string
   locale?: string | null
-}): { lines: TotalsRow[]; total: TotalsRow } {
+}): { lines: TotalsRow[]; total: TotalsRow; note?: string } {
   const { currency, locale } = input
-  const keys = totalsLabelKeys(input.basis)
+  const keys = totalsLabelKeys(input.basis, input.vatRows?.length ? input.vatRows.some(row => Number(row.ratePercent) > 0) : Number(input.taxAmount) !== 0)
   const money = (amount: string) => formatCurrency(Number(amount), currency, locale)
   const rate = (row: VatRow) => formatNumber(Number(row.ratePercent), locale)
   const lines: TotalsRow[] = [{ kind: "subtotal", label: translate(keys.subtotal, locale), amount: String(input.subtotal) }]
@@ -38,6 +38,7 @@ export function buildTotals(input: {
           ? translate("pdf.taxRateOf", locale, { rate: rate(row), base: money(row.net) })
           : translate("pdf.taxRate", locale, { rate: rate(row) }),
         amount: row.tax,
+        reason: vatReasonKeys(row).map(key => translate(key, locale)).join(" · ") || undefined,
       })
     }
   } else if (Number(input.taxAmount) > 0) {
@@ -46,5 +47,8 @@ export function buildTotals(input: {
   if (input.rounding && /[1-9]/.test(input.rounding)) {
     lines.push({ kind: "rounding", label: translate("pdf.rounding", locale), amount: input.rounding })
   }
-  return { lines, total: { kind: "total", label: translate(keys.total, locale), amount: String(input.total) } }
+  const zeroReasons = input.vatRows?.filter(row => Number(row.ratePercent) === 0).flatMap(vatReasonKeys)
+  const outOfScope = zeroReasons?.length && zeroReasons.every(key => key === "pdf.vatOutOfScope")
+  const note = outOfScope ? translate(input.vatRows?.some(row => Number(row.ratePercent) > 0) ? "pdf.vatNote.mixed" : "pdf.vatNote.outOfScope", locale) : undefined
+  return { lines, note, total: { kind: "total", label: translate(keys.total, locale), amount: String(input.total) } }
 }

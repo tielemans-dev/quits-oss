@@ -40,6 +40,7 @@ export function serializePublicInvoiceSession(session: {
     amountPaid: Decimalish
     amountCredited: Decimalish
     totalTax: Decimalish
+    taxRate?: Decimalish
     subtotalNet: Decimalish
     taxRegime?: string
     currency: string
@@ -67,6 +68,7 @@ export function serializePublicInvoiceSession(session: {
     items: Array<{
       id: string
       description: string
+      vatTreatment?: string
       taxRate?: Decimalish
       quantity: Decimalish
       unitPriceNet?: Decimalish
@@ -119,6 +121,7 @@ export function serializePublicInvoiceSession(session: {
       amountCredited,
       balanceDue,
       totalTax: toNumber(invoice.totalTax),
+      taxRate: invoice.taxRate === undefined ? undefined : toNumber(invoice.taxRate),
       subtotalNet: toNumber(invoice.subtotalNet),
       currency: invoice.currency,
       taxRegime: invoice.taxRegime,
@@ -131,6 +134,7 @@ export function serializePublicInvoiceSession(session: {
       items: invoice.items.map((item) => ({
         id: item.id,
         description: item.description,
+        vatTreatment: item.vatTreatment,
         quantity: toNumber(item.quantity),
         ...(item.taxRate !== undefined ? { taxRate: toNumber(item.taxRate) } : {}),
         ...(item.unitPriceNet !== undefined ? { unitPriceNet: toNumber(item.unitPriceNet) } : {}),

@@ -1,3 +1,4 @@
+import { formatTaxIds, distinctCompany } from "../../lib/documents/tax-ids"
 import { agreementVatPresentation } from "../../lib/agreements/vat-presentation"
 import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
 import type { z } from "zod"
@@ -69,9 +70,11 @@ export function PublicAgreementPage({
       <section className="grid gap-2">
         <p>{snapshot.sellerSnapshot?.companyName}</p>
         <p>{snapshot.sellerSnapshot?.companyAddress}</p>
+          {formatTaxIds(snapshot.sellerSnapshot?.taxIds, snapshot.locale, snapshot.buyerSnapshot?.country ?? "DK", vat.status).map(id => <p key={id}>{id}</p>)}
+          {formatTaxIds(snapshot.buyerSnapshot?.taxIds, snapshot.locale).map(id => <p key={id}>{id}</p>)}
         <p>
           {t("agreements.customer")}: {snapshot.buyerSnapshot?.name}{" "}
-          {snapshot.buyerSnapshot?.company}
+          {distinctCompany(snapshot.buyerSnapshot)}
         </p>
         <p className="whitespace-pre-wrap">{snapshot.summary}</p>
         <p>
@@ -105,6 +108,11 @@ export function PublicAgreementPage({
             {line.isDeposit && <p>{t("agreements.deposit")}</p>}
           </div>
         ))}
+        {vat.totals ? <>
+            {vat.totals.lines.map((row, i) => <p key={i}>{row.label}: {money(Number(row.amount))}{row.reason ? ` · ${row.reason}` : ""}</p>)}
+            <p>{vat.totals.total.label}: {money(Number(vat.totals.total.amount))}</p>
+            {vat.totals.note && <p>{vat.totals.note}</p>}
+          </> : <>
         <p>
           {t("agreements.subtotal")}:{" "}
           {money(totals.net)}
@@ -118,6 +126,7 @@ export function PublicAgreementPage({
           {t(totals.isV2 ? "agreements.serviceTotal" : "agreements.total")}:{" "}
           {money(totals.gross)}
         </p>
+          </>}
         {v2 && <section className="grid gap-3">
           <h2 className="text-xl font-semibold">{t("agreements.paymentSchedule")}</h2>
           {v2.paymentSchedule.map(line => <div key={line.sortOrder} className="border-b pb-3">

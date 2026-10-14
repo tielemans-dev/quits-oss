@@ -1,3 +1,4 @@
+import { deviationVatLabel } from "./documents/line-amounts"
 import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { nonVatStatement } from "./documents/non-vat-note"
@@ -91,6 +92,7 @@ export type CreditNoteForPdf = {
    */
   pricesIncludeTax?: boolean
   /** The credited VAT by rate. Absent on inputs frozen before they carried it. */
+  taxRate?: number
   vatRows?: VatRow[]
   /** The stored total minus the stored subtotal and tax, as a decimal string; printed when non-zero. */
   rounding?: string
@@ -136,7 +138,7 @@ export function CreditNotePdfDocument({
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.label}>{translate("pdf.issueDate", locale)}</Text>
-            <Text>{formatDate(creditNote.issueDate, locale, timezone, { month: "long" })}</Text>
+            <Text>{formatDate(creditNote.issueDate, locale, timezone, { month: "short" })}</Text>
             <Text style={[styles.label, { marginTop: 6 }]}>
               {translate("creditNotes.pdf.reference", locale)}
             </Text>
@@ -144,7 +146,7 @@ export function CreditNotePdfDocument({
             <Text style={[styles.label, { marginTop: 6 }]}>
               {translate("creditNotes.pdf.invoiceDate", locale)}
             </Text>
-            <Text>{formatDate(creditNote.invoice.issueDate, locale, timezone, { month: "long" })}</Text>
+            <Text>{formatDate(creditNote.invoice.issueDate, locale, timezone, { month: "short" })}</Text>
           </View>
         </View>
 
@@ -189,7 +191,7 @@ export function CreditNotePdfDocument({
           </View>
           {creditNote.items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
-              <View style={styles.colDescription}><Text>{item.description}</Text>{sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}</View>
+              <View style={styles.colDescription}><Text>{item.description}</Text>{deviationVatLabel(item.taxRate, creditNote.vatRows, creditNote.taxRate) && <Text style={[styles.label, { backgroundColor: "#f4f4f4", padding: 3 }]}>{translate("pdf.lineVatRate", locale, { rate: item.taxRate! })}</Text>}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}</View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>{money(item.unitPrice)}</Text>
               <Text style={styles.colTotal}>{money(item.total)}</Text>
@@ -200,7 +202,7 @@ export function CreditNotePdfDocument({
         <View style={styles.totalsContainer}>
           {totals.lines.map((row, index) => (
             <View key={index} style={styles.totalsRow}>
-              <Text style={styles.totalLabel}>{row.label}</Text>
+              <Text style={styles.totalLabel}>{row.label}{row.reason ? `\n${row.reason}` : ""}</Text>
               <Text>{money(Number(row.amount))}</Text>
             </View>
           ))}
@@ -212,6 +214,7 @@ export function CreditNotePdfDocument({
 
         {momsRegistered === false && <Text style={[styles.reasonText, { marginTop: 24 }]}>{nonVatStatement(locale)}</Text>}
 
+        {totals.note && <Text style={styles.reason}>{totals.note}</Text>}
         <View style={styles.reason}>
           <Text style={styles.sectionTitle}>{translate("creditNotes.pdf.reason", locale)}</Text>
           <Text style={styles.reasonText}>{reason}</Text>

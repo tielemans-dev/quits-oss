@@ -1,3 +1,5 @@
+import { deviationVatLabel } from "../../lib/documents/line-amounts"
+import { formatTaxIds, distinctCompany } from "../../lib/documents/tax-ids"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../lib/documents/seller-vat"
 import { nonVatStatement } from "../../lib/documents/non-vat-note"
 import { withoutNonVatStatement } from "../../lib/documents/non-vat-presentation"
@@ -11,6 +13,9 @@ import { useI18n } from "../../lib/i18n/react"
 import { Amount } from "../kvit/amount"
 import { DocumentTotals } from "../documents/document-totals"
 import type { VatRow } from "../../lib/documents/line-amounts"
+
+import type { DocumentTaxId } from "@quits/contracts/documents"
+import { sellerPresentationTaxIds } from "../../lib/documents/invoice-identity"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -28,6 +33,7 @@ type PublicQuoteItem = {
   lineNet: Decimalish
   unitPriceGross: Decimalish
   lineGross: Decimalish
+  vatTreatment?: string
   taxRate?: Decimalish
   sortOrder: number
 }
@@ -41,6 +47,7 @@ type PublicQuote = {
   totalGross: Decimalish
   totalTax: Decimalish
   subtotalNet: Decimalish
+  taxRate?: number
   vatRows?: VatRow[]
   rounding?: string
   taxRegime?: string
@@ -49,12 +56,15 @@ type PublicQuote = {
   timezone: string
   notes: string | null
   sellerSnapshot: {
+    taxIds?: DocumentTaxId[]
     momsRegistered?: boolean | null
     companyName?: string | null
     companyEmail?: string | null
     companyAddress?: string | null
   } | null
   buyerSnapshot: {
+    taxIds?: DocumentTaxId[]
+    country?: string | null
     name?: string | null
     email?: string | null
     company?: string | null
@@ -187,7 +197,7 @@ function PublicQuoteDocument({
                       className="grid grid-cols-[1fr_auto] gap-4 border-b px-4 py-3 last:border-b-0"
                     >
                       <div>
-                        <p className="font-medium">{item.description}</p>
+                        <p className="font-medium">{item.description}</p>{deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), quote.vatRows, quote.taxRate) && <p className="mt-1 w-fit rounded bg-muted px-1 font-mono text-xs">{t("pdf.lineVatRate", { rate: toNumber(item.taxRate!) })}</p>}
                         {sellerVatLineText(momsRegistered, item.taxRate == null ? undefined : toNumber(item.taxRate), locale) ? (
                           <p className="text-sm text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate == null ? undefined : toNumber(item.taxRate), locale)}</p>
                         ) : null}
@@ -238,14 +248,9 @@ function PublicQuoteDocument({
 
             <div className="grid gap-4 rounded-lg border p-4">
               <InfoBlock label={t("public.document.customer")} value={quote.contact.name} />
-              <InfoBlock
-                label={t("public.document.company")}
-                value={
-                  quote.contact.company ??
-                  quote.buyerSnapshot?.company ??
-                  t("public.document.notProvided")
-                }
-              />
+              {distinctCompany({ name: quote.contact.name, company: quote.contact.company ?? quote.buyerSnapshot?.company }) && <InfoBlock label={t("public.document.company")} value={distinctCompany({ name: quote.contact.name, company: quote.contact.company ?? quote.buyerSnapshot?.company })!} />}
+              {formatTaxIds(sellerPresentationTaxIds(quote.sellerSnapshot?.taxIds, momsRegistered), locale, quote.buyerSnapshot?.country ?? "DK", momsRegistered).map(id => <p key={id}>{id}</p>)}
+              {formatTaxIds(quote.buyerSnapshot?.taxIds, locale).map(id => <p key={id}>{id}</p>)}
               <div className="grid gap-2 text-sm" aria-label={t("public.document.total")}>
                 <DocumentTotals
                   priceBasis="gross"

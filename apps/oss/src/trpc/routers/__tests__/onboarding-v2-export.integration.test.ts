@@ -175,7 +175,7 @@ let artifactDirectory: string
     const creditInput = creditStaging.renderInput as unknown as { pdf: { creditNote: CreditNoteForPdf } }
     expect(creditInput.pdf.creditNote.reason).toBe(statement ? `${reason}\n${statement}` : reason)
     const parties = creditNotePdfParties(creditInput.pdf.creditNote, {})
-    expect(parties.seller.taxIds).toContain(locale === "da-DK" ? "CVR-nr.: 24256790" : "CVR no.: 24256790")
+    expect(parties.seller.taxIds).toContain(locale === "da-DK" ? "CVR-nr. 24256790" : "CVR no. 24256790")
     expect(parties.seller.taxIds.some(value => value.includes("DK24256790"))).toBe(momsRegistered)
     expect(await getDocumentArtifactStore()?.get(invoice.artifactPdfRef!)).toEqual(oldPdf)
     // Omission preserves the choice; explicit null restores unknown registration for future work.

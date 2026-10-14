@@ -64,7 +64,7 @@ export function frozenVatGroups(document: {
  * exact decimals of the stored group amounts; nothing is repriced.
  */
 export function vatRowsByRate(
-  groups: ReadonlyArray<{ rate: string; net: string; tax: string; gross: string }>,
+  groups: ReadonlyArray<{ rate: string; net: string; tax: string; gross: string; treatment?: string; reasonCode?: string | null }>,
   currency: string
 ): VatRow[] {
   const exponent = documentFractionDigits(currency)
@@ -72,6 +72,8 @@ export function vatRowsByRate(
   for (const group of groups) {
     const ratePercent = fractionToPercentage(group.rate)
     const row = rows.get(ratePercent) ?? { ratePercent, net: "0", tax: "0", gross: "0" }
+    row.treatments = [...new Set([...(row.treatments ?? []), ...(group.treatment ? [group.treatment] : [])])]
+    row.treatment = row.treatments.length === 1 ? row.treatments[0] : undefined
     row.net = toDecimal(row.net).plus(group.net).toFixed(exponent)
     row.tax = toDecimal(row.tax).plus(group.tax).toFixed(exponent)
     row.gross = toDecimal(row.gross).plus(group.gross).toFixed(exponent)

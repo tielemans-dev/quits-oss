@@ -181,9 +181,9 @@ describe("invoice PDF calendar dates", () => {
         invoice: { ...invoice, dueDate: "2028-02-29T00:00:00.000Z", supplyDate: "2027-03-14" },
         org: { locale: "en-US", timezone },
       })).join("\n")
-      expect(text).toContain("February 29, 2028")
-      expect(text).toContain("March 14, 2027")
-      expect(text).toContain(timezone === "Europe/Copenhagen" ? "October 1, 2026" : "September 30, 2026")
+      expect(text).toContain("Feb 29, 2028")
+      expect(text).toContain("Mar 14, 2027")
+      expect(text).toContain(timezone === "Europe/Copenhagen" ? "Oct 1, 2026" : "Sep 30, 2026")
     }
   )
 })
@@ -191,11 +191,15 @@ describe("invoice PDF calendar dates", () => {
 
 describe("registration changes in future PDF snapshots", () => {
   it.each([["da-DK", "CVR-nr."], ["en-US", "CVR no."]])("uses the frozen CVR label in %s and preserves historical inputs", (locale, cvrLabel) => {
-    const org = { locale, taxIds: [{ scheme: "DK_CVR", countryCode: "DK", value: "12345678" }] }
+    const org = { locale, companyName: "Frozen Seller", companyAddress: "Frozen Road 1", companyEmail: "seller@example.test", taxIds: [{ scheme: "DK_CVR", countryCode: "DK", value: "12345678" }] }
     const historical = textOf(InvoicePdfDocument({ invoice, org })).join("\n")
     const future = textOf(InvoicePdfDocument({ invoice, org: { ...org, cvrLabel } })).join("\n")
-    expect(historical).toContain("CVR: 12345678")
-    expect(future).toContain(`${cvrLabel}: 12345678`)
+    const footer = InvoicePdfDocument({ invoice, org }).props.children.props.children.at(-1)
+    expect(footer.props.fixed).toBe(true)
+    expect(textOf(footer).join(" ")).toContain(`Frozen Seller · Frozen Road 1 · ${cvrLabel} 12345678 · seller@example.test`)
+    expect(footer.props.children[1].props.render({ pageNumber: 2, totalPages: 3 })).toBe(locale === "da-DK" ? "Side 2 af 3" : "Page 2 of 3")
+    expect(historical).toContain(`${cvrLabel} 12345678`)
+    expect(future).toContain(`${cvrLabel} 12345678`)
     expect(future).not.toContain("CVR: 12345678")
     expect(textOf(InvoicePdfDocument({ invoice, org })).join("\n")).toBe(historical)
   })
