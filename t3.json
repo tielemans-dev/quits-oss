@@ -1,0 +1,14 @@
+{
+  "$schema": "https://t3.codes/schema/t3.json",
+  "defaultThreadEnvMode": "worktree",
+  "scripts": [
+    {
+      "name": "Setup Worktree",
+      "command": "node scripts/setup-worktree.mjs",
+      "runOnWorktreeCreate": true,
+      "async": false
+    },
+    { "name": "Dev", "command": "bun run dev" },
+    { "name": "Teardown Worktree", "command": "node scripts/teardown-worktree.mjs" }
+  ]
+}

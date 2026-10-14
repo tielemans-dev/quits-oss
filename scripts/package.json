@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "oxlint --deny-warnings --report-unused-disable-directives .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run __tests__/*.test.ts"
+    "test": "vitest run __tests__/*.test.ts && node --test --test-concurrency=1 __tests__/*.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
