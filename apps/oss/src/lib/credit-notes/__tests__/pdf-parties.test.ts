@@ -58,6 +58,24 @@ describe("credit note PDF parties", () => {
     expect(buyer.taxIds).toEqual(["VAT no. DE123456789"])
   })
 
+  it.each([
+    ["da-DK", "CVR-nr. 12345678", "Momsnr. DK12345678"],
+    ["en-US", "CVR no. 12345678", "VAT no. DK12345678"],
+  ])("uses frozen buyer country and registration for seller IDs in %s", (locale, domestic, foreign) => {
+    for (const momsRegistered of [false, true]) {
+      for (const country of ["DK", "DE"]) {
+        const frozen = { ...sellerSnapshot, momsRegistered }
+        const { seller } = creditNotePdfParties({
+          ...issued, locale, sellerSnapshot: frozen,
+          buyerSnapshot: { ...buyerSnapshot, country },
+          contact: { ...contact, country: country === "DK" ? "DE" : "DK" },
+        }, { momsRegistered: !momsRegistered, taxIds: [{ scheme: "vat", value: "DK87654321" }] })
+        expect(seller.taxIds).toEqual([country === "DK" || !momsRegistered ? domestic : foreign])
+        expect(frozen.taxIds).toEqual(sellerSnapshot.taxIds)
+      }
+    }
+  })
+
   it("suppresses retained VAT IDs for the frozen nonregistered seller without changing legal IDs or buyer IDs", () => {
     const frozen = { ...sellerSnapshot, momsRegistered: false, taxIds: [...sellerSnapshot.taxIds, { scheme: "lei", value: "LEGAL-ID" }] }
     const before = JSON.stringify(frozen)

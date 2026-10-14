@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
-import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { executeIssuanceCommand } from "../../../application/issuance"
 import { createContact } from "../../../domain/commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../../../domain/commands/invoices"
@@ -174,9 +174,25 @@ let artifactDirectory: string
     const creditStaging = await prisma.artifactStaging.findFirstOrThrow({ where: { organizationId: id, documentKind: "creditNote", documentId: credit.id } })
     const creditInput = creditStaging.renderInput as unknown as { pdf: { creditNote: CreditNoteForPdf } }
     expect(creditInput.pdf.creditNote.reason).toBe(statement ? `${reason}\n${statement}` : reason)
+    const frozenCreditSeller = parseSellerSnapshot(creditInput.pdf.creditNote.sellerSnapshot)
+    expect(frozenCreditSeller?.momsRegistered).toBe(momsRegistered)
+    expect(frozenCreditSeller?.taxIds).toEqual(parseSellerSnapshot(invoice.sellerSnapshot)?.taxIds)
+    expect(frozenCreditSeller?.taxIds?.some(value => value.scheme === "vat" && value.value === "DK24256790")).toBe(momsRegistered)
+    expect(parseBuyerSnapshot(creditInput.pdf.creditNote.buyerSnapshot)?.country).toBe("DK")
     const parties = creditNotePdfParties(creditInput.pdf.creditNote, {})
-    expect(parties.seller.taxIds).toContain(locale === "da-DK" ? "CVR-nr. 24256790" : "CVR no. 24256790")
-    expect(parties.seller.taxIds.some(value => value.includes("DK24256790"))).toBe(momsRegistered)
+    // Domestic presentation uses CVR even for registered sellers; UBL retains the VAT scheme.
+    expect(parties.seller.taxIds).toEqual([locale === "da-DK" ? "CVR-nr. 24256790" : "CVR no. 24256790"])
+    expect(credit.totalTax.toNumber()).toBe(invoice.totalTax.toNumber())
+    expect(credit.totalTax.toNumber()).toBe(momsRegistered ? 25 : 0)
+    expect(credit.totalGross.toNumber()).toBe(invoice.totalGross.toNumber())
+    const creditExport = await exportEinvoice(id, "creditNote", credit.id)
+    if (!creditExport.ok) throw new Error(JSON.stringify(creditExport))
+    const creditSupplier = creditExport.xml.split("<cac:AccountingSupplierParty>")[1]?.split("</cac:AccountingSupplierParty>")[0]
+    expect(creditSupplier).toContain("24256790")
+    if (momsRegistered) {
+      expect(creditSupplier).toContain("<cac:PartyTaxScheme>")
+      expect(creditSupplier).toContain("DK24256790")
+    } else expect(creditSupplier).not.toContain("<cac:PartyTaxScheme>")
     expect(await getDocumentArtifactStore()?.get(invoice.artifactPdfRef!)).toEqual(oldPdf)
     // Omission preserves the choice; explicit null restores unknown registration for future work.
     await api.settings.update({ taxRate: 0 })
