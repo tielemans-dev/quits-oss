@@ -199,6 +199,33 @@ invoices.
 - Ownership and constraints are documented in `docs/architecture/oss-cloud-boundary.md`.
 - Release and cutover checklist is documented in `docs/releases/oss-v1-cutover.md`.
 
+## Local commit hook
+
+After `bun install`, run `bun run hooks:install` from the repository root to
+install or refresh Lefthook's pre-commit hook. This explicit step also works when
+package lifecycle scripts were skipped during installation. Check for an existing
+hook manager or custom `core.hooksPath` before installing. Use one hook manager.
+
+The hook runs `bun run lint:staged`, which checks added, copied, modified, and
+renamed JavaScript and TypeScript files with the repository's Oxlint settings.
+Deleted files and commits without source changes skip lint. Filenames with spaces,
+quotes, or newlines are passed as individual arguments. The runner uses the
+repository root even when called from another directory. It invokes only the
+installed Oxlint binary and never runs the full lint script or downloads tools.
+
+Stage all changes to each source file before committing, or unstage that file.
+The hook rejects partial staging, missing working files, and source symlinks;
+it does not stash, fix, or stage changes. A lint failure blocks the commit.
+Correct the file, stage it again, and retry. CI still owns the full quality gates.
+The installed hook uses `scripts/lefthook.sh` to disable Lefthook's automatic
+hiding of unstaged changes. For a manual hook run, use
+`sh scripts/lefthook.sh run pre-commit` from the root.
+
+To remove this checkout's Lefthook hooks, run `bunx --no-install lefthook uninstall`
+from the root. Git worktrees may share their hooks directory, so coordinate
+installation and removal with other checkouts. Inspect the hooks directory with
+`git rev-parse --git-path hooks` and any override with `git config --get core.hooksPath`.
+
 ## Testing
 
 Run the standard test suite:
